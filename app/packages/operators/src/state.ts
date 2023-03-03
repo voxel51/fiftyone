@@ -4,15 +4,17 @@ import {
   useRecoilValue,
   useRecoilState,
   useRecoilCallback,
+  useSetRecoilState,
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import {
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
   executeOperator,
 } from "./operators";
 import * as fos from "@fiftyone/state";
+import { BROWSER_CONTROL_KEYS } from "./constants";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -158,11 +160,13 @@ export const useOperatorPrompt = () => {
 };
 
 export function filterChoicesByQuery(query, all) {
-  return all.filter(({ label, value, description }) => {
+  const sanitizedQuery = query.trim();
+  if (sanitizedQuery.length === 0) return all;
+  return all.filter(({ label = "", value = "", description = "" }) => {
     return (
-      label.toLowerCase().includes(query.toLowerCase()) ||
-      value.toLowerCase().includes(query.toLowerCase()) ||
-      description.toLowerCase().includes(query.toLowerCase())
+      label.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+      value.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+      description.toLowerCase().includes(sanitizedQuery.toLowerCase())
     );
   });
 }
@@ -180,7 +184,7 @@ export const operatorBrowserVisibleState = atom({
 });
 export const operatorBrowserQueryState = atom({
   key: "operatorBrowserQueryState",
-  default: null,
+  default: "",
 });
 export const operatorBrowserChoices = selector({
   key: "operatorBrowserChoices",
@@ -207,7 +211,7 @@ export const operatorChoiceState = atom({
 
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
-  const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
+  const setQuery = useSetRecoilState(operatorBrowserQueryState);
   const [selectedValue, setSelected] = useRecoilState(operatorChoiceState);
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
@@ -217,17 +221,26 @@ export function useOperatorBrowser() {
     setQuery(query);
   };
 
+  const close = () => {
+    setIsVisible(false);
+    // reset necessary state
+    setQuery("");
+    setSelected(null);
+  };
+
   const onSubmit = () => {
     console.log("onSubmit", selectedValue);
-    setIsVisible(false);
+    close();
     if (selectedValue) {
       promptForInput(selectedValue);
     }
   };
 
   const getSelectedPrevAndNext = useCallback(() => {
-    const selected = choices.find((choice) => choice.value === selectedValue);
-    const selectedIndex = choices.indexOf(selected);
+    const selectedIndex = choices.findIndex(
+      ({ value }) => value === selectedValue
+    );
+    const selected = choices[selectedIndex];
     const lastChoice = choices[choices.length - 1];
     const firstChoice = choices[0];
     if (selectedIndex === -1)
@@ -247,17 +260,17 @@ export function useOperatorBrowser() {
   const selectNext = useCallback(() => {
     console.log("select next");
     setSelected(getSelectedPrevAndNext().selectedNext);
-  }, [choices]);
+  }, [choices, selectedValue]);
 
   const selectPrevious = useCallback(() => {
     console.log("select prev");
     setSelected(getSelectedPrevAndNext().selectedPrev);
-  }, [choices]);
+  }, [choices, selectedValue]);
 
   const onKeyDown = useCallback(
     (e) => {
       if (e.key !== "`" && !isVisible) return;
-      e.preventDefault();
+      if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
       switch (e.key) {
         case "ArrowDown":
           selectNext();
@@ -266,10 +279,17 @@ export function useOperatorBrowser() {
           selectPrevious();
           break;
         case "`":
-          setIsVisible(!isVisible);
+          if (isVisible) {
+            close();
+          } else {
+            setIsVisible(true);
+          }
           break;
         case "Enter":
           onSubmit();
+          break;
+        case "Escape":
+          close();
           break;
       }
     },
@@ -285,7 +305,7 @@ export function useOperatorBrowser() {
 
   const setSelectedAndSubmit = useCallback(
     (value) => {
-      setIsVisible(false);
+      close();
       promptForInput(value);
     },
     [setSelected, setIsVisible, onSubmit]
@@ -300,6 +320,7 @@ export function useOperatorBrowser() {
     selectNext,
     selectPrevious,
     setSelectedAndSubmit,
+    close,
   };
 }
 
@@ -343,12 +364,6 @@ export function useOperatorExecutor(name) {
     setIsExecuting(false);
   };
 
-  // useEffect(() => {
-  //   return () => {
-  //     clear()
-  //   }
-  // }, [])
-
   const execute = useRecoilCallback((state) => async (params) => {
     setIsExecuting(true);
     try {
@@ -361,7 +376,7 @@ export function useOperatorExecutor(name) {
           extended,
           filters,
           state,
-          selectedSamples
+          selectedSamples,
         },
         hooks
       );
