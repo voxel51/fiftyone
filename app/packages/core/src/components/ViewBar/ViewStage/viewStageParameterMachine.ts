@@ -120,6 +120,7 @@ export const PARSER = {
         array = stripped.split(",");
       }
       return (
+        typeof value !== "string" &&
         Array.isArray(array) &&
         array.every((e) => PARSER.field.validate(e, fields))
       );
@@ -152,6 +153,7 @@ export const PARSER = {
         // remove trailing spaces
         .replace(/[ \t]+$/, ""),
     validate: (value) => {
+      console.info("list<str> validate", value, typeof value);
       const stripped = value.replace(/[\s]/g, "");
       let array = null;
       try {
@@ -159,7 +161,11 @@ export const PARSER = {
       } catch {
         array = stripped.split(",");
       }
-      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
+      return (
+        typeof value !== "string" &&
+        Array.isArray(array) &&
+        array.every((e) => PARSER.str.validate(e))
+      );
     },
   },
   NoneType: {

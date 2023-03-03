@@ -81,6 +81,10 @@ const SortBySimilarity = React.memo(
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys({ modal, isImageSearch })).length >
       0;
+    const keys = useRecoilValue(
+      availableSimilarityKeys({ modal, isImageSearch })
+    );
+    console.info("keys", keys, state.brainKey, current);
     const choices = useRecoilValue(
       currentSimilarityKeys({ modal, isImageSearch })
     );
@@ -173,9 +177,7 @@ const SortBySimilarity = React.memo(
             <GroupButton buttons={groupButtons} />
           </div>
         )}
-        {(!state.brainKey || !hasSimilarityKeys) && (
-          <Warning hasSimilarityKeys isImageSearch />
-        )}
+        {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch />}
         {open && hasSimilarityKeys && (
           <div>
             <div>
