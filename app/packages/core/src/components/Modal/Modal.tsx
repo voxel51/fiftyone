@@ -143,7 +143,7 @@ const SampleModal = () => {
             ),
             disabled: isTag || isLabelTag || isOther,
           };
-        }
+
         case fos.EntryKind.GROUP: {
           return {
             children: (

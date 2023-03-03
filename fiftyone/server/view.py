@@ -459,6 +459,14 @@ def _make_filter_stages(
                 new_field = None
             is_matching = label_tags.get("isMatching", False)
             exclude = label_tags.get("exclude", False)
+            print(
+                fosg.FilterLabels(
+                    cache.get(path, path),
+                    tag_expr,
+                    only_matches=not is_matching and not exclude,
+                    _new_field=new_field,
+                )
+            )
             stages.append(
                 fosg.FilterLabels(
                     cache.get(path, path),
@@ -479,9 +487,9 @@ def _make_filter_stages(
                     cache.get(path, path),
                 )
             )
-
-        stages.append(fosg.Match(F.any(match_exprs)))
-
+        if is_matching:
+            stages.append(fosg.Match(F.any(match_exprs)))
+    print(stages)
     return stages, cleanup, filtered_labels
 
 
