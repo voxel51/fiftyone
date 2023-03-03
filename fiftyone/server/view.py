@@ -472,15 +472,15 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        if is_matching:
-            for path, _ in fosu.iter_label_fields(view):
-                match_exprs.append(
-                    fosg._get_label_field_only_matches_expr(
-                        view,
-                        cache.get(path, path),
-                    )
+
+        for path, _ in fosu.iter_label_fields(view):
+            match_exprs.append(
+                fosg._get_label_field_only_matches_expr(
+                    view,
+                    cache.get(path, path),
                 )
-                stages.append(fosg.Match(F.any(match_exprs)))
+            )
+            stages.append(fosg.Match(F.any(match_exprs)))
 
     return stages, cleanup, filtered_labels
 

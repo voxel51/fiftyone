@@ -8,6 +8,7 @@ import { Checkbox } from "@mui/material";
 import {
   DefaultValue,
   selectorFamily,
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useRecoilValueLoadable,
@@ -301,17 +302,33 @@ const FilterableEntry = React.memo(
         : Object.keys(sampleTagsLoadable.contents);
 
     const hidden = modal ? useHidden(path) : null;
-    const onClickShow = (e) => {
-      const checked = e.target.checked;
-      if (disabled) return;
-      if (isLabelTag) {
-        setActiveLabelTags(checked ? allLabelTags : []);
-      } else if (isSampleTag) {
-        setActiveTags(checked ? allTags : []);
-      } else {
-        setActiveField(!activeField);
-      }
-    };
+
+    const onClickShow = useRecoilCallback(
+      () => (e) => {
+        const checked = e?.target?.checked;
+        if (disabled) return;
+        if (isLabelTag) {
+          setActiveLabelTags(checked ? allLabelTags : []);
+        } else if (isSampleTag) {
+          setActiveTags(checked ? allTags : []);
+        } else {
+          setActiveField(!activeField);
+        }
+      },
+      [
+        activeField,
+        activeLabelTags,
+        activeTags,
+        allLabelTags,
+        allTags,
+        disabled,
+        isLabelTag,
+        isSampleTag,
+        setActiveField,
+        setActiveLabelTags,
+        setActiveTags,
+      ]
+    );
 
     const active = () => {
       if (path.startsWith("tag")) {
@@ -345,7 +362,7 @@ const FilterableEntry = React.memo(
                   padding: 0,
                 }}
                 key="checkbox"
-                onClick={(e) => onClickShow(e)} // update the select tags actions
+                onClick={(e) => onClickShow(e)}
               />
             )}
             {
