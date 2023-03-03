@@ -450,6 +450,7 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
+        is_matching = label_tags.get("isMatching", False)
         for path, _ in fosu.iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -457,21 +458,12 @@ def _make_filter_stages(
                 )
             else:
                 new_field = None
-            is_matching = label_tags.get("isMatching", False)
-            exclude = label_tags.get("exclude", False)
-            print(
-                fosg.FilterLabels(
-                    cache.get(path, path),
-                    tag_expr,
-                    only_matches=not is_matching and not exclude,
-                    _new_field=new_field,
-                )
-            )
+
             stages.append(
                 fosg.FilterLabels(
                     cache.get(path, path),
                     tag_expr,
-                    only_matches=not is_matching and not exclude,
+                    only_matches=False,
                     _new_field=new_field,
                 )
             )
@@ -480,16 +472,16 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        for path, _ in fosu.iter_label_fields(view):
-            match_exprs.append(
-                fosg._get_label_field_only_matches_expr(
-                    view,
-                    cache.get(path, path),
-                )
-            )
         if is_matching:
-            stages.append(fosg.Match(F.any(match_exprs)))
-    print(stages)
+            for path, _ in fosu.iter_label_fields(view):
+                match_exprs.append(
+                    fosg._get_label_field_only_matches_expr(
+                        view,
+                        cache.get(path, path),
+                    )
+                )
+                stages.append(fosg.Match(F.any(match_exprs)))
+
     return stages, cleanup, filtered_labels
 
 
