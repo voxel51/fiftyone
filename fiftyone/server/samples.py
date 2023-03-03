@@ -91,6 +91,11 @@ async def paginate_samples(
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
 
+    # TODO: Remove this once we have a better way to handle large videos. This
+    # is a temporary fix to reduce the $lookup overhead for sample frames on
+    # full datasets.
+    full_lookup = media == fom.VIDEO and (filters or stages)
+    support = [1, 1] if not full_lookup else None
     if after is None:
         after = "-1"
 
@@ -103,6 +108,7 @@ async def paginate_samples(
         manual_group_select=sample_filter
         and sample_filter.group
         and (sample_filter.group.id and not sample_filter.group.slice),
+        support=support,
     )
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
