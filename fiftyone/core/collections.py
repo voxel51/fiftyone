@@ -3100,13 +3100,18 @@ class SampleCollection(object):
         """
         return eval_key in self.list_evaluations()
 
-    def list_evaluations(self):
+    def list_evaluations(self, type=None):
         """Returns a list of all evaluation keys on this collection.
+
+        Args:
+            type (None): an :class:`fiftyone.core.evaluations.EvaluationMethod`
+                type. If provided, only runs that are a subclass of this type
+                are included
 
         Returns:
             a list of evaluation keys
         """
-        return foev.EvaluationMethod.list_runs(self)
+        return foev.EvaluationMethod.list_runs(self, type=type)
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -3191,13 +3196,18 @@ class SampleCollection(object):
         """
         return brain_key in self.list_brain_runs()
 
-    def list_brain_runs(self):
+    def list_brain_runs(self, type=None):
         """Returns a list of all brain keys on this collection.
+
+        Args:
+            type (None): a :class:`fiftyone.core.brain.BrainMethod` type. If
+                provided, only runs that are a subclass of this type are
+                included
 
         Returns:
             a list of brain keys
         """
-        return fob.BrainMethod.list_runs(self)
+        return fob.BrainMethod.list_runs(self, type=type)
 
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
@@ -7877,13 +7887,18 @@ class SampleCollection(object):
         """
         return anno_key in self.list_annotation_runs()
 
-    def list_annotation_runs(self):
+    def list_annotation_runs(self, type=None):
         """Returns a list of all annotation keys on this collection.
+
+        Args:
+            type (None): a :class:`fiftyone.core.annotations.AnnotationMethod`
+                type. If provided, only runs that are a subclass of this type
+                are included
 
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationMethod.list_runs(self)
+        return foan.AnnotationMethod.list_runs(self, type=type)
 
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.

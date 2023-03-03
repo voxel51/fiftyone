@@ -312,18 +312,33 @@ class Run(Configurable):
             )
 
     @classmethod
-    def list_runs(cls, samples):
+    def list_runs(cls, samples, type=None):
         """Returns the list of run keys on the given collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            type (None): a :class:`fiftyone.core.runs.Run` type. If provided,
+                only runs that are a subclass of this type are included
 
         Returns:
             a list of run keys
         """
         dataset_doc = samples._root_dataset._doc
         run_docs = getattr(dataset_doc, cls._runs_field())
-        return sorted(run_docs.keys())
+
+        if etau.is_str(type):
+            type = etau.get_class(type)
+
+        if type is not None:
+            keys = []
+            for key in run_docs.keys():
+                run_info = cls.get_run_info(samples, key)
+                if issubclass(run_info.config.run_cls, type):
+                    keys.append(key)
+        else:
+            keys = run_docs.keys()
+
+        return sorted(keys)
 
     @classmethod
     def update_run_key(cls, samples, key, new_key):
