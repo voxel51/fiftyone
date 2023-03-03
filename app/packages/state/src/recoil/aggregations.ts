@@ -221,10 +221,10 @@ export const booleanCountResults = selectorFamily<
       const none = get(noneCount(params));
 
       const result = {
-        count: data.false + data.true,
+        count: data ? data.false + data.true : 0,
         results: [
-          [false, data.false],
-          [true, data.true],
+          [data ? false : null, data?.false || 0],
+          [data ? true : null, data?.true || 0],
         ] as [boolean, number][],
       };
       if (none) {
