@@ -135,8 +135,8 @@ const FilterOption: React.FC<Props> = ({
   onlyMatchAtom,
   isMatchingAtom,
 }) => {
-  const isLabelTag = path.startsWith("_label_tags");
-  const isSampleTag = path.startsWith("tag");
+  const isLabelTag = path?.startsWith("_label_tags");
+  const isSampleTag = path?.startsWith("tag");
 
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
