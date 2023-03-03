@@ -1767,6 +1767,7 @@ bounding box for the object should be stored in the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` attribute.
 
 .. note::
+
     FiftyOne stores box coordinates as floats in `[0, 1]` relative to the
     dimensions of the image. Bounding boxes are represented by a length-4 list
     in the format:
@@ -1774,6 +1775,10 @@ bounding box for the object should be stored in the
     .. code-block:: text
 
         [<top-left-x>, <top-left-y>, <width>, <height>]
+
+.. note::
+
+    Did you know? FiftyOne also supports :ref:`3D detections <3d-detections>`!
 
 In the case of model predictions, an optional confidence score for each
 detection can be stored in the
@@ -2020,8 +2025,13 @@ Polylines can also have string labels, which are stored in their
 :attr:`label <fiftyone.core.labels.Polyline.label>` attribute.
 
 .. note::
+
     FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
     dimensions of the image.
+
+.. note::
+
+    Did you know? FiftyOne also supports :ref:`3D polylines <3d-polylines>`!
 
 .. code-block:: python
     :linenos:
@@ -3377,29 +3387,128 @@ predefined types and optional default values, while the
 users to populate arbitrary custom fields at runtime, like FiftyOne's
 :ref:`builtin label types <using-labels>`.
 
-To use this feature, simply define some custom embedded document classes in a
-`foo.bar` module, using the appropriate types from the
+.. _defining-custom-documents-on-the-fly:
+
+Defining custom documents on-the-fly
+------------------------------------
+
+The simplest way to define custom embedded documents on your datasets is to
+declare empty |DynamicEmbeddedDocument| field(s) and then incrementally
+populate new :ref:`dynamic attributes <dynamic-attributes>` as needed.
+
+To illusrate, let's start by defining an empty embedded document field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Define an empty embedded document field
+    dataset.add_sample_field(
+        "camera_info",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.DynamicEmbeddedDocument,
+    )
+
+From here, there are a variety of ways to add new embedded attributes to the
+field.
+
+You can explicitly declare new fields using
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Declare a new `camera_id` attribute
+    dataset.add_sample_field("camera_info.camera_id", fo.StringField)
+
+    assert "camera_info.camera_id" in dataset.get_field_schema(flat=True)
+
+or you can implicitly declare new fields using
+:meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` with the
+`dynamic=True` flag:
+
+.. code-block:: python
+    :linenos:
+
+    # Includes a new `quality` attribute
+    sample1 = fo.Sample(
+        filepath="/path/to/image1.jpg",
+        camera_info=fo.DynamicEmbeddedDocument(
+            camera_id="123456789",
+            quality=51.0,
+        ),
+    )
+
+    sample2 = fo.Sample(
+        filepath="/path/to/image2.jpg",
+        camera_info=fo.DynamicEmbeddedDocument(camera_id="123456789"),
+    )
+
+    # Automatically declares new dynamic attributes as they are encountered
+    dataset.add_samples([sample1, sample2], dynamic=True)
+
+    assert "camera_info.quality" in dataset.get_field_schema(flat=True)
+
+or you can implicitly declare new fields using
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+with the `dynamic=True` flag:
+
+.. code-block:: python
+    :linenos:
+
+    # Populate a new `description` attribute on each sample in the dataset
+    dataset.set_values("camera_info.description", ["foo", "bar"], dynamic=True)
+
+    assert "camera_info.description" in dataset.get_field_schema(flat=True)
+
+.. _defining-custom-documents-in-modules:
+
+Defining custom documents in modules
+------------------------------------
+
+You can also define custom embedded document classes in Python modules and
+packages that you maintain, using the appropriate types from the
 :mod:`fiftyone.core.fields` module to declare your fields and their types,
-defaults, etc:
+defaults, etc.
+
+The benefit of this approach over the on-the-fly definition from the previous
+section is that you can provide extra metadata such as whether fields are
+`required` or should have `default` values if they are not explicitly set
+during creation.
+
+.. warning::
+
+    In order to work with datasets containing custom embedded documents defined
+    using this approach, you must configure your `module_path` in
+    *all environments* where you intend to work with the datasets that use
+    these classes, not just the environment where you create the dataset.
+
+    To avoid this requirement, consider defining custom documents
+    :ref:`on-the-fly <defining-custom-documents-on-the-fly>` instead.
+
+For example, suppose you add the following embedded document classes to a
+`foo.bar` module:
 
 .. code-block:: python
     :linenos:
 
     from datetime import datetime
 
-    import fiftyone.core.fields as fof
-    import fiftyone.core.odm as foo
+    import fiftyone as fo
 
-    class CameraInfo(foo.EmbeddedDocument):
-        camera_id = fof.StringField(required=True)
-        quality = fof.FloatField()
-        description = fof.StringField()
+    class CameraInfo(fo.EmbeddedDocument):
+        camera_id = fo.StringField(required=True)
+        quality = fo.FloatField()
+        description = fo.StringField()
 
-    class LabelMetadata(foo.DynamicEmbeddedDocument):
-        created_at = fof.DateTimeField(default=datetime.utcnow)
-        model_name = fof.StringField()
+    class LabelMetadata(fo.DynamicEmbeddedDocument):
+        created_at = fo.DateTimeField(default=datetime.utcnow)
+        model_name = fo.StringField()
 
-and add `foo.bar` to FiftyOne's `module_path` config setting (see
+and then  `foo.bar` to FiftyOne's `module_path` config setting (see
 :ref:`this page <configuring-fiftyone>` for more ways to register this):
 
 .. code-block:: shell

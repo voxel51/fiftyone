@@ -26,6 +26,8 @@ export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
 export const DATE_TIME = "DateTime";
 
+export const POINTCLOUD_OVERLAY_PADDING = 100;
+
 export const SELECTION_TEXT =
   "Click to select sample, Shift+Click to select a range";
 

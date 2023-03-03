@@ -56,3 +56,8 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 `;
+
+export const TabIndicatorContainer = styled.div`
+  max-height: 24px;
+  margin-left: 4px;
+`;

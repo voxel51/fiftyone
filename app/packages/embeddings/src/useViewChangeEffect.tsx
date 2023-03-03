@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResult } from "./useBrainResult";
@@ -10,9 +10,6 @@ import { fetchPlot } from "./fetch";
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed(false));
   const datasetName = useRecoilValue(fos.datasetName);
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    fos.selectedSamples
-  );
   const [brainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
@@ -31,13 +28,8 @@ export function useViewChangeEffect() {
     null,
     true
   );
-  const filters = useRecoilValue(fos.filters);
-  const extended = useRecoilValue(fos.extendedStagesUnsorted);
-  const [overrideStage, setOverrideStage] = useRecoilState(
+  const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
-  );
-  const [extendedSelection, setExtendedSelection] = useRecoilState(
-    fos.extendedSelection
   );
   const warnings = useWarnings();
 

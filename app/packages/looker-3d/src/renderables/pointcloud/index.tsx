@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { computeMinMaxForColorBufferAttribute } from "../../../utils";
-import { ColorBy } from "../../state";
+import { ShadeBy } from "../../state";
 import {
   Gradients,
   RgbShader,
@@ -10,8 +10,9 @@ import {
 } from "./shaders";
 
 type PointCloudMeshArgs = {
-  colorBy: ColorBy;
-  pointSize: number;
+  defaultShadingColor: string;
+  shadeBy: ShadeBy;
+  pointSize: string;
   points: THREE.Points;
   rotation: [number, number, number];
   minZ: number | null | undefined;
@@ -37,8 +38,9 @@ const ShadingGradients: Gradients = [
 ];
 
 export const PointCloudMesh = ({
+  defaultShadingColor,
   minZ,
-  colorBy,
+  shadeBy,
   pointSize,
   points,
   rotation,
@@ -75,9 +77,9 @@ export const PointCloudMesh = ({
   }
 
   const pointsMaterial = useMemo(() => {
-    const customShaderNormalizedPointSize = pointSize * 100;
+    const customShaderNormalizedPointSize = Number(pointSize) * 100;
 
-    if (colorBy === "height") {
+    if (shadeBy === "height") {
       return (
         <ShadeByHeight
           gradients={ShadingGradients}
@@ -88,7 +90,7 @@ export const PointCloudMesh = ({
       );
     }
 
-    if (colorBy === "intensity") {
+    if (shadeBy === "intensity") {
       return (
         <ShadeByIntensity
           {...colorMinMax}
@@ -98,16 +100,21 @@ export const PointCloudMesh = ({
       );
     }
 
-    if (pointsGeometry.getAttribute("color")) {
+    if (shadeBy === "rgb") {
       return <RgbShader pointSize={customShaderNormalizedPointSize} />;
     }
 
-    return <pointsMaterial color={"white"} size={pointSize} />;
-  }, [colorMinMax, colorBy, minZ, pointSize, boundingBox, pointsGeometry]);
+    return (
+      <pointsMaterial
+        color={defaultShadingColor}
+        size={Number(pointSize) / 10}
+      />
+    );
+  }, [colorMinMax, shadeBy, minZ, pointSize, boundingBox, defaultShadingColor]);
 
   return (
     <primitive
-      key={`${pointSize}-${colorBy}`}
+      key={`${pointSize}-${shadeBy}`}
       scale={1}
       object={points}
       rotation={rotation}
