@@ -5682,6 +5682,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         manual_group_select=False,
         post_pipeline=None,
     ):
+        # print("attach_frames = ", attach_frames)
+        # print("manual_group_select = ", manual_group_select)
         if media_type is None:
             media_type = self.media_type
 
@@ -5700,11 +5702,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # We check for exactly False here, because `attach_frames == None` is a
         # special syntax that means that frames were already attached
-        if attach_frames == False:
+        if contains_videos and (attach_frames is False):
             if frames_only:
                 attach_frames = True
-
-            detach_frames = False
+                detach_frames = False
 
         if frames_only:
             detach_frames = False
@@ -5722,9 +5723,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # If this is a grouped dataset, always start the pipeline by selecting
         # `group_slice`, unless the caller manually overrides this
         if self.media_type == fom.GROUP and not manual_group_select:
+            # print("#"*80)
+            # print("dataset._group_select_pipeline(group_slice)",self._group_select_pipeline(group_slice))
             _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
+            # print("attach_frames = ",attach_frames)
             _pipeline.extend(self._attach_frames_pipeline(support=support))
 
         if pipeline is not None:
@@ -5744,7 +5748,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if post_pipeline is not None:
             _pipeline.extend(post_pipeline)
-
+        # print('*!'*80)
+        # print("dataset._pipeline",_pipeline)
         return _pipeline
 
     def _attach_frames_pipeline(self, support=None):

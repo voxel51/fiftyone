@@ -25,6 +25,8 @@ class Samples(HTTPEndpoint):
         page_length = data.get("page_length", 20)
         slice = data.get("slice", None)
         extended = data.get("extended", None)
+        print("#" * 80)
+        print("class Samples(HTTPEndpoint):")
 
         results = await paginate_samples(
             dataset,

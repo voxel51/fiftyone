@@ -1231,27 +1231,40 @@ class DatasetView(foc.SampleCollection):
             _view = _view._add_view_stage(stage, validate=False)
 
         if _attach_frames_idx is None and (attach_frames or frames_only):
+            print(
+                "_attach_frames_idx is None and (attach_frames or frames_only)"
+            )
             _attach_frames_idx = len(_pipelines)
 
         #######################################################################
         # Insert frame lookup pipeline(s) if needed
         #######################################################################
-
-        if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
-            # Two lookups are required; manually do the **last** one and rely
-            # on dataset._pipeline() to do the first one
-            attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline(support=support)
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _found_select_group_slice and _attach_frames_idx is not None:
-            # Must manually attach frames after the group selection
-            attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline(support=support)
-            _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
-            # Exactly one lookup is required; rely on dataset._pipeline() to
-            # do it
-            attach_frames = True
+        if not detach_frames:
+            if (
+                _attach_frames_idx0 is not None
+                and _attach_frames_idx is not None
+            ):
+                # Two lookups are required; manually do the **last** one and rely
+                # on dataset._pipeline() to do the first one
+                attach_frames = True
+                _pipeline = self._dataset._attach_frames_pipeline(
+                    support=support
+                )
+                _pipelines.insert(_attach_frames_idx, _pipeline)
+            elif _found_select_group_slice and _attach_frames_idx is not None:
+                # Must manually attach frames after the group selection
+                attach_frames = None  # special syntax: frames already attached
+                _pipeline = self._dataset._attach_frames_pipeline(
+                    support=support
+                )
+                _pipelines.insert(_attach_frames_idx, _pipeline)
+            elif (
+                _attach_frames_idx0 is not None
+                or _attach_frames_idx is not None
+            ):
+                # Exactly one lookup is required; rely on dataset._pipeline() to
+                # do it
+                attach_frames = True
 
         # @todo use the optimization below instead, which injects frames as
         # late as possible in the pipeline. We can't currently use it because
@@ -1281,7 +1294,7 @@ class DatasetView(foc.SampleCollection):
         #######################################################################
 
         # Insert group lookup pipline if needed
-        if _attach_groups_idx is not None:
+        if _contains_groups and _attach_groups_idx is not None:
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )
@@ -1297,7 +1310,8 @@ class DatasetView(foc.SampleCollection):
 
         if group_slice is None:
             group_slice = self.group_slice
-
+        # print('*'*80)
+        # print('view._pipeline()', _pipeline)
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,

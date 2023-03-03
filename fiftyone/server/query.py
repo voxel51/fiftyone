@@ -356,21 +356,26 @@ class Query(fosa.AggregateQuery):
         after: t.Optional[str] = None,
         filter: t.Optional[SampleFilter] = None,
     ) -> Connection[SampleItem, str]:
+        print("#" * 80)
+        print("gql query: samples")
+        print(
+            f"dataset={dataset}, view={view}, first={first}, after={after}, filter={filter}"
+        )
         return await paginate_samples(
             dataset, view, None, first, after, sample_filter=filter
         )
 
-    @gql.field
-    async def sample(
-        self, dataset: str, view: BSONArray, filter: SampleFilter
-    ) -> t.Optional[SampleItem]:
-        samples = await paginate_samples(
-            dataset, view, None, 1, sample_filter=filter
-        )
-        if samples.edges:
-            return samples.edges[0].node
-
-        return None
+    # @gql.field
+    # async def sample(
+    #     self, dataset: str, view: BSONArray, filter: SampleFilter
+    # ) -> t.Optional[SampleItem]:
+    #     # samples = await paginate_samples(
+    #     #     dataset, view, None, 1, sample_filter=filter
+    #     # )
+    #     # if samples.edges:
+    #     #     return samples.edges[0].node
+    #
+    #     return None
 
     @gql.field
     def teams_submission(self) -> bool:
