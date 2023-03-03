@@ -7,6 +7,8 @@ Dataset samples.
 """
 import os
 
+from bson import ObjectId
+
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
@@ -70,6 +72,15 @@ class _SampleMixin(object):
             return iter(self._frames)
 
         raise ValueError("Image samples are not iterable")
+
+    @property
+    def dataset_id(self):
+        return self._doc._dataset_id
+
+    @property
+    def _dataset_id(self):
+        _id = self._doc._dataset_id
+        return ObjectId(_id) if _id is not None else None
 
     @property
     def filename(self):
