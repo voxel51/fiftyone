@@ -335,7 +335,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                 # Record frame stats, if requested
                 if processing_frames and eval_key is not None:
                     facc, fpre, frec = _compute_accuracy_precision_recall(
-                        image_conf_mat, values, average, self
+                        image_conf_mat, values, average
                     )
                     image[acc_field] = facc
                     image[pre_field] = fpre
@@ -346,7 +346,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             # Record sample stats, if requested
             if eval_key is not None:
                 sacc, spre, srec = _compute_accuracy_precision_recall(
-                    sample_conf_mat, values, average, self
+                    sample_conf_mat, values, average
                 )
                 sample[acc_field] = sacc
                 sample[pre_field] = spre
@@ -487,12 +487,10 @@ def _extract_contour_band_values(pred_mask, gt_mask, bandwidth):
     return pred_mask[band_mask], gt_mask[band_mask]
 
 
-def _compute_accuracy_precision_recall(
-    confusion_matrix, values, average, backend
-):
+def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     missing = 0 if values[0] == 0 else None
     results = SegmentationResults(
-        None, None, confusion_matrix, values, missing=missing, backend=backend
+        None, None, confusion_matrix, values, missing=missing
     )
     metrics = results.metrics(average=average)
     if metrics["support"] == 0:

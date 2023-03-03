@@ -730,7 +730,7 @@ class RunResults(etas.Serializable):
     """Base class for storing the results of a run."""
 
     def __init__(self, samples, config, backend=None):
-        if backend is None:
+        if backend is None and config is not None:
             backend = config.build()
             backend.ensure_usage_requirements()
 
