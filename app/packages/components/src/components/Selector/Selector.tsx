@@ -89,7 +89,7 @@ const Selector = <T extends unknown>({
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
-  const ref = useRef<HTMLInputElement | null>();
+  const ref = useRef<HTMLInputElement | null>(null);
   const hovering = useRef(false);
 
   const onSelectWrapper = useMemo(() => {

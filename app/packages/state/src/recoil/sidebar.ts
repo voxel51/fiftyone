@@ -65,7 +65,6 @@ export interface PathEntry {
   kind: EntryKind.PATH;
   path: string;
   shown: boolean;
-  childPaths?: string[];
 }
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;

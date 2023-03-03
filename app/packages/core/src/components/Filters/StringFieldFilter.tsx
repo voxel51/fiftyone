@@ -21,11 +21,6 @@ const StringFieldFilter = ({
   onBlur?: () => void;
   title: string;
 }) => {
-  const x = fos.stringCountResults({
-    modal,
-    path,
-    extended: false,
-  });
   return (
     <CategoricalFilter<{ value: string | null; count: number }>
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}

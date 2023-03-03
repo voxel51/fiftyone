@@ -73,21 +73,22 @@ const categoricalSearchResults = selectorFamily<
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
       const labels = get(labelTagsCount({ modal, extended: false }));
+
       let data = {
         count: labels.count,
         values: labels.results.map(([value, count]) => ({ value, count })),
       };
-      data = !isLabelTag
-        ? await getFetchFunction()("POST", "/values", {
-            dataset: get(fos.dataset).name,
-            view: get(fos.view),
-            path,
-            search,
-            selected,
-            sample_id: sampleId,
-            ...sorting,
-          })
-        : data;
+      if (!isLabelTag) {
+        data = await getFetchFunction()("POST", "/values", {
+          dataset: get(fos.dataset).name,
+          view: get(fos.view),
+          path,
+          search,
+          selected,
+          sample_id: sampleId,
+          ...sorting,
+        });
+      }
       let { values, count } = data as { values: V[]; count: number };
 
       if (noneCount > 0 && "None".includes(search)) {

@@ -43,7 +43,6 @@ function SamplesContainer() {
                 key={key}
                 modal={false}
                 path={entry.path}
-                childPaths={entry.childPaths}
                 onBlur={() => {
                   controller.set({ zIndex: "0", overflow: "hidden" });
                 }}
