@@ -399,8 +399,8 @@ You can also configure the default loading behavior of the
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session = fo.launch_app(dataset)
@@ -1767,6 +1767,7 @@ bounding box for the object should be stored in the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` attribute.
 
 .. note::
+
     FiftyOne stores box coordinates as floats in `[0, 1]` relative to the
     dimensions of the image. Bounding boxes are represented by a length-4 list
     in the format:
@@ -1774,6 +1775,10 @@ bounding box for the object should be stored in the
     .. code-block:: text
 
         [<top-left-x>, <top-left-y>, <width>, <height>]
+
+.. note::
+
+    Did you know? FiftyOne also supports :ref:`3D detections <3d-detections>`!
 
 In the case of model predictions, an optional confidence score for each
 detection can be stored in the
@@ -2020,8 +2025,13 @@ Polylines can also have string labels, which are stored in their
 :attr:`label <fiftyone.core.labels.Polyline.label>` attribute.
 
 .. note::
+
     FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
     dimensions of the image.
+
+.. note::
+
+    Did you know? FiftyOne also supports :ref:`3D polylines <3d-polylines>`!
 
 .. code-block:: python
     :linenos:

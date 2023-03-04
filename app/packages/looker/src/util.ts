@@ -23,7 +23,7 @@ import {
   NetworkError,
   ServerError,
 } from "@fiftyone/utilities";
-import LookerWorker from "./worker.ts?worker&inline";
+import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
@@ -442,7 +442,7 @@ export const createWorker = (
   try {
     worker = new LookerWorker();
   } catch {
-    worker = new Worker(new URL("./worker.ts", import.meta.url));
+    worker = new Worker(new URL("./worker/index.ts", import.meta.url));
   }
 
   worker.onerror = (error) => {

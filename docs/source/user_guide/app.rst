@@ -298,16 +298,14 @@ attribute names in the App's sidebar:
 Sidebar mode
 ------------
 
-Each time you load a new dataset or view in the App, the sidebar updates to
-show statistics for the current collection. For large datasets with many
-samples or fields, this may involve substantial computation.
+Each time you load a new dataset or view in the App, the sidebar will update to
+show statistics for the current collection based on the **sidebar mode**:
 
-Therefore, the App supports three sidebar modes that you can choose between:
-
+-   `fast` (*default*): only compute counts for fields whose filter tray is
+    expanded
 -   `all`: always compute counts for all fields
--   `fast`: only compute counts for fields whose filter tray is expanded
--   `best` (*default*): automatically choose between `all` and `fast` mode
-    based on the size of the dataset
+-   `best`: automatically choose between `fast` and `all` mode based on the
+    size of the dataset
 
 When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:
@@ -340,8 +338,8 @@ the :ref:`dataset's App config <custom-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session.refresh()
@@ -1410,13 +1408,13 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 
 .. _app-similarity:
 
-Sorting by visual similarity
-____________________________
+Sorting by similarity
+_____________________
 
 Whenever you select samples, patches, or labels in the App in a |Dataset| that
-has been indexed by :ref:`visual similarity <brain-similarity>`, you can use
-the similarity menu in the App to sort or filter your current view based on
-visual similarity to the chosen image or object.
+has been :ref:`indexed by similarity <brain-similarity>`, you can use the
+similarity menu in the App to sort or filter your current view based on
+similarity to the chosen image or object.
 
 .. note::
 
@@ -1484,9 +1482,9 @@ similarity (``reverse``).
     :align: center
 
 |br|
-You can also sort by visual similarity to an object from the expanded sample
-view in the App by selecting an object and then using the similarity menu that
-appears in the upper-right corner of the modal:
+You can also sort by similarity to an object from the expanded sample view in
+the App by selecting an object and then using the similarity menu that appears
+in the upper-right corner of the modal:
 
 .. image:: /images/brain/brain-object-similarity-modal.gif
     :alt: object-similarity-modal
