@@ -152,7 +152,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
         <p>
           <Link
             style={{ color: theme.text.primary }}
-            href="https://docs.voxel51.com/user_guide/brain.html#visualizing-embeddings"
+            href="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
           >
             Learn more
           </Link>{" "}
