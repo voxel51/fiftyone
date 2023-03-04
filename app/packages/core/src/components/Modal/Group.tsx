@@ -13,11 +13,11 @@ import {
   groupId,
   hasPinnedSlice,
   mainGroupSample,
-  modalNavigation,
   pinnedSlice,
   pinnedSliceSample,
   selectedMediaField,
   sidebarOverride,
+  useBrowserStorage,
   useClearModal,
   useOnSelectLabel,
 } from "@fiftyone/state";
@@ -41,6 +41,14 @@ import GroupList from "../Group";
 import { GroupBar, GroupSampleBar } from "./Bars";
 import Looker from "./Looker";
 import Sample from "./Sample";
+
+const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "600";
+
+const PixelatingSuspense = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>{children}</Suspense>
+  );
+};
 
 const GroupSample: React.FC<
   React.PropsWithChildren<{
@@ -116,7 +124,6 @@ const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
   const sample = useRecoilValue(mainGroupSample);
-  const navigation = useRecoilValue(modalNavigation);
 
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
@@ -133,17 +140,7 @@ const MainSample: React.FC<{
       onClick={reset}
       {...hover.handlers}
     >
-      <Looker
-        key={sample._id}
-        lookerRef={lookerRef}
-        onNext={() => navigation.getIndex(navigation.index + 1)}
-        onClose={clearModal}
-        onPrevious={
-          navigation.index > 0
-            ? () => navigation.getIndex(navigation.index - 1)
-            : undefined
-        }
-      />
+      <Looker key={sample._id} lookerRef={lookerRef} onClose={clearModal} />
     </GroupSample>
   );
 };
@@ -212,49 +209,94 @@ const PinnedSample: React.FC = () => {
 const DualView: React.FC = () => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
-  const [width, setWidth] = React.useState("70%");
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
+
+  const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
+  const is3DVisible = useRecoilValue(fos.groupMediaIs3DVisible);
+  const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
+
+  const shouldSplitVertically = useMemo(
+    () => is3DVisible && isImageVisible,
+    [is3DVisible, isImageVisible]
+  );
+
+  const [width, setWidth] = useBrowserStorage(
+    "group-modal-split-view-width",
+    shouldSplitVertically ? DEFAULT_SPLIT_VIEW_LEFT_WIDTH : "100%"
+  );
+
+  useEffect(() => {
+    if (!shouldSplitVertically) {
+      setWidth("100%");
+    }
+  }, [shouldSplitVertically, setWidth]);
 
   return (
     <div className={groupContainer}>
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
-        <Resizable
-          size={{ height: "100% !important", width }}
-          minWidth={300}
-          maxWidth={"90%"}
-          enable={{
-            top: false,
-            right: true,
-            bottom: false,
-            left: false,
-            topRight: false,
-            bottomRight: false,
-            bottomLeft: false,
-            topLeft: false,
-          }}
-          onResizeStop={(e, direction, ref, { width: delta }) => {
-            setWidth(width + delta);
-          }}
-          style={{
-            position: "relative",
-            borderRight: `1px solid ${theme.primary.plainBorder}`,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <GroupList key={`${key}-${mediaField}`} />
+        {(isCarouselVisible || isImageVisible) && (
+          <Resizable
+            size={{ height: "100% !important", width }}
+            minWidth={300}
+            maxWidth={shouldSplitVertically ? "90%" : "100%"}
+            enable={{
+              top: false,
+              right: shouldSplitVertically ? true : false,
+              bottom: false,
+              left: false,
+              topRight: false,
+              bottomRight: false,
+              bottomLeft: false,
+              topLeft: false,
+            }}
+            onResizeStop={(e, direction, ref, { width: delta }) => {
+              if (width === "100%") {
+                setWidth(DEFAULT_SPLIT_VIEW_LEFT_WIDTH);
+              } else {
+                setWidth(String(Number(width) + delta));
+              }
+            }}
+            style={{
+              position: "relative",
+              borderRight: `1px solid ${theme.primary.plainBorder}`,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            {isCarouselVisible && (
+              <GroupList
+                key={`${key}-${mediaField}`}
+                fullHeight={!is3DVisible && !isImageVisible}
+              />
+            )}
 
-          <Suspense fallback={<Loading>Pixelating...</Loading>}>
-            <MainSample lookerRef={lookerRef} />
-          </Suspense>
-        </Resizable>
+            {isImageVisible ? (
+              <PixelatingSuspense>
+                <MainSample lookerRef={lookerRef} />
+              </PixelatingSuspense>
+            ) : is3DVisible ? (
+              <PixelatingSuspense>
+                <PinnedSample />
+              </PixelatingSuspense>
+            ) : null}
+          </Resizable>
+        )}
 
-        <Suspense fallback={<Loading>Pixelating...</Loading>}>
-          <PinnedSample />
-        </Suspense>
+        {shouldSplitVertically && (
+          <PixelatingSuspense>
+            <PinnedSample />
+          </PixelatingSuspense>
+        )}
+
+        {!shouldSplitVertically && is3DVisible && (
+          <PixelatingSuspense>
+            <PinnedSample />
+          </PixelatingSuspense>
+        )}
       </div>
     </div>
   );
@@ -264,18 +306,18 @@ const Group: React.FC = () => {
   const hasPinned = useRecoilValue(hasPinnedSlice);
   const key = useRecoilValue(groupId);
 
+  if (!hasPinned) {
+    return (
+      <>
+        <GroupList key={key} /> <Sample />
+      </>
+    );
+  }
+
   return (
-    <>
-      {hasPinned ? (
-        <Suspense>
-          <DualView />
-        </Suspense>
-      ) : (
-        <>
-          <GroupList key={key} /> <Sample />
-        </>
-      )}
-    </>
+    <Suspense>
+      <DualView />
+    </Suspense>
   );
 };
 
