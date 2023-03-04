@@ -459,11 +459,9 @@ def compute_orthographic_projection_images(
         dataset = foz.load_zoo_dataset("quickstart-groups")
         view = dataset.select_group_slices("pcd")
 
-        fou3d.compute_orthographic_projection_images(
-            view, (-1, 512), "/tmp/proj"
-        )
+        fou3d.compute_orthographic_projection_images(view, (-1, 512), "/tmp/proj")
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(view)
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -542,7 +540,7 @@ def compute_orthographic_projection_images(
                 filepath, output_ext=".png"
             )
 
-            img, img_bounds = compute_orthographic_projection_image(
+            img, metadata = compute_orthographic_projection_image(
                 filepath,
                 size,
                 shading_mode=shading_mode,
@@ -551,17 +549,9 @@ def compute_orthographic_projection_images(
                 projection_normal=projection_normal,
                 bounds=bounds,
             )
-            height, width = img.shape[:2]
 
             etai.write(img, image_path)
-
-            metadata = OrthographicProjectionMetadata(
-                filepath=image_path,
-                min_bound=[img_bounds[0], img_bounds[2]],  # xmin, ymin
-                max_bound=[img_bounds[1], img_bounds[3]],  # ymin, ymax
-                width=width,
-                height=height,
-            )
+            metadata.filepath = image_path
 
             if out_group_slice is not None:
                 sample = fos.Sample(filepath=image_path)
@@ -612,7 +602,7 @@ def compute_orthographic_projection_image(
                 ``[0, 1]`` linearly spaced
         subsampling_rate (None): an unsigned ``int`` that, if defined,
             defines a uniform subsampling rate. The selected point indices are
-            [0, k, 2k, ...], where ``k = subsampling_rate``.
+            [0, k, 2k, ...], where ``k = subsampling_rate``
         projection_normal (None): the normal vector of the plane onto which to
             perform the projection. By default, ``(0, 0, 1)`` is used
         bounds (None): an optional ``((xmin, ymin, zmin), (xmax, ymax, zmax))``
@@ -625,7 +615,7 @@ def compute_orthographic_projection_image(
         a tuple of
 
         -   the orthographic projection image
-        -   the ``(xmin, xmax, ymin, ymax)`` bounds in the projected plane
+        -   an :class:`OrthographicProjectionMetadata` instance
     """
     if colormap is None:
         colormap = DEFAULT_SHADING_GRADIENT_MAP
@@ -633,43 +623,18 @@ def compute_orthographic_projection_image(
     if not isinstance(colormap, dict):
         colormap = dict(zip(np.linspace(0, 1, len(colormap)), colormap))
 
-    pc = o3d.io.read_point_cloud(filepath)
-
-    if projection_normal is not None and not np.array_equal(
-        projection_normal, np.array([0, 0, 1])
-    ):
-        # rotate points so that they are perpendicular to the projection plane
-        # as opposed to the default XY plane
-        R = _rotation_matrix_from_vectors(projection_normal, [0, 0, 1])
-        pc = pc.rotate(R, center=[0, 0, 0])
-
-    if bounds is None:
-        min_bound, max_bound = None, None
-    else:
-        min_bound, max_bound = bounds
-
-    if _contains_none(min_bound):
-        _min_bound = np.amin(np.asarray(pc.points), axis=0)
-        min_bound = _fill_none(min_bound, _min_bound)
-
-    if _contains_none(max_bound):
-        _max_bound = np.amax(np.asarray(pc.points), axis=0)
-        max_bound = _fill_none(max_bound, _max_bound)
-
-    width, height = _parse_size(size, (min_bound, max_bound))
-
-    bbox = o3d.geometry.AxisAlignedBoundingBox(
-        min_bound=min_bound, max_bound=max_bound
+    points, colors, metadata = _parse_point_cloud(
+        filepath,
+        size=size,
+        bounds=bounds,
+        projection_normal=projection_normal,
+        subsampling_rate=subsampling_rate,
     )
 
-    # crop bounds and translate so that min bound is at the origin
-    pc = pc.crop(bbox).translate((-min_bound[0], -min_bound[1], -min_bound[2]))
-
-    if subsampling_rate is not None and subsampling_rate > 0:
-        pc = pc.uniform_down_sample(subsampling_rate)
-
-    points = np.asarray(pc.points)
-    colors = np.asarray(pc.colors)
+    min_bound = metadata.min_bound
+    max_bound = metadata.max_bound
+    width = metadata.width
+    height = metadata.height
 
     # scale and normalize XY points based on width / height and bounds
     points[:, 0] *= (width - 1) / (max_bound[0] - min_bound[0])
@@ -715,9 +680,66 @@ def compute_orthographic_projection_image(
 
     # change axis orientation such that y is up
     image = np.rot90(image, k=1, axes=(0, 1))
-    bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
 
-    return image, bounds
+    return image, metadata
+
+
+def _parse_point_cloud(
+    filepath,
+    size=None,
+    bounds=None,
+    projection_normal=None,
+    subsampling_rate=None,
+):
+    pc = o3d.io.read_point_cloud(filepath)
+
+    if projection_normal is not None and not np.array_equal(
+        projection_normal, np.array([0, 0, 1])
+    ):
+        # rotate points so that they are perpendicular to the projection plane
+        # as opposed to the default XY plane
+        R = _rotation_matrix_from_vectors(projection_normal, [0, 0, 1])
+        pc = pc.rotate(R, center=[0, 0, 0])
+
+    if bounds is None:
+        min_bound, max_bound = None, None
+    else:
+        min_bound, max_bound = bounds
+
+    if _contains_none(min_bound):
+        _min_bound = np.amin(np.asarray(pc.points), axis=0)
+        min_bound = _fill_none(min_bound, _min_bound)
+
+    if _contains_none(max_bound):
+        _max_bound = np.amax(np.asarray(pc.points), axis=0)
+        max_bound = _fill_none(max_bound, _max_bound)
+
+    bbox = o3d.geometry.AxisAlignedBoundingBox(
+        min_bound=min_bound, max_bound=max_bound
+    )
+
+    # crop bounds and translate so that min bound is at the origin
+    pc = pc.crop(bbox).translate((-min_bound[0], -min_bound[1], -min_bound[2]))
+
+    if subsampling_rate is not None and subsampling_rate > 0:
+        pc = pc.uniform_down_sample(subsampling_rate)
+
+    points = np.asarray(pc.points)
+    colors = np.asarray(pc.colors)
+
+    if size is not None:
+        width, height = _parse_size(size, (min_bound, max_bound))
+    else:
+        width, height = None, None
+
+    metadata = OrthographicProjectionMetadata(
+        min_bound=min_bound,
+        max_bound=max_bound,
+        width=width,
+        height=height,
+    )
+
+    return points, colors, metadata
 
 
 def _get_point_cloud_slice(samples):
@@ -762,7 +784,7 @@ def _parse_size(size, bounds):
     width, height = size
 
     if width is None and height is None:
-        raise ValueError("both width and height cannot be undefined")
+        raise ValueError("Both width and height cannot be undefined")
 
     min_bounds, max_bounds = bounds
 
