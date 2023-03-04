@@ -1485,7 +1485,7 @@ as shown below:
         support:    fiftyone.core.fields.FrameSupportField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
-        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Label)
+        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField

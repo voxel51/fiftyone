@@ -648,8 +648,10 @@ def make_clips_dataset(
         dataset.add_sample_field(
             field_or_expr,
             fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Label,
+            embedded_doc_type=foo.DynamicEmbeddedDocument,
         )
+        dataset.add_sample_field(field_or_expr + ".label", fof.StringField)
+        dataset.add_sample_field(field_or_expr + ".index", fof.IntField)
 
     if other_fields:
         src_schema = sample_collection.get_field_schema()
@@ -870,7 +872,7 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                     "$set": {
                         "support": {"$slice": ["$" + _tmp_field, 2, 2]},
                         field: {
-                            "_cls": "Label",
+                            "_cls": "DynamicEmbeddedDocument",
                             "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
                             "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
                         },
