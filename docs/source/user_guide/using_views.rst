@@ -1439,7 +1439,7 @@ You can use
 :meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
 to create views into your video datasets that contain one sample per each
 unique object trajectory defined by their ``(label, index)`` in a frame-level
-|Detections| or |Polylines| field of a video collection.
+|Detections| or |Polylines| field.
 
 Trajectory views are a special case of :ref:`clip views <clip-views>` where
 each clip has been filtered to contain only the identifying object, rather than
@@ -1496,7 +1496,7 @@ as shown below:
 
 .. warning::
 
-    Trajectory views can quickly explode the number of frame documents in your
+    Trajectory views can contain signficantly more frames than their source
     collection, since the number of frames is now `O(# boxes)` rather than
     `O(# video frames)`.
 
