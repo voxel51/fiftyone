@@ -830,12 +830,14 @@ class VideoTests(unittest.TestCase):
 
     @drop_datasets
     def test_video_frames_merge(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(field1="a", field2="b")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(field1="c", field2="d")
+
         dataset = fo.Dataset()
-
-        sample = fo.Sample(filepath="video.mp4")
-        sample.frames[1] = fo.Frame(field1="a", field2="b")
-
-        dataset.add_sample(sample)
+        dataset.add_samples([sample1, sample2])
 
         view1 = dataset.select_fields("frames.field1")
         view2 = dataset.select_fields("frames.field2")
