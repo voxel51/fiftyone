@@ -461,7 +461,7 @@ def compute_orthographic_projection_images(
 
         fou3d.compute_orthographic_projection_images(view, (-1, 512), "/tmp/proj")
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(view)
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
