@@ -2703,9 +2703,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Polyline`, or
                 :class:`fiftyone.core.labels.Polylines`. When computing video
                 frame embeddings, the "frames." prefix is optional
-            embeddings_field (None): the name of a field in which to store the
-                embeddings. When computing video frame embeddings, the
-                "frames." prefix is optional
+            embeddings_field (None): the name of a label attribute in which to
+                store the embeddings
             force_square (False): whether to minimally manipulate the patch
                 bounding boxes into squares prior to extraction
             alpha (None): an optional expansion/contraction to apply to the
@@ -5368,7 +5367,7 @@ class SampleCollection(object):
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select. My contain ``embedded.field.name`` as well
+                select. May contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5838,14 +5837,13 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by_similarity(
-        self, query_ids, k=None, reverse=False, dist_field=None, brain_key=None
+        self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the samples in the collection by visual similiarity to a
-        specified set of query ID(s).
+        """Sorts the collection by similiarity to a specified query.
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-        visual similiarity.
+        similiarity.
 
         Examples::
 
@@ -5855,22 +5853,49 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            fob.compute_similarity(dataset, brain_key="similarity")
+            fob.compute_similarity(
+                dataset, model="clip-vit-base32-torch", brain_key="clip"
+            )
 
             #
-            # Sort the samples by their visual similarity to the first sample
-            # in the dataset
+            # Sort samples by their similarity to a sample by its ID
             #
 
             query_id = dataset.first().id
-            view = dataset.sort_by_similarity(query_id)
+
+            view = dataset.sort_by_similarity(query_id, k=5)
+
+            #
+            # Sort samples by their similarity to a manually computed vector
+            #
+
+            model = foz.load_zoo_model("clip-vit-base32-torch")
+            embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+            query = embeddings.mean(axis=0)
+
+            view = dataset.sort_by_similarity(query, k=5)
+
+            #
+            # Sort samples by their similarity to a text prompt
+            #
+
+            query = "kites high in the air"
+
+            view = dataset.sort_by_similarity(query, k=5)
 
         Args:
-            query_ids: an ID or iterable of query IDs. These may be sample IDs
-                or label IDs depending on ``brain_key``
+            query: the query, which can be any of the following:
+
+                -   an ID or iterable of IDs
+                -   a ``num_dims`` vector or ``num_queries x num_dims`` array
+                    of vectors
+                -   a prompt or iterable of prompts (if supported by the index)
+
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
-            reverse (False): whether to sort by least similarity
+            reverse (False): whether to sort by least similarity (True) or
+                greatest similarity (False). Some backends may not support
+                least similarity
             dist_field (None): the name of a float field in which to store the
                 distance of each example to the specified query. The field is
                 created if necessary
@@ -5884,7 +5909,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SortBySimilarity(
-                query_ids,
+                query,
                 k=k,
                 reverse=reverse,
                 dist_field=dist_field,
@@ -7247,6 +7272,7 @@ class SampleCollection(object):
         _allow_missing=False,
         _big_result=True,
         _raw=False,
+        _field=None,
     ):
         """Extracts the values of a field from all samples in the collection.
 
@@ -7362,6 +7388,7 @@ class SampleCollection(object):
             _allow_missing=_allow_missing,
             _big_result=_big_result,
             _raw=_raw,
+            _field=_field,
         )
         return self._make_and_aggregate(make, field_or_expr)
 
@@ -8581,40 +8608,49 @@ class SampleCollection(object):
         )
 
     def _build_facets(self, aggs_map):
-        pipelines = {}
-
-        compiled = defaultdict(dict)
+        compiled = {}
+        facetable = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
             if aggregation.field_name is None or isinstance(
                 aggregation, foa.FacetAggregations
             ):
                 compiled[idx] = aggregation
-                continue
+            else:
+                # @todo optimize this
+                if "[]" in aggregation.field_name:
+                    root = aggregation.field_name
+                    leaf = ""
+                else:
+                    keys = aggregation.field_name.split(".")
+                    root = ""
+                    leaf = keys[-1]
+                    for num in range(len(keys), 0, -1):
+                        root = ".".join(keys[:num])
+                        leaf = ".".join(keys[num:])
+                        field = self.get_field(root)
+                        if isinstance(field, fof.ListField) and isinstance(
+                            field.field, fof.EmbeddedDocumentField
+                        ):
+                            break
 
-            keys = aggregation.field_name.split(".")
-            path = ""
-            subfield_name = keys[-1]
-            for num in range(len(keys), 0, -1):
-                path = ".".join(keys[:num])
-                subfield_name = ".".join(keys[num:])
-                field = self.get_field(path)
-                if isinstance(field, fof.ListField) and isinstance(
-                    field.field, fof.EmbeddedDocumentField
-                ):
-                    break
+                facetable[root][idx] = (leaf, aggregation)
 
-            aggregation = copy(aggregation)
-            aggregation._field_name = subfield_name
-            compiled[path][idx] = aggregation
+        for field_name, aggregations in facetable.items():
+            if len(aggregations) > 1:
+                _aggregations = {}
+                for idx, (leaf, aggregation) in aggregations.items():
+                    aggregation = copy(aggregation)
+                    aggregation._field_name = leaf
+                    _aggregations[idx] = aggregation
 
-        for field_name, aggregations in compiled.items():
-            if isinstance(aggregations, foa.Aggregation):
-                continue
+                compiled[field_name] = foa.FacetAggregations(
+                    field_name, _aggregations, _compiled=True
+                )
+            else:
+                idx, (_, aggregation) = next(iter(aggregations.items()))
+                compiled[idx] = aggregation
 
-            compiled[field_name] = foa.FacetAggregations(
-                field_name, aggregations, _compiled=True
-            )
-
+        pipelines = {}
         for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
@@ -9247,6 +9283,7 @@ class SampleCollection(object):
         embedded_root=False,
         allow_missing=False,
         new_field=None,
+        context=None,
     ):
         return _make_set_field_pipeline(
             self,
@@ -9255,7 +9292,27 @@ class SampleCollection(object):
             embedded_root,
             allow_missing=allow_missing,
             new_field=new_field,
+            context=context,
         )
+
+    def _get_values_by_id(self, path_or_expr, ids, link_field=None):
+        if link_field == "frames":
+            if self._is_frames:
+                id_path = "id"
+            else:
+                id_path = "frames.id"
+        elif link_field is not None:
+            _, id_path = self._get_label_field_path(link_field, "id")
+        elif self._is_patches:
+            id_path = "sample_id"
+        else:
+            id_path = "id"
+
+        values_map = {
+            i: v
+            for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
+        }
+        return [values_map.get(i, None) for i in ids]
 
 
 def _unwind_values(values, level=0):
@@ -9851,6 +9908,7 @@ def _make_set_field_pipeline(
     embedded_root,
     allow_missing=False,
     new_field=None,
+    context=None,
 ):
     (
         path,
@@ -9865,6 +9923,12 @@ def _make_set_field_pipeline(
         allow_missing=allow_missing,
         new_field=new_field,
     )
+
+    if context:
+        if is_frame_field:
+            context = ".".join(context.split(".")[1:])
+
+        list_fields = [f for f in list_fields if not context.startswith(f)]
 
     if is_frame_field and path != "frames":
         path = sample_collection._FRAMES_PREFIX + path

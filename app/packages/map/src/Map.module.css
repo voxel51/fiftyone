@@ -3,7 +3,6 @@
   width: 100%;
   position: relative;
   pointer-events: none;
-  background: var(--joy-palette-background-mediaSpace);
 }
 
 .container > div * {

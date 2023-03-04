@@ -15,6 +15,7 @@ import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
   dataset,
+  getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
   sidebarOverride,
@@ -69,12 +70,13 @@ export const groupSlices = selector<string[]>({
   },
 });
 
-export const pinnedSlice = selector<string | null>({
-  key: "pinnedSlice",
+export const defaultPinnedSlice = selector<string | null>({
+  key: "defaultPinnedSlice",
   get: ({ get }) => {
     const { groupMediaTypes } = get(dataset);
 
     for (const { name, mediaType } of groupMediaTypes) {
+      // return the first point cloud slice
       if (["point_cloud", "point-cloud"].includes(mediaType)) {
         return name;
       }
@@ -82,6 +84,12 @@ export const pinnedSlice = selector<string | null>({
 
     return null;
   },
+});
+
+export const pinnedSlice = atom<string | null>({
+  key: "pinnedSlice",
+  default: defaultPinnedSlice,
+  effects: [getBrowserStorageEffectForKey("pinnedSlice")],
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({
@@ -167,7 +175,21 @@ export const pinnedSliceSample = graphQLSelector<
       },
     };
   },
-  mapResponse: (response) => response.sample,
+  mapResponse: (response) => {
+    const actualRawSample = response?.sample?.sample;
+
+    // This value may be a string that needs to be deserialized
+    // Only occurs after calling useUpdateSample for pinned sample
+    // - https://github.com/voxel51/fiftyone/pull/2622
+    // - https://github.com/facebook/relay/issues/91
+    if (actualRawSample && typeof actualRawSample === "string") {
+      return {
+        ...response.sample,
+        sample: JSON.parse(actualRawSample),
+      };
+    }
+    return response.sample;
+  },
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
@@ -181,7 +203,7 @@ export const activeModalSample = selector<
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(sidebarOverride)) {
-      return get(pinnedSliceSample);
+      return get(pinnedSliceSample).sample;
     }
 
     return get(modal)?.sample;

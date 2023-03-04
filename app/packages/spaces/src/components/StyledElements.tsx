@@ -21,6 +21,7 @@ export const StyledPanel = styled.div`
   width: 100%;
   height: calc(100% - 28px);
   overflow: auto;
+  background: var(--joy-palette-background-mediaSpace);
 `;
 
 export const AddPanelButtonContainer = styled.div`
@@ -54,4 +55,9 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   border-right: 1px solid var(--joy-palette-background-level3);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
+`;
+
+export const TabIndicatorContainer = styled.div`
+  max-height: 24px;
+  margin-left: 4px;
 `;

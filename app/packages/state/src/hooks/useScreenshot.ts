@@ -129,7 +129,10 @@ export const useScreenshot = (
   }, [captureCallbacks, context, subscription]);
 
   const run = () => {
-    if (!context) return;
+    const notebook = new URLSearchParams(window.location.search).get(
+      "notebook"
+    );
+    if (!notebook) return;
 
     fitSVGs();
     let chain = Promise.resolve(null);

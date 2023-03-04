@@ -1,6 +1,6 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useContext, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
   useRecoilCallback,
@@ -12,6 +12,7 @@ import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
 import {
+  panelsCloseEffect,
   panelsStateAtom,
   panelStatePartialSelector,
   panelStateSelector,
@@ -19,20 +20,28 @@ import {
   previousTabsGroupAtom,
   spaceSelector,
 } from "./state";
-import { PanelsStateObject, SpaceNodeJSON, SpaceNodeType } from "./types";
+import {
+  PanelsCloseEffect,
+  PanelsStateObject,
+  SpaceNodeJSON,
+  SpaceNodeType,
+} from "./types";
 import { getNodes } from "./utils";
 
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   const [state, setState] = useRecoilState(spaceSelector(id));
 
-  if (!state) {
-    const baseState = new SpaceNode("root").toJSON();
-    setState(defaultState || baseState);
-  }
+  useEffect(() => {
+    if (!state) {
+      const baseState = new SpaceNode("root").toJSON();
+      setState(defaultState || baseState);
+    }
+  }, []);
 
   const spaces = new SpaceTree(state, (spaces: SpaceNodeJSON) => {
     setState(spaces);
   });
+
   return {
     spaces,
     updateSpaces: (
@@ -244,4 +253,26 @@ export function usePanelTabAutoPosition() {
   }
 
   return autoPosition;
+}
+
+export function useSetPanelCloseEffect(panelId?: string) {
+  const panelContext = usePanelContext();
+  const computedPanelId = panelId || (panelContext?.node?.id as string);
+
+  return (effect: PanelsCloseEffect[string]) => {
+    panelsCloseEffect[computedPanelId] = effect;
+  };
+}
+
+export function usePanelCloseEffect(panelId?: string) {
+  const panelContext = usePanelContext();
+  const computedPanelId = panelId || (panelContext?.node?.id as string);
+
+  return () => {
+    const panelCloseEffect = panelsCloseEffect[computedPanelId];
+    if (panelCloseEffect) {
+      delete panelsCloseEffect[computedPanelId];
+      panelCloseEffect();
+    }
+  };
 }

@@ -1,5 +1,5 @@
 """
-FiftyOne Server events
+FiftyOne Server events.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -14,8 +14,8 @@ import asyncio
 from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
-import fiftyone as fo
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
     add_screenshot,
@@ -30,6 +30,7 @@ from fiftyone.core.session.events import (
 )
 import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
+
 from fiftyone.server.query import serialize_dataset
 
 
@@ -223,7 +224,9 @@ async def dispatch_polling_event_listener(
 
 
 def get_state() -> fos.StateDescription:
-    """Get the current state description singleton on the server
+    """Get the current state description singleton on the server if it
+    exists. Otherwise, initializes and sets the state description with
+    default values.
 
     Returns:
         the :class:`fiftyone.core.state.StateDescription` server singleton
@@ -273,7 +276,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         ):
             update = True
             try:
-                state.dataset = fo.load_dataset(payload.initializer.dataset)
+                state.dataset = fod.load_dataset(payload.initializer.dataset)
                 state.selected = []
                 state.selected_labels = []
                 state.view = None

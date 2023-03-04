@@ -40,7 +40,43 @@ const useGradientMap = (gradients: Gradients) => {
   );
 };
 
-const ColorByHeightShaders = {
+const ShadeByRgbShaders = {
+  vertexShader: /* glsl */ `
+  // this uniform is used to pass the point size to the vertex shader from JS
+  uniform float pointSize;
+
+  // these attributes are injected into the vertex shader based on geometry
+  attribute vec3 color;
+  attribute float scale;
+
+  // this attribute is used to pass the color to the fragment shader
+  varying vec3 vColor;
+
+  void main() {
+    // assign color to the varying variable so that it can be used in fragment shader
+    vColor = color;
+
+    // do a model-view transform to get the position of the point in camera space
+    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+    // (scale / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
+    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+
+    // do a projection transform to get the position of the point in clip space
+    gl_Position = projectionMatrix * mvPosition;
+  }
+
+  `,
+  fragmentShader: /* glsl */ `
+  varying vec3 vColor;
+
+  void main() {
+    gl_FragColor = vec4(vColor, 1.0);
+  } 
+  `,
+};
+
+const ShadeByHeightShaders = {
   vertexShader: /* glsl */ `
   uniform float maxZ;
   uniform float minZ;
@@ -74,7 +110,7 @@ const ColorByHeightShaders = {
   }`,
 };
 
-const ColorByIntensityShaders = {
+const ShadeByIntensityShaders = {
   vertexShader: /* glsl */ `
   uniform float max;
   uniform float min;
@@ -91,7 +127,7 @@ const ColorByIntensityShaders = {
   void main() {
     vUv = uv;
     vec3 pos = position;
-    hValue = remap(min, max, color.x);
+    hValue = remap(min, max, color.r);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
@@ -128,8 +164,8 @@ export const ShadeByHeight = ({
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
         },
-        vertexShader: ColorByHeightShaders.vertexShader,
-        fragmentShader: ColorByHeightShaders.fragmentShader,
+        vertexShader: ShadeByHeightShaders.vertexShader,
+        fragmentShader: ShadeByHeightShaders.fragmentShader,
       }}
     />
   );
@@ -152,47 +188,11 @@ export const ShadeByIntensity = ({
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
         },
-        vertexShader: ColorByIntensityShaders.vertexShader,
-        fragmentShader: ColorByIntensityShaders.fragmentShader,
+        vertexShader: ShadeByIntensityShaders.vertexShader,
+        fragmentShader: ShadeByIntensityShaders.fragmentShader,
       }}
     />
   );
-};
-
-const ColorByRgbShaders = {
-  vertexShader: /* glsl */ `
-  // this uniform is used to pass the point size to the vertex shader from JS
-  uniform float pointSize;
-
-  // these attributes are injected into the vertex shader based on geometry
-  attribute vec3 color;
-  attribute float scale;
-
-  // this attribute is used to pass the color to the fragment shader
-  varying vec3 vColor;
-
-  void main() {
-    // assign color to the varying variable so that it can be used in fragment shader
-    vColor = color;
-
-    // do a model-view transform to get the position of the point in camera space
-    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-
-    // (scale / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
-
-    // do a projection transform to get the position of the point in clip space
-    gl_Position = projectionMatrix * mvPosition;
-  }
-
-  `,
-  fragmentShader: /* glsl */ `
-  varying vec3 vColor;
-
-  void main() {
-    gl_FragColor = vec4(vColor, 1.0);
-  } 
-  `,
 };
 
 export const RgbShader = ({ pointSize }: { pointSize: number }) => {
@@ -203,8 +203,8 @@ export const RgbShader = ({ pointSize }: { pointSize: number }) => {
         uniforms: {
           pointSize: { value: pointSize },
         },
-        vertexShader: ColorByRgbShaders.vertexShader,
-        fragmentShader: ColorByRgbShaders.fragmentShader,
+        vertexShader: ShadeByRgbShaders.vertexShader,
+        fragmentShader: ShadeByRgbShaders.fragmentShader,
       }}
     />
   );

@@ -148,7 +148,8 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
           parent = `frames.${keys[1]}`;
         }
 
-        if (VALID_KEYPOINTS.includes(get(fos.field(parent)).embeddedDocType)) {
+        const p = get(fos.field(parent))?.embeddedDocType
+        if (p && VALID_KEYPOINTS.includes(p)) {
           return true;
         }
       }
@@ -198,7 +199,6 @@ const CategoricalFilter = <T extends V = V>({
   const neverShowExpansion = field?.ftype.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
-
   const { count, results } = countsLoadable.contents;
 
   if (named && !results.length) {
@@ -214,7 +214,7 @@ const CategoricalFilter = <T extends V = V>({
       {named && (
         <FieldLabelAndInfo
           nested
-          field={field}
+          field={field!}
           color={color}
           template={({ label, hoverTarget }) => (
             <NamedCategoricalFilterHeader>

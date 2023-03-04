@@ -4,12 +4,11 @@ import {
   selectorFamily,
   Snapshot,
   useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
   useRecoilValue,
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useUnprocessedStateUpdate } from "@fiftyone/state";
+import { useClearModal, useUnprocessedStateUpdate } from "@fiftyone/state";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -19,7 +18,6 @@ import { Button } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { useErrorHandler } from "react-error-boundary";
 import { useTheme, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 
@@ -63,39 +61,45 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 
 const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
-  const handleError = useErrorHandler();
+
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
-        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
-        const view = await snapshot.getPromise(fos.view);
         set(fos.similaritySorting, true);
 
-        try {
-          const data = await getFetchFunction()("POST", "/sort", {
+        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+        const view = await snapshot.getPromise(fos.view);
+        const subscription = await snapshot.getPromise(fos.stateSubscription);
+        const data: fos.StateUpdate = await getFetchFunction()(
+          "POST",
+          "/sort",
+          {
             dataset: await snapshot.getPromise(fos.datasetName),
-            view,
-            filters: await snapshot.getPromise(fos.filters),
             extended: toSnakeCase({
               ...parameters,
               queryIds,
             }),
-          });
+            filters: await snapshot.getPromise(fos.filters),
+            subscription,
+            view,
+          }
+        );
 
-          update(({ set }) => {
-            set(fos.similarityParameters, {
-              ...parameters,
-              queryIds,
-            });
-            set(fos.modal, null);
-            set(fos.similaritySorting, false);
-            close();
-
-            return data;
+        update(({ set }) => {
+          set(fos.similarityParameters, {
+            ...parameters,
+            queryIds,
           });
-        } catch (error) {
-          handleError(error);
-        }
+          set(fos.modal, null);
+          set(fos.similaritySorting, false);
+          set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
+          set(fos.selectedLabels, {});
+          set(fos.hiddenLabels, {});
+          set(fos.modal, null);
+          close();
+
+          return data;
+        });
       },
     []
   );
@@ -195,6 +199,7 @@ interface SortBySimilarityProps {
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
     const current = useRecoilValue(fos.similarityParameters);
+    const selectedSamples = useRecoilValue(fos.selectedSamples);
     const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
       () =>
         current
@@ -219,6 +224,7 @@ const SortBySimilarity = React.memo(
 
     const choices = useRecoilValue(currentSimilarityKeys(modal));
     const sortBySimilarity = useSortBySimilarity(close);
+    const hasSelectedSamples = [...selectedSamples].length > 0;
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
@@ -247,7 +253,7 @@ const SortBySimilarity = React.memo(
             svgStyles={{ height: "1rem", marginTop: 7.5 }}
           />
         </PopoutSectionTitle>
-        {hasSimilarityKeys && (
+        {hasSimilarityKeys && hasSelectedSamples && (
           <>
             <Input
               placeholder={"k (default = None)"}

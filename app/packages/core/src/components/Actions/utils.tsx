@@ -131,14 +131,16 @@ export const tagStats = selectorFamily<
   get:
     ({ modal, labels }) =>
     ({ get }) => {
-      const data = get(
-        labels
-          ? fos.labelTagCounts({ modal: false, extended: false })
-          : fos.sampleTagCounts({ modal: false, extended: false })
-      );
+      const data = Object.keys(
+        get(
+          labels
+            ? fos.labelTagCounts({ modal: false, extended: false })
+            : fos.sampleTagCounts({ modal: false, extended: false })
+        )
+      ).map((t) => [t, 0]);
 
       return {
-        ...data,
+        ...Object.fromEntries(data),
         ...get(tagStatistics({ modal, labels })).tags,
       };
     },
