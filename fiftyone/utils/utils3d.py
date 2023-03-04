@@ -459,9 +459,7 @@ def compute_orthographic_projection_images(
         dataset = foz.load_zoo_dataset("quickstart-groups")
         view = dataset.select_group_slices("pcd")
 
-        fou3d.compute_orthographic_projection_images(
-            view, (-1, 512), "/tmp/proj"
-        )
+        fou3d.compute_orthographic_projection_images(view, (-1, 512), "/tmp/proj")
 
         session = fo.launch_app(dataset)
 
@@ -542,7 +540,7 @@ def compute_orthographic_projection_images(
                 filepath, output_ext=".png"
             )
 
-            img, img_bounds = compute_orthographic_projection_image(
+            img, metadata = compute_orthographic_projection_image(
                 filepath,
                 size,
                 shading_mode=shading_mode,
@@ -551,17 +549,9 @@ def compute_orthographic_projection_images(
                 projection_normal=projection_normal,
                 bounds=bounds,
             )
-            height, width = img.shape[:2]
 
             etai.write(img, image_path)
-
-            metadata = OrthographicProjectionMetadata(
-                filepath=image_path,
-                min_bound=[img_bounds[0], img_bounds[2]],  # xmin, ymin
-                max_bound=[img_bounds[1], img_bounds[3]],  # ymin, ymax
-                width=width,
-                height=height,
-            )
+            metadata.filepath = image_path
 
             if out_group_slice is not None:
                 sample = fos.Sample(filepath=image_path)
@@ -625,7 +615,7 @@ def compute_orthographic_projection_image(
         a tuple of
 
         -   the orthographic projection image
-        -   the ``(xmin, xmax, ymin, ymax)`` bounds in the projected plane
+        -   an :class:`OrthographicProjectionMetadata` instance
     """
     if colormap is None:
         colormap = DEFAULT_SHADING_GRADIENT_MAP
@@ -633,15 +623,18 @@ def compute_orthographic_projection_image(
     if not isinstance(colormap, dict):
         colormap = dict(zip(np.linspace(0, 1, len(colormap)), colormap))
 
-    points, colors, min_bound, max_bound = _parse_point_cloud(
+    points, colors, metadata = _parse_point_cloud(
         filepath,
+        size=size,
         bounds=bounds,
         projection_normal=projection_normal,
         subsampling_rate=subsampling_rate,
     )
 
-    width, height = _parse_size(size, (min_bound, max_bound))
-    bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
+    min_bound = metadata.min_bound
+    max_bound = metadata.max_bound
+    width = metadata.width
+    height = metadata.height
 
     # scale and normalize XY points based on width / height and bounds
     points[:, 0] *= (width - 1) / (max_bound[0] - min_bound[0])
@@ -688,7 +681,7 @@ def compute_orthographic_projection_image(
     # change axis orientation such that y is up
     image = np.rot90(image, k=1, axes=(0, 1))
 
-    return image, bounds
+    return image, metadata
 
 
 def compute_orthographic_projection_map(
@@ -724,17 +717,20 @@ def compute_orthographic_projection_map(
         a tuple of
 
         -   the feature map
-        -   the ``[xmin, xmax, ymin, ymax]`` bounds in the projected plane
+        -   an :class:`OrthographicProjectionMetadata` instance
     """
-    points, colors, min_bound, max_bound = _parse_point_cloud(
+    points, colors, metadata = _parse_point_cloud(
         filepath,
+        size=size,
         bounds=bounds,
         projection_normal=projection_normal,
         subsampling_rate=subsampling_rate,
     )
 
-    width, height = _parse_size(size, (min_bound, max_bound))
-    bounds = [min_bound[0], max_bound[0], min_bound[1], max_bound[1]]
+    min_bound = metadata.min_bound
+    max_bound = metadata.max_bound
+    width = metadata.width
+    height = metadata.height
 
     points = np.vstack((points.T, colors[:, 0])).T
 
@@ -780,11 +776,12 @@ def compute_orthographic_projection_map(
 
     feature_map = np.einsum("ijk -> jki", feature_map)
 
-    return feature_map, bounds
+    return feature_map, metadata
 
 
 def _parse_point_cloud(
     filepath,
+    size=None,
     bounds=None,
     projection_normal=None,
     subsampling_rate=None,
@@ -825,7 +822,19 @@ def _parse_point_cloud(
     points = np.asarray(pc.points)
     colors = np.asarray(pc.colors)
 
-    return points, colors, min_bound, max_bound
+    if size is not None:
+        width, height = _parse_size(size, (min_bound, max_bound))
+    else:
+        width, height = None, None
+
+    metadata = OrthographicProjectionMetadata(
+        min_bound=min_bound,
+        max_bound=max_bound,
+        width=width,
+        height=height,
+    )
+
+    return points, colors, metadata
 
 
 def _get_point_cloud_slice(samples):
