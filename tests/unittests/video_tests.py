@@ -1433,6 +1433,11 @@ class VideoTests(unittest.TestCase):
             fo.VideoMetadata,
         )
 
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "sample_id", "filepath", "support", "metadata", "tags"},
@@ -1727,6 +1732,10 @@ class VideoTests(unittest.TestCase):
             F("detections.detections").length() >= 2, min_len=2
         )
         self.assertListEqual(view.values("support"), [[2, 3]])
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
 
         view = dataset.to_clips("frames.detections", other_fields=["hello"])
         view.select_fields().keep_fields()
@@ -1813,6 +1822,11 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(
             view.get_field("metadata").document_type,
             fo.ImageMetadata,
+        )
+
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
         )
 
         self.assertSetEqual(
@@ -2217,6 +2231,11 @@ class VideoTests(unittest.TestCase):
                 "sample_id",
                 "frame_number",
             },
+        )
+
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
         )
 
         with self.assertRaises(ValueError):

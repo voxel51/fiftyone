@@ -80,6 +80,11 @@ class PatchesTests(unittest.TestCase):
             fo.ImageMetadata,
         )
 
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "filepath", "tags", "metadata", "sample_id"},
