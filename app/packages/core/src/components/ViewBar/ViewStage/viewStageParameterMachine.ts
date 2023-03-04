@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { Machine, actions, sendParent } from "xstate";
+import { actions, Machine, sendParent } from "xstate";
 
 import { computeBestMatchString, getMatch } from "./utils";
 
@@ -143,7 +143,14 @@ export const PARSER = {
   "list<str>": {
     castFrom: (value) => value.join(","),
     castTo: (value) => value.split(","),
-    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    parse: (value) =>
+      value
+        // replace spaces with a single space (to allow search by words with spaces)
+        .replace(/[\s\'\"\[\]]+/g, " ")
+        // replace comma followed by trailing spaces with a single comma
+        .replace(/,\s*/g, ",")
+        // remove trailing spaces
+        .replace(/[ \t]+$/, ""),
     validate: (value) => {
       const stripped = value.replace(/[\s]/g, "");
       let array = null;

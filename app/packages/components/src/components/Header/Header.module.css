@@ -4,7 +4,6 @@
   flex-shrink: 0;
   justify-content: space-between;
   width: 100%;
-  border-bottom: 1px var(--joy-palette-primary-plainBorder) solid;
   height: 74px;
   justify-content: left;
   align-items: center;

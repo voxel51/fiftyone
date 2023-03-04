@@ -1,7 +1,7 @@
 """
 Clips views.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -75,7 +75,12 @@ class ClipsView(fov.DatasetView):
     """
 
     def __init__(
-        self, source_collection, clips_stage, clips_dataset, _stages=None
+        self,
+        source_collection,
+        clips_stage,
+        clips_dataset,
+        _stages=None,
+        _name=None,
     ):
         if _stages is None:
             _stages = []
@@ -87,6 +92,7 @@ class ClipsView(fov.DatasetView):
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
         self.__stages = _stages
+        self.__name = _name
 
     def __copy__(self):
         return self.__class__(
@@ -94,6 +100,7 @@ class ClipsView(fov.DatasetView):
             deepcopy(self._clips_stage),
             self._clips_dataset,
             _stages=deepcopy(self.__stages),
+            _name=self.__name,
         )
 
     @staticmethod
@@ -139,10 +146,6 @@ class ClipsView(fov.DatasetView):
             + [self._clips_stage]
             + self.__stages
         )
-
-    @property
-    def name(self):
-        return self.dataset_name + "-clips"
 
     @property
     def media_type(self):
@@ -209,6 +212,22 @@ class ClipsView(fov.DatasetView):
         super().set_values(field_name, *args, **kwargs)
 
         self._sync_source(fields=[field], ids=ids)
+        self._sync_source_field_schema(field_name)
+
+    def set_label_values(self, field_name, *args, **kwargs):
+        field = field_name.split(".", 1)[0]
+        must_sync = field == self._classification_field
+
+        super().set_label_values(field_name, *args, **kwargs)
+
+        if must_sync:
+            _, root = self._get_label_field_path(field)
+            _, src_root = self._source_collection._get_label_field_path(field)
+            _field_name = src_root + field_name[len(root) :]
+
+            self._source_collection.set_label_values(
+                _field_name, *args, **kwargs
+            )
 
     def save(self, fields=None):
         """Saves the clips in this view to the underlying dataset.
@@ -346,6 +365,27 @@ class ClipsView(fov.DatasetView):
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
+
+    def _sync_source_field_schema(self, path):
+        root = path.split(".", 1)[0]
+        if root != self._classification_field:
+            return
+
+        field = self.get_field(path)
+        if field is None:
+            return
+
+        _, label_root = self._get_label_field_path(root)
+        leaf = path[len(label_root) + 1 :]
+
+        dst_dataset = self._source_collection._dataset
+        _, dst_path = dst_dataset._get_label_field_path(root)
+        dst_path += "." + leaf
+
+        dst_dataset._merge_sample_field_schema({dst_path: field})
+
+        if self._source_collection._is_generated:
+            self._source_collection._sync_source_field_schema(dst_path)
 
     def _sync_source_keep_fields(self):
         # If the source TemporalDetection field is excluded, delete it from

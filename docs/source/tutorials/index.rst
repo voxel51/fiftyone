@@ -5,8 +5,6 @@ FiftyOne Tutorials
 
 .. default-role:: code
 
-Welcome to FiftyOne tutorials!
-
 Each tutorial below is a curated demonstration of how FiftyOne can help refine
 your datasets and turn your good models into *great models*.
 
@@ -34,6 +32,13 @@ your datasets and turn your good models into *great models*.
     <div class="list">
 
 .. Add tutorial cards below
+
+.. customcarditem::
+    :header: pandas-style queries in FiftyOne
+    :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common opertaions in pandas and FiftyOne.
+    :link: pandas_comparison.html
+    :image: ../_static/images/tutorials/pandas_tutorial.png
+    :tags: Filtering,Dataset-Evaluation
 
 .. customcarditem::
     :header: Evaluating object detections
@@ -136,6 +141,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
    Using image embeddings <image_embeddings.ipynb>

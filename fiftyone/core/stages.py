@@ -1,7 +1,7 @@
 """
 View stages.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -744,7 +744,7 @@ class ExcludeFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>",
+                "type": "list<field>|field|list<str>|str",
                 "placeholder": "list,of,fields",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
@@ -895,6 +895,76 @@ class ExcludeFrames(ViewStage):
 
     def validate(self, sample_collection):
         fova.validate_video_collection(sample_collection)
+
+
+class ExcludeGroups(ViewStage):
+    """Excludes the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Exclude some specific groups by ID
+        #
+
+        view = dataset.take(2)
+        group_ids = view.values("group.id")
+
+        stage = fo.ExcludeGroups(group_ids)
+        other_groups = dataset.add_stage(stage)
+
+        assert len(set(group_ids) & set(other_groups.values("group.id"))) == 0
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to exclude."""
+        return self._group_ids
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        return [{"$match": {id_path: {"$not": {"$in": ids}}}}]
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            }
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
 
 
 class ExcludeLabels(ViewStage):
@@ -1117,7 +1187,7 @@ class ExcludeLabels(ViewStage):
             },
             {
                 "name": "fields",
-                "type": "NoneType|list<str>|str",
+                "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "fields",
                 "default": "None",
             },
@@ -6195,11 +6265,10 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts the samples in a collection by visual similiarity to a specified
-    set of query ID(s).
+    """Sorts a collection by similiarity to a specified query.
 
     In order to use this stage, you must first use
-    :meth:`fiftyone.brain.compute_similarity` to index your dataset by visual
+    :meth:`fiftyone.brain.compute_similarity` to index your dataset by
     similiarity.
 
     Examples::
@@ -6208,25 +6277,53 @@ class SortBySimilarity(ViewStage):
         import fiftyone.brain as fob
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("quickstart").clone()
+        dataset = foz.load_zoo_dataset("quickstart")
 
-        fob.compute_similarity(dataset, brain_key="similarity")
+        fob.compute_similarity(
+            dataset, model="clip-vit-base32-torch", brain_key="clip"
+        )
 
         #
-        # Sort the samples by their visual similarity to the first sample
-        # in the dataset
+        # Sort samples by their similarity to a sample by its ID
         #
 
         query_id = dataset.first().id
-        stage = fo.SortBySimilarity(query_id)
+
+        stage = fo.SortBySimilarity(query_id, k=5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort samples by their similarity to a manually computed vector
+        #
+
+        model = foz.load_zoo_model("clip-vit-base32-torch")
+        embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+        query = embeddings.mean(axis=0)
+
+        stage = fo.SortBySimilarity(query, k=5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort samples by their similarity to a text prompt
+        #
+
+        query = "kites high in the air"
+
+        stage = fo.SortBySimilarity(query, k=5)
         view = dataset.add_stage(stage)
 
     Args:
-        query_ids: an ID or iterable of query IDs. These may be sample IDs or
-            label IDs depending on ``brain_key``
+        query: the query, which can be any of the following:
+
+            -   an ID or iterable of IDs
+            -   a ``num_dims`` vector or ``num_queries x num_dims`` array of
+                vectors
+            -   a prompt or iterable of prompts (if supported by the index)
+
         k (None): the number of matches to return. By default, the entire
             collection is sorted
-        reverse (False): whether to sort by least similarity
+        reverse (False): whether to sort by least similarity (True) or greatest
+            similarity (False). Some backends may not support least similarity
         dist_field (None): the name of a float field in which to store the
             distance of each example to the specified query. The field is
             created if necessary
@@ -6238,19 +6335,17 @@ class SortBySimilarity(ViewStage):
 
     def __init__(
         self,
-        query_ids,
+        query,
         k=None,
         reverse=False,
         dist_field=None,
         brain_key=None,
         _state=None,
     ):
-        if etau.is_str(query_ids):
-            query_ids = [query_ids]
-        else:
-            query_ids = list(query_ids)
+        query, query_kwarg = _parse_similarity_query(query)
 
-        self._query_ids = query_ids
+        self._query = query
+        self._query_kwarg = query_kwarg
         self._k = k
         self._reverse = reverse
         self._dist_field = dist_field
@@ -6259,9 +6354,9 @@ class SortBySimilarity(ViewStage):
         self._pipeline = None
 
     @property
-    def query_ids(self):
-        """The list of query IDs."""
-        return self._query_ids
+    def query(self):
+        """The query."""
+        return self._query
 
     @property
     def k(self):
@@ -6280,9 +6375,7 @@ class SortBySimilarity(ViewStage):
 
     @property
     def brain_key(self):
-        """The brain key of the
-        :class:`fiftyone.brain.similiarity.SimilarityResults` to use.
-        """
+        """The brain key of the similarity index to use."""
         return self._brain_key
 
     def to_mongo(self, _):
@@ -6296,7 +6389,7 @@ class SortBySimilarity(ViewStage):
 
     def _kwargs(self):
         return [
-            ["query_ids", self._query_ids],
+            ["query", self._query_kwarg],
             ["k", self._k],
             ["reverse", self._reverse],
             ["dist_field", self._dist_field],
@@ -6308,9 +6401,9 @@ class SortBySimilarity(ViewStage):
     def _params(cls):
         return [
             {
-                "name": "query_ids",
-                "type": "list<id>|id",
-                "placeholder": "list,of,ids",
+                "name": "query",
+                "type": "list<str>|str",
+                "placeholder": "query",
             },
             {
                 "name": "k",
@@ -6343,7 +6436,7 @@ class SortBySimilarity(ViewStage):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
-            "query_ids": self._query_ids,
+            "query": self._query_kwarg,
             "k": self._k,
             "reverse": self._reverse,
             "dist_field": self._dist_field,
@@ -6378,12 +6471,42 @@ class SortBySimilarity(ViewStage):
                 context.enter_context(results)  # pylint: disable=no-member
 
             return results.sort_by_similarity(
-                self._query_ids,
+                self._query,
                 k=self._k,
                 reverse=self._reverse,
                 dist_field=self._dist_field,
                 _mongo=True,
             )
+
+
+def _parse_similarity_query(query):
+    if isinstance(query, np.ndarray):
+        # Query vector(s)
+        query_kwarg = fou.serialize_numpy_array(query, ascii=True)
+        return query, query_kwarg
+
+    if not etau.is_str(query):
+        # Query IDs or prompts
+        query = list(query)
+        return query, query
+
+    try:
+        # Query ID
+        ObjectId(query)
+        return query, query
+    except:
+        pass
+
+    try:
+        # Already serialized query vector(s)
+        query_kwarg = query
+        query = fou.deserialize_numpy_array(query, ascii=True)
+        return query, query_kwarg
+    except:
+        pass
+
+    # Query prompt
+    return query, query
 
 
 class Take(ViewStage):
@@ -6925,10 +7048,11 @@ class ToFrames(ViewStage):
     omitted from the returned view.
 
     When ``sample_frames`` is True, this method samples each video in the
-    collection into a directory of per-frame images with filenames specified by
-    ``frames_patt``. By default, each folder of images is written using the
-    same basename as the input video. For example, if
-    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
+    collection into a directory of per-frame images and stores the filepaths in
+    the ``filepath`` frame field of the source dataset. By default, each folder
+    of images is written using the same basename as the input video. For
+    example, if ``frames_patt = "%%06d.jpg"``, then videos with the following
+    paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -7345,7 +7469,12 @@ def _get_default_similarity_run(sample_collection):
                 % (sample_collection.dataset_name, gt_field, pred_field)
             )
     else:
+        # Try sample indexes first
         brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+
+        # It's allowable to use a patches index too
+        if not brain_keys:
+            brain_keys = sample_collection._get_similarity_keys()
 
         if not brain_keys:
             raise ValueError(
@@ -7385,6 +7514,7 @@ _STAGES = [
     ExcludeBy,
     ExcludeFields,
     ExcludeFrames,
+    ExcludeGroups,
     ExcludeLabels,
     Exists,
     FilterField,

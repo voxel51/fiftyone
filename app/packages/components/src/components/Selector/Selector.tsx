@@ -1,15 +1,15 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import React, {
-  useEffect,
+  Suspense,
+  useCallback,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { useCallback } from "react";
-import { Suspense } from "react";
 import Input from "react-input-autosize";
-import { useLayer } from "react-laag";
+import { useLayer, UseLayerOptions } from "react-laag";
+import LoadingDots from "../Loading/LoadingDots";
 
 import Results from "../Results/Results";
 
@@ -64,6 +64,7 @@ export interface SelectorProps<T> {
   inputClassName?: string;
   inputStyle?: React.CSSProperties;
   containerStyle?: React.CSSProperties;
+  resultsPlacement?: UseLayerOptions["placement"];
   overflow?: boolean;
   onMouseEnter?: React.MouseEventHandler;
 }
@@ -78,6 +79,7 @@ const Selector = <T extends unknown>({
   inputStyle,
   inputClassName,
   containerStyle,
+  resultsPlacement,
   overflow = false,
   onMouseEnter,
 }: SelectorProps<T>) => {
@@ -115,8 +117,10 @@ const Selector = <T extends unknown>({
     overflowContainer: false,
     auto: true,
     snap: true,
-    placement: "bottom-center",
-    possiblePlacements: ["bottom-center"],
+    placement: resultsPlacement ? resultsPlacement : "bottom-center",
+    possiblePlacements: resultsPlacement
+      ? [resultsPlacement]
+      : ["bottom-center"],
     triggerOffset: 8,
   });
 
@@ -204,9 +208,7 @@ const Selector = <T extends unknown>({
                 minWidth: triggerBounds?.width,
               }}
             >
-              <Suspense
-                fallback={<div className={style.loadingFooter}>Loading...</div>}
-              >
+              <Suspense fallback={<LoadingDots text="Loading" />}>
                 <SelectorResults
                   active={active}
                   search={search}

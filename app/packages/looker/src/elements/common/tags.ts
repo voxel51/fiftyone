@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import {
@@ -45,6 +45,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private colorByValue: boolean;
   private colorSeed: number;
+  private playing = false;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -60,10 +61,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     {
       config: { fieldSchema },
       options: { activePaths, coloring, timeZone },
+      playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
-    if (
+    if (this.playing !== playing) {
+      this.playing = playing;
+      if (playing) {
+        this.element.innerHTML = "";
+        return this.element;
+      }
+    } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
         this.colorByValue === (coloring.by === "label") &&
         this.colorSeed === coloring.seed) ||
@@ -298,7 +306,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         if (value === undefined) continue;
 
-        if (LABEL_RENDERERS[field.embeddedDocType]) {
+        if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
 
@@ -313,14 +321,18 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           continue;
         }
 
-        if (PRIMITIVE_RENDERERS[field.ftype]) {
+        if (field && PRIMITIVE_RENDERERS[field.ftype]) {
           list
             ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
             : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
           continue;
         }
 
-        if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
+        if (
+          field &&
+          field.ftype === LIST_FIELD &&
+          PRIMITIVE_RENDERERS[field.subfield]
+        ) {
           pushList(PRIMITIVE_RENDERERS[field.subfield], value);
           continue;
         }
@@ -352,7 +364,7 @@ const arraysAreEqual = (a: any[], b: any[]): boolean => {
   if (a == null || b == null) return false;
   if (a.length !== b.length) return false;
 
-  for (var i = 0; i < a.length; ++i) {
+  for (let i = 0; i < a.length; ++i) {
     if (a[i] !== b[i]) return false;
   }
   return true;
@@ -379,8 +391,8 @@ const unwind = (name: string, value: unknown) => {
     return value.map((val) => unwind(name, val));
   }
 
-  let v = value[name];
-  if (v) {
+  const v = value[name];
+  if (v !== undefined && v !== null) {
     return v;
   }
 
@@ -401,16 +413,16 @@ const getFieldAndValue = (
   for (const key of path.split(".")) {
     field = schema[key];
 
-    if (field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
       return [null, null, false];
     }
 
-    if (![undefined, null].includes(value)) {
+    if (![undefined, null].includes(value) && field) {
       value = unwind(field.dbField, value);
       list = list || field.ftype === LIST_FIELD;
     }
 
-    schema = field.fields;
+    schema = field ? field.fields : null;
   }
 
   return [field, value, list];

@@ -1,20 +1,21 @@
 import {
   mainSample,
-  mainSampleQuery,
+  mainSampleQuery as mainSampleQueryGraphQL,
   paginateGroup,
-  paginateGroupPinnedSampleFragment,
-  paginateGroupPinnedSample_query$key,
   paginateGroupQuery,
   paginateGroup_query$key,
+  pinnedSample,
+  pinnedSampleQuery,
 } from "@fiftyone/relay";
 
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import { VariablesOf, readInlineData } from "react-relay";
+import { VariablesOf } from "react-relay";
 
 import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
   dataset,
+  getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
   sidebarOverride,
@@ -69,12 +70,13 @@ export const groupSlices = selector<string[]>({
   },
 });
 
-export const pinnedSlice = selector<string | null>({
-  key: "pinnedSlice",
+export const defaultPinnedSlice = selector<string | null>({
+  key: "defaultPinnedSlice",
   get: ({ get }) => {
     const { groupMediaTypes } = get(dataset);
 
     for (const { name, mediaType } of groupMediaTypes) {
+      // return the first point cloud slice
       if (["point_cloud", "point-cloud"].includes(mediaType)) {
         return name;
       }
@@ -82,6 +84,12 @@ export const pinnedSlice = selector<string | null>({
 
     return null;
   },
+});
+
+export const pinnedSlice = atom<string | null>({
+  key: "pinnedSlice",
+  default: defaultPinnedSlice,
+  effects: [getBrowserStorageEffectForKey("pinnedSlice")],
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({
@@ -142,7 +150,24 @@ export const groupQuery = graphQLSelector<
           id: sample[group]._id,
         },
       },
-      pinnedSampleFilter: {
+    };
+  },
+});
+
+export const pinnedSliceSample = graphQLSelector<
+  VariablesOf<pinnedSampleQuery>,
+  ResponseFrom<pinnedSampleQuery>["sample"]
+>({
+  key: "pinnedSliceSampleFragment",
+  environment: RelayEnvironmentKey,
+  query: pinnedSample,
+  variables: ({ get }) => {
+    const sample = get(modalAtom).sample;
+    const group = get(groupField);
+    return {
+      dataset: get(datasetName),
+      view: get(view),
+      filter: {
         group: {
           id: sample[group]._id,
           slice: get(pinnedSlice),
@@ -150,31 +175,20 @@ export const groupQuery = graphQLSelector<
       },
     };
   },
-});
+  mapResponse: (response) => {
+    const actualRawSample = response?.sample?.sample;
 
-export const pinnedSliceSample = selector({
-  key: "pinnedSliceSampleFragment",
-  get: ({ get }) => {
-    let data = readInlineData<paginateGroupPinnedSample_query$key>(
-      paginateGroupPinnedSampleFragment,
-      get(groupQuery)
-    ).sample;
-
-    if (data.__typename !== "PointCloudSample") {
-      throw new Error("unsupported pinned sample type");
-    }
-
-    if (typeof data.sample === "string") {
-      data = {
-        ...data,
-        sample: JSON.parse(data.sample),
+    // This value may be a string that needs to be deserialized
+    // Only occurs after calling useUpdateSample for pinned sample
+    // - https://github.com/voxel51/fiftyone/pull/2622
+    // - https://github.com/facebook/relay/issues/91
+    if (actualRawSample && typeof actualRawSample === "string") {
+      return {
+        ...response.sample,
+        sample: JSON.parse(actualRawSample),
       };
     }
-
-    return {
-      sample: data.sample,
-      urls: Object.fromEntries(data.urls.map(({ field, url }) => [field, url])),
-    };
+    return response.sample;
   },
 });
 
@@ -184,7 +198,7 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
 });
 
 export const activeModalSample = selector<
-  AppSample | paginateGroupPinnedSample_query$key
+  AppSample | ResponseFrom<pinnedSampleQuery>["sample"]
 >({
   key: "activeModalSample",
   get: ({ get }) => {
@@ -197,8 +211,8 @@ export const activeModalSample = selector<
 });
 
 const mainSampleQuery = graphQLSelector<
-  VariablesOf<mainSampleQuery>,
-  ResponseFrom<mainSampleQuery>
+  VariablesOf<mainSampleQueryGraphQL>,
+  ResponseFrom<mainSampleQueryGraphQL>
 >({
   environment: RelayEnvironmentKey,
   key: "mainSampleQuery",

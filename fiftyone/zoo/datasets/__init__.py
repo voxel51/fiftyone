@@ -4,7 +4,7 @@ The FiftyOne Dataset Zoo.
 This package defines a collection of open source datasets made available for
 download via FiftyOne.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -23,18 +23,72 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets():
+def list_zoo_datasets(tags=None, source=None):
     """Returns the list of available datasets in the FiftyOne Dataset Zoo.
 
-    Returns:
-        a list of dataset names
-    """
-    datasets = set()
-    all_datasets = _get_zoo_datasets()
-    for d in all_datasets.values():
-        datasets |= d.keys()
+    Example usage::
 
-    return sorted(datasets)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # List all zoo datasets
+        #
+
+        names = foz.list_zoo_datasets()
+        print(names)
+
+        #
+        # List all zoo datasets with (both of) the specified tags
+        #
+
+        names = foz.list_zoo_datasets(tags=["image", "detection"])
+        print(names)
+
+        #
+        # List all zoo datasets available via the given source
+        #
+
+        names = foz.list_zoo_datasets(source="torch")
+        print(names)
+
+    Args:
+        tags (None): only include datasets that have the specified tag or list
+            of tags
+        source (None): only include datasets available via the given source or
+            list of sources
+
+    Returns:
+        a sorted list of dataset names
+    """
+    if etau.is_str(source):
+        sources = [source]
+    elif source is not None:
+        sources = list(sources)
+    else:
+        sources, _ = _get_zoo_dataset_sources()
+
+    all_datasets = _get_zoo_datasets()
+
+    datasets = {}
+    for source in sources:
+        for name, zoo_dataset_cls in all_datasets.get(source, {}).items():
+            if name not in datasets:
+                datasets[name] = zoo_dataset_cls
+
+    if tags is not None:
+        if etau.is_str(tags):
+            tags = {tags}
+        else:
+            tags = set(tags)
+
+        datasets = {
+            name: zoo_dataset_cls
+            for name, zoo_dataset_cls in datasets.items()
+            if tags.issubset(zoo_dataset_cls().tags)
+        }
+
+    return sorted(datasets.keys())
 
 
 def list_downloaded_zoo_datasets(base_dir=None):
@@ -823,6 +877,13 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
+    def has_patches(self):
+        """Whether the dataset has patches that may need to be applied to
+        already downloaded files.
+        """
+        return False
+
+    @property
     def supports_partial_downloads(self):
         """Whether the dataset supports downloading partial subsets of its
         splits.
@@ -959,7 +1020,6 @@ class ZooDataset(object):
                         "Invalid split '%s'; supported values are %s"
                         % (split, self.supported_splits)
                     )
-
         elif self.has_splits:
             splits = self.supported_splits
 
@@ -1101,6 +1161,19 @@ class ZooDataset(object):
             "subclasses must implement _download_and_prepare()"
         )
 
+    def _patch_if_necessary(self, dataset_dir, split):
+        """Internal method called when an already downloaded dataset may need
+        to be patched.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            split: the split to patch, or None if the dataset does not have
+                splits
+        """
+        raise NotImplementedError(
+            "subclasses must implement _patch_if_necessary()"
+        )
+
     def _get_splits_to_download(
         self, splits, dataset_dir, info, overwrite=False
     ):
@@ -1127,6 +1200,9 @@ class ZooDataset(object):
         if split not in info.downloaded_splits:
             return False
 
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, split)
+
         if self.supports_partial_downloads:
             return False
 
@@ -1148,6 +1224,9 @@ class ZooDataset(object):
 
         if info is None:
             return False
+
+        if self.has_patches:
+            self._patch_if_necessary(dataset_dir, None)
 
         if self.supports_partial_downloads:
             return False

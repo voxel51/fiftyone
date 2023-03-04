@@ -1,7 +1,7 @@
 """
 FiftyOne aggregation-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -146,6 +146,33 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(
             d.count_values("frames.classifications.classifications.label"),
             {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("frames.classifications.classifications.label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+
+        self.assertEqual(
+            d.count_values("classifications.classifications[].label"),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+        self.assertEqual(
+            d.count_values("frames[].classifications.classifications[].label"),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
+            d.count_values(
+                F("frames[].classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
         )
 
     @drop_datasets
@@ -1027,6 +1054,77 @@ class DatasetTests(unittest.TestCase):
         also_aggregations = [fo.Aggregation._from_dict(d) for d in agg_dicts]
 
         self.assertListEqual(aggregations, also_aggregations)
+
+    @drop_datasets
+    def test_expr(self):
+        d = fo.Dataset()
+        d.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    predictions=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", confidence=0.9),
+                            fo.Classification(label="dog", confidence=0.8),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.jpg",
+                    predictions=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", confidence=0.7),
+                            fo.Classification(label="rabbit", confidence=0.6),
+                            fo.Classification(
+                                label="squirrel", confidence=0.5
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image3.jpg",
+                    predictions=fo.Classifications(
+                        classifications=[
+                            fo.Classification(
+                                label="elephant", confidence=0.4
+                            ),
+                            fo.Classification(),
+                        ]
+                    ),
+                ),
+                fo.Sample(filepath="image4.jpg", predictions=None),
+                fo.Sample(filepath="image5.jpg"),
+            ]
+        )
+
+        bounds = d.bounds("predictions.classifications.confidence")
+        self.assertAlmostEqual(bounds[0], 0.4)
+        self.assertAlmostEqual(bounds[1], 0.9)
+
+        bounds = d.bounds(
+            "predictions.classifications.confidence", expr=F() - 0.1
+        )
+        self.assertAlmostEqual(bounds[0], 0.3)
+        self.assertAlmostEqual(bounds[1], 0.8)
+
+        agg1 = fo.Bounds("predictions.classifications.confidence")
+        agg2 = fo.Bounds(
+            "predictions.classifications.confidence", expr=F() - 0.1
+        )
+        agg3 = fo.Distinct("predictions.classifications.label")
+        agg4 = fo.CountValues(F("filepath").ends_with("3.jpg"))
+        agg5 = fo.Distinct("filepath")
+        bounds1, bounds2, labels, counts, filepaths = d.aggregate(
+            [agg1, agg2, agg3, agg4, agg5]
+        )
+
+        self.assertAlmostEqual(bounds1[0], 0.4)
+        self.assertAlmostEqual(bounds1[1], 0.9)
+        self.assertAlmostEqual(bounds2[0], 0.3)
+        self.assertAlmostEqual(bounds2[1], 0.8)
+        self.assertEqual(len(labels), 5)
+        self.assertDictEqual(counts, {True: 1, False: 4})
+        self.assertEqual(len(filepaths), 5)
 
 
 if __name__ == "__main__":

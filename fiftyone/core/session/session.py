@@ -1,7 +1,7 @@
 """
 Session class for interacting with the FiftyOne App.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -27,9 +27,10 @@ from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
+from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.core.state import StateDescription
 
 import fiftyone.core.session.client as fosc
 from fiftyone.core.session.events import (
@@ -39,7 +40,6 @@ from fiftyone.core.session.events import (
     ReactivateNotebookCell,
     StateUpdate,
 )
-
 import fiftyone.core.session.notebooks as fosn
 
 
@@ -87,7 +87,7 @@ Alternatively, if you have FiftyOne installed on your local machine, just run:
 
 fiftyone app connect --destination [<username>@]<hostname> --port {0}
 
-See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
+See https://docs.voxel51.com/user_guide/app.html#remote-sessions
 for more information about remote sessions.
 """
 
@@ -101,6 +101,8 @@ call `session.wait()` to keep the session (and the script) alive.
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
+    spaces: Space = None,
+    plots: fop.PlotManager = None,
     port: int = None,
     address: str = None,
     remote: bool = False,
@@ -119,6 +121,11 @@ def launch_app(
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
+            defining a space configuration to load
+        plots (None): an optional
+            :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
+            session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
         address (None): the address to serve the App. If None,
@@ -156,6 +163,8 @@ def launch_app(
     _session = Session(
         dataset=dataset,
         view=view,
+        spaces=spaces,
+        plots=plots,
         port=port,
         address=address,
         remote=remote,
@@ -262,6 +271,8 @@ class Session(object):
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
+            defining a space configuration to load
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -287,6 +298,8 @@ class Session(object):
         self,
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
+        view_name: str = None,
+        spaces: Space = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -296,18 +309,29 @@ class Session(object):
         auto: bool = True,
         config: AppConfig = None,
     ) -> None:
-        # Allow `dataset` to be a view
+        focx.init_context()
+
         if isinstance(dataset, fov.DatasetView):
             view = dataset
             dataset = dataset._root_dataset
 
-        self._validate(dataset, view, plots, config)
+        self._validate(dataset, view, spaces, plots, config)
 
         if port is None:
             port = fo.config.default_app_port
 
+        if (
+            address is not None
+            and address != "0.0.0.0"
+            and focx.is_databricks_context()
+        ):
+            logger.warning(
+                "A session address != 0.0.0.0 was provided, but databricks "
+                "requires 0.0.0.0"
+            )
+
         if address is None:
-            if fou.is_docker():
+            if fou.is_docker() or focx.is_databricks_context():
                 address = "0.0.0.0"
             else:
                 address = fo.config.default_app_address
@@ -335,10 +359,19 @@ class Session(object):
 
         self.plots = plots
 
+        final_view_name = view_name
+        if not final_view_name and view and view.name:
+            final_view_name = view.name
+
+        if spaces is None:
+            spaces = default_spaces.copy()
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
+            view_name=final_view_name,
+            spaces=spaces,
         )
         self._client = fosc.Client(
             address=address,
@@ -386,6 +419,7 @@ class Session(object):
         self,
         dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
+        spaces: t.Optional[Space],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
     ) -> None:
@@ -399,6 +433,12 @@ class Session(object):
             raise ValueError(
                 "`view` must be a %s or None; found %s"
                 % (fov.DatasetView, type(view))
+            )
+
+        if spaces is not None and not isinstance(spaces, Space):
+            raise ValueError(
+                "`spaces` must be a %s or None; found %s"
+                % (Space, type(spaces))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
@@ -499,6 +539,25 @@ class Session(object):
         self._state.config = config
 
     @property
+    def spaces(self) -> Space:
+        """The layout state for the session."""
+        return self._state.spaces
+
+    @spaces.setter  # type: ignore
+    @update_state()
+    def spaces(self, spaces: t.Optional[Space]) -> None:
+        if spaces is None:
+            spaces = default_spaces.copy()
+
+        if not isinstance(spaces, Space):
+            raise ValueError(
+                "`Session.spaces` must be a %s or None; found %s"
+                % (Space, type(spaces))
+            )
+
+        self._state.spaces = spaces
+
+    @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
         if self.view is not None:
             return self.view
@@ -526,6 +585,7 @@ class Session(object):
         self._state.view = None
         self._state.selected = []
         self._state.selected_labels = []
+        self._state.spaces = default_spaces
 
     @update_state()
     def clear_dataset(self) -> None:
@@ -555,6 +615,7 @@ class Session(object):
         if view is not None:
             view._root_dataset._reload()
             self._state.dataset = view._root_dataset
+            self._state.view_name = view.name
 
         self._state.selected = []
         self._state.selected_labels = []
@@ -881,7 +942,7 @@ class Session(object):
             height = self.config.notebook_height
 
         uuid = str(uuid4())
-        self._notebook_cells[uuid] = fosn.NotebookCell(
+        cell = fosn.NotebookCell(
             address=self.server_address,
             handle=IPython.display.DisplayHandle(display_id=uuid),
             height=height,
@@ -889,7 +950,8 @@ class Session(object):
             subscription=uuid,
         )
 
-        fosn.display(self._client, self._notebook_cells[uuid])
+        self._notebook_cells[uuid] = cell
+        fosn.display(self._client, cell)
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
@@ -990,18 +1052,18 @@ def _attach_listeners(session: "Session"):
     if focx.is_notebook_context() and not focx.is_colab_context():
 
         def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
-            fosn.capture(session._notebook_cells[event.subscription], event)
+            event.subscription in session._notebook_cells and fosn.capture(
+                session._notebook_cells[event.subscription], event
+            )
 
         session._client.add_event_listener(
             "capture_notebook_cell", on_capture_notebook_cell
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            fosn.display(
-                session._client,
-                session._notebook_cells[event.subscription],
-                reactivate=True,
-            )
+            cell = session._notebook_cells.get(event.subscription, None)
+            if cell is not None:
+                fosn.display(session._client, cell, reactivate=True)
 
         session._client.add_event_listener(
             "reactivate_notebook_cell", on_reactivate_notebook_cell

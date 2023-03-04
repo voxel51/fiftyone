@@ -1,32 +1,46 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
-import { NumpyResult } from "../numpy";
+import { OverlayMask } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
-interface DetectionLabel extends RegularLabel {
+export interface DetectionLabel extends RegularLabel {
+  _cls: "Detection";
   mask?: {
-    data: NumpyResult;
+    data: OverlayMask;
     image: ArrayBuffer;
   };
   bounding_box: BoundingBox;
+
+  // valid for 3D bounding boxes
+  dimensions?: [number, number, number];
+  location?: [number, number, number];
+  rotation?: [number, number, number];
 }
 
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
   private imageData: ImageData;
+  private is3D: boolean;
   private labelBoundingBox: BoundingBox;
   private canvas: HTMLCanvasElement;
 
   constructor(field, label) {
     super(field, label);
+
+    if (this.label.location && this.label.dimensions) {
+      this.is3D = true;
+    } else {
+      this.is3D = false;
+    }
+
     if (this.label.mask) {
       const [height, width] = this.label.mask.data.shape;
       this.canvas = document.createElement("canvas");
@@ -68,7 +82,12 @@ export default class DetectionOverlay<
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     this.label.mask && this.drawMask(ctx, state);
     !state.config.thumbnail && this.drawLabelText(ctx, state);
-    this.strokeRect(ctx, state, this.getColor(state));
+
+    if (this.is3D) {
+      this.fillRectFor3d(ctx, state, this.getColor(state));
+    } else {
+      this.strokeRect(ctx, state, this.getColor(state));
+    }
 
     if (this.isSelected(state)) {
       this.strokeRect(ctx, state, INFO_COLOR, state.dashLength);
@@ -195,6 +214,55 @@ export default class DetectionOverlay<
     [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
 
     return px >= bx && py >= by && px <= bx + bw && py <= by + bh;
+  }
+
+  private fillRectFor3d(
+    ctx: CanvasRenderingContext2D,
+    state: Readonly<State>,
+    color: string
+  ) {
+    const [tlx, tly, w, h] = this.label.bounding_box;
+    const [boxCenterX, boxCenterY] = t(state, tlx + w / 2, tly + h / 2);
+
+    const hasRotationAroundZAxis =
+      this.label.rotation && this.label.rotation[2] !== 0;
+
+    if (hasRotationAroundZAxis) {
+      // translate to center of box before rotating
+      ctx.translate(boxCenterX, boxCenterY);
+      // modifies current transformation matrix so that all subsequent drawings are rotated
+      ctx.rotate(-this.label.rotation[2]);
+      // translate back to undo the translation into the center of the box
+      ctx.translate(-boxCenterX, -boxCenterY);
+    }
+
+    const previousAlpha = ctx.globalAlpha;
+    ctx.beginPath();
+    // use double stoke width to make the box more visible
+    ctx.lineWidth = state.strokeWidth * 2;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.moveTo(...t(state, tlx, tly));
+    ctx.lineTo(...t(state, tlx + w, tly));
+    ctx.lineTo(...t(state, tlx + w, tly + h));
+    ctx.lineTo(...t(state, tlx, tly + h));
+    ctx.closePath();
+    ctx.stroke();
+
+    // fill with some transparency
+    ctx.globalAlpha = state.options.alpha * 0.5;
+    ctx.fillRect(...t(state, tlx, tly), w, h);
+    ctx.fill();
+
+    // restore previous alpha
+    ctx.globalAlpha = previousAlpha;
+
+    if (hasRotationAroundZAxis) {
+      // undo rotation to reset current transformation matrix
+      ctx.translate(boxCenterX, boxCenterY);
+      ctx.rotate(this.label.rotation[2]);
+      ctx.translate(-boxCenterX, -boxCenterY);
+    }
   }
 
   private strokeRect(

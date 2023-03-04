@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { BaseState, StateUpdate } from "../state";
@@ -33,12 +33,7 @@ export type DispatchEvent = (eventType: string, details?: any) => void;
 type ElementConstructor<
   State extends BaseState,
   Element extends BaseElement<State>
-> = new (
-  config: Readonly<State["config"]>,
-  update: StateUpdate<State>,
-  dispatchEvent: DispatchEvent,
-  children?: BaseElement<State>[]
-) => Element;
+> = new () => Element;
 
 interface ElementsTemplate<
   State extends BaseState,
@@ -57,7 +52,8 @@ export function createElementsTree<
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
 ): Element {
-  const element = new root.node(config, update, dispatchEvent);
+  const element = new root.node();
+  element.boot(config, update, dispatchEvent);
 
   if (!element.isShown(config)) {
     return element;

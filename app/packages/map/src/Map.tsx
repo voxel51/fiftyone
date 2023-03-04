@@ -1,6 +1,7 @@
 import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
+import { ExternalLink } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
@@ -25,6 +26,12 @@ import {
   Settings,
 } from "./state";
 import Options from "./Options";
+import {
+  useBeforeScreenshot,
+  useResetExtendedSelection,
+} from "@fiftyone/state";
+import { SELECTION_SCOPE } from "./constants";
+import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -76,7 +83,10 @@ const Plot: React.FC<{}> = () => {
   );
 
   const style = useRecoilValue(mapStyle);
-  const [selection, setSelection] = useRecoilState(fos.extendedSelection);
+  const [{ selection }, setExtendedSelection] = useRecoilState(
+    fos.extendedSelection
+  );
+  const resetExtendedSelection = useResetExtendedSelection();
 
   const mapRef = React.useRef<MapRef>(null);
   const onResize = React.useMemo(
@@ -117,6 +127,7 @@ const Plot: React.FC<{}> = () => {
         defaultMode: "draw_polygon",
       })
   );
+  const [mapError, setMapError] = React.useState(false);
 
   const onLoad = React.useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -158,8 +169,32 @@ const Plot: React.FC<{}> = () => {
     mapRef.current && fitBounds(mapRef.current, data);
   }, [data]);
 
+  useBeforeScreenshot(() => {
+    return new Promise((resolve) => {
+      mapRef.current.once("render", () => {
+        resolve(mapRef.current.getCanvas());
+      });
+      mapRef.current.setBearing(mapRef.current.getBearing());
+    });
+  });
+
+  const setPanelCloseEffect = useSetPanelCloseEffect();
+  React.useEffect(() => {
+    setPanelCloseEffect(resetExtendedSelection);
+  }, []);
+
   if (!settings.mapboxAccessToken) {
-    return <foc.Loading>No Mapbox token provided</foc.Loading>;
+    return (
+      <foc.Loading>
+        No Mapbox token provided.&nbsp;
+        <ExternalLink
+          style={{ color: theme.text.primary }}
+          href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
+        >
+          Learn more
+        </ExternalLink>
+      </foc.Loading>
+    );
   }
 
   if (!Object.keys(samples).length && !loading) {
@@ -170,6 +205,17 @@ const Plot: React.FC<{}> = () => {
     <div className={container} ref={ref}>
       {loading && !length ? (
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
+      ) : mapError ? (
+        <foc.Loading>
+          Something went wrong... is your&nbsp;
+          <ExternalLink
+            style={{ color: theme.text.primary }}
+            href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
+          >
+            Mapbox token
+          </ExternalLink>
+          &nbsp;valid?
+        </foc.Loading>
       ) : (
         <Map
           ref={mapRef}
@@ -186,11 +232,13 @@ const Plot: React.FC<{}> = () => {
           mapboxAccessToken={settings.mapboxAccessToken}
           onLoad={onLoad}
           onRender={() => {
-            try {
-              if (draw.getMode() !== "draw_polygon") {
-                draw.changeMode("draw_polygon");
-              }
-            } catch {}
+            if (draw.getMode() !== "draw_polygon") {
+              draw.changeMode("draw_polygon");
+            }
+          }}
+          onError={({ error }) => {
+            setMapError(true);
+            throw error;
           }}
         >
           <Source
@@ -265,7 +313,10 @@ const Plot: React.FC<{}> = () => {
                 return;
               }
 
-              setSelection([...selected]);
+              setExtendedSelection({
+                selection: Array.from(selected),
+                scope: SELECTION_SCOPE,
+              });
             }}
           />
         </Map>
@@ -276,7 +327,7 @@ const Plot: React.FC<{}> = () => {
         fitSelectionData={() =>
           mapRef.current && fitBounds(mapRef.current, data)
         }
-        clearSelectionData={() => setSelection(null)}
+        clearSelectionData={resetExtendedSelection}
       />
     </div>
   );

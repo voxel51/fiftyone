@@ -4,12 +4,12 @@ import { useSpring } from "@react-spring/core";
 import React from "react";
 import { useRecoilValue } from "recoil";
 
-import { NameAndCountContainer } from "../../utils";
 import * as fos from "@fiftyone/state";
+import { NameAndCountContainer } from "../../utils";
 
-import RegularEntry from "./RegularEntry";
-import { PathEntryCounts } from "./EntryCounts";
 import { groupStatistics } from "@fiftyone/state";
+import { PathEntryCounts } from "./EntryCounts";
+import RegularEntry from "./RegularEntry";
 
 const TagValueEntry = ({ path, tag }: { path: string; tag: string }) => {
   const theme = useTheme();
