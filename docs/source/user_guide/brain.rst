@@ -989,45 +989,18 @@ demonstrated empirical value in many model training exercises.
 Managing brain runs
 ___________________
 
-When you run a brain method on a dataset, the run is recorded on the dataset,
-allowing you to retrive information about it later, delete it (along with any
-modifications to your dataset that were performed by it), or even retrieve the
-view into your dataset that you processed.
+When you run a brain method with a ``brain_key`` argument, the run is recorded
+on the dataset and you can retrieve information about it later, rename it,
+delete it (along with any modifications to your dataset that were performed by
+it), and even retrieve the view that you computed on using the following
+methods on your dataset:
 
-Brain method runs can be accessed later by their `brain_key`:
-
-.. tabs::
-
-    .. tab:: Visualizations
-
-        The
-        :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-        method accepts a `brain_key` parameter that specifies the brain key
-        under which to store the results of the visualization.
-
-    .. tab:: Similarity
-
-        The
-        :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-        method accepts an optional `brain_key` parameter that specifies the
-        brain key under which to store the similarity index.
-
-    .. tab:: Uniqueness
-
-        The brain key of uniqueness runs is the value of the
-        `uniqueness_field` passed to
-        :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
-
-    .. tab:: Mistakenness
-
-        The brain key of mistakenness runs is the value of the
-        `mistakenness_field` passed to
-        :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
-
-    .. tab:: Hardness
-
-        The brain key of hardness runs is the value of the `hardness_field`
-        passed to :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
+-   :meth:`list_brain_runs() <fiftyone.core.collections.SampleCollection.list_brain_runs>`
+-   :meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_brain_info>`
+-   :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`
+-   :meth:`load_brain_view() <fiftyone.core.collections.SampleCollection.load_brain_view>`
+-   :meth:`rename_brain_run() <fiftyone.core.collections.SampleCollection.rename_brain_run>`
+-   :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
 
 The example below demonstrates the basic interface:
 
@@ -1061,7 +1034,10 @@ The example below demonstrates the basic interface:
     # Load the view on which a brain run was performed
     same_view = dataset.load_brain_view("visualization")
 
+    # Rename a brain run
+    dataset.rename_brain_run("visualization", "still_visualization")
+
     # Delete brain runs
     # This will delete any stored results and fields that were populated
-    dataset.delete_brain_run("visualization")
+    dataset.delete_brain_run("still_visualization")
     dataset.delete_brain_run("uniqueness")
