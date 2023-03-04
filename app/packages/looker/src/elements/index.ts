@@ -58,12 +58,6 @@ export const getFrameElements: GetElements<FrameState> = (
         ],
       },
       {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
-      },
-      {
         node: common.OptionsPanelElement,
         children: [
           { node: common.OnlyShowHoveredOnLabelOptionElement },
@@ -118,12 +112,6 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
-      },
-      {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
       },
       {
         node: common.OptionsPanelElement,
@@ -191,12 +179,6 @@ export const getVideoElements: GetElements<VideoState> = (
         ],
       },
       {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
-      },
-      {
         node: common.OptionsPanelElement,
         children: [
           { node: common.LoopVideoOptionElement },
@@ -253,12 +235,6 @@ export const getPcdElements: GetElements<PcdState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
-      },
-      {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
       },
       {
         node: common.OptionsPanelElement,

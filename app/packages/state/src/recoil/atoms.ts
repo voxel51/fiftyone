@@ -2,8 +2,8 @@ import { atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
 
-import { State } from "./types";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { State } from "./types";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -22,7 +22,7 @@ export interface SampleData {
 
 export interface ModalNavigation {
   index: number;
-  getIndex: (index: number) => void;
+  setIndex: (index: number) => void;
 }
 
 interface ModalSample extends SampleData {
@@ -46,14 +46,32 @@ export const useRefresh = () => {
 
 // recoil effect that syncs state with local storage
 export const getBrowserStorageEffectForKey =
-  (key: string, props?: { sessionStorage: boolean }) =>
+  (
+    key: string,
+    props: {
+      sessionStorage?: boolean;
+      valueClass?: "string" | "number" | "boolean";
+    } = { sessionStorage: false, valueClass: "string" }
+  ) =>
   ({ setSelf, onSet }) => {
-    const storage = props?.sessionStorage
+    const { valueClass, sessionStorage } = props;
+
+    const storage = sessionStorage
       ? window.sessionStorage
       : window.localStorage;
 
     const value = storage.getItem(key);
-    if (value != null) setSelf(value);
+    let procesedValue;
+
+    if (valueClass === "number") {
+      procesedValue = Number(value);
+    } else if (valueClass === "boolean") {
+      procesedValue = value === "true";
+    } else {
+      procesedValue = value;
+    }
+
+    if (value != null) setSelf(procesedValue);
 
     onSet((newValue, _oldValue, isReset) => {
       if (isReset) {
@@ -260,6 +278,39 @@ export const lookerPanels = atom({
     json: { isOpen: false },
     help: { isOpen: false },
   },
+});
+
+export const groupMediaIsCarouselVisible = atom<boolean>({
+  key: "groupMediaIsCarouselVisible",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIs3DVisible = atom<boolean>({
+  key: "groupMediaIs3DVisible",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIsImageVisible = atom<boolean>({
+  key: "groupMediaIsImageVisible",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsImageVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const theme = atom<"dark" | "light">({
