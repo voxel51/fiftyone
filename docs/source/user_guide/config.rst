@@ -903,7 +903,7 @@ App config.
 Plugins that you can configure include:
 
 -   The builtin :ref:`Map panel <app-map-panel>`
--   The builtin :ref:`3D visualizer <3d-visualizer-config>`
+-   The builtin :ref:`3D visualizer <app-3d-visualizer-config>`
 -   Any :ref:`custom plugins <app-plugins>` that you've registered
 
 For example, you may add the following to your JSON App config
