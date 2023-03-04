@@ -5,6 +5,9 @@ FiftyOne Server /frames route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import pprint
+
+from bson import ObjectId
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
@@ -30,22 +33,48 @@ class Frames(HTTPEndpoint):
 
         view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
+        print("=" * 80)
+        print("/frames route")
+        print("view =", view)
+        print("view._pipeline = ", view._pipeline(frames_only=True))
 
         end_frame = min(num_frames + start_frame, frame_count)
-        support = [start_frame, end_frame] if stages else None
-        if not support:
-            view = view.set_field(
-                "frames",
-                F("frames").filter(
-                    (F("frame_number") >= start_frame)
-                    & (F("frame_number") <= end_frame)
-                ),
-            )
+        frame_filters = [
+            getattr(s, "_filter", None)
+            for s in view._stages
+            if s._needs_frames(view)
+        ]
 
-        frames = await foo.aggregate(
-            foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(frames_only=True, support=support),
-        ).to_list(end_frame - start_frame + 1)
+        # Hacky way to fix aggregation stage when switching root to frames collection
+        frame_filters = [
+            str(s).replace("$this.", "")
+            for s in frame_filters
+            if s is not None
+        ]
+        print("frame_filters =", frame_filters)
+        match_expr = {
+            "$and": [
+                {"$eq": ["$_sample_id", ObjectId(sample_id)]},
+                {"$gte": ["$frame_number", start_frame]},
+                {"$lte": ["$frame_number", end_frame]},
+                *frame_filters,
+            ]
+        }
+        sample_frame_pipeline = [
+            {"$match": {"$expr": match_expr}},
+            {"$sort": {"frame_number": 1}},
+        ]
+        print("-" * 80)
+        print("sample_frame_pipeline =", sample_frame_pipeline)
+        frames = (
+            await foo.get_async_db_conn()[view._dataset._frame_collection_name]
+            .aggregate(sample_frame_pipeline, allowDiskUse=True)
+            .to_list(None)
+        )
+
+        print(
+            f"len(frames)={len(frames)}\nend_frame - start_frame + 1 = {end_frame - start_frame + 1}"
+        )
 
         return {
             "frames": foj.stringify(frames),

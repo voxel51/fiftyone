@@ -88,7 +88,6 @@ async def paginate_samples(
         for s in view._stages
         if s._needs_frames(view)
     ]
-    # for s in root_view._stages:
 
     # Hacky way to fix aggregation stage when switching root to frames collection
     frame_filters = [
