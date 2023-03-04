@@ -91,7 +91,7 @@ class PatchesTests(unittest.TestCase):
         index_info = view.get_index_information()
         indexes = view.list_indexes()
 
-        default_indexes = {"id", "filepath", "sample_id"}
+        default_indexes = {"id", "filepath", "tags", "sample_id"}
         self.assertSetEqual(set(index_info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -388,7 +388,7 @@ class PatchesTests(unittest.TestCase):
         index_info = view.get_index_information()
         indexes = view.list_indexes()
 
-        default_indexes = {"id", "filepath", "sample_id"}
+        default_indexes = {"id", "filepath", "tags", "sample_id"}
         self.assertSetEqual(set(index_info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 

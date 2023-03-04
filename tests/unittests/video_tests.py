@@ -110,6 +110,7 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "tags",
             "frames.id",
             "frames._sample_id_1_frame_number_1",
         }
@@ -1448,6 +1449,7 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "tags",
             "sample_id",
             "frames.id",
             "frames._sample_id_1_frame_number_1",
@@ -1837,6 +1839,7 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "tags",
             "sample_id",
             "_sample_id_1_frame_number_1",
         }
@@ -2229,6 +2232,7 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "tags",
             "sample_id",
             "_sample_id_1_frame_number_1",
         }
@@ -2475,6 +2479,7 @@ class VideoTests(unittest.TestCase):
         default_indexes = {
             "id",
             "filepath",
+            "tags",
             "sample_id",
             "frame_id",
             "_sample_id_1_frame_number_1",
