@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 export type RGB = [number, number, number];
@@ -50,6 +50,28 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
     : (alpha << 24) | (b << 16) | (g << 8) | r;
 
   return bitColorCache[key];
+};
+
+const rgbToHexCache = {};
+
+export const rgbToHexCached = (color: RGB) => {
+  const [r, g, b] = color;
+
+  const key = `${r}${g}${b}`;
+
+  if (key in rgbToHexCache) {
+    return rgbToHexCache[`${r}${g}${b}`];
+  }
+
+  rgbToHexCache[key] =
+    "#" +
+    ((1 << 24) | (r << 16) | (g << 8) | b)
+      // convert result of bitwise operation to hex
+      .toString(16)
+      // remove leading "1" that's a result of padding for bitwise ORs for RGB values above
+      .slice(1)
+      .toLocaleUpperCase();
+  return rgbToHexCache[key];
 };
 
 export const getRGBA = (value: number): RGBA => {
@@ -201,4 +223,16 @@ export const getColor = (
   fieldOrValue: string | number | boolean | null
 ) => {
   return createColorGenerator(pool, seed)(fieldOrValue);
+};
+
+// a function to convert a hex color to a rgb color
+export const hexToRgb = (hex: string): RGB => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16),
+      ]
+    : null;
 };

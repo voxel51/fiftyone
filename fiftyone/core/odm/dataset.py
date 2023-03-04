@@ -1,7 +1,7 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,10 +17,10 @@ from fiftyone.core.fields import (
     FloatField,
     IntField,
     ListField,
+    MaskTargetsField,
     ObjectIdField,
     ReferenceField,
     StringField,
-    TargetsField,
 )
 import fiftyone.core.utils as fou
 
@@ -203,14 +203,14 @@ class DatasetAppConfig(EmbeddedDocument):
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
         sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("all", "best", "fast")``
+            Supported values are ``("fast", "all", "best")``
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
-            -   ``"map"``: See the :ref:`map plugin docs <app-map-tab>` for
+            -   ``"map"``: See the :ref:`map plugin docs <app-map-panel>` for
                 supported options
             -   ``"point-cloud"``: See the
                 :ref:`3D visualizer docs <3d-visualizer-config>` for supported
@@ -453,8 +453,8 @@ class DatasetDocument(Document):
     )
     classes = DictField(ClassesField())
     default_classes = ClassesField()
-    mask_targets = DictField(TargetsField())
-    default_mask_targets = TargetsField()
+    mask_targets = DictField(MaskTargetsField())
+    default_mask_targets = MaskTargetsField()
     skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)

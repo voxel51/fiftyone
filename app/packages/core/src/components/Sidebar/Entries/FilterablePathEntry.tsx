@@ -41,12 +41,12 @@ import {
   StringFieldFilter,
 } from "../../Filters";
 
-import { useTheme } from "@fiftyone/components";
+import { useTheme, PillButton } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import Color from "color";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import { NameAndCountContainer, PillButton } from "../../utils";
+import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { pathIsExpanded } from "./utils";

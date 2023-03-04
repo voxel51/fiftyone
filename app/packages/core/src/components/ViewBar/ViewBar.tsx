@@ -83,7 +83,7 @@ const ViewBar = React.memo(() => {
       setView,
       fieldNames: fieldPaths,
     });
-  }, [view]);
+  }, [view, fieldPaths]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
@@ -178,7 +178,7 @@ const ViewBar = React.memo(() => {
           }}
         />
         <ExternalLink
-          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
+          href="https://docs.voxel51.com/user_guide/app.html#using-the-view-bar"
           style={{ display: "flex" }}
         >
           <Help style={{ color: theme.text.secondary }} />

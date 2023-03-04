@@ -41,7 +41,7 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
@@ -62,6 +62,17 @@ jobs:
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install .
+      - name: Cache Node Modules
+        id: node-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            app/node_modules
+            app/.yarn/cache
+          key: node-modules-${{ hashFiles('app/yarn.lock') }}
+      - name: Install app
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: cd app && yarn install
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
@@ -76,36 +87,16 @@ jobs:
     if: (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'rc')) || github.ref == 'refs/tags/docs-publish'
     runs-on: ubuntu-20.04
     steps:
-      - name: Clone website
-        uses: actions/checkout@v2
-        with:
-          repository: voxel51/website
-          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          ref: develop
       - name: Download docs
         uses: actions/download-artifact@v2
         with:
           name: docs
           path: docs-download/
-      - name: Update docs
-        run: |
-          find docs-download/
-          test -f docs-download/genindex.html
-          rm -r source/docs/fiftyone/
-          cp -r docs-download/ source/docs/fiftyone/
-          rm -r docs-download/
-      - name: Create website PR
-        uses: peter-evans/create-pull-request@v4
+      - name: Authorize gcloud
+        uses: google-github-actions/auth@v1
         with:
-          branch: fiftyone-docs
-          commit-message: |
-            Update fiftyone docs (${{ github.ref }})
-
-            voxel51/fiftyone@${{ github.sha }}
-          title: Automated fiftyone documentation update
-          body: " "
-          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          author: voxel51-bot <bot@voxel51.com>
-          labels: documentation
-          reviewers: brimoor, benjaminpkane
-          team-reviewers: developers
+          credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1
+      - name: publish
+        run: gsutil -m rsync -dR docs-download gs://docs.voxel51.com

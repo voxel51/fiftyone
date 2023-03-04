@@ -1,7 +1,7 @@
 """
 Mixins and helpers for dataset backing documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1552,7 +1552,11 @@ def _add_field_doc(field_docs, field_or_doc):
             field_docs[i] = new_field_doc
             return
 
-    field_docs.append(new_field_doc)
+    try:
+        field_docs.append(new_field_doc)
+    except ReferenceError:
+        # mongoengine seems to lose references to things... it's okay
+        pass
 
 
 def _update_field_doc(field_docs, field_name, field):

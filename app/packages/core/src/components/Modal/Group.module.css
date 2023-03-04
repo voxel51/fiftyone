@@ -17,6 +17,7 @@
 .group {
   position: relative;
   flex-direction: column;
+  justify-content: center;
   flex-grow: 1;
   display: flex;
   width: 100%;
@@ -42,4 +43,8 @@
   width: 100%;
   position: relative;
   z-index: 10001;
+}
+
+.groupMediaVisibilityIcon {
+  transform: rotate(90deg);
 }

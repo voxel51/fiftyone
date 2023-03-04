@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `CVAT format <https://github.com/opencv/cvat>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -4139,7 +4139,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_ids = []
         while not job_ids:
             job_resp = self.get(self.jobs_url(task_id))
-            job_ids = [j["id"] for j in job_resp.json()]
+            job_resp_json = job_resp.json()
+            if "results" in job_resp_json:
+                job_resp_json = job_resp_json["results"]
+
+            job_ids = [j["id"] for j in job_resp_json]
 
         if job_assignees is not None:
             num_assignees = len(job_assignees)

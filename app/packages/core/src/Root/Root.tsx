@@ -24,6 +24,7 @@ import {
 // built in plugins
 import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/embeddings";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
@@ -31,12 +32,10 @@ import ViewBar from "../components/ViewBar/ViewBar";
 import Teams from "../components/Teams/Teams";
 
 import { RootQuery } from "./__generated__/RootQuery.graphql";
-import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { clone, isElectron } from "@fiftyone/utilities";
-import { RGB } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 
@@ -49,30 +48,6 @@ const rootQuery = graphql`
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
-  }
-`;
-
-export const DatasetSavedViewsQuery = graphql`
-  query RootDatasetSavedViewsQuery($name: String!) {
-    ...RootDatasetSavedViewsFragment
-  }
-`;
-
-export const DatasetSavedViewsFragment = graphql`
-  fragment RootDatasetSavedViewsFragment on Query
-  @refetchable(queryName: "RootDatasetSavedViewsFragmentQuery") {
-    savedViews(datasetName: $name) {
-      id
-      datasetId
-      name
-      slug
-      description
-      color
-      viewStages
-      createdAt
-      lastModifiedAt
-      lastLoadedAt
-    }
   }
 `;
 

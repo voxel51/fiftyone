@@ -1,30 +1,26 @@
-import { ThemeProvider } from "@fiftyone/components";
-import { Loading, makeRoutes, Setup } from "@fiftyone/core";
-
-import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { useEffect, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { RecoilRoot, useRecoilValue } from "recoil";
-import Network from "./Network";
-
+import { Loading, ThemeProvider } from "@fiftyone/components";
+import { Setup, makeRoutes } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
   EventsContext,
   getDatasetName,
-  getSavedViewName,
   modal,
   screenshotCallbacks,
   State,
   stateSubscription,
-  useClearModal,
-  useRefresh,
   useReset,
-  useRouter,
+  useClearModal,
   useScreenshot,
+  useRouter,
+  useRefresh,
+  getSavedViewName,
 } from "@fiftyone/state";
-
-import { isElectron } from "@fiftyone/utilities";
+import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { RecoilRoot, useRecoilValue } from "recoil";
+import Network from "./Network";
 
 import "./index.css";
 
@@ -90,65 +86,50 @@ const App: React.FC = ({}) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
               const { colorscale, config, ...data } = payload.state;
-              payload.refresh && refresh();
-              const isAnUpdate = payload.update;
-              const changingSavedView = payload.changing_saved_view;
 
+              payload.refresh && refresh();
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
-                viewName: getSavedViewName(contextRef.current),
-                changingSavedView,
+                viewName: data.view_name,
               } as State.Description;
-              let dataset = getDatasetName(contextRef.current);
+
               if (readyStateRef.current !== AppReadyState.OPEN) {
-                if (dataset !== state.dataset) {
-                  dataset = state.dataset;
-                }
-
                 setReadyState(AppReadyState.OPEN);
-              } else {
-                dataset = state.dataset;
               }
 
-              // !isAnUpdate === initial load (active tab)
-              let savedViewSlug = isAnUpdate
-                ? state.savedViewSlug
-                : state.viewName || "";
+              const searchParams = new URLSearchParams(
+                context.history.location.search
+              );
 
-              const url = new URL(window.location.toString());
-              const oldPath = url.pathname + `${url.search}`;
-
-              if (isAnUpdate && !changingSavedView) {
-                url.searchParams.delete("view");
-              } else if (savedViewSlug) {
-                url.searchParams.set("view", savedViewSlug);
+              if (state.savedViewSlug) {
+                searchParams.set(
+                  "view",
+                  encodeURIComponent(state.savedViewSlug)
+                );
               } else {
-                url.searchParams.delete("view");
+                searchParams.delete("view");
               }
 
-              let search = url.searchParams.toString();
+              let search = searchParams.toString();
               if (search.length) {
                 search = `?${search}`;
               }
+
               const path = state.dataset
                 ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
                 : `/${search}`;
 
-              if (
-                !isElectron() &&
-                ((isAnUpdate && !changingSavedView) ||
-                  path !== oldPath ||
-                  !isAnUpdate)
-              ) {
-                contextRef.current.history.replace(path, {
-                  state,
-                  colorscale,
-                  config,
-                  refresh: payload.refresh,
-                  variables: dataset ? { view: state.view || null } : undefined,
-                });
-              }
+              contextRef.current.history.replace(path, {
+                state,
+                colorscale,
+                config,
+                refresh: payload.refresh,
+                // REQUIRED: here we define DatasetQuery GraphQL variables
+                variables: state.dataset
+                  ? { view: state.view || null }
+                  : undefined,
+              });
 
               break;
             }
@@ -162,7 +143,10 @@ const App: React.FC = ({}) => {
       },
       controller.signal,
       {
-        initializer: getDatasetName(contextRef.current),
+        initializer: {
+          dataset: getDatasetName(contextRef.current),
+          view: getSavedViewName(contextRef.current),
+        },
         subscription,
         events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
       }

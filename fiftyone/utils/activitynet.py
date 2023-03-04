@@ -2,7 +2,7 @@
 Utilities for working with the
 `ActivityNet dataset <http://activity-net.org/index.html>`.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -104,7 +104,7 @@ def download_activitynet_split(
                 "Found %d samples out of %d for split `%s`. In order to load "
                 "a full ActivityNet split, you must download the source files "
                 "from the ActivityNet maintainers. See "
-                "https://voxel51.com/docs/fiftyone/integrations/activitynet.html#lactivitynet-full-split-downloads "
+                "https://docs.voxel51.com/integrations/activitynet.html#activitynet-full-split-downloads "
                 "for more information."
                 "\n\n"
                 "Alternatively, provide the `max_samples`, `max_duration`, "

@@ -1,7 +1,7 @@
 """
 FiftyOne Server JIT metadata utilities
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -19,6 +19,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 from fiftyone.core.collections import SampleCollection
+from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
 import fiftyone.core.media as fom
 
@@ -53,9 +54,26 @@ async def get_metadata(
         metadata dict
     """
     filepath = sample["filepath"]
-    is_video = media_type == fom.VIDEO
     metadata = sample.get("metadata", None)
     urls = _create_media_urls(collection, sample, url_cache)
+
+    has_orthographic_projection_metadata = False
+    orthographic_projection_field = collection.get_field_schema(
+        embedded_doc_type=OrthographicProjectionMetadata
+    )
+
+    if len(orthographic_projection_field) > 0 and (
+        media_type == fom.POINT_CLOUD or media_type == fom.GROUP
+    ):
+        has_orthographic_projection_metadata = True
+        orthographic_projection_metadata_field_name = next(
+            iter(orthographic_projection_field)
+        )
+        orthographic_projection_image_path = sample[
+            orthographic_projection_metadata_field_name
+        ]["filepath"]
+
+    is_video = media_type == fom.VIDEO
 
     # If sufficient pre-existing metadata exists, use it
     if filepath not in metadata_cache and metadata:
@@ -65,11 +83,14 @@ async def get_metadata(
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                metadata_cache[sample["filepath"]] = dict(
+                metadata_cache[filepath] = dict(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
-
+        elif has_orthographic_projection_metadata:
+            metadata_cache[filepath] = await read_metadata(
+                orthographic_projection_image_path, False
+            )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)

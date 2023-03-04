@@ -1,7 +1,7 @@
 """
 Utilities for documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -623,7 +623,7 @@ class DocumentRegistry(object):
             "Could not locate document class '%s'.\n\nIf you are working with "
             "a dataset that uses custom embedded documents, you must add them "
             "to FiftyOne's module path. See "
-            "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#custom-embedded-documents "
+            "https://docs.voxel51.com/user_guide/using_datasets.html#custom-embedded-documents "
             "for more information" % name
         )
 

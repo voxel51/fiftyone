@@ -212,11 +212,17 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "other", paths: [] },
 ];
 
+const NONE = [null, undefined];
+
 export const resolveGroups = (
   dataset: State.Dataset,
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  let groups = JSON.parse(JSON.stringify(dataset?.appConfig?.sidebarGroups));
+  const sidebarGroups = dataset?.appConfig?.sidebarGroups;
+
+  let groups = sidebarGroups
+    ? JSON.parse(JSON.stringify(sidebarGroups))
+    : undefined;
 
   const expanded = current
     ? current.reduce((map, { name, expanded }) => {
@@ -366,16 +372,16 @@ export const sidebarGroups = selectorFamily<
         if (
           video &&
           groups[framesIndex] &&
-          groups[framesIndex].expanded === undefined
+          NONE.includes(groups[framesIndex].expanded)
         ) {
           groups[framesIndex].expanded = !largeVideo;
         }
 
-        if (groups[tagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[tagsIndex].expanded)) {
           groups[tagsIndex].expanded =
             get(resolvedSidebarMode(false)) === "all";
         }
-        if (groups[labelTagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[labelTagsIndex].expanded)) {
           groups[labelTagsIndex].expanded =
             get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
         }
@@ -399,19 +405,19 @@ export const sidebarGroups = selectorFamily<
             .filter((tag) => !filtered || tag.includes(f))
             .map((tag) => `_label_tags.${tag}`));
       } else {
-        if (groups[labelTagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[labelTagsIndex].expanded)) {
           groups[labelTagsIndex].expanded = false;
         }
 
         if (
           video &&
           groups[framesIndex] &&
-          groups[framesIndex].expanded === undefined
+          NONE.includes(groups[framesIndex].expanded)
         ) {
           groups[framesIndex].expanded = false;
         }
 
-        if (groups[tagsIndex].expanded === undefined) {
+        if (NONE.includes(groups[tagsIndex].expanded)) {
           groups[tagsIndex].expanded = false;
         }
       }
@@ -479,7 +485,7 @@ export const sidebarGroups = selectorFamily<
       !modal &&
         persist &&
         persistSidebarGroups({
-          subscription: useRecoilValue(stateSubscription),
+          subscription: get(stateSubscription),
           dataset: get(datasetName),
           stages: get(viewAtoms.view),
           sidebarGroups: groups,
@@ -633,6 +639,42 @@ export const disabledPaths = selector<Set<string>>({
   },
 });
 
+const collapsedPaths = selector<Set<string>>({
+  key: "collapsedPaths",
+  get: ({ get }) => {
+    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
+    paths = [...paths, ...get(fieldPaths({ ftype: LIST_FIELD }))];
+
+    get(
+      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
+    ).forEach(({ fields, name: prefix }) => {
+      Object.values(fields)
+        .filter(
+          ({ ftype, subfield }) =>
+            ftype === DICT_FIELD ||
+            subfield === DICT_FIELD ||
+            (ftype === LIST_FIELD && !subfield)
+        )
+        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
+    });
+
+    get(fields({ space: State.SPACE.FRAME })).forEach(
+      ({ name, embeddedDocType }) => {
+        if (LABELS.includes(embeddedDocType)) {
+          return;
+        }
+
+        paths.push(`frames.${name}`);
+      }
+    );
+
+    return new Set(paths);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const sidebarGroupMapping = selectorFamily<
   { [name: string]: Omit<State.SidebarGroup, "name"> },
   { modal: boolean; loading: boolean; filtered?: boolean }
@@ -709,12 +751,17 @@ export const groupShown = selectorFamily<
     ({ get }) => {
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
-      return data.expanded === undefined
-        ? !["tags", "label tags"].includes(group)
-          ? !data.paths.length ||
-            !data.paths.every((path) => get(disabledPaths).has(path))
-          : true
-        : data.expanded;
+      if ([null, undefined].includes(data.expanded)) {
+        if (["tags", "label tags"].includes(group)) {
+          return null;
+        }
+        return (
+          !data.paths.length ||
+          !data.paths.every((path) => get(collapsedPaths).has(path))
+        );
+      }
+
+      return data.expanded;
     },
   set:
     ({ modal, group }) =>

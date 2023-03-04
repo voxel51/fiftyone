@@ -72,13 +72,18 @@ export const GroupBar: React.FC<{
         zIndex: 10000,
       }}
     >
-      <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          fontSize: "1.2rem",
+        }}
+      >
         {hasPinned && (
           <div
             style={{
               color: "var(--joy-palette-text-primary)",
               display: "flex",
-              fontSize: "1.2rem",
               fontWeight: "bold",
               alignItems: "center",
               columnGap: "0.25rem",
@@ -89,7 +94,7 @@ export const GroupBar: React.FC<{
           </div>
         )}
       </div>
-      <ModalActionsRow lookerRef={lookerRef} />
+      <ModalActionsRow lookerRef={lookerRef} isGroup />
     </Bar>
   );
 };

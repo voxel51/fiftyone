@@ -527,9 +527,10 @@ environments.
 
     Want native cloud data support?
 
-    `Contact us <https://voxel51.com/#teams-form>`_ about FiftyOne Teams, an
-    open source-compatible enterprise deployment of FiftyOne with multiuser
-    collaboration features, native cloud dataset support, and much more!
+    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
+    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
+    enterprise deployment of FiftyOne with multiuser collaboration features,
+    native cloud dataset support, and much more!
 
 .. _aws:
 

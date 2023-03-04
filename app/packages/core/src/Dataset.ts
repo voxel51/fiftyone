@@ -1,20 +1,42 @@
 import * as fos from "@fiftyone/state";
+import { stateProxy } from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import React, { useState } from "react";
 import { usePreloadedQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import {
   DatasetQuery,
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
 
+export const DatasetSavedViewsFragment = graphql`
+  fragment DatasetSavedViewsFragment on Query
+  @refetchable(queryName: "DatasetSavedViewsFragmentQuery") {
+    savedViews(datasetName: $name) {
+      id
+      datasetId
+      name
+      slug
+      description
+      color
+      viewStages
+      createdAt
+      lastModifiedAt
+      lastLoadedAt
+    }
+  }
+`;
+
 export const DatasetNodeQuery = graphql`
   query DatasetQuery(
     $name: String!
     $view: BSONArray = null
-    $viewName: String = null
+    $savedViewSlug: String = null
   ) {
-    dataset(name: $name, view: $view, viewName: $viewName) {
+    ...DatasetSavedViewsFragment
+    dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
+      stages(slug: $savedViewSlug)
       id
       name
       mediaType
@@ -27,12 +49,14 @@ export const DatasetNodeQuery = graphql`
       appConfig {
         gridMediaField
         mediaFields
+        modalMediaField
         plugins
         sidebarGroups {
           expanded
           paths
           name
         }
+        sidebarMode
       }
       sampleFields {
         ftype
@@ -108,21 +132,16 @@ export const DatasetNodeQuery = graphql`
       }
       version
       viewCls
-      appConfig {
-        gridMediaField
-        mediaFields
-        modalMediaField
-        plugins
-        sidebarGroups {
-          name
-          paths
-        }
-        sidebarMode
-      }
+      viewName
+      savedViewSlug
       info
     }
   }
 `;
+
+export const DatasetQueryRef = React.createContext<
+  DatasetQuery$data | undefined
+>(undefined);
 
 export const usePreLoadedDataset = (
   queryRef
@@ -135,8 +154,28 @@ export const usePreLoadedDataset = (
   );
   const update = fos.useStateUpdate();
   const router = React.useContext(fos.RouterContext);
+  const stateProxyValue = useRecoilValue(stateProxy);
 
   React.useLayoutEffect(() => {
+    let { viewName, stages: view, ...rest } = dataset;
+
+    const params = new URLSearchParams(router.history.location.search);
+    if (!viewName && !view && params.has("view")) {
+      params.delete("view");
+      const search = params.toString();
+      router.history.replace(
+        `${router.pathname}?${search.length ? `?${search}` : ""}`
+      );
+    }
+
+    if (
+      !router.state &&
+      typeof window !== "undefined" &&
+      window.history.state?.view
+    ) {
+      view = window.history.state.view;
+    }
+
     const { colorscale, config, state } = router?.state || {};
 
     if (dataset) {
@@ -146,13 +185,15 @@ export const usePreLoadedDataset = (
           config: config
             ? (toCamelCase(config) as fos.State.Config)
             : undefined,
-          dataset: fos.transformDataset(dataset),
-          state,
+          dataset: fos.transformDataset(
+            stateProxyValue?.dataset ? stateProxyValue.dataset : rest
+          ),
+          state: { view, viewName, ...state, ...(stateProxyValue || {}) },
         };
       });
       setReady(true);
     }
-  }, [dataset, router]);
+  }, [dataset, router, stateProxyValue]);
 
   return [dataset, ready];
 };

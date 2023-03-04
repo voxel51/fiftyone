@@ -1,7 +1,7 @@
 """
 Sample parsers.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -561,6 +561,52 @@ class UnlabeledVideoSampleParser(SampleParser):
         )
 
 
+class UnlabeledMediaSampleParser(SampleParser):
+    """Interface for :class:`SampleParser` instances that parse unlabeled
+    media samples.
+
+    The general recipe for using :class:`UnlabeledMediaSampleParser` instances
+    is as follows::
+
+        sample_parser = UnlabeledMediaSampleParser(...)
+
+        for sample in samples:
+            sample_parser.with_sample(sample)
+            filepath = sample_parser.get_media_path()
+            metadata = sample_parser.get_metadata()
+    """
+
+    @property
+    def has_metadata(self):
+        """Whether this parser produces
+        :class:`fiftyone.core.metadata.Metadata` instances for samples that it
+        parses.
+        """
+        raise NotImplementedError("subclass must implement has_metadata")
+
+    def get_media_path(self):
+        """Returns the media path for the current sample.
+
+        Returns:
+            the path to the media on disk
+        """
+        raise NotImplementedError("subclass must implement get_media_path()")
+
+    def get_metadata(self):
+        """Returns the metadata for the current sample.
+
+        Returns:
+            a :class:`fiftyone.core.metadata.Metadata` instance
+        """
+        if not self.has_metadata:
+            raise ValueError(
+                "This '%s' does not provide metadata"
+                % etau.get_class_name(self)
+            )
+
+        raise NotImplementedError("subclass must implement get_metadata()")
+
+
 class ImageSampleParser(UnlabeledImageSampleParser):
     """Sample parser that parses unlabeled image samples.
 
@@ -606,6 +652,21 @@ class VideoSampleParser(UnlabeledVideoSampleParser):
         return False
 
     def get_video_path(self):
+        return self.current_sample
+
+
+class MediaSampleParser(UnlabeledMediaSampleParser):
+    """Sample parser that parses unlabeled media samples.
+
+    This implementation assumes that the provided sample is a path to a media
+    file on disk.
+    """
+
+    @property
+    def has_metadata(self):
+        return False
+
+    def get_media_path(self):
         return self.current_sample
 
 
@@ -1913,3 +1974,32 @@ class FiftyOneLabeledVideoSampleParser(
             frame_fcn_dict = frame_labels_fcn
 
         return frame_labels_dict, frame_fcn_dict
+
+
+class FiftyOneUnlabeledMediaSampleParser(MediaSampleParser):
+    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
+    unlabeled media.
+
+    Args:
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.Metadata` instances on-the-fly if
+            :meth:`get_metadata` is called and no metadata is available
+    """
+
+    def __init__(self, compute_metadata=False):
+        super().__init__()
+        self.compute_metadata = compute_metadata
+
+    @property
+    def has_metadata(self):
+        return True
+
+    def get_media_path(self):
+        return self.current_sample.filepath
+
+    def get_metadata(self):
+        metadata = self.current_sample.metadata
+        if metadata is None and self.compute_metadata:
+            metadata = fom.Metadata.build_for(self.current_sample.filepath)
+
+        return metadata

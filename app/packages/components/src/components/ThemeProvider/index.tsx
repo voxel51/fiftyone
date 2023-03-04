@@ -27,6 +27,7 @@ let theme = extendJoyTheme({
           sidebar: "hsl(200, 0%, 100%)",
           tooltip: "hsl(200, 0%, 100%)",
           viewBarButtons: "hsl(200, 0%, 100%)",
+          inactiveTab: "hsl(200, 0%, 90%)",
         },
         divider: "hsl(200, 0%, 80%)",
         danger: {
@@ -61,6 +62,10 @@ let theme = extendJoyTheme({
           shadow: "hsl(200, 0%, 90%)",
           shadowDark: "hsl(200, 0%, 70%)",
         },
+        voxel: {
+          500: "#FF6D04",
+          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
+        },
       },
     }),
     dark: createTheme({
@@ -79,6 +84,7 @@ let theme = extendJoyTheme({
           sidebar: "hsl(200, 0%, 15%)",
           tooltip: "hsl(200, 0%, 5%)",
           viewBarButtons: "hsl(200, 0%, 15%)",
+          inactiveTab: "hsl(200, 0%, 18%)",
         },
         divider: "hsl(200, 0%, 20%)",
         danger: {
@@ -95,6 +101,7 @@ let theme = extendJoyTheme({
         },
         primary: {
           main: "hsl(25, 100%, 51%)",
+          mainChannel: "none",
           plainColor: "hsl(25, 100%, 51%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
@@ -112,6 +119,10 @@ let theme = extendJoyTheme({
         custom: {
           shadow: "hsl(200, 0%, 10%)",
           shadowDark: "hsl(200, 0%, 0%)",
+        },
+        voxel: {
+          500: "#FF6D04",
+          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
       },
     }),

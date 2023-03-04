@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,8 +15,10 @@ import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
+import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
+import fiftyone.core.view as fov
 
 from decorators import drop_datasets, skip_windows
 
@@ -3000,6 +3002,57 @@ class ViewStageTests(unittest.TestCase):
 
         field = F("$ground_truth")
         self.assertEqual(str(field), str(deepcopy(field)))
+
+    def test_make_optimized_select_view_group_media_type_select_samples(self):
+        samples = self._create_group_samples()
+        dataset = self._create_group_dataset()
+        sample_ids = dataset.add_samples(samples)
+        self.assertEqual(len(sample_ids), len(samples))
+
+        # Default call should have select_groups = False
+        optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
+
+        expected_stages = [fosg.Select(sample_ids[0])]
+        self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def test_make_optimized_select_view_group_media_type_select_groups(self):
+        samples = self._create_group_samples()
+        dataset = self._create_group_dataset()
+        sample_ids = dataset.add_samples(samples)
+        self.assertEqual(len(sample_ids), len(samples))
+
+        optimized_view = fov.make_optimized_select_view(
+            dataset, sample_ids[0], select_groups=True
+        )
+        expected_stages = [
+            fosg.Select(sample_ids[0]),
+            fosg.SelectGroupSlices(),
+        ]
+        self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def _create_group_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="center")
+        self.assertEqual(dataset.media_type, fom.GROUP)
+        self.assertEqual(dataset.default_group_slice, "center")
+        return dataset
+
+    def _create_group_samples(self):
+        groups = ["left", "center", "right"]
+        filepaths = [
+            [str(i) + str(j) + ".jpg" for i in groups] for j in range(3)
+        ]
+        filepaths = [dict(zip(groups, fps)) for fps in zip(*filepaths)]
+        group = fo.Group()
+        samples = []
+        for fps in filepaths:
+            for name, filepath in fps.items():
+                sample = fo.Sample(
+                    filepath=filepath, group=group.element(name)
+                )
+                samples.append(sample)
+        assert all([s.group is not None for s in samples])
+        return samples
 
 
 if __name__ == "__main__":

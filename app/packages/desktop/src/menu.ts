@@ -178,7 +178,7 @@ export default class MenuBuilder {
         {
           label: "Documentation",
           click() {
-            shell.openExternal("https://voxel51.com/docs/fiftyone");
+            shell.openExternal("https://docs.voxel51.com");
           },
         },
         {
@@ -284,7 +284,7 @@ export default class MenuBuilder {
           {
             label: "Documentation",
             click() {
-              shell.openExternal("https://voxel51.com/docs/fiftyone");
+              shell.openExternal("https://docs.voxel51.com");
             },
           },
           {

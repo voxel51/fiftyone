@@ -85,7 +85,7 @@ export const getStep = (
   const delta = bounds[1] - bounds[0];
   const max = 100;
 
-  let step = delta / max;
+  const step = delta / max;
   if (
     [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
   ) {

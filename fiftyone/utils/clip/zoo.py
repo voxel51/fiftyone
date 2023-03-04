@@ -1,7 +1,7 @@
 """
 CLIP model wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,6 +13,7 @@ import warnings
 import eta.core.web as etaw
 
 import fiftyone as fo
+import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
@@ -72,7 +73,7 @@ class TorchCLIPModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             )
 
 
-class TorchCLIPModel(fout.TorchImageModel):
+class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
     """Torch implementation of CLIP from https://github.com/openai/CLIP.
 
     Args:
@@ -84,6 +85,32 @@ class TorchCLIPModel(fout.TorchImageModel):
 
         self._tokenizer = SimpleTokenizer(config.tokenizer_path)
         self._text_features = None
+
+    @property
+    def can_embed_prompts(self):
+        return True
+
+    def embed_prompt(self, prompt):
+        """Generates an embedding for the given text prompt.
+
+        Args:
+            prompt: a text string
+
+        Returns:
+            a numpy vector
+        """
+        return self.embed_prompts([prompt])[0]
+
+    def embed_prompts(self, prompts):
+        """Generates an embedding for the given text prompts.
+
+        Args:
+            prompts: an iterable of text strings
+
+        Returns:
+            a ``num_prompts x num_dims`` array of prompt embeddings
+        """
+        return self._embed_prompts(prompts).detach().numpy()
 
     def _download_model(self, config):
         config.download_model_if_necessary()
@@ -101,13 +128,10 @@ class TorchCLIPModel(fout.TorchImageModel):
 
         return build_model(model.state_dict()).to(self.device).float()
 
-    def _prepare_text_features(self):
+    def _embed_prompts(self, prompts):
         # source: https://github.com/openai/CLIP/blob/main/clip/clip.py
         sot_token = self._tokenizer.encoder["<|startoftext|>"]
         eot_token = self._tokenizer.encoder["<|endoftext|>"]
-        prompts = [
-            "%s %s" % (self.config.text_prompt, c) for c in self.classes
-        ]
         all_tokens = [
             [sot_token] + self._tokenizer.encode(p) + [eot_token]
             for p in prompts
@@ -139,13 +163,15 @@ class TorchCLIPModel(fout.TorchImageModel):
 
             text_features[i, : len(tokens)] = torch.tensor(tokens)
 
-        return text_features
+        with torch.no_grad():
+            return self._model.encode_text(text_features)
 
     def _get_text_features(self):
         if self._text_features is None:
-            text_features = self._prepare_text_features()
-            with torch.no_grad():
-                self._text_features = self._model.encode_text(text_features)
+            prompts = [
+                "%s %s" % (self.config.text_prompt, c) for c in self.classes
+            ]
+            self._text_features = self._embed_prompts(prompts)
 
         return self._text_features
 
