@@ -7474,7 +7474,7 @@ def _merge_samples_pipeline(
         else:
             _omit_frame_fields = set()
 
-        _omit_frame_fields.update(["id", "_sample_id"])
+        _omit_frame_fields.update(["id"])
         _omit_frame_fields.discard(frame_key_field)
         _omit_frame_fields.discard("frame_number")
 
@@ -7495,7 +7495,12 @@ def _merge_samples_pipeline(
 
         frame_pipeline.extend(
             [
-                {"$set": {"_dataset_id": dst_dataset._doc.id}},
+                {
+                    "$set": {
+                        "_dataset_id": dst_dataset._doc.id,
+                        "_sample_id": "$" + frame_key_field,
+                    }
+                },
                 {
                     "$merge": {
                         "into": dst_dataset._frame_collection_name,
