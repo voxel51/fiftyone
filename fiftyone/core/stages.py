@@ -7069,6 +7069,7 @@ class ToTrajectories(ViewStage):
 
     Args:
         field: a frame-level label list field of any of the following types:
+
             -   :class:`fiftyone.core.labels.Detections`
             -   :class:`fiftyone.core.labels.Polylines`
             -   :class:`fiftyone.core.labels.Keypoints`
@@ -7121,7 +7122,7 @@ class ToTrajectories(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            clips_dataset = foc.make_clips_dataset(
+            clips_dataset = focl.make_clips_dataset(
                 sample_collection, self._field, trajectories=True, **kwargs
             )
 
@@ -7130,7 +7131,7 @@ class ToTrajectories(ViewStage):
         else:
             clips_dataset = fod.load_dataset(name)
 
-        return foc.TrajectoriesView(sample_collection, self, clips_dataset)
+        return focl.TrajectoriesView(sample_collection, self, clips_dataset)
 
     def _kwargs(self):
         return [

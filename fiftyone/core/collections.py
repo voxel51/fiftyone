@@ -6221,6 +6221,7 @@ class SampleCollection(object):
         Args:
             field: a frame-level label list field of any of the following
                 types:
+
                 -   :class:`fiftyone.core.labels.Detections`
                 -   :class:`fiftyone.core.labels.Polylines`
                 -   :class:`fiftyone.core.labels.Keypoints`

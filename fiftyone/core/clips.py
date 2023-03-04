@@ -428,7 +428,12 @@ class TrajectoriesView(ClipsView):
     """
 
     def __init__(
-        self, source_collection, clips_stage, clips_dataset, _stages=None
+        self,
+        source_collection,
+        clips_stage,
+        clips_dataset,
+        _stages=None,
+        _name=None,
     ):
         if not isinstance(clips_stage, fost.ToTrajectories):
             raise ValueError(
@@ -450,6 +455,7 @@ class TrajectoriesView(ClipsView):
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
         self.__stages = _stages
+        self.__name = _name
 
     def __copy__(self):
         return self.__class__(
@@ -457,6 +463,7 @@ class TrajectoriesView(ClipsView):
             deepcopy(self._clips_stage),
             self._clips_dataset,
             _stages=deepcopy(self.__stages[self._num_trajectory_stages :]),
+            _name=self.__name,
         )
 
     @property

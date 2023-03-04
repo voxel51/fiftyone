@@ -73,7 +73,7 @@ class StateDescription(etas.Serializable):
                 if self.view is not None:
                     collection = self.view
 
-                    # @todo update App so this isn't needed
+                    # @todo update App so this isn't needed?
                     if isinstance(self.view, foc.TrajectoriesView):
                         _view_cls = etau.get_class_name(foc.ClipsView)
                     else:
