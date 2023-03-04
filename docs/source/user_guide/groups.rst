@@ -615,11 +615,6 @@ __________________
 Grouped datasets may contain one or more point cloud slices, which can be
 visualized in the App's :ref:`3D visualizer <3d-visualizer>`.
 
-.. _point-cloud-samples:
-
-Point cloud samples
--------------------
-
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 with extension `.pcd` is recognized as a point cloud sample:
@@ -641,6 +636,11 @@ with extension `.pcd` is recognized as a point cloud sample:
         'tags': [],
         'metadata': None,
     }>
+
+Point cloud samples may contain any type and number of custom fields, including
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`,
+which are natively visualizable by the App's
+:ref:`3D visualizer <3d-visualizer>`.
 
 Here's how a typical PCD file is structured:
 
@@ -668,67 +668,6 @@ Here's how a typical PCD file is structured:
 
     When coloring by intensity in the App, the intensity values are
     automatically scaled to use the full dynamic range of the colorscale.
-
-As usual, point cloud samples may contain any type and number of custom fields,
-including certain visualizable |Label| types as described below.
-
-.. _3d-detections:
-
-3D Detections
--------------
-
-The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D object
-detections represented as |Detection| instances with their `label`, `location`,
-`dimensions`, and `rotation` attributes populated as shown below:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    # Object label
-    label = "vehicle"
-
-    # Object center `[x, y, z]` in scene coordinates
-    location = [0.47, 1.49, 69.44]
-
-    # Object dimensions `[x, y, z]` in scene units
-    dimensions = [2.85, 2.63, 12.34]
-
-    # Object rotation `[x, y, z]` around its center, in `[-pi, pi]`
-    rotation = [0, -1.56, 0]
-
-    # A 3D object detection
-    detection = fo.Detection(
-        label=label,
-        location=location,
-        dimensions=dimensions,
-        rotation=rotation,
-    )
-
-.. _3d-polylines:
-
-3D Polylines
-------------
-
-The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
-represented as |Polyline| instances with their `label` and `points3d`
-attributes populated as shown below:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    # Object label
-    label = "lane"
-
-    # A list of lists of `[x, y, z]` points in scene coordinates describing
-    # the vertices of each shape in the polyline
-    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
-
-    # A set of semantically related 3D polylines
-    polyline = fo.Polyline(label=label, points3d=points3d)
 
 .. _groups-views:
 
