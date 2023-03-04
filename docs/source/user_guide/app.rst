@@ -298,16 +298,14 @@ attribute names in the App's sidebar:
 Sidebar mode
 ------------
 
-Each time you load a new dataset or view in the App, the sidebar updates to
-show statistics for the current collection. For large datasets with many
-samples or fields, this may involve substantial computation.
+Each time you load a new dataset or view in the App, the sidebar will update to
+show statistics for the current collection based on the **sidebar mode**:
 
-Therefore, the App supports three sidebar modes that you can choose between:
-
+-   `fast` (*default*): only compute counts for fields whose filter tray is
+    expanded
 -   `all`: always compute counts for all fields
--   `fast`: only compute counts for fields whose filter tray is expanded
--   `best` (*default*): automatically choose between `all` and `fast` mode
-    based on the size of the dataset
+-   `best`: automatically choose between `fast` and `all` mode based on the
+    size of the dataset
 
 When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:
@@ -340,8 +338,8 @@ the :ref:`dataset's App config <custom-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session.refresh()
