@@ -5,7 +5,6 @@ FiftyOne Server /frames route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import pprint
 
 from bson import ObjectId
 from starlette.endpoints import HTTPEndpoint
@@ -33,10 +32,6 @@ class Frames(HTTPEndpoint):
 
         view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
-        print("=" * 80)
-        print("/frames route")
-        print("view =", view)
-        print("view._pipeline = ", view._pipeline(frames_only=True))
 
         end_frame = min(num_frames + start_frame, frame_count)
         frame_filters = [
@@ -51,29 +46,23 @@ class Frames(HTTPEndpoint):
             for s in frame_filters
             if s is not None
         ]
-        print("frame_filters =", frame_filters)
         match_expr = {
             "$and": [
                 {"$eq": ["$_sample_id", ObjectId(sample_id)]},
                 {"$gte": ["$frame_number", start_frame]},
                 {"$lte": ["$frame_number", end_frame]},
-                *frame_filters,
+                *frame_filters,  # Not sure if this is necessary
             ]
         }
         sample_frame_pipeline = [
             {"$match": {"$expr": match_expr}},
             {"$sort": {"frame_number": 1}},
         ]
-        print("-" * 80)
-        print("sample_frame_pipeline =", sample_frame_pipeline)
+
         frames = (
             await foo.get_async_db_conn()[view._dataset._frame_collection_name]
             .aggregate(sample_frame_pipeline, allowDiskUse=True)
             .to_list(None)
-        )
-
-        print(
-            f"len(frames)={len(frames)}\nend_frame - start_frame + 1 = {end_frame - start_frame + 1}"
         )
 
         return {

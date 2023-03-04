@@ -1231,9 +1231,6 @@ class DatasetView(foc.SampleCollection):
             _view = _view._add_view_stage(stage, validate=False)
 
         if _attach_frames_idx is None and (attach_frames or frames_only):
-            print(
-                "_attach_frames_idx is None and (attach_frames or frames_only)"
-            )
             _attach_frames_idx = len(_pipelines)
 
         #######################################################################
@@ -1310,8 +1307,7 @@ class DatasetView(foc.SampleCollection):
 
         if group_slice is None:
             group_slice = self.group_slice
-        # print('*'*80)
-        # print('view._pipeline()', _pipeline)
+
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
