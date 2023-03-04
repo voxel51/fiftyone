@@ -7474,7 +7474,7 @@ def _merge_samples_pipeline(
         else:
             _omit_frame_fields = set()
 
-        _omit_frame_fields.update(["id"])
+        _omit_frame_fields.add("id")
         _omit_frame_fields.discard(frame_key_field)
         _omit_frame_fields.discard("frame_number")
 
