@@ -99,7 +99,6 @@ const SortBySimilarity = ({
         useExternalLink(SORT_BY_SIMILARITY);
         window.open(SORT_BY_SIMILARITY, "_blank");
       },
-      sx: { color: "#0288d1" },
     },
     {
       icon: "SettingsIcon",
@@ -115,7 +114,6 @@ const SortBySimilarity = ({
         arialLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
         onClick: () => sortBySimilarity(state),
-        sx: { color: "#2e7d32" },
       },
       ...groupButtons,
     ];
@@ -176,10 +174,10 @@ const SortBySimilarity = ({
               <Input
                 placeholder={"k"}
                 validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
-                value={state?.k ? "" : String(state.k)}
-                setter={(value) =>
-                  updateState({ k: !value.length ? undefined : Number(value) })
-                }
+                value={state?.k ? String(state.k) : ""}
+                setter={(value) => {
+                  updateState({ k: value == "" ? undefined : Number(value) });
+                }}
               />
             </div>
             <div
