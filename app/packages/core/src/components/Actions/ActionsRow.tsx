@@ -108,7 +108,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     <ActionDiv ref={ref}>
       <PillButton
         key={"button"}
-        icon={showImageSimilarityIcon ? <Search /> : <Wallpaper />}
+        icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
         open={open}
         onClick={toggleSimilarity}
         highlight={true}
