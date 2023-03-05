@@ -340,7 +340,10 @@ export const similarityMethods = selector<{
     const methods = get(atoms.dataset).brainMethods;
 
     return methods
-      .filter(({ config: { method } }) => method === "similarity")
+      .filter(
+        ({ config: { method, cls } }) =>
+          method === "similarity" || cls.toLowerCase().includes("similarity")
+      )
       .reduce(
         (
           { patches, samples },

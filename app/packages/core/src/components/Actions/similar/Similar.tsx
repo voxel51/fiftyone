@@ -104,7 +104,7 @@ const SortBySimilarity = ({
     {
       icon: "SettingsIcon",
       arialLabel: "Advanced settings",
-      tooltipText: "advanced seettings",
+      tooltipText: "advanced settings",
       onClick: () => setOpen((o) => !o),
     },
   ];
@@ -161,9 +161,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {(!state?.brainKey || !hasSimilarityKeys) && (
-        <Warning hasSimilarityKeys isImageSearch />
-      )}
+      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch />}
       {open && hasSimilarityKeys && (
         <div>
           <div>
