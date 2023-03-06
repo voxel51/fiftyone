@@ -106,6 +106,7 @@ class BrainRunConfig(RunConfig):
             fobv.ManualVisualizationConfig, etau.get_class(self.cls)
         ):
             return BrainRunType.visualization
+        return None
 
 
 @gql.type
