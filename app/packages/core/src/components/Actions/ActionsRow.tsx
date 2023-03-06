@@ -10,13 +10,7 @@ import {
   Wallpaper,
   Search,
 } from "@mui/icons-material";
-import React, {
-  MutableRefObject,
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import {
   selector,
@@ -36,7 +30,7 @@ import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
-import Similar, { isImageSimilaritySearch } from "./Similar/Similar";
+import SortBySimilarity from "./Similar/Similar";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -117,7 +111,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
         style={{ cursor: "pointer" }}
       />
       {open && (
-        <Similar
+        <SortBySimilarity
           key={`similary-${isImageSearch}`}
           modal={modal}
           close={() => setOpen(false)}
