@@ -4,22 +4,24 @@ import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";
 import { Route } from "../routing";
 
-import { pagesQuery } from "./__generated__/pagesQuery.graphql";
+import { IndexPageQuery } from "./__generated__/IndexPageQuery.graphql";
 import style from "./index.module.css";
 import { usePreloadedQuery } from "react-relay";
+import withQueryNode from "../withQueryNode";
 
-const query = graphql`
-  query pagesQuery($search: String = "", $count: Int, $cursor: String) {
+const IndexPageQueryNode = graphql`
+  query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
     ...NavFragment
+    ...configFragment
   }
 `;
 
-const IndexPage: Route<pagesQuery> = ({ prepared }) => {
-  const queryRef = usePreloadedQuery(query, prepared);
+const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
+  const queryRef = usePreloadedQuery(IndexPageQueryNode, prepared);
 
   return (
     <>
-      <Nav fragment={queryRef} />
+      <Nav fragment={queryRef} hasDataset={false} />
       <div className={style.page}>
         <Loading>No dataset selected</Loading>
       </div>
@@ -27,4 +29,4 @@ const IndexPage: Route<pagesQuery> = ({ prepared }) => {
   );
 };
 
-export default IndexPage;
+export default withQueryNode(IndexPage, IndexPageQueryNode);

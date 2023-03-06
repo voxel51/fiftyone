@@ -25,7 +25,7 @@ const makeRoutes = () => {
       component: () =>
         import("./pages/IndexPage").then((module) => module.default),
       query: () =>
-        import("./pages/__generated__/pagesQuery.graphql").then(
+        import("./pages/__generated__/IndexPageQuery.graphql").then(
           (module) => module.default
         ),
     },
@@ -36,9 +36,10 @@ const makeRoutes = () => {
           (module) => module.default as Route<Queries>
         ),
       query: () =>
-        import("./pages/datasets/__generated__/datasetQuery.graphql").then(
+        import("./pages/datasets/__generated__/DatasetPageQuery.graphql").then(
           (module) => module.default
         ),
+      searchParams: { view: "savedViewSlug" },
     },
   ]);
 };

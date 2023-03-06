@@ -8,7 +8,6 @@ import {
 } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useClearModal, useUnprocessedStateUpdate } from "@fiftyone/state";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -60,8 +59,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 };
 
 const useSortBySimilarity = (close) => {
-  const update = useUnprocessedStateUpdate();
-
+  return null;
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {

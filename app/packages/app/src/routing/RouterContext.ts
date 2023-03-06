@@ -1,4 +1,4 @@
-import { State } from "@fiftyone/state";
+import { ResponseFrom, State } from "@fiftyone/state";
 import {
   isElectron,
   isNotebook,
@@ -8,7 +8,15 @@ import {
 import { createBrowserHistory, createMemoryHistory } from "history";
 import React from "react";
 import { loadQuery, PreloadedQuery } from "react-relay";
-import { ConcreteRequest, Environment, VariablesOf } from "relay-runtime";
+import {
+  ConcreteRequest,
+  createOperationDescriptor,
+  Environment,
+  getRequest,
+  GraphQLTaggedNode,
+  fetchQuery,
+  VariablesOf,
+} from "relay-runtime";
 
 import { Queries, Route } from ".";
 import RouteDefinition from "./RouteDefinition";
@@ -22,6 +30,7 @@ export interface RouteData<T extends Queries> {
 
 export interface LocationState {
   view?: State.Stage[];
+  savedViewSlug?: string;
 }
 
 export interface Entry<T extends Queries> {
@@ -32,14 +41,19 @@ export interface Entry<T extends Queries> {
   routeData: RouteData<T>;
   state: LocationState;
   search: string;
+  cleanup: () => void;
 }
 
 export interface RoutingContext<T extends Queries> {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
+  load: () => Promise<Entry<T>>;
   pathname: string;
   state: LocationState;
-  subscribe: (cb: (entry: Entry<T>) => void) => () => void;
+  subscribe: (
+    cb: (entry: Entry<T>) => void,
+    onPending: () => void
+  ) => () => void;
 }
 
 interface Match<T extends Queries> {
@@ -69,38 +83,53 @@ export const createRouter = (
   const cleanup = history.listen(({ location }) => {
     if (!currentEntry) return;
     const state = location.state as LocationState;
-    currentEntry = {
-      ...prepareMatch(
-        environment,
-        matchRoute(routes, location.pathname, location.search, state)
-      ),
-      pathname: location.pathname,
-      search: location.search,
-      state,
-    };
-    subscribers.forEach((cb) => cb(currentEntry));
+    subscribers.forEach(([_, onPending]) => onPending());
+    prepareMatch(
+      environment,
+      matchRoute(routes, location.pathname, location.search, state)
+    ).then((match) => {
+      const { cleanup } = currentEntry;
+      currentEntry = {
+        ...match,
+        pathname: location.pathname,
+        search: location.search,
+        state,
+      };
+      requestAnimationFrame(() => {
+        subscribers.forEach(([cb]) => cb(currentEntry));
+        cleanup();
+      });
+    });
   });
 
   const context: RoutingContext<Queries> = {
     history,
-    get() {
+    load() {
       if (!currentEntry) {
         const state = history.location.state as LocationState;
-
-        currentEntry = {
-          ...prepareMatch(
-            environment,
-            matchRoute(
-              routes,
-              history.location.pathname,
-              history.location.search,
-              state
-            )
-          ),
-          pathname: history.location.pathname,
-          search: location.search,
-          state,
-        };
+        return prepareMatch(
+          environment,
+          matchRoute(
+            routes,
+            history.location.pathname,
+            history.location.search,
+            state
+          )
+        ).then((entry) => {
+          currentEntry = {
+            ...entry,
+            pathname: history.location.pathname,
+            search: location.search,
+            state,
+          };
+          return currentEntry;
+        });
+      }
+      return Promise.resolve(currentEntry);
+    },
+    get() {
+      if (!currentEntry) {
+        throw new Error("no entry loaded");
       }
       return currentEntry;
     },
@@ -110,12 +139,12 @@ export const createRouter = (
     get state() {
       return currentEntry.state;
     },
-    subscribe(cb) {
+    subscribe(cb, onPending) {
       const id = nextId++;
       const dispose = () => {
         subscribers.delete(id);
       };
-      subscribers.set(id, cb);
+      subscribers.set(id, [cb, onPending]);
       return dispose;
     },
   };
@@ -154,25 +183,45 @@ const prepareMatch = <T extends Queries>(
   if (route.query.get() == null) {
     route.query.load();
   }
-
+  let resolveEntry;
   const prepared = new Resource(() =>
     route.query.load().then((q) => {
-      const request = loadQuery(environment, q, matchData.variables || {}, {
-        fetchPolicy: "network-only",
+      const preloaded = loadQuery(environment, q, matchData.variables || {}, {
+        fetchPolicy: "network-ony",
       });
 
-      return request;
+      const subscription = preloaded.source?.subscribe({
+        next: (data) =>
+          route.component.load().then(() => {
+            resolveEntry({
+              component: route.component,
+              prepared,
+              preloaded,
+              query: route.query,
+              routeData: matchData,
+              data,
+              cleanup: () => {
+                subscription?.unsubscribe();
+              },
+            });
+          }),
+      });
+
+      return preloaded;
     })
   );
 
   prepared.load();
 
-  return {
-    component: route.component,
-    prepared,
-    query: route.query,
-    routeData: matchData,
-  };
+  return new Promise<{
+    component: Resource<Route<T>>;
+    prepared: Resource<PreloadedQuery<T, {}>>;
+    query: Resource<ConcreteRequest>;
+    routeData: RouteData<T>;
+    cleanup: () => void;
+  }>((resolve) => {
+    resolveEntry = resolve;
+  });
 };
 
 export const RouterContext = React.createContext<

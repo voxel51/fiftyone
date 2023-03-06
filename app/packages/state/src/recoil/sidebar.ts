@@ -217,6 +217,8 @@ const DEFAULT_VIDEO_GROUPS = [
 const NONE = [null, undefined];
 
 export const resolveGroups = (
+  sampleFields: StrictField[],
+  frameFields: StrictField[],
   dataset: State.Dataset,
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
@@ -235,7 +237,7 @@ export const resolveGroups = (
   if (!groups) {
     groups = JSON.parse(
       JSON.stringify(
-        dataset.frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
+        frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
       )
     );
   }
@@ -248,17 +250,17 @@ export const resolveGroups = (
 
   const present = new Set(groups.map(({ paths }) => paths).flat());
 
-  const updater = groupUpdater(groups, buildSchema(dataset));
+  const updater = groupUpdater(groups, buildSchema(sampleFields, frameFields));
 
-  const primitives = dataset.sampleFields
+  const primitives = sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
     .filter((path) => path !== "tags" && !present.has(path));
 
-  const labels = dataset.sampleFields
+  const labels = sampleFields
     .reduce(fieldsReducer([], LABELS), [])
     .filter((path) => !present.has(path));
 
-  const frameLabels = dataset.frameFields
+  const frameLabels = frameFields
     .reduce(fieldsReducer([], LABELS), [])
     .map((path) => `frames.${path}`)
     .filter((path) => !present.has(path));
@@ -268,15 +270,15 @@ export const resolveGroups = (
   updater("primitives", primitives);
 
   const fields = Object.fromEntries(
-    dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
+    sampleFields.map(({ name, ...rest }) => [name, rest])
   );
 
-  let other = dataset.sampleFields.reduce(
+  let other = sampleFields.reduce(
     fieldsReducer([DICT_FIELD, null, undefined]),
     []
   );
 
-  dataset.sampleFields
+  sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
     .forEach((name) => {
@@ -357,7 +359,7 @@ export const sidebarGroups = selectorFamily<
     ({ modal, loading, filtered = true, persist = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
-      let groups = get(sidebarGroupsDefinition(modal))
+      const groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
 

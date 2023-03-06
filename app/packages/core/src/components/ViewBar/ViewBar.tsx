@@ -3,7 +3,7 @@ import { useMachine } from "@xstate/react";
 import Color from "color";
 import React, { useCallback, useEffect, useRef } from "react";
 import { GlobalHotKeys } from "react-hotkeys";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 
 import { useOutsideClick } from "@fiftyone/state";

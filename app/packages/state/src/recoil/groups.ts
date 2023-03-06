@@ -106,7 +106,7 @@ export const hasPinnedSlice = selector<boolean>({
 
 export const groupField = selector<string>({
   key: "groupField",
-  get: ({ get }) => get(dataset).groupField,
+  get: ({ get }) => get(dataset)?.groupField,
 });
 
 export const groupId = selector<string>({

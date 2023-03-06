@@ -27,7 +27,7 @@ const App: React.FC = () => {
 
   const plugins = usePlugins();
 
-  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
+  if (plugins.isLoading) return <Loading>WUT</Loading>;
   if (plugins.hasError) return <Loading>Plugin error...</Loading>;
 
   return <Network environment={environment} context={context} />;

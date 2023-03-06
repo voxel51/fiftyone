@@ -24,7 +24,7 @@ const compilePath = (path: string): CompilePathResult => {
 
 interface MatchPathOptions {
   path: string;
-  queryParams?: { [key: string]: string };
+  searchParams?: { [key: string]: string };
 }
 
 export interface MatchPathResult<T extends OperationType> {
@@ -39,7 +39,7 @@ export const matchPath = <T extends OperationType>(
   search: string,
   variables: Partial<VariablesOf<T>>
 ): MatchPathResult<T> | null => {
-  const { path, queryParams = {} } = options;
+  const { path, searchParams = {} } = options;
 
   const { regexp, keys } = compilePath(path);
   const match = regexp.exec(pathname);
@@ -52,7 +52,7 @@ export const matchPath = <T extends OperationType>(
   }, variables);
 
   const params = new URLSearchParams(search);
-  Object.entries(queryParams).forEach(([param, variable]) => {
+  Object.entries(searchParams).forEach(([param, variable]) => {
     if (params.has(param)) {
       all = {
         ...all,

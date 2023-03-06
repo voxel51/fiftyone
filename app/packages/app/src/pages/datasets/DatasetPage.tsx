@@ -10,10 +10,11 @@ import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
-import { datasetQuery } from "./__generated__/datasetQuery.graphql";
+import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import withQueryNode from "../../withQueryNode";
 
-const query = graphql`
-  query datasetQuery(
+export const DatasetPageQueryNode = graphql`
+  query DatasetPageQuery(
     $search: String = ""
     $count: Int
     $cursor: String
@@ -24,15 +25,16 @@ const query = graphql`
     ...NavFragment
     ...datasetFragment
     ...savedViewsFragment
+    ...configFragment
   }
 `;
 
-const DatasetPage: Route<datasetQuery> = ({ prepared }) => {
-  const queryRef = usePreloadedQuery(query, prepared);
+const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
+  const queryRef = usePreloadedQuery(DatasetPageQueryNode, prepared);
 
   return (
     <>
-      <Nav fragment={queryRef} />
+      <Nav fragment={queryRef} hasDataset={true} />
       <div className={style.page}>
         <ViewSelection.datasetQueryContext.Provider value={queryRef}>
           <Dataset />
@@ -42,4 +44,4 @@ const DatasetPage: Route<datasetQuery> = ({ prepared }) => {
   );
 };
 
-export default DatasetPage;
+export default withQueryNode(DatasetPage, DatasetPageQueryNode);

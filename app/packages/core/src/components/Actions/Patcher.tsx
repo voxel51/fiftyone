@@ -1,5 +1,5 @@
-import React, { useContext, useState } from "react";
-import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
+import React, { useState } from "react";
+import { selector, useRecoilValue } from "recoil";
 import { useSpring } from "@react-spring/web";
 import {
   useToClips,
@@ -11,16 +11,9 @@ import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
-  getFetchFunction,
   PATCHES_FIELDS,
-  toSnakeCase,
 } from "@fiftyone/utilities";
 
-import {
-  RouterContext,
-  useSetView,
-  useUnprocessedStateUpdate,
-} from "@fiftyone/state";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
@@ -32,7 +25,6 @@ import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { State } from "@fiftyone/state";
 
 export const patchesFields = selector<string[]>({
   key: "patchesFields",

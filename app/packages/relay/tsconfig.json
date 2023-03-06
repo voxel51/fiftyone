@@ -13,7 +13,8 @@
         "noImplicitReturns": true,
         "noImplicitAny": false,
         "plugins": [{ "name": "typescript-plugin-css-modules" }],
-        "composite": true
+        "composite": true,
+        "jsx": "react"
     },
     "include": ["./src"]
 }

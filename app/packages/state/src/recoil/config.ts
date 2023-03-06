@@ -1,26 +1,15 @@
-import { config as configGraphQLQuery, configQuery } from "@fiftyone/relay";
+import {
+  configFragment,
+  configFragment$data,
+  graphQLFragmentEffect,
+} from "@fiftyone/relay";
 import { RGB } from "@fiftyone/utilities";
-import { selector } from "recoil";
-import { graphQLSelector } from "recoil-relay";
-import { VariablesOf } from "relay-runtime";
-import { RelayEnvironmentKey } from "./relay";
+import { atom, selector } from "recoil";
 
-export type ResponseFrom<TResponse extends { response: unknown }> =
-  TResponse["response"];
-
-const configData = graphQLSelector<
-  VariablesOf<configQuery>,
-  ResponseFrom<configQuery>
->({
+const configData = atom<configFragment$data>({
   key: "configData",
-  environment: RelayEnvironmentKey,
-  query: configGraphQLQuery,
-  variables: () => {
-    return {};
-  },
-  mapResponse: (data) => {
-    return data;
-  },
+  default: null,
+  effects: [graphQLFragmentEffect(configFragment)],
 });
 
 export const colorscale = selector<RGB[]>({

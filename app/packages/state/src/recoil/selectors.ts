@@ -109,7 +109,7 @@ export const datasetAppConfig = selector<State.DatasetAppConfig>({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    return get(atoms.dataset).defaultMaskTargets || {};
+    return get(atoms.dataset)?.defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -119,7 +119,7 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = get(atoms.dataset).defaultMaskTargets || {};
+    const defaults = get(atoms.dataset)?.defaultMaskTargets || {};
     const labelTargets = get(atoms.dataset)?.maskTargets || {};
     return {
       defaults,

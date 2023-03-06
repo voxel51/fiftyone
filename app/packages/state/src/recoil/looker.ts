@@ -76,7 +76,7 @@ export const lookerOptions = selectorFamily<
         showSkeletons: get(
           selectors.appConfigOption({ key: "showSkeletons", modal })
         ),
-        defaultSkeleton: get(atoms.dataset).defaultSkeleton,
+        defaultSkeleton: get(atoms.dataset)?.defaultSkeleton,
         skeletons: Object.fromEntries(
           get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
         ),

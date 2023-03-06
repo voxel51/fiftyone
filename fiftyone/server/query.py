@@ -39,6 +39,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.stages import StageDefinition, stage_definitions_resolver
 from fiftyone.server.utils import from_dict
 
 
@@ -370,6 +371,10 @@ class Query(fosa.AggregateQuery):
             return samples.edges[0].node
 
         return None
+
+    stage_definitions: t.List[StageDefinition] = gql.field(
+        stage_definitions_resolver
+    )
 
     @gql.field
     def teams_submission(self) -> bool:

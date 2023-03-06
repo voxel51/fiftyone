@@ -16,7 +16,11 @@ export const view = atom<State.Stage[]>({
           kwargs: rfn.writableArray(
             rfn.tuple(
               rfn.string(),
-              rfn.custom<unknown>((v) => v)
+              rfn.nullable(
+                rfn.custom<unknown>((v) => {
+                  return v;
+                })
+              )
             ) as rfn.Checker<[string, unknown]>
           ),
           _uuid: rfn.optional(rfn.string()),
@@ -26,14 +30,23 @@ export const view = atom<State.Stage[]>({
   ],
 });
 
-export const viewCls = atom<string>({
+export const viewCls = atom({
   key: "viewCls",
   default: null,
+  effects: [
+    syncEffect({ storeKey: "router", refine: rfn.nullable(rfn.string()) }),
+  ],
 });
 
 export const viewName = atom<string>({
   key: "viewName",
   default: null,
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.nullable(rfn.string()),
+    }),
+  ],
 });
 
 export const isRootView = selector<boolean>({

@@ -21,11 +21,9 @@ const Network: React.FC<{
       >
         <RouterContext.Provider value={context}>
           <ErrorBoundary>
-            <Suspense fallback={<Loading>Pixelating...</Loading>}>
-              <Sync>
-                <Renderer router={context} />
-              </Sync>
-            </Suspense>
+            <Sync>
+              <Renderer router={context} />
+            </Sync>
           </ErrorBoundary>
         </RouterContext.Provider>
       </RecoilRelayEnvironment>

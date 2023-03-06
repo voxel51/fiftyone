@@ -2,6 +2,7 @@ import { Loading } from "@fiftyone/components";
 import {
   collapseFields,
   resolveGroups,
+  ResponseFrom,
   State,
   stateSubscription,
   transformDataset,
@@ -9,17 +10,32 @@ import {
   useRefresh,
   useReset,
   useScreenshot,
+  viewsAreEqual,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { useRef, useState } from "react";
+import React, { startTransition, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue } from "recoil";
+import { DefaultValue, useRecoilValue } from "recoil";
 import { RecoilSync } from "recoil-sync";
-import { GraphQLResponseWithData } from "relay-runtime";
+import {
+  createOperationDescriptor,
+  Environment,
+  getRequest,
+  handlePotentialSnapshotErrors,
+  GraphQLResponseWithData,
+  GraphQLTaggedNode,
+  VariablesOf,
+} from "relay-runtime";
 
 import Setup from "../components/Setup";
+import { datasetQuery } from "../pages/datasets/__generated__/datasetQuery.graphql";
 
-import { Queries, RoutingContext, useRouterContext } from "../routing";
+import {
+  LocationState,
+  Queries,
+  RoutingContext,
+  useRouterContext,
+} from "../routing";
 import { getDatasetName, getSavedViewName } from "./utils";
 
 enum Events {
@@ -111,9 +127,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                 ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
                 : `/${search}`;
 
-              router.history.replace(path, {
-                view: state.view || null,
-              });
+              //router.history.replace(path, { view: data.view || [] });
 
               break;
             }
@@ -142,31 +156,49 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const sidebarGroupsRef = useRef<State.SidebarGroup[]>();
 
   const HANDLERS = {
-    datasetQuery: (itemKey: string, response: State.Dataset) => {
+    DatasetPageQuery: (
+      itemKey: string,
+      response: State.Dataset,
+      variables: VariablesOf<datasetQuery>
+    ) => {
       switch (itemKey) {
         case "dataset":
           return response;
-
         case "sidebarGroupsDefinition__false":
           sidebarGroupsRef.current = resolveGroups(
+            response.sampleFields,
+            response.frameFields,
             response,
             sidebarGroupsRef.current
           );
           return sidebarGroupsRef.current;
+        case "sampleFields":
+          return response.sampleFields;
+        case "frameFields":
+          return response.frameFields;
         case "view":
-          return;
+          const view = variables.savedViewSlug
+            ? response.stages
+            : variables.view;
+          return view;
+        case "viewCls":
+          return response.viewCls;
+        case "viewName":
+          return variables.savedViewSlug || null;
         default:
           break;
       }
     },
-    pagesQuery: (itemKey: string, _: GraphQLResponseWithData) => {
+    IndexPageQuery: (itemKey: string, _: GraphQLResponseWithData) => {
       switch (itemKey) {
         case "dataset":
           return null;
         case "sidebarGroupsDefinition__false":
-          return null;
+          return undefined;
         case "view":
-          return null;
+          return [];
+        case "viewCls":
+          return undefined;
         default:
           break;
       }
@@ -183,41 +215,58 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         <RecoilSync
           storeKey="router"
           read={(itemKey) => {
-            return pullQuery(router).then((query) => {
-              return query.source
-                ?.toPromise()
-                .then((data) =>
-                  HANDLERS[query.name](itemKey, PROCESSORS[query.name](data))
-                );
+            return router.load().then((entry) => {
+              if (itemKey === "entry") {
+                return router.get();
+              }
+
+              const { preloaded: query, data } = entry;
+              return HANDLERS[query.name](
+                itemKey,
+                PROCESSORS[query.name](data),
+                query.variables,
+                router.history.location.state,
+                true
+              );
             });
           }}
-          listen={({ updateAllKnownItems }) => {
-            return router.subscribe(() => {
-              pullQuery(router).then((query) => {
-                query.source?.toPromise().then((data) => {
-                  const items = [
-                    "dataset",
-                    "sidebarGroupsDefinition__false",
-                    "view",
-                  ].reduce((map, itemKey) => {
-                    map.set(
-                      itemKey,
-                      HANDLERS[query.name](
-                        itemKey,
-                        PROCESSORS[query.name](data)
-                      )
-                    );
+          listen={({ updateItems }) => {
+            return router.subscribe(
+              (entry) => {
+                const { preloaded, data } = entry;
+                const items = [
+                  "dataset",
+                  "sidebarGroupsDefinition__false",
+                  "view",
+                  "viewName",
+                  "sampleFields",
+                  "frameFields",
+                  "viewCls",
+                ].reduce((map, itemKey) => {
+                  const result = HANDLERS[preloaded.name](
+                    itemKey,
+                    PROCESSORS[preloaded.name](data),
+                    preloaded.variables,
+                    router.history.location.state
+                  );
+                  if (result !== undefined) {
+                    map.set(itemKey, result);
+                  }
 
-                    return map;
-                  }, new Map());
+                  return map;
+                }, new Map());
 
-                  updateAllKnownItems(items);
-                });
-              });
-            });
+                items.set("entry", entry);
+
+                requestAnimationFrame(() => updateItems(items));
+              },
+              () => {}
+            );
           }}
           write={({ diff }) => {
-            console.log(diff);
+            diff.forEach((value, key) => {
+              WRITE_HANDLERS[key] && WRITE_HANDLERS[key](router, value);
+            });
           }}
         >
           {children}
@@ -228,18 +277,74 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 };
 
 const PROCESSORS = {
-  datasetQuery: (response: GraphQLResponseWithData) => {
+  DatasetPageQuery: (response: GraphQLResponseWithData) => {
     const dataset = { ...transformDataset(response.data.dataset) };
     dataset.sampleFields = collapseFields(dataset.sampleFields);
     dataset.frameFields = collapseFields(dataset.frameFields);
 
     return dataset;
   },
-  pagesQuery: (_: GraphQLResponseWithData) => null,
+  IndexPageQuery: (_: GraphQLResponseWithData) => null,
 };
 
-const pullQuery = (router: RoutingContext<Queries>) => {
-  return router.get().prepared.load();
+const WRITE_HANDLERS = {
+  viewName: (
+    router: RoutingContext<Queries>,
+    slug: string | null | DefaultValue
+  ) => {
+    if (slug instanceof DefaultValue) {
+      slug = null;
+    }
+    const params = new URLSearchParams(router.get().search);
+    const current = params.get("view");
+    if (current === slug) {
+      return;
+    }
+
+    if (slug) {
+      params.set("view", slug);
+    } else {
+      params.delete("view");
+    }
+
+    let search = params.toString();
+    if (search.length) {
+      search = `?${search}`;
+    }
+
+    router.history.push(`${router.get().pathname}${search}`, { view: [] });
+  },
+  dataset: null,
+  view: (
+    router: RoutingContext<Queries>,
+    view: DefaultValue | State.Stage[]
+  ) => {
+    if (view instanceof DefaultValue) {
+      view = [];
+    }
+
+    console.log(
+      viewsAreEqual(view, router.state.view),
+      view,
+      router.state.view
+    );
+    const params = new URLSearchParams(router.get().search);
+    const current = params.get("view");
+
+    if (!viewsAreEqual(view, router.state.view) || current) {
+      router.history.push(`${router.get().pathname}`, { view });
+    }
+  },
+  sidebarGroupsDefinition__false: null,
+  viewCls: (router, viewCls) => {
+    return viewCls;
+  },
+  sampleFields: (router, v) => {
+    return v;
+  },
+  frameFields: (router, v) => {
+    return v;
+  },
 };
 
 export default Sync;

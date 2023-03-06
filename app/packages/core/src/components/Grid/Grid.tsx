@@ -40,7 +40,7 @@ const Grid: React.FC<{}> = () => {
       initialRequestKey: 1,
       options: { rowAspectRatioThreshold: threshold, offset: 52 },
       onItemClick: expandSample,
-      onResize: resize.current,
+      onResize: (s) => resize.current(s),
       onItemResize: (id, dimensions) =>
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
       get: pager,

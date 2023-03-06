@@ -86,16 +86,19 @@ const Selector = <T extends unknown>({
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
+  const local = useRef(value || "");
 
   const onSelectWrapper = useMemo(() => {
     return (value: T) => {
       onSelect(value);
+      local.current = toKey(value);
       setEditing(false);
     };
   }, [onSelect]);
 
   useEffect(() => {
     setSearch(value || "");
+    local.current = value || "";
   }, [value]);
 
   const ref = useRef<HTMLInputElement | null>();
@@ -146,7 +149,7 @@ const Selector = <T extends unknown>({
           triggerProps.ref(node);
         }}
         className={style.input}
-        value={editing ? search : value || ""}
+        value={editing ? search : local.current}
         placeholder={placeholder}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {

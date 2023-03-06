@@ -55,14 +55,18 @@ export const filterPaths = (
     : [];
 };
 
-export const buildSchema = (dataset: State.Dataset): Schema => {
-  const schema = dataset.sampleFields.reduce(schemaReduce, {});
+export const buildSchema = (
+  sampleFields: StrictField[],
+  frameFields: StrictField[]
+): Schema => {
+  const schema = sampleFields.reduce(schemaReduce, {});
 
-  if (dataset.frameFields && dataset.frameFields.length) {
+  if (frameFields && frameFields.length) {
     schema.frames = {
+      path: "frames",
       ftype: LIST_FIELD,
       name: "frames",
-      fields: dataset.frameFields.reduce(schemaReduce, {}),
+      fields: frameFields.reduce(schemaReduce, {}),
       dbField: null,
       description: null,
       info: null,
@@ -86,7 +90,9 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
       }
 
       const fields = (
-        space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
+        space === State.SPACE.FRAME
+          ? get(atoms.frameFields)
+          : get(atoms.sampleFields)
       ).reduce(schemaReduce, {});
 
       return fields;
@@ -133,7 +139,7 @@ export const fullSchema = selector<Schema>({
 
     const frames = get(fieldSchema({ space: State.SPACE.FRAME }));
 
-    if (Boolean(Object.keys(frames).length)) {
+    if (Object.keys(frames).length) {
       return {
         ...schema,
         frames: {
@@ -372,7 +378,7 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
     ({ get }) => {
       return filterPaths(
         get(_activeFields({ modal })) || get(labelFields({})),
-        buildSchema(get(atoms.dataset))
+        buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
     },
   set:

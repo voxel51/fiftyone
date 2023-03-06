@@ -50,6 +50,10 @@ export const aggregationQuery = graphQLSelectorFamily<
         view: !root ? get(viewAtoms.view) : [],
       };
 
+      if (!aggForm.dataset) {
+        return new Promise(() => {});
+      }
+
       return {
         form: aggForm,
       };
@@ -172,7 +176,7 @@ export const stringCountResults = selectorFamily({
     ({ get }): { count: number; results: [string | null, number][] } => {
       const keys = params.path.split(".");
       let parent = keys[0];
-      let field = get(schemaAtoms.field(parent));
+      const field = get(schemaAtoms.field(parent));
 
       if (!field && parent === "frames") {
         parent = `frames.${keys[1]}`;

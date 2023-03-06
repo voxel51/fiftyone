@@ -91,7 +91,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     top: active ? -3 : 0,
     opacity: 1,
     from: {
-      opacity: 0,
+      opacity: 1,
     },
     config: config.stiff,
   }));
@@ -234,7 +234,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         : theme.text.tertiary,
     opacity: 1,
     from: {
-      opacity: 0,
+      opacity: 1,
     },
   });
 
@@ -251,7 +251,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     borderBottomRightRadius: !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
-      opacity: 0,
+      opacity: 1,
     },
     alignItems: "center",
   });

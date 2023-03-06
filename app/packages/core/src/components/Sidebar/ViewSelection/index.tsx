@@ -6,6 +6,7 @@ import {
   atom,
   useRecoilState,
   useRecoilValue,
+  useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
@@ -47,9 +48,9 @@ export default function ViewSelection() {
   const datasetName = useRecoilValue(fos.datasetName);
   const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const savedViewParam = useRecoilValue(fos.viewName);
+  const [savedViewParam, setViewName] = useRecoilState(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
-  const setView = fos.useSetView();
+  const resetView = useResetRecoilState(fos.view);
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
 
   const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
@@ -189,7 +190,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setView([], undefined, createSavedView.slug);
+                    setViewName(createSavedView.slug);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -206,7 +207,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: () => {
                   if (selected?.label === deletedSavedViewName) {
-                    setView([], []);
+                    resetView();
                   }
                 },
               }
@@ -218,11 +219,11 @@ export default function ViewSelection() {
           selected={selected}
           setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.slug);
+            setViewName(item.slug);
           }}
           onClear={() => {
             setSelected(fos.DEFAULT_SELECTED);
-            setView([], []);
+            resetView();
           }}
           items={searchData}
           onEdit={(item) => {

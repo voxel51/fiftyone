@@ -5,6 +5,7 @@ import { Sample } from "@fiftyone/looker/src/state";
 import { State } from "./types";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { syncEffect } from "recoil-sync";
+import { StrictField } from "@fiftyone/utilities";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -124,13 +125,37 @@ export const dataset = atom({
           createdAt: rfn.nullable(rfn.number()),
           lastLoadedAt: rfn.nullable(rfn.number()),
           mediaType: rfn.string(),
-          sampleFields: rfn.custom((v) => v),
-          frameFields: rfn.custom((v) => v),
           viewName: rfn.nullable(rfn.string()),
           skeletons: rfn.custom((v) => v),
         })
       ),
       storeKey: "router",
+    }),
+  ],
+});
+
+export const sampleFields = atom<StrictField[]>({
+  key: "sampleFields",
+  default: [],
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.writableArray(
+        rfn.custom<StrictField>((v) => v as StrictField)
+      ),
+    }),
+  ],
+});
+
+export const frameFields = atom<StrictField[]>({
+  key: "frameFields",
+  default: [],
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.writableArray(
+        rfn.custom<StrictField>((v) => v as StrictField)
+      ),
     }),
   ],
 });

@@ -13,7 +13,7 @@ import * as fos from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useMemo } from "react";
+import React, { Suspense, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
 import { useDebounce } from "react-use";
@@ -24,12 +24,14 @@ import ga from "../ga";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 
-import { DatasetsPaginationQuery } from "./__generated__/DatasetsPaginationQuery.graphql";
+import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
+import { NavFragment$key } from "./__generated__/NavFragment.graphql";
+import { NavGA } from "./__generated__/NavGA.graphql";
 
-const getUseSearch = (fragment: NavDatasets_query$key) => {
+const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
     const refresh = useRecoilValue(fos.refresher);
-    const { data, refetch } = usePaginationFragment<DatasetsPaginationQuery>(
+    const { data, refetch } = usePaginationFragment(
       graphql`
         fragment NavDatasets on Query
         @refetchable(queryName: "DatasetsPaginationQuery") {
@@ -66,7 +68,7 @@ const getUseSearch = (fragment: NavDatasets_query$key) => {
   };
 };
 
-export const useGA = (fragment) => {
+export const useGA = (fragment: NavGA) => {
   const info = useFragment(
     graphql`
       fragment NavGA on Query {
@@ -106,7 +108,10 @@ export const useGA = (fragment) => {
   }, []);
 };
 
-const Nav: React.FC<{ fragment }> = ({ fragment }) => {
+const Nav: React.FC<{
+  fragment: NavFragment$key;
+  hasDataset: boolean;
+}> = ({ fragment, hasDataset }) => {
   const data = useFragment(
     graphql`
       fragment NavFragment on Query {
@@ -118,14 +123,13 @@ const Nav: React.FC<{ fragment }> = ({ fragment }) => {
     `,
     fragment
   );
-  useGA(data);
+  //useGA(data);
   const useSearch = getUseSearch(data);
 
   const [teams, setTeams] = useRecoilState(fos.appTeamsIsOpen);
   const refresh = fos.useRefresh();
   const { mode, setMode } = useColorScheme();
   const [_, setTheme] = useRecoilState(fos.theme);
-  const dataset = useRecoilValue(fos.datasetName);
 
   return (
     <>
@@ -134,8 +138,12 @@ const Nav: React.FC<{ fragment }> = ({ fragment }) => {
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
-        {dataset && <ViewBar />}
-        {!dataset && <div style={{ flex: 1 }}></div>}
+        {hasDataset && (
+          <Suspense fallback={<div style={{ flex: 1 }}></div>}>
+            <ViewBar />
+          </Suspense>
+        )}
+        {!hasDataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>
           {!data.teamsSubmission && (
             <Button
