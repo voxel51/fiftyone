@@ -124,13 +124,13 @@ class SaveContext(object):
                 % (self._dataset.name, sample._dataset.name)
             )
 
-        sample_op, frame_ops = sample._save(deferred=True)
-        updated = sample_op is not None or frame_ops
+        sample_ops, frame_ops = sample._save(deferred=True)
+        updated = sample_ops or frame_ops
 
         self._curr_batch_size += 1
 
-        if sample_op is not None:
-            self._sample_ops.append(sample_op)
+        if sample_ops:
+            self._sample_ops.extend(sample_ops)
 
         if frame_ops:
             self._frame_ops.extend(frame_ops)

@@ -2287,7 +2287,6 @@ class DatasetTests(unittest.TestCase):
             dataset.default_classes.append(1)
             dataset.save()  # error
 
-        dataset.default_classes.pop()
         dataset.save()  # success
 
         classes = {"ground_truth": ["cat", "dog"]}
@@ -2301,13 +2300,11 @@ class DatasetTests(unittest.TestCase):
             dataset.classes["other"] = {"hi": "there"}
             dataset.save()  # error
 
-        dataset.classes.pop("other")
+        dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.classes["ground_truth"].append(1)
             dataset.save()  # error
-
-        dataset.classes["ground_truth"].pop()
 
         dataset.save()  # success
 
@@ -2350,7 +2347,6 @@ class DatasetTests(unittest.TestCase):
             dataset.default_mask_targets["hi"] = "there"
             dataset.save()  # error
 
-        dataset.default_mask_targets.pop("hi")
         dataset.save()  # success
 
         mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
@@ -2363,28 +2359,24 @@ class DatasetTests(unittest.TestCase):
             dataset.mask_targets["hi"] = "there"
             dataset.save()  # error
 
-        dataset.mask_targets.pop("hi")
         dataset.save()  # success
 
         with self.assertRaises(ValidationError):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
-        dataset.mask_targets.pop(1)
         dataset.save()  # success
 
         with self.assertRaises(ValidationError):
             dataset.mask_targets["ground_truth"]["hi"] = "there"
             dataset.save()  # error
 
-        dataset.mask_targets["ground_truth"].pop("hi")
         dataset.save()  # success
 
         with self.assertRaises(ValidationError):
             dataset.mask_targets["predictions"] = {1: {"too": "many"}}
             dataset.save()  # error
 
-        dataset.mask_targets.pop("predictions")
         dataset.save()  # success
 
     @drop_datasets
@@ -2403,12 +2395,13 @@ class DatasetTests(unittest.TestCase):
             dataset.default_skeleton.labels = [1]
             dataset.save()  # error
 
-        dataset.default_skeleton.labels = ["left eye", "right eye"]
         dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.default_skeleton.edges = "hello"
             dataset.save()  # error
+
+        dataset.save()  # success
 
         dataset.default_skeleton.edges = [[0, 1]]
         dataset.save()  # success
@@ -2430,7 +2423,6 @@ class DatasetTests(unittest.TestCase):
             dataset.skeletons["hi"] = "there"
             dataset.save()  # error
 
-        dataset.skeletons.pop("hi")
         dataset.save()  # success
 
         with self.assertRaises(Exception):
@@ -2439,21 +2431,18 @@ class DatasetTests(unittest.TestCase):
             )
             dataset.save()  # error
 
-        dataset.skeletons.pop(1)
         dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.skeletons["ground_truth"].labels = [1]
             dataset.save()  # error
 
-        dataset.skeletons["ground_truth"].labels = ["left eye", "right eye"]
         dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.skeletons["ground_truth"].edges = "hello"
             dataset.save()  # error
 
-        dataset.skeletons["ground_truth"].edges = [[0, 1]]
         dataset.save()  # success
 
         dataset.skeletons["ground_truth"].labels = None

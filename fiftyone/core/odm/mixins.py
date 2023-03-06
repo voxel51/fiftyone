@@ -8,20 +8,19 @@ Mixins and helpers for dataset backing documents.
 from collections import OrderedDict
 
 from bson import ObjectId
+from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .database import get_db_conn
-from .dataset import create_field, SampleFieldDocument
-from .document import Document
+from .dataset import SampleFieldDocument
 from .utils import (
     deserialize_value,
     serialize_value,
     create_field,
     create_implied_field,
-    get_implied_field_kwargs,
     validate_field_name,
     validate_fields_match,
 )
@@ -746,7 +745,7 @@ class DatasetMixin(object):
 
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
-        rename_expr = {k: v for k, v in zip(_paths, _new_paths)}
+        rename_expr = dict(zip(_paths, _new_paths))
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, {"$rename": rename_expr})
@@ -1222,45 +1221,75 @@ class DatasetMixin(object):
 
         delattr(cls, field_name)
 
-    def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
-        """Updates an existing document.
+    def _update(
+        self,
+        _id,
+        updates,
+        deferred=False,
+        upsert=False,
+        filtered_fields=None,
+        **kwargs,
+    ):
+        """Updates an existing document."""
+        extra_updates = self._extract_extra_updates(updates, filtered_fields)
 
-        Helper method; should only be used inside
-        :meth:`DatasetSampleDocument.save`.
-        """
+        if deferred:
+            ops = self._deferred_updates(_id, updates, extra_updates, upsert)
+            updated_existing = None
+        else:
+            ops = None
+            updated_existing = self._do_updates(
+                _id, updates, extra_updates, upsert
+            )
+
+        return ops, updated_existing
+
+    def _do_updates(self, _id, updates, extra_updates, upsert):
         updated_existing = True
-
         collection = self._get_collection()
 
-        select_dict = {"_id": object_id}
-
-        extra_updates = self._extract_extra_updates(
-            update_doc, filtered_fields
-        )
-
-        if update_doc:
+        if updates:
             result = collection.update_one(
-                select_dict, update_doc, upsert=True
+                {"_id": _id}, updates, upsert=upsert
             ).raw_result
+
             if result is not None:
-                updated_existing = result.get("updatedExisting")
+                updated_existing = result.get("updatedExisting", None)
 
         for update, element_id in extra_updates:
             result = collection.update_one(
-                select_dict,
+                {"_id": _id},
                 update,
                 array_filters=[{"element._id": element_id}],
-                upsert=True,
+                upsert=upsert,
             ).raw_result
 
             if result is not None:
                 updated_existing = updated_existing and result.get(
-                    "updatedExisting"
+                    "updatedExisting", None
                 )
 
         return updated_existing
 
-    def _extract_extra_updates(self, update_doc, filtered_fields):
+    def _deferred_updates(self, _id, updates, extra_updates, upsert):
+        ops = []
+
+        if updates:
+            ops.append(UpdateOne({"_id": _id}, updates, upsert=upsert))
+
+        for update, element_id in extra_updates:
+            ops.append(
+                UpdateOne(
+                    {"_id": _id},
+                    update,
+                    array_filters=[{"element._id": element_id}],
+                    upsert=upsert,
+                )
+            )
+
+        return ops
+
+    def _extract_extra_updates(self, updates, filtered_fields):
         """Extracts updates for filtered list fields that need to be updated
         by ID, not relative position (index).
         """
@@ -1275,7 +1304,7 @@ class DatasetMixin(object):
         #   my_detections.detections.1.label  <- NO MATCH
         #
         if filtered_fields:
-            for d in update_doc.values():
+            for d in updates.values():
                 for k in d.keys():
                     for ff in filtered_fields:
                         if k.startswith(ff) and not k[len(ff) :].lstrip(
@@ -1286,8 +1315,8 @@ class DatasetMixin(object):
                                 "is not allowed" % k
                             )
 
-        if filtered_fields and "$set" in update_doc:
-            d = update_doc["$set"]
+        if filtered_fields and "$set" in updates:
+            d = updates["$set"]
             del_keys = []
 
             for k, v in d.items():
@@ -1310,8 +1339,8 @@ class DatasetMixin(object):
             for k in del_keys:
                 del d[k]
 
-            if not update_doc["$set"]:
-                del update_doc["$set"]
+            if not updates["$set"]:
+                del updates["$set"]
 
         return extra_updates
 
