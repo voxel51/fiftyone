@@ -77,7 +77,6 @@ def get_view(
     count_label_tags=False,
     extended_stages=None,
     sample_filter=None,
-    sort=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -94,7 +93,6 @@ def get_view(
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        sort (False): whether to include sort extended stages
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -128,7 +126,6 @@ def get_view(
             filters,
             count_label_tags=count_label_tags,
             extended_stages=extended_stages,
-            sort=sort,
         )
 
     return view
@@ -139,7 +136,6 @@ def get_extended_view(
     filters=None,
     count_label_tags=False,
     extended_stages=None,
-    sort=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -149,7 +145,6 @@ def get_extended_view(
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
         extended_stages (None): extended view stages
-        sort (False): wheter to include sort extended stages
 
     The function returns a fiftyone.core.collections.SampleCollection
     """
@@ -180,7 +175,7 @@ def get_extended_view(
             view = view.add_stage(stage)
 
     if extended_stages:
-        view = extend_view(view, extended_stages, sort)
+        view = extend_view(view, extended_stages)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
@@ -190,21 +185,19 @@ def get_extended_view(
     return view
 
 
-def extend_view(view, extended_stages, sort):
+def extend_view(view, extended_stages):
 
     """If sorting conditions are met, it will the sorting of the sample based on the extended stages defined.
     Then add the stages to the view and return this modified view.
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         extended_stages: extended view stages
-        sort (False): wheter to include sort extended stages
     """
 
     for cls, d in extended_stages.items():
         kwargs = [[k, v] for k, v in d.items()]
         stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
-        if sort or not isinstance(stage, (fosg.SortBySimilarity, fosg.SortBy)):
-            view = view.add_stage(stage)
+        view = view.add_stage(stage)
 
     return view
 
