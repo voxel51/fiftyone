@@ -75,7 +75,7 @@ export namespace State {
       patchesField: string | null;
       cls: string;
       supportsPrompts: boolean | null;
-      type: string[] | null;
+      type: string | null;
     };
   }
 

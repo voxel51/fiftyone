@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5d26bb3538f8680820215c6d2e9515d5>>
+ * @generated SignedSource<<435d3645ae5fe7685810270798dcc308>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -38,7 +38,7 @@ export type DatasetQuery$data = {
         readonly method: string | null;
         readonly patchesField: string | null;
         readonly supportsPrompts: boolean | null;
-        readonly type: ReadonlyArray<string | null> | null;
+        readonly type: string | null;
       } | null;
       readonly key: string;
       readonly timestamp: any | null;
