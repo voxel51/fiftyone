@@ -1975,6 +1975,46 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
+    def add_group_slice(self, name, media_type):
+        """Adds a group slice with the given media type to the dataset, if
+        necessary.
+
+        Args:
+            name: a group slice name
+            media_type: the media type of the slice
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        existing_media_type = self._doc.group_media_types.get(name, None)
+        if existing_media_type is not None:
+            if media_type == existing_media_type:
+                return
+
+            raise ValueError(
+                "Group slice '%s' with media type %s != %s already exists"
+                % (name, existing_media_type, media_type)
+            )
+
+        if media_type not in fom.MEDIA_TYPES:
+            raise ValueError("Invalid media type '%s'" % media_type)
+
+        # If this is the first video slice, we need to initialize frames
+        if media_type == fom.VIDEO and not any(
+            slice_media_type == fom.VIDEO
+            for slice_media_type in self._doc.group_media_types.values()
+        ):
+            self._init_frames()
+
+        self._doc.group_media_types[name] = media_type
+
+        # If dataset doesn't yet have a default group slice, assign it
+        if self._doc.default_group_slice is None:
+            self._doc.default_group_slice = name
+            self._group_slice = name
+
+        self.save()
+
     def rename_group_slice(self, name, new_name):
         """Renames the group slice with the given name.
 
@@ -6039,23 +6079,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.group_field is not None and field_name != self.group_field:
             raise ValueError("Dataset has no group field '%s'" % field_name)
 
-        if slice_name not in self._doc.group_media_types:
-            # If this is the first video slice, we need to initialize frames
-            if media_type == fom.VIDEO and not any(
-                slice_media_type == fom.VIDEO
-                for slice_media_type in self._doc.group_media_types.values()
-            ):
-                self._init_frames()
-
-            self._doc.group_media_types[slice_name] = media_type
-
-            # If dataset doesn't yet have a default group slice, use the first
-            # observed value
-            if self._doc.default_group_slice is None:
-                self._doc.default_group_slice = slice_name
-                self._group_slice = slice_name
-
-            self.save()
+        self.add_group_slice(slice_name, media_type)
 
     def _expand_frame_schema(self, frames, dynamic):
         if not dynamic:

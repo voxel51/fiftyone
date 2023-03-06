@@ -13,6 +13,7 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.odm as foo
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -92,6 +93,27 @@ class VideoTests(unittest.TestCase):
             self.assertEqual(frame_number, frame.frame_number)
 
         self.assertTrue(frame_numbers, [1, 5])
+
+    @drop_datasets
+    def test_video_dataset_frames_init(self):
+        dataset = fo.Dataset()
+        conn = foo.get_db_conn()
+
+        collections = conn.list_collection_names()
+        self.assertIn(dataset._sample_collection_name, collections)
+
+        self.assertIsNone(dataset._frame_collection)
+        self.assertIsNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) == 0)
+
+        dataset.media_type = "video"
+
+        self.assertIsNotNone(dataset._frame_collection)
+        self.assertIsNotNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) > 0)
+
+        collections = conn.list_collection_names()
+        self.assertIn(dataset._frame_collection_name, collections)
 
     @drop_datasets
     def test_video_indexes(self):
