@@ -75,11 +75,20 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         constructor = ImageLooker;
       }
 
-      const sampleMediaFilePath =
-        constructor === PcdLooker &&
-        "orthographic_projection_metadata" in sample
-          ? (sample["orthographic_projection_metadata"]["filepath"] as string)
-          : urls[mediaField];
+      let sampleMediaFilePath = urls[mediaField];
+
+      if (constructor === PcdLooker) {
+        const orthographicProjectionField = Object.entries(sample)
+          .find(
+            (el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+          )
+          ?.at(0) as string | undefined;
+        if (orthographicProjectionField) {
+          sampleMediaFilePath = sample[orthographicProjectionField][
+            "filepath"
+          ] as string;
+        }
+      }
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
         fieldSchema: {
