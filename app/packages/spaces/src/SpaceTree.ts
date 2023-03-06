@@ -39,9 +39,9 @@ export default class SpaceTree {
   // a method for adding a new node to the tree
   // the new node is added as a child of the selected node
   // the new node is selected
-  addNodeAfter(node: SpaceNode, newNode: SpaceNode) {
+  addNodeAfter(node: SpaceNode, newNode: SpaceNode, isActive = true) {
     node.append(newNode);
-    node.activeChild = newNode.id;
+    if (isActive) node.activeChild = newNode.id;
     this.updateTree(node);
   }
 
