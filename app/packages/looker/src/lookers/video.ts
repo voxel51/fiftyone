@@ -359,6 +359,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.frames.set(frame.sample.frame_number, new WeakRef(frame));
       addToBuffers([frameNumber, frameNumber], this.state.buffers);
     });
+    debugger;
   }
 
   pluckOverlays(state: VideoState) {
