@@ -7,6 +7,7 @@ import Grid from "../components/Grid";
 import ContainerHeader from "../components/ImageContainerHeader";
 import * as fos from "@fiftyone/state";
 import { FilterAndSelectionIndicator } from "@fiftyone/components";
+import { EmptySamples } from "../components";
 
 const FlashlightContainer = styled.div`
   position: relative;
@@ -20,6 +21,7 @@ registerComponent({
   component: () => (
     <FlashlightContainer>
       <Grid key={"grid"} />
+      <EmptySamples />
       <ContainerHeader key={"header"} />
     </FlashlightContainer>
   ),
