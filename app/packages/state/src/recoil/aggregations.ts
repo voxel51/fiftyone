@@ -111,7 +111,7 @@ export const noneCount = selectorFamily<
       const isListField = schema.ftype.includes("ListField");
       return isListField
         ? 0
-        : (get(count({ ...params, path: parent })) as number) - data.count;
+        : (get(count({ ...params, path: parent })) as number) - data?.count;
     },
 });
 
@@ -221,10 +221,10 @@ export const booleanCountResults = selectorFamily<
       const none = get(noneCount(params));
 
       const result = {
-        count: data.false + data.true,
+        count: data ? data.false + data.true : 0,
         results: [
-          [false, data.false],
-          [true, data.true],
+          [data ? false : null, data?.false || 0],
+          [data ? true : null, data?.true || 0],
         ] as [boolean, number][],
       };
       if (none) {
@@ -354,7 +354,7 @@ export const counts = selectorFamily({
 
       const data = get(aggregation(params));
 
-      if (data.values) {
+      if (data?.values) {
         return Object.fromEntries(
           data.values.map(({ count, value }) => [value, count])
         );

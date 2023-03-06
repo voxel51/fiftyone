@@ -5700,11 +5700,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # We check for exactly False here, because `attach_frames == None` is a
         # special syntax that means that frames were already attached
-        if attach_frames == False:
+        if contains_videos and (attach_frames is False):
             if frames_only:
                 attach_frames = True
-
-            detach_frames = False
+                detach_frames = False
 
         if frames_only:
             detach_frames = False

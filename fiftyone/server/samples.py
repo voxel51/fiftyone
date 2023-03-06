@@ -34,12 +34,11 @@ class Sample:
     id: gql.ID
     sample: JSON
     urls: t.List[MediaURL]
-    aspect_ratio: float
 
 
 @gql.type
 class ImageSample(Sample):
-    pass
+    aspect_ratio: float
 
 
 @gql.type
@@ -49,6 +48,7 @@ class PointCloudSample(Sample):
 
 @gql.type
 class VideoSample(Sample):
+    aspect_ratio: float
     frame_rate: float
 
 
@@ -83,6 +83,16 @@ async def paginate_samples(
     )
 
     root_view = fosv.get_view(dataset, stages=stages)
+    frame_filters = [
+        getattr(s, "_filter", None)
+        for s in view._stages
+        if s._needs_frames(view)
+    ]
+
+    # Hacky way to fix aggregation stage when switching root to frames collection
+    frame_filters = [
+        str(s).replace("$this.", "") for s in frame_filters if s is not None
+    ]
 
     media = view.media_type
     if media == fom.MIXED:
@@ -91,11 +101,6 @@ async def paginate_samples(
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
 
-    # TODO: Remove this once we have a better way to handle large videos. This
-    # is a temporary fix to reduce the $lookup overhead for sample frames on
-    # full datasets.
-    full_lookup = media == fom.VIDEO and (filters or stages)
-    support = [1, 1] if not full_lookup else None
     if after is None:
         after = "-1"
 
@@ -103,21 +108,54 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = view._pipeline(
-        attach_frames=True,
-        detach_frames=False,
+        attach_frames=False,
+        detach_frames=True,
         manual_group_select=sample_filter
         and sample_filter.group
         and (sample_filter.group.id and not sample_filter.group.slice),
-        support=support,
     )
-    # Only return the first frame of each video sample for the grid thumbnail
-    if media == fom.VIDEO:
-        pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
 
-    samples = await foo.aggregate(
-        foo.get_async_db_conn()[view._dataset._sample_collection_name],
-        pipeline,
-    ).to_list(first + 1)
+    sample_pipeline = []
+    frame_pipeline = []
+    for agg in pipeline:
+        if "frame" in str(agg):
+            # Remove frame related projections (ie drop Frames)
+            if "$project" not in agg:
+                frame_pipeline.append(agg)
+
+        else:
+            sample_pipeline.append(agg)
+    # Only return the first frame of each video sample for the grid thumbnail
+    # if media == fom.VIDEO:
+    #     pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
+    samples = []
+    async for sample in foo.get_async_db_conn()[
+        view._dataset._sample_collection_name
+    ].aggregate(sample_pipeline):
+        if media == fom.VIDEO:
+            match_expr = {
+                "$and": [
+                    {"$eq": [sample["_id"], "$_sample_id"]},
+                    *frame_filters,
+                ]
+            }
+            sample_frame_pipeline = [
+                {"$match": {"$expr": match_expr}},
+            ]
+            frame = (
+                await foo.get_async_db_conn()[
+                    view._dataset._frame_collection_name
+                ]
+                .aggregate(sample_frame_pipeline, allowDiskUse=True)
+                .to_list(1)
+            )
+
+            if frame:
+                # Only include samples in the result if there were matched frames
+                sample["frames"] = frame
+                samples.append(sample)
+        else:
+            samples.append(sample)
 
     more = False
     if len(samples) > first:

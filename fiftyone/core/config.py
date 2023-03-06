@@ -430,7 +430,7 @@ class AppConfig(EnvConfig):
             self.color_by = default_color_by
 
         supported_sidebar_modes = {"all", "best", "fast"}
-        default_sidebar_mode = "best"
+        default_sidebar_mode = "fast"
         if self.sidebar_mode not in supported_sidebar_modes:
             logger.warning(
                 "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",

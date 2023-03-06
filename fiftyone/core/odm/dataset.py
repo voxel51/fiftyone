@@ -223,7 +223,7 @@ class DatasetAppConfig(EmbeddedDocument):
     media_fields = ListField(StringField(), default=["filepath"])
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
-    sidebar_mode = StringField(default=None)
+    sidebar_mode = StringField(default="fast")
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
