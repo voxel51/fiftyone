@@ -37,7 +37,7 @@ def _build_result_view(result_view, form):
         )
 
     if form.extended:
-        result_view = extend_view(result_view, form.extended, True)
+        result_view = extend_view(result_view, form.extended)
 
     if form.add_stages:
         for d in form.add_stages:
