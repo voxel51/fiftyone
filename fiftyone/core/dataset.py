@@ -412,11 +412,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == fom.GROUP:
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
-            self._save()
+            self.save()
         else:
             self._update_metadata_field(media_type)
 
-            self._save()
+            self.save()
             self.reload()
 
     def _update_metadata_field(self, media_type):
@@ -591,7 +591,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._doc.default_group_slice = slice_name
-        self._save()
+        self.save()
 
         if self._group_slice is None:
             self._group_slice = slice_name
@@ -619,7 +619,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.name = name
         self._doc.slug = slug
-        self._save()
+        self.save()
 
         # Update singleton
         self._instances.pop(_name, None)
@@ -650,7 +650,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @persistent.setter
     def persistent(self, value):
         self._doc.persistent = value
-        self._save()
+        self.save()
 
     @property
     def tags(self):
@@ -675,7 +675,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @tags.setter
     def tags(self, value):
         self._doc.tags = value
-        self._save()
+        self.save()
 
     @property
     def description(self):
@@ -695,7 +695,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @description.setter
     def description(self, description):
         self._doc.description = description
-        self._save()
+        self.save()
 
     @property
     def info(self):
@@ -719,7 +719,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @info.setter
     def info(self, info):
         self._doc.info = info
-        self._save()
+        self.save()
 
     @property
     def app_config(self):
@@ -761,7 +761,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             config = DatasetAppConfig()
 
         self._doc.app_config = config
-        self._save()
+        self.save()
 
     @property
     def classes(self):
@@ -789,7 +789,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classes.setter
     def classes(self, classes):
         self._doc.classes = classes
-        self._save()
+        self.save()
 
     @property
     def default_classes(self):
@@ -815,7 +815,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_classes.setter
     def default_classes(self, classes):
         self._doc.default_classes = classes
-        self._save()
+        self.save()
 
     @property
     def mask_targets(self):
@@ -872,7 +872,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @mask_targets.setter
     def mask_targets(self, targets):
         self._doc.mask_targets = targets
-        self._save()
+        self.save()
 
     @property
     def default_mask_targets(self):
@@ -920,7 +920,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
-        self._save()
+        self.save()
 
     @property
     def skeletons(self):
@@ -956,7 +956,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @skeletons.setter
     def skeletons(self, skeletons):
         self._doc.skeletons = skeletons
-        self._save()
+        self.save()
 
     @property
     def default_skeleton(self):
@@ -989,7 +989,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_skeleton.setter
     def default_skeleton(self, skeleton):
         self._doc.default_skeleton = skeleton
-        self._save()
+        self.save()
 
     @property
     def deleted(self):
@@ -1533,7 +1533,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.default_group_slice = default
 
         self._doc.group_field = field_name
-        self._save()
+        self.save()
 
         self._group_slice = self._doc.default_group_slice
 
@@ -2000,7 +2000,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.group_slice == name:
             self.group_slice = new_name
 
-        self._save()
+        self.save()
 
     def delete_group_slice(self, name):
         """Deletes all samples in the given group slice from the dataset.
@@ -2026,7 +2026,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._group_slice == name:
             self._group_slice = new_default
 
-        self._save()
+        self.save()
 
     def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the dataset.
@@ -3178,9 +3178,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         field_doc.info = field.info
 
         try:
-            self._doc.save(safe=True)
+            self.save()
         except:
-            self._reload(hard=True)
+            self.reload()
             raise
 
     @property
@@ -3262,7 +3262,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc.save(upsert=True)
 
         self._doc.saved_views.append(view_doc)
-        self._save()
+        self.save()
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -3379,7 +3379,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         deleted_id = view_doc.id
 
         view_doc.delete()
-        self._save()
+        self.save()
 
         return str(deleted_id)
 
@@ -3389,7 +3389,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.delete()
 
         self._doc.saved_views = []
-        self._save()
+        self.save()
 
     def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
@@ -6056,7 +6056,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc.default_group_slice = slice_name
                 self._group_slice = slice_name
 
-            self._save()
+            self.save()
 
     def _expand_frame_schema(self, frames, dynamic):
         if not dynamic:
@@ -6230,7 +6230,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self._save()
+        self.save()
 
 
 def _get_random_characters(n):

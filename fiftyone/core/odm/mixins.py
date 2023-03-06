@@ -486,7 +486,7 @@ class DatasetMixin(object):
             dataset_doc.group_field = new_group_field
 
         dataset_doc.app_config._rename_paths(paths, new_paths)
-        dataset_doc.save()
+        dataset.save()
 
     @classmethod
     def _clone_fields(cls, sample_collection, paths, new_paths):
@@ -556,7 +556,7 @@ class DatasetMixin(object):
         for path, new_path in schema_paths:
             cls._clone_field_schema(path, new_path)
 
-        dataset_doc.save()
+        dataset.save()
 
     @classmethod
     def _clear_fields(cls, sample_collection, paths):
@@ -675,7 +675,7 @@ class DatasetMixin(object):
 
         if del_paths:
             dataset_doc.app_config._delete_paths(del_paths)
-            dataset_doc.save()
+            dataset.save()
 
     @classmethod
     def _remove_dynamic_fields(cls, paths, error_level=0):
@@ -734,9 +734,9 @@ class DatasetMixin(object):
             cls._delete_field_schema(del_path)
 
         if del_paths:
-            dataset_doc = cls._dataset._doc
-            dataset_doc.app_config._delete_paths(del_paths)
-            dataset_doc.save()
+            dataset = cls._dataset
+            dataset._doc.app_config._delete_paths(del_paths)
+            dataset.save()
 
     @classmethod
     def _rename_fields_simple(cls, paths, new_paths):

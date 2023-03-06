@@ -1949,8 +1949,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
 
 def _import_saved_views(dataset, views):
-    dataset_doc = dataset._doc
-
     for d in views:
         if etau.is_str(d):
             d = json_util.loads(d)
@@ -1962,17 +1960,15 @@ def _import_saved_views(dataset, views):
 
         d.pop("_id", None)
         view_doc = foo.SavedViewDocument.from_dict(d)
-        view_doc.dataset_id = str(dataset_doc.id)
-        view_doc.save()
+        view_doc.dataset_id = str(dataset._doc.id)
+        view_doc.save(upsert=True)
 
-        dataset_doc.saved_views.append(view_doc)
+        dataset._doc.saved_views.append(view_doc)
 
-    dataset_doc.save()
+    dataset.save()
 
 
 def _import_runs(dataset, runs, results_dir, run_cls):
-    dataset_doc = dataset._doc
-
     # Import run documents
     for key, d in runs.items():
         if etau.is_str(d):
@@ -1980,14 +1976,14 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
         d.pop("_id", None)
         run_doc = foo.RunDocument.from_dict(d)
-        run_doc.dataset_id = str(dataset_doc.id)
+        run_doc.dataset_id = str(dataset._doc.id)
         run_doc.results = None
-        run_doc.save()
+        run_doc.save(upsert=True)
 
-        runs = getattr(dataset_doc, run_cls._runs_field())
+        runs = getattr(dataset._doc, run_cls._runs_field())
         runs[key] = run_doc
 
-    dataset_doc.save()
+    dataset.save()
 
     # Import run results
     for key in runs.keys():

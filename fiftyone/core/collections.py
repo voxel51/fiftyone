@@ -1946,7 +1946,7 @@ class SampleCollection(object):
         finally:
             if new_group_field:
                 self._dataset._doc.media_type = fom.GROUP
-                self._dataset._doc.save()
+                self._dataset.save()
 
     def set_label_values(
         self,
