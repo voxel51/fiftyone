@@ -3199,7 +3199,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is not None:
             _save_view(view, fields=fields)
 
-        self._doc.save(safe=True)
+        try:
+            self._doc.save(safe=True)
+        except moe.DoesNotExist:
+            name = self.name
+            self._deleted = True
+            raise ValueError("Dataset '%s' is deleted" % name)
 
     def _save_field(self, field):
         if self._is_generated:
