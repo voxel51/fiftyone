@@ -3209,8 +3209,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def save_view(
         self,
-        name=name,
-        view=view,
+        name,
+        view,
         description=None,
         color=None,
         overwrite=False,
@@ -3235,6 +3235,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             name: a name for the saved view
             view: a :class:`fiftyone.core.view.DatasetView`
+            description (None): an optional string description
+            color (None): an optional RGB hex string like ``'#FF6D04'``
             overwrite (False): whether to overwrite an existing saved view with
                 the same name
         """
@@ -3335,10 +3337,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.last_modified_at = datetime.utcnow()
             view_doc.save()
 
-    def load_saved_view(
-        self,
-        name,
-    ):
+    def load_saved_view(self, name):
         """Loads the saved view with the given name.
 
         Examples::
