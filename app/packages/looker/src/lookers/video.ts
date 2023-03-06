@@ -335,7 +335,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       true
     );
 
-    const providedFrames = sample.frames.length
+    const providedFrames = sample.frames?.length
       ? sample.frames
       : [{ frame_number: 1 }];
     const providedFrameOverlays = providedFrames.map((frameSample) =>
@@ -359,6 +359,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.frames.set(frame.sample.frame_number, new WeakRef(frame));
       addToBuffers([frameNumber, frameNumber], this.state.buffers);
     });
+    debugger;
   }
 
   pluckOverlays(state: VideoState) {
@@ -450,7 +451,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
             frames: [
               {
                 frame_number: this.frameNumber,
-                ...f({
+                ...{
                   filter: this.state.options.filter,
                   value: {
                     ...this.frames.get(this.frameNumber).deref().sample,
@@ -458,7 +459,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
                   schema: this.state.config.fieldSchema.frames.fields,
                   keys: ["frames"],
                   active: this.state.options.activePaths,
-                }),
+                },
               },
             ],
           });
