@@ -109,6 +109,7 @@ export const DatasetNodeQuery = graphql`
           method
           patchesField
           supportsPrompts
+          type
         }
       }
       savedViews {

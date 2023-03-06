@@ -55,6 +55,7 @@ export type setViewMutation$data = {
           readonly method: string | null;
           readonly patchesField: string | null;
           readonly supportsPrompts: boolean | null;
+          readonly type: string[] | null;
         } | null;
         readonly key: string;
         readonly timestamp: any | null;

@@ -93,6 +93,7 @@ export default r(graphql`
             method
             patchesField
             supportsPrompts
+            type
           }
         }
         lastLoadedAt
