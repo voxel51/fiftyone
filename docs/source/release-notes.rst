@@ -366,8 +366,8 @@ App
 
 - Added support for :ref:`visualizing grouped datasets <groups-app>` in the
   App `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
-- Added support for :ref:`visualizing point cloud samples <3d-visualizer>` in
-  the modal `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for :ref:`visualizing point cloud samples <app-3d-visualizer>`
+  in the modal `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added support for visualizing and interacting with |GeoLocation| data in a
   new :ref:`Map panel <app-map-panel>`
   `#1976 <https://github.com/voxel51/fiftyone/pull/1976>`_
@@ -2758,8 +2758,8 @@ App
 
 Core
 
-- Added support for :ref:`storing frame labels <video-frame-labels>` on
-  video samples
+- Added support for :ref:`storing frame labels <video-datasets>` on video
+  samples
 - Added support for :ref:`importing <VideoDirectory-import>` and
   :ref:`exporting <VideoDirectory-export>` datasets of unlabeled videos
 - Added support for :ref:`importing <FiftyOneVideoLabelsDataset-import>` and

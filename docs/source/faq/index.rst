@@ -302,8 +302,8 @@ Why didn't changes to my dataset save?
 Although **adding** samples to datasets immediately writes them to the
 database, remember that any **edits** that you make to a
 :ref:`sample <adding-sample-fields>` or its
-:ref:`frame labels <video-frame-labels>` will not be written to the database
-until you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`.
+:ref:`frame labels <video-datasets>` will not be written to the database until
+you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`.
 
 Similarly, **setting** the properties of a |Dataset| object will be immediately
 saved, but you must call
