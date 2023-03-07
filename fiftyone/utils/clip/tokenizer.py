@@ -5,15 +5,15 @@ CLIP text tokenizer from https://github.com/openai/CLIP.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from functools import lru_cache
 import gzip
 import html
 import os
-from functools import lru_cache
+
+import ftfy
+import regex as re
 
 import fiftyone.core.utils as fou
-
-ftfy = fou.lazy_import("ftfy", callback=lambda: fou.ensure_package("ftfy"))
-re = fou.lazy_import("regex", callback=lambda: fou.ensure_package("regex"))
 
 
 @lru_cache()
@@ -107,7 +107,7 @@ class SimpleTokenizer(object):
         self.pat = re.compile(
             r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|"""
             + """[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
-            re.IGNORECASE,
+            re.IGNORECASE,  # pylint: disable=no-member
         )
 
     def bpe(self, token):
