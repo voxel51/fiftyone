@@ -19,3 +19,5 @@ export { default as ThemeProvider, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
 export { default as PillButton } from "./PillButton";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
+export { default as CopyButton } from "./CopyButton";
+export { default as CodeBlock } from "./CodeBlock";
