@@ -4092,7 +4092,7 @@ class SelectGroupSlices(ViewStage):
         return [
             {
                 "name": "slices",
-                "type": "NoneType|list<str>|str",
+                "type": "NoneType|str|list<str>",
                 "placeholder": "slices (default=None)",
                 "default": "None",
             },
