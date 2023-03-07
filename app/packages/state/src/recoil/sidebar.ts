@@ -523,6 +523,16 @@ export const sidebarEntries = selectorFamily<
           .flat(),
       ];
 
+      // switch position of labelTag and sampleTag
+      const labelTagId = entries.findIndex(
+        (entry) => entry?.path === "_label_tags"
+      );
+      const sampleTagId = entries.findIndex((entry) => entry?.path === "tags");
+      [entries[labelTagId], entries[sampleTagId]] = [
+        entries[sampleTagId],
+        entries[labelTagId],
+      ];
+
       if (params.modal) {
         return entries;
       }
