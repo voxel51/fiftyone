@@ -652,6 +652,10 @@ const InteractiveSidebar = ({
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
     if (!down.current) return;
 
+    // do not allow dragging sample tags and label tags
+    const entry = items.current[down.current].entry;
+    if (["_label_tags", "tags"].includes(entry.path)) return;
+
     requestAnimationFrame(() => {
       animate(clientY);
       scrollWith(lastDirection.current, clientY);
