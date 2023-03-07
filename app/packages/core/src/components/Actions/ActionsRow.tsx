@@ -107,7 +107,9 @@ const Similarity = ({ modal }: { modal: boolean }) => {
         onClick={toggleSimilarity}
         highlight={true}
         ref={mRef}
-        title={"Sort by text similarity"}
+        title={`Sort by ${
+          showImageSimilarityIcon ? "image" : "text"
+        } similarity`}
         style={{ cursor: "pointer" }}
       />
       {open && (

@@ -2,8 +2,10 @@ import React from "react";
 import SettingsIcon from "@mui/icons-material/Settings";
 import InfoIcon from "@mui/icons-material/Info";
 import SearchIcon from "@mui/icons-material/Search";
+import CircularProgress from "@mui/material/CircularProgress";
 import styled from "styled-components";
 import { IconButton, Tooltip } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 type GroupButtonProps = {
   buttons: ButtonDetail[];
@@ -26,6 +28,7 @@ const ButtonGroup = styled.div`
 const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
   buttons,
 }) => {
+  const isLoading = fos.similaritySorting;
   return (
     <ButtonGroup>
       {buttons.map((button) => (
@@ -41,8 +44,11 @@ const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
               disableRipple
               sx={button.sx}
             >
+              {button.icon === "SearchIcon" && !isLoading && <SearchIcon />}
+              {button.icon === "SearchIcon" && isLoading && (
+                <CircularProgress color="inherit" />
+              )}
               {button.icon === "InfoIcon" && <InfoIcon />}
-              {button.icon === "SearchIcon" && <SearchIcon />}
               {button.icon === "SettingsIcon" && <SettingsIcon />}
             </IconButton>
           </div>
