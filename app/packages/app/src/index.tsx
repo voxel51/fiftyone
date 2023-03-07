@@ -85,25 +85,21 @@ const App: React.FC = ({}) => {
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
-              console.log("payload", payload);
               const { colorscale, config, ...data } = payload.state;
 
               payload.refresh && refresh();
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
-                // viewName: data.view_name,
               } as State.Description;
 
               if (readyStateRef.current !== AppReadyState.OPEN) {
                 setReadyState(AppReadyState.OPEN);
               }
 
-              console.log("context.history.location", context.history.location);
               const searchParams = new URLSearchParams(
                 context.history.location.search
               );
-              debugger;
 
               if (state.savedViewSlug) {
                 searchParams.set(
@@ -133,7 +129,6 @@ const App: React.FC = ({}) => {
                   ? { view: state.view || null }
                   : undefined,
               });
-              debugger;
 
               break;
             }

@@ -5,8 +5,6 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import pprint
-
 from bson import json_util
 from dataclasses import asdict
 import json
@@ -100,8 +98,7 @@ class StateDescription(etas.Serializable):
 
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()
-            print("%" * 80)
-            print(d)
+
             return d
 
     def attributes(self):
@@ -133,8 +130,6 @@ class StateDescription(etas.Serializable):
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = None
-        print("~" * 80)
-        pprint.pprint(d)
 
         view_name = d.get("view_name", None)
         saved_view_slug = d.get("saved_view_slug", None)

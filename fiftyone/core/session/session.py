@@ -362,7 +362,7 @@ class Session(object):
         final_view_name = view_name
         if not final_view_name and view and view.name:
             final_view_name = view.name
-        print("final_view_name", final_view_name)
+
         if spaces is None:
             spaces = default_spaces.copy()
 
@@ -615,24 +615,10 @@ class Session(object):
         if view is not None:
             view._root_dataset._reload()
             self._state.dataset = view._root_dataset
-            # self._state.view_name = view.name
+            self._state.view_name = view.name
 
         self._state.selected = []
         self._state.selected_labels = []
-
-    @property
-    def view_name(self) -> t.Union[str, None]:
-        """The name of the current :class:`fiftyone.core.view.DatasetView`.
-        Will be ``None`` if the view is not saved."""
-        return self._state.view_name
-
-    @property
-    def saved_view_slug(self) -> t.Union[str, None]:
-        """The slug of the current :class:`fiftyone.core.view.DatasetView`.
-        Will be ``None`` if the view is not saved."""
-        return self._state.saved_view_slug or fou.to_slug(
-            self._state.view_name
-        )
 
     @update_state()
     def clear_view(self) -> None:

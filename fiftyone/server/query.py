@@ -450,9 +450,6 @@ async def serialize_dataset(
                 data.media_type = d["media_type"]
 
                 data.id = view._dataset._doc.id
-                # if view.name:
-                #     data.view_name = view.name
-                #     data.saved_view_slug = fou.to_slug(view.name)
 
                 data.view_cls = etau.get_class_name(view)
 
