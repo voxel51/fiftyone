@@ -58,12 +58,18 @@ def up(db, dataset_name):
     if app_config is not None:
         sidebar_groups = app_config.get("sidebar_groups", None)
         if sidebar_groups is not None:
-            for sidebar_group in sidebar_groups:
+            label_tags_idx = None
+
+            for idx, sidebar_group in enumerate(sidebar_groups):
                 name = sidebar_group.get("name", None)
                 if name == "tags":
-                    sidebar_group.setdefault("paths", ["tags", "_label_tags"])
+                    sidebar_group["paths"] = ["tags", "_label_tags"]
+
                 if name == "label tags":
-                    sidebar_groups.remove(sidebar_group)
+                    label_tags_idx = idx
+
+            if label_tags_idx is not None:
+                sidebar_groups.pop(label_tags_idx)
 
     db.datasets.replace_one(match_d, dataset_dict)
 
@@ -75,10 +81,24 @@ def down(db, dataset_name):
     if app_config is not None:
         sidebar_groups = app_config.get("sidebar_groups", None)
         if sidebar_groups is not None:
-            for sidebar_group in sidebar_groups:
+            tags_idx = None
+            found_label_tags = False
+
+            for idx, sidebar_group in enumerate(sidebar_groups):
                 name = sidebar_group.get("name", None)
+
                 if name == "tags":
                     sidebar_group["paths"] = []
-            sidebar_groups.append({"name": "label tags", "paths": []})
+                    tags_idx = idx
+
+                if name == "label tags":
+                    sidebar_group["paths"] = []
+                    found_label_tags = True
+
+            if tags_idx is not None and not found_label_tags:
+                sidebar_groups.insert(
+                    tags_idx + 1,
+                    {"name": "label tags", "paths": []},
+                )
 
     db.datasets.replace_one(match_d, dataset_dict)
