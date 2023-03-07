@@ -6,6 +6,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import styled from "styled-components";
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 
 type GroupButtonProps = {
   buttons: ButtonDetail[];
@@ -28,7 +29,8 @@ const ButtonGroup = styled.div`
 const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
   buttons,
 }) => {
-  const isLoading = fos.similaritySorting;
+  const isLoading = useRecoilValue(fos.similaritySorting);
+
   return (
     <ButtonGroup>
       {buttons.map((button) => (
@@ -46,7 +48,7 @@ const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
             >
               {button.icon === "SearchIcon" && !isLoading && <SearchIcon />}
               {button.icon === "SearchIcon" && isLoading && (
-                <CircularProgress color="inherit" />
+                <CircularProgress color="inherit" size={"20px"} />
               )}
               {button.icon === "InfoIcon" && <InfoIcon />}
               {button.icon === "SettingsIcon" && <SettingsIcon />}
