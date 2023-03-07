@@ -146,13 +146,17 @@ def get_extended_view(
             field with counts of tags with respect to all label fields
         extended_stages (None): extended view stages
 
-    The function returns a fiftyone.core.collections.SampleCollection
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
     """
     cleanup_fields = set()
     filtered_labels = set()
-
     label_tags = None
-    if filters is not None and len(filters):
+
+    if extended_stages:
+        view = extend_view(view, extended_stages)
+
+    if filters:
         if "tags" in filters:
             tags = filters.get("tags")
             if "label" in tags:
@@ -173,9 +177,6 @@ def get_extended_view(
 
         for stage in stages:
             view = view.add_stage(stage)
-
-    if extended_stages:
-        view = extend_view(view, extended_stages)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
