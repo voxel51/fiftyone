@@ -121,12 +121,16 @@ export const useEntries = (
   const [entries, setEntries] = useRecoilStateLoadable(
     sidebarEntries({ modal, loading: false, filtered: true })
   );
-  const loadingEntries = useRecoilValue(
+  const r = useRecoilValueLoadable(sidebarGroupsDefinition(false));
+  if (r.state === "loading") {
+    throw new Error("WTF");
+  }
+  const loadingEntries = useRecoilValueLoadable(
     sidebarEntries({ modal, loading: true, filtered: true })
   );
 
   return [
-    entries.state === "loading" ? loadingEntries : entries.contents,
+    entries.state === "loading" ? loadingEntries.contents : entries.contents,
     setEntries,
   ];
 };

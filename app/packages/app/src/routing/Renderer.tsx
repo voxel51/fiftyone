@@ -1,23 +1,23 @@
 import { Loading } from "@fiftyone/components";
-import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { custom } from "@recoiljs/refine";
+import React, { Suspense, useEffect, useState } from "react";
+import { atom, useRecoilValue } from "recoil";
+import { syncEffect } from "recoil-sync";
+
 import { Queries } from ".";
 import { Entry, RoutingContext } from "./RouterContext";
 import style from "./pending.module.css";
-import { atom, useRecoilValue } from "recoil";
-import { syncEffect } from "recoil-sync";
-import { custom } from "@recoiljs/refine";
 
 const Pending = () => {
   return <div className={style.pending} />;
 };
 
-export const entry = atom({
+export const entry = atom<Entry<Queries>>({
   key: "entry",
-  default: null,
   effects: [
     syncEffect({
       storeKey: "router",
-      refine: custom((v) => v),
+      refine: custom<Entry<Queries>>((v) => v as Entry<Queries>),
     }),
   ],
   dangerouslyAllowMutability: true,
@@ -29,16 +29,20 @@ const Renderer: React.FC<{ router: RoutingContext<Queries> }> = ({
   const routeEntry = useRecoilValue<Entry<Queries>>(entry);
   const [pending, setPending] = useState(false);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     return router.subscribe(
-      (nextEntry) => {
+      () => {
         setPending(false);
       },
       () => setPending(true)
     );
   }, [router]);
 
-  const loading = <Loading>Pixelating</Loading>;
+  const orthographicProjectionField = Object.entries({})
+    .find((el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata")
+    ?.at(0) as string | undefined;
+
+  const loading = <Loading>Pixelating...</Loading>;
 
   if (!routeEntry) return loading;
 

@@ -187,10 +187,15 @@ const prepareMatch = <T extends Queries>(
   const prepared = new Resource(() =>
     route.query.load().then((q) => {
       const preloaded = loadQuery(environment, q, matchData.variables || {}, {
-        fetchPolicy: "network-ony",
+        fetchPolicy: "store-or-network",
       });
 
-      const subscription = preloaded.source?.subscribe({
+      const subscription = fetchQuery(
+        environment,
+        q,
+        matchData.variables || {},
+        { fetchPolicy: "store-or-network" }
+      ).subscribe({
         next: (data) =>
           route.component.load().then(() => {
             resolveEntry({

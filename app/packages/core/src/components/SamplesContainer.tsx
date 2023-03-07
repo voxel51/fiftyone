@@ -1,11 +1,10 @@
-import React, { Suspense, useCallback } from "react";
+import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
 import MainSpace from "./MainSpace";
-import { Loading } from "@fiftyone/components";
 
 const Container = styled.div`
   display: flex;

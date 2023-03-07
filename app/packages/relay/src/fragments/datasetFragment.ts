@@ -1,7 +1,7 @@
 import { graphql } from "relay-runtime";
 
 export default graphql`
-  fragment datasetFragment on Query {
+  fragment datasetFragment on Query @inline {
     dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
       stages(slug: $savedViewSlug)
       id

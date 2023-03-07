@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<625393aaec6609c89baeb6009e6caaf4>>
+ * @generated SignedSource<<027fedbea8b6445bf8ef563f0e43be3f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -61,188 +61,52 @@ v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "colorscale",
+  "name": "id",
   "storageKey": null
 },
 v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "plugins",
+  "name": "name",
   "storageKey": null
 },
 v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sidebarMode",
+  "name": "mediaType",
   "storageKey": null
 },
 v9 = {
   "alias": null,
   "args": null,
-  "concreteType": "AppConfig",
-  "kind": "LinkedField",
-  "name": "config",
-  "plural": false,
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "colorBy",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "colorPool",
-      "storageKey": null
-    },
-    (v6/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "gridZoom",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "loopVideos",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "notebookHeight",
-      "storageKey": null
-    },
-    (v7/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "showConfidence",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "showIndex",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "showLabel",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "showSkeletons",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "showTooltip",
-      "storageKey": null
-    },
-    (v8/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "theme",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "timezone",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "useFrameNumber",
-      "storageKey": null
-    }
-  ],
+  "kind": "ScalarField",
+  "name": "plugins",
   "storageKey": null
 },
-v10 = [
-  {
-    "kind": "Variable",
-    "name": "after",
-    "variableName": "cursor"
-  },
-  {
-    "kind": "Variable",
-    "name": "first",
-    "variableName": "count"
-  },
-  {
-    "kind": "Variable",
-    "name": "search",
-    "variableName": "search"
-  }
-],
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "sidebarMode",
+  "storageKey": null
+},
 v11 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v12 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-},
-v13 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "version",
-  "storageKey": null
-},
-v14 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "mediaType",
-  "storageKey": null
-},
-v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v16 = {
+v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "info",
   "storageKey": null
 },
-v17 = [
+v13 = [
   {
     "alias": null,
     "args": null,
@@ -278,10 +142,10 @@ v17 = [
     "name": "dbField",
     "storageKey": null
   },
-  (v15/*: any*/),
-  (v16/*: any*/)
+  (v11/*: any*/),
+  (v12/*: any*/)
 ],
-v18 = [
+v14 = [
   {
     "alias": null,
     "args": null,
@@ -297,83 +161,560 @@ v18 = [
     "storageKey": null
   }
 ],
-v19 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "key",
   "storageKey": null
 },
-v20 = {
+v16 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "version",
+  "storageKey": null
+},
+v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "timestamp",
   "storageKey": null
 },
-v21 = {
+v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewStages",
   "storageKey": null
 },
-v22 = {
+v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cls",
   "storageKey": null
 },
-v23 = {
+v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "datasetId",
   "storageKey": null
 },
-v24 = {
+v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "slug",
   "storageKey": null
 },
-v25 = {
+v22 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "color",
   "storageKey": null
 },
-v26 = {
+v23 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "lastLoadedAt",
   "storageKey": null
 },
-v27 = {
+v24 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "createdAt",
   "storageKey": null
 },
-v28 = {
+v25 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "labels",
   "storageKey": null
 },
-v29 = {
+v26 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "edges",
   "storageKey": null
-};
+},
+v27 = {
+  "alias": null,
+  "args": [
+    {
+      "kind": "Variable",
+      "name": "name",
+      "variableName": "name"
+    },
+    {
+      "kind": "Variable",
+      "name": "savedViewSlug",
+      "variableName": "savedViewSlug"
+    },
+    {
+      "kind": "Variable",
+      "name": "view",
+      "variableName": "view"
+    }
+  ],
+  "concreteType": "Dataset",
+  "kind": "LinkedField",
+  "name": "dataset",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": [
+        {
+          "kind": "Variable",
+          "name": "slug",
+          "variableName": "savedViewSlug"
+        }
+      ],
+      "kind": "ScalarField",
+      "name": "stages",
+      "storageKey": null
+    },
+    (v6/*: any*/),
+    (v7/*: any*/),
+    (v8/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "defaultGroupSlice",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "groupField",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Group",
+      "kind": "LinkedField",
+      "name": "groupMediaTypes",
+      "plural": true,
+      "selections": [
+        (v7/*: any*/),
+        (v8/*: any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "DatasetAppConfig",
+      "kind": "LinkedField",
+      "name": "appConfig",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "gridMediaField",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "mediaFields",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "modalMediaField",
+          "storageKey": null
+        },
+        (v9/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "SidebarGroup",
+          "kind": "LinkedField",
+          "name": "sidebarGroups",
+          "plural": true,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "expanded",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "paths",
+              "storageKey": null
+            },
+            (v7/*: any*/)
+          ],
+          "storageKey": null
+        },
+        (v10/*: any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "SampleField",
+      "kind": "LinkedField",
+      "name": "sampleFields",
+      "plural": true,
+      "selections": (v13/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "SampleField",
+      "kind": "LinkedField",
+      "name": "frameFields",
+      "plural": true,
+      "selections": (v13/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "NamedTargets",
+      "kind": "LinkedField",
+      "name": "maskTargets",
+      "plural": true,
+      "selections": [
+        (v7/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "Target",
+          "kind": "LinkedField",
+          "name": "targets",
+          "plural": true,
+          "selections": (v14/*: any*/),
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Target",
+      "kind": "LinkedField",
+      "name": "defaultMaskTargets",
+      "plural": true,
+      "selections": (v14/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "EvaluationRun",
+      "kind": "LinkedField",
+      "name": "evaluations",
+      "plural": true,
+      "selections": [
+        (v15/*: any*/),
+        (v16/*: any*/),
+        (v17/*: any*/),
+        (v18/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "EvaluationRunConfig",
+          "kind": "LinkedField",
+          "name": "config",
+          "plural": false,
+          "selections": [
+            (v19/*: any*/),
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "predField",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "gtField",
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "BrainRun",
+      "kind": "LinkedField",
+      "name": "brainMethods",
+      "plural": true,
+      "selections": [
+        (v15/*: any*/),
+        (v16/*: any*/),
+        (v17/*: any*/),
+        (v18/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "BrainRunConfig",
+          "kind": "LinkedField",
+          "name": "config",
+          "plural": false,
+          "selections": [
+            (v19/*: any*/),
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "embeddingsField",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "method",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "patchesField",
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "SavedView",
+      "kind": "LinkedField",
+      "name": "savedViews",
+      "plural": true,
+      "selections": [
+        (v6/*: any*/),
+        (v20/*: any*/),
+        (v7/*: any*/),
+        (v21/*: any*/),
+        (v11/*: any*/),
+        (v22/*: any*/),
+        (v18/*: any*/)
+      ],
+      "storageKey": null
+    },
+    (v23/*: any*/),
+    (v24/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "NamedKeypointSkeleton",
+      "kind": "LinkedField",
+      "name": "skeletons",
+      "plural": true,
+      "selections": [
+        (v7/*: any*/),
+        (v25/*: any*/),
+        (v26/*: any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "KeypointSkeleton",
+      "kind": "LinkedField",
+      "name": "defaultSkeleton",
+      "plural": false,
+      "selections": [
+        (v25/*: any*/),
+        (v26/*: any*/)
+      ],
+      "storageKey": null
+    },
+    (v16/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "viewCls",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "viewName",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "savedViewSlug",
+      "storageKey": null
+    },
+    (v12/*: any*/)
+  ],
+  "storageKey": null
+},
+v28 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "colorscale",
+  "storageKey": null
+},
+v29 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "AppConfig",
+  "kind": "LinkedField",
+  "name": "config",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "colorBy",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "colorPool",
+      "storageKey": null
+    },
+    (v28/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "gridZoom",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "loopVideos",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "notebookHeight",
+      "storageKey": null
+    },
+    (v9/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showConfidence",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showIndex",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showLabel",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showSkeletons",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showTooltip",
+      "storageKey": null
+    },
+    (v10/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "theme",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "timezone",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "useFrameNumber",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v30 = [
+  {
+    "kind": "Variable",
+    "name": "after",
+    "variableName": "cursor"
+  },
+  {
+    "kind": "Variable",
+    "name": "first",
+    "variableName": "count"
+  },
+  {
+    "kind": "Variable",
+    "name": "search",
+    "variableName": "search"
+  }
+];
 return {
   "fragment": {
     "argumentDefinitions": [
@@ -394,9 +735,26 @@ return {
         "name": "NavFragment"
       },
       {
+        "kind": "InlineDataFragmentSpread",
+        "name": "datasetFragment",
+        "selections": [
+          (v27/*: any*/)
+        ],
         "args": null,
-        "kind": "FragmentSpread",
-        "name": "datasetFragment"
+        "argumentDefinitions": [
+          {
+            "kind": "RootArgument",
+            "name": "name"
+          },
+          {
+            "kind": "RootArgument",
+            "name": "savedViewSlug"
+          },
+          {
+            "kind": "RootArgument",
+            "name": "view"
+          }
+        ]
       },
       {
         "args": null,
@@ -407,8 +765,8 @@ return {
         "kind": "InlineDataFragmentSpread",
         "name": "configFragment",
         "selections": [
-          (v9/*: any*/),
-          (v6/*: any*/)
+          (v29/*: any*/),
+          (v28/*: any*/)
         ],
         "args": null,
         "argumentDefinitions": []
@@ -432,7 +790,7 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": (v10/*: any*/),
+        "args": (v30/*: any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
@@ -468,8 +826,8 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v11/*: any*/),
-                  (v12/*: any*/),
+                  (v7/*: any*/),
+                  (v6/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -513,7 +871,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v10/*: any*/),
+        "args": (v30/*: any*/),
         "filters": [
           "search"
         ],
@@ -550,7 +908,7 @@ return {
         "name": "uid",
         "storageKey": null
       },
-      (v13/*: any*/),
+      (v16/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -558,347 +916,7 @@ return {
         "name": "teamsSubmission",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": [
-          {
-            "kind": "Variable",
-            "name": "name",
-            "variableName": "name"
-          },
-          {
-            "kind": "Variable",
-            "name": "savedViewSlug",
-            "variableName": "savedViewSlug"
-          },
-          {
-            "kind": "Variable",
-            "name": "view",
-            "variableName": "view"
-          }
-        ],
-        "concreteType": "Dataset",
-        "kind": "LinkedField",
-        "name": "dataset",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": [
-              {
-                "kind": "Variable",
-                "name": "slug",
-                "variableName": "savedViewSlug"
-              }
-            ],
-            "kind": "ScalarField",
-            "name": "stages",
-            "storageKey": null
-          },
-          (v12/*: any*/),
-          (v11/*: any*/),
-          (v14/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "defaultGroupSlice",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "groupField",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "Group",
-            "kind": "LinkedField",
-            "name": "groupMediaTypes",
-            "plural": true,
-            "selections": [
-              (v11/*: any*/),
-              (v14/*: any*/)
-            ],
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "DatasetAppConfig",
-            "kind": "LinkedField",
-            "name": "appConfig",
-            "plural": false,
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "gridMediaField",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "mediaFields",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "modalMediaField",
-                "storageKey": null
-              },
-              (v7/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "SidebarGroup",
-                "kind": "LinkedField",
-                "name": "sidebarGroups",
-                "plural": true,
-                "selections": [
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "expanded",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "paths",
-                    "storageKey": null
-                  },
-                  (v11/*: any*/)
-                ],
-                "storageKey": null
-              },
-              (v8/*: any*/)
-            ],
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "SampleField",
-            "kind": "LinkedField",
-            "name": "sampleFields",
-            "plural": true,
-            "selections": (v17/*: any*/),
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "SampleField",
-            "kind": "LinkedField",
-            "name": "frameFields",
-            "plural": true,
-            "selections": (v17/*: any*/),
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "NamedTargets",
-            "kind": "LinkedField",
-            "name": "maskTargets",
-            "plural": true,
-            "selections": [
-              (v11/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Target",
-                "kind": "LinkedField",
-                "name": "targets",
-                "plural": true,
-                "selections": (v18/*: any*/),
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "Target",
-            "kind": "LinkedField",
-            "name": "defaultMaskTargets",
-            "plural": true,
-            "selections": (v18/*: any*/),
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "EvaluationRun",
-            "kind": "LinkedField",
-            "name": "evaluations",
-            "plural": true,
-            "selections": [
-              (v19/*: any*/),
-              (v13/*: any*/),
-              (v20/*: any*/),
-              (v21/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "EvaluationRunConfig",
-                "kind": "LinkedField",
-                "name": "config",
-                "plural": false,
-                "selections": [
-                  (v22/*: any*/),
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "predField",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "gtField",
-                    "storageKey": null
-                  }
-                ],
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "BrainRun",
-            "kind": "LinkedField",
-            "name": "brainMethods",
-            "plural": true,
-            "selections": [
-              (v19/*: any*/),
-              (v13/*: any*/),
-              (v20/*: any*/),
-              (v21/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "BrainRunConfig",
-                "kind": "LinkedField",
-                "name": "config",
-                "plural": false,
-                "selections": [
-                  (v22/*: any*/),
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "embeddingsField",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "method",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "patchesField",
-                    "storageKey": null
-                  }
-                ],
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "SavedView",
-            "kind": "LinkedField",
-            "name": "savedViews",
-            "plural": true,
-            "selections": [
-              (v12/*: any*/),
-              (v23/*: any*/),
-              (v11/*: any*/),
-              (v24/*: any*/),
-              (v15/*: any*/),
-              (v25/*: any*/),
-              (v21/*: any*/)
-            ],
-            "storageKey": null
-          },
-          (v26/*: any*/),
-          (v27/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "NamedKeypointSkeleton",
-            "kind": "LinkedField",
-            "name": "skeletons",
-            "plural": true,
-            "selections": [
-              (v11/*: any*/),
-              (v28/*: any*/),
-              (v29/*: any*/)
-            ],
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "KeypointSkeleton",
-            "kind": "LinkedField",
-            "name": "defaultSkeleton",
-            "plural": false,
-            "selections": [
-              (v28/*: any*/),
-              (v29/*: any*/)
-            ],
-            "storageKey": null
-          },
-          (v13/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "viewCls",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "viewName",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "savedViewSlug",
-            "storageKey": null
-          },
-          (v16/*: any*/)
-        ],
-        "storageKey": null
-      },
+      (v27/*: any*/),
       {
         "alias": null,
         "args": [
@@ -913,14 +931,14 @@ return {
         "name": "savedViews",
         "plural": true,
         "selections": [
-          (v12/*: any*/),
-          (v23/*: any*/),
-          (v11/*: any*/),
-          (v24/*: any*/),
-          (v15/*: any*/),
-          (v25/*: any*/),
+          (v6/*: any*/),
+          (v20/*: any*/),
+          (v7/*: any*/),
           (v21/*: any*/),
-          (v27/*: any*/),
+          (v11/*: any*/),
+          (v22/*: any*/),
+          (v18/*: any*/),
+          (v24/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -928,12 +946,12 @@ return {
             "name": "lastModifiedAt",
             "storageKey": null
           },
-          (v26/*: any*/)
+          (v23/*: any*/)
         ],
         "storageKey": null
       },
-      (v9/*: any*/),
-      (v6/*: any*/)
+      (v29/*: any*/),
+      (v28/*: any*/)
     ]
   },
   "params": {

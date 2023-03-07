@@ -25,7 +25,10 @@ import {
   GraphQLResponseWithData,
   GraphQLTaggedNode,
   VariablesOf,
+  readInlineData,
 } from "relay-runtime";
+
+import { datasetFragment } from "@fiftyone/relay";
 
 import Setup from "../components/Setup";
 import { datasetQuery } from "../pages/datasets/__generated__/datasetQuery.graphql";
@@ -102,7 +105,9 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               } as State.Description;
 
               if (readyStateRef.current !== AppReadyState.OPEN) {
-                setReadyState(AppReadyState.OPEN);
+                router.load().then(() => {
+                  setReadyState(AppReadyState.OPEN);
+                });
               }
 
               const searchParams = new URLSearchParams(
@@ -215,20 +220,19 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         <RecoilSync
           storeKey="router"
           read={(itemKey) => {
-            return router.load().then((entry) => {
-              if (itemKey === "entry") {
-                return router.get();
-              }
+            const entry = router.get();
+            if (itemKey === "entry") {
+              return router.get();
+            }
 
-              const { preloaded: query, data } = entry;
-              return HANDLERS[query.name](
-                itemKey,
-                PROCESSORS[query.name](data),
-                query.variables,
-                router.history.location.state,
-                true
-              );
-            });
+            const { preloaded: query, data } = entry;
+            return HANDLERS[query.name](
+              itemKey,
+              PROCESSORS[query.name](data),
+              query.variables,
+              router.history.location.state,
+              true
+            );
           }}
           listen={({ updateItems }) => {
             return router.subscribe(
@@ -277,10 +281,11 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 };
 
 const PROCESSORS = {
-  DatasetPageQuery: (response: GraphQLResponseWithData) => {
-    const dataset = { ...transformDataset(response.data.dataset) };
-    dataset.sampleFields = collapseFields(dataset.sampleFields);
-    dataset.frameFields = collapseFields(dataset.frameFields);
+  DatasetPageQuery: (response) => {
+    const data = readInlineData(datasetFragment, response);
+    const dataset = { ...transformDataset(data.dataset) };
+    dataset.sampleFields = collapseFields(data.dataset.sampleFields);
+    dataset.frameFields = collapseFields(data.dataset.frameFields);
 
     return dataset;
   },
