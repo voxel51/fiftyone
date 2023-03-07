@@ -5,6 +5,7 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import re
 from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
@@ -772,6 +773,7 @@ class CountValues(Aggregation):
             ]
 
         if self._search or self._selected:
+            print("self._search", self._search)
             pipeline += [
                 {
                     "$match": {
@@ -781,7 +783,9 @@ class CountValues(Aggregation):
                                 {
                                     "$regexMatch": {
                                         "input": "$_id",
-                                        "regex": self._search,
+                                        "regex": re.escape(self._search)
+                                        .replace(r"\*", ".*")
+                                        .replace(r"\?", "."),
                                         "options": None,
                                     }
                                 },
@@ -790,6 +794,8 @@ class CountValues(Aggregation):
                     }
                 }
             ]
+            print("=" * 80)
+            print("pipeline", pipeline)
 
         sort = OrderedDict()
         limit = self._first
@@ -805,7 +811,7 @@ class CountValues(Aggregation):
         sort[self._sort_by] = order
         sort["count" if self._sort_by != "count" else "_id"] = order
 
-        return pipeline + [
+        pipeline += [
             {"$sort": sort},
             {"$limit": limit},
             {
@@ -816,6 +822,9 @@ class CountValues(Aggregation):
                 }
             },
         ]
+        print("=" * 80)
+        print("final pipeline", pipeline)
+        return pipeline
 
 
 class Distinct(Aggregation):

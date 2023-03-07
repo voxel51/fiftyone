@@ -158,6 +158,7 @@ def get_url(
         _url = f"http://{address}:{port}/"
 
     params = "&".join([f"{k}={v}" for k, v in kwargs.items()])
+    print("get_url() params=", params)
     if params:
         _url = f"{_url}?{params}"
 

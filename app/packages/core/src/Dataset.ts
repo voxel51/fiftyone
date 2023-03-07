@@ -157,9 +157,12 @@ export const usePreLoadedDataset = (
   const stateProxyValue = useRecoilValue(stateProxy);
 
   React.useLayoutEffect(() => {
+    console.log("dataset", dataset);
+    console.log("stateProxyValue", stateProxyValue);
     let { viewName, stages: view, ...rest } = dataset;
 
     const params = new URLSearchParams(router.history.location.search);
+    console.log("params", params);
     if (!viewName && !view && params.has("view")) {
       params.delete("view");
       const search = params.toString();
@@ -174,6 +177,7 @@ export const usePreLoadedDataset = (
       window.history.state?.view
     ) {
       view = window.history.state.view;
+      debugger;
     }
 
     const { colorscale, config, state } = router?.state || {};

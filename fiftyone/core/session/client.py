@@ -85,6 +85,8 @@ class Client:
                 )
                 source = sseclient.SSEClient(response)
                 for message in source.events():
+                    print("@" * 100)
+                    print(message)
                     event = Event.from_data(message.event, message.data)
                     self._dispatch_event(event)
 
