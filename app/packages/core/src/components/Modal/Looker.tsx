@@ -64,9 +64,6 @@ const Looker = ({ lookerRef, onClose }: LookerProps) => {
   const [id] = useState(() => uuid());
 
   const sampleData = useRecoilValue(fos.modal);
-  if (!sampleData) {
-    throw new Error("bad");
-  }
   const { sample } = sampleData;
 
   const theme = useTheme();
@@ -156,14 +153,14 @@ const Looker = ({ lookerRef, onClose }: LookerProps) => {
   const hoveredSample = useRecoilValue(fos.hoveredSample);
 
   useEffect(() => {
-    hoveredSample &&
-      looker.updater((state) => ({
-        ...state,
-        shouldHandleKeyEvents: hoveredSample._id === sample._id,
-        options: {
-          ...state.options,
-        },
-      }));
+    const hoveredSampleId = hoveredSample && hoveredSample._id;
+    looker.updater((state) => ({
+      ...state,
+      shouldHandleKeyEvents: hoveredSampleId === sample._id,
+      options: {
+        ...state.options,
+      },
+    }));
   }, [hoveredSample, sample, looker]);
 
   return (
