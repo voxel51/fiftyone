@@ -612,123 +612,9 @@ points that demonstrates how
 Point cloud slices
 __________________
 
-Grouped datasets may contain one or more point cloud slices, which can be
-visualized in the App's :ref:`3D visualizer <3d-visualizer>`.
-
-.. _point-cloud-samples:
-
-Point cloud samples
--------------------
-
-Any |Sample| whose `filepath` is a
-`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
-with extension `.pcd` is recognized as a point cloud sample:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    sample = fo.Sample(filepath="/path/to/point-cloud.pcd")
-    print(sample)
-
-.. code-block:: text
-
-    <Sample: {
-        'id': None,
-        'media_type': 'point-cloud',
-        'filepath': '/path/to/point-cloud.pcd',
-        'tags': [],
-        'metadata': None,
-    }>
-
-Here's how a typical PCD file is structured:
-
-.. code-block:: python
-    :linenos:
-
-    import numpy as np
-    import open3d as o3d
-
-    points = [(x1, y1, z1), (x2, y2, z2), ...]
-    colors = [(r1, g1, b1), (r2, g2, b2), ...]
-    filepath = "/path/for/point-cloud.pcd"
-
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(np.asarray(points))
-    pcd.colors = o3d.utility.Vector3dVector(np.asarray(colors))
-
-    o3d.io.write_point_cloud(filepath, pcd)
-
-.. note::
-
-    When working with modalities such as LIDAR, intensity data is assumed to be
-    encoded in the `r` channel of the `rgb` field of the
-    `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
-
-    When coloring by intensity in the App, the intensity values are
-    automatically scaled to use the full dynamic range of the colorscale.
-
-As usual, point cloud samples may contain any type and number of custom fields,
-including certain visualizable |Label| types as described below.
-
-.. _3d-detections:
-
-3D Detections
--------------
-
-The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D object
-detections represented as |Detection| instances with their `label`, `location`,
-`dimensions`, and `rotation` attributes populated as shown below:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    # Object label
-    label = "vehicle"
-
-    # Object center `[x, y, z]` in scene coordinates
-    location = [0.47, 1.49, 69.44]
-
-    # Object dimensions `[x, y, z]` in scene units
-    dimensions = [2.85, 2.63, 12.34]
-
-    # Object rotation `[x, y, z]` around its center, in `[-pi, pi]`
-    rotation = [0, -1.56, 0]
-
-    # A 3D object detection
-    detection = fo.Detection(
-        label=label,
-        location=location,
-        dimensions=dimensions,
-        rotation=rotation,
-    )
-
-.. _3d-polylines:
-
-3D Polylines
-------------
-
-The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
-represented as |Polyline| instances with their `label` and `points3d`
-attributes populated as shown below:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    # Object label
-    label = "lane"
-
-    # A list of lists of `[x, y, z]` points in scene coordinates describing
-    # the vertices of each shape in the polyline
-    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
-
-    # A set of semantically related 3D polylines
-    polyline = fo.Polyline(label=label, points3d=points3d)
+Grouped datasets may contain one or more
+:ref:`point cloud slices <point-cloud-datasets>`, which can be visualized in
+the App's :ref:`3D visualizer <app-3d-visualizer>`.
 
 .. _groups-views:
 
@@ -1074,8 +960,8 @@ You can use the selector shown below to change which slice you are viewing:
 
 .. note::
 
-    The grid view currently supports only image or video slices (not point
-    clouds).
+    In order to view point cloud slices in the grid view, you must populate
+    :ref:`orthographic projection images <orthographic-projection-images>`.
 
 When you open the expanded modal with a grouped dataset or view loaded in the
 App, you'll have access to all samples in the current group.
@@ -1084,8 +970,8 @@ If the group contains image/video slices, the lefthand side of the modal will
 contain a scrollable carousel that you can use to choose which sample to load
 in the maximized image/video visualizer below.
 
-If the group contains a point cloud slice, the righthand side of the modal will
-contain a 3D visualizer.
+If the group contains point cloud slices, the righthand side of the modal will
+contain a :ref:`3D visualizer <app-3d-visualizer>`:
 
 .. image:: /images/groups/groups-modal.gif
    :alt: groups-modal
@@ -1102,111 +988,6 @@ by selecting `group` mode under the App's settings menu:
 .. image:: /images/groups/groups-stats.gif
    :alt: groups-stats
    :align: center
-
-.. _3d-visualizer:
-
-Using the 3D visualizer
------------------------
-
-The 3D visualizer allows you to interactively visualize point cloud samples
-along with any associated 3D detections/polylines data:
-
-.. image:: /images/groups/groups-point-cloud-controls.gif
-   :alt: groups-point-cloud-controls
-   :align: center
-
-The table below summarizes the mouse/keyboard controls that the 3D visualizer
-supports:
-
-.. table::
-    :widths: 30 30 40
-
-    +--------------+----------------+-------------------------------+
-    | Input        | Action         | Description                   |
-    +==============+================+===============================+
-    | Wheel        | Zoom           | Zoom in and out               |
-    +--------------+----------------+-------------------------------+
-    | Drag         | Rotate         | Rotate the camera             |
-    +--------------+----------------+-------------------------------+
-    | Shift + drag | Translate      | Translate the camera          |
-    +--------------+----------------+-------------------------------+
-    | T            | Top-down       | Reset camera to top-down view |
-    +--------------+----------------+-------------------------------+
-    | E            | Ego-view       | Reset the camera to ego view  |
-    +--------------+----------------+-------------------------------+
-    | ESC          | Escape context | Escape the current context    |
-    +--------------+----------------+-------------------------------+
-
-In addition, the HUD at the bottom of the 3D visualizer provides the following
-controls:
-
--   Use the palette icon to choose whether the point cloud is colored by
-    `intensity`, `height`, or no coloring
--   Click the `T` to reset the camera to top-down view
--   Click the `E` to reset the camera to ego-view
-
-When coloring by intensity, the color of each point is computed by mapping the
-`r` channel of the `rgb` field of the
-`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
-onto a fixed colormap, which is scaled so that the full colormap is matched to
-the observed dynamic range of `r` values for each sample.
-
-Similarly, when coloring by height, the `z` value of each point is mapped to
-the full colormap using the same strategy.
-
-.. note::
-
-    The 3D visualizer does not currently support groups with multiple point
-    cloud slices.
-
-.. _3d-visualizer-config:
-
-Configuring the 3D visualizer
------------------------------
-
-The 3D visualizer can be configured by including any subset of the settings
-shown below under the `plugins.3d` key of your
-:ref:`App config <configuring-fiftyone-app>`:
-
-.. code-block:: json
-
-    // The default values are shown below
-    {
-        "plugins": {
-            "3d": {
-                // Whether to show the 3D visualizer
-                "enabled": true,
-
-                // The initial camera position in the 3D scene
-                "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
-
-                // The default up direction for the scene
-                "defaultUp": [0, 0, 1],
-
-                "pointCloud": {
-                    // Don't render points below this z value
-                    "minZ": null
-                }
-            }
-        }
-    }
-
-You can also store dataset-specific plugin settings by storing any subset of
-the above values on a :ref:`dataset's App config <custom-app-config>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Configure the 3D visualuzer for a dataset's PCD/Label data
-    dataset.app_config.plugins["3d"] = {
-        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-    }
-    dataset.save()
-
-.. note::
-
-    Dataset-specific plugin settings will override any settings from your
-    :ref:`global App config <configuring-fiftyone-app>`.
 
 .. _groups-importing:
 

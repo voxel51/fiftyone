@@ -24,6 +24,7 @@ export const ActionBarContainer = styled.div`
   z-index: 20;
   justify-items: center;
   align-items: center;
+  display: flex;
 
   color: #eee;
 
@@ -45,6 +46,7 @@ export const ActionBarContainer = styled.div`
 export const ActionsBar = styled.div`
   position: relative;
   display: flex;
+  flex-grow: 1;
   justify-content: end;
   row-gap: 0.5rem;
   column-gap: 0.75rem;
