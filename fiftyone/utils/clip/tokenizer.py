@@ -13,8 +13,6 @@ import os
 import ftfy
 import regex as re
 
-import fiftyone.core.utils as fou
-
 
 @lru_cache()
 def default_bpe():
