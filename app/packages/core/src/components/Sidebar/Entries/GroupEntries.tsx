@@ -23,9 +23,7 @@ import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
 
-import { PillButton } from "../../utils";
-
-import { useTheme } from "@fiftyone/components";
+import { useTheme, PillButton } from "@fiftyone/components";
 import { datasetName, readableTags, State } from "@fiftyone/state";
 import Draggable from "./Draggable";
 

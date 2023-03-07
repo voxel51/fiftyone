@@ -42,7 +42,7 @@ export const stateSubscription = selector<string>({
   },
 });
 
-export const mediaType = selector({
+export const mediaTypeSelector = selector({
   key: "mediaType",
   get: ({ get }) => get(atoms.dataset)?.mediaType,
   cachePolicy_UNSTABLE: {
@@ -60,7 +60,15 @@ export const savedViewsSelector = selector<State.SavedView[]>({
 
 export const isVideoDataset = selector({
   key: "isVideoDataset",
-  get: ({ get }) => get(mediaType) === "video",
+  get: ({ get }) => get(mediaTypeSelector) === "video",
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const isPointcloudDataset = selector({
+  key: "isPointcloudDataset",
+  get: ({ get }) => get(mediaTypeSelector) === "point_cloud",
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -351,7 +359,7 @@ export const similarityKeys = selector<{
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
-    const sampleIds = get(atoms.extendedSelection);
+    const sampleIds = get(atoms.extendedSelection)?.selection;
     const extendedSelectionOverrideStage = get(
       atoms.extendedSelectionOverrideStage
     );

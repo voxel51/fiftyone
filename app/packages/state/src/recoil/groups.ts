@@ -15,6 +15,7 @@ import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
   dataset,
+  getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
   sidebarOverride,
@@ -69,12 +70,13 @@ export const groupSlices = selector<string[]>({
   },
 });
 
-export const pinnedSlice = selector<string | null>({
-  key: "pinnedSlice",
+export const defaultPinnedSlice = selector<string | null>({
+  key: "defaultPinnedSlice",
   get: ({ get }) => {
     const { groupMediaTypes } = get(dataset);
 
     for (const { name, mediaType } of groupMediaTypes) {
+      // return the first point cloud slice
       if (["point_cloud", "point-cloud"].includes(mediaType)) {
         return name;
       }
@@ -82,6 +84,12 @@ export const pinnedSlice = selector<string | null>({
 
     return null;
   },
+});
+
+export const pinnedSlice = atom<string | null>({
+  key: "pinnedSlice",
+  default: defaultPinnedSlice,
+  effects: [getBrowserStorageEffectForKey("pinnedSlice")],
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({

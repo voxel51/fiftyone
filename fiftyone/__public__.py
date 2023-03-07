@@ -127,6 +127,8 @@ from .core.models import (
 )
 from .core.odm import (
     DatasetAppConfig,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
     KeypointSkeleton,
     SidebarGroupDocument,
 )

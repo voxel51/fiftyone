@@ -88,6 +88,7 @@ class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
     method: t.Optional[str]
     patches_field: t.Optional[str]
+    supports_prompts: t.Optional[bool]
 
 
 @gql.type
