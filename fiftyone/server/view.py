@@ -186,29 +186,33 @@ def get_extended_view(
 
 
 def extend_view(view, extended_stages):
+    """Adds the given extended stages to the view.
 
-    """If sorting conditions are met, it will the sorting of the sample based on the extended stages defined.
-    Then add the stages to the view and return this modified view.
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
-        extended_stages: extended view stages
-    """
+        extended_stages: an extended stages dict
 
-    for cls, d in extended_stages.items():
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
+    for _cls, d in extended_stages.items():
         kwargs = [[k, v] for k, v in d.items()]
-        stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
+        stage = fosg.ViewStage._from_dict({"_cls": _cls, "kwargs": kwargs})
         view = view.add_stage(stage)
 
     return view
 
 
 def _add_labels_tags_counts(view, filtered_fields, label_tags):
+    """Adds stages necessary to count label tags to the view.
 
-    """This counts the number of items in the `_LABEL_TAGS` field and returns the modified view.
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filtered_fields: filtered fields
         label_tags: label tags
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
     """
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
@@ -238,14 +242,18 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
 
 
 def _make_expression(field, path, args):
+    """Returns an expression that can be used to filter a view based on the
+    field, path and provided filter args.
 
-    """This returns a MongoDB expression that can be used to filter a view based on the field, path and provided filter(args)
     Args:
         field: a :class:`fiftyone.core.fields.Field`
         path: a :class:`str` representing the path to the field
-        args: a :class:`dict` representing the filter arguments, usually with keys `values`, `exclude``
-    """
+        args: a :class:`dict` representing the filter arguments, usually with
+            keys `values`, `exclude``
 
+    Returns:
+        a :class:`fiftyone.core.expressions.ViewExpression`
+    """
     if not path:
         return _make_scalar_expression(F(), args, field)
 
@@ -257,7 +265,9 @@ def _make_expression(field, path, args):
     ):
         new_field = field.field
         if args["exclude"]:
-            # in ListField, exclude uses match(expr).length() == 0 instead of match(~expr), therefore, exclude needs to be set to False here to get the correct subexpr
+            # In ListField, exclude uses ``match(expr).length() == 0`` instead
+            # of ``match(~expr)``, so exclude needs to be set to False here to
+            # get the correct subexpr
             args["exclude"] = False
             expr = (
                 lambda subexpr: F(field.db_field or field.name)
@@ -289,7 +299,6 @@ def _make_filter_stages(
     label_tags=None,
     hide_result=False,
 ):
-    """This creates filter stages using the provided filters and label tags."""
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
         frame_field_schema = view.get_frame_field_schema()
