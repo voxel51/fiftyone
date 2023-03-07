@@ -36,6 +36,9 @@ def compute_ious(
     """Computes the pairwise IoUs between the predicted and ground truth
     objects.
 
+    For polylines, IoUs are computed assuming the shapes are solid (filled),
+    regardless of their ``filled`` attributes.
+
     Args:
         preds: a list of predicted :class:`fiftyone.core.labels.Detection` or
             :class:`fiftyone.core.labels.Polyline` instances
@@ -658,7 +661,7 @@ def _polylines_to_shapely(polylines, error_level):
     polys = []
     for polyline in polylines:
         try:
-            poly = polyline.to_shapely()
+            poly = polyline.to_shapely(filled=True)
 
             # Cleanup invalid (eg overlapping or self-intersecting) geometries
             # https://shapely.readthedocs.io/en/stable/manual.html#shapely.ops.unary_union
