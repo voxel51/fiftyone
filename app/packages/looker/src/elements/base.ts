@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
@@ -29,7 +29,7 @@ export abstract class BaseElement<
   element: Element;
   protected readonly events: LoadedEvents = {};
 
-  constructor(
+  boot(
     config: Readonly<State["config"]>,
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void
@@ -57,7 +57,6 @@ export abstract class BaseElement<
 
   render(state: Readonly<State>, sample: Readonly<Sample>): Element | null {
     const self = this.renderSelf(state, sample);
-
     this.children.forEach((child) => {
       if (!child.isShown(state.config)) {
         return;

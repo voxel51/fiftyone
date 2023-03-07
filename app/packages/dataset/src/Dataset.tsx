@@ -1,34 +1,32 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import {
   IconButton,
   KeyboardArrowDown,
   KeyboardArrowUp,
   Loading,
-  ThemeProvider,
 } from "@fiftyone/components";
 import {
   Dataset as CoreDataset,
   DatasetNodeQuery,
+  DatasetQuery,
+  DatasetQueryRef,
   usePreLoadedDataset,
   ViewBar,
 } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { getEnvironment, RelayEnvironmentKey } from "@fiftyone/state";
-import React, { useState, useEffect, Suspense } from "react";
-import { PreloadedQuery, useQueryLoader } from "react-relay";
+import React, { Suspense, useContext, useEffect, useState } from "react";
+import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import styled from "styled-components";
 
-import { DatasetQuery } from "@fiftyone/core";
-
 // built-in plugins
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
-import { setCurrentEnvironment } from "@fiftyone/state/src/hooks/useRouter";
+import "@fiftyone/embeddings";
 
 const Container = styled.div`
   width: 100%;
@@ -59,52 +57,45 @@ export interface DatasetProps {
   readOnly?: boolean;
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
+  canEditSavedViews?: boolean;
 }
 
-export const Dataset: React.FC<DatasetProps> = (props) => {
-  const [environment] = useState(getEnvironment);
-
-  useEffect(() => {
-    setCurrentEnvironment(environment);
-  }, [environment]);
-
-  return (
-    <RecoilRoot>
-      <RecoilRelayEnvironmentProvider
-        environment={environment}
-        environmentKey={RelayEnvironmentKey}
-      >
-        <DatasetRenderer {...props} />
-      </RecoilRelayEnvironmentProvider>
-    </RecoilRoot>
-  );
-};
-
-export const DatasetRenderer: React.FC<DatasetProps> = ({
+export const Dataset: React.FC<DatasetProps> = ({
   dataset,
   compactLayout = true,
   hideHeaders = false,
   readOnly = false,
   theme = "dark",
   toggleHeaders,
+  canEditSavedViews = true,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
+  const setCanChangeSavedViews = useSetRecoilState(fos.canEditSavedViews);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
   React.useLayoutEffect(() => {
     setCompactLayout(compactLayout);
   }, [compactLayout]);
-  React.useEffect(() => {
-    loadQuery({ name: dataset });
-  }, [dataset]);
   React.useLayoutEffect(() => {
     setReadOnly(readOnly);
   }, [readOnly]);
   React.useLayoutEffect(() => {
     setTheme(theme);
   }, [theme]);
+
+  const context = useContext(fos.RouterContext);
+  const savedViewSlug = React.useMemo(
+    () => fos.getSavedViewName(context),
+    [context]
+  );
+  React.useEffect(() => {
+    loadQuery({ name: dataset, savedViewSlug: savedViewSlug });
+  }, [dataset, savedViewSlug]);
+  React.useEffect(() => {
+    setCanChangeSavedViews(canEditSavedViews);
+  }, [canEditSavedViews]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
@@ -113,27 +104,27 @@ export const DatasetRenderer: React.FC<DatasetProps> = ({
   if (plugins.hasError) return <div>Plugin error...</div>;
 
   return (
-    <ThemeProvider>
-      <Container>
-        <Suspense fallback={loadingElement}>
-          <DatasetLoader dataset={dataset} queryRef={queryRef}>
-            <ViewBarWrapper>
-              <ViewBar />
-              {toggleHeaders && (
-                <HeadersToggle
-                  toggleHeaders={toggleHeaders}
-                  hideHeaders={hideHeaders}
-                />
-              )}
-            </ViewBarWrapper>
+    <Container>
+      <Suspense fallback={loadingElement}>
+        <DatasetLoader dataset={dataset} queryRef={queryRef}>
+          <ViewBarWrapper>
+            <ViewBar />
+            {toggleHeaders && (
+              <HeadersToggle
+                toggleHeaders={toggleHeaders}
+                hideHeaders={hideHeaders}
+              />
+            )}
+          </ViewBarWrapper>
+          <Suspense fallback={loadingElement}>
             <CoreDatasetContainer>
               <CoreDataset />
             </CoreDatasetContainer>
-          </DatasetLoader>
-        </Suspense>
-        <div id="modal" />
-      </Container>
-    </ThemeProvider>
+          </Suspense>
+        </DatasetLoader>
+      </Suspense>
+      <div id="modal" />
+    </Container>
   );
 };
 
@@ -164,6 +155,7 @@ const DatasetLoader: React.FC<
 > = ({ children, dataset, queryRef }) => {
   const [data, ready] = usePreLoadedDataset(queryRef);
   const datasetData = useRecoilValue(fos.dataset);
+  const query = usePreloadedQuery<DatasetQuery>(DatasetNodeQuery, queryRef);
 
   if (!data) {
     return <h4>Dataset not found!</h4>;
@@ -175,5 +167,9 @@ const DatasetLoader: React.FC<
 
   if (!ready) return null;
 
-  return <>{children}</>;
+  return (
+    <DatasetQueryRef.Provider value={query}>
+      {children}
+    </DatasetQueryRef.Provider>
+  );
 };

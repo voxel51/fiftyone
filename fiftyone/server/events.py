@@ -1,7 +1,7 @@
 """
-FiftyOne Server events
+FiftyOne Server events.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,10 +14,12 @@ import asyncio
 from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
-import fiftyone as fo
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
+    add_screenshot,
+    CaptureNotebookCell,
     CloseSession,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
@@ -27,6 +29,8 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 import fiftyone.core.state as fos
+import fiftyone.core.utils as fou
+
 from fiftyone.server.query import serialize_dataset
 
 
@@ -54,6 +58,10 @@ async def dispatch_event(
         subscription: the calling subscription id
         event: the event
     """
+    if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
+        add_screenshot(event)
+        return
+
     if isinstance(event, StateUpdate):
         global _state
         _state = event.state
@@ -93,8 +101,8 @@ async def add_event_listener(
                     serialized_view=data.state.view._serialize()
                     if data.state.view is not None
                     else [],
-                    view_name=data.state.view.name
-                    if data.state.view
+                    saved_view_slug=fou.to_slug(data.state.view.name)
+                    if data.state.view is not None and data.state.view.name
                     else None,
                 )
 
@@ -132,8 +140,9 @@ async def add_event_listener(
                         serialized_view=event.state.view._serialize()
                         if event.state.view is not None
                         else [],
-                        view_name=event.state.view.name
-                        if event.state.view
+                        saved_view_slug=fou.to_slug(event.state.view.name)
+                        if event.state.view is not None
+                        and event.state.view.name
                         else None,
                     )
 
@@ -215,7 +224,9 @@ async def dispatch_polling_event_listener(
 
 
 def get_state() -> fos.StateDescription:
-    """Get the current state description singleton on the server
+    """Get the current state description singleton on the server if it
+    exists. Otherwise, initializes and sets the state description with
+    default values.
 
     Returns:
         the :class:`fiftyone.core.state.StateDescription` server singleton
@@ -255,19 +266,65 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         global _app_count
         _app_count += 1
 
-    current = state.dataset.name if state.dataset is not None else None
-    if is_app and payload.initializer != current:
-        if payload.initializer is not None:
+    current = state.dataset.name if state.dataset else None
+    current_saved_view_slug = state.saved_view_slug
+    if not isinstance(payload.initializer, fos.StateDescription):
+        update = False
+        if (
+            payload.initializer.dataset
+            and payload.initializer.dataset != current
+        ):
+            update = True
             try:
-                state.dataset = fo.load_dataset(payload.initializer)
+                state.dataset = fod.load_dataset(payload.initializer.dataset)
+                state.selected = []
+                state.selected_labels = []
+                state.view = None
+                state.view_name = None
+                state.saved_view_slug = None
             except:
                 state.dataset = None
-            state.selected = []
-            state.selected_labels = []
-            state.view = None
-            state.saved_view_slug = None
-            state.changing_saved_view = False
+                state.selected = []
+                state.selected_labels = []
+                state.view = None
+                state.view_name = None
+                state.saved_view_slug = None
+            else:
+                if payload.initializer.view:
+                    try:
+                        doc = state.dataset._get_saved_view_doc(
+                            payload.initializer.view, slug=True
+                        )
+                        state.view = state.dataset.load_saved_view(doc.name)
+                        state.selected = []
+                        state.selected_labels = []
+                        state.saved_view_slug = payload.initializer.view
+                        state.view_name = doc.name
+                    except:
+                        pass
+        elif (
+            payload.initializer.view
+            and payload.initializer.view != current_saved_view_slug
+        ):
+            update = True
+            try:
+                doc = state.dataset._get_saved_view_doc(
+                    payload.initializer.view, slug=True
+                )
+                state.view = state.dataset.load_saved_view(doc.name)
+                state.selected = []
+                state.selected_labels = []
+                state.saved_view_slug = payload.initializer.view
+                state.view_name = doc.name
+            except:
+                state.view = None
+                state.selected = []
+                state.selected_labels = []
+                state.view_name = None
+                state.saved_view_slug = None
+                pass
 
+        if update:
             await dispatch_event(payload.subscription, StateUpdate(state))
 
     elif not is_app:
@@ -287,3 +344,15 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
     _requests[payload.subscription] = request_listeners
 
     return InitializedListener(is_app, request_listeners, state)
+
+
+_PORT = None
+
+
+def set_port(port: int):
+    global _PORT
+    _PORT = port
+
+
+def get_port() -> int:
+    return _PORT

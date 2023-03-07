@@ -1,16 +1,18 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-import * as common from "./common";
-import * as frame from "./frame";
-import * as image from "./image";
 import {
   BaseState,
   FrameState,
   ImageState,
+  PcdState,
   StateUpdate,
   VideoState,
 } from "../state";
+import * as common from "./common";
+import * as frame from "./frame";
+import * as image from "./image";
+import * as pcd from "./pcd";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 
@@ -54,12 +56,6 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
-      },
-      {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
       },
       {
         node: common.OptionsPanelElement,
@@ -116,12 +112,6 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
-      },
-      {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
       },
       {
         node: common.OptionsPanelElement,
@@ -189,12 +179,6 @@ export const getVideoElements: GetElements<VideoState> = (
         ],
       },
       {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
-      },
-      {
         node: common.OptionsPanelElement,
         children: [
           { node: common.LoopVideoOptionElement },
@@ -210,6 +194,62 @@ export const getVideoElements: GetElements<VideoState> = (
   };
 
   return createElementsTree<VideoState, common.LookerElement<VideoState>>(
+    config,
+    elements,
+    update,
+    dispatchEvent
+  );
+};
+
+export const getPcdElements: GetElements<PcdState> = (
+  config,
+  update,
+  dispatchEvent
+) => {
+  const elements = {
+    node: common.LookerElement,
+    children: [
+      {
+        node: pcd.PcdElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      { node: common.TagsElement },
+      {
+        node: common.ThumbnailSelectorElement,
+      },
+      {
+        node: common.ControlsElement,
+        children: [
+          { node: frame.FrameNumberElement },
+          { node: common.PlusElement },
+          { node: common.MinusElement },
+          { node: common.CropToContentButtonElement },
+          { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
+          { node: common.JSONButtonElement },
+          { node: common.OptionsButtonElement },
+          { node: common.HelpButtonElement },
+        ],
+      },
+      {
+        node: common.OptionsPanelElement,
+        children: [
+          { node: common.OnlyShowHoveredOnLabelOptionElement },
+          { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
+          { node: common.ShowTooltipOptionElement },
+        ],
+      },
+    ],
+  };
+
+  return createElementsTree<PcdState, common.LookerElement<PcdState>>(
     config,
     elements,
     update,

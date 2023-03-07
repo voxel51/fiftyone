@@ -1,4 +1,9 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
+import {
+  atomFamily,
+  RecoilValueReadOnly,
+  selector,
+  selectorFamily,
+} from "recoil";
 
 import {
   DETECTION,
@@ -157,7 +162,7 @@ export const fieldPaths = selectorFamily<
 >({
   key: "fieldPaths",
   get:
-    ({ path, space, ftype, embeddedDocType }) =>
+    ({ path, space, ftype, embeddedDocType } = {}) =>
     ({ get }) => {
       if (path && space) {
         throw new Error("path and space provided");
@@ -218,7 +223,7 @@ export const fields = selectorFamily<
 >({
   key: "fields",
   get:
-    (params) =>
+    (params = {}) =>
     ({ get }) => {
       if (!params.path && !params.space) {
         throw new Error("invalid parameters");
@@ -376,7 +381,22 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
     },
 });
 
-export const activeField = selectorFamily<
+type ActiveFieldSelector = (params: {
+  /**
+   * Whether the field is in a modal or not
+   */
+  modal: boolean;
+  /**
+   * The path of the field
+   * @example "frames.0.label"
+   */
+  path: string;
+}) => RecoilValueReadOnly<boolean>;
+
+/**
+ * Get or set the active state of a field.
+ */
+export const activeField: ActiveFieldSelector = selectorFamily<
   boolean,
   { modal: boolean; path: string }
 >({

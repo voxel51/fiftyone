@@ -115,12 +115,24 @@ export const useScreenshot = (
           event: "capture_notebook_cell",
           subscription,
           data: { src: imgData, width: canvas.width, subscription },
+        }).then(() => {
+          if (context === "databricks") {
+            const params = new URLSearchParams(window.location.search);
+            const proxy = params.get("proxy");
+
+            window.location.assign(
+              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`
+            );
+          }
         });
       });
   }, [captureCallbacks, context, subscription]);
 
   const run = () => {
-    if (!context) return;
+    const notebook = new URLSearchParams(window.location.search).get(
+      "notebook"
+    );
+    if (!notebook) return;
 
     fitSVGs();
     let chain = Promise.resolve(null);

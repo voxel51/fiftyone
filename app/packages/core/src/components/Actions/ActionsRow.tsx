@@ -25,27 +25,28 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import { useTheme } from "@fiftyone/components";
+import { PillButton, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
-import { PillButton } from "../utils";
+import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Similar from "./Similar";
 import Tagger from "./Tagger";
 
-const shouldToggleBookMarkIconOnSelector = selector<boolean>({
+export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
     const hasFiltersValue = get(fos.hasFilters(false));
-    const extendedSelectionList = get(fos.extendedSelection);
+    const { selection } = get(fos.extendedSelection);
     const selectedSampleSet = get(fos.selectedSamples);
+    const isSimilarityOn = get(fos.similarityParameters);
 
     const isExtendedSelectionOn =
-      extendedSelectionList && extendedSelectionList.length > 0;
+      (selection && selection.length > 0) || isSimilarityOn;
 
     return (
       isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
@@ -303,11 +304,29 @@ const SaveFilters = () => {
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
+
         if (loading) {
           return;
         }
+
         set(fos.savingFilters, true);
-        setView((v) => v);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
       },
     []
   );
@@ -389,10 +408,13 @@ export const GridActionsRow = () => {
 
 export const ModalActionsRow = ({
   lookerRef,
+  isGroup,
 }: {
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
+  isGroup?: boolean;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
+  const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
     <ActionsRowDiv
@@ -404,8 +426,9 @@ export const ModalActionsRow = ({
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
-      <Tag modal={true} lookerRef={lookerRef} />
+      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
+      {isGroup && <GroupMediaVisibilityContainer modal={true} />}
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

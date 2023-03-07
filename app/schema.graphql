@@ -57,6 +57,7 @@ type AppConfig {
   theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
+  spaces: JSON
 }
 
 scalar BSON
@@ -128,6 +129,7 @@ type Dataset {
   frameFields: [SampleField!]
   brainMethods: [BrainRun!]
   evaluations: [EvaluationRun!]
+  savedViewSlug: String
   savedViews: [SavedView!]
   version: String
   viewCls: String
@@ -136,6 +138,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  stages(slug: String = null): BSONArray
 }
 
 type DatasetAppConfig {
@@ -145,6 +148,7 @@ type DatasetAppConfig {
   sidebarMode: SidebarMode
   modalMediaField: String
   gridMediaField: String
+  spaces: JSON
 }
 
 type DatasetStrConnection {
@@ -184,6 +188,13 @@ type EvaluationRunConfig implements RunConfig {
   gtField: String
   predField: String
   method: String
+}
+
+input ExtendedViewForm {
+  filters: JSON = null
+  mixed: Boolean = null
+  sampleIds: [String!] = null
+  slice: String = null
 }
 
 type FloatAggregation implements Aggregation {
@@ -295,9 +306,7 @@ type Mutation {
     session: String
     datasetName: String!
     view: BSONArray
-    viewName: String
     savedViewSlug: String
-    changingSavedView: Boolean
     form: StateForm
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -313,6 +322,7 @@ type Mutation {
     session: String
     viewName: String!
     viewStages: BSONArray = null
+    form: StateForm = null
     datasetName: String = null
     description: String = null
     color: String = null
@@ -321,7 +331,7 @@ type Mutation {
     subscription: String!
     session: String
     viewName: String!
-    datasetName: String = null
+    datasetName: String
   ): String
   updateSavedView(
     viewName: String!
@@ -330,6 +340,7 @@ type Mutation {
     updatedInfo: SavedViewInfo!
     datasetName: String = null
   ): SavedView
+  setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
 }
 
 type NamedKeypointSkeleton {
@@ -347,6 +358,7 @@ type PointCloudSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type Query {
@@ -354,9 +366,10 @@ type Query {
     datasetName: String!
     view: BSONArray
     aggregations: [Aggregate!]!
-    viewName: String
+    viewName: String = null
+    form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, viewName: String): Dataset
+  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -445,16 +458,16 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
-  id: String
-  datasetId: String
   name: String
-  slug: String
   description: String
   color: String
+  slug: String
   viewStages: [String!]
   createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
+  id: String
+  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }
@@ -481,7 +494,7 @@ type SidebarGroup {
 input SidebarGroupInput {
   name: String!
   paths: [String!]
-  expanded: Boolean = true
+  expanded: Boolean = null
 }
 
 enum SidebarMode {
@@ -521,7 +534,7 @@ type StringAggregationValue {
 }
 
 type Target {
-  target: Int!
+  target: String!
   value: String!
 }
 
@@ -542,9 +555,6 @@ type VideoSample implements Sample {
 type ViewResponse {
   view: BSONArray!
   dataset: Dataset!
-  viewName: String
-  savedViewSlug: String
-  changingSavedView: Boolean
 }
 
 scalar date

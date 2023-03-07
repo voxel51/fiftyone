@@ -1,26 +1,28 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy, deepcopy
+from copy import deepcopy, copy
 from datetime import date, datetime
+import gc
 import os
+import unittest
 
 from bson import ObjectId
+from mongoengine import ValidationError
 import numpy as np
 import pytz
-import unittest
 
 import eta.core.utils as etau
 
 import fiftyone as fo
-from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets, skip_windows
 
@@ -2314,14 +2316,37 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_mask_targets = {1: "cat", 2: "dog"}
+        default_mask_targets_str_keys = {"1": "cat", "2": "dog"}
+
         dataset.default_mask_targets = default_mask_targets
+        dataset.default_mask_targets = default_mask_targets_str_keys
+
+        default_mask_targets_invalid_str_keys = {"1hi": "cat", "2": "dog"}
+
+        with self.assertRaises(ValidationError):
+            dataset.default_mask_targets = (
+                default_mask_targets_invalid_str_keys
+            )
 
         dataset.reload()
         self.assertDictEqual(
             dataset.default_mask_targets, default_mask_targets
         )
 
-        with self.assertRaises(Exception):
+        # test rgb mask targets
+        default_mask_targets_rgb = {
+            "#ff0034": "label1",
+            "#00dd32": "label2",
+            "#AABB23": "label3",
+        }
+        dataset.default_mask_targets = default_mask_targets_rgb
+
+        default_mask_targets_rgb_invalid = {"ff0034": "label1"}
+
+        with self.assertRaises(ValidationError):
+            dataset.default_mask_targets = default_mask_targets_rgb_invalid
+
+        with self.assertRaises(ValidationError):
             dataset.default_mask_targets["hi"] = "there"
             dataset.save()  # error
 
@@ -2334,28 +2359,28 @@ class DatasetTests(unittest.TestCase):
         dataset.reload()
         self.assertDictEqual(dataset.mask_targets, mask_targets)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["hi"] = "there"
             dataset.save()  # error
 
         dataset.mask_targets.pop("hi")
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
         dataset.mask_targets.pop(1)
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["ground_truth"]["hi"] = "there"
             dataset.save()  # error
 
         dataset.mask_targets["ground_truth"].pop("hi")
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["predictions"] = {1: {"too": "many"}}
             dataset.save()  # error
 
@@ -4251,7 +4276,54 @@ class DynamicFieldTests(unittest.TestCase):
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets
-    def test_custom_embedded_documents(self):
+    def test_custom_embedded_documents_on_the_fly(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field(
+            "camera_info",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # This tests that we've handled a mongoengine reference error that used
+        # to occur before we explicitly accounted for it
+        gc.collect()
+
+        dataset.add_sample_field("camera_info.camera_id", fo.StringField)
+
+        self.assertIn(
+            "camera_info.camera_id", dataset.get_field_schema(flat=True)
+        )
+
+        sample1 = fo.Sample(
+            filepath="/path/to/image1.jpg",
+            camera_info=fo.DynamicEmbeddedDocument(
+                camera_id="123456789",
+                quality=51.0,
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="/path/to/image2.jpg",
+            camera_info=fo.DynamicEmbeddedDocument(camera_id="123456789"),
+        )
+
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        self.assertIn(
+            "camera_info.quality", dataset.get_field_schema(flat=True)
+        )
+
+        dataset.set_values(
+            "camera_info.description", ["foo", "bar"], dynamic=True
+        )
+
+        self.assertIn(
+            "camera_info.description", dataset.get_field_schema(flat=True)
+        )
+
+    @drop_datasets
+    def test_custom_embedded_document_classes(self):
         sample = fo.Sample(
             filepath="/path/to/image.png",
             camera_info=_CameraInfo(

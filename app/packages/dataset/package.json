@@ -2,13 +2,13 @@
     "name": "@fiftyone/dataset",
     "author": "Voxel51, Inc.",
     "version": "0.0.0",
-    "description": "Media viewer that can render label overlays.",
+    "description": "dataset page package",
     "homepage": "https://github.com/voxel51/fiftyone/app/packages/looker",
     "license": "Apache-2.0",
     "bugs": {
         "url": "https://github.com/voxel51/fiftyone/"
     },
-    "main": "./src/index.tsx",
+    "main": "./src/index.ts",
     "scripts": {
         "build": "NODE_OPTIONS='--max-old-space-size=9728' vite build",
         "dev": "vite dev"
@@ -26,14 +26,5 @@
         "typescript": "^4.7.4",
         "typescript-plugin-css-modules": "^3.4.0",
         "vite": "^3.0.0"
-    },
-    "exports": {
-        ".": {
-            "import": "./dist/dataset.js",
-            "require": "./dist/dataset.js"
-        },
-        "./style.css": {
-            "import": "./dist/style.css"
-        }
     }
 }

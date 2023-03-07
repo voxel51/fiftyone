@@ -1,14 +1,16 @@
 """
 Session events.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import base64
 from dataclasses import dataclass
 import re
 import typing as t
 
+import asyncio
 from dacite import from_dict
 
 import eta.core.utils as etau
@@ -22,7 +24,6 @@ EventType = t.Union[
     "CloseSession",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
-    "RefreshApp",
     "StateUpdate",
 ]
 
@@ -54,6 +55,16 @@ class Event:
             data["state"] = fos.StateDescription.from_dict(data["state"])
 
         return from_dict(event_cls, data)
+
+    @staticmethod
+    async def from_data_async(
+        event_name: str, data: t.Union[str, dict]
+    ) -> EventType:
+        def run():
+            return Event.from_data(event_name, data)
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, run)
 
 
 @dataclass
@@ -88,8 +99,6 @@ class StateUpdate(Event):
 
     state: fos.StateDescription
     refresh: bool = False
-    update: bool = False
-    changing_saved_view: bool = False
 
 
 @dataclass
@@ -98,20 +107,26 @@ class Ping(Event):
 
 
 @dataclass
+class AppInitializer:
+    dataset: t.Optional[str] = None
+    view: t.Optional[str] = None
+
+
+@dataclass
 class ListenPayload:
     """A an initialization payload for an event listener request"""
 
-    initializer: t.Union[str, None, fos.StateDescription]
+    initializer: t.Union[AppInitializer, None, fos.StateDescription]
     events: t.List[str]
     subscription: str
     polling: t.Optional[bool] = False
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ListenPayload":
+    async def from_dict(cls, d: dict) -> "ListenPayload":
         init = d["initializer"]
 
-        if isinstance(init, dict):
-            d["initializer"] = fos.StateDescription.from_dict(d["initializer"])
+        if isinstance(init, dict) and "_CLS" in init:
+            d["initializer"] = await _load_state(init)
 
         return from_dict(cls, d)
 
@@ -121,3 +136,33 @@ def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
         (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
         for k, v in data
     )
+
+
+@dataclass
+class Screenshot:
+    bytes: bytes
+    max_width: int
+
+
+_SCREENSHOTS: t.Dict[str, Screenshot] = {}
+
+
+def add_screenshot(event: CaptureNotebookCell) -> None:
+    data = event.src.split(",")[1].encode()
+    _SCREENSHOTS[event.subscription] = Screenshot(
+        base64.decodebytes(data), event.width
+    )
+
+
+def get_screenshot(subscription: str, pop=False) -> Screenshot:
+    return (
+        _SCREENSHOTS.pop(subscription) if pop else _SCREENSHOTS[subscription]
+    )
+
+
+async def _load_state(data: dict):
+    def run():
+        return fos.StateDescription.from_dict(data)
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, run)

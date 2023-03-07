@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ac7248f4894983ff0b6fd8dac8bfa8bc>>
+ * @generated SignedSource<<b42852c8bf7979bf954d5bfef201053c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,10 +9,25 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
+export type StateForm = {
+  addStages?: Array | null;
+  extended?: object | null;
+  filters?: object | null;
+  labels?: ReadonlyArray<SelectedLabel> | null;
+  sampleIds?: ReadonlyArray<string> | null;
+  slice?: string | null;
+};
+export type SelectedLabel = {
+  field: string;
+  frameNumber?: number | null;
+  labelId: string;
+  sampleId: string;
+};
 export type createSavedViewMutation$variables = {
   color?: string | null;
   datasetName?: string | null;
   description?: string | null;
+  form?: StateForm | null;
   session?: string | null;
   subscription: string;
   viewName: string;
@@ -54,24 +69,29 @@ v2 = {
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "form"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "subscription"
+  "name": "session"
 },
 v5 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "viewName"
+  "name": "subscription"
 },
 v6 = {
   "defaultValue": null,
   "kind": "LocalArgument",
+  "name": "viewName"
+},
+v7 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
   "name": "viewStages"
 },
-v7 = [
+v8 = [
   {
     "alias": null,
     "args": [
@@ -89,6 +109,11 @@ v7 = [
         "kind": "Variable",
         "name": "description",
         "variableName": "description"
+      },
+      {
+        "kind": "Variable",
+        "name": "form",
+        "variableName": "form"
       },
       {
         "kind": "Variable",
@@ -141,14 +166,14 @@ v7 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "slug",
+        "name": "description",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "description",
+        "name": "slug",
         "storageKey": null
       },
       {
@@ -185,41 +210,43 @@ return {
       (v3/*: any*/),
       (v4/*: any*/),
       (v5/*: any*/),
-      (v6/*: any*/)
+      (v6/*: any*/),
+      (v7/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "createSavedViewMutation",
-    "selections": (v7/*: any*/),
+    "selections": (v8/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v4/*: any*/),
-      (v3/*: any*/),
       (v5/*: any*/),
+      (v4/*: any*/),
       (v6/*: any*/),
+      (v7/*: any*/),
       (v1/*: any*/),
       (v2/*: any*/),
-      (v0/*: any*/)
+      (v0/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Operation",
     "name": "createSavedViewMutation",
-    "selections": (v7/*: any*/)
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "6fb874cc5e13f089e320464f5893370e",
+    "cacheID": "394266ec53b6d4eeb1710d03f7cb9dbb",
     "id": null,
     "metadata": {},
     "name": "createSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n  }\n}\n"
+    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n  $form: StateForm = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color, form: $form) {\n    id\n    datasetId\n    name\n    description\n    slug\n    color\n    viewStages\n    createdAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5fe8af39ab8589f64892785729950ef4";
+(node as any).hash = "edca4fb3baa506df972aa14983e64a98";
 
 export default node;

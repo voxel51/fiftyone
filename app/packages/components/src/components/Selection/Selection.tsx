@@ -3,13 +3,14 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Option, Select } from "@mui/joy";
 import styled from "styled-components";
 
-import { useOutsideClick } from "@fiftyone/state";
+import { useOutsideClick, DEFAULT_SELECTED } from "@fiftyone/state";
 import SelectionOption from "./Option";
-import { useTheme } from "@fiftyone/components";
+import { IconButton, useTheme } from "@fiftyone/components";
 import { DatasetViewOption } from "./Option";
 import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
+import { CloseRounded } from "@mui/icons-material";
 
 const Box = styled.div`
   display: flex;
@@ -59,6 +60,7 @@ type SelectionProps = {
   compact?: boolean; // compact UI
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
+  onClear?: () => void;
 };
 
 const VIEW_LIST_MAX_HEIGHT = "300px";
@@ -75,6 +77,7 @@ export default function Selection(props: SelectionProps) {
     compact,
     readonly,
     onEdit,
+    onClear,
   } = props;
   if (!selected) {
     return null;
@@ -124,6 +127,12 @@ export default function Selection(props: SelectionProps) {
               margin: 0,
             },
           },
+          endDecorator: {
+            sx: {
+              position: "absolute",
+              right: "0.4rem",
+            },
+          },
           listbox: {
             sx: {
               "--List-decorator-size": "24px",
@@ -143,9 +152,9 @@ export default function Selection(props: SelectionProps) {
               ...textBoxStyle,
               display: "flex",
               padding: "0 1rem",
-              background: theme.background.level1,
+              background: theme.background.level3,
               "&:hover": {
-                background: theme.background.level1,
+                background: theme.background.level3,
               },
             },
           },
@@ -153,10 +162,10 @@ export default function Selection(props: SelectionProps) {
             sx: {
               ...textBoxStyle,
               textAlign: "left",
-              background: theme.background.level1,
+              background: theme.background.level3,
 
               "&:hover": {
-                background: theme.background.level1,
+                background: theme.background.level3,
               },
             },
           },
@@ -164,6 +173,24 @@ export default function Selection(props: SelectionProps) {
         startDecorator={
           <ColoredDot color={selectedColor || DEFAULT_COLOR_OPTION.color} />
         }
+        {...(selectedId !== DEFAULT_SELECTED.id &&
+          onClear && {
+            endDecorator: (
+              <IconButton
+                size="small"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                }}
+                onClick={() => {
+                  setIsOpen(false);
+                  onClear();
+                }}
+              >
+                <CloseRounded />
+              </IconButton>
+            ),
+            indicator: null,
+          })}
         onClick={() => {
           setIsOpen(!isOpen);
         }}

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<090b86da235e773defb8dd231539abaa>>
+ * @generated SignedSource<<0cb770c001251345fcf2f0a021830c27>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,8 +9,15 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from 'relay-runtime';
+export type ExtendedViewForm = {
+  filters?: object | null;
+  mixed?: boolean | null;
+  sampleIds?: ReadonlyArray<string> | null;
+  slice?: string | null;
+};
 export type countValuesQuery$variables = {
   dataset: string;
+  form?: ExtendedViewForm | null;
   path: string;
   view: Array;
 };
@@ -47,21 +54,26 @@ var v0 = {
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "path"
+  "name": "form"
 },
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "view"
+  "name": "path"
 },
 v3 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "view"
+},
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "value",
   "storageKey": null
 },
-v4 = [
+v5 = [
   {
     "alias": null,
     "args": [
@@ -95,6 +107,11 @@ v4 = [
       },
       {
         "kind": "Variable",
+        "name": "form",
+        "variableName": "form"
+      },
+      {
+        "kind": "Variable",
         "name": "view",
         "variableName": "view"
       }
@@ -122,7 +139,7 @@ v4 = [
             "name": "values",
             "plural": true,
             "selections": [
-              (v3/*: any*/),
+              (v4/*: any*/),
               {
                 "alias": "bool",
                 "args": null,
@@ -148,7 +165,7 @@ v4 = [
             "name": "values",
             "plural": true,
             "selections": [
-              (v3/*: any*/),
+              (v4/*: any*/),
               {
                 "alias": "str",
                 "args": null,
@@ -172,12 +189,13 @@ return {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "countValuesQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -185,24 +203,25 @@ return {
   "operation": {
     "argumentDefinitions": [
       (v0/*: any*/),
+      (v3/*: any*/),
       (v2/*: any*/),
       (v1/*: any*/)
     ],
     "kind": "Operation",
     "name": "countValuesQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "9b50dae166f3375585e2a382235a680e",
+    "cacheID": "3e068aebda42556ce84561090eabb51d",
     "id": null,
     "metadata": {},
     "name": "countValuesQuery",
     "operationKind": "query",
-    "text": "query countValuesQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n) {\n  aggregate(datasetName: $dataset, view: $view, aggregations: [{countValues: {field: $path}}]) {\n    __typename\n    ... on BoolCountValuesResponse {\n      values {\n        value\n        bool: key\n      }\n    }\n    ... on StrCountValuesResponse {\n      values {\n        value\n        str: key\n      }\n    }\n  }\n}\n"
+    "text": "query countValuesQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $path: String!\n  $form: ExtendedViewForm\n) {\n  aggregate(datasetName: $dataset, view: $view, aggregations: [{countValues: {field: $path}}], form: $form) {\n    __typename\n    ... on BoolCountValuesResponse {\n      values {\n        value\n        bool: key\n      }\n    }\n    ... on StrCountValuesResponse {\n      values {\n        value\n        str: key\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "587101f597e0a5b5913befc130c655f9";
+(node as any).hash = "a17aefad732a7252e2693b8e05b372bb";
 
 export default node;

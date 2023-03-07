@@ -1,7 +1,7 @@
 """
 Plotly plots.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,20 +16,20 @@ from PIL import ImageColor
 import plotly.colors as pc
 import plotly.express as px
 import plotly.graph_objects as go
-import sklearn.linear_model as skl
-import sklearn.metrics as skm
 
 import eta.core.utils as etau
 
 import fiftyone.core.context as foc
-import fiftyone.core.expressions as foe
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
-import fiftyone.core.video as fov
 
 from .base import Plot, InteractivePlot, ResponsivePlot
+from .utils import (
+    best_fit_line,
+    parse_lines_inputs,
+    parse_locations,
+    parse_scatter_inputs,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -363,22 +363,17 @@ def plot_regressions(
         _,
         classes,
         categorical,
-    ) = _parse_scatter_inputs(
-        points, samples, ids, link_field, labels, sizes, None, classes
+    ) = parse_scatter_inputs(
+        points,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
+        classes=classes,
     )
 
-    ytrue = points[:, 0]
-    ypred = points[:, 1]
-
-    if best_fit_label is None:
-        r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
-        best_fit_label = "r^2: %0.3f" % r2_score
-
-    model = skl.LinearRegression()
-    model.fit(ytrue[:, np.newaxis], ypred)
-
-    xline = np.array([ytrue.min(), ytrue.max()])
-    yline = model.predict(xline[:, np.newaxis])
+    xline, yline, best_fit_label = best_fit_line(points, label=best_fit_label)
 
     xlabel = gt_field if gt_field is not None else "Ground truth"
     ylabel = pred_field if pred_field is not None else "Predictions"
@@ -806,102 +801,54 @@ def lines(
             notebook but the above conditions aren't met
         -   a plotly figure, otherwise
     """
-    if y is None:
-        raise ValueError("You must provide 'y' values")
-
-    if xaxis_title is not None:
-        x_title = xaxis_title.rsplit(".", 1)[-1]
-    else:
-        x_title = "x"
-
-    if yaxis_title is not None:
-        y_title = yaxis_title.rsplit(".", 1)[-1]
-    else:
-        y_title = "y"
-
     if sizes is not None and sizes_title is None:
         if etau.is_str(sizes):
             sizes_title = sizes.rsplit(".", 1)[-1]
         else:
             sizes_title = "size"
 
-    hover_lines = ["%s: %%{x}" % x_title, "%s: %%{y}" % y_title]
-
-    if sizes is not None:
-        hover_lines.append("%s: %%{marker.size}" % sizes_title)
-
-    if ids is not None or samples is not None:
-        hover_lines.append("ID: %{customdata}")
-
-    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
-
-    if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples._contains_videos():
-            is_frames = foe.is_frames_expr(y)
-        else:
-            is_frames = False
-    else:
-        is_frames = y and etau.is_container(y[0])
-
-    if is_frames and link_field is None:
-        link_field = "frames"
-
-    y = _parse_values(y, "y", samples=samples, is_frames=is_frames)
-
-    if x is None:
-        if is_frames:
-            x = [np.arange(1, len(yi) + 1) for yi in y]
-        else:
-            x = np.arange(1, len(y) + 1)
-    else:
-        x = _parse_values(x, "x", samples=samples, ref=y, is_frames=is_frames)
-
-    if is_frames and x and not etau.is_container(x[0]):
-        x = [x] * len(y)
-
-    sizes = _parse_values(
-        sizes, "sizes", samples=samples, ref=y, is_frames=is_frames
+    x, y, ids, link_field, labels, sizes, is_frames = parse_lines_inputs(
+        x=x,
+        y=y,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
     )
 
-    if sizes is not None:
+    if is_frames:
+        showlegend = True
+    else:
+        showlegend = labels[0] is not None
+
+    if xaxis_title is not None:
+        xtitle = xaxis_title.rsplit(".", 1)[-1]
+    else:
+        xtitle = "x"
+
+    if yaxis_title is not None:
+        ytitle = yaxis_title.rsplit(".", 1)[-1]
+    else:
+        ytitle = "y"
+
+    hover_lines = ["%s: %%{x}" % xtitle, "%s: %%{y}" % ytitle]
+
+    if sizes[0] is not None:
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
+
         if marker_size is None:
             marker_size = 15  # max marker size
 
-        if is_frames:
-            _sizes = list(itertools.chain(*sizes))
-        else:
-            _sizes = sizes
-
         try:
-            sizeref = 0.5 * max(_sizes) / marker_size
+            sizeref = 0.5 * max(itertools.chain(*sizes)) / marker_size
         except ValueError:
             sizeref = 1
 
-    if ids is None and samples is not None:
-        ids = _get_ids(
-            samples, link_field=link_field, ref=y, is_frames=is_frames
-        )
+    if ids[0] is not None:
+        hover_lines.append("ID: %{customdata}")
 
-    if is_frames:
-        if sizes is None:
-            sizes = itertools.repeat(None)
-
-        if ids is None:
-            ids = itertools.repeat(None)
-
-        if labels is None:
-            labels = [str(i) for i in range(1, len(y) + 1)]
-        elif etau.is_str(labels):
-            labels = _parse_values(labels, "labels", samples=samples)
-
-        showlegend = True
-    else:
-        x = [x]
-        y = [y]
-        ids = [ids]
-        sizes = [sizes]
-        labels = [labels]
-        showlegend = labels[0] is not None
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     colors = _get_qualitative_colors(len(y), colors=colors)
 
@@ -1114,8 +1061,15 @@ def scatterplot(
         edges,
         classes,
         categorical,
-    ) = _parse_scatter_inputs(
-        points, samples, ids, link_field, labels, sizes, edges, classes
+    ) = parse_scatter_inputs(
+        points,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
+        edges=edges,
+        classes=classes,
     )
 
     if categorical:
@@ -1234,149 +1188,6 @@ def _parse_titles(
     colorbar_title = labels_title if show_colorbar_title else None
 
     return labels_title, sizes_title, colorbar_title
-
-
-def _parse_scatter_inputs(
-    points, samples, ids, link_field, labels, sizes, edges, classes
-):
-    num_dims = points.shape[1]
-
-    labels = _parse_values(labels, "labels", samples=samples, ref=points)
-    sizes = _parse_values(sizes, "sizes", samples=samples, ref=points)
-
-    if ids is None and samples is not None:
-        if num_dims != 2:
-            msg = "Interactive selection is only supported in 2D"
-            warnings.warn(msg)
-        else:
-            ids = _get_ids(samples, link_field=link_field, ref=points)
-
-    return _parse_scatter_data(points, ids, labels, sizes, edges, classes)
-
-
-def _parse_values(values, parameter, samples=None, ref=None, is_frames=False):
-    if values is None:
-        return None
-
-    if etau.is_str(values) or isinstance(values, foe.ViewExpression):
-        if samples is None:
-            raise ValueError(
-                "You must provide `samples` in order to extract field values "
-                "for the `%s` parameter" % parameter
-            )
-
-        values = samples.values(values)
-
-    if is_frames:
-        values = [_unwind_values(v) for v in values]
-    else:
-        values = _unwind_values(values)
-
-    if ref is not None:
-        _validate_values(values, ref, parameter, is_frames=is_frames)
-
-    return values
-
-
-def _get_ids(samples, link_field=None, ref=None, is_frames=False):
-    if link_field is None:
-        ids = samples.values("id")
-        ptype = "sample"
-    elif link_field == "frames":
-        ids = samples.values("frames.id")
-        ptype = "frame"
-    else:
-        _, id_path = samples._get_label_field_path(link_field, "id")
-        ids = samples.values(id_path)
-        ptype = "label"
-
-    if is_frames:
-        ids = [_unwind_values(_ids) for _ids in ids]
-    else:
-        ids = _unwind_values(ids)
-
-    if ref is not None:
-        values_type = "%s IDs" % ptype
-        _validate_values(ids, ref, values_type, is_frames=is_frames)
-
-    return ids
-
-
-def _unwind_values(values):
-    if values is None:
-        return None
-
-    while any(etau.is_container(v) for v in values):
-        values = list(itertools.chain.from_iterable(v for v in values if v))
-
-    return np.array(values)
-
-
-def _validate_values(values, ref, values_type, is_frames=False):
-    if not is_frames:
-        if len(values) != len(ref):
-            raise ValueError(
-                "Inconsistent number of %s (%d != %d). You may have missing "
-                "data/labels that you need to omit from your view"
-                % (values_type, len(values), len(ref))
-            )
-
-        return
-
-    if len(values) != len(ref):
-        raise ValueError(
-            "Inconsistent number of %s traces (%d != %d). You may have "
-            "missing data/labels that you need to omit from your view"
-            % (values_type, len(values), len(ref))
-        )
-
-    for idx, (_values, _ref) in enumerate(zip(values, ref), 1):
-        if len(_values) != len(_ref):
-            raise ValueError(
-                "Inconsistent number of %s (%d != %d) in trace %d/%d. You may "
-                "have missing data/labels that you need to omit from your view"
-                % (values_type, len(_values), len(_ref), idx, len(values))
-            )
-
-
-def _parse_scatter_data(points, ids, labels, sizes, edges, classes):
-    if ids is not None:
-        ids = np.asarray(ids)
-
-    if sizes is not None:
-        sizes = np.asarray(sizes)
-
-    if edges is not None:
-        edges = np.asarray(edges)
-
-    if labels is None:
-        return points, ids, None, sizes, edges, None, False
-
-    labels = np.asarray(labels)
-
-    if not etau.is_str(labels[0]):
-        return points, ids, labels, sizes, edges, None, False
-
-    if classes is None:
-        classes = sorted(set(labels))
-        return points, ids, labels, sizes, edges, classes, True
-
-    found = np.array([l in classes for l in labels])
-    if not np.all(found):
-        points = points[found, :]
-        labels = labels[found]
-
-        if sizes is not None:
-            sizes = sizes[found]
-
-        if ids is not None:
-            ids = ids[found]
-
-        if edges is not None:
-            i = set(np.nonzero(found)[0])
-            edges = np.array([e for e in edges if e[0] in i and e[1] in i])
-
-    return points, ids, labels, sizes, edges, classes, True
 
 
 def location_scatterplot(
@@ -1504,11 +1315,11 @@ def location_scatterplot(
             working in a Jupyter notebook
         -   a plotly figure, otherwise
     """
-    locations = _parse_locations(locations, samples)
-
     labels_title, sizes_title, colorbar_title = _parse_titles(
         labels, labels_title, sizes, sizes_title, show_colorbar_title
     )
+
+    locations = parse_locations(locations, samples, ids=ids)
 
     (
         locations,
@@ -1518,8 +1329,14 @@ def location_scatterplot(
         edges,
         classes,
         categorical,
-    ) = _parse_scatter_inputs(
-        locations, samples, ids, None, labels, sizes, edges, classes
+    ) = parse_scatter_inputs(
+        locations,
+        samples=samples,
+        ids=ids,
+        labels=labels,
+        sizes=sizes,
+        edges=edges,
+        classes=classes,
     )
 
     if style not in (None, "scatter", "density"):
@@ -1616,28 +1433,6 @@ def location_scatterplot(
         return figure
 
     return InteractiveScatter(figure, init_view=samples)
-
-
-def _parse_locations(locations, samples):
-    if locations is not None and not etau.is_str(locations):
-        return np.asarray(locations)
-
-    if samples is None:
-        raise ValueError(
-            "You must provide `samples` in order to extract `locations` from "
-            "your dataset"
-        )
-
-    if locations is None:
-        location_field = samples._get_geo_location_field()
-    else:
-        location_field = locations
-        samples.validate_field_type(
-            location_field, embedded_doc_type=fol.GeoLocation
-        )
-
-    locations = samples.values(location_field + ".point.coordinates")
-    return np.asarray(locations)
 
 
 def get_colormap(colorscale, n=256, hex_strs=False):
@@ -1774,7 +1569,7 @@ class PlotlyWidgetMixin(object):
                 "data will not trigger callbacks, and (ii) you must manually "
                 "call `plot.show()` to launch a new plot that reflects the "
                 "current state of an attached session.\n\n"
-                "See https://voxel51.com/docs/fiftyone/user_guide/plots.html#working-in-notebooks"
+                "See https://docs.voxel51.com/user_guide/plots.html#working-in-notebooks"
                 " for more information."
             )
             warnings.warn(msg)

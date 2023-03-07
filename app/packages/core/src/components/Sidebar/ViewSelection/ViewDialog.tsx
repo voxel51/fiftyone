@@ -36,11 +36,14 @@ import {
   COLOR_OPTIONS_MAP,
   DEFAULT_COLOR_OPTION,
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
+import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { toSlug } from "@fiftyone/utilities";
 
 interface Props {
   savedViews: fos.State.SavedView[];
   onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
+  canEdit?: boolean;
 }
 
 export const viewDialogContent = atom({
@@ -54,7 +57,7 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess, onDeleteSuccess, savedViews = [] } = props;
+  const { onEditSuccess, onDeleteSuccess, savedViews = [], canEdit } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -80,13 +83,16 @@ export default function ViewDialog(props: Props) {
     description: "",
   });
 
-  const savedViewNames = new Set(
-    savedViews.map((sv: fos.State.SavedView) => sv.name.toLowerCase())
+  const savedViewSlugs = new Set(
+    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase())
   );
+  const slugValue = toSlug(nameValue);
   const nameExists =
-    nameValue && nameValue !== initialName && savedViewNames.has(nameValue);
-  const nameError = nameExists ? "Name already exists" : "";
-
+    nameValue &&
+    nameValue !== initialName &&
+    slugValue.length > 0 &&
+    savedViewSlugs.has(slugValue);
+  const nameError = nameExists ? "Name" + " already exists" : "";
   const title = isCreating ? "Create view" : "Edit view";
 
   useEffect(() => {
@@ -107,6 +113,8 @@ export default function ViewDialog(props: Props) {
   }, [viewContent]);
 
   const view = useRecoilValue(fos.view);
+  const extendedViewExists = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+
   const {
     handleDeleteView,
     isDeletingSavedView,
@@ -132,7 +140,7 @@ export default function ViewDialog(props: Props) {
   }, [nameValue]);
 
   const onSaveView = useCallback(() => {
-    if (isCreating && view?.length) {
+    if (isCreating) {
       handleCreateSavedView(
         nameValue,
         descriptionValue,
@@ -236,7 +244,7 @@ export default function ViewDialog(props: Props) {
               justifyContent: "start",
             }}
           >
-            {!isCreating && (
+            {!isCreating && canEdit && (
               <Button
                 onClick={onDeleteView}
                 sx={{
@@ -265,7 +273,11 @@ export default function ViewDialog(props: Props) {
                 color: theme.text.primary,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
-                border: `1px solid ${theme.primary.plainBorder}`,
+                border: `1px solid ${theme.text.tertiary}`,
+
+                "&:hover": {
+                  background: theme.background.level2,
+                },
               }}
             >
               Cancel
@@ -276,15 +288,16 @@ export default function ViewDialog(props: Props) {
                 isUpdatingSavedView ||
                 isCreatingSavedView ||
                 isDeletingSavedView ||
+                slugValue.length < 1 ||
                 !!nameError ||
                 !nameValue ||
-                (isCreating && !view?.length) ||
+                (isCreating && !view?.length && !extendedViewExists) ||
                 (initialName === nameValue &&
                   descriptionValue === initialDescription &&
                   colorOption?.color === initialColor)
               }
               sx={{
-                background: theme.common.black,
+                background: theme.voxel[500],
                 color: theme.common.white,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
@@ -292,7 +305,7 @@ export default function ViewDialog(props: Props) {
                 marginLeft: "1rem",
 
                 "&:hover": {
-                  background: theme.common.black,
+                  background: theme.voxel[600],
                   color: theme.common.white,
                 },
 

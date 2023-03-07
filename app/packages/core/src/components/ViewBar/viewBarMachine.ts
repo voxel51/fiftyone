@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { actions, assign, Machine, send, spawn } from "xstate";
+import { actions, assign, createMachine, send, spawn } from "xstate";
 
 import { viewsAreEqual } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
@@ -164,7 +164,7 @@ function setStages(ctx, stageInfo) {
   }
 }
 
-const viewBarMachine = Machine(
+const viewBarMachine = createMachine(
   {
     id: "stages",
     context: {
@@ -287,7 +287,10 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) =>
-                          Math.max(Math.ceil(activeStage - 1), 0),
+                          Math.max(
+                            Math.ceil(activeStage - 1),
+                            stages.length - 1
+                          ),
                       }),
                       "sendStagesUpdate",
                     ],
@@ -323,7 +326,9 @@ const viewBarMachine = Machine(
                         },
                         {
                           actions: send(({ stages, activeStage }) => {
-                            stages[activeStage].ref.send({ type: "EDIT" });
+                            return stages[activeStage].ref.send({
+                              type: "EDIT",
+                            });
                           }),
                         },
                       ]),

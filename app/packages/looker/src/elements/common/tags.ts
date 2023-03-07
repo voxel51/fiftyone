@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import {
@@ -45,6 +45,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private colorByValue: boolean;
   private colorSeed: number;
+  private playing = false;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -60,10 +61,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     {
       config: { fieldSchema },
       options: { activePaths, coloring, timeZone },
+      playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
-    if (
+    if (this.playing !== playing) {
+      this.playing = playing;
+      if (playing) {
+        this.element.innerHTML = "";
+        return this.element;
+      }
+    } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
         this.colorByValue === (coloring.by === "label") &&
         this.colorSeed === coloring.seed) ||
@@ -356,7 +364,7 @@ const arraysAreEqual = (a: any[], b: any[]): boolean => {
   if (a == null || b == null) return false;
   if (a.length !== b.length) return false;
 
-  for (var i = 0; i < a.length; ++i) {
+  for (let i = 0; i < a.length; ++i) {
     if (a[i] !== b[i]) return false;
   }
   return true;
@@ -383,8 +391,8 @@ const unwind = (name: string, value: unknown) => {
     return value.map((val) => unwind(name, val));
   }
 
-  let v = value[name];
-  if (v) {
+  const v = value[name];
+  if (v !== undefined && v !== null) {
     return v;
   }
 

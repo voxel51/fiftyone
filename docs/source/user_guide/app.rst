@@ -21,6 +21,8 @@ a local IPython shell, to a remote machine or cloud instance, to a Jupyter or
 Colab notebook. Check out the :ref:`environments guide <environments>` for best
 practices when working in each environment.
 
+.. _app-sessions:
+
 Sessions
 ________
 
@@ -296,16 +298,14 @@ attribute names in the App's sidebar:
 Sidebar mode
 ------------
 
-Each time you load a new dataset or view in the App, the sidebar updates to
-show statistics for the current collection. For large datasets with many
-samples or fields, this may involve substantial computation.
+Each time you load a new dataset or view in the App, the sidebar will update to
+show statistics for the current collection based on the **sidebar mode**:
 
-Therefore, the App supports three sidebar modes that you can choose between:
-
+-   `fast` (*default*): only compute counts for fields whose filter tray is
+    expanded
 -   `all`: always compute counts for all fields
--   `fast`: only compute counts for fields whose filter tray is expanded
--   `best` (*default*): automatically choose between `all` and `fast` mode
-    based on the size of the dataset
+-   `best`: automatically choose between `fast` and `all` mode based on the
+    size of the dataset
 
 When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:
@@ -338,8 +338,8 @@ the :ref:`dataset's App config <custom-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session.refresh()
@@ -466,38 +466,52 @@ the App.
 Saving views
 ____________
 
-You can use the menu in the upper-left of the App to save the current state of
-the App's view bar and filters sidebar as a new view into your dataset. Any
-views that you save are persisted on your dataset under a name of your choice
-so that you can quickly load them in a future session via this UI.
+You can use the menu in the upper-left of the App to record the current state
+of the App's view bar and filters sidebar as a **saved view** into your
+dataset:
+
+.. image:: /images/app/app-save-view.gif
+    :alt: app-save-view
+    :align: center
+
+Saved views are persisted on your dataset under a name of your choice so that
+you can quickly load them in a future session via this UI.
 
 Saved views are a convenient way to record semantically relevant subsets of a
 dataset, such as:
 
--   samples in a particular state, e.g., with certain tag(s)
--   a subset of a dataset that was used for a task, e.g., training a model
--   samples that contain content of interest, e.g., object types or image
+-   Samples in a particular state, eg with certain tag(s)
+-   A subset of a dataset that was used for a task, eg training a model
+-   Samples that contain content of interest, eg object types or image
     characteristics
 
 .. note::
 
-    Remember that saved views only store the rule(s) used to extract content
-    from the underlying dataset, not the actual content itself. Saving views
-    is cheap. Don't worry about storage space!
+    Saved views only store the rule(s) used to extract content from the
+    underlying dataset, not the actual content itself. Saving views is cheap.
+    Don't worry about storage space!
 
     Keep in mind, though, that the contents of a saved view may change as the
     underlying dataset is modified. For example, if a save view contains
     samples with a certain tag, the view's contents will change as you
     add/remove this tag from samples.
 
+You can load a saved view at any time by selecting it from the saved view menu:
+
+.. image:: /images/app/app-load-saved-view.gif
+    :alt: app-load-saved-view
+    :align: center
+
+You can also edit or delete saved views by clicking on their pencil icon:
+
+.. image:: /images/app/app-edit-saved-view.gif
+    :alt: app-edit-saved-view
+    :align: center
+
 .. note::
 
     Did you know? You can also programmatically create, modify, and delete
     saved views :ref:`via Python <saving-views>`!
-
-.. image:: /images/app/app-saved-views.gif
-    :alt: app-saved-views
-    :align: center
 
 .. _app-sample-view:
 
@@ -596,46 +610,467 @@ hovering, a slider appears to adjust the setting manually.
     navigate between samples/labels to restrict your inputs to the App and thus
     prevent them from also affecting your browser window.
 
-.. _app-stats-tabs:
+.. _app-3d-visualizer:
 
-Statistics tabs
-_______________
+Using the 3D visualizer
+_______________________
 
-The `Sample tags`, `Label tags`, `Labels`, and `Scalars` tabs in the App let
-you visualize different statistics about your dataset.
+The 3D visualizer allows you to interactively visualize
+:ref:`point cloud samples <point-cloud-datasets>` along with any associated
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
+
+.. image:: /images/app/app-3d-visualizer.gif
+   :alt: 3d-visualizer
+   :align: center
+
+The table below summarizes the mouse/keyboard controls that the 3D visualizer
+supports:
+
+.. table::
+    :widths: 30 30 40
+
+    +--------------+----------------+-------------------------------+
+    | Input        | Action         | Description                   |
+    +==============+================+===============================+
+    | Wheel        | Zoom           | Zoom in and out               |
+    +--------------+----------------+-------------------------------+
+    | Drag         | Rotate         | Rotate the camera             |
+    +--------------+----------------+-------------------------------+
+    | Shift + drag | Translate      | Translate the camera          |
+    +--------------+----------------+-------------------------------+
+    | T            | Top-down       | Reset camera to top-down view |
+    +--------------+----------------+-------------------------------+
+    | E            | Ego-view       | Reset the camera to ego view  |
+    +--------------+----------------+-------------------------------+
+    | ESC          | Escape context | Escape the current context    |
+    +--------------+----------------+-------------------------------+
+
+In addition, the HUD at the bottom of the 3D visualizer provides the following
+controls:
+
+-   Use the points icon to change the size of the points in the cloud
+-   Use the palette icon to choose whether the point cloud is colored by
+    height, intensity, RGB, or no coloring
+-   Click the `T` to reset the camera to top-down view
+-   Click the `E` to reset the camera to ego-view
+
+When coloring by intensity, the color of each point is computed by mapping the
+`r` channel of the `rgb` field of the
+`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+onto a fixed colormap, which is scaled so that the full colormap is matched to
+the observed dynamic range of `r` values for each sample.
+
+Similarly, when coloring by height, the `z` value of each point is mapped to
+the full colormap using the same strategy.
+
+.. _app-3d-orthographic-projections:
+
+Viewing 3D samples in the grid
+------------------------------
+
+When you load point cloud collections in the App, any
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`
+fields will be visualized in the App using an orthographic projection
+(onto the xy plane by default).
+
+In addition, if you have populated
+:ref:`orthographic projection images <orthographic-projection-images>` on your
+dataset, the projection images will be rendered for each sample in the grid:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example point cloud dataset
+    dataset = (
+        foz.load_zoo_dataset("quickstart-groups")
+        .select_group_slices("pcd")
+        .clone()
+    )
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-orthographic-projections.gif
+    :alt: orthographic-projections
+    :align: center
+
+.. _app-3d-visualizer-config:
+
+Configuring the 3D visualizer
+-----------------------------
+
+The 3D visualizer can be configured by including any subset of the settings
+shown below under the `plugins.3d` key of your
+:ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    // The default values are shown below
+    {
+        "plugins": {
+            "3d": {
+                // Whether to show the 3D visualizer
+                "enabled": true,
+
+                // The initial camera position in the 3D scene
+                "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
+
+                // The default up direction for the scene
+                "defaultUp": [0, 0, 1],
+
+                "pointCloud": {
+                    // Don't render points below this z value
+                    "minZ": null
+                }
+            }
+        }
+    }
+
+You can also store dataset-specific plugin settings by storing any subset of
+the above values on a :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Configure the 3D visualuzer for a dataset's PCD/Label data
+    dataset.app_config.plugins["3d"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+    }
+    dataset.save()
 
 .. note::
 
-    The statistics in these tabs automatically update to reflect the current
-    :ref:`view <using-views>` that you have loaded in the App, or the entire
-    :ref:`dataset <using-datasets>` if no view is loaded.
+    Dataset-specific plugin settings will override any settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
 
-The `Sample tags` and `Label tags` tabs show the distribution of any
-:ref:`tags <app-tagging>` that you've added to your dataset.
+.. _app-spaces:
 
-The `Labels` tab shows the class distributions for each
-:ref:`labels field <using-labels>` that you've added to your dataset. For
-example, you may have histograms of ground truth labels and one more sets of
-model predictions.
+Spaces
+______
 
-The `Scalars` tab shows distributions for numeric (integer or float) or
-categorical (e.g., string) :ref:`primitive fields <adding-sample-fields>` that
-you've added to your dataset. For example, if you computed
-:ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
-uniqueness values will be displayed under the `Scalars` tab.
+Spaces provide a customizable framework for organizing interactive Panels of
+information within the App.
 
-.. image:: /images/app/app-stats.gif
-    :alt: app-stats
+FiftyOne natively includes the following Panel types:
+
+-   :ref:`Samples panel <app-samples-panel>`: the media grid that loads by
+    default when you launch the App
+-   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
+    for the fields of your dataset
+-   :ref:`Embeddings panel <app-embeddings-panel>`: a canvas for working with
+    :ref:`embeddings visualizations <brain-embeddings-visualization>`
+-   :ref:`Map panel <app-map-panel>`: visualizes the geolocation data of
+    datasets that have a |GeoLocation| field
+
+.. note::
+
+    You can also configure custom Panels :ref:`via plugins <fiftyone-plugins>`!
+
+.. image:: /images/app/app-spaces-hero.png
+    :alt: spaces-hero
     :align: center
 
-.. _app-map-tab:
+.. _app-spaces-layout:
 
-Map tab
-_______
+Configuring spaces in the App
+-----------------------------
+
+Consider the following example dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    fob.compute_visualization(dataset, brain_key="img_viz")
+
+    session = fo.launch_app(dataset)
+
+You can configure spaces visually in the App in a variety of ways described
+below.
+
+Click the `+` icon in any Space to add a new Panel:
+
+.. image:: /images/app/app-spaces-layout1.gif
+    :alt: app-spaces-layout1
+    :align: center
+
+When you have multiple Panels open in a Space, you can use the divider buttons
+to split the Space either horizontally or vertically:
+
+.. image:: /images/app/app-spaces-layout2.gif
+    :alt: app-spaces-layout2
+    :align: center
+
+You can rearrange Panels at any time by dragging their tabs between Spaces, or
+close Panels by clicking their `x` icon:
+
+.. image:: /images/app/app-spaces-layout3.gif
+    :alt: app-spaces-layout3
+    :align: center
+
+.. _app-spaces-python:
+
+Configuring spaces in Python
+----------------------------
+
+You can also programmatically configure your Space layout and the states of the
+individual Panels via the |Space| and |Panel| classes in Python, as shown
+below:
+
+.. code-block:: python
+    :linenos:
+
+    samples_panel = fo.Panel(type="Samples", pinned=True)
+
+    histograms_panel = fo.Panel(
+        type="Histograms",
+        state=dict(plot="Labels"),
+    )
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="metadata.size_bytes"),
+    )
+
+    spaces = fo.Space(
+        children=[
+            fo.Space(
+                children=[
+                    fo.Space(children=[samples_panel]),
+                    fo.Space(children=[histograms_panel]),
+                ],
+                orientation="horizontal",
+            ),
+            fo.Space(children=[embeddings_panel]),
+        ],
+        orientation="vertical",
+    )
+
+The :meth:`children <fiftyone.core.spaces.Space.children>` property of each
+|Space| describes what the Space contains, which can be either:
+
+-   A list of |Space| instances. In this case, the Space contains a nested list
+    of Spaces, arranged either horizontally or vertically, as per the
+    :meth:`orientation <fiftyone.core.spaces.Space.children>` property of the
+    parent Space
+-   A list of |Panel| instances describing the Panels that should be available
+    as tabs within the Space
+
+Set a Panel's :meth:`pinned <fiftyone.core.spaces.Panel.pinned>` property to
+`True` if you do not want a Panel's tab to have a close icon `x` in the App.
+Each |Panel| also has a :meth:`state <fiftyone.core.spaces.Panel.state>` dict
+that can be used to configure the specific state of the Panel to load. Refer to
+the sections below for each Panel's available state.
+
+You can launch the App with an initial spaces layout by passing the optional
+`spaces` parameter to
+:func:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Launch the App with an initial Spaces layout
+    session = fo.launch_app(dataset, spaces=spaces)
+
+Once the App is launched, you can retrieve your current layout at any time via
+the :meth:`session.spaces <fiftyone.core.session.Session.spaces>` property:
+
+.. code-block:: python
+    :linenos:
+
+    print(session.spaces)
+
+You can also programmatically configure the App's current layout by setting
+:meth:`session.spaces <fiftyone.core.session.Session.spaces>` to any valid
+|Space| instance:
+
+.. code-block:: python
+    :linenos:
+
+    # Change the session's current Spaces layout
+    session.spaces = spaces
+
+.. note::
+
+    Inspecting :meth:`session.spaces <fiftyone.core.session.Session.spaces>` of
+    a session whose Spaces layout you've configured in the App is a convenient
+    way to discover the available state options for each Panel type!
+
+You can reset your spaces to their default state by setting
+:meth:`session.spaces <fiftyone.core.session.Session.spaces>` to None:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset spaces layout in the App
+    session.spaces = None
+
+.. _app-samples-panel:
+
+Samples panel
+_____________
+
+By default, when you launch the App, your spaces layout will contain a single
+space with the Samples panel active:
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
+Samples panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    samples_panel = fo.Panel(type="Samples")
+
+.. _app-histograms-panel:
+
+Histograms panel
+________________
+
+The Histograms panel in the App lets you visualize different statistics about
+the fields of your dataset.
+
+-   The `Sample tags` and `Label tags` modes show the distribution of any
+    :ref:`tags <app-tagging>` that you've added to your dataset
+-   The `Labels` mode shows the class distributions for each
+    :ref:`labels field <using-labels>` that you've added to your dataset. For
+    example, you may have histograms of ground truth labels and one more sets
+    of model predictions
+-   The `Other fields` mode shows distributions for numeric (integer or float)
+    or categorical (e.g., string)
+    :ref:`primitive fields <adding-sample-fields>` that you've added to your
+    dataset. For example, if you computed
+    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+    uniqueness values will be available under this mode.
+
+.. note::
+
+    The statistics in the plots automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App!
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Histograms panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
+
+The Histograms panel supports the following `state` parameters:
+
+-   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
+    `"Label tags"`, `"Labels"`, and `"Other fields"`
+
+.. _app-embeddings-panel:
+
+Embeddings panel
+________________
+
+When you load a dataset in the App that contains an
+:ref:`embeddings visualization <brain-embeddings-visualization>`, you can open
+the Embeddings panel to visualize and interactively explore a scatterplot of
+the embeddings in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Image embeddings
+    fob.compute_visualization(dataset, brain_key="img_viz")
+
+    # Object patch embeddings
+    fob.compute_visualization(
+        dataset, patches_field="ground_truth", brain_key="gt_viz"
+    )
+
+    session = fo.launch_app(dataset)
+
+Use the two menus in the upper-left corner of the Panel to configure your plot:
+
+-   **Brain key**: the brain key associated with the
+    :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
+    to display
+-   **Color by**: an optional sample field (or label attribute, for patches
+    embeddings) to color the points by
+
+From there you can lasso points in the plot to show only the corresponding
+samples/patches in the Samples panel:
+
+.. image:: /images/app/app-embeddings-panel.gif
+    :alt: app-embeddings-panel
+    :align: center
+
+The embeddings UI also provides a number of additional controls:
+
+-   Press the `pan` icon in the menu (or type `g`) to switch to pan mode, in
+    which you can click and drag to change your current field of view
+-   Press the `lasso` icon (or type `s`) to switch back to lasso mode
+-   Press the `locate` icon to reset the plot's viewport to a tight crop of the
+    current view's embeddings
+-   Press the `x` icon (or double click anywhere in the plot) to clear the
+    current selection
+
+When coloring points by categorical fields (strings and integers) with fewer
+than 100 unique classes, you can also use the legend to toggle the visibility
+of each class of points:
+
+-   Single click on a legend trace to show/hide that class in the plot
+-   Double click on a legend trace to show/hide all other classes in the plot
+
+.. image:: /images/app/app-embeddings-panel-controls.gif
+    :alt: app-embeddings-panel-controls
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define an
+Embeddings panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="uniqueness"),
+    )
+
+The Embeddings panel supports the following `state` parameters:
+
+-   **brainResult**: the brain key associated with the
+    :func:`compute_visualization() <fiftyone.brain.compute_visualization>` run
+    to display
+-   **colorByField**: an optional sample field (or label attribute, for patches
+    embeddings) to color the points by
+
+.. _app-map-panel:
+
+Map panel
+_________
 
 When you load a dataset in the App that contains a |GeoLocation| field with
 :attr:`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can
-open the `Map` tab to visualize a scatterplot of the location data:
+open the Map panel to visualize and interactively explore a scatterplot of the
+location data:
 
 .. code-block:: python
     :linenos:
@@ -657,16 +1092,16 @@ open the `Map` tab to visualize a scatterplot of the location data:
     `which is free <https://www.mapbox.com/pricing/#maps>`_ up to 50,000 map
     loads each month.
 
-.. image:: /images/app/app-map.gif
-    :alt: app-map
+.. image:: /images/app/app-map-panel.gif
+    :alt: app-map-panel
     :align: center
 
-You can lasso points in the map to show only the corresponding samples in the
-grid view below. Confirm the selection by either double-clicking the last
-vertex or pressing `ENTER`:
+You can lasso points in the map to show only the corresponding data in the
+Samples panel. Confirm the selection by either double-clicking the last
+vertex or typing `enter`:
 
-.. image:: /images/app/app-map-selection.gif
-    :alt: app-map-selection
+.. image:: /images/app/app-map-panel-selection.gif
+    :alt: app-map-panel-selection
     :align: center
 
 The map UI also provides a number of additional controls:
@@ -675,14 +1110,22 @@ The map UI also provides a number of additional controls:
     map types
 -   Press the `locate` icon to reset the map's viewport to a tight crop of the
     current view's location data
--   Press the `x` icon to clear the current selection in the map
+-   Press the `x` icon to clear the current selection
 
-.. image:: /images/app/app-map-controls.gif
-    :alt: app-map-controls
+.. image:: /images/app/app-map-panel-controls.gif
+    :alt: app-map-panel-controls
     :align: center
 
-The map UI can be configured by including any subset of the settings shown
-below under the `plugins.map` key of your
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Map panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    map_panel = fo.Panel(type="Map")
+
+Additionally, the map UI can be configured by including any subset of the
+settings shown below under the `plugins.map` key of your
 :ref:`App config <configuring-fiftyone-app>`:
 
 .. code-block:: json
@@ -1104,13 +1547,13 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 
 .. _app-similarity:
 
-Sorting by visual similarity
-____________________________
+Sorting by similarity
+_____________________
 
 Whenever you select samples, patches, or labels in the App in a |Dataset| that
-has been indexed by :ref:`visual similarity <brain-similarity>`, you can use
-the similarity menu in the App to sort or filter your current view based on
-visual similarity to the chosen image or object.
+has been :ref:`indexed by similarity <brain-similarity>`, you can use the
+similarity menu in the App to sort or filter your current view based on
+similarity to the chosen image or object.
 
 .. note::
 
@@ -1178,9 +1621,9 @@ similarity (``reverse``).
     :align: center
 
 |br|
-You can also sort by visual similarity to an object from the expanded sample
-view in the App by selecting an object and then using the similarity menu that
-appears in the upper-right corner of the modal:
+You can also sort by similarity to an object from the expanded sample view in
+the App by selecting an object and then using the similarity menu that appears
+in the upper-right corner of the modal:
 
 .. image:: /images/brain/brain-object-similarity-modal.gif
     :alt: object-similarity-modal
@@ -1380,6 +1823,5 @@ __________________
 FiftyOne provides a plugin system that you can use to customize and extend its
 behavior!
 
-Check out
-`this page <https://github.com/voxel51/fiftyone/blob/develop/app/packages/plugins/README.md>`_
-for documentation on developing and installing custom plugins.
+Check out :ref:`this page <fiftyone-plugins>` for documentation on developing
+and installing custom plugins.

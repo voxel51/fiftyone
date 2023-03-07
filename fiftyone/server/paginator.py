@@ -1,12 +1,11 @@
 """
 FiftyOne Server paginator
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from bson import ObjectId
-from dacite import Config, from_dict
 import motor.motor_asyncio as mtr
 import typing as t
 
@@ -17,6 +16,7 @@ import fiftyone.core.odm as foo
 
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, T
+from fiftyone.server.utils import from_dict
 
 C = t.TypeVar("C")
 
@@ -103,7 +103,7 @@ def get_paginator_resolver(
     ):
         def from_db(doc: dict) -> t.Optional[T]:
             doc = cls.modifier(doc)
-            return from_dict(cls, doc, config=Config(check_types=False))
+            return from_dict(cls, doc)
 
         return await get_items(
             info.context.db[collection],

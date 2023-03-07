@@ -1,17 +1,15 @@
 """
 FiftyOne Server samples pagination
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import asyncio
-from dacite import Config, from_dict
 import strawberry as gql
 import typing as t
 
 
-import fiftyone.core.clips as focl
 from fiftyone.core.collections import SampleCollection
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
@@ -20,8 +18,9 @@ from fiftyone.server.filters import SampleFilter
 
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
-import fiftyone.server.view as fosv
 from fiftyone.server.scalars import BSON, JSON, BSONArray
+from fiftyone.server.utils import from_dict
+import fiftyone.server.view as fosv
 
 
 @gql.type
@@ -35,11 +34,12 @@ class Sample:
     id: gql.ID
     sample: JSON
     urls: t.List[MediaURL]
+    aspect_ratio: float
 
 
 @gql.type
 class ImageSample(Sample):
-    aspect_ratio: float
+    pass
 
 
 @gql.type
@@ -49,7 +49,6 @@ class PointCloudSample(Sample):
 
 @gql.type
 class VideoSample(Sample):
-    aspect_ratio: float
     frame_rate: float
 
 
@@ -80,7 +79,6 @@ async def paginate_samples(
         count_label_tags=True,
         extended_stages=extended_stages,
         sort=True,
-        only_matches=True,
         sample_filter=sample_filter,
     )
 
@@ -93,21 +91,32 @@ async def paginate_samples(
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
 
+    # TODO: Remove this once we have a better way to handle large videos. This
+    # is a temporary fix to reduce the $lookup overhead for sample frames on
+    # full datasets.
+    full_lookup = media == fom.VIDEO and (filters or stages)
+    support = [1, 1] if not full_lookup else None
     if after is None:
         after = "-1"
 
-    view = view.skip(int(after) + 1)
+    if int(after) > -1:
+        view = view.skip(int(after) + 1)
+
+    pipeline = view._pipeline(
+        attach_frames=True,
+        detach_frames=False,
+        manual_group_select=sample_filter
+        and sample_filter.group
+        and (sample_filter.group.id and not sample_filter.group.slice),
+        support=support,
+    )
+    # Only return the first frame of each video sample for the grid thumbnail
+    if media == fom.VIDEO:
+        pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
-        view._pipeline(
-            attach_frames=True,
-            detach_frames=False,
-            manual_group_select=sample_filter
-            and sample_filter.group
-            and (sample_filter.group.id and not sample_filter.group.slice),
-            support=[1, 1],
-        ),
+        pipeline,
     ).to_list(first + 1)
 
     more = False
@@ -165,8 +174,4 @@ async def _create_sample_item(
         dataset, sample, media_type, metadata_cache, url_cache
     )
 
-    return from_dict(
-        cls,
-        {"id": sample["_id"], "sample": sample, **metadata},
-        Config(check_types=False),
-    )
+    return from_dict(cls, {"id": sample["_id"], "sample": sample, **metadata})

@@ -1,7 +1,7 @@
 """
 FiftyOne group-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -96,6 +96,18 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(num_groups, 2)
 
+        for group in dataset.iter_groups(group_slices="right"):
+            self.assertIsInstance(group, dict)
+            self.assertNotIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
+        for group in dataset.iter_groups(group_slices=["left", "right"]):
+            self.assertIsInstance(group, dict)
+            self.assertIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
         for group in dataset.iter_groups(autosave=True):
             for sample in group.values():
                 sample["new_field"] = 1
@@ -116,11 +128,26 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(sample.new_field, 1)
 
         group_id = sample.group_field.id
+
         group = dataset.get_group(group_id)
 
         self.assertIsInstance(group, dict)
         self.assertIn("left", group)
         self.assertIn("ego", group)
+        self.assertIn("right", group)
+
+        group = dataset.get_group(group_id, group_slices="right")
+
+        self.assertIsInstance(group, dict)
+        self.assertNotIn("left", group)
+        self.assertNotIn("ego", group)
+        self.assertIn("right", group)
+
+        group = dataset.get_group(group_id, group_slices=["left", "right"])
+
+        self.assertIsInstance(group, dict)
+        self.assertIn("left", group)
+        self.assertNotIn("ego", group)
         self.assertIn("right", group)
 
     @drop_datasets
@@ -286,6 +313,18 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(num_groups, 2)
 
+        for group in view.iter_groups(group_slices="right"):
+            self.assertIsInstance(group, dict)
+            self.assertNotIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
+        for group in view.iter_groups(group_slices=["left", "right"]):
+            self.assertIsInstance(group, dict)
+            self.assertIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
         for group in view.iter_groups(autosave=True):
             for sample in group.values():
                 sample["new_field"] = 1
@@ -313,11 +352,26 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(exclude_view), len(dataset) - 2)
 
         group_id = sample.group_field.id
+
         group = view.get_group(group_id)
 
         self.assertIsInstance(group, dict)
         self.assertIn("left", group)
         self.assertIn("ego", group)
+        self.assertIn("right", group)
+
+        group = view.get_group(group_id, group_slices="right")
+
+        self.assertIsInstance(group, dict)
+        self.assertNotIn("left", group)
+        self.assertNotIn("ego", group)
+        self.assertIn("right", group)
+
+        group = view.get_group(group_id, group_slices=["left", "right"])
+
+        self.assertIsInstance(group, dict)
+        self.assertIn("left", group)
+        self.assertNotIn("ego", group)
         self.assertIn("right", group)
 
         view = dataset.match(F("field") == 2)

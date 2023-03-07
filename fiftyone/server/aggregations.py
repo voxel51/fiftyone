@@ -5,12 +5,9 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
-from dataclasses import asdict
 from datetime import date, datetime
 import typing as t
 
-from dacite import Config, from_dict
 import strawberry as gql
 
 import fiftyone.core.aggregations as foa
@@ -24,7 +21,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSON, BSONArray
-from fiftyone.server.utils import meets_type
+from fiftyone.server.utils import from_dict, meets_type
 import fiftyone.server.view as fosv
 
 
@@ -289,7 +286,7 @@ def _resolve_path_aggregation(
                         embedded_doc_type=fol.Label
                     )
                 )
-        return from_dict(cls, data, config=Config(check_types=False))
+        return from_dict(cls, data)
 
     return aggregations, from_results
 

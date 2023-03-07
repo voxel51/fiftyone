@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     python tests/intensive/cvat_tests.py
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -441,7 +441,10 @@ class CVATTests(unittest.TestCase):
                 self.assertEqual(task_json["name"], f"{task_name}_{idx + 1}")
                 if user is not None:
                     self.assertEqual(task_json["assignee"]["username"], user)
-                for job in api.get(api.jobs_url(task_id)).json():
+                jobs_json = api.get(api.jobs_url(task_id)).json()
+                if "results" in jobs_json:
+                    jobs_json = jobs_json["results"]
+                for job in jobs_json:
                     job_json = api.get(job["url"]).json()
                     if user is not None:
                         self.assertEqual(
@@ -1236,6 +1239,53 @@ class CVATTests(unittest.TestCase):
             api = results.connect_to_api()
             api.delete_task(task_id)
             self.assertFalse(api.task_exists(task_id))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+    def test_project_exists(self):
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=1)
+            .select_fields("ground_truth")
+            .clone()
+        )
+
+        all_results = []
+        for i in range(20):
+            anno_key = "project_exists"
+            results = dataset.annotate(
+                anno_key + str(i),
+                label_field="ground_truth",
+                backend="cvat",
+                project_name="fo_cvat_test_" + str(i),
+            )
+            all_results.append(results)
+
+        projects_exist = []
+        for i, results in enumerate(all_results):
+            with results:
+                api = results.connect_to_api()
+                for project_id in results.project_ids:
+                    projects_exist.append(api.project_exists(project_id))
+
+            dataset.load_annotations(anno_key + str(i), cleanup=True)
+
+        self.assertNotIn(False, projects_exist)
+
+        view = dataset.take(1)
+
+        anno_key = "project_not_exists"
+        results = view.annotate(
+            anno_key,
+            label_field="ground_truth",
+            backend="cvat",
+            project_name="fo_cvat_project_test",
+        )
+
+        project_id = results.project_ids[0]
+        with results:
+            api = results.connect_to_api()
+            api.delete_project(project_id)
+            self.assertFalse(api.project_exists(project_id))
 
         dataset.load_annotations(anno_key, cleanup=True)
 

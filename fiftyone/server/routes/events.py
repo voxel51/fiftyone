@@ -1,7 +1,7 @@
 """
 FiftyOne Server /events route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -25,7 +25,7 @@ class Events(HTTPEndpoint):
         self, request: Request, data: dict
     ) -> t.Union[t.Dict, EventSourceResponse]:
         polling = data.pop("polling", False)
-        payload = ListenPayload.from_dict(data)
+        payload = await ListenPayload.from_dict(data)
         if polling:
             return await dispatch_polling_event_listener(request, payload)
 

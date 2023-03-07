@@ -1,13 +1,12 @@
 """
 Matplotlib plots.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import itertools
 import logging
-import warnings
 
 import numpy as np
 import matplotlib as mpl
@@ -17,22 +16,22 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
-import sklearn.linear_model as skl
 import sklearn.metrics.pairwise as skp
 import sklearn.metrics as skm
 
 import eta.core.utils as etau
 
 import fiftyone.core.context as foc
-import fiftyone.core.expressions as foe
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
-import fiftyone.core.video as fov
 
 from .base import InteractivePlot
-from .utils import load_button_icon
+from .utils import (
+    best_fit_line,
+    load_button_icon,
+    parse_lines_inputs,
+    parse_locations,
+    parse_scatter_inputs,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -206,43 +205,6 @@ def plot_regressions(
     Returns:
         a matplotlib figure
     """
-    if ax is None:
-        _, ax = plt.subplots()
-
-    points = np.stack([ytrue, ypred], axis=-1)
-
-    points, labels, sizes, _, inds, _ = _parse_scatter_inputs(
-        points, labels, sizes, classes
-    )
-
-    if ids is not None and inds is not None:
-        ids = np.asarray(ids)[inds]
-
-    ytrue = points[:, 0]
-    ypred = points[:, 1]
-
-    if best_fit_label is None:
-        r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
-        best_fit_label = "r^2: %0.3f" % r2_score
-
-    model = skl.LinearRegression()
-    model.fit(ytrue[:, np.newaxis], ypred)
-
-    xline = np.array([ytrue.min(), ytrue.max()])
-    yline = model.predict(xline[:, np.newaxis])
-
-    xlabel = gt_field if gt_field is not None else "Ground truth"
-    ylabel = pred_field if pred_field is not None else "Predictions"
-
-    if style is None:
-        style = _DEFAULT_STYLE
-
-    with plt.style.context(style):
-        ax.plot(xline, yline, color="k", label=best_fit_label)
-        ax.set(xlabel=xlabel, ylabel=ylabel)
-        ax.legend()
-        ax.axis("equal")
-
     if (
         samples is not None
         and gt_field is not None
@@ -251,6 +213,35 @@ def plot_regressions(
         link_field = "frames"
     else:
         link_field = None
+
+    points = np.stack([ytrue, ypred], axis=-1)
+
+    points, ids, labels, sizes, _, _, _ = parse_scatter_inputs(
+        points,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
+        classes=classes,
+    )
+
+    xline, yline, best_fit_label = best_fit_line(points, label=best_fit_label)
+
+    xlabel = gt_field if gt_field is not None else "Ground truth"
+    ylabel = pred_field if pred_field is not None else "Predictions"
+
+    if style is None:
+        style = _DEFAULT_STYLE
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    with plt.style.context(style):
+        ax.plot(xline, yline, color="k", label=best_fit_label)
+        ax.set(xlabel=xlabel, ylabel=ylabel)
+        ax.legend()
+        ax.axis("equal")
 
     return scatterplot(
         points,
@@ -533,60 +524,28 @@ def lines(
         -   an :class:`InteractiveCollection`, when IDs are available
         -   a matplotlib figure, otherwise
     """
-    if y is None:
-        raise ValueError("You must provide 'y' values")
-
-    if etau.is_str(y) or isinstance(y, foe.ViewExpression):
-        if samples is not None and samples._contains_videos():
-            is_frames = foe.is_frames_expr(y)
-        else:
-            is_frames = False
-    else:
-        is_frames = y and etau.is_container(y[0])
-
-    if is_frames and link_field is None:
-        link_field = "frames"
-
-    y = _parse_values(y, "y", samples=samples, is_frames=is_frames)
-
-    if x is None:
-        if is_frames:
-            x = [np.arange(1, len(yi) + 1) for yi in y]
-        else:
-            x = np.arange(1, len(y) + 1)
-    else:
-        x = _parse_values(x, "x", samples=samples, ref=y, is_frames=is_frames)
-
-    if is_frames and x and not etau.is_container(x[0]):
-        x = [x] * len(y)
-
-    sizes = _parse_values(
-        sizes, "sizes", samples=samples, ref=y, is_frames=is_frames
+    x, y, ids, link_field, labels, sizes, is_frames = parse_lines_inputs(
+        x=x,
+        y=y,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
     )
-
-    if is_frames:
-        if sizes is None:
-            sizes = itertools.repeat(None)
-
-        if labels is None:
-            labels = [str(i) for i in range(1, len(y) + 1)]
-        elif etau.is_str(labels):
-            labels = _parse_values(labels, "labels", samples=samples)
-
-        show_legend = True
-    else:
-        x = [x]
-        y = [y]
-        sizes = [sizes]
-        labels = [labels]
-        show_legend = labels[0] is not None
-
-    if ids is None and samples is not None:
-        ref = list(itertools.chain.from_iterable(y))
-        ids = _get_ids(samples, link_field=link_field, ref=ref)
 
     if style is None:
         style = _DEFAULT_STYLE
+
+    if is_frames:
+        show_legend = True
+    else:
+        show_legend = labels[0] is not None
+
+    if ids[0] is not None:
+        ids = list(itertools.chain.from_iterable(ids))
+    else:
+        ids = None
 
     with plt.style.context(style):
         collection = _plot_lines(
@@ -732,27 +691,34 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    labels = _parse_values(labels, "labels", samples=samples, ref=points)
-    sizes = _parse_values(sizes, "sizes", samples=samples, ref=points)
-
-    if ids is not None:
-        ids = np.asarray(ids)
-    elif samples is not None:
-        if num_dims != 2:
-            msg = "Interactive selection is only supported in 2D"
-            warnings.warn(msg)
-        else:
-            ids = _get_ids(samples, link_field=link_field, ref=points)
+    (
+        points,
+        ids,
+        labels,
+        sizes,
+        _,
+        classes,
+        categorical,
+    ) = parse_scatter_inputs(
+        points,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
+        classes=classes,
+    )
 
     if style is None:
         style = _DEFAULT_STYLE
 
     with plt.style.context(style):
-        collection, inds = _plot_scatter(
+        collection = _plot_scatter(
             points,
             labels=labels,
             sizes=sizes,
             classes=classes,
+            categorical=categorical,
             marker_size=marker_size,
             cmap=cmap,
             ax=ax,
@@ -768,9 +734,6 @@ def scatterplot(
             fig = collection.axes.figure
             plt.tight_layout()
             return fig
-
-        if ids is not None and inds is not None:
-            ids = ids[inds]
 
         (
             link_type,
@@ -792,88 +755,6 @@ def scatterplot(
             selection_mode=selection_mode,
             init_fcn=init_fcn,
         )
-
-
-def _parse_values(values, parameter, samples=None, ref=None, is_frames=False):
-    if values is None:
-        return None
-
-    if etau.is_str(values) or isinstance(values, foe.ViewExpression):
-        if samples is None:
-            raise ValueError(
-                "You must provide `samples` in order to extract field values "
-                "for the `%s` parameter" % parameter
-            )
-
-        values = samples.values(values)
-
-    if is_frames:
-        values = [_unwind_values(v) for v in values]
-    else:
-        values = _unwind_values(values)
-
-    if ref is not None:
-        _validate_values(values, ref, parameter, is_frames=is_frames)
-
-    return values
-
-
-def _get_ids(samples, link_field=None, ref=None, is_frames=False):
-    if link_field is None:
-        ids = samples.values("id")
-        ptype = "sample"
-    elif link_field == "frames":
-        ids = samples.values("frames.id")
-        ptype = "frame"
-    else:
-        _, id_path = samples._get_label_field_path(link_field, "id")
-        ids = samples.values(id_path)
-        ptype = "label"
-
-    if is_frames:
-        ids = [_unwind_values(_ids) for _ids in ids]
-    else:
-        ids = _unwind_values(ids)
-
-    if ref is not None:
-        values_type = "%s IDs" % ptype
-        _validate_values(ids, ref, values_type, is_frames=is_frames)
-
-    return ids
-
-
-def _unwind_values(values):
-    while any(isinstance(v, (list, tuple)) for v in values):
-        values = list(itertools.chain.from_iterable(v for v in values if v))
-
-    return values
-
-
-def _validate_values(values, ref, values_type, is_frames=False):
-    if not is_frames:
-        if len(values) != len(ref):
-            raise ValueError(
-                "Inconsistent number of %s (%d != %d). You may have missing "
-                "data/labels that you need to omit from your view"
-                % (values_type, len(values), len(ref))
-            )
-
-        return
-
-    if len(values) != len(ref):
-        raise ValueError(
-            "Inconsistent number of %s traces (%d != %d). You may have "
-            "missing data/labels that you need to omit from your view"
-            % (values_type, len(values), len(ref))
-        )
-
-    for idx, (_values, _ref) in enumerate(zip(values, ref), 1):
-        if len(_values) != len(_ref):
-            raise ValueError(
-                "Inconsistent number of %s (%d != %d) in trace %d/%d. You may "
-                "have missing data/labels that you need to omit from your view"
-                % (values_type, len(_values), len(_ref), idx, len(values))
-            )
 
 
 def location_scatterplot(
@@ -969,7 +850,7 @@ def location_scatterplot(
         -   an :class:`InteractiveCollection`, if IDs are available
         -   a matplotlib figure, otherwise
     """
-    locations = _parse_locations(locations, samples)
+    locations = parse_locations(locations, samples, ids=ids)
 
     if ax is None:
         fig = plt.figure()
@@ -1011,28 +892,6 @@ def location_scatterplot(
         buttons=buttons,
         **kwargs,
     )
-
-
-def _parse_locations(locations, samples):
-    if locations is not None and not etau.is_str(locations):
-        return np.asarray(locations)
-
-    if samples is None:
-        raise ValueError(
-            "You must provide `samples` in order to extract `locations` from "
-            "your dataset"
-        )
-
-    if locations is None:
-        location_field = samples._get_geo_location_field()
-    else:
-        location_field = locations
-        samples.validate_field_type(
-            location_field, embedded_doc_type=fol.GeoLocation
-        )
-
-    locations = samples.values(location_field + ".point.coordinates")
-    return np.asarray(locations)
 
 
 class InteractiveMatplotlibPlot(InteractivePlot):
@@ -1486,12 +1345,6 @@ def _plot_lines(
         marker_size = 2.0 * (10 ** (4 - np.log10(num_points)))
         marker_size = max(1, min(marker_size, 50))
 
-    if sizes is None:
-        sizes = itertools.repeat(None)
-
-    if labels is None:
-        labels = itertools.repeat(None)
-
     colors = _get_qualitative_colors(len(y), colors=colors)
 
     xs = []
@@ -1538,6 +1391,7 @@ def _plot_scatter(
     labels=None,
     sizes=None,
     classes=None,
+    categorical=False,
     marker_size=None,
     cmap=None,
     ax=None,
@@ -1545,9 +1399,11 @@ def _plot_scatter(
     figsize=None,
     **kwargs,
 ):
-    points, values, sizes, classes, inds, categorical = _parse_scatter_inputs(
-        points, labels, sizes, classes
-    )
+    if labels is not None and classes is not None:
+        values_map = {c: i for i, c in enumerate(classes)}
+        values = np.array([values_map.get(l, -1) for l in labels])
+    else:
+        values = labels
 
     scatter_3d = points.shape[1] == 3
 
@@ -1626,7 +1482,7 @@ def _plot_scatter(
     if ax_equal:
         collection.axes.axis("equal")
 
-    return collection, inds
+    return collection
 
 
 def _get_qualitative_colors(num_classes, colors=None):
@@ -1641,36 +1497,6 @@ def _get_qualitative_colors(num_classes, colors=None):
     # @todo can we blend when there are more classes than colors?
     colors = list(colors)
     return [colors[i % len(colors)] for i in range(num_classes)]
-
-
-def _parse_scatter_inputs(points, labels, sizes, classes):
-    if sizes is not None:
-        sizes = np.asarray(sizes)
-
-    if labels is None:
-        return points, None, sizes, None, None, False
-
-    labels = np.asarray(labels)
-
-    if not etau.is_str(labels[0]):
-        return points, labels, sizes, None, None, False
-
-    if classes is None:
-        classes = sorted(set(labels))
-
-    values_map = {c: i for i, c in enumerate(classes)}
-    values = np.array([values_map.get(l, -1) for l in labels])
-
-    found = values >= 0
-    if not np.all(found):
-        points = points[found, :]
-        values = values[found]
-        if sizes is not None:
-            sizes = sizes[found]
-    else:
-        found = None
-
-    return points, values, sizes, classes, found, True
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):

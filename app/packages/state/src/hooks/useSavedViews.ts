@@ -1,10 +1,15 @@
 import { useCallback } from "react";
-import { useRecoilRefresher_UNSTABLE, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilRefresher_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import { useMutation } from "react-relay";
 import { useErrorHandler } from "react-error-boundary";
 
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import { viewStateForm } from "@fiftyone/state";
 
 export default function useSavedViews() {
   const savedViews = useRecoilValue(fos.savedViewsSelector);
@@ -47,37 +52,40 @@ export default function useSavedViews() {
     [datasetNameValue, deleteView, onError, send, subscription]
   );
 
-  const handleCreateSavedView = useCallback(
-    (
-      name: string,
-      description: string,
-      color: string,
-      view: fos.State.Stage[],
-      onSuccess: (saveView) => void
-    ) => {
-      if (name && view.length) {
-        send((session) =>
-          saveView({
-            onError,
-            variables: {
-              viewName: name,
-              datasetName: datasetNameValue,
-              viewStages: view,
-              description,
-              color,
-              subscription,
-              session,
-            },
-            onCompleted: (data, err) => {
-              if (err) {
-                console.log("handleCreateSavedView response error:", err);
-              }
-              onSuccess(data?.createSavedView);
-            },
-          })
-        );
-      }
-    },
+  const handleCreateSavedView = useRecoilCallback(
+    ({ snapshot }) =>
+      (
+        name: string,
+        description: string,
+        color: string,
+        view: fos.State.Stage[],
+        onSuccess: (saveView) => void
+      ) => {
+        if (name) {
+          send((session) =>
+            saveView({
+              onError,
+              variables: {
+                viewName: name,
+                datasetName: datasetNameValue,
+                viewStages: view,
+                form: snapshot.getLoadable(viewStateForm({ modal: false }))
+                  .contents,
+                description,
+                color,
+                subscription,
+                session,
+              },
+              onCompleted: (data, err) => {
+                if (err) {
+                  console.log("handleCreateSavedView response error:", err);
+                }
+                onSuccess(data?.createSavedView);
+              },
+            })
+          );
+        }
+      },
     [datasetNameValue, saveView, onError, send, subscription]
   );
 

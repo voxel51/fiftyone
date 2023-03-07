@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useLayer, useHover, Arrow } from "react-laag";
 import { motion, AnimatePresence } from "framer-motion";
+import { PlacementType } from "react-laag/dist/PlacementType";
 
 import style from "./Tooltip.module.css";
 import { useTheme } from "../..";
@@ -8,16 +9,18 @@ import { useTheme } from "../..";
 const Tooltip = <P extends React.HTMLAttributes<T>, T extends HTMLElement>({
   children,
   text,
+  placement = "top-center",
 }: {
   children: React.DetailedReactHTMLElement<P, T>;
   text: string;
+  placement?: PlacementType;
 }) => {
   const theme = useTheme();
   const [isOver, hoverProps] = useHover({ delayEnter: 100, delayLeave: 100 });
 
   const { triggerProps, layerProps, arrowProps, renderLayer } = useLayer({
     isOpen: isOver,
-    placement: "top-center",
+    placement,
     triggerOffset: 8,
   });
 

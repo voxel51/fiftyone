@@ -4,7 +4,7 @@ Simple utility to download images from Flickr based on a text query.
 Requires a user-specified API key, which can be obtained for free at
 https://www.flickr.com/services/apps/create.
 
-Copyright 2017-2022, Voxel51, Inc.
+Copyright 2017-2023, Voxel51, Inc.
 voxel51.com
 """
 import argparse

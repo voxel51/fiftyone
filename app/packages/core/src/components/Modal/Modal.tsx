@@ -1,15 +1,28 @@
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
-import _ from "lodash";
-import React, { Fragment, useCallback, useRef } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import ReactDOM from "react-dom";
-import styled from "styled-components";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 
+import {
+  ErrorBoundary,
+  HelpPanel,
+  JSONPanel,
+  LookerArrowLeftIcon,
+  LookerArrowRightIcon,
+} from "@fiftyone/components";
+import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
-import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
+import Sample3d from "./Sample3d";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -43,11 +56,40 @@ const ContentColumn = styled.div`
   flex-direction: column;
 `;
 
+const Arrow = styled.span<{ isRight?: boolean }>`
+  cursor: pointer;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  right: ${(props) => (props.isRight ? "0.75rem" : "initial")};
+  left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
+  z-index: 99999;
+  padding: 0.75rem;
+  bottom: 40vh;
+  width: 3rem;
+  height: 3rem;
+  background-color: var(--joy-palette-background-button);
+  box-shadow: 0 1px 3px var(--joy-palette-custom-shadowDark);
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease-in-out;
+  transition: box-shadow 0.15s ease-in-out;
+  &:hover {
+    opacity: 1;
+    box-shadow: inherit;
+    transition: box-shadow 0.15s ease-in-out;
+    transition: opacity 0.15s ease-in-out;
+  }
+`;
+
 const SampleModal = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
   const override = useRecoilValue(fos.sidebarOverride);
   const disabled = useRecoilValue(fos.disabledPaths);
+
+  const navigation = useRecoilValue(modalNavigation);
 
   const renderEntry = useCallback(
     (
@@ -62,7 +104,7 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case fos.EntryKind.PATH:
+        case fos.EntryKind.PATH: {
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isLabel = labelPaths.includes(entry.path);
@@ -121,7 +163,8 @@ const SampleModal = () => {
             ),
             disabled: isTag || isLabelTag || isOther,
           };
-        case fos.EntryKind.GROUP:
+        }
+        case fos.EntryKind.GROUP: {
           const isTags = entry.name === "tags";
           const isLabelTags = entry.name === "label tags";
 
@@ -150,6 +193,7 @@ const SampleModal = () => {
               ),
             disabled: false,
           };
+        }
         case fos.EntryKind.EMPTY:
           return {
             children: (
@@ -183,8 +227,48 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isGroup = useRecoilValue(fos.isGroup);
+  const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
+
+  const [isNavigationHidden, setIsNavigationHidden] = useState(false);
+
+  const navigateNext = useCallback(() => {
+    jsonPanel.close();
+    helpPanel.close();
+    navigation.setIndex(navigation.index + 1);
+  }, [navigation, jsonPanel, helpPanel]);
+
+  const navigatePrevious = useCallback(() => {
+    jsonPanel.close();
+    helpPanel.close();
+
+    if (navigation.index > 0) {
+      navigation.setIndex(navigation.index - 1);
+    }
+  }, [navigation, jsonPanel, helpPanel]);
+
+  const keyboardHandler = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        navigatePrevious();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        navigateNext();
+      } else if (e.key === "c") {
+        e.preventDefault();
+        setIsNavigationHidden((prev) => !prev);
+      }
+      // note: don't stop event propagation here
+    },
+    [navigateNext, navigatePrevious]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", keyboardHandler);
+    return () => document.removeEventListener("keydown", keyboardHandler);
+  }, [keyboardHandler]);
 
   return ReactDOM.createPortal(
     <Fragment>
@@ -194,14 +278,24 @@ const SampleModal = () => {
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
           <ContentColumn>
+            {!isNavigationHidden && navigation.index > 0 && (
+              <Arrow>
+                <LookerArrowLeftIcon onClick={navigatePrevious} />
+              </Arrow>
+            )}
+            {!isNavigationHidden && (
+              <Arrow isRight>
+                <LookerArrowRightIcon onClick={navigateNext} />
+              </Arrow>
+            )}
             <ErrorBoundary onReset={() => {}}>
-              {isGroup ? <Group /> : <Sample />}
+              {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
               {jsonPanel.isOpen && (
                 <JSONPanel
                   containerRef={jsonPanel.containerRef}
-                  jsonHTML={jsonPanel.jsonHTML}
                   onClose={() => jsonPanel.close()}
                   onCopy={() => jsonPanel.copy()}
+                  json={jsonPanel.json}
                 />
               )}
               {helpPanel.isOpen && (

@@ -3,30 +3,7 @@ name: Test
 on: workflow_call
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      app: ${{ steps.filter.outputs.app }}
-      python: ${{ steps.filter.outputs.python }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            app:
-              - 'app/**'
-              - '.github/**'
-            python:
-              - '.github/**'
-              - 'fiftyone/**'
-              - 'package/**'
-              - 'requirements/**'
-              - 'setup.py'
-
   test-app:
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -47,12 +24,11 @@ jobs:
       - name: Upload
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage-final.json
           flags: app
 
   test-python:
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
     runs-on: ${{ matrix.os }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -99,7 +75,7 @@ jobs:
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
       - name: FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v1
+        uses: FedericoCarboni/setup-ffmpeg@v2
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
       # this workflow
@@ -116,6 +92,7 @@ jobs:
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           flags: python
       - name: Run no wrapper tests

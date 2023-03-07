@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -433,6 +433,16 @@ def _build_parse_sample_fcn(
                 metadata=video_metadata,
                 tags=tags,
             )
+
+    elif isinstance(dataset_importer, UnlabeledMediaDatasetImporter):
+        # Unlabeled media dataset
+
+        # The schema never needs expanding when importing unlabeled samples
+        expand_schema = False
+
+        def parse_sample(sample):
+            filepath, metadata = sample
+            return Sample(filepath=filepath, metadata=metadata, tags=tags)
 
     elif isinstance(dataset_importer, LabeledImageDatasetImporter):
         # Labeled image dataset
@@ -1189,6 +1199,52 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
         :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
         """
         raise NotImplementedError("subclass must implement has_video_metadata")
+
+
+class UnlabeledMediaDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of unlabeled media samples.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __next__(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an ``(filepath, metadata)`` tuple, where
+
+            -   ``filepath``: the path to the media on disk
+            -   ``metadata``: a
+                :class:`fiftyone.core.metadata.Metadata` instance for the
+                media, or ``None`` if :meth:`has_metadata` is ``False``
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.Metadata` instances for each sample.
+        """
+        raise NotImplementedError("subclass must implement has_metadata")
 
 
 class LabeledImageDatasetImporter(DatasetImporter):
@@ -2131,6 +2187,87 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
         filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etav.is_video_mime_type(p)]
         return len(filepaths)
+
+
+class MediaDirectoryImporter(UnlabeledMediaDatasetImporter):
+    """Importer for a directory of media files stored on disk.
+
+    See :ref:`this page <MediaDirectory-import>` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        recursive (True): whether to recursively traverse subdirectories
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.Metadata` instances for each media
+            file when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        recursive=True,
+        compute_metadata=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.recursive = recursive
+        self.compute_metadata = compute_metadata
+
+        self._filepaths = None
+        self._iter_filepaths = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_filepaths = iter(self._filepaths)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        filepath = next(self._iter_filepaths)
+
+        if self.compute_metadata:
+            metadata = fom.Metadata.build_for(filepath)
+        else:
+            metadata = None
+
+        return filepath, metadata
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    @property
+    def has_metadata(self):
+        return self.compute_metadata
+
+    def setup(self):
+        filepaths = etau.list_files(
+            self.dataset_dir, abs_paths=True, recursive=self.recursive
+        )
+        filepaths = self._preprocess_list(filepaths)
+
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
+
+    @staticmethod
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        return len(etau.list_files(dataset_dir, recursive=True))
 
 
 class FiftyOneImageClassificationDatasetImporter(

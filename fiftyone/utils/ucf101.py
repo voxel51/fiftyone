@@ -2,7 +2,7 @@
 Utilities for working with the
 `UCF101 dataset <https://www.crcv.ucf.edu/research/data-sets/ucf101>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

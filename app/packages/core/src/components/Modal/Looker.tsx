@@ -1,13 +1,13 @@
-import React, { useState, useRef, MutableRefObject, useEffect } from "react";
-import { useRecoilValue, useRecoilCallback } from "recoil";
+import React, { MutableRefObject, useEffect, useRef, useState } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { useEventHandler } from "@fiftyone/state";
 
-import { useErrorHandler } from "react-error-boundary";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOnSelectLabel } from "@fiftyone/state";
+import { useErrorHandler } from "react-error-boundary";
 import { TooltipInfo } from "./TooltipInfo";
 
 type EventCallback = (event: CustomEvent) => void;
@@ -19,6 +19,7 @@ const useLookerOptionsUpdate = () => {
         const currentOptions = await snapshot.getPromise(
           fos.savedLookerOptions
         );
+
         const panels = await snapshot.getPromise(fos.lookerPanels);
         const updated = {
           ...currentOptions,
@@ -57,11 +58,9 @@ interface LookerProps {
   lookerRef?: MutableRefObject<any>;
   onClose?: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
-  onNext?: EventCallback;
-  onPrevious?: EventCallback;
 }
 
-const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
+const Looker = ({ lookerRef, onClose }: LookerProps) => {
   const [id] = useState(() => uuid());
 
   const sampleData = useRecoilValue(fos.modal);
@@ -76,8 +75,6 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const [reset, setReset] = useState(false);
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
-    hasNext: Boolean(onNext),
-    hasPrevious: Boolean(onPrevious),
   });
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
@@ -113,28 +110,6 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
     onClose();
   });
 
-  useEventHandler(
-    looker,
-    "next",
-    onNext
-      ? (e) => {
-          jsonPanel.close();
-          helpPanel.close();
-          return onNext(e);
-        }
-      : null
-  );
-  useEventHandler(
-    looker,
-    "previous",
-    onPrevious
-      ? (e) => {
-          jsonPanel.close();
-          helpPanel.close();
-          return onPrevious(e);
-        }
-      : null
-  );
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
   const jsonPanel = fos.useJSONPanel();
@@ -216,5 +191,4 @@ function shortcutToHelpItems(SHORTCUTS) {
       return acc;
     }, {})
   );
-  return Object.values(SHORTCUTS);
 }

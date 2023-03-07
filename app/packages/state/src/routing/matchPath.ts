@@ -50,6 +50,7 @@ interface MatchPathOptions {
   strict?: boolean;
   sensitive?: false;
   path?: string;
+  queryParams?: { [key: string]: string };
 }
 
 export interface MatchPathResult<T extends OperationType | undefined> {
@@ -62,11 +63,18 @@ export interface MatchPathResult<T extends OperationType | undefined> {
 export const matchPath = <T extends OperationType | undefined>(
   pathname: string,
   options: MatchPathOptions,
-  variables: Partial<VariablesOf<T extends OperationType ? T : never>> = {}
+  variables: Partial<VariablesOf<T extends OperationType ? T : never>> = {},
+  search: string
 ): MatchPathResult<T> | null => {
-  const { path, exact = false, strict = false, sensitive = false } = options;
+  const {
+    path,
+    exact = false,
+    strict = false,
+    sensitive = false,
+    queryParams = {},
+  } = options;
 
-  if (!path && path !== "") return null;
+  if (!path || path === "") return null;
 
   const { regexp, keys } = compilePath(path, {
     end: exact,
@@ -87,7 +95,15 @@ export const matchPath = <T extends OperationType | undefined>(
   };
   keys.forEach((key, i) => {
     // @ts-ignore
-    allVariables[key.name] = values[i];
+    allVariables[key.name] = decodeURIComponent(values[i]);
+  });
+
+  const params = new URLSearchParams(search);
+  Object.entries(queryParams).forEach(([param, variable]) => {
+    if (params.has(param)) {
+      // @ts-ignore
+      allVariables[variable] = decodeURIComponent(params.get(param));
+    }
   });
 
   return {

@@ -1,7 +1,7 @@
 """
 FiftyOne patches-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -185,6 +185,16 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(
             dataset.count_values("ground_truth.detections.label_upper")["CAT"],
             1,
+        )
+        self.assertIsNone(view.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(view.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            dataset.get_field("ground_truth.detections.label_dynamic")
         )
 
         values = {
@@ -481,6 +491,20 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(
             dataset.count_values("predictions.detections.label_upper")["CAT"],
             2,
+        )
+        self.assertIsNone(view.get_field("predictions.detections.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("predictions.detections.label_upper")
+        )
+
+        view2.set_values(
+            "predictions.detections.label_dynamic", values, dynamic=True
+        )
+        self.assertIsNotNone(
+            view.get_field("predictions.detections.label_dynamic")
+        )
+        self.assertIsNotNone(
+            dataset.get_field("predictions.detections.label_dynamic")
         )
 
         values = {

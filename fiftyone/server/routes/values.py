@@ -1,18 +1,18 @@
 """
 FiftyOne Server /values route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import regex as re
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
-
 import fiftyone.server.constants as foc
-from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
+from fiftyone.server.decorators import route
 
 
 class Values(HTTPEndpoint):
@@ -36,13 +36,20 @@ class Values(HTTPEndpoint):
 
         sort_by = "count" if count else "_id"
 
+        # escape special characters, add support for wilcard pattern matching
+        regex_safe_search = (
+            re.escape(search).replace(r"\*", ".*").replace(r"\?", ".")
+            if search
+            else None
+        )
+
         count, first = await view._async_aggregate(
             foa.CountValues(
                 path,
                 _first=limit,
                 _asc=asc,
                 _sort_by=sort_by,
-                _search=search,
+                _search=regex_safe_search,
                 _selected=selected,
             )
         )
