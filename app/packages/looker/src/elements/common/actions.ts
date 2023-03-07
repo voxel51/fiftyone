@@ -34,6 +34,7 @@ const escape: Control = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
+  alwaysHandle: true,
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
@@ -570,6 +571,7 @@ const videoEscape: Control<VideoState> = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
+  alwaysHandle: true,
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
