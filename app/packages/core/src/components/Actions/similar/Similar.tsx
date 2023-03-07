@@ -103,7 +103,7 @@ const SortBySimilarity = ({
     {
       icon: "SettingsIcon",
       arialLabel: "Advanced settings",
-      tooltipText: "advanced settings",
+      tooltipText: "Advanced settings",
       onClick: () => setOpen((o) => !o),
     },
   ];
