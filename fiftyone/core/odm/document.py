@@ -537,6 +537,10 @@ class Document(BaseDocument, mongoengine.Document):
 
     meta = {"abstract": True}
 
+    @classmethod
+    def _doc_name(cls):
+        return "Document"
+
     def save(
         self,
         upsert=False,
@@ -637,7 +641,8 @@ class Document(BaseDocument, mongoengine.Document):
 
                 if not deferred and not upsert and not updated_existing:
                     raise ValueError(
-                        "Failed to update document with ID '%s'" % str(_id)
+                        "Failed to update %s with ID '%s'"
+                        % (self._doc_name().lower(), str(_id))
                     )
 
         # Make sure we store the PK on this document now that it's saved
