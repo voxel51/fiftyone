@@ -41,7 +41,8 @@ export default function ViewSelection() {
   const datasetName = useRecoilValue(fos.datasetName);
   const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const savedViewParam = useRecoilValue(fos.viewName);
+  const urlParams = new URLSearchParams(window.location.search);
+  const savedViewParam = useRecoilValue(fos.viewName) || urlParams.get("view");
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
