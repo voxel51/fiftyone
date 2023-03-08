@@ -6230,7 +6230,7 @@ class SampleCollection(object):
                 to perform the conversion
 
         Returns:
-            a :class:`fiftyone.core.clips.ClipsView`
+            a :class:`fiftyone.core.clips.TrajectoriesView`
         """
         return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
