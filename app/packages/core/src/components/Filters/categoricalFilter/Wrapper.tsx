@@ -91,6 +91,8 @@ const Wrapper = ({
     setIsMatching && setIsMatching(!nestedField);
   };
 
+  console.info("totalCount", totalCount);
+
   if (totalCount === 0) {
     return (
       <>

@@ -22,6 +22,7 @@ import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import ResultComponent from "./ResultComponent";
 import Wrapper from "./Wrapper";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
+import Checkbox from "../../Common/Checkbox";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -214,7 +215,7 @@ const CategoricalFilter = <T extends V = V>({
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;
 
-  if (named && !results?.length) {
+  if (named && !results) {
     return null;
   }
 
