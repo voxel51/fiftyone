@@ -36,9 +36,6 @@ def _build_result_view(result_view, form):
             result_view, form.sample_ids
         )
 
-    if form.extended:
-        result_view = extend_view(result_view, form.extended, True)
-
     if form.add_stages:
         for d in form.add_stages:
             stage = fos.ViewStage._from_dict(d)
@@ -197,10 +194,13 @@ class Mutation:
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
+                extended_stages=form.extended if form else None,
+                sort=True,
             )
 
-        # Set view state
         result_view = _build_result_view(result_view, form)
+
+        # Set view state
         slug = (
             fou.to_slug(result_view.name)
             if result_view.name
@@ -287,10 +287,12 @@ class Mutation:
             dataset_name,
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
+            extended_stages=form.extended if form else None,
+            sort=True,
         )
-        # view arg required to be an instance of
-        # `fiftyone.core.view.DatasetView`
+
         result_view = _build_result_view(dataset_view, form)
+
         dataset.save_view(
             view_name, result_view, description=description, color=color
         )
