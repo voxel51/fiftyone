@@ -5,21 +5,24 @@ import * as fos from "@fiftyone/state";
 import { SamplesHeader } from "./ImageContainerHeader";
 import { Typography } from "@mui/material";
 import ClearAll from "@mui/icons-material/ClearAll";
-import { Button } from "@fiftyone/components";
+import { Button, useTheme } from "@fiftyone/components";
+import ErrorImg from "../images/error.svg";
+import { ExternalLink } from "../utils/generic";
 
 const BaseContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: row;
+  height: 100%;
 `;
 
 const Container = styled(SamplesHeader)`
-  height: 30vh;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
+  min-width: 300px;
 `;
 
 const TextContainer = styled(Container)`
@@ -40,33 +43,68 @@ function EmptySamples() {
   const totalSamples = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
+  const theme = useTheme();
   const setView = fos.useSetView();
 
-  const showEmptySamples = useMemo(
+  const showEmptyDataset = useMemo(
+    () => !loadedView?.length && !totalSamples,
+    [totalSamples, loadedView]
+  );
+
+  const showEmptyView = useMemo(
     () => loadedView?.length && !totalSamples,
     [totalSamples, loadedView]
   );
 
-  if (!showEmptySamples) return null;
+  if (!showEmptyView && !showEmptyDataset) {
+    return null;
+  }
+
   return (
-    <Container>
-      <TextContainer>
-        <Typography variant="h6" component="span">
-          Your view is empty :-|
-        </Typography>
-      </TextContainer>
-      <ActionContainer>
-        <Button aria-label="clear-filters" onClick={() => setView([], [])}>
-          <BaseContainer style={{ padding: "0.25rem" }}>
-            <BaseContainer>
-              <Typography variant="body1" component="span">
-                Clear view
-              </Typography>
-            </BaseContainer>
-            <ClearAll sx={{ ml: ".5rem" }} />
-          </BaseContainer>
-        </Button>
-      </ActionContainer>
+    <Container style={{ padding: "6rem 1rem" }}>
+      <BaseContainer style={{ flexDirection: "column" }}>
+        <TextContainer>
+          <Typography variant="h6" component="span">
+            {!!showEmptyView && "Your view is empty"}
+            {!!showEmptyDataset && "Your dataset is empty"}
+          </Typography>
+        </TextContainer>
+      </BaseContainer>
+      {!!showEmptyDataset && (
+        <BaseContainer style={{ padding: "1rem 0 2rem 0" }}>
+          <ExternalLink
+            href="https://docs.voxel51.com/user_guide/dataset_creation/index.html"
+            style={{ display: "flex", color: theme.text.secondary }}
+          >
+            <Typography
+              variant="subtitle1"
+              component="span"
+              sx={{ color: theme.text.secondary }}
+            >
+              Add samples to your dataset
+            </Typography>
+          </ExternalLink>
+        </BaseContainer>
+      )}
+      {!!showEmptyView && (
+        <BaseContainer style={{ paddingBottom: "1rem" }}>
+          <ActionContainer>
+            <Button aria-label="clear-filters" onClick={() => setView([], [])}>
+              <BaseContainer style={{ padding: "0.25rem" }}>
+                <BaseContainer>
+                  <Typography variant="body1" component="span">
+                    Clear view
+                  </Typography>
+                </BaseContainer>
+                <ClearAll sx={{ ml: ".5rem" }} />
+              </BaseContainer>
+            </Button>
+          </ActionContainer>
+        </BaseContainer>
+      )}
+      <BaseContainer>
+        <img src={ErrorImg} height={402} width={296} />
+      </BaseContainer>
     </Container>
   );
 }
