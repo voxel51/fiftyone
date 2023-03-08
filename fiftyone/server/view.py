@@ -350,12 +350,19 @@ def _make_filter_stages(
     label_tags_exclude = (
         label_tags["exclude"] if label_tags is not None else None
     )
+    label_tags_is_matching = (
+        label_tags["isMatching"] if label_tags is not None else None
+    )
 
     tag_expr = (F("tags") != None).if_else(
         F("tags").contains(label_tags_values), None
     )
 
-    tag_expr = ~tag_expr if label_tags_exclude else tag_expr
+    tag_expr = (
+        ~tag_expr
+        if label_tags_exclude and not label_tags_is_matching
+        else tag_expr
+    )
     cache = {}
     stages = []
     cleanup = set()
@@ -480,16 +487,22 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        for path, _ in fosu.iter_label_fields(view):
-            match_exprs.append(
-                fosg._get_label_field_only_matches_expr(
-                    view,
-                    cache.get(path, path),
+
+        if not (is_matching and exclude):
+            for path, _ in fosu.iter_label_fields(view):
+                match_exprs.append(
+                    fosg._get_label_field_only_matches_expr(
+                        view,
+                        cache.get(path, path),
+                    )
                 )
-            )
-        if match_exprs and not (is_matching and exclude):
-            stages.append(fosg.Match(F.any(match_exprs)))
-        if is_matching and exclude and match_exprs:
+            if match_exprs:
+                stages.append(fosg.Match(F.any(match_exprs)))
+
+        if is_matching and exclude:
+            for path, _ in fosu.iter_label_fields(view):
+
+                match_exprs.append()
             stages.append(fosg.Match(F.all(match_exprs)))
 
     pprint(stages)
