@@ -47,9 +47,7 @@ const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
               sx={button.sx}
             >
               {button.icon === "SearchIcon" && !isLoading && <SearchIcon />}
-              {button.icon === "SearchIcon" && isLoading && (
-                <CircularProgress color="inherit" size={"20px"} />
-              )}
+              {isLoading && <CircularProgress color="inherit" size={"20px"} />}
               {button.icon === "InfoIcon" && <InfoIcon />}
               {button.icon === "SettingsIcon" && <SettingsIcon />}
             </IconButton>
