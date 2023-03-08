@@ -1008,8 +1008,8 @@ methods on your dataset:
 
         The
         :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-        method accepts a `brain_key` parameter that specifies the brain key
-        under which to store the results of the visualization.
+        method accepts an optional `brain_key` parameter that specifies the
+        brain key under which to store the results of the visualization.
 
     .. tab:: Similarity
 
