@@ -1706,14 +1706,14 @@ to restrict attention to or exclude frames from a view by their IDs:
 
 .. _similarity-views:
 
-Visual similarity
-_________________
+Similarity views
+________________
 
-If you have indexed your dataset by
-:ref:`visual similarity <brain-similarity>`, then you can use the
+If your dataset is :ref:`indexed by similarity <brain-similarity>`, then you
+can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-stage to programmatically query your data by visual similarity to image(s) or
-object patch(es) of interest.
+stage to programmatically query your data by similarity to image(s) or object
+patch(es) of interest.
 
 .. _image-similarity-views:
 
@@ -1723,7 +1723,7 @@ Image similarity
 The example below indexes a dataset by image similarity using
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to sort the dataset by visual similarity to a chosen image:
+to sort the dataset by similarity to a chosen image:
 
 .. code-block:: python
     :linenos:
@@ -1742,7 +1742,7 @@ to sort the dataset by visual similarity to a chosen image:
     # Select a random query image
     query_id = dataset.take(1).first().id
 
-    # Sort the samples by visual similarity to the query image
+    # Sort the samples by similarity to the query image
     view = dataset.sort_by_similarity(query_id, brain_key="image_sim")
     print(view)
 
@@ -1753,7 +1753,7 @@ to sort the dataset by visual similarity to a chosen image:
 
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
-    :ref:`App guide <app-image-similarity>` to see how to sort images by visual
+    :ref:`App guide <app-image-similarity>` to see how to sort images by
     similarity via point-and-click in the App!
 
 .. _object-similarity-views:
@@ -1765,7 +1765,7 @@ The example below indexes the objects in a |Detections| field of a dataset by
 similarity using
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to retrieve the 15 most visually similar objects to a chosen object:
+to retrieve the 15 most similar objects to a chosen object:
 
 .. code-block:: python
     :linenos:
@@ -1790,7 +1790,7 @@ to retrieve the 15 most visually similar objects to a chosen object:
     # Select a random query object
     query_id = patches.take(1).first().id
 
-    # Retrieve the 15 most visually similar objects
+    # Retrieve the 15 most similar objects
     similar_objects = patches.sort_by_similarity(query_id, k=15, brain_key="gt_sim")
 
     # View results in the App
@@ -1801,7 +1801,7 @@ to retrieve the 15 most visually similar objects to a chosen object:
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
     :ref:`App guide <app-object-similarity>` to see how to sort objects by
-    visual similarity via point-and-click in the App!
+    similarity via point-and-click in the App!
 
 .. _geolocation-views:
 

@@ -25,11 +25,12 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import { useTheme, PillButton } from "@fiftyone/components";
+import { PillButton, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
@@ -407,8 +408,10 @@ export const GridActionsRow = () => {
 
 export const ModalActionsRow = ({
   lookerRef,
+  isGroup,
 }: {
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
+  isGroup?: boolean;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
@@ -425,6 +428,7 @@ export const ModalActionsRow = ({
       {!isVideo && <Similarity modal={true} />}
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
+      {isGroup && <GroupMediaVisibilityContainer modal={true} />}
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

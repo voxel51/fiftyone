@@ -21,7 +21,7 @@ import { v4 as uuid } from "uuid";
 import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { groupPaginationFragment } from "@fiftyone/state";
+import { groupPaginationFragment, useBrowserStorage } from "@fiftyone/state";
 
 const process = (
   next: MutableRefObject<number>,
@@ -236,8 +236,11 @@ const Column: React.FC = () => {
   );
 };
 
-const Group: React.FC = () => {
-  const [height, setHeight] = useState(150);
+const Group: React.FC<{ fullHeight?: boolean }> = ({ fullHeight }) => {
+  const [height, setHeight] = useBrowserStorage(
+    "carousel-height",
+    fullHeight ? 500 : 150
+  );
 
   const theme = useTheme();
 
@@ -245,9 +248,9 @@ const Group: React.FC = () => {
     <Resizable
       size={{ height, width: "100%" }}
       minHeight={200}
-      maxHeight={300}
+      maxHeight={fullHeight ? 500 : 300}
       enable={{
-        top: false,
+        top: fullHeight ? true : false,
         right: false,
         bottom: true,
         left: false,

@@ -39,6 +39,15 @@ export function useViewChangeEffect() {
     fetchPlot({ datasetName, brainKey, view, labelField })
       .catch((err) => setLoadingPlotError(err))
       .then((res) => {
+        if (!res || !res.index_size) {
+          if (res?.index_size === 0) {
+            warnings.add(`No samples in the current view.`);
+          } else {
+            warnings.add(`Failed to fetch embeddings for the current view.`);
+          }
+          return;
+        }
+
         const notUsed = res.index_size - res.available_count;
         const missing = res.missing_count;
         const total = res.index_size;

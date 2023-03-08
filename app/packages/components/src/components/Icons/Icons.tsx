@@ -94,6 +94,22 @@ export function HelpIcon(props: SvgIconProps = {}) {
   );
 }
 
+export function LookerArrowLeftIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M20,10V14H11L14.5,17.5L12.08,19.92L4.16,12L12.08,4.08L14.5,6.5L11,10H20Z" />
+    </SvgIcon>
+  );
+}
+
+export function LookerArrowRightIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4,10V14H13L9.5,17.5L11.92,19.92L19.84,12L11.92,4.08L9.5,6.5L13,10H4Z" />
+    </SvgIcon>
+  );
+}
+
 export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 export { IconButton } from "@mui/material";
 export { InfoIcon };
