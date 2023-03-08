@@ -1,4 +1,4 @@
-name: Build DB
+name: Builds and publishes the fiftyone-db package
 
 on:
   push:

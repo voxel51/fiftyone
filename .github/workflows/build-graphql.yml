@@ -1,0 +1,65 @@
+name: Builds and publishes the fiftyone-graphql package
+
+on:
+  push:
+    tags:
+      - graphql-v*
+  pull_request:
+    paths:
+      - package/graphql/**
+      - .github/workflows/build-graphql.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/v[0-9]+.[0-9]+.[0-9]+rc[0-9]+ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v//")" >> $GITHUB_ENV
+          fi
+      - name: Build wheel
+        run: |
+          cd package/graphql
+          python setup.py sdist bdist_wheel
+      - name: Upload wheel(s)
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: package/graphql/dist/*
+
+  publish:
+    runs-on: ubuntu-20.04
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/db-v')
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v2
+        with:
+          path: downloads
+      - name: Install dependencies
+        run: |
+          pip install twine
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+          echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+      - name: Upload to pypi
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python -m twine upload downloads/dist/*
