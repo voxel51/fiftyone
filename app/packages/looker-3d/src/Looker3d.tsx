@@ -27,7 +27,7 @@ import {
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
-import { Environment } from "./environment";
+import { Environment } from "./Environment";
 import { useHotkey, usePathFilter } from "./hooks";
 import {
   defaultPluginSettings,
