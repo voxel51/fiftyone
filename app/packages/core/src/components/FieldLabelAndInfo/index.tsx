@@ -96,12 +96,12 @@ function toLabel(path, nested) {
 const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;
 
 type FieldLabelAndInfo = {
-  nested?: boolean 
-  field: Field
-  color: string
-  expandedPath?: string 
-  template: (unknown) => JSX.Element
-}
+  nested?: boolean;
+  field: Field;
+  color: string;
+  expandedPath?: string;
+  template: (unknown) => JSX.Element;
+};
 
 const FieldLabelAndInfo = ({
   nested,
@@ -117,9 +117,9 @@ const FieldLabelAndInfo = ({
       {fieldInfo.open && <FieldInfoExpanded {...fieldInfo} />}
     </>
   );
-}
+};
 
-export default FieldLabelAndInfo
+export default FieldLabelAndInfo;
 
 const FieldInfoExpandedContainer = styled.div`
   background: ${({ theme }) => {
@@ -146,7 +146,7 @@ const FieldInfoDesc = styled.div<{ collapsed: boolean }>`
   max-height: calc(2.1rem * 6);
   overflow-x: hidden;
   overflow-y: ${({ collapsed }) => (collapsed ? "hidden" : "auto")};
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   ::-webkit-scrollbar {
     width: 0.5rem; // manage scrollbar width here
   }
@@ -222,7 +222,7 @@ const ShowMoreLink = styled.a`
   cursor: pointer;
   display: inline-block;
   text-align: right;
-  font-color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.text.primary};
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
@@ -320,7 +320,7 @@ function computePopoverPosition(
   const targetBounds = hoverTarget.current.getBoundingClientRect();
   const selfBounds = el.current.getBoundingClientRect();
 
-  let offscreenArea = Infinity;
+  const offscreenArea = Infinity;
   let bestPosition: { top: number; left: number } | null = null;
   let bestScore = Infinity;
   const relativePositions = ["above", "below", "left", "right"];
