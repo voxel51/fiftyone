@@ -31,7 +31,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
-import fiftyone.internal.credentials as foic
+import fiftyone.internal as foi
 
 from .document import Document
 
@@ -215,7 +215,7 @@ def establish_db_conn(config):
     _validate_db_version(config, _client)
 
     # Only register cleanup method when running as internal service
-    if foic.has_encryption_key():
+    if foi.is_internal_service():
         atexit.register(_delete_non_persistent_datasets_if_allowed)
 
     connect(config.database_name, **_connection_kwargs)

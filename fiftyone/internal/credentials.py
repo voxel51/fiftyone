@@ -16,6 +16,7 @@ from cryptography.fernet import Fernet
 
 import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
+import fiftyone.internal as foi
 
 
 ENCRYPTION_KEY_ENV_VAR = "FIFTYONE_ENCRYPTION_KEY"
@@ -31,7 +32,7 @@ def has_encryption_key():
     Returns:
         True/False
     """
-    return ENCRYPTION_KEY_ENV_VAR in os.environ
+    return foi.is_internal_service() and ENCRYPTION_KEY_ENV_VAR in os.environ
 
 
 class CloudCredentialsManager(object):
