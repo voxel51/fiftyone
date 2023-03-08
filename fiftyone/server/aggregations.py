@@ -20,17 +20,10 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
 import fiftyone.server.view as fosv
-
-
-@gql.input
-class SelectedLabel:
-    label_id: gql.ID
-    field: str
-    sample_id: gql.ID
-    frame_number: t.Optional[int] = None
 
 
 @gql.input
