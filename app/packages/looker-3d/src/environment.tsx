@@ -82,6 +82,7 @@ export const Environment = ({
 
       <axesHelper />
 
+      {/* display arrow helper with up vector if it's a non-standard up vecotr (like [0,1,1]) */}
       {!isDefaultUpOrthoNormal && <arrowHelper args={[upNormalized, ORIGIN]} />}
 
       {isGridOn && (
