@@ -1430,6 +1430,76 @@ source dataset, there are some differences compared to non-clip views:
     |Classification| field populated when generating clip views based on
     |TemporalDetection| labels, as described above)
 
+.. _trajectory-views:
+
+Trajectory views
+----------------
+
+You can use
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+to create views into your video datasets that contain one sample per each
+unique object trajectory defined by their ``(label, index)`` in a frame-level
+|Detections| or |Polylines| field.
+
+Trajectory views are a special case of :ref:`clip views <clip-views>` where
+each clip has been filtered to contain only the identifying object, rather than
+than all objects with the trajectory's frame support.
+
+For example, if you have frame-level
+:ref:`object detections <object-detection>` with their ``index`` attributes
+populated, then you can create a trajectories view that contains one clip for
+each object of a specific type using
+:meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+and
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Create a trajectories view for the vehicles in the dataset
+    trajectories = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "vehicle")
+        .to_trajectories("frames.detections")
+    )
+    print(trajectories)
+
+    session = fo.launch_app(view=trajectories)
+
+.. code-block:: text
+
+    Dataset:    quickstart-video
+    Media type: video
+    Num clips:  109
+    Clip fields:
+        id:         fiftyone.core.fields.ObjectIdField
+        sample_id:  fiftyone.core.fields.ObjectIdField
+        filepath:   fiftyone.core.fields.StringField
+        support:    fiftyone.core.fields.FrameSupportField
+        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'vehicle']}, only_matches=True, trajectories=False)
+        2. ToTrajectories(field='frames.detections', config=None)
+
+.. warning::
+
+    Trajectory views can contain signficantly more frames than their source
+    collection, since the number of frames is now `O(# boxes)` rather than
+    `O(# video frames)`.
+
 .. _frame-views:
 
 Frame views

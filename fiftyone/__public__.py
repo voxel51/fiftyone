@@ -192,6 +192,7 @@ from .core.stages import (
     ToPatches,
     ToEvaluationPatches,
     ToClips,
+    ToTrajectories,
     ToFrames,
 )
 from .core.session import (
