@@ -22,6 +22,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 import fiftyone.server.utils as fosu
+from fiftyone.core.utils import pprint
 
 
 _LABEL_TAGS = "_label_tags"
@@ -456,6 +457,8 @@ def _make_filter_stages(
 
     if label_tags is not None and hide_result:
         is_matching = label_tags.get("isMatching", False)
+        exclude = label_tags.get("exclude", False)
+
         for path, _ in fosu.iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -468,7 +471,7 @@ def _make_filter_stages(
                 fosg.FilterLabels(
                     cache.get(path, path),
                     tag_expr,
-                    only_matches=False,
+                    only_matches=True if is_matching and exclude else False,
                     _new_field=new_field,
                 )
             )
@@ -484,8 +487,12 @@ def _make_filter_stages(
                     cache.get(path, path),
                 )
             )
+        if match_exprs and not (is_matching and exclude):
             stages.append(fosg.Match(F.any(match_exprs)))
+        if is_matching and exclude and match_exprs:
+            stages.append(fosg.Match(F.all(match_exprs)))
 
+    pprint(stages)
     return stages, cleanup, filtered_labels
 
 
