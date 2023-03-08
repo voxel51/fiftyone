@@ -911,4 +911,5 @@ class ServerViewTests(unittest.TestCase):
                 }
             },
         ]
+
         self.assertEqual(expected, returned)

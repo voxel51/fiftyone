@@ -161,8 +161,10 @@ def get_extended_view(
             tags = filters.get("tags")
             exclude = tags["exclude"]
             tags = tags["values"]
+
             if tags and not exclude:
                 view = view.match_tags(tags)
+
             if tags and exclude:
                 view = view.match_tags(tags, bool=False)
 
@@ -176,6 +178,7 @@ def get_extended_view(
                 and not label_tags["isMatching"]
             ):
                 view = view.select_labels(tags=label_tags["values"])
+
             if (
                 not count_label_tags
                 and label_tags
@@ -185,6 +188,7 @@ def get_extended_view(
                 view = view.exclude_labels(
                     tags=label_tags["values"], omit_empty=False
                 )
+
             if (
                 not count_label_tags
                 and label_tags
@@ -192,6 +196,7 @@ def get_extended_view(
                 and label_tags["isMatching"]
             ):
                 view = view.match_labels(tags=label_tags["values"])
+
             if (
                 not count_label_tags
                 and label_tags
@@ -472,7 +477,6 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-
         for path, _ in fosu.iter_label_fields(view):
             match_exprs.append(
                 fosg._get_label_field_only_matches_expr(
