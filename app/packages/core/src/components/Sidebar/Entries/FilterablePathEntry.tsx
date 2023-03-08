@@ -265,6 +265,10 @@ const FilterableEntry = React.memo(
     const pseudoField = makePseudoField(path);
     const isLabelTag = path.startsWith("_label_tag");
     const isSampleTag = path.startsWith("tags");
+    const [state, setState] = React.useState({
+      sampleTagChecked: false,
+      labelTagChecked: false,
+    });
 
     const data = useMemo(() => {
       if (field) {
@@ -281,7 +285,6 @@ const FilterableEntry = React.memo(
     );
 
     const [activeTags, setActiveTags] = useRecoilState(fos.activeTags(modal));
-
     const [activeLabelTags, setActiveLabelTags] = useRecoilState(
       fos.activeLabelTags(modal)
     );
@@ -309,8 +312,10 @@ const FilterableEntry = React.memo(
         if (disabled) return;
         if (isLabelTag) {
           setActiveLabelTags(checked ? allLabelTags : []);
+          setState((s) => ({ ...s, labelTagChecked: checked }));
         } else if (isSampleTag) {
           setActiveTags(checked ? allTags : []);
+          setState((s) => ({ ...s, sampleTagChecked: checked }));
         } else {
           setActiveField(!activeField);
         }
@@ -332,9 +337,11 @@ const FilterableEntry = React.memo(
 
     const active = () => {
       if (path.startsWith("tag")) {
-        return activeTags.length > 0;
+        if (activeTags.length > 0 || state.sampleTagChecked) return true;
+        return false;
       } else if (path.startsWith("_label_tag")) {
-        return activeLabelTags.length > 0;
+        if (activeLabelTags.length > 0 || state.labelTagChecked) return true;
+        return false;
       } else {
         return activeField;
       }
