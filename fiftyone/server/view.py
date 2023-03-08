@@ -478,7 +478,7 @@ def _make_filter_stages(
                 fosg.FilterLabels(
                     cache.get(path, path),
                     tag_expr,
-                    only_matches=True if is_matching and exclude else False,
+                    only_matches=False,
                     _new_field=new_field,
                 )
             )
@@ -487,25 +487,21 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
+        for path, _ in fosu.iter_label_fields(view):
+            expr = fosg._get_label_field_only_matches_expr(
+                view,
+                cache.get(path, path),
+            )
+            if exclude and is_matching:
+                # pylint: disable=invalid-unary-operand-type
+                expr = ~expr
 
-        if not (is_matching and exclude):
-            for path, _ in fosu.iter_label_fields(view):
-                match_exprs.append(
-                    fosg._get_label_field_only_matches_expr(
-                        view,
-                        cache.get(path, path),
-                    )
-                )
-            if match_exprs:
-                stages.append(fosg.Match(F.any(match_exprs)))
+            match_exprs.append(expr)
 
-        if is_matching and exclude:
-            for path, _ in fosu.iter_label_fields(view):
+        if match_exprs:
+            matcher = F.all if exclude else F.any
+            stages.append(fosg.Match(matcher(match_exprs)))
 
-                match_exprs.append()
-            stages.append(fosg.Match(F.all(match_exprs)))
-
-    pprint(stages)
     return stages, cleanup, filtered_labels
 
 
