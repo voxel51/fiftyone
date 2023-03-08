@@ -1002,6 +1002,39 @@ methods on your dataset:
 -   :meth:`rename_brain_run() <fiftyone.core.collections.SampleCollection.rename_brain_run>`
 -   :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
 
+.. tabs::
+
+    .. tab:: Visualizations
+
+        The
+        :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
+        method accepts an optional `brain_key` parameter that specifies the
+        brain key under which to store the results of the visualization.
+
+    .. tab:: Similarity
+
+        The
+        :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
+        method accepts an optional `brain_key` parameter that specifies the
+        brain key under which to store the similarity index.
+
+    .. tab:: Uniqueness
+
+        The brain key of uniqueness runs is the value of the
+        `uniqueness_field` passed to
+        :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
+
+    .. tab:: Mistakenness
+
+        The brain key of mistakenness runs is the value of the
+        `mistakenness_field` passed to
+        :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
+
+    .. tab:: Hardness
+
+        The brain key of hardness runs is the value of the `hardness_field`
+        passed to :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
+
 The example below demonstrates the basic interface:
 
 .. code-block:: python
