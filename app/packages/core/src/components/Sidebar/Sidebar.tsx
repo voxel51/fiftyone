@@ -762,12 +762,15 @@ const InteractiveSidebar = ({
 
               const { shadow, cursor, ...springs } =
                 items.current[key].controller.springs;
+              const keyTrigger = ["tags", "_label_tags"].includes(key[1])
+                ? null
+                : trigger;
               const { children } = render(
                 key,
                 group,
                 entry,
                 items.current[key].controller,
-                trigger
+                keyTrigger
               );
               const style = {};
               if (entry.kind === fos.EntryKind.INPUT) {
