@@ -4,7 +4,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { MutableRefObject, useLayoutEffect, useMemo } from "react";
-import { Camera, Quaternion, Vector3 } from "three";
+import { Camera, Quaternion, Vector3, Box3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Looker3dPluginSettings } from "./Looker3dPlugin";
 
@@ -13,6 +13,7 @@ type EnvironmentProps = {
   controlsRef: MutableRefObject<OrbitControlsImpl>;
   settings: Looker3dPluginSettings;
   isGridOn: boolean;
+  bounds: Box3;
 };
 
 const ORIGIN = new Vector3(0, 0, 0);
@@ -22,6 +23,7 @@ export const Environment = ({
   controlsRef,
   settings,
   isGridOn,
+  bounds,
 }: EnvironmentProps) => {
   const camera = useThree((state) => state.camera);
 
@@ -63,13 +65,54 @@ export const Environment = ({
     controlsRef.current.update();
   }, [camera, cameraRef, controlsRef, settings, upNormalized]);
 
-  const isDefaultUpOrthoNormal = useMemo(
-    () =>
-      upNormalized.equals(new Vector3(1, 0, 0)) ||
-      upNormalized.equals(new Vector3(0, 1, 0)) ||
-      upNormalized.equals(new Vector3(0, 0, 1)),
+  const isDefaultUpZ = useMemo(
+    () => upNormalized.equals(new Vector3(0, 0, 1)),
     [upNormalized]
   );
+
+  const isDefaultUpY = useMemo(
+    () => upNormalized.equals(new Vector3(0, 1, 0)),
+    [upNormalized]
+  );
+
+  const isDefaultUpX = useMemo(
+    () => upNormalized.equals(new Vector3(1, 0, 0)),
+    [upNormalized]
+  );
+
+  const isDefaultUpOrthoNormal = useMemo(
+    () => isDefaultUpX || isDefaultUpY || isDefaultUpZ,
+    [isDefaultUpX, isDefaultUpY, isDefaultUpZ]
+  );
+
+  const gridSize = useMemo(() => {
+    let maxInProjectionPlane: number;
+
+    if (isDefaultUpX) {
+      maxInProjectionPlane = Math.max(
+        bounds?.max?.y - bounds?.min?.y,
+        bounds?.max?.z - bounds?.min?.z
+      );
+    } else if (isDefaultUpY) {
+      maxInProjectionPlane = Math.max(
+        bounds?.max?.x - bounds?.min?.x,
+        bounds?.max?.z - bounds?.min?.z
+      );
+    } else if (isDefaultUpZ) {
+      maxInProjectionPlane = Math.max(
+        bounds?.max?.x - bounds?.min?.x,
+        bounds?.max?.y - bounds?.min?.y
+      );
+    } else {
+      return 100; // arbitrary number for non-orthonormal up vectors
+    }
+
+    if (isNaN(maxInProjectionPlane)) {
+      return 100; // arbitrary number for non-orthonormal up vectors
+    }
+
+    return Math.ceil(maxInProjectionPlane * 1.1); // add 10% padding
+  }, [bounds, isDefaultUpX, isDefaultUpY, isDefaultUpZ]);
 
   return (
     <>
@@ -86,7 +129,10 @@ export const Environment = ({
       {!isDefaultUpOrthoNormal && <arrowHelper args={[upNormalized, ORIGIN]} />}
 
       {isGridOn && (
-        <gridHelper args={[60, 60]} quaternion={gridHelperQuarternion} />
+        <gridHelper
+          args={[gridSize, Math.ceil(gridSize / 10)]}
+          quaternion={gridHelperQuarternion}
+        />
       )}
     </>
   );

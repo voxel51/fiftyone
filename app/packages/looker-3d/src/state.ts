@@ -66,6 +66,6 @@ export const isPointSizeAttenuatedAtom = atom<boolean>({
 
 export const isGridOnAtom = atom<boolean>({
   key: "isGridOn",
-  default: false,
+  default: true,
   effects: [getBrowserStorageEffectForKey("isGridOn")],
 });

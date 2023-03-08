@@ -314,6 +314,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
           cameraRef={cameraRef}
           settings={settings}
           isGridOn={isGridOn}
+          bounds={pointCloudBounds}
         />
         <mesh rotation={overlayRotation}>
           {overlays
