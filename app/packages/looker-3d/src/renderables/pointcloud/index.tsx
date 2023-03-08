@@ -74,7 +74,7 @@ export const PointCloudMesh = ({
     }
   }, [boundingBox, pointsGeometry, points, onLoad]);
 
-  if (!minZ) {
+  if (minZ === null || minZ === undefined) {
     minZ = boundingBox.min.z;
   }
 
