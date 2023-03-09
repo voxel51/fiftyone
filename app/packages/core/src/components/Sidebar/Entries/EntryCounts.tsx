@@ -90,16 +90,16 @@ export const labelTagsCount = selectorFamily<
   get:
     ({ ...props }) =>
     ({ get }) => {
-      const r1 = get(
+      const labelTagObj = get(
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...props,
         })
       );
-      if (!r1) return { count: 0, results: [] };
-      const r2 = Object.entries(r1);
-      const count = r2.reduce((acc, [key, value]) => acc + value, 0);
-      return { count, results: r2 };
+      if (!labelTagObj) return { count: 0, results: [] };
+      const labelTags = Object.entries(labelTagObj);
+      const count = labelTags.reduce((acc, [key, value]) => acc + value, 0);
+      return { count, results: labelTags };
     },
 });
 

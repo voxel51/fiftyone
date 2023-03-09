@@ -73,13 +73,15 @@ const categoricalSearchResults = selectorFamily<
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
-      const labels = get(labelTagsCount({ modal, extended: false }));
+      let data: { values: V[]; count: number } = { values: [], count: null };
 
-      let data = {
-        count: labels.count,
-        values: labels.results.map(([value, count]) => ({ value, count })),
-      };
-      if (!isLabelTag) {
+      if (isLabelTag) {
+        const labels = get(labelTagsCount({ modal, extended: false }));
+        data = {
+          count: labels.count,
+          values: labels.results.map(([value, count]) => ({ value, count })),
+        };
+      } else {
         data = await getFetchFunction()("POST", "/values", {
           dataset: get(fos.dataset).name,
           view: get(fos.view),
@@ -90,8 +92,8 @@ const categoricalSearchResults = selectorFamily<
           ...sorting,
         });
       }
-      let { values, count } = data as { values: V[]; count: number };
 
+      let { values, count } = data;
       if (noneCount > 0 && "None".includes(search)) {
         values = [...values, { value: null, count: noneCount }]
           .sort(nullSort(sorting))
