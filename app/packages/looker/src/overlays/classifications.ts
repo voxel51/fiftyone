@@ -221,6 +221,12 @@ export class ClassificationsOverlay<
     return state.options.selectedLabels.includes(label.id);
   }
 
+  isTagFiltered(state: Readonly<State>, label: Label): boolean {
+    return state.options.selectedLabelTags.some((tag) =>
+      label.tags.includes(tag)
+    );
+  }
+
   private strokeClassification(
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
@@ -259,6 +265,16 @@ export class ClassificationsOverlay<
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
 
     this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
+
+    if (this.isTagFiltered(state, label)) {
+      const coloring = state.options.coloring;
+      this.strokeBorder(
+        ctx,
+        state,
+        [tlx, tly, w, h],
+        getColor(coloring.pool, coloring.seed, "_label_tags")
+      );
+    }
 
     if (this.isSelected(state, label)) {
       this.strokeBorder(
