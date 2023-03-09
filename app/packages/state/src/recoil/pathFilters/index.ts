@@ -153,5 +153,5 @@ const matchesLabelTags = (
   }
 
   const contains = value.tags.some((tag) => values.includes(tag));
-  return exclude ? contains : !contains;
+  return exclude ? !contains : contains;
 };
