@@ -285,10 +285,8 @@ export default class Flashlight<K> {
     this.state.clean = new Set();
     this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
-      section
-        .getItems()
-        .map(({ id }) => id)
-        .forEach((id) => updater(id));
+      const idList = section.getItems().map(({ id }) => id);
+      idList && idList.forEach((id) => updater(id));
     });
     this.state.updater = updater;
   }
