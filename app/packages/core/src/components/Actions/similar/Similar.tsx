@@ -90,7 +90,19 @@ const SortBySimilarity = ({
     current && setState(current);
   }, [current]);
 
+  const loadingButton: ButtonDetail[] = isLoading
+    ? [
+        {
+          icon: "ProgressIcon",
+          ariaLabel: "In progress...",
+          tooltipText: "",
+          onClick: () => {},
+        },
+      ]
+    : [];
+
   let groupButtons: ButtonDetail[] = [
+    ...loadingButton,
     {
       icon: "InfoIcon",
       ariaLabel: "information",
@@ -107,21 +119,16 @@ const SortBySimilarity = ({
       onClick: () => setOpen((o) => !o),
     },
   ];
-  if (!isImageSearch && !hasSorting) {
+
+  if (!isImageSearch && !hasSorting && !isLoading) {
     groupButtons = [
-      isLoading
-        ? {
-            icon: "ProgressIcon",
-            ariaLabel: "In progress...",
-            tooltipText: "",
-            onClick: () => {},
-          }
-        : {
-            icon: "SearchIcon",
-            ariaLabel: "Submit",
-            tooltipText: "Search by similarity to the provided text",
-            onClick: () => sortBySimilarity(state),
-          },
+      {
+        icon: "SearchIcon",
+        ariaLabel: "Submit",
+        tooltipText: "Search by similarity to the provided text",
+        onClick: () => sortBySimilarity(state),
+      },
+      ...loadingButton,
       ...groupButtons,
     ];
   }
