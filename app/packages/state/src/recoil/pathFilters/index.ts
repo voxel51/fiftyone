@@ -140,7 +140,7 @@ const matchesLabelTags = (
   value: {
     tags: string[];
   },
-  filter?: State.LabelTagsFilter
+  filter?: State.CategoricalFilter<string>
 ) => {
   if (!filter) {
     return true;
