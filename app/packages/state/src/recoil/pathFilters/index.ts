@@ -16,6 +16,7 @@ import { filters, modalFilters } from "../filters";
 
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
+import { State } from "../types";
 import { boolean } from "./boolean";
 import { numeric } from "./numeric";
 import { string, listString } from "./string";
@@ -72,8 +73,7 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
       const paths = get(schemaAtoms.activeFields({ modal }));
       const hidden = get(selectors.hiddenLabelIds);
 
-      const f = modal ? get(modalFilters) : get(filters);
-      const matchedLabelTags = f._label_tags;
+      const current = modal ? get(modalFilters) : get(filters);
 
       const newFilters = paths.reduce((f, path) => {
         if (path.startsWith("_")) return f;
@@ -106,23 +106,11 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
               return false;
             }
 
-            let matched = true;
-            if (matchedLabelTags && matchedLabelTags?.values.length > 0) {
-              const { isMatching, values, exclude } = matchedLabelTags;
-              matched =
-                value.tags &&
-                ((!exclude &&
-                  !isMatching &&
-                  value.tags.some(
-                    (tag) => !isMatching && values.includes(tag)
-                  )) ||
-                  (exclude &&
-                    !isMatching &&
-                    !value.tags.some((tag) => values.includes(tag))) ||
-                  isMatching);
-            }
             return (
-              matched &&
+              matchesLabelTags(
+                value as { tags: string[] },
+                current._label_tags
+              ) &&
               fs.every((filter) => {
                 return filter(value);
               })
@@ -147,3 +135,23 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
     eviction: "most-recent",
   },
 });
+
+const matchesLabelTags = (
+  value: {
+    tags: string[];
+  },
+  filter?: State.LabelTagsFilter
+) => {
+  if (!filter) {
+    return true;
+  }
+
+  const { isMatching, values, exclude } = filter;
+
+  if (isMatching) {
+    return true;
+  }
+
+  const contains = value.tags.some((tag) => values.includes(tag));
+  return exclude ? contains : !contains;
+};

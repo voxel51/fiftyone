@@ -6,12 +6,12 @@ import {
 } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
 import {
+  atomFamily,
   DefaultValue,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useRecoilValueLoadable,
 } from "recoil";
 import Color from "color";
 
@@ -67,7 +67,7 @@ const FILTERS = {
   [INT_FIELD]: NumericFieldFilter,
   [OBJECT_ID_FIELD]: StringFieldFilter,
   [STRING_FIELD]: StringFieldFilter,
-  ["TAG_FIELD"]: LabelFieldFilter,
+  ["_LABEL_TAGS"]: LabelFieldFilter,
 };
 
 const EXCLUDED = {
@@ -75,19 +75,33 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
 
-const getFilterData = (
-  path: string,
-  modal: boolean,
-  parent: Field,
-  fields: Field[],
-  skeleton: (field: string) => KeypointSkeleton | null
-): {
+interface FilterItem {
   ftype: string;
   path: string;
   modal: boolean;
   named?: boolean;
   listField: boolean;
-}[] => {
+  title?: string;
+}
+
+const getFilterData = (
+  path: string,
+  modal: boolean,
+  parent: Field | null,
+  fields: Field[],
+  skeleton: (field: string) => KeypointSkeleton | null
+): FilterItem[] => {
+  if (path === "_label_tags") {
+    return [
+      {
+        ftype: "_LABEL_TAGS",
+        title: `${LIST_FIELD}(${STRING_FIELD})`,
+        path: path,
+        modal: modal,
+        listField: false,
+      },
+    ];
+  }
   if (!parent) {
     return [];
   }
@@ -96,7 +110,7 @@ const getFilterData = (
     let ftype = parent.ftype;
     const listField = ftype === LIST_FIELD;
     if (listField) {
-      ftype = parent.subfield;
+      ftype = parent.subfield as string;
     }
 
     return [
@@ -110,18 +124,12 @@ const getFilterData = (
     ];
   }
 
-  const label = LABELS.includes(parent.embeddedDocType);
-  const excluded = EXCLUDED[parent.embeddedDocType] || [];
+  const label = LABELS.includes(parent.embeddedDocType as string);
+  const excluded = EXCLUDED[parent.embeddedDocType as string] || [];
 
-  const extra: {
-    ftype: string;
-    path: string;
-    modal: boolean;
-    named?: boolean;
-    listField: boolean;
-  }[] = [];
+  const extra: FilterItem[] = [];
 
-  if (VALID_KEYPOINTS.includes(parent.embeddedDocType)) {
+  if (VALID_KEYPOINTS.includes(parent.embeddedDocType as string)) {
     let p = path;
     if (withPath(LABELS_PATH, KEYPOINTS) === parent.embeddedDocType) {
       p = path.split(".").slice(0, -1).join(".");
@@ -141,7 +149,7 @@ const getFilterData = (
   return fields
     .filter(({ name, ftype, subfield }) => {
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = subfield as string;
       }
 
       return (
@@ -151,11 +159,11 @@ const getFilterData = (
           VALID_PRIMITIVE_TYPES.includes(ftype))
       );
     })
-    .map(({ ftype, subfield, name }) => {
+    .map<FilterItem>(({ ftype, subfield, name }) => {
       const listField = ftype === LIST_FIELD;
 
       if (listField) {
-        ftype = subfield;
+        ftype = subfield as string;
       }
 
       return {
@@ -201,12 +209,13 @@ const hiddenPathLabels = selectorFamily<string[], string>({
 
 const useHidden = (path: string) => {
   const [hidden, set] = useRecoilState(hiddenPathLabels(path));
-
   const num = hidden.length;
+  const text = num.toLocaleString();
 
   return num ? (
     <PillButton
-      text={num.toLocaleString()}
+      title={text}
+      text={text}
       icon={<VisibilityOff />}
       onClick={() => set([])}
       open={false}
@@ -221,231 +230,168 @@ const useHidden = (path: string) => {
   ) : null;
 };
 
-const FilterableEntry = React.memo(
-  ({
-    entryKey,
-    modal,
-    path,
-    onFocus,
-    onBlur,
-    disabled = false,
-    trigger,
-  }: {
-    disabled?: boolean;
-    entryKey: string;
-    group: string;
-    modal: boolean;
-    path: string;
-    onFocus?: () => void;
-    onBlur?: () => void;
-    trigger: (
-      event: React.MouseEvent<HTMLDivElement>,
-      key: string,
-      cb: () => void
-    ) => void;
-  }) => {
-    const theme = useTheme();
-    const skeleton = useRecoilValue(fos.getSkeleton);
-    const expandedPath = useRecoilValue(fos.expandPath(path));
-    const [expanded, setExpanded] = useRecoilState(
-      pathIsExpanded({ modal, path: expandedPath })
-    );
-    const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-    const color = disabled
-      ? theme.background.level2
-      : useRecoilValue(fos.pathColor({ path, modal }));
-    const fields = useRecoilValue(
-      fos.fields({
-        path: expandedPath,
-        ftype: VALID_PRIMITIVE_TYPES,
-      })
-    );
-
-    const field = useRecoilValue(fos.field(path));
-    const pseudoField = makePseudoField(path);
-    const isLabelTag = path.startsWith("_label_tag");
-    const isSampleTag = path.startsWith("tags");
-    const [state, setState] = React.useState({
-      sampleTagChecked: false,
-      labelTagChecked: false,
-    });
-
-    const data = useMemo(() => {
-      if (field) {
-        return getFilterData(expandedPath, modal, field, fields, skeleton);
-      }
-    }, [field, fields, expandedPath, modal, skeleton]);
-
-    const fieldIsFiltered = useRecoilValue(
-      fos.fieldIsFiltered({ path, modal })
-    );
-
-    const [activeField, setActiveField] = useRecoilState(
-      fos.activeField({ modal, path })
-    );
-
-    const [activeTags, setActiveTags] = useRecoilState(fos.activeTags(modal));
-    const [activeLabelTags, setActiveLabelTags] = useRecoilState(
-      fos.activeLabelTags(modal)
-    );
-    const labelTagsLoadable = useRecoilValueLoadable(
-      labelTagCounts({ modal, extended: false })
-    );
-    const sampleTagsLoadable = useRecoilValueLoadable(
-      sampleTagCounts({ modal, extended: false })
-    );
-
-    const allLabelTags =
-      labelTagsLoadable.state !== "hasValue"
-        ? []
-        : Object.keys(labelTagsLoadable.contents);
-    const allTags =
-      sampleTagsLoadable.state !== "hasValue"
-        ? []
-        : Object.keys(sampleTagsLoadable.contents);
-
-    const hidden = modal ? useHidden(path) : null;
-
-    const onClickShow = useRecoilCallback(
-      () => (e) => {
-        const checked = e?.target?.checked;
+const useOnClick = ({
+  disabled,
+  modal,
+  path,
+}: {
+  disabled: boolean;
+  modal: boolean;
+  path: string;
+}) => {
+  return useRecoilCallback<[React.MouseEvent<HTMLButtonElement>], void>(
+    ({ set }) =>
+      async (event) => {
         if (disabled) return;
-        if (isLabelTag) {
-          setActiveLabelTags(checked ? allLabelTags : []);
-          setState((s) => ({ ...s, labelTagChecked: checked }));
-        } else if (isSampleTag) {
-          setActiveTags(checked ? allTags : []);
-          setState((s) => ({ ...s, sampleTagChecked: checked }));
-        } else {
-          setActiveField(!activeField);
-        }
+        const checked = (event.target as HTMLInputElement).checked;
+        set(fos.activeField({ modal, path }), checked);
       },
-      [
-        activeField,
-        activeLabelTags,
-        activeTags,
-        allLabelTags,
-        allTags,
-        disabled,
-        isLabelTag,
-        isSampleTag,
-        setActiveField,
-        setActiveLabelTags,
-        setActiveTags,
-      ]
-    );
+    [disabled, modal, path]
+  );
+};
 
-    const active = () => {
-      if (path.startsWith("tag")) {
-        if (activeTags.length > 0 || state.sampleTagChecked) return true;
-        return false;
-      } else if (path.startsWith("_label_tag")) {
-        if (activeLabelTags.length > 0 || state.labelTagChecked) return true;
-        return false;
-      } else {
-        return activeField;
+const PATH_OVERRIDES = {
+  tags: "sample tags",
+  _label_tags: "label tags",
+};
+
+const FilterableEntry = ({
+  entryKey,
+  modal,
+  path,
+  onFocus,
+  onBlur,
+  disabled = false,
+  trigger,
+}: {
+  disabled?: boolean;
+  entryKey: string;
+  group: string;
+  modal: boolean;
+  path: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}) => {
+  const theme = useTheme();
+  const skeleton = useRecoilValue(fos.getSkeleton);
+  const expandedPath = useRecoilValue(fos.expandPath(path));
+  const [expanded, setExpanded] = useRecoilState(
+    pathIsExpanded({ modal, path: expandedPath })
+  );
+  const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+  const color = disabled
+    ? theme.background.level2
+    : useRecoilValue(fos.pathColor({ path, modal }));
+  const fields = useRecoilValue(
+    fos.fields({
+      path: expandedPath,
+      ftype: VALID_PRIMITIVE_TYPES,
+    })
+  );
+
+  const field = useRecoilValue(fos.field(path));
+  const pseudoField = makePseudoField(path);
+
+  const data = useMemo(() => {
+    return getFilterData(expandedPath, modal, field, fields, skeleton);
+  }, [field, fields, expandedPath, modal, skeleton]);
+
+  const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
+
+  const active = useRecoilValue(fos.activeField({ modal, path }));
+
+  const hidden = modal ? useHidden(path) : null;
+
+  const onClick = useOnClick({ disabled, modal, path });
+
+  return (
+    <RegularEntry
+      backgroundColor={
+        fieldIsFiltered
+          ? Color(color).alpha(0.25).string()
+          : theme.background.level1
       }
-    };
-
-    return (
-      <RegularEntry
-        backgroundColor={
-          fieldIsFiltered
-            ? Color(color).alpha(0.25).string()
-            : theme.background.level1
-        }
-        color={color}
-        entryKey={entryKey}
-        heading={
-          <>
-            {!disabled && (
-              <Checkbox
-                disableRipple={true}
-                checked={active()}
-                title={`Show ${path}`}
-                style={{
-                  color: active() ? color : theme.text.secondary,
-                  marginLeft: 2,
-                  padding: 0,
-                }}
-                key="checkbox"
-                onClick={(e) => onClickShow(e)}
-              />
-            )}
-            {
-              <FieldLabelAndInfo
-                field={field ?? pseudoField}
-                color={color}
-                expandedPath={expandedPath}
-                template={({ hoverHanlders, hoverTarget, container }) => (
-                  <NameAndCountContainer ref={container}>
-                    <span key="path">
-                      <span ref={hoverTarget} {...hoverHanlders}>
-                        {isLabelTag
-                          ? "label tags"
-                          : path.startsWith("tags")
-                          ? "sample tags"
-                          : path}
-                      </span>
+      color={color}
+      entryKey={entryKey}
+      heading={
+        <>
+          {!disabled && (
+            <Checkbox
+              disableRipple={true}
+              checked={active}
+              title={`Show ${path}`}
+              style={{
+                color: active ? color : theme.text.secondary,
+                marginLeft: 2,
+                padding: 0,
+              }}
+              key="checkbox"
+              onClick={onClick}
+            />
+          )}
+          {
+            <FieldLabelAndInfo
+              field={field ?? pseudoField}
+              color={color}
+              expandedPath={expandedPath}
+              template={({ hoverHandlers, hoverTarget, container }) => (
+                <NameAndCountContainer ref={container}>
+                  <span key="path">
+                    <span ref={hoverTarget} {...hoverHandlers}>
+                      {PATH_OVERRIDES[path] || path}
                     </span>
-                    {hidden}
-                    <PathEntryCounts
-                      key="count"
-                      modal={modal}
-                      path={expandedPath}
+                  </span>
+                  {hidden}
+                  <PathEntryCounts
+                    key="count"
+                    modal={modal}
+                    path={expandedPath}
+                  />
+                  {!disabled && (
+                    <Arrow
+                      key="arrow"
+                      style={{ cursor: "pointer", margin: 0 }}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setExpanded(!expanded);
+                      }}
+                      onMouseDown={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
+                      onMouseUp={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                      }}
                     />
-                    {!disabled && (
-                      <Arrow
-                        key="arrow"
-                        style={{ cursor: "pointer", margin: 0 }}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setExpanded(!expanded);
-                        }}
-                        onMouseDown={(event) => {
-                          event.stopPropagation();
-                          event.preventDefault();
-                        }}
-                        onMouseUp={(event) => {
-                          event.stopPropagation();
-                          event.preventDefault();
-                        }}
-                      />
-                    )}
-                  </NameAndCountContainer>
-                )}
-              />
-            }
-          </>
-        }
-        trigger={trigger}
-      >
-        {expanded &&
-          !isLabelTag &&
-          data &&
-          data.map(({ ftype, listField, ...props }) => {
-            return React.createElement(FILTERS[ftype], {
-              key: props.path,
-              onFocus,
-              onBlur,
-              title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
-              ...props,
-            });
-          })}
-        {expanded &&
-          isLabelTag &&
-          React.createElement(FILTERS["TAG_FIELD"], {
-            key: path,
+                  )}
+                </NameAndCountContainer>
+              )}
+            />
+          }
+        </>
+      }
+      trigger={trigger}
+    >
+      {expanded &&
+        data &&
+        data.map(({ ftype, listField, title, ...props }) => {
+          return React.createElement(FILTERS[ftype], {
+            key: props.path,
             onFocus,
             onBlur,
-            title: `${LIST_FIELD}(${STRING_FIELD})`,
-            path: path,
-            modal: modal,
-          })}
-      </RegularEntry>
-    );
-  }
-);
+            title: title || (listField ? `${LIST_FIELD}(${ftype})` : ftype),
+            ...props,
+          });
+        })}
+    </RegularEntry>
+  );
+};
 
 export default React.memo(FilterableEntry);

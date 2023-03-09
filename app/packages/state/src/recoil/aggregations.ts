@@ -296,23 +296,23 @@ export const count = selectorFamily({
 
       if (!exists) {
         const split = params.path.split(".");
+        const [first] = split;
 
-        if (split[0] === "tags") {
+        if (first === "tags") {
           return get(counts({ ...params, path: "tags" }))[
             split.slice(1).join(".")
           ];
         }
 
-        if (split[0] === "_label_tags" && !value) {
+        if (first === "_label_tags" && !value) {
           const r = get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
           return Object.values(r).reduce((a, b) => a + b, 0);
         }
 
-        if (split[0] === "_label_tags" && value) {
-          const r = get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
+        if (first === "_label_tags" && value) {
+          return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
             value
           ];
-          return r;
         }
 
         if (split.length < 2) {

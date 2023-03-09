@@ -153,6 +153,12 @@ export namespace State {
    */
   export interface Filter {}
 
+  export interface LabelTagsFilter extends Filter {
+    isMatching: boolean;
+    values: string[];
+    exclude: boolean;
+  }
+
   export interface SortBySimilarityParameters {
     brainKey: string;
     distField?: string;
@@ -163,6 +169,7 @@ export namespace State {
   }
 
   export interface Filters {
+    _label_tags?: LabelTagsFilter;
     [key: string]: Filter;
   }
 

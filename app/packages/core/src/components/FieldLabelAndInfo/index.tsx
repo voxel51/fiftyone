@@ -82,7 +82,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     expandedPath,
     color,
     label: toLabel(field.path, nested),
-    hoverHanlders: {},
+    hoverHandlers: {},
     close() {
       setSelectedField(null);
     },
