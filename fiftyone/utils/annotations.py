@@ -1021,8 +1021,9 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        **kwargs: optional keyword arguments for
-            :meth:`AnnotationResults.load_credentials`
+        **kwargs: optional keyword arguments for the run's
+            :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+            method
 
     Returns:
         ``None``, unless ``unexpected=="return"`` and unexpected labels are
@@ -2108,15 +2109,6 @@ class AnnotationResults(foa.AnnotationResults):
 
     def __exit__(self, *args):
         self._backend.__exit__(*args)
-
-    def load_credentials(self, **kwargs):
-        """Loads any credentials from the given keyword arguments or the
-        FiftyOne annotation config.
-
-        Args:
-            **kwargs: subclass-specific credentials
-        """
-        raise NotImplementedError("subclass must implement load_credentials()")
 
     def connect_to_api(self):
         """Returns an API instance connected to the annotation backend.

@@ -771,6 +771,15 @@ class RunResults(etas.Serializable):
     def _set_key(self, key):
         self._key = key
 
+    def load_credentials(self, **kwargs):
+        """Loads any necessary credentials to use these results from the given
+        keyword arguments or the relevant FiftyOne config.
+
+        Args:
+            **kwargs: subclass-specific credentials
+        """
+        pass
+
     def save(self):
         """Saves the results to the database."""
         run = self._backend

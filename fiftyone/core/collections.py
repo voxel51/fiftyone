@@ -3136,20 +3136,27 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
-    def load_evaluation_results(self, eval_key, cache=True):
+    def load_evaluation_results(self, eval_key, cache=True, **kwargs):
         """Loads the results for the evaluation with the given key on this
         collection.
 
         Args:
             eval_key: an evaluation key
             cache (True): whether to cache the results on the collection
+            **kwargs: optional keyword arguments for the run's
+                :meth:`fiftyone.core.evaluation.EvaluationResults.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.core.evaluation.EvaluationResults`
         """
-        return foev.EvaluationMethod.load_run_results(
+        results = foev.EvaluationMethod.load_run_results(
             self, eval_key, cache=cache
         )
+        if results is not None:
+            results.load_credentials(**kwargs)
+
+        return results
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -3230,7 +3237,9 @@ class SampleCollection(object):
         """
         return fob.BrainMethod.get_run_info(self, brain_key)
 
-    def load_brain_results(self, brain_key, cache=True, load_view=True):
+    def load_brain_results(
+        self, brain_key, cache=True, load_view=True, **kwargs
+    ):
         """Loads the results for the brain method run with the given key on
         this collection.
 
@@ -3239,13 +3248,19 @@ class SampleCollection(object):
             cache (True): whether to cache the results on the collection
             load_view (True): whether to load the view on which the results
                 were computed (True) or the full dataset (False)
+            **kwargs: optional keyword arguments for the run's
+                :meth:`fiftyone.core.brain.BrainResults.load_credentials` method
 
         Returns:
             a :class:`fiftyone.core.brain.BrainResults`
         """
-        return fob.BrainMethod.load_run_results(
+        results = fob.BrainMethod.load_run_results(
             self, brain_key, cache=cache, load_view=load_view
         )
+        if results is not None:
+            results.load_credentials(**kwargs)
+
+        return results
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -7938,8 +7953,9 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
             cache (True): whether to cache the results on the collection
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+            **kwargs: optional keyword arguments for run's
+                :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
@@ -7947,7 +7963,9 @@ class SampleCollection(object):
         results = foan.AnnotationMethod.load_run_results(
             self, anno_key, cache=cache, load_view=False
         )
-        results.load_credentials(**kwargs)
+        if results is not None:
+            results.load_credentials(**kwargs)
+
         return results
 
     def load_annotation_view(self, anno_key, select_fields=False):
@@ -7997,8 +8015,9 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+            **kwargs: optional keyword arguments for the run's
+                :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+                method
 
         Returns:
             ``None``, unless ``unexpected=="return"`` and unexpected labels are
