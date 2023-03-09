@@ -74,6 +74,8 @@ export namespace State {
       method: string;
       patchesField: string | null;
       cls: string;
+      supportsPrompts: boolean | null;
+      type: string | null;
     };
   }
 
@@ -161,6 +163,8 @@ export namespace State {
     distField?: string;
     k?: number;
     reverse?: boolean;
+    query?: string | string[];
+    queryIds?: string[];
   }
 
   export interface Filters {

@@ -326,25 +326,34 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-export const similarityKeys = selector<{
-  patches: [string, string][];
-  samples: string[];
+export type Method = {
+  key: string;
+  supportsPrompts: boolean;
+};
+
+export const similarityMethods = selector<{
+  patches: [Method, string][];
+  samples: Method[];
 }>({
-  key: "similarityKeys",
+  key: "similarityMethods",
   get: ({ get }) => {
     const methods = get(atoms.dataset).brainMethods;
+
     return methods
-      .filter(({ config: { method } }) => method === "similarity")
+      .filter(
+        ({ config: { type, cls } }) =>
+          type == "similarity" || cls.toLowerCase().includes("similarity")
+      )
       .reduce(
         (
           { patches, samples },
 
-          { config: { patchesField }, key }
+          { config: { patchesField, supportsPrompts }, key }
         ) => {
           if (patchesField) {
-            patches.push([key, patchesField]);
+            patches.push([{ key, supportsPrompts }, patchesField]);
           } else {
-            samples.push(key);
+            samples.push({ key, supportsPrompts });
           }
           return { patches, samples };
         },
@@ -500,3 +509,19 @@ function getLabelIdsFromSample(sample, path, matchesFilter) {
 
   return labelIds;
 }
+
+export const hasSelectedLabels = selector<boolean>({
+  key: "hasSelectedLabels",
+  get: ({ get }) => {
+    const selected = get(selectedLabelIds);
+    return selected.size > 0;
+  },
+});
+
+export const hasSelectedSamples = selector<boolean>({
+  key: "hasSelectedSamples",
+  get: ({ get }) => {
+    const selected = get(atoms.selectedSamples);
+    return selected.size > 0;
+  },
+});

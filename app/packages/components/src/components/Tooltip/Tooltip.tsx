@@ -6,15 +6,11 @@ import { PlacementType } from "react-laag/dist/PlacementType";
 import style from "./Tooltip.module.css";
 import { useTheme } from "../..";
 
-const Tooltip = <P extends React.HTMLAttributes<T>, T extends HTMLElement>({
-  children,
-  text,
-  placement = "top-center",
-}: {
-  children: React.DetailedReactHTMLElement<P, T>;
+const Tooltip: React.FC<{
+  children: React.ReactElement;
+  placement: PlacementType;
   text: string;
-  placement?: PlacementType;
-}) => {
+}> = ({ children, text, placement = "top-center" }) => {
   const theme = useTheme();
   const [isOver, hoverProps] = useHover({ delayEnter: 100, delayLeave: 100 });
 

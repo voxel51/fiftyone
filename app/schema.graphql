@@ -94,6 +94,8 @@ type BrainRunConfig implements RunConfig {
   embeddingsField: String
   method: String
   patchesField: String
+  supportsPrompts: Boolean
+  type: String
 }
 
 enum ColorBy {
