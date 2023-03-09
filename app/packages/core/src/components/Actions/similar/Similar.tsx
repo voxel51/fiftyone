@@ -115,6 +115,12 @@ const SortBySimilarity = ({
         tooltipText: "Search by similarity to the provided text",
         onClick: () => sortBySimilarity(state),
       },
+      {
+        icon: "ProgressIcon",
+        arialLabel: "In progress...",
+        tooltipText: "",
+        onClick: () => {},
+      },
       ...groupButtons,
     ];
   }
