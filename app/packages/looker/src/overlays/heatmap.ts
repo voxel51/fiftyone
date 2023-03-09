@@ -119,6 +119,18 @@ export default class HeatmapOverlay<State extends BaseState>
       ctx.globalAlpha = tmp;
     }
 
+    if (this.isTagFiltered(state)) {
+      strokeCanvasRect(
+        ctx,
+        state,
+        getColor(
+          state.options.coloring.pool,
+          state.options.coloring.seed,
+          "_label_tags"
+        )
+      );
+    }
+
     if (this.isSelected(state)) {
       strokeCanvasRect(
         ctx,
@@ -164,6 +176,12 @@ export default class HeatmapOverlay<State extends BaseState>
 
   isSelected(state: Readonly<State>): boolean {
     return state.options.selectedLabels.includes(this.label.id);
+  }
+
+  isTagFiltered(state: Readonly<State>): boolean {
+    return state.options.selectedLabelTags.some((tag) =>
+      this.label.tags.includes(tag)
+    );
   }
 
   isShown(state: Readonly<State>): boolean {

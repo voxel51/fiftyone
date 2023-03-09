@@ -42,6 +42,8 @@ export default class KeypointOverlay<
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
     const selected = this.isSelected(state);
+    const isTagFiltered = this.isTagFiltered(state);
+
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
@@ -50,6 +52,19 @@ export default class KeypointOverlay<
       for (let i = 0; i < skeleton.edges.length; i++) {
         const path = skeleton.edges[i].map((index) => points[index]);
         this.strokePath(ctx, state, path, color);
+
+        if (isTagFiltered) {
+          this.strokePath(
+            ctx,
+            state,
+            path,
+            getColor(
+              state.options.coloring.pool,
+              state.options.coloring.seed,
+              "label_tags"
+            )
+          );
+        }
 
         if (selected) {
           this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
