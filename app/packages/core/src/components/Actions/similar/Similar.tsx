@@ -20,11 +20,10 @@ import {
 const DEFAULT_K = 25;
 
 const LONG_BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.25rem",
+  margin: "0.5rem 0",
   height: "2rem",
-  borderRadius: 2,
+  flex: 1,
   textAlign: "center",
-  width: "185px",
 };
 
 interface SortBySimilarityProps {
@@ -80,6 +79,7 @@ const SortBySimilarity = ({
       },
     []
   );
+  const isLoading = useRecoilValue(fos.similaritySorting);
 
   useLayoutEffect(() => {
     choices.choices.length === 1 &&
@@ -93,7 +93,7 @@ const SortBySimilarity = ({
   let groupButtons: ButtonDetail[] = [
     {
       icon: "InfoIcon",
-      arialLabel: "information",
+      ariaLabel: "information",
       tooltipText: "Learn more about sorting by similarity",
       onClick: () => {
         useExternalLink(SORT_BY_SIMILARITY);
@@ -102,25 +102,26 @@ const SortBySimilarity = ({
     },
     {
       icon: "SettingsIcon",
-      arialLabel: "Advanced settings",
+      ariaLabel: "Advanced settings",
       tooltipText: "Advanced settings",
       onClick: () => setOpen((o) => !o),
     },
   ];
   if (!isImageSearch && !hasSorting) {
     groupButtons = [
-      {
-        icon: "SearchIcon",
-        arialLabel: "Submit",
-        tooltipText: "Search by similarity to the provided text",
-        onClick: () => sortBySimilarity(state),
-      },
-      {
-        icon: "ProgressIcon",
-        arialLabel: "In progress...",
-        tooltipText: "",
-        onClick: () => {},
-      },
+      isLoading
+        ? {
+            icon: "ProgressIcon",
+            ariaLabel: "In progress...",
+            tooltipText: "",
+            onClick: () => {},
+          }
+        : {
+            icon: "SearchIcon",
+            ariaLabel: "Submit",
+            tooltipText: "Search by similarity to the provided text",
+            onClick: () => sortBySimilarity(state),
+          },
       ...groupButtons,
     ];
   }
@@ -170,42 +171,30 @@ const SortBySimilarity = ({
         <div>
           <div>
             Find the
-            <div
-              style={{
-                width: "30px",
-                margin: "2px",
-                display: "inline-block",
+            <Input
+              placeholder={"k"}
+              validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
+              value={state?.k ? String(state.k) : ""}
+              setter={(value) => {
+                updateState({ k: value == "" ? undefined : Number(value) });
               }}
-            >
-              <Input
-                placeholder={"k"}
-                validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
-                value={state?.k ? String(state.k) : ""}
-                setter={(value) => {
-                  updateState({ k: value == "" ? undefined : Number(value) });
-                }}
-              />
-            </div>
-            <div
               style={{
-                width: "50px",
-                margin: "3px",
+                width: 30,
                 display: "inline-block",
+                margin: 3,
               }}
-            >
-              <Button
-                text={state.reverse ? "least" : "most"}
-                title={`select most or least`}
-                onClick={() => updateState({ reverse: !state.reverse })}
-                style={{
-                  margin: "auto",
-                  height: "2rem",
-                  borderRadius: 2,
-                  textAlign: "center",
-                  width: "50px",
-                }}
-              />
-            </div>
+            />
+            <Button
+              text={state.reverse ? "least" : "most"}
+              title={`select most or least`}
+              onClick={() => updateState({ reverse: !state.reverse })}
+              style={{
+                textAlign: "center",
+                width: 50,
+                display: "inline-block",
+                margin: 3,
+              }}
+            />
             similar samples using this brain key
             <RadioGroup
               choices={choices.choices}
@@ -215,16 +204,14 @@ const SortBySimilarity = ({
           </div>
           Optional: store the distance between each sample and the query in this
           field
-          <div style={{ width: "60%" }}>
-            <Input
-              placeholder={"dist_field (default = None)"}
-              validator={(value) => !value.startsWith("_")}
-              value={state.distField ?? ""}
-              setter={(value) =>
-                updateState({ distField: !value.length ? undefined : value })
-              }
-            />
-          </div>
+          <Input
+            placeholder={"dist_field (default = None)"}
+            validator={(value) => !value.startsWith("_")}
+            value={state.distField ?? ""}
+            setter={(value) =>
+              updateState({ distField: !value.length ? undefined : value })
+            }
+          />
         </div>
       )}
     </Popout>

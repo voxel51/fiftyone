@@ -477,27 +477,11 @@ async def serialize_dataset(
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
 
-        for index, brain_method in enumerate(data.brain_methods):
-            if issubclass(
-                fobs.SimilarityConfig, etau.get_class(brain_method.config.cls)
-            ):
-                setattr(
-                    data.brain_methods[index].config,
-                    "type",
-                    BrainRunType.similarity,
-                )
-            elif issubclass(
-                fobv.ManualVisualization,
-                etau.get_class(brain_method.config.cls),
-            ):
-                setattr(
-                    data.brain_methods[index].config,
-                    "type",
-                    BrainRunType.visualization,
-                )
-            else:
-                setattr(data.brain_methods[index].config, "type", None)
-            print(data)
+        for brain_method in data.brain_methods:
+            setattr(
+                brain_method.config, "type", brain_method.config.type().value
+            )
+
         return data
 
     loop = asyncio.get_running_loop()
