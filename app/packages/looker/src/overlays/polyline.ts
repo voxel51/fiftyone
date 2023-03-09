@@ -2,6 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { getColor } from "@fiftyone/utilities";
 import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
@@ -49,6 +50,17 @@ export default class PolylineOverlay<
       }
 
       this.strokePath(ctx, state, path, color, this.label.filled);
+
+      if (this.isTagFiltered(state)) {
+        const coloring = state.options.coloring;
+        this.strokePath(
+          ctx,
+          state,
+          path,
+          getColor(coloring.pool, coloring.seed, "_label_tags"),
+          this.label.filled
+        );
+      }
 
       if (selected) {
         this.strokePath(ctx, state, path, INFO_COLOR, false, state.dashLength);
