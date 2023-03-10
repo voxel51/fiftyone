@@ -42,9 +42,9 @@ let theme = extendJoyTheme({
           softBorder: "hsl(200, 0%, 75%)",
         },
         primary: {
-          main: "hsl(25, 100%, 51%)",
+          main: "#1890ff",
           plainBorder: "hsl(200, 0%, 90%)",
-          plainColor: "hsl(25, 100%, 51%)",
+          plainColor: "#1890ff",
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
         },
@@ -94,8 +94,8 @@ let theme = extendJoyTheme({
           plainColor: "hsl(213, 100%, 53%)",
         },
         primary: {
-          main: "hsl(25, 100%, 51%)",
-          plainColor: "hsl(25, 100%, 51%)",
+          main: "#1890ff",
+          plainColor: "#1890ff",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
           softBorder: "hsl(200, 0%, 20%)",
