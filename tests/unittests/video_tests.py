@@ -852,12 +852,14 @@ class VideoTests(unittest.TestCase):
 
     @drop_datasets
     def test_video_frames_merge(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(field1="a", field2="b")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(field1="c", field2="d")
+
         dataset = fo.Dataset()
-
-        sample = fo.Sample(filepath="video.mp4")
-        sample.frames[1] = fo.Frame(field1="a", field2="b")
-
-        dataset.add_sample(sample)
+        dataset.add_samples([sample1, sample2])
 
         view1 = dataset.select_fields("frames.field1")
         view2 = dataset.select_fields("frames.field2")
@@ -1453,6 +1455,11 @@ class VideoTests(unittest.TestCase):
             fo.VideoMetadata,
         )
 
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "sample_id", "filepath", "support", "metadata", "tags"},
@@ -1747,6 +1754,10 @@ class VideoTests(unittest.TestCase):
             F("detections.detections").length() >= 2, min_len=2
         )
         self.assertListEqual(view.values("support"), [[2, 3]])
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
 
         view = dataset.to_clips("frames.detections", other_fields=["hello"])
         view.select_fields().keep_fields()
@@ -1833,6 +1844,11 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(
             view.get_field("metadata").document_type,
             fo.ImageMetadata,
+        )
+
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
         )
 
         self.assertSetEqual(
@@ -2237,6 +2253,11 @@ class VideoTests(unittest.TestCase):
                 "sample_id",
                 "frame_number",
             },
+        )
+
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
         )
 
         with self.assertRaises(ValueError):

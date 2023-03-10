@@ -1520,6 +1520,8 @@ class NoDatasetMixin(object):
 
             if k == "_id":
                 k = "id"
+            elif k == "_dataset_id":
+                continue
             elif isinstance(v, ObjectId) and k.startswith("_"):
                 k = k[1:]
 

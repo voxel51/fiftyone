@@ -1818,6 +1818,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             rel_dir = self.dataset_dir
 
         media_fields = self._media_fields
+        dataset_id = dataset._doc.id
 
         def _parse_sample(sd):
             if not os.path.isabs(sd["filepath"]):
@@ -1829,6 +1830,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             if media_fields:
                 _parse_media_fields(sd, media_fields, rel_dir)
 
+            sd["_dataset_id"] = dataset_id
             return sd
 
         sample_ids = foo.insert_documents(
@@ -1855,8 +1857,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 frames = [f for f in frames if f["_sample_id"] in _sample_ids]
                 num_frames = len(frames)
 
+            def _parse_frame(fd):
+                fd["_dataset_id"] = dataset_id
+                return fd
+
             foo.insert_documents(
-                frames,
+                map(_parse_frame, frames),
                 dataset._frame_collection,
                 ordered=self.ordered,
                 progress=True,

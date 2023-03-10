@@ -972,7 +972,10 @@ def _write_samples(dataset, src_collection):
     src_collection._aggregate(
         detach_frames=True,
         detach_groups=True,
-        post_pipeline=[{"$out": dataset._sample_collection_name}],
+        post_pipeline=[
+            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$out": dataset._sample_collection_name},
+        ],
     )
 
 
@@ -981,6 +984,7 @@ def _add_samples(dataset, src_collection):
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
+            {"$set": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -988,6 +992,6 @@ def _add_samples(dataset, src_collection):
                     "whenMatched": "keepExisting",
                     "whenNotMatched": "insert",
                 }
-            }
+            },
         ],
     )

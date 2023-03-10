@@ -2561,7 +2561,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # We omit None here to allow samples with None-valued new fields to
         # be added without raising nonexistent field errors. This is safe
         # because None and missing are equivalent in our data model
-        return {k: v for k, v in d.items() if v is not None}
+        d = {k: v for k, v in d.items() if v is not None}
+
+        d["_dataset_id"] = self._doc.id
+
+        return d
 
     def _bulk_write(self, ops, frames=False, ordered=False):
         if frames:
@@ -3723,6 +3727,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "$project": {
                         "_id": False,
                         "_sample_id": "$_id",
+                        "_dataset_id": self._doc.id,
                         "frame_number": {
                             "$range": [
                                 1,
@@ -6620,12 +6625,14 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
+    pipeline.append({"$set": {"_dataset_id": _id}})
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
+        pipeline.append({"$set": {"_dataset_id": _id}})
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -7112,6 +7119,7 @@ def _add_collection_with_new_ids(
             detach_groups=True,
             post_pipeline=[
                 {"$unset": "_id"},
+                {"$set": {"_dataset_id": dataset._doc.id}},
                 {
                     "$merge": {
                         "into": dataset._sample_collection_name,
@@ -7143,6 +7151,7 @@ def _add_collection_with_new_ids(
         detach_groups=True,
         post_pipeline=[
             {"$unset": "_id"},
+            {"$set": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -7158,6 +7167,7 @@ def _add_collection_with_new_ids(
         post_pipeline=[
             {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
             {"$unset": "_id"},
+            {"$set": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -7451,15 +7461,18 @@ def _merge_samples_pipeline(
     else:
         when_not_matched = "discard"
 
-    sample_pipeline.append(
-        {
-            "$merge": {
-                "into": dst_dataset._sample_collection_name,
-                "on": key_field,
-                "whenMatched": when_matched,
-                "whenNotMatched": when_not_matched,
-            }
-        }
+    sample_pipeline.extend(
+        [
+            {"$set": {"_dataset_id": dst_dataset._doc.id}},
+            {
+                "$merge": {
+                    "into": dst_dataset._sample_collection_name,
+                    "on": key_field,
+                    "whenMatched": when_matched,
+                    "whenNotMatched": when_not_matched,
+                }
+            },
+        ]
     )
 
     #
@@ -7518,7 +7531,7 @@ def _merge_samples_pipeline(
         else:
             _omit_frame_fields = set()
 
-        _omit_frame_fields.update(["id", "_sample_id"])
+        _omit_frame_fields.add("id")
         _omit_frame_fields.discard(frame_key_field)
         _omit_frame_fields.discard("frame_number")
 
@@ -7537,15 +7550,23 @@ def _merge_samples_pipeline(
                 frames=True,
             )
 
-        frame_pipeline.append(
-            {
-                "$merge": {
-                    "into": dst_dataset._frame_collection_name,
-                    "on": [frame_key_field, "frame_number"],
-                    "whenMatched": when_frame_matched,
-                    "whenNotMatched": "insert",
-                }
-            }
+        frame_pipeline.extend(
+            [
+                {
+                    "$set": {
+                        "_dataset_id": dst_dataset._doc.id,
+                        "_sample_id": "$" + frame_key_field,
+                    }
+                },
+                {
+                    "$merge": {
+                        "into": dst_dataset._frame_collection_name,
+                        "on": [frame_key_field, "frame_number"],
+                        "whenMatched": when_frame_matched,
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ]
         )
 
     #
