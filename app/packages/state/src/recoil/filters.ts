@@ -64,44 +64,6 @@ export const hasFilters = selectorFamily<boolean, boolean>({
   },
 });
 
-export const matchedTags = selectorFamily<
-  Set<string>,
-  { key: State.TagKey; modal: boolean }
->({
-  key: "matchedTags",
-  get:
-    ({ key, modal }) =>
-    ({ get }) => {
-      const tags = get(modal ? modalFilters : filters).tags;
-      if (tags && tags[key]) {
-        return new Set(tags[key]);
-      }
-      return new Set();
-    },
-  set:
-    ({ key, modal }) =>
-    ({ get, set }, value) => {
-      const atom = modal ? modalFilters : filters;
-      const stages = {
-        ...get(atom),
-      };
-      const tags = { ...(stages.tags || {}) };
-      if (value instanceof Set && value.size) {
-        tags[key] = Array.from(value);
-      } else if (stages.tags && key in stages.tags) {
-        delete tags[key];
-      }
-      stages.tags = tags;
-      if (Object.keys(stages.tags).length === 0) {
-        delete stages["tags"];
-      }
-      set(atom, stages);
-    },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const fieldIsFiltered = selectorFamily<
   boolean,
   { path: string; modal?: boolean }

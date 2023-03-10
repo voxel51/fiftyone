@@ -8,10 +8,11 @@ import {
   pinnedSampleQuery,
 } from "@fiftyone/relay";
 
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { VariablesOf } from "react-relay";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 
-import { graphQLSelector } from "recoil-relay";
+import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
+import type { ResponseFrom } from "../utils";
 import {
   AppSample,
   dataset,
@@ -23,7 +24,8 @@ import {
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
-import type { ResponseFrom } from "../utils";
+
+type SliceName = string | undefined | null;
 
 export const isGroup = selector<boolean>({
   key: "isGroup",
@@ -62,9 +64,6 @@ export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
     return get(groupMediaTypes)
-      .filter(
-        ({ mediaType }) => !["point_cloud", "point-cloud"].includes(mediaType)
-      )
       .map(({ name }) => name)
       .sort();
   },
@@ -210,44 +209,53 @@ export const activeModalSample = selector<
   },
 });
 
-const mainSampleQuery = graphQLSelector<
+const groupSampleQuery = graphQLSelectorFamily<
   VariablesOf<mainSampleQueryGraphQL>,
+  SliceName,
   ResponseFrom<mainSampleQueryGraphQL>
 >({
   environment: RelayEnvironmentKey,
   key: "mainSampleQuery",
   mapResponse: (response) => response,
   query: mainSample,
-  variables: ({ get }) => {
-    return {
-      view: get(view),
-      dataset: get(dataset).name,
-      filter: {
-        group: {
-          slice: get(groupSlice(true)),
-          id: get(modal).sample[get(groupField)]._id,
+  variables:
+    (slice) =>
+    ({ get }) => {
+      return {
+        view: get(view),
+        dataset: get(dataset).name,
+        filter: {
+          group: {
+            slice: slice ?? get(groupSlice(true)),
+            id: get(modal).sample[get(groupField)]._id,
+          },
         },
-      },
-    };
-  },
+      };
+    },
 });
 
-export const mainGroupSample = selector<AppSample>({
+export const groupSample = selectorFamily<AppSample, SliceName>({
   key: "mainGroupSample",
-  get: ({ get }) => {
-    const field = get(groupField);
-    const group = get(isGroup);
+  get:
+    (sliceName) =>
+    ({ get }) => {
+      if (sliceName) {
+        return get(groupSampleQuery(sliceName)).sample.sample as AppSample;
+      }
 
-    const sample = get(modal).sample;
+      const field = get(groupField);
+      const group = get(isGroup);
 
-    if (!field || !group) return sample;
+      const sample = get(modal).sample;
 
-    if (sample[field].name === get(groupSlice(true))) {
-      return sample;
-    }
+      if (!field || !group) return sample;
 
-    return get(mainSampleQuery).sample.sample as AppSample;
-  },
+      if (sample[field].name === get(groupSlice(true))) {
+        return sample;
+      }
+
+      return get(groupSampleQuery(sliceName)).sample.sample as AppSample;
+    },
 });
 
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({

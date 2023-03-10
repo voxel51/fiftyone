@@ -39,6 +39,11 @@ class OnPlotLoad(HTTPEndpoint):
         dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
+        if results is None:
+            return {
+                "error": f'Failed to load results for brain run with key "{brain_key}". Try regenerating the results.'
+            }
+
         view = fosv.get_view(dataset_name, stages=stages)
 
         patches_field = results.config.patches_field

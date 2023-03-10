@@ -12,7 +12,7 @@ import {
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
-import { mainGroupSample, selectedMediaField } from "../recoil";
+import { groupSample, selectedMediaField } from "../recoil";
 
 import { SampleData, selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
@@ -32,7 +32,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal ? useRecoilValue(mainGroupSample)._id : null;
+  const activeId = isModal ? useRecoilValue(groupSample(null))._id : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);

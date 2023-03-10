@@ -666,15 +666,18 @@ def make_frames_dataset(
     if sample_frames == "dynamic":
         pipeline.append({"$unset": "filepath"})
 
-    pipeline.append(
-        {
-            "$merge": {
-                "into": dataset._sample_collection_name,
-                "on": ["_sample_id", "frame_number"],
-                "whenMatched": "merge",
-                "whenNotMatched": "discard",
-            }
-        }
+    pipeline.extend(
+        [
+            {"$set": {"_dataset_id": dataset._doc.id}},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            },
+        ]
     )
 
     sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
@@ -856,6 +859,7 @@ def _init_frames(
             _id = frame_ids_map.get(fn, None)
             _filepath = images_patt % fn
             _rand = foos._generate_rand(_filepath)
+            _dataset_id = dataset._doc.id
 
             if missing_fps is not None and fn in missing_fps:
                 missing_filepaths.append((_sample_id, fn, _filepath))
@@ -875,6 +879,7 @@ def _init_frames(
                 "_media_type": "image",
                 "_rand": _rand,
                 "_sample_id": _sample_id,
+                "_dataset_id": _dataset_id,
             }
 
             if _id is not None:

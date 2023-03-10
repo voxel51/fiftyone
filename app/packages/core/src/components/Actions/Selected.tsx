@@ -18,7 +18,7 @@ import Popout from "./Popout";
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      async () => {
+      () => {
         set(fos.selectedSamples, new Set());
         close();
       },
@@ -151,7 +151,7 @@ const useModalActions = (
 ) => {
   const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
-
+  const hasSorting = useRecoilValue(fos.similarityParameters);
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   const visibleSampleLabels = lookerRef.current
     ? lookerRef.current.getCurrentSampleLabels()

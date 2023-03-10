@@ -194,7 +194,7 @@ const Checker = ({
       setActive(names[index]);
     }
 
-    if (e.key === "Enter" && active.length) {
+    if (e.key === "Enter" && active?.length) {
       createSubmit({
         name: active,
         changes,

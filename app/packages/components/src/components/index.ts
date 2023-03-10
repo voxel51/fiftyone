@@ -1,7 +1,7 @@
 export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as ErrorBoundary } from "./ErrorBoundary";
-export { default as ExternalLink } from "./ExternalLink";
+export { default as ExternalLink, useExternalLink } from "./ExternalLink";
 export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
 export { default as IconButton } from "./IconButton";
