@@ -1,4 +1,10 @@
-import React, { MutableRefObject, useEffect, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
@@ -14,22 +20,19 @@ type EventCallback = (event: CustomEvent) => void;
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (update: object, updater?: Function) => {
-        const currentOptions = await snapshot.getPromise(
-          fos.savedLookerOptions
-        );
+    ({ snapshot, set }) => async (update: object, updater?: Function) => {
+      const currentOptions = await snapshot.getPromise(fos.savedLookerOptions);
 
-        const panels = await snapshot.getPromise(fos.lookerPanels);
-        const updated = {
-          ...currentOptions,
-          ...update,
-          showJSON: panels.json.isOpen,
-          showHelp: panels.help.isOpen,
-        };
-        set(fos.savedLookerOptions, updated);
-        if (updater) updater(updated);
-      }
+      const panels = await snapshot.getPromise(fos.lookerPanels);
+      const updated = {
+        ...currentOptions,
+        ...update,
+        showJSON: panels.json.isOpen,
+        showHelp: panels.help.isOpen,
+      };
+      set(fos.savedLookerOptions, updated);
+      if (updater) updater(updated);
+    }
   );
 };
 
@@ -47,23 +50,47 @@ const useShowOverlays = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) =>
-      async () =>
-        set(fos.selectedLabels, {}),
+    ({ set }) => async () => set(fos.selectedLabels, {}),
     []
   );
 };
 
+const useLookerSample = (propsSample?: fos.AppSample) => {
+  const sample = useRecoilValue(fos.modal);
+};
+
 interface LookerProps {
+  sample?: fos.SampleData;
   lookerRef?: MutableRefObject<any>;
   onClose?: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
-const Looker = ({ lookerRef, onClose }: LookerProps) => {
+const Looker = ({
+  sample: propsSampleData,
+  lookerRef,
+  onClose,
+}: LookerProps) => {
   const [id] = useState(() => uuid());
 
-  const sampleData = useRecoilValue(fos.modal);
+  const modalSampleData = useRecoilValue(fos.modal);
+
+  if (!modalSampleData && !propsSampleData) {
+    throw new Error("bad");
+  }
+
+  const sampleData = useMemo(() => {
+    if (!propsSampleData) {
+      return modalSampleData;
+    }
+
+    return {
+      ...modalSampleData,
+      sample: propsSampleData,
+      urls: { filepath: propsSampleData.filepath },
+    };
+  }, [propsSampleData, modalSampleData]);
+
   const { sample } = sampleData;
 
   const theme = useTheme();
@@ -73,10 +100,11 @@ const Looker = ({ lookerRef, onClose }: LookerProps) => {
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
   });
-  const looker = React.useMemo(
-    () => createLooker.current(sampleData),
-    [useRecoilValue(fos.selectedMediaField(true)), reset, createLooker]
-  );
+  const looker = React.useMemo(() => createLooker.current(sampleData), [
+    useRecoilValue(fos.selectedMediaField(true)),
+    reset,
+    createLooker,
+  ]);
 
   useEffect(() => {
     !initialRef.current && looker.updateOptions(lookerOptions);
