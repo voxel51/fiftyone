@@ -49,8 +49,6 @@ class StateDescription(etas.Serializable):
         selected=None,
         selected_labels=None,
         view=None,
-        saved_view_slug=None,
-        view_name=None,
         spaces=None,
     ):
         self.config = config or fo.app_config.copy()
@@ -58,8 +56,6 @@ class StateDescription(etas.Serializable):
         self.selected = selected or []
         self.selected_labels = selected_labels or []
         self.view = view
-        self.view_name = view_name
-        self.saved_view_slug = saved_view_slug
         self.spaces = spaces
 
     def serialize(self, reflective=True):
@@ -126,13 +122,13 @@ class StateDescription(etas.Serializable):
             dataset = fod.load_dataset(dataset)
 
         stages = d.get("view", None)
-        if dataset is not None and stages:
-            view = fov.DatasetView._build(dataset, stages)
-        else:
-            view = None
-
+        view = None
         view_name = d.get("view_name", None)
-        saved_view_slug = d.get("saved_view_slug", None)
+        if dataset is not None:
+            if view_name:
+                view = dataset.load_saved_view(view_name)
+            elif stages:
+                view = fov.DatasetView._build(dataset, stages)
 
         group_slice = d.get("group_slice", None)
         if group_slice:
@@ -159,8 +155,6 @@ class StateDescription(etas.Serializable):
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,
-            view_name=view_name,
-            saved_view_slug=saved_view_slug,
             spaces=spaces,
         )
 
