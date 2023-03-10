@@ -32,7 +32,7 @@ class Frames(HTTPEndpoint):
         view = fov.make_optimized_select_view(view, sample_id)
 
         end_frame = min(num_frames + start_frame, frame_count)
-        support = [start_frame, end_frame] if stages else None
+        support = None if stages else [start_frame, end_frame]
         if not support:
             view = view.set_field(
                 "frames",
