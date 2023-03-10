@@ -1996,7 +1996,7 @@ def _import_runs(dataset, runs, results_dir, run_cls):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
             d = etas.read_json(json_path)
-            results = fors.RunResults.from_dict(d, view, run_info.config)
+            results = fors.RunResults.from_dict(d, view, run_info.config, key)
             run_cls.save_run_results(dataset, key, results, cache=False)
 
 

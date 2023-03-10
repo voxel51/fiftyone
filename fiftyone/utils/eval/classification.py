@@ -16,6 +16,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
@@ -165,6 +166,25 @@ class ClassificationEvaluation(foe.EvaluationMethod):
 
         return fields
 
+    def rename(self, samples, eval_key, new_eval_key):
+        dataset = samples._dataset
+
+        in_fields = self.get_fields(dataset, eval_key)
+        out_fields = self.get_fields(dataset, new_eval_key)
+
+        in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
+        out_sample_fields, out_frame_fields = fou.split_frame_fields(
+            out_fields
+        )
+
+        if in_sample_fields:
+            fields = dict(zip(in_sample_fields, out_sample_fields))
+            dataset.rename_sample_fields(fields)
+
+        if in_frame_fields:
+            fields = dict(zip(in_frame_fields, out_frame_fields))
+            dataset.rename_frame_fields(fields)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
         is_frame_field = samples._is_frame_field(self.config.gt_field)
@@ -249,17 +269,16 @@ class SimpleEvaluation(ClassificationEvaluation):
             confs = list(itertools.chain.from_iterable(confs))
 
         results = ClassificationResults(
+            samples,
+            self.config,
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
         if eval_key is None:
@@ -388,17 +407,16 @@ class TopKEvaluation(ClassificationEvaluation):
             )
 
         results = ClassificationResults(
+            samples,
+            self.config,
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
         if eval_key is None:
@@ -575,16 +593,15 @@ class BinaryEvaluation(ClassificationEvaluation):
             confs = list(itertools.chain.from_iterable(confs))
 
         results = BinaryClassificationResults(
+            samples,
+            self.config,
             ytrue,
             ypred,
             confs,
             classes,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
-            samples=samples,
+            backend=self,
         )
 
         if eval_key is None:
@@ -639,21 +656,19 @@ class ClassificationResults(BaseEvaluationResults):
     """Class that stores the results of a classification evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`ClassificationEvaluationConfig` used
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`ClassificationEvaluation` backend
     """
 
     pass
@@ -666,47 +681,43 @@ class BinaryClassificationResults(ClassificationResults):
     the negative class (with zero confidence, for predictions).
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`ClassificationEvaluationConfig` used
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs: a list of confidences for the predictions
         classes: the ``(neg_label, pos_label)`` label strings for the task
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`ClassificationEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         ytrue,
         ypred,
         confs,
         classes,
         weights=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
-        samples=None,
+        backend=None,
     ):
         super().__init__(
+            samples,
+            config,
             ytrue,
             ypred,
             confs=confs,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
             missing=classes[0],
-            samples=samples,
+            backend=backend,
         )
 
         self._pos_label = classes[1]
@@ -823,23 +834,18 @@ class BinaryClassificationResults(ClassificationResults):
         confs = d["confs"]
         classes = d["classes"]
         weights = d.get("weights", None)
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
         return cls(
+            samples,
+            config,
             ytrue,
             ypred,
             confs,
             classes=classes,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
-            samples=samples,
             **kwargs,
         )
 
