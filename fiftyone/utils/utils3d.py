@@ -531,8 +531,8 @@ def compute_orthographic_projection_images(
 
     if out_group_slice is not None:
         out_samples = []
-    else:
-        all_metadata = []
+
+    all_metadata = []
 
     with fou.ProgressBar(total=len(filepaths)) as pb:
         for filepath, group in pb(zip(filepaths, groups)):
@@ -557,15 +557,14 @@ def compute_orthographic_projection_images(
                 sample = fos.Sample(filepath=image_path)
                 sample[group_field] = group.element(out_group_slice)
                 sample[metadata_field] = metadata
-
                 out_samples.append(sample)
-            else:
-                all_metadata.append(metadata)
+
+            all_metadata.append(metadata)
 
     if out_group_slice is not None:
         samples.add_samples(out_samples)
-    else:
-        point_cloud_view.set_values(metadata_field, all_metadata)
+
+    point_cloud_view.set_values(metadata_field, all_metadata)
 
 
 def compute_orthographic_projection_image(

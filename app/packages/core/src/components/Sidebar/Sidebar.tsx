@@ -435,7 +435,6 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-  const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
 
   if (entries instanceof Error) {
     throw entries;
