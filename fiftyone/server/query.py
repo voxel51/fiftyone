@@ -450,6 +450,7 @@ async def serialize_dataset(
         data = from_dict(Dataset, doc)
         data.view_cls = None
         data.view_name = view_name
+        data.saved_view_slug = saved_view_slug
 
         collection = dataset.view()
         if view is not None:

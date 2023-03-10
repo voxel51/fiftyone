@@ -91,7 +91,6 @@ const App: React.FC = ({}) => {
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
-                viewName: data.view_name,
               } as State.Description;
 
               if (readyStateRef.current !== AppReadyState.OPEN) {
