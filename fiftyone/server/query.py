@@ -478,9 +478,12 @@ async def serialize_dataset(
             data.group_slice = collection.group_slice
 
         for brain_method in data.brain_methods:
-            setattr(
-                brain_method.config, "type", brain_method.config.type().value
+            value = (
+                brain_method.config.type().value
+                if brain_method.config.type() is not None
+                else None
             )
+            setattr(brain_method.config, "type", value)
 
         return data
 
