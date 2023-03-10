@@ -1,11 +1,13 @@
-import { VideoLooker } from "@fiftyone/looker";
+import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
 import { modal, useClearModal, useHoveredSample } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { SampleBar } from "./Bars";
 import Looker from "./Looker";
 
-const Sample: React.FC = () => {
+const Sample: React.FC<{
+  lookerRefCallback: (looker: AbstractLooker) => void;
+}> = ({ lookerRefCallback }) => {
   const data = useRecoilValue(modal);
 
   if (!data) {
@@ -50,7 +52,12 @@ const Sample: React.FC = () => {
         visible={hovering}
         hoveringRef={hoveringRef}
       />
-      <Looker key={_id} lookerRef={lookerRef} onClose={clearModal} />
+      <Looker
+        key={_id}
+        lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
+        onClose={clearModal}
+      />
     </div>
   );
 };

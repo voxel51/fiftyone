@@ -759,7 +759,12 @@ def _write_support_clips(
             [{"$unwind": "$support"}, {"$set": {"_rand": {"$rand": {}}}}]
         )
 
-    pipeline.append({"$out": dataset._sample_collection_name})
+    pipeline.extend(
+        [
+            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$out": dataset._sample_collection_name},
+        ]
+    )
 
     src_collection._aggregate(post_pipeline=pipeline)
 
@@ -813,6 +818,7 @@ def _write_temporal_detection_clips(
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
+                    "_dataset_id": dataset._doc.id,
                 }
             },
             {"$unset": support_path},
@@ -877,6 +883,7 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                             "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
                         },
                         "_rand": {"$rand": {}},
+                        "_dataset_id": dataset._doc.id,
                     },
                 },
                 {"$unset": _tmp_field},
@@ -946,7 +953,12 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
             post_pipeline=[
                 {"$project": project},
                 {"$unwind": "$support"},
-                {"$set": {"_rand": {"$rand": {}}}},
+                {
+                    "$set": {
+                        "_rand": {"$rand": {}},
+                        "_dataset_id": dataset._doc.id,
+                    }
+                },
                 {"$out": dataset._sample_collection_name},
             ]
         )

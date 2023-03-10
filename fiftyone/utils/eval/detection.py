@@ -13,6 +13,7 @@ import numpy as np
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
@@ -366,13 +367,12 @@ class DetectionEvaluation(foe.EvaluationMethod):
             a :class:`DetectionResults`
         """
         return DetectionResults(
+            samples,
+            self.config,
             matches,
-            eval_key=eval_key,
-            gt_field=self.config.gt_field,
-            pred_field=self.config.pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
     def get_fields(self, samples, eval_key):
@@ -408,7 +408,28 @@ class DetectionEvaluation(foe.EvaluationMethod):
 
         return fields
 
+    def rename(self, samples, eval_key, new_eval_key):
+        dataset = samples._dataset
+
+        in_fields = self.get_fields(dataset, eval_key)
+        out_fields = self.get_fields(dataset, new_eval_key)
+
+        in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
+        out_sample_fields, out_frame_fields = fou.split_frame_fields(
+            out_fields
+        )
+
+        if in_sample_fields:
+            fields = dict(zip(in_sample_fields, out_sample_fields))
+            dataset.rename_sample_fields(fields)
+
+        if in_frame_fields:
+            fields = dict(zip(in_frame_fields, out_frame_fields))
+            dataset.rename_frame_fields(fields)
+
     def cleanup(self, samples, eval_key):
+        dataset = samples._dataset
+
         fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
@@ -416,8 +437,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
         ]
 
         try:
-            pred_field, _ = samples._handle_frame_field(self.config.pred_field)
-            pred_type = samples._get_label_field_type(self.config.pred_field)
+            pred_field, _ = dataset._handle_frame_field(self.config.pred_field)
+            pred_type = dataset._get_label_field_type(self.config.pred_field)
             pred_key = "%s.%s.%s" % (
                 pred_field,
                 pred_type._LABEL_LIST_FIELD,
@@ -429,8 +450,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
             pass
 
         try:
-            gt_field, _ = samples._handle_frame_field(self.config.gt_field)
-            gt_type = samples._get_label_field_type(self.config.gt_field)
+            gt_field, _ = dataset._handle_frame_field(self.config.gt_field)
+            gt_type = dataset._get_label_field_type(self.config.gt_field)
             gt_key = "%s.%s.%s" % (
                 gt_field,
                 gt_type._LABEL_LIST_FIELD,
@@ -441,14 +462,14 @@ class DetectionEvaluation(foe.EvaluationMethod):
             # Field no longer exists, nothing to cleanup
             pass
 
-        if samples._is_frame_field(self.config.pred_field):
-            samples._dataset.delete_sample_fields(
+        if dataset._is_frame_field(self.config.pred_field):
+            dataset.delete_sample_fields(
                 ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key],
                 error_level=1,
             )
-            samples._dataset.delete_frame_fields(fields, error_level=1)
+            dataset.delete_frame_fields(fields, error_level=1)
         else:
-            samples._dataset.delete_sample_fields(fields, error_level=1)
+            dataset.delete_sample_fields(fields, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -459,30 +480,27 @@ class DetectionResults(BaseEvaluationResults):
     """Class that stores the results of a detection evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`DetectionEvaluationConfig` used
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
-        eval_key (None): the evaluation key for this evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`DetectionEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         matches,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         classes=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         if matches:
             ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = zip(*matches)
@@ -497,18 +515,18 @@ class DetectionResults(BaseEvaluationResults):
             )
 
         super().__init__(
+            samples,
+            config,
             ytrue,
             ypred,
             confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
+
         self.ious = np.array(ious)
 
     @classmethod
@@ -529,22 +547,17 @@ class DetectionResults(BaseEvaluationResults):
         if ypred_ids is None:
             ypred_ids = itertools.repeat(None)
 
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
 
         matches = list(zip(ytrue, ypred, ious, confs, ytrue_ids, ypred_ids))
 
         return cls(
+            samples,
+            config,
             matches,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
             **kwargs,
         )
 

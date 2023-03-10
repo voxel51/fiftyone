@@ -23,7 +23,7 @@ interface Props<T extends AppError> extends FallbackProps {
   error: T;
 }
 
-const Errors = (onReset?: () => void) => {
+const Errors = (onReset?: () => void, disableReset?: boolean) => {
   const FallbackComponent = <T extends AppError>({
     error,
     resetErrorBoundary,
@@ -74,11 +74,13 @@ const Errors = (onReset?: () => void) => {
               {error.name}
               {error.message ? ": " + error.message : null}
             </div>
-            <div>
-              <span title={"Reset"} onClick={handleReset}>
-                <Clear />
-              </span>
-            </div>
+            {!disableReset && (
+              <div>
+                <span title={"Reset"} onClick={handleReset}>
+                  <Clear />
+                </span>
+              </div>
+            )}
           </div>
           {messages.map(({ message, content }, i) => (
             <div key={i} className={style.content}>
@@ -100,12 +102,15 @@ const Errors = (onReset?: () => void) => {
   return FallbackComponent;
 };
 
-const ErrorBoundary: React.FC<PropsWithChildren<{ onReset?: () => void }>> = ({
-  children,
-  onReset,
-}) => {
+const ErrorBoundary: React.FC<
+  PropsWithChildren<{ onReset?: () => void; disableReset?: boolean }>
+> = ({ children, onReset, disableReset }) => {
   // @ts-ignore
-  return <Boundary FallbackComponent={Errors(onReset)}>{children}</Boundary>;
+  return (
+    <Boundary FallbackComponent={Errors(onReset, disableReset)}>
+      {children}
+    </Boundary>
+  );
 };
 
 export default ErrorBoundary;

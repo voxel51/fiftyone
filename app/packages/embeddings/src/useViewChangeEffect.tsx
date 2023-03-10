@@ -42,8 +42,6 @@ export function useViewChangeEffect() {
         if (!res || !res.index_size) {
           if (res?.index_size === 0) {
             warnings.add(`No samples in the current view.`);
-          } else {
-            warnings.add(`Failed to fetch embeddings for the current view.`);
           }
           return;
         }

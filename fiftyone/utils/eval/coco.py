@@ -190,19 +190,14 @@ class COCOEvaluation(DetectionEvaluation):
         Returns:
             a :class:`DetectionResults`
         """
-        config = self.config
-        gt_field = config.gt_field
-        pred_field = config.pred_field
-
-        if not config.compute_mAP:
+        if not self.config.compute_mAP:
             return DetectionResults(
+                samples,
+                self.config,
                 matches,
-                eval_key=eval_key,
-                gt_field=gt_field,
-                pred_field=pred_field,
                 classes=classes,
                 missing=missing,
-                samples=samples,
+                backend=self,
             )
 
         (
@@ -211,20 +206,19 @@ class COCOEvaluation(DetectionEvaluation):
             thresholds,
             iou_threshs,
             classes,
-        ) = _compute_pr_curves(samples, config, classes=classes)
+        ) = _compute_pr_curves(samples, self.config, classes=classes)
 
         return COCODetectionResults(
+            samples,
+            self.config,
             matches,
             precision,
             recall,
             iou_threshs,
             classes,
             thresholds=thresholds,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
 
@@ -232,6 +226,8 @@ class COCODetectionResults(DetectionResults):
     """Class that stores the results of a COCO detection evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`COCOEvaluationConfig` used
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -243,37 +239,31 @@ class COCODetectionResults(DetectionResults):
         classes: the list of possible classes
         thresholds (None): an optional array of decision thresholds of shape
             ``num_iou_threshs x num_classes x num_recall``
-        eval_key (None): the evaluation key for this evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`COCOEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         matches,
         precision,
         recall,
         iou_threshs,
         classes,
         thresholds=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         super().__init__(
+            samples,
+            config,
             matches,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
 
         self.precision = np.asarray(precision)

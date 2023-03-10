@@ -15,6 +15,7 @@ import Tooltip from "@fiftyone/components/src/components/Tooltip";
 
 import { PopoutDiv } from "../../../utils";
 import Item from "./FilterItem";
+import { Popout } from "@fiftyone/components";
 
 interface Props {
   nestedField: string | undefined; // nested ListFields only ("detections")
@@ -25,6 +26,7 @@ interface Props {
   valueName: string;
   color: string;
   modal: boolean;
+  path: string;
   isKeyPointLabel: boolean;
 }
 
@@ -42,29 +44,39 @@ const generateOptions = (
   shouldNotShowExclude: boolean,
   modal: boolean,
   isKeyPointLabel: boolean,
-  valueName: string
+  valueName: string,
+  isLabelTag: boolean,
+  isSampleTag: boolean
 ) => {
   //  feature requirements:
   //  1) only nested ListField items should have the filter and negative filter options;
   //  2) BooleanField should not have the negative filter or negative match options;
   //  3) in expanded mode or keypoints field, do not show the match or negative match options;
   const options: Option[] = [];
-  if (nestedField) {
+  if (nestedField || isLabelTag) {
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: `Select ${nestedField} with ${valueName}`,
-      tooltip: isKeyPointLabel
+      value: `Select ${nestedField ?? "labels"} with ${
+        isLabelTag ? "label tag" : valueName
+      }`,
+      tooltip: isLabelTag
+        ? "dataset.select_labels(tags=expr)"
+        : isKeyPointLabel
         ? "dataset.filter_keypoints(field, expr, only_matches=True)"
         : "dataset.filter_labels(field, expr, only_matches=True)",
     });
   }
-  if (nestedField && !shouldNotShowExclude) {
+  if ((nestedField && !shouldNotShowExclude) || isLabelTag) {
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: `Exclude ${nestedField} with ${valueName}`,
-      tooltip: isKeyPointLabel
+      value: `Exclude ${nestedField ?? "labels"} with ${
+        isLabelTag ? "label tag" : valueName
+      }`,
+      tooltip: isLabelTag
+        ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
+        : isKeyPointLabel
         ? "dataset.filter_keypoints(field, ~expr, only_matches=False)"
         : "dataset.filter_labels(field, ~expr, only_matches=False)",
     });
@@ -73,8 +85,12 @@ const generateOptions = (
     options.push({
       icon: "ImageIcon",
       key: "match",
-      value: `Show samples with ${valueName}`,
-      tooltip: nestedField
+      value: `Show samples with ${isLabelTag ? "label tag" : valueName}`,
+      tooltip: isLabelTag
+        ? "dataset.match_labels(tags=expr)"
+        : isSampleTag
+        ? "dataset.match_tags(expr)"
+        : nestedField
         ? "dataset.match_labels(fields=field, filter=expr)"
         : "dataset.match(expr)",
     });
@@ -83,8 +99,12 @@ const generateOptions = (
     options.push({
       icon: "HideImageIcon",
       key: "negativeMatch",
-      value: `Omit samples with ${valueName}`,
-      tooltip: nestedField
+      value: `Omit samples with ${isLabelTag ? "label tag" : valueName}`,
+      tooltip: isLabelTag
+        ? "dataset.match_labels(tags=expr, bool=False)"
+        : isSampleTag
+        ? "dataset.match_tags(expr, bool=False)"
+        : nestedField
         ? "dataset.match_labels(fields=field, filter=expr, bool=False)"
         : "dataset.match(~expr)",
     });
@@ -105,6 +125,7 @@ const FilterOptionContainer = styled.div`
 
 const FilterOption: React.FC<Props> = ({
   color,
+  path,
   modal,
   isKeyPointLabel,
   valueName,
@@ -114,6 +135,9 @@ const FilterOption: React.FC<Props> = ({
   onlyMatchAtom,
   isMatchingAtom,
 }) => {
+  const isLabelTag = path?.startsWith("_label_tags");
+  const isSampleTag = path?.startsWith("tag");
+
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
@@ -122,9 +146,9 @@ const FilterOption: React.FC<Props> = ({
     : null;
   const [key, setKey] = React.useState<Key>(() => {
     if (!excluded) {
-      return nestedField ? "filter" : "match";
+      return nestedField || isLabelTag ? "filter" : "match";
     } else {
-      return nestedField ? "negativeFilter" : "negativeMatch";
+      return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
     }
   });
 
@@ -143,7 +167,9 @@ const FilterOption: React.FC<Props> = ({
     shouldNotShowExclude,
     modal,
     isKeyPointLabel,
-    valueName
+    valueName,
+    isLabelTag,
+    isSampleTag
   );
 
   useEffect(() => {
@@ -277,35 +303,3 @@ const FilterOption: React.FC<Props> = ({
 };
 
 export default FilterOption;
-
-// TODO: once feat-space-embeddings branch is merged, the bottom should be removed. It's a duplciate
-export type PopoutProps = PropsWithChildren<{
-  style?: any;
-  modal?: boolean;
-}>;
-
-function Popout({ children, style = {}, modal }: PopoutProps) {
-  const show = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
-    config: {
-      duration: 100,
-    },
-  });
-
-  return (
-    <PopoutDiv
-      style={{
-        ...show,
-        ...style,
-        zIndex: "200000",
-        right: modal ? 0 : "unset",
-        margin: "0 -0.5rem 0 -0.5rem",
-      }}
-    >
-      {children}
-    </PopoutDiv>
-  );
-}
