@@ -8,6 +8,7 @@ export type ShaderProps = {
   min: number;
   max: number;
   pointSize: number;
+  isPointSizeAttenuated: boolean;
 };
 
 const useGradientMap = (gradients: Gradients) => {
@@ -45,9 +46,11 @@ const ShadeByRgbShaders = {
   // this uniform is used to pass the point size to the vertex shader from JS
   uniform float pointSize;
 
+  // this uniform is used to indicate whether the point size should be attenuated based on distance from camera
+  uniform bool isPointSizeAttenuated;
+
   // these attributes are injected into the vertex shader based on geometry
   attribute vec3 color;
-  attribute float scale;
 
   // this attribute is used to pass the color to the fragment shader
   varying vec3 vColor;
@@ -59,8 +62,8 @@ const ShadeByRgbShaders = {
     // do a model-view transform to get the position of the point in camera space
     vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 
-    // (scale / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+    // (1.0 / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
 
     // do a projection transform to get the position of the point in clip space
     gl_Position = projectionMatrix * mvPosition;
@@ -81,6 +84,7 @@ const ShadeByHeightShaders = {
   uniform float maxZ;
   uniform float minZ;
   uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
 
   varying vec2 vUv;
   varying float hValue;
@@ -96,7 +100,7 @@ const ShadeByHeightShaders = {
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
     gl_Position = projectionMatrix * mvPosition;
   }`,
   fragmentShader: /* glsl */ `
@@ -115,6 +119,7 @@ const ShadeByIntensityShaders = {
   uniform float max;
   uniform float min;
   uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
 
   varying vec2 vUv;
   varying float hValue;
@@ -131,7 +136,7 @@ const ShadeByIntensityShaders = {
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
     gl_Position = projectionMatrix * mvPosition;
   }
 `,
@@ -152,6 +157,7 @@ export const ShadeByHeight = ({
   min,
   max,
   pointSize,
+  isPointSizeAttenuated,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
 
@@ -163,6 +169,7 @@ export const ShadeByHeight = ({
           maxZ: { value: max },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
         vertexShader: ShadeByHeightShaders.vertexShader,
         fragmentShader: ShadeByHeightShaders.fragmentShader,
@@ -176,6 +183,7 @@ export const ShadeByIntensity = ({
   min,
   max,
   pointSize,
+  isPointSizeAttenuated,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
 
@@ -187,6 +195,7 @@ export const ShadeByIntensity = ({
           max: { value: max },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
         vertexShader: ShadeByIntensityShaders.vertexShader,
         fragmentShader: ShadeByIntensityShaders.fragmentShader,
@@ -195,13 +204,17 @@ export const ShadeByIntensity = ({
   );
 };
 
-export const RgbShader = ({ pointSize }: { pointSize: number }) => {
+export const RgbShader = ({
+  pointSize,
+  isPointSizeAttenuated,
+}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated">) => {
   return (
     <shaderMaterial
       {...{
         scale: { value: 1 },
         uniforms: {
           pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
         vertexShader: ShadeByRgbShaders.vertexShader,
         fragmentShader: ShadeByRgbShaders.fragmentShader,

@@ -1,5 +1,6 @@
 .wrapper {
   width: 100%;
+  height: 100%;
   overflow: auto;
 }
 
@@ -36,14 +37,10 @@
 .content {
   font-weight: bold;
   text-align: center;
-  border: 1px solid var(--joy-palette-divider);
-  border-radius: 2px;
   margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem 0 0.5rem;
   text-align: left;
   font-weight: normal;
   font-size: 1rem;
-  background: var(--joy-palette-background-level3);
 }
 
 .contentHeading {
@@ -51,21 +48,10 @@
   display: flex;
   justify-content: space-between;
   text-overflow: ellipsis;
+  color: var(--joy-palette-text-primary);
 }
 
 .contentHeading > div {
   display: flex;
   justify-content: right;
-}
-
-.contentBody {
-  border-top: 1px solid var(--joy-palette-primary-plainColor);
-  color: var(--joy-palette-text-primary);
-  padding-top: 0.25rem;
-  overflow: auto;
-  white-space: nowrap;
-}
-
-.contentBody > div {
-  white-space: nowrap;
 }

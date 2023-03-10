@@ -1,5 +1,6 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import PointSizeIcon from "@mui/icons-material/ScatterPlot";
+import { Checkbox, FormControlLabel } from "@mui/material";
 import Input from "@mui/material/Input";
 import Slider from "@mui/material/Slider";
 import { useCallback, useMemo, useState } from "react";
@@ -9,6 +10,7 @@ import {
   ACTION_SET_POINT_SIZE,
   currentActionAtom,
   currentPointSizeAtom,
+  isPointSizeAttenuatedAtom,
 } from "../state";
 import { ActionPopOver } from "./shared";
 import style from "./style.module.css";
@@ -18,6 +20,8 @@ const VALID_FLOAT_REGEX = new RegExp("^([0-9]+([.][0-9]*)?|[.][0-9]+)$");
 export const PointSizeSlider = () => {
   const theme = useTheme();
   const [pointSize, setPointSize] = recoil.useRecoilState(currentPointSizeAtom);
+  const [isPointSizeAttenuated, setIsPointSizeAttenuated] =
+    recoil.useRecoilState(isPointSizeAttenuatedAtom);
 
   const pointSizeNum = useMemo(() => Number(pointSize), [pointSize]);
 
@@ -63,42 +67,65 @@ export const PointSizeSlider = () => {
     [setPointSize, setIsTextBoxEmpty]
   );
 
+  const handlePointSizeAttenuationChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setIsPointSizeAttenuated(e.target.checked);
+    },
+    [setIsPointSizeAttenuated]
+  );
+
   return (
     <ActionPopOver>
       <PopoutSectionTitle>Set point size</PopoutSectionTitle>
-      <div className={style.pointSizeContainer}>
-        <Slider
-          className={style.pointSizeSlider}
-          sx={{
-            color: theme.primary.main,
-          }}
-          classes={{
-            thumb: style.pointSizeSliderThumb,
-            dragging: style.pointSizeSliderThumb,
-          }}
-          value={pointSizeNum}
-          min={minBound}
-          step={step}
-          max={maxBound}
-          onChange={handleSliderChange}
-          valueLabelDisplay="auto"
-          valueLabelFormat={(value) => `${value.toFixed(2)}`}
+      <div className={style.pointSizeBaseContainer}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isPointSizeAttenuated}
+              size="small"
+              disableRipple
+              disableFocusRipple
+              onChange={handlePointSizeAttenuationChange}
+            />
+          }
+          label="Point Size Attenuation"
+          className="pointSizeAttenuationCheckbox"
         />
-        <Input
-          className={style.pointSizeTextField}
-          sx={{
-            color: theme.primary.main,
-          }}
-          classes={{
-            root: style.pointSizeTextField,
-          }}
-          disableUnderline
-          id="outlined-basic"
-          value={isTextBoxEmpty ? "" : pointSize}
-          onChange={handleTextBoxChange}
-          size="small"
-          margin="none"
-        />
+
+        <div className={style.pointSizeContainer}>
+          <Slider
+            className={style.pointSizeSlider}
+            sx={{
+              color: theme.primary.main,
+            }}
+            classes={{
+              thumb: style.pointSizeSliderThumb,
+              dragging: style.pointSizeSliderThumb,
+            }}
+            value={pointSizeNum}
+            min={minBound}
+            step={step}
+            max={maxBound}
+            onChange={handleSliderChange}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => `${value.toFixed(2)}`}
+          />
+          <Input
+            className={style.pointSizeTextField}
+            sx={{
+              color: theme.primary.main,
+            }}
+            classes={{
+              root: style.pointSizeTextField,
+            }}
+            disableUnderline
+            id="outlined-basic"
+            value={isTextBoxEmpty ? "" : pointSize}
+            onChange={handleTextBoxChange}
+            size="small"
+            margin="none"
+          />
+        </div>
       </div>
     </ActionPopOver>
   );
@@ -124,7 +151,7 @@ export const SetPointSizeButton = () => {
 
   return (
     <>
-      <ActionItem>
+      <ActionItem title="Set Point Size">
         <PointSizeIcon
           sx={{ fontSize: 24 }}
           color="inherit"
