@@ -25,6 +25,7 @@ import RegularEntry from "./RegularEntry";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { makePseudoField } from "./utils";
+import Checkbox from "../../Common/Checkbox";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -149,6 +150,10 @@ const ListValueEntry = ({
   const { ftype, subfield, embeddedDocType } =
     useRecoilValue(fos.field(path)) ?? makePseudoField(path);
 
+  const OVERRIDE = {
+    tags: "sample tags",
+  };
+
   return (
     <RegularEntry
       entryKey={entryKey}
@@ -163,7 +168,7 @@ const ListValueEntry = ({
       color={color}
       heading={
         <NameAndCountContainer>
-          <span key="path">{path}</span>
+          <span key="path">{OVERRIDE[path] ?? path}</span>
           <span key="value">
             <Suspense fallback={<LoadingDots text="" />}>
               <LengthLoadable path={path} />
@@ -212,6 +217,7 @@ const ListLoadable = ({ path }: { path: string }) => {
       {values.map((v, i) => (
         <div key={i}>{v}</div>
       ))}
+      {values.length == 0 && <>No results</>}
     </ListContainer>
   );
 };
