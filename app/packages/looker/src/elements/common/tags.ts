@@ -247,27 +247,26 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     for (let index = 0; index < activePaths.length; index++) {
       const path = activePaths[index];
-      if (path.startsWith("tags.")) {
-        if (Array.isArray(sample.tags) && sample.tags.includes(path.slice(5))) {
-          const tag = path.slice(5);
-          elements.push({
-            color: getColor(coloring.pool, coloring.seed, path),
-            title: tag,
-            value: tag,
+      if (path === "tags") {
+        if (Array.isArray(sample.tags)) {
+          sample.tags.forEach((tag) => {
+            elements.push({
+              color: getColor(coloring.pool, coloring.seed, tag),
+              title: tag,
+              value: tag,
+            });
           });
         }
-      } else if (path.startsWith("_label_tags.")) {
-        const tag = path.slice("_label_tags.".length);
-        const count = sample._label_tags[tag] || 0;
-        if (count > 0) {
+      } else if (path === "_label_tags") {
+        Object.entries(sample._label_tags).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           elements.push({
             color: getColor(coloring.pool, coloring.seed, path),
             title: value,
             value,
           });
-        }
-      } else if (path !== "tags") {
+        });
+      } else {
         const [field, value, list] = getFieldAndValue(
           sample,
           fieldSchema,

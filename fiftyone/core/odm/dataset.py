@@ -336,8 +336,7 @@ def _make_default_sidebar_groups(sample_collection):
         )
 
     sidebar_groups = [
-        SidebarGroupDocument(name="tags"),
-        SidebarGroupDocument(name="label tags"),
+        SidebarGroupDocument(name="tags", paths=["tags", "_label_tags"]),
         SidebarGroupDocument(name="metadata", paths=metadata),
         SidebarGroupDocument(name="labels", paths=labels),
     ]

@@ -1021,8 +1021,9 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        **kwargs: optional keyword arguments for
-            :meth:`AnnotationResults.load_credentials`
+        **kwargs: optional keyword arguments for the run's
+            :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+            method
 
     Returns:
         ``None``, unless ``unexpected=="return"`` and unexpected labels are
@@ -2042,9 +2043,6 @@ class AnnotationBackend(foa.AnnotationMethod):
     def get_fields(self, samples, anno_key):
         return list(self.config.label_schema.keys())
 
-    def cleanup(self, samples, anno_key):
-        pass
-
 
 class AnnotationResults(foa.AnnotationResults):
     """Base class for storing the intermediate results of an annotation run
@@ -2102,13 +2100,8 @@ class AnnotationResults(foa.AnnotationResults):
     """
 
     def __init__(self, samples, config, id_map, backend=None):
-        if backend is None:
-            backend = config.build()
-            backend.ensure_requirements()
-
-        self._samples = samples
+        super().__init__(samples, config, backend=backend)
         self.id_map = id_map
-        self._backend = backend
 
     def __enter__(self):
         self._backend.__enter__()
@@ -2116,25 +2109,6 @@ class AnnotationResults(foa.AnnotationResults):
 
     def __exit__(self, *args):
         self._backend.__exit__(*args)
-
-    @property
-    def config(self):
-        """The :class:`AnnotationBackendConfig` for these results."""
-        return self._backend.config
-
-    @property
-    def backend(self):
-        """The :class:`AnnotationBackend` for these results."""
-        return self._backend
-
-    def load_credentials(self, **kwargs):
-        """Loads any credentials from the given keyword arguments or the
-        FiftyOne annotation config.
-
-        Args:
-            **kwargs: subclass-specific credentials
-        """
-        raise NotImplementedError("subclass must implement load_credentials()")
 
     def connect_to_api(self):
         """Returns an API instance connected to the annotation backend.

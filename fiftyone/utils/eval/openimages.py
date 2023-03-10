@@ -240,24 +240,20 @@ class OpenImagesEvaluation(DetectionEvaluation):
         Returns:
             a :class:`OpenImagesDetectionResults`
         """
-        pred_field = self.config.pred_field
-        gt_field = self.config.gt_field
-
         precision, recall, thresholds, classes = _compute_pr_curves(
             matches, classes=classes
         )
 
         return OpenImagesDetectionResults(
+            samples,
+            self.config,
             matches,
             precision,
             recall,
             classes,
             thresholds=thresholds,
-            eval_key=eval_key,
             missing=missing,
-            gt_field=gt_field,
-            pred_field=pred_field,
-            samples=samples,
+            backend=self,
         )
 
 
@@ -265,6 +261,8 @@ class OpenImagesDetectionResults(DetectionResults):
     """Class that stores the results of an Open Images detection evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`OpenImagesEvaluationConfig` used
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -273,36 +271,30 @@ class OpenImagesDetectionResults(DetectionResults):
         recall: a dict of per-class recall values
         classes: the list of possible classes
         thresholds (None): an optional dict of per-class decision thresholds
-        eval_key (None): the evaluation key for this evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`OpenImagesEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
         matches,
         precision,
         recall,
         classes,
         thresholds=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         super().__init__(
+            samples,
+            config,
             matches,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
 
         self.precision = precision

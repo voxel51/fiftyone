@@ -27,23 +27,6 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view, extend_view
 
 
-def _build_result_view(result_view, form):
-    if form.slice:
-        result_view = result_view.select_group_slices([form.slice])
-
-    if form.sample_ids:
-        result_view = fov.make_optimized_select_view(
-            result_view, form.sample_ids
-        )
-
-    if form.add_stages:
-        for d in form.add_stages:
-            stage = fos.ViewStage._from_dict(d)
-            result_view = result_view.add_stage(stage)
-
-    return result_view
-
-
 @gql.input
 class SelectedLabel:
     field: str
@@ -130,8 +113,8 @@ class Mutation:
             )
             for group in sidebar_groups
         ]
+        view._dataset.save()
 
-        view._dataset._doc.save()
         state.view = view
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
@@ -195,7 +178,6 @@ class Mutation:
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
-                sort=True,
             )
 
         result_view = _build_result_view(result_view, form)
@@ -288,7 +270,6 @@ class Mutation:
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
-            sort=True,
         )
 
         result_view = _build_result_view(dataset_view, form)
@@ -412,3 +393,18 @@ class Mutation:
         state.spaces = Space.from_dict(spaces)
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
+
+
+def _build_result_view(view, form):
+    if form.slice:
+        view = view.select_group_slices([form.slice])
+
+    if form.sample_ids:
+        view = fov.make_optimized_select_view(view, form.sample_ids)
+
+    if form.add_stages:
+        for d in form.add_stages:
+            stage = fos.ViewStage._from_dict(d)
+            view = view.add_stage(stage)
+
+    return view
