@@ -18,11 +18,13 @@ import {
   LookerArrowLeftIcon,
   LookerArrowRightIcon,
 } from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
 import Sample3d from "./Sample3d";
+import { TooltipInfo } from "./TooltipInfo";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -88,6 +90,8 @@ const SampleModal = () => {
   const clearModal = fos.useClearModal();
   const override = useRecoilValue(fos.sidebarOverride);
   const disabled = useRecoilValue(fos.disabledPaths);
+
+  const lookerRef = useRef<AbstractLooker>();
 
   const navigation = useRecoilValue(modalNavigation);
 
@@ -234,6 +238,35 @@ const SampleModal = () => {
     return () => document.removeEventListener("keydown", keyboardHandler);
   }, [keyboardHandler]);
 
+  const tooltip = fos.useTooltip();
+
+  const eventHandler = useCallback(
+    (e) => {
+      tooltip.setDetail(e.detail ? e.detail : null);
+      e.detail && tooltip.setCoords(e.detail.coordinates);
+    },
+    [tooltip]
+  );
+
+  /**
+   * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
+   * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
+   */
+  const lookerRefCallback = useCallback(
+    (looker: AbstractLooker) => {
+      lookerRef.current = looker;
+      looker.addEventListener("tooltip", eventHandler);
+    },
+    [eventHandler]
+  );
+
+  useEffect(() => {
+    return () => {
+      lookerRef.current &&
+        lookerRef.current.removeEventListener("tooltip", eventHandler);
+    };
+  }, [eventHandler]);
+
   return ReactDOM.createPortal(
     <Fragment>
       <ModalWrapper
@@ -241,6 +274,7 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
+          <TooltipInfo coordinates={tooltip.coordinates} />
           <ContentColumn>
             {!isNavigationHidden && navigation.index > 0 && (
               <Arrow>
@@ -253,7 +287,13 @@ const SampleModal = () => {
               </Arrow>
             )}
             <ErrorBoundary onReset={() => {}}>
-              {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
+              {isGroup ? (
+                <Group lookerRefCallback={lookerRefCallback} />
+              ) : isPcd ? (
+                <Sample3d />
+              ) : (
+                <Sample lookerRefCallback={lookerRefCallback} />
+              )}
               {jsonPanel.isOpen && (
                 <JSONPanel
                   containerRef={jsonPanel.containerRef}

@@ -125,7 +125,8 @@ const useSlice = (sample: any): string => {
 
 const DefaultGroupSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
-}> = ({ lookerRef }) => {
+  lookerRefCallback?: (looker) => void;
+}> = ({ lookerRef, lookerRefCallback }) => {
   const defaultSlice = useRecoilValue(defaultGroupSlice);
   const sample = useRecoilValue(groupSampleSelectorFamily(defaultSlice));
   const clearModal = useClearModal();
@@ -145,6 +146,7 @@ const DefaultGroupSample: React.FC<{
         key={sample._id}
         sample={sample}
         lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
         onClose={clearModal}
       />
     </GroupSample>
@@ -153,7 +155,8 @@ const DefaultGroupSample: React.FC<{
 
 const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
-}> = ({ lookerRef }) => {
+  lookerRefCallback?: (looker) => void;
+}> = ({ lookerRef, lookerRefCallback }) => {
   const sample = useRecoilValue(groupSampleSelectorFamily(null));
   const currentModalSlice = useRecoilValue(currentSlice(true));
   const clearModal = useClearModal();
@@ -181,6 +184,7 @@ const MainSample: React.FC<{
         sample={sample}
         key={sample._id}
         lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
         onClose={clearModal}
       />
     </GroupSample>
@@ -248,7 +252,9 @@ const PinnedSample: React.FC = () => {
   );
 };
 
-const DualView: React.FC = () => {
+const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
+  lookerRefCallback,
+}) => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
   const key = useRecoilValue(groupId);
@@ -318,7 +324,10 @@ const DualView: React.FC = () => {
 
             {isImageVisible ? (
               <PixelatingSuspense>
-                <MainSample lookerRef={lookerRef} />
+                <MainSample
+                  lookerRef={lookerRef}
+                  lookerRefCallback={lookerRefCallback}
+                />
               </PixelatingSuspense>
             ) : is3DVisible ? (
               <PixelatingSuspense>
@@ -344,21 +353,23 @@ const DualView: React.FC = () => {
   );
 };
 
-const Group: React.FC = () => {
+const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
+  lookerRefCallback,
+}) => {
   const hasPinned = useRecoilValue(hasPinnedSlice);
   const key = useRecoilValue(groupId);
 
   if (!hasPinned) {
     return (
       <>
-        <GroupList key={key} /> <Sample />
+        <GroupList key={key} /> <Sample lookerRefCallback={lookerRefCallback} />
       </>
     );
   }
 
   return (
     <Suspense>
-      <DualView />
+      <DualView lookerRefCallback={lookerRefCallback} />
     </Suspense>
   );
 };

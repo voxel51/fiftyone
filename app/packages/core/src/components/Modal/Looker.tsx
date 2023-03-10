@@ -11,28 +11,31 @@ import { v4 as uuid } from "uuid";
 import { useEventHandler } from "@fiftyone/state";
 
 import { useTheme } from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useOnSelectLabel } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-import { TooltipInfo } from "./TooltipInfo";
 
 type EventCallback = (event: CustomEvent) => void;
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (update: object, updater?: Function) => {
-      const currentOptions = await snapshot.getPromise(fos.savedLookerOptions);
+    ({ snapshot, set }) =>
+      async (update: object, updater?: Function) => {
+        const currentOptions = await snapshot.getPromise(
+          fos.savedLookerOptions
+        );
 
-      const panels = await snapshot.getPromise(fos.lookerPanels);
-      const updated = {
-        ...currentOptions,
-        ...update,
-        showJSON: panels.json.isOpen,
-        showHelp: panels.help.isOpen,
-      };
-      set(fos.savedLookerOptions, updated);
-      if (updater) updater(updated);
-    }
+        const panels = await snapshot.getPromise(fos.lookerPanels);
+        const updated = {
+          ...currentOptions,
+          ...update,
+          showJSON: panels.json.isOpen,
+          showHelp: panels.help.isOpen,
+        };
+        set(fos.savedLookerOptions, updated);
+        if (updater) updater(updated);
+      }
   );
 };
 
@@ -50,18 +53,17 @@ const useShowOverlays = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(fos.selectedLabels, {}),
+    ({ set }) =>
+      async () =>
+        set(fos.selectedLabels, {}),
     []
   );
-};
-
-const useLookerSample = (propsSample?: fos.AppSample) => {
-  const sample = useRecoilValue(fos.modal);
 };
 
 interface LookerProps {
   sample?: fos.SampleData;
   lookerRef?: MutableRefObject<any>;
+  lookerRefCallback?: (looker: AbstractLooker) => void;
   onClose?: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
@@ -69,6 +71,7 @@ interface LookerProps {
 const Looker = ({
   sample: propsSampleData,
   lookerRef,
+  lookerRefCallback,
   onClose,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
@@ -100,11 +103,16 @@ const Looker = ({
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
   });
-  const looker = React.useMemo(() => createLooker.current(sampleData), [
-    useRecoilValue(fos.selectedMediaField(true)),
-    reset,
-    createLooker,
-  ]);
+  const looker = React.useMemo(
+    () => createLooker.current(sampleData),
+    [useRecoilValue(fos.selectedMediaField(true)), reset, createLooker]
+  );
+
+  useEffect(() => {
+    if (looker) {
+      lookerRefCallback && lookerRefCallback(looker);
+    }
+  }, [looker, lookerRefCallback]);
 
   useEffect(() => {
     !initialRef.current && looker.updateOptions(lookerOptions);
@@ -172,12 +180,6 @@ const Looker = ({
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
 
-  const tooltip = fos.useTooltip();
-  useEventHandler(looker, "tooltip", (e) => {
-    tooltip.setDetail(e.detail ? e.detail : null);
-    e.detail && tooltip.setCoords(e.detail.coordinates);
-  });
-
   const hoveredSample = useRecoilValue(fos.hoveredSample);
 
   useEffect(() => {
@@ -200,9 +202,7 @@ const Looker = ({
         background: theme.background.level2,
         position: "relative",
       }}
-    >
-      <TooltipInfo coordinates={tooltip.coordinates} />
-    </div>
+    />
   );
 };
 
