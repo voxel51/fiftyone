@@ -38,9 +38,10 @@ class StateDescription(etas.Serializable):
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
+        spaces (None): spaces config
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
-        saved view
+            saved view
     """
 
     def __init__(
@@ -49,14 +50,19 @@ class StateDescription(etas.Serializable):
         dataset=None,
         selected=None,
         selected_labels=None,
-        view=None,
         spaces=None,
+        view=None,
+        view_name=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.view = view
+        self.view = (
+            dataset.load_saved_view(dataset)
+            if dataset is not None and view_name
+            else view
+        )
         self.spaces = spaces
 
     def serialize(self, reflective=True):
