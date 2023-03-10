@@ -113,8 +113,8 @@ class Mutation:
             )
             for group in sidebar_groups
         ]
+        view._dataset.save()
 
-        view._dataset._doc.save()
         state.view = view
         await dispatch_event(subscription, StateUpdate(state=state))
         return True

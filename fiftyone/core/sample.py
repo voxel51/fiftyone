@@ -543,9 +543,9 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         else:
             frame_ops = []
 
-        sample_op = super()._save(deferred=deferred)
+        sample_ops = super()._save(deferred=deferred)
 
-        return sample_op, frame_ops
+        return sample_ops, frame_ops
 
     @classmethod
     def from_frame(cls, frame, filepath=None):
@@ -730,9 +730,9 @@ class SampleView(_SampleMixin, DocumentView):
         else:
             frame_ops = []
 
-        sample_op = super()._save(deferred=deferred)
+        sample_ops = super()._save(deferred=deferred)
 
-        return sample_op, frame_ops
+        return sample_ops, frame_ops
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

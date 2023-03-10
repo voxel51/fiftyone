@@ -10,7 +10,6 @@ import itertools
 from bson import ObjectId
 from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
 
-
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo

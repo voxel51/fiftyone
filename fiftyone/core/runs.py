@@ -439,7 +439,8 @@ class Run(Configurable):
                     % (cls._run_str().capitalize(), key)
                 )
 
-        dataset_doc = samples._root_dataset._doc
+        dataset = samples._root_dataset
+        dataset_doc = dataset._doc
         run_docs = getattr(dataset_doc, cls._runs_field())
         view_stages = [
             json_util.dumps(s)
@@ -455,10 +456,10 @@ class Run(Configurable):
             view_stages=view_stages,
             results=None,
         )
-        run_doc.save()
+        run_doc.save(upsert=True)
 
         run_docs[key] = run_doc
-        dataset_doc.save()
+        dataset.save()
 
     @classmethod
     def update_run_config(cls, samples, key, config):
@@ -697,7 +698,7 @@ class Run(Configurable):
             run_doc.results.delete()
 
         run_doc.delete()
-        dataset._doc.save()
+        dataset.save()
 
     @classmethod
     def delete_runs(cls, samples):
