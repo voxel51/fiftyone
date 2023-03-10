@@ -3061,6 +3061,100 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(clips.count_label_tags(), {})
         self.assertEqual(dataset.count_label_tags(), {})
 
+    @drop_datasets
+    def test_to_trajectories(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[fo.Detection(label="cat", index=1)]
+            )
+        )
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=1),
+                ]
+            )
+        )
+        sample1.frames[4] = fo.Frame(
+            detections=fo.Detections(
+                detections=[fo.Detection(label="dog", index=1)]
+            )
+        )
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[2] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=2),
+                ]
+            )
+        )
+        sample2.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=3),
+                ]
+            )
+        )
+        sample2.frames[5] = fo.Frame(
+            detections=fo.Detections(
+                detections=[fo.Detection(label="dog", index=3)]
+            )
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        trajectories = dataset.to_trajectories("frames.detections")
+
+        self.assertEqual(len(trajectories), 5)
+        self.assertEqual(
+            dataset.count("frames.detections.detections"),
+            trajectories.count("frames.detections.detections"),
+        )
+
+        trajs_map = {
+            (_id, l, i): s
+            for _id, l, i, s in zip(
+                *trajectories.values(
+                    [
+                        "sample_id",
+                        "detections.label",
+                        "detections.index",
+                        "support",
+                    ]
+                )
+            )
+        }
+
+        expected_trajs_map = {
+            (sample1.id, "cat", 1): [1, 3],
+            (sample1.id, "dog", 1): [3, 4],
+            (sample2.id, "cat", 1): [2, 3],
+            (sample2.id, "dog", 2): [2, 2],
+            (sample2.id, "dog", 3): [3, 5],
+        }
+
+        self.assertDictEqual(trajs_map, expected_trajs_map)
+
+        schema = trajectories.get_field_schema(flat=True)
+        self.assertIn("detections.label", schema)
+        self.assertIn("detections.index", schema)
+
+        schema = trajectories.get_frame_field_schema()
+        self.assertIn("detections", schema)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

@@ -110,8 +110,8 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    _id: gql.Private[t.Optional[ObjectId]]
-    _dataset_id: gql.Private[t.Optional[ObjectId]]
+    id: t.Optional[str]
+    dataset_id: t.Optional[str]
     name: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
@@ -120,18 +120,6 @@ class SavedView:
     created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
-
-    @gql.field
-    def id(self) -> t.Optional[str]:
-        if isinstance(self, ObjectId):
-            return str(self)
-        return str(self._id)
-
-    @gql.field
-    def dataset_id(self) -> t.Optional[str]:
-        if isinstance(self, ObjectId):
-            return None
-        return str(self._dataset_id)
 
     @gql.field
     def view_name(self) -> t.Optional[str]:
@@ -146,7 +134,10 @@ class SavedView:
     @classmethod
     def from_doc(cls, doc: SavedViewDocument):
         stage_dicts = [json_util.loads(x) for x in doc.view_stages]
-        saved_view = from_dict(data_class=cls, data=doc.to_dict())
+        data = doc.to_dict()
+        data["id"] = str(data.pop("_id"))
+        data["dataset_id"] = str(data.pop("_dataset_id"))
+        saved_view = from_dict(data_class=cls, data=data)
         saved_view.stage_dicts = stage_dicts
         return saved_view
 

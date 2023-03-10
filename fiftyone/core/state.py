@@ -17,6 +17,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.clips as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -67,10 +68,17 @@ class StateDescription(etas.Serializable):
                 collection = self.dataset
                 if self.view is not None:
                     collection = self.view
+
+                    # @todo update App so this isn't needed?
+                    if isinstance(self.view, foc.TrajectoriesView):
+                        _view_cls = etau.get_class_name(foc.ClipsView)
+                    else:
+                        _view_cls = etau.get_class_name(self.view)
+
                     d["view"] = json.loads(
                         json_util.dumps(self.view._serialize())
                     )
-                    d["view_cls"] = etau.get_class_name(self.view)
+                    d["view_cls"] = _view_cls
 
                     d["view_name"] = self.view.name  # None for unsaved views
                     if d.get("view_name") is not None:
@@ -128,7 +136,11 @@ class StateDescription(etas.Serializable):
             if view_name:
                 view = dataset.load_saved_view(view_name)
             elif stages:
-                view = fov.DatasetView._build(dataset, stages)
+                try:
+                    view = fov.DatasetView._build(dataset, stages)
+                except:
+                    dataset.reload()
+                    view = fov.DatasetView._build(dataset, stages)
 
         group_slice = d.get("group_slice", None)
         if group_slice:

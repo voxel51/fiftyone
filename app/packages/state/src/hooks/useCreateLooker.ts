@@ -56,7 +56,10 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
       const mimeType = getMimeType(sample);
 
-      if (mimeType !== null) {
+      // checking for pcd extension instead of media_type because this also applies for group slices
+      if (urls.filepath.endsWith(".pcd")) {
+        constructor = PcdLooker;
+      } else if (mimeType !== null) {
         const isVideo = mimeType.startsWith("video/");
 
         if (isVideo && (isFrame || isPatch)) {
@@ -66,20 +69,24 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         if (isVideo) {
           constructor = VideoLooker;
         }
-
-        // checking for pcd extension instead of media_type because this also applies for group slices
-        if (urls.filepath.endsWith(".pcd")) {
-          constructor = PcdLooker;
-        }
       } else {
         constructor = ImageLooker;
       }
 
-      const sampleMediaFilePath =
-        constructor === PcdLooker &&
-        "orthographic_projection_metadata" in sample
-          ? (sample["orthographic_projection_metadata"]["filepath"] as string)
-          : urls[mediaField];
+      let sampleMediaFilePath = urls[mediaField];
+
+      if (constructor === PcdLooker) {
+        const orthographicProjectionField = Object.entries(sample)
+          .find(
+            (el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+          )
+          ?.at(0) as string | undefined;
+        if (orthographicProjectionField) {
+          sampleMediaFilePath = sample[orthographicProjectionField][
+            "filepath"
+          ] as string;
+        }
+      }
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
         fieldSchema: {

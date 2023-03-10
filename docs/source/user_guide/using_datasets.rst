@@ -134,13 +134,22 @@ dataset is set based on the first sample added to it:
     print(dataset.media_type)
     # "image"
 
-Datasets are homogeneous; they must contain samples of the same media type:
+Datasets are homogeneous; they must contain samples of the same media type
+(except for :ref:`grouped datasets <groups>`):
 
 .. code-block:: python
     :linenos:
 
     dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
     # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
+
+The following media types are possible:
+
+-   `image`: if the dataset contains images
+-   `video`: if the dataset contains :ref:`videos <video-datasets>`
+-   `point-cloud`: if the dataset contains
+    :ref:`point clouds <point-cloud-datasets>`
+-   `group`: if the dataset contains :ref:`grouped data slices <groups>`
 
 .. _dataset-version:
 
@@ -399,8 +408,8 @@ You can also configure the default loading behavior of the
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session = fo.launch_app(dataset)
@@ -2129,6 +2138,140 @@ dynamically adding new fields to each |Polyline| instance:
     Did you know? You can view custom attributes in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
+.. _cuboids:
+
+Cuboids
+-------
+
+You can store and visualize cuboids in FiftyOne using the
+:meth:`Polyline.from_cuboid() <fiftyone.core.labels.Polyline.from_cuboid>`
+method.
+
+The method accepts a list of 8 ``(x, y)`` points describing the vertices of the
+cuboid in the format depicted below:
+
+.. code-block:: text
+
+       7--------6
+      /|       /|
+     / |      / |
+    3--------2  |
+    |  4-----|--5
+    | /      | /
+    |/       |/
+    0--------1
+
+.. note::
+    FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import cv2
+    import numpy as np
+    import fiftyone as fo
+
+    def random_cuboid():
+        x0, y0 = [0, 0.2] + 0.8 * np.random.rand(2)
+        dx, dy = (min(0.8 - x0, y0 - 0.2)) * np.random.rand(2)
+        x1, y1 = x0 + dx, y0 - dy
+        w, h = (min(1 - x1, y1)) * np.random.rand(2)
+        front = [(x0, y0), (x0 + w, y0), (x0 + w, y0 - h), (x0, y0 - h)]
+        back = [(x1, y1), (x1 + w, y1), (x1 + w, y1 - h), (x1, y1 - h)]
+        return fo.Polyline.from_cuboid(front + back, label="cuboid")
+
+    filepath = "/tmp/image.png"
+    cv2.imwrite(filepath, np.full((16, 16, 3), 255, dtype=np.uint8))
+
+    dataset = fo.Dataset("cuboids")
+    dataset.add_samples(
+        [fo.Sample(filepath=filepath, cuboid=random_cuboid()) for _ in range(51)]
+    )
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/cuboids.png
+   :alt: cuboids
+   :align: center
+
+Like all |Label| types, you can also add custom attributes to your cuboids by
+dynamically adding new fields to each |Polyline| instance:
+
+.. code-block:: python
+    :linenos:
+
+    polyline = fo.Polyline.from_cuboid(
+        vertics,
+        label="vehicle",
+        filled=True,
+        type="sedan",  # custom attribute
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _rotated-bounding-boxes:
+
+Rotated bounding boxes
+----------------------
+
+You can store and visualize rotated bounding boxes in FiftyOne using the
+:meth:`Polyline.from_rotated_box() <fiftyone.core.labels.Polyline.from_rotated_box>`
+method, which accepts rotated boxes described by their center coordinates,
+width/height, and counter-clockwise rotation, in radians.
+
+.. note::
+
+    FiftyOne stores all coordinates and dimensions as floats in `[0, 1]`
+    relative to the dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import cv2
+    import numpy as np
+    import fiftyone as fo
+
+    def random_rotated_box():
+        xc, yc = 0.2 + 0.6 * np.random.rand(2)
+        w, h = 1.5 * (min(xc, yc, 1 - xc, 1 - yc)) * np.random.rand(2)
+        theta = 2 * np.pi * np.random.rand()
+        return fo.Polyline.from_rotated_box(xc, yc, w, h, theta, label="box")
+
+    filepath = "/tmp/image.png"
+    cv2.imwrite(filepath, np.full((16, 16, 3), 255, dtype=np.uint8))
+
+    dataset = fo.Dataset("rotated-boxes")
+    dataset.add_samples(
+        [fo.Sample(filepath=filepath, box=random_rotated_box()) for _ in range(51)]
+    )
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/rotated-bounding-boxes.png
+   :alt: rotated-bounding-boxes
+   :align: center
+
+Like all |Label| types, you can also add custom attributes to your rotated
+bounding boxes by dynamically adding new fields to each |Polyline| instance:
+
+.. code-block:: python
+    :linenos:
+
+    polyline = fo.Polyline.from_rotated_box(
+        xc, yc, width, height, theta,
+        label="cat",
+        mood="surly",  # custom attribute
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
 .. _keypoints:
 
 Keypoints
@@ -2662,6 +2805,74 @@ sample:
 
     Did you know? You can :ref:`store class lists <storing-classes>` for your
     models on your datasets.
+
+.. _3d-detections:
+
+3D detections
+-------------
+
+The App's :ref:`3D visualizer <app-3d-visualizer>` supports rendering 3D object
+detections represented as |Detection| instances with their `label`, `location`,
+`dimensions`, and `rotation` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "vehicle"
+
+    # Object center `[x, y, z]` in scene coordinates
+    location = [0.47, 1.49, 69.44]
+
+    # Object dimensions `[x, y, z]` in scene units
+    dimensions = [2.85, 2.63, 12.34]
+
+    # Object rotation `[x, y, z]` around its center, in `[-pi, pi]`
+    rotation = [0, -1.56, 0]
+
+    # A 3D object detection
+    detection = fo.Detection(
+        label=label,
+        location=location,
+        dimensions=dimensions,
+        rotation=rotation,
+    )
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _3d-polylines:
+
+3D polylines
+------------
+
+The App's :ref:`3D visualizer <app-3d-visualizer>` supports rendering 3D
+polylines represented as |Polyline| instances with their `label` and `points3d`
+attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "lane"
+
+    # A list of lists of `[x, y, z]` points in scene coordinates describing
+    # the vertices of each shape in the polyline
+    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+
+    # A set of semantically related 3D polylines
+    polyline = fo.Polyline(label=label, points3d=points3d)
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
 .. _geolocation:
 
@@ -3587,14 +3798,14 @@ future sessions and manipulated as usual:
         }>,
     }>
 
-.. _video-frame-labels:
+.. _video-datasets:
 
-Video frame labels
-__________________
+Video datasets
+______________
 
-When you create a video sample, i.e., a |Sample| with `media_type == 'video'`,
-it is given a reserved `frames` attribute in which you can store frame-level
-labels and other custom annotations for the video.
+Any |Sample| whose `filepath` is a file with MIME type  `video/*` is recognized
+as a video sample, and datasets composed of video samples have media type
+`video`:
 
 .. code-block:: python
     :linenos:
@@ -3603,12 +3814,16 @@ labels and other custom annotations for the video.
 
     sample = fo.Sample(filepath="/path/to/video.mp4")
 
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # video
     print(sample)
 
 .. code-block:: text
 
     <Sample: {
-        'id': None,
+        'id': '6403ccef0a3af5bc780b5a10',
         'media_type': 'video',
         'filepath': '/path/to/video.mp4',
         'tags': [],
@@ -3616,9 +3831,11 @@ labels and other custom annotations for the video.
         'frames': <Frames: 0>,
     }>
 
-The `frames` attribute of a video sample is a dictionary whose keys are frame
-numbers and whose values are |Frame| instances that hold all of the |Label|
-instances and other primitive-type fields for the frame.
+All video samples have a reserved `frames` attribute in which you can store
+frame-level labels and other custom annotations for the video. The `frames`
+attribute is a dictionary whose keys are frame numbers and whose values are
+|Frame| instances that hold all of the |Label| instances and other
+primitive-type fields for the frame.
 
 .. note::
 
@@ -3632,27 +3849,31 @@ dynamic attribute syntax that you use to
 .. code:: python
     :linenos:
 
-    # Add labels to first frame of a video sample
-
-    frame = sample.frames[1]
-
-    frame["quality"] = 97.12
-
-    frame["weather"] = fo.Classification(label="sunny")
-
-    frame["objects"] = fo.Detections(
-        detections=[
-            fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
-            fo.Detection(label="dog", bounding_box=[0.7, 0.7, 0.2, 0.2]),
-        ]
+    frame = fo.Frame(
+        quality=97.12,
+        weather=fo.Classification(label="sunny"),
+        objects=fo.Detections(
+            detections=[
+                fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
+                fo.Detection(label="dog", bounding_box=[0.7, 0.7, 0.2, 0.2]),
+            ]
+        )
     )
 
-    print(sample)
+    # Add labels to the first frame of the video
+    sample.frames[1] = frame
+    sample.save()
+
+.. note::
+
+    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
+    order to persist changes to the database when editing video samples and/or
+    their frames that are in datasets.
 
 .. code-block:: text
 
     <Sample: {
-        'id': None,
+        'id': '6403ccef0a3af5bc780b5a10',
         'media_type': 'video',
         'filepath': '/path/to/video.mp4',
         'tags': [],
@@ -3677,7 +3898,7 @@ You can iterate over the frames in a video sample using the expected syntax:
 .. code-block:: text
 
     <Frame: {
-        'id': None,
+        'id': '6403cd972a54cee076f88bd2',
         'frame_number': 1,
         'quality': 97.12,
         'weather': <Classification: {
@@ -3713,13 +3934,11 @@ You can iterate over the frames in a video sample using the expected syntax:
         }>,
     }>
 
-Video samples can be added to datasets just like image samples:
+Notice that the dataset's summary indicates that the dataset has media type
+`video` and includes the schema of any frame fields you add:
 
 .. code:: python
     :linenos:
-
-    dataset = fo.Dataset()
-    dataset.add_sample(sample)
 
     print(dataset)
 
@@ -3741,9 +3960,6 @@ Video samples can be added to datasets just like image samples:
         quality:      fiftyone.core.fields.FloatField
         weather:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
         objects:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-
-Notice that the dataset's summary indicates that the dataset has media type
-`video` and includes the schema of the frame fields.
 
 You can retrieve detailed information about the schema of the frames of a
 video |Dataset| using
@@ -3769,7 +3985,7 @@ labels can be modified by updating the `frames` attribute of a |Sample|:
 .. code-block:: text
 
     <Frame: {
-        'id': '6090797c4653b0094e9baa57',
+        'id': '6403cd972a54cee076f88bd2',
         'frame_number': 1,
         'quality': 97.12,
         'weather': None,
@@ -3785,6 +4001,198 @@ labels can be modified by updating the `frames` attribute of a |Sample|:
 
 :ref:`See this page <loading-custom-datasets>` for more information about
 building labeled video samples.
+
+Example video dataset
+---------------------
+
+To get started exploring video datasets, try loading the
+:ref:`quickstart-video <dataset-zoo-quickstart-video>` dataset from the zoo:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    print(dataset)
+
+    print(dataset.count("frames"))  # 1279
+    print(dataset.count("frames.detections.detections"))  # 11345
+    print(dataset.count_values("frames.detections.detections.label"))
+    # {'vehicle': 7511, 'road sign': 2726, 'person': 1108}
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: text
+
+    Name:        quickstart-video
+    Media type:  video
+    Num samples: 10
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:       fiftyone.core.fields.ObjectIdField
+        filepath: fiftyone.core.fields.StringField
+        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+.. _point-cloud-datasets:
+
+Point cloud datasets
+____________________
+
+Any |Sample| whose `filepath` is a
+`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+with extension `.pcd` is recognized as a point cloud sample, and datasets
+composed of point cloud samples have media type `point-cloud`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/point-cloud.pcd")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # point-cloud
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '6403ce64c8957c42bc8f9e67',
+        'media_type': 'point-cloud',
+        'filepath': '/path/to/point-cloud.pcd',
+        'tags': [],
+        'metadata': None,
+    }>
+
+.. note::
+
+    Point cloud samples may contain any type and number of custom fields,
+    including :ref:`3D detections <3d-detections>` and
+    :ref:`3D polylines <3d-polylines>`, which are natively visualizable by the
+    App's :ref:`3D visualizer <app-3d-visualizer>`.
+
+Here's how a typical PCD file is structured:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import open3d as o3d
+
+    points = np.array([(x1, y1, z1), (x2, y2, z2), ...])
+    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...])
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+    o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
+
+.. note::
+
+    When working with modalities such as LIDAR, intensity data is assumed to be
+    encoded in the `r` channel of the `rgb` field of the
+    `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
+
+    When coloring by intensity :ref:`in the App <app-3d-visualizer>`, the
+    intensity values are automatically scaled to use the full dynamic range of
+    the colorscale.
+
+.. _orthographic-projection-images:
+
+Orthographic projection images
+------------------------------
+
+In order to visualize point cloud datasets in the App's grid view, you can use
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+to generate orthographic projection images of each point cloud:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example point cloud dataset
+    dataset = (
+        foz.load_zoo_dataset("quickstart-groups")
+        .select_group_slices("pcd")
+        .clone()
+    )
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    session = fo.launch_app(dataset)
+
+The above method populates an |OrthographicProjectionMetadata| field on each
+sample that contains the path to its projection image and the necessary to
+properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
+
+.. note::
+
+    Refer to the
+    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+    documentation for available parameters to customize the projections.
+
+Example point cloud dataset
+---------------------------
+
+To get started exploring point cloud datasets, try loading the
+:ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset from the zoo
+and :ref:`clone <saving-and-cloning-views>` the point cloud slice into a
+standalone dataset:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    dataset = (
+        foz.load_zoo_dataset("quickstart-groups")
+        .select_group_slices("pcd")
+        .clone()
+    )
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    print(dataset)
+
+    print(dataset.count("ground_truth.detections"))  # 1100
+    print(dataset.count_values("ground_truth.detections.label"))
+    # {'Pedestrian': 133, 'Car': 774, ...}
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: text
+
+    Name:        2023.03.04.15.21.08
+    Media type:  point-cloud
+    Num samples: 200
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:                               fiftyone.core.fields.ObjectIdField
+        filepath:                         fiftyone.core.fields.StringField
+        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        group:                            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
 
 DatasetViews
 ____________

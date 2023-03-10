@@ -16,8 +16,16 @@
 }
 
 .pointSizeContainer {
-  margin: 1em;
+  margin: 1em 0;
   display: flex;
   justify-content: center;
   align-content: center;
+}
+
+.pointSizeBaseContainer {
+  margin: 1em;
+}
+
+.pointSizeAttenuationCheckbox {
+  font: unset;
 }

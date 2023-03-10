@@ -34,6 +34,7 @@ const escape: Control = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
+  alwaysHandle: true,
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
@@ -570,19 +571,25 @@ const videoEscape: Control<VideoState> = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
+  alwaysHandle: true,
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
         hasDefaultZoom,
-        showHelp,
         showOptions,
         frameNumber,
         config: { support },
-        options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
+        options: {
+          fullscreen: fullscreenSetting,
+          showHelp,
+          showJSON,
+          selectedLabels,
+        },
         lockedToSupport,
       }) => {
         if (showHelp) {
-          return { showHelp: false };
+          dispatchEvent("panels", { showHelp: "close" });
+          return { showHelp: "close" };
         }
 
         if (showOptions) {
@@ -590,6 +597,7 @@ const videoEscape: Control<VideoState> = {
         }
 
         if (showJSON) {
+          dispatchEvent("panels", { showJSON: "close" });
           dispatchEvent("options", { showJSON: false });
           return { options: { showJSON: false } };
         }
