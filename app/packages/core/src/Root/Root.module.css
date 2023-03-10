@@ -13,3 +13,12 @@
 .icons {
   flex-shrink: 0;
 }
+
+.dropdown {
+  width: 50px;
+}
+.menu {
+  width: 150px;
+  background: #fff;
+  z-index: 10000;
+}
