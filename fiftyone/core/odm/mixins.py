@@ -966,12 +966,17 @@ class DatasetMixin(object):
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]
 
-            if recursive and isinstance(
-                existing_field, fof.EmbeddedDocumentField
-            ):
-                return existing_field._merge_fields(
-                    path, field, validate=validate, recursive=recursive
-                )
+            if recursive:
+                if isinstance(existing_field, fof.ListField) and isinstance(
+                    field, fof.ListField
+                ):
+                    existing_field = existing_field.field
+                    field = field.field
+
+                if isinstance(existing_field, fof.EmbeddedDocumentField):
+                    return existing_field._merge_fields(
+                        path, field, validate=validate, recursive=recursive
+                    )
 
             if validate:
                 validate_fields_match(path, field, existing_field)
