@@ -20,6 +20,7 @@ const GroupSlice: React.FC = () => {
 
   /**
    * this effect syncs the session slice with the default slice on component load
+   * (todo: rm network side effect and move to session subscription initialization)
    */
   useEffect(() => {
     setSlice(defaultSlice);
