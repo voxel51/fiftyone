@@ -22,6 +22,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 import fiftyone.server.utils as fosu
+from fiftyone.core.utils import pprint
 
 
 _LABEL_TAGS = "_label_tags"
@@ -159,14 +160,51 @@ def get_extended_view(
     if filters:
         if "tags" in filters:
             tags = filters.get("tags")
-            if "label" in tags:
-                label_tags = tags["label"]
+            exclude = tags["exclude"]
+            tags = tags["values"]
 
-            if not count_label_tags and label_tags:
-                view = view.select_labels(tags=label_tags)
+            if tags and not exclude:
+                view = view.match_tags(tags)
 
-            if "sample" in tags:
-                view = view.match_tags(tags=tags["sample"])
+            if tags and exclude:
+                view = view.match_tags(tags, bool=False)
+
+        if "_label_tags" in filters:
+            label_tags = filters.get("_label_tags")
+
+            if (
+                not count_label_tags
+                and label_tags
+                and not label_tags["exclude"]
+                and not label_tags["isMatching"]
+            ):
+                view = view.select_labels(tags=label_tags["values"])
+
+            if (
+                not count_label_tags
+                and label_tags
+                and label_tags["exclude"]
+                and not label_tags["isMatching"]
+            ):
+                view = view.exclude_labels(
+                    tags=label_tags["values"], omit_empty=False
+                )
+
+            if (
+                not count_label_tags
+                and label_tags
+                and not label_tags["exclude"]
+                and label_tags["isMatching"]
+            ):
+                view = view.match_labels(tags=label_tags["values"])
+
+            if (
+                not count_label_tags
+                and label_tags
+                and label_tags["exclude"]
+                and label_tags["isMatching"]
+            ):
+                view = view.match_labels(tags=label_tags["values"], bool=False)
 
         stages, cleanup_fields, filtered_labels = _make_filter_stages(
             view,
@@ -306,8 +344,24 @@ def _make_filter_stages(
     else:
         frame_field_schema = None
 
+    label_tags_values = (
+        label_tags["values"] if label_tags is not None else None
+    )
+    label_tags_exclude = (
+        label_tags["exclude"] if label_tags is not None else None
+    )
+    label_tags_is_matching = (
+        label_tags["isMatching"] if label_tags is not None else None
+    )
+
     tag_expr = (F("tags") != None).if_else(
-        F("tags").contains(label_tags), None
+        F("tags").contains(label_tags_values), None
+    )
+
+    tag_expr = (
+        ~tag_expr
+        if label_tags_exclude and not label_tags_is_matching
+        else tag_expr
     )
     cache = {}
     stages = []
@@ -409,6 +463,9 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
+        is_matching = label_tags.get("isMatching", False)
+        exclude = label_tags.get("exclude", False)
+
         for path, _ in fosu.iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
@@ -431,14 +488,19 @@ def _make_filter_stages(
 
         match_exprs = []
         for path, _ in fosu.iter_label_fields(view):
-            match_exprs.append(
-                fosg._get_label_field_only_matches_expr(
-                    view,
-                    cache.get(path, path),
-                )
+            expr = fosg._get_label_field_only_matches_expr(
+                view,
+                cache.get(path, path),
             )
+            if exclude and is_matching:
+                # pylint: disable=invalid-unary-operand-type
+                expr = ~expr
 
-        stages.append(fosg.Match(F.any(match_exprs)))
+            match_exprs.append(expr)
+
+        if match_exprs:
+            matcher = F.all if exclude else F.any
+            stages.append(fosg.Match(matcher(match_exprs)))
 
     return stages, cleanup, filtered_labels
 
@@ -615,7 +677,13 @@ def _apply_none(expr, f, none):
 
 
 def _get_filtered_path(view, path, filtered_fields, label_tags):
-    if path not in filtered_fields and not label_tags:
+    if label_tags is not None:
+        excludes = label_tags.get("exclude", None)
+        label_tags = label_tags.get("values", None)
+    else:
+        excludes = None
+
+    if path not in filtered_fields and not label_tags and not excludes:
         return path
 
     if path.startswith(view._FRAMES_PREFIX):

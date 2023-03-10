@@ -21,6 +21,8 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import ResultComponent from "./ResultComponent";
 import Wrapper from "./Wrapper";
+import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
+import Checkbox from "../../Common/Checkbox";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -70,19 +72,28 @@ const categoricalSearchResults = selectorFamily<
       }
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
+      const isLabelTag = path.startsWith("_label_tags");
+      let data: { values: V[]; count: number } = { values: [], count: null };
 
-      const data = await getFetchFunction()("POST", "/values", {
-        dataset: get(fos.dataset).name,
-        view: get(fos.view),
-        path,
-        search,
-        selected,
-        sample_id: sampleId,
-        ...sorting,
-      });
+      if (isLabelTag) {
+        const labels = get(labelTagsCount({ modal, extended: false }));
+        data = {
+          count: labels.count,
+          values: labels.results.map(([value, count]) => ({ value, count })),
+        };
+      } else {
+        data = await getFetchFunction()("POST", "/values", {
+          dataset: get(fos.dataset).name,
+          view: get(fos.view),
+          path,
+          search,
+          selected,
+          sample_id: sampleId,
+          ...sorting,
+        });
+      }
 
-      let { values, count } = data as { values: V[]; count: number };
-
+      let { values, count } = data;
       if (noneCount > 0 && "None".includes(search)) {
         values = [...values, { value: null, count: noneCount }]
           .sort(nullSort(sorting))
@@ -148,7 +159,7 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
           parent = `frames.${keys[1]}`;
         }
 
-        const p = get(fos.field(parent))?.embeddedDocType
+        const p = get(fos.field(parent))?.embeddedDocType;
         if (p && VALID_KEYPOINTS.includes(p)) {
           return true;
         }
@@ -185,7 +196,12 @@ const CategoricalFilter = <T extends V = V>({
   modal,
   named = true,
 }: Props<T>) => {
-  const name = path.split(".").slice(-1)[0];
+  let name = path.split(".").slice(-1)[0];
+  name = path.startsWith("tags")
+    ? "sample tag"
+    : path.startsWith("_label_tags")
+    ? "label tag"
+    : name;
   const color = useRecoilValue(fos.pathColor({ modal, path }));
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
@@ -196,12 +212,12 @@ const CategoricalFilter = <T extends V = V>({
   const countsLoadable = useRecoilValueLoadable(countsAtom);
 
   // id fields should always use filter mode
-  const neverShowExpansion = field?.ftype.includes("ObjectIdField");
+  const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
 
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;
 
-  if (named && !results.length) {
+  if (named && !results) {
     return null;
   }
 
@@ -211,10 +227,10 @@ const CategoricalFilter = <T extends V = V>({
         e.stopPropagation();
       }}
     >
-      {named && (
+      {named && field && (
         <FieldLabelAndInfo
           nested
-          field={field!}
+          field={field}
           color={color}
           template={({ label, hoverTarget }) => (
             <NamedCategoricalFilterHeader>

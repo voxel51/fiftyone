@@ -151,12 +151,16 @@ export namespace State {
   /**
    * @hidden
    */
-  export interface Filter {}
-
-  export enum TagKey {
-    SAMPLE = "sample",
-    LABEL = "label",
+  export interface CategoricalFilter<T> {
+    values: T[];
+    isMatching: boolean;
+    exclude: boolean;
   }
+
+  /**
+   * @hidden
+   */
+  type Filter = CategoricalFilter<string>;
 
   export interface SortBySimilarityParameters {
     brainKey: string;
@@ -168,9 +172,7 @@ export namespace State {
   }
 
   export interface Filters {
-    tags?: {
-      [key in TagKey]?: string[];
-    };
+    _label_tags?: CategoricalFilter<string>;
     [key: string]: Filter;
   }
 

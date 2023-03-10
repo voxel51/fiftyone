@@ -82,7 +82,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     expandedPath,
     color,
     label: toLabel(field.path, nested),
-    hoverHanlders: {},
+    hoverHandlers: {},
     close() {
       setSelectedField(null);
     },
@@ -111,10 +111,13 @@ const FieldLabelAndInfo = ({
   template,
 }: FieldLabelAndInfo) => {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
+
   return (
     <>
       {template({ ...fieldInfo, FieldInfoIcon })}
-      {fieldInfo.open && <FieldInfoExpanded {...fieldInfo} />}
+      {field.path !== "_label_tags" && fieldInfo.open && (
+        <FieldInfoExpanded {...fieldInfo} />
+      )}
     </>
   );
 };
