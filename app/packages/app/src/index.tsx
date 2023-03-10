@@ -1,4 +1,4 @@
-import { Loading, ThemeProvider } from "@fiftyone/components";
+import { ErrorBoundary, Loading, ThemeProvider } from "@fiftyone/components";
 import { Setup, makeRoutes } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import {
@@ -171,12 +171,14 @@ const App: React.FC = ({}) => {
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
-    <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
-      <EventsContext.Provider value={{ session: null }}>
-        <ThemeProvider>
-          <App />
-        </ThemeProvider>
-      </EventsContext.Provider>
-    </BeforeScreenshotContext.Provider>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
+          <EventsContext.Provider value={{ session: null }}>
+            <App />
+          </EventsContext.Provider>
+        </BeforeScreenshotContext.Provider>
+      </ErrorBoundary>
+    </ThemeProvider>
   </RecoilRoot>
 );

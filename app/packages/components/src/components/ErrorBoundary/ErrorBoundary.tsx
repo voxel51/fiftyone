@@ -46,11 +46,16 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
         content: "\n\n" + e.extensions.stack.join("\n"),
       }));
     } else if (error instanceof NetworkError) {
-      messages = [
-        { message: "Code", content: String(error.code) },
-        { message: "Route", content: error.route },
-        { message: "Payload", content: JSON.stringify(error.payload, null, 2) },
-      ];
+      messages = [];
+      if (error.code)
+        messages.push({ message: "Code", content: String(error.code) });
+      if (error.route)
+        messages.push({ message: "Route", content: error.route });
+      if (error.payload)
+        messages.push({
+          message: "Payload",
+          content: JSON.stringify(error.payload, null, 2),
+        });
     }
 
     if (error.stack) {
