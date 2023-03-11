@@ -206,8 +206,9 @@ const LengthLoadable = ({ path }: { path: string }) => {
 const ListLoadable = ({ path }: { path: string }) => {
   const data = useData<any[]>(path);
   const values = useMemo(() => {
-    let d = Array.from(data);
-    return data ? d.map((value) => prettify(value as string)) : [];
+    return data
+      ? Array.from(data).map((value) => prettify(value as string))
+      : [];
   }, [data]);
 
   return (
