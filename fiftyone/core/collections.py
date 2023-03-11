@@ -1917,8 +1917,11 @@ class SampleCollection(object):
             isinstance(self, fov.DatasetView)
             and isinstance(field, fof.ListField)
             and isinstance(field.field, fof.EmbeddedDocumentField)
-            and issubclass(field.field.document_type, fol._HasID)
+            and isinstance(
+                self.get_field(field_name + ".id"), fof.ObjectIdField
+            )
         ):
+            field = self.get_field(field_name, leaf=True)
             list_fields = sorted(set(list_fields + [_field_name]))
 
         try:
