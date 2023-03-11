@@ -1690,6 +1690,7 @@ class SampleCollection(object):
         skip_none=False,
         expand_schema=True,
         dynamic=False,
+        validate=True,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
@@ -1828,6 +1829,8 @@ class SampleCollection(object):
                 raised if the root ``field_name`` does not exist
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
+            validate (True): whether to validate that the values are compliant
+                with the dataset schema before adding them
         """
         if self._is_group_field(field_name):
             raise ValueError(
@@ -1851,32 +1854,29 @@ class SampleCollection(object):
             )
 
         if expand_schema:
-            to_mongo, new_group_field = self._expand_schema_from_values(
+            field, new_group_field = self._expand_schema_from_values(
                 field_name,
                 values,
                 dynamic=dynamic,
                 allow_missing=_allow_missing,
             )
         else:
-            to_mongo = None
+            field = self.get_field(field_name)
             new_group_field = False
 
-        field = self.get_field(field_name)
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
-        if id_to_str:
-            to_mongo = lambda _id: ObjectId(_id)
-        elif to_mongo is None and field is not None:
-            to_mongo = field.to_mongo
+        if field is None and id_to_str:
+            field = fof.ObjectIdField()
 
         # Setting an entire label list document whose label elements have been
         # filtered is not allowed because this would delete the filtered labels
         if (
-            isinstance(field, fof.EmbeddedDocumentField)
+            isinstance(self, fov.DatasetView)
+            and isinstance(field, fof.EmbeddedDocumentField)
             and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
-            and isinstance(self, fov.DatasetView)
         ):
             label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
@@ -1901,6 +1901,8 @@ class SampleCollection(object):
                     key_field=key_field,
                     skip_none=skip_none,
                     expand_schema=expand_schema,
+                    dynamic=dynamic,
+                    validate=validate,
                     _allow_missing=_allow_missing,
                     _sample_ids=_sample_ids,
                     _frame_ids=_frame_ids,
@@ -1909,9 +1911,10 @@ class SampleCollection(object):
         # If we're directly updating a document list field of a dataset view,
         # then update list elements by ID in case the field has been filtered
         if (
-            isinstance(field, fof.ListField)
+            isinstance(self, fov.DatasetView)
+            and isinstance(field, fof.ListField)
             and isinstance(field.field, fof.EmbeddedDocumentField)
-            and isinstance(self, fov.DatasetView)
+            and issubclass(field.field.document_type, fol._HasID)
         ):
             list_fields = sorted(set(list_fields + [_field_name]))
 
@@ -1923,8 +1926,9 @@ class SampleCollection(object):
                     list_fields,
                     sample_ids=_sample_ids,
                     frame_ids=_frame_ids,
-                    to_mongo=to_mongo,
+                    field=field,
                     skip_none=skip_none,
+                    validate=validate,
                 )
             else:
                 self._set_sample_values(
@@ -1932,8 +1936,9 @@ class SampleCollection(object):
                     values,
                     list_fields,
                     sample_ids=_sample_ids,
-                    to_mongo=to_mongo,
+                    field=field,
                     skip_none=skip_none,
+                    validate=validate,
                 )
         except:
             # Add a group field converts the dataset's type, so if it fails we
@@ -1954,6 +1959,7 @@ class SampleCollection(object):
         values,
         dynamic=False,
         skip_none=False,
+        validate=True,
     ):
         """Sets the fields of the specified labels in the collection to the
         given values.
@@ -1994,25 +2000,23 @@ class SampleCollection(object):
                 missing data that should not be set
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
+            validate (True): whether to validate that the values are compliant
+                with the dataset schema before adding them
         """
-        to_mongo, _ = self._expand_schema_from_values(
+        field, _ = self._expand_schema_from_values(
             field_name, values.values(), dynamic=dynamic, flat=True
         )
-
-        field = self.get_field(field_name)
 
         _field_name, is_frame_field, _, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True
         )
 
+        if field is None and id_to_str:
+            field = fof.ObjectIdField()
+
         label_field = _field_name.split(".", 1)[0]
         if is_frame_field:
             label_field = self._FRAMES_PREFIX + label_field
-
-        if id_to_str:
-            to_mongo = lambda _id: ObjectId(_id)
-        elif to_mongo is None and field is not None:
-            to_mongo = field.to_mongo
 
         label_type, root = self._get_label_field_path(label_field)
         _root, _ = self._handle_frame_field(root)
@@ -2060,8 +2064,9 @@ class SampleCollection(object):
                 values,
                 id_map,
                 _root,
-                to_mongo=to_mongo,
+                field=field,
                 skip_none=skip_none,
+                validate=validate,
                 frames=is_frame_field,
             )
         else:
@@ -2072,8 +2077,9 @@ class SampleCollection(object):
                 _field_name,
                 _ids,
                 _values,
-                to_mongo=to_mongo,
+                field=field,
                 skip_none=skip_none,
+                validate=validate,
                 frames=is_frame_field,
             )
 
@@ -2086,10 +2092,12 @@ class SampleCollection(object):
         flat=False,
     ):
         field_name, _ = self._handle_group_field(field_name)
-        new_field = not self.has_field(field_name)
 
-        if not new_field and not dynamic:
-            return None, False
+        field = self.get_field(field_name)
+        new_group_field = False
+
+        if field is not None and not dynamic:
+            return field, new_group_field
 
         if not flat:
             _, _is_frame_field, _list_fields, _, _ = self._parse_field_name(
@@ -2102,15 +2110,12 @@ class SampleCollection(object):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
-        to_mongo = None
-        new_group_field = False
-
         if is_frame_field:
             new_root_field = not self.has_field(self._FRAMES_PREFIX + root)
 
             if new_root_field and root != field_name:
                 if allow_missing:
-                    return None, False
+                    return field, new_group_field
 
                 raise ValueError(
                     "Cannot infer an appropriate type for new frame field "
@@ -2121,8 +2126,8 @@ class SampleCollection(object):
             value = _get_non_none_value(values, level=level)
 
             if value is None:
-                if allow_missing or not new_field:
-                    return None, False
+                if field is not None or allow_missing:
+                    return field, new_group_field
 
                 raise ValueError(
                     "Cannot infer an appropriate type for new frame field "
@@ -2145,13 +2150,12 @@ class SampleCollection(object):
                 field = foo.create_implied_field(
                     field_name, value, dynamic=dynamic
                 )
-                to_mongo = field.to_mongo
         else:
             new_root_field = not self.has_field(root)
 
             if new_root_field and root != field_name:
                 if allow_missing:
-                    return None, False
+                    return field, new_group_field
 
                 raise ValueError(
                     "Cannot infer an appropriate type for new sample field "
@@ -2162,8 +2166,8 @@ class SampleCollection(object):
             value = _get_non_none_value(values, level=level)
 
             if value is None:
-                if allow_missing or not new_field:
-                    return None, False
+                if field is not None or allow_missing:
+                    return field, new_group_field
 
                 raise ValueError(
                     "Cannot infer an appropriate type for new sample field "
@@ -2179,7 +2183,7 @@ class SampleCollection(object):
                 self._dataset._add_group_field(field_name)
 
                 if not new_root_field:
-                    return None, False
+                    return field, new_group_field
 
                 slice_names = set()
                 for _value in values:
@@ -2216,9 +2220,8 @@ class SampleCollection(object):
                 field = foo.create_implied_field(
                     field_name, value, dynamic=dynamic
                 )
-                to_mongo = field.to_mongo
 
-        return to_mongo, new_group_field
+        return field, new_group_field
 
     def _set_sample_values(
         self,
@@ -2226,8 +2229,9 @@ class SampleCollection(object):
         values,
         list_fields,
         sample_ids=None,
-        to_mongo=None,
+        field=None,
         skip_none=False,
+        validate=True,
     ):
         if len(list_fields) > 1:
             raise ValueError(
@@ -2251,8 +2255,9 @@ class SampleCollection(object):
                 elem_ids,
                 values,
                 list_field,
-                to_mongo=to_mongo,
+                field=field,
                 skip_none=skip_none,
+                validate=validate,
             )
         else:
             if sample_ids is not None:
@@ -2264,8 +2269,9 @@ class SampleCollection(object):
                 field_name,
                 sample_ids,
                 values,
-                to_mongo=to_mongo,
+                field=field,
                 skip_none=skip_none,
+                validate=validate,
             )
 
     def _set_frame_values(
@@ -2275,8 +2281,9 @@ class SampleCollection(object):
         list_fields,
         sample_ids=None,
         frame_ids=None,
-        to_mongo=None,
+        field=None,
         skip_none=False,
+        validate=True,
     ):
         if len(list_fields) > 1:
             raise ValueError(
@@ -2309,8 +2316,9 @@ class SampleCollection(object):
                 elem_ids,
                 values,
                 list_field,
-                to_mongo=to_mongo,
+                field=field,
                 skip_none=skip_none,
+                validate=validate,
                 frames=True,
             )
         else:
@@ -2324,8 +2332,9 @@ class SampleCollection(object):
                 field_name,
                 frame_ids,
                 values,
-                to_mongo=to_mongo,
+                field=field,
                 skip_none=skip_none,
+                validate=validate,
                 frames=True,
             )
 
@@ -2334,8 +2343,9 @@ class SampleCollection(object):
         field_name,
         ids,
         values,
-        to_mongo=None,
+        field=None,
         skip_none=False,
+        validate=True,
         frames=False,
     ):
         ops = []
@@ -2346,8 +2356,10 @@ class SampleCollection(object):
             if etau.is_str(_id):
                 _id = ObjectId(_id)
 
-            if to_mongo is not None:
-                value = to_mongo(value)
+            if field is not None:
+                value = _serialize_value(
+                    field_name, field, value, validate=validate
+                )
 
             ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
 
@@ -2360,8 +2372,9 @@ class SampleCollection(object):
         elem_ids,
         values,
         list_field,
-        to_mongo=None,
+        field=None,
         skip_none=False,
+        validate=True,
         frames=False,
     ):
         root = list_field
@@ -2384,8 +2397,10 @@ class SampleCollection(object):
                 if value is None and skip_none:
                     continue
 
-                if to_mongo is not None:
-                    value = to_mongo(value)
+                if field is not None:
+                    value = _serialize_value(
+                        field_name, field, value, validate=validate
+                    )
 
                 if _elem_id is None:
                     raise ValueError(
@@ -2410,8 +2425,9 @@ class SampleCollection(object):
         values,
         id_map,
         list_field,
-        to_mongo=None,
+        field=None,
         skip_none=None,
+        validate=True,
         frames=False,
     ):
         root = list_field
@@ -2423,8 +2439,10 @@ class SampleCollection(object):
             if value is None and skip_none:
                 continue
 
-            if to_mongo is not None:
-                value = to_mongo(value)
+            if field is not None:
+                value = _serialize_value(
+                    field_name, field, value, validate=validate
+                )
 
             ops.append(
                 UpdateOne(
@@ -9429,6 +9447,22 @@ class SampleCollection(object):
             for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
         }
         return [values_map.get(i, None) for i in ids]
+
+
+def _serialize_value(field_name, field, value, validate=True):
+    if value is None:
+        return None
+
+    if validate:
+        try:
+            field.validate(value)
+        except Exception as e:
+            raise ValueError(
+                "Invalid value for field '%s'. Reason: %s"
+                % (field_name, str(e))
+            )
+
+    return field.to_mongo(value)
 
 
 def _unwind_values(values, level=0):
