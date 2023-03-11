@@ -2,7 +2,6 @@ import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  Field,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -21,11 +20,10 @@ import { prettify } from "../../../utils/generic";
 import * as fos from "@fiftyone/state";
 import { NameAndCountContainer } from "../../utils";
 
-import RegularEntry from "./RegularEntry";
-import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import RegularEntry from "./RegularEntry";
 import { makePseudoField } from "./utils";
-import Checkbox from "../../Common/Checkbox";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -235,7 +233,9 @@ const Loadable = ({ path }: { path: string }) => {
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  let data = useRecoilValue(fos.activeModalSample);
+  const activeSlice = useRecoilValue(fos.currentSlice(true));
+
+  let data = useRecoilValue(fos.activeModalSample(activeSlice));
 
   let field = useRecoilValue(fos.field(keys[0]));
 
