@@ -1861,8 +1861,11 @@ class SampleCollection(object):
                 allow_missing=_allow_missing,
             )
         else:
-            field = self.get_field(field_name)
+            field = None
             new_group_field = False
+
+        if field is None:
+            field = self.get_field(field_name)
 
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
@@ -2006,6 +2009,9 @@ class SampleCollection(object):
         field, _ = self._expand_schema_from_values(
             field_name, values.values(), dynamic=dynamic, flat=True
         )
+
+        if field is None:
+            field = self.get_field(field_name)
 
         _field_name, is_frame_field, _, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True

@@ -1193,6 +1193,15 @@ class SetValuesTests(unittest.TestCase):
         schema = dataset.get_field_schema(flat=True)
         self.assertIsInstance(schema["predictions.int"], fo.IntField)
 
+        dataset.set_values(
+            "predictions.labels",
+            [fo.Classification() for _ in range(len(dataset))],
+            dynamic=True,
+        )
+
+        for value in dataset.values("predictions.labels"):
+            self.assertIsInstance(value, fo.Classification)
+
         # Test embedded list field validation
 
         with self.assertRaises(ValueError):
