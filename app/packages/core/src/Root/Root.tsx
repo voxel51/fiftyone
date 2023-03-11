@@ -2,6 +2,8 @@ import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
 import { motion, AnimatePresence } from "framer-motion";
+import "antd/dist/antd.css";
+
 import {
   PreloadedQuery,
   useFragment,
@@ -11,15 +13,14 @@ import {
 import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
+import i18next from "../utils/i18n";
 
-import {
-  Button,
-  DocsLink,
-  GitHubLink,
-  Header,
-  SlackLink,
-  iconContainer,
-} from "@fiftyone/components";
+import { setLangType } from "../utils/lang";
+import { Menu, Dropdown } from "antd";
+// import LangTriggerIcon from "../images/lang-trigger.svg";
+
+import { Header, iconContainer } from "@fiftyone/components";
+import Icon from "@ant-design/icons";
 
 // built in plugins
 import "@fiftyone/map";
@@ -183,7 +184,46 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const dataset = getDatasetName(context);
   const { mode, setMode } = useColorScheme();
   const [_, setTheme] = useRecoilState(fos.theme);
+  const LangTrigger = React.memo(
+    (): JSX.Element => (
+      <svg
+        viewBox="0 0 24 24"
+        focusable="false"
+        width="1em"
+        height="1em"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M0 0h24v24H0z" fill="none"></path>
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z "></path>
+      </svg>
+    )
+  );
 
+  const langMenu = (
+    <Menu className={style.menu}>
+      <Menu.Item
+        key="lng-chinese"
+        onClick={(): void => {
+          // false positive
+          // eslint-disable-next-line
+          i18next.changeLanguage("zh-CN");
+          setLangType("zh-CN");
+        }}
+      >
+        中文（Chinese)
+      </Menu.Item>
+      <Menu.Item
+        key="lng-english"
+        onClick={(): void => {
+          i18next.changeLanguage("en");
+          setLangType("en");
+        }}
+      >
+        English
+      </Menu.Item>
+    </Menu>
+  );
   return (
     <>
       <Header
@@ -193,8 +233,15 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
       >
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
-        <div className={iconContainer}>
-          {!teamsSubmission && (
+        <Dropdown
+          placement="bottomRight"
+          overlay={langMenu}
+          className={style.dropdown}
+        >
+          <Icon component={LangTrigger} />
+        </Dropdown>
+        {/* <div className={iconContainer}> */}
+        {/* {!teamsSubmission && (
             <Button
               onClick={() => {
                 setTeams(true);
@@ -202,8 +249,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
             >
               Have a Team?
             </Button>
-          )}
-          {/* <IconButton
+          )} */}
+        {/* <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
             disableRipple
             onClick={() => {
@@ -218,10 +265,10 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
           </IconButton> */}
-          {/* <SlackLink />
+        {/* <SlackLink />
           <GitHubLink />
           <DocsLink /> */}
-        </div>
+        {/* </div> */}
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>

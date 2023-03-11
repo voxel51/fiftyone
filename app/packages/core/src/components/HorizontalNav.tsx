@@ -11,6 +11,7 @@ import { Resizable } from "re-resizable";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 
 import * as fos from "@fiftyone/state";
+import { useTranslation } from "react-i18next";
 
 export type Props = {};
 
@@ -80,13 +81,6 @@ const ToggleMaximize = React.memo(
   }
 );
 
-const DISTRIBUTION_PLOTS = [
-  "Sample tags",
-  "Label tags",
-  "Labels",
-  "Other fields",
-];
-
 const HorizontalNav = ({}: Props) => {
   const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(fos.activePlot);
@@ -105,10 +99,17 @@ const HorizontalNav = ({}: Props) => {
   const pluginPlots = useActivePlugins(PluginComponentType.Plot, { schema });
   const pluginPlotLabels = pluginPlots.map((p) => p.label);
 
+  const { t } = useTranslation();
+
+  const DISTRIBUTION_PLOTS = [
+    t("Sample tags"),
+    t("Label tags"),
+    t("Labels"),
+    t("Other fields"),
+  ];
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
   const hasPlot = buttonLabels.includes(activePlot);
   const compactLayout = useRecoilValue(fos.compactLayout);
-
   useEffect(() => {
     if (!hasPlot) {
       reset();
@@ -133,7 +134,7 @@ const HorizontalNav = ({}: Props) => {
                 }
               }}
             >
-              {e === "Sample tags"
+              {e === t("Sample tags")
                 ? `${capitalize(elementNames.singular)} tags`
                 : e}
             </PlotButton>

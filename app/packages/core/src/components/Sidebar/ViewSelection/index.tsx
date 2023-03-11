@@ -20,6 +20,7 @@ import {
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import { isElectron } from "@fiftyone/utilities";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { useTranslation } from "react-i18next";
 
 const DEFAULT_SELECTED: DatasetViewOption = {
   id: "1",
@@ -64,6 +65,7 @@ interface Props {
 }
 
 export default function ViewSelection(props: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
     selectedSavedViewState
   );
@@ -287,7 +289,7 @@ export default function ViewSelection(props: Props) {
           }}
           search={{
             value: viewSearch,
-            placeholder: "Search views...",
+            placeholder: t("Search views..."),
             onSearch: (term: string) => {
               setViewSearch(term);
             },
@@ -303,7 +305,7 @@ export default function ViewSelection(props: Props) {
                 <AddIcon fontSize="small" disabled={isEmptyView} />
               </Box>
               <TextContainer disabled={isEmptyView}>
-                Save current filters as view
+                {t("Save current filters as view")}
               </TextContainer>
             </LastOption>
           }
