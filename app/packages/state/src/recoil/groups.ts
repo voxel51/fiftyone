@@ -204,6 +204,10 @@ export const activeModalSample = selectorFamily<
   get:
     (sliceName) =>
     ({ get }) => {
+      if (!sliceName || !get(isGroup)) {
+        return get(modalAtom).sample;
+      }
+
       if (get(sidebarOverride) || get(pinnedSlice) === sliceName) {
         return get(pinnedSliceSample).sample;
       }
