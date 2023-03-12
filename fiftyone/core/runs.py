@@ -312,13 +312,14 @@ class Run(Configurable):
             )
 
     @classmethod
-    def list_runs(cls, samples, type=None):
+    def list_runs(cls, samples, type=None, **kwargs):
         """Returns the list of run keys on the given collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             type (None): a :class:`fiftyone.core.runs.Run` type. If provided,
                 only runs that are a subclass of this type are included
+            **kwargs: optional config parameters to match
 
         Returns:
             a list of run keys
@@ -329,12 +330,30 @@ class Run(Configurable):
         if etau.is_str(type):
             type = etau.get_class(type)
 
-        if type is not None:
+        if type is not None or kwargs:
             keys = []
             for key in run_docs.keys():
-                run_info = cls.get_run_info(samples, key)
-                if issubclass(run_info.config.run_cls, type):
-                    keys.append(key)
+                try:
+                    run_info = cls.get_run_info(samples, key)
+                    config = run_info.config
+                except:
+                    logger.warning(
+                        "Failed to load info for %s with key '%s'",
+                        cls._run_str(),
+                        key,
+                    )
+                    continue
+
+                if type is not None and not issubclass(config.run_cls, type):
+                    continue
+
+                if kwargs and any(
+                    getattr(config, key, None) != value
+                    for key, value in kwargs.items()
+                ):
+                    continue
+
+                keys.append(key)
         else:
             keys = run_docs.keys()
 

@@ -3107,11 +3107,12 @@ class SampleCollection(object):
             type (None): an :class:`fiftyone.core.evaluations.EvaluationMethod`
                 type. If provided, only runs that are a subclass of this type
                 are included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of evaluation keys
         """
-        return foev.EvaluationMethod.list_runs(self, type=type)
+        return foev.EvaluationMethod.list_runs(self, type=type, **kwargs)
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -3203,18 +3204,19 @@ class SampleCollection(object):
         """
         return brain_key in self.list_brain_runs()
 
-    def list_brain_runs(self, type=None):
+    def list_brain_runs(self, type=None, **kwargs):
         """Returns a list of all brain keys on this collection.
 
         Args:
             type (None): a :class:`fiftyone.core.brain.BrainMethod` type. If
                 provided, only runs that are a subclass of this type are
                 included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of brain keys
         """
-        return fob.BrainMethod.list_runs(self, type=type)
+        return fob.BrainMethod.list_runs(self, type=type, **kwargs)
 
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
@@ -3290,41 +3292,6 @@ class SampleCollection(object):
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
-
-    def _get_similarity_keys(self, **kwargs):
-        from fiftyone.brain import SimilarityConfig
-
-        return self._get_brain_runs_with_type(SimilarityConfig, **kwargs)
-
-    def _get_visualization_keys(self, **kwargs):
-        from fiftyone.brain import VisualizationConfig
-
-        return self._get_brain_runs_with_type(VisualizationConfig, **kwargs)
-
-    def _get_brain_runs_with_type(self, run_type, **kwargs):
-        brain_keys = []
-        for brain_key in self.list_brain_runs():
-            try:
-                brain_info = self.get_brain_info(brain_key)
-            except:
-                logger.warning(
-                    "Failed to load info for brain method run '%s'", brain_key
-                )
-                continue
-
-            run_cls = etau.get_class(brain_info.config.cls)
-            if not issubclass(run_cls, run_type):
-                continue
-
-            if any(
-                getattr(brain_info.config, key, None) != value
-                for key, value in kwargs.items()
-            ):
-                continue
-
-            brain_keys.append(brain_key)
-
-        return brain_keys
 
     @classmethod
     def list_view_stages(cls):
@@ -7960,11 +7927,12 @@ class SampleCollection(object):
             type (None): a :class:`fiftyone.core.annotations.AnnotationMethod`
                 type. If provided, only runs that are a subclass of this type
                 are included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationMethod.list_runs(self, type=type)
+        return foan.AnnotationMethod.list_runs(self, type=type, **kwargs)
 
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
