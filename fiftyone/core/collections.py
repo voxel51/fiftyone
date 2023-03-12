@@ -3100,7 +3100,7 @@ class SampleCollection(object):
         """
         return eval_key in self.list_evaluations()
 
-    def list_evaluations(self, type=None):
+    def list_evaluations(self, type=None, **kwargs):
         """Returns a list of all evaluation keys on this collection.
 
         Args:
@@ -7920,7 +7920,7 @@ class SampleCollection(object):
         """
         return anno_key in self.list_annotation_runs()
 
-    def list_annotation_runs(self, type=None):
+    def list_annotation_runs(self, type=None, **kwargs):
         """Returns a list of all annotation keys on this collection.
 
         Args:
