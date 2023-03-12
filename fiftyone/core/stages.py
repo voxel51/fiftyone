@@ -7612,7 +7612,7 @@ def _get_default_similarity_run(sample_collection):
 
         # It's allowable to use a patches index too
         if not brain_keys:
-            brain_keys = sample_collection.list_brain_runs()
+            brain_keys = sample_collection.list_brain_runs(type=Similarity)
 
         if not brain_keys:
             raise ValueError(
