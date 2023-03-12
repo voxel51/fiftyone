@@ -626,12 +626,19 @@ def _make_keypoint_list_filter(args, view, path, field):
 
     if isinstance(field.field, (fof.FloatField, fof.IntField)):
         f = F(name)
-        mn, mx = args["range"]
-        expr = (f >= mn) & (f <= mx)
-        if args["exclude"]:
-            expr = ~expr
+        #adding support if filter will applied on categorical variable i.e. 'labels' 
+        k = F('labels')
+        if 'values' in args:
+            val = args["values"]
 
-        return {"filter": expr}
+            return {"filter": (k == val)}
+        else:
+            mn, mx = args["range"]
+            expr = (f >= mn) & (f <= mx)
+            if args["exclude"]:
+                expr = ~expr
+
+            return {"filter": expr}
 
 
 def _apply_others(expr, f, args, is_label):
