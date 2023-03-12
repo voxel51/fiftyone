@@ -17,6 +17,8 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
+from scipy.spatial import distance
+
 from .utils3d import compute_cuboid_iou as _compute_cuboid_iou
 
 sg = fou.lazy_import("shapely.geometry")
@@ -88,6 +90,12 @@ def compute_ious(
         return _compute_polyline_ious(
             preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
         )
+
+
+    if isinstance(preds[0], fol.Keypoints):
+            return _compute_keypoint_similarity(
+                preds, gts, iscrowd=iscrowd, classwise=classwise
+            )
 
     if use_masks:
         # @todo when tolerance is None, consider using dense masks rather than
@@ -554,6 +562,28 @@ def _compute_polyline_ious(
                 ious[i, j] = iou
 
         return ious
+
+
+def _compute_keypoint_similarity(preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None):
+    #calculate euclidean distance of each keypoint
+    sim_score = np.zeros((len(preds), len(gts)))
+
+    for j, gt in enumerate(gts):
+        for i, pt in enumerate(preds):
+            gt_points=[]
+            pt_points=[]
+            for x in gt['points']:
+                gt_points.append(x)
+            for y in pt['points']:
+                pt_points.append(y)
+
+            gt_points=sum(gt_points, [])
+
+            pt_points=sum(pt_points, [])
+
+            sim_score[i, j] = 1/(1 + distance.euclidean(tuple(gt_points),tuple(pt_points)))
+
+    return sim_score
 
 
 def _compute_mask_ious(

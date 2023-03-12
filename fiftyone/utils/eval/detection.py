@@ -130,7 +130,7 @@ def evaluate_detections(
     fov.validate_collection_label_fields(
         samples,
         (pred_field, gt_field),
-        (fol.Detections, fol.Polylines, fol.TemporalDetections),
+        (fol.Detections, fol.Polylines, fol.TemporalDetections, fol.Keypoints),
         same_type=True,
     )
 
