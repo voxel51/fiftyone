@@ -3887,6 +3887,61 @@ class DynamicFieldTests(unittest.TestCase):
             sample.save()
 
     @drop_datasets
+    def test_dynamic_list_fields(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            test1=[fo.DynamicEmbeddedDocument(int_field=1, float_field=0.1)],
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        schema = dataset1.get_field_schema(flat=True)
+        self.assertIn("test1", schema)
+        self.assertIn("test1.int_field", schema)
+        self.assertIn("test1.float_field", schema)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample_field(
+            "test2",
+            fo.ListField,
+            subfield=fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            test2=[fo.DynamicEmbeddedDocument(int_field=1, float_field=0.1)],
+        )
+        dataset2.add_sample(sample2, dynamic=True)
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("test2", schema)
+        self.assertIn("test2.int_field", schema)
+        self.assertIn("test2.float_field", schema)
+
+        dataset1.merge_samples(dataset2)
+
+        schema = dataset1.get_field_schema(flat=True)
+        self.assertIn("test2", schema)
+        self.assertIn("test2.int_field", schema)
+        self.assertIn("test2.float_field", schema)
+
+        dataset3 = fo.Dataset()
+        dataset3.add_sample(fo.Sample(filepath="image3.jpg"))
+
+        dataset3.set_values(
+            "test3",
+            [[fo.DynamicEmbeddedDocument(int_field=1, float_field=0.1)]],
+            dynamic=True,
+        )
+
+        schema = dataset3.get_field_schema(flat=True)
+        self.assertIn("test3", schema)
+        self.assertIn("test3.int_field", schema)
+        self.assertIn("test3.float_field", schema)
+
+    @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):
         dataset1 = fo.Dataset()
         dataset1.media_type = "video"
@@ -4514,13 +4569,13 @@ class CustomEmbeddedDocumentTests(unittest.TestCase):
         self.assertIsInstance(sample_view.weather.metadata, _LabelMetadata)
 
 
-class _CameraInfo(foo.EmbeddedDocument):
+class _CameraInfo(fo.EmbeddedDocument):
     camera_id = fof.StringField(required=True)
     quality = fof.FloatField()
     description = fof.StringField()
 
 
-class _LabelMetadata(foo.DynamicEmbeddedDocument):
+class _LabelMetadata(fo.DynamicEmbeddedDocument):
     created_at = fof.DateTimeField(default=datetime.utcnow)
 
     model_name = fof.StringField()

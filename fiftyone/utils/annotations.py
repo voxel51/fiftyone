@@ -1021,8 +1021,8 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        **kwargs: optional keyword arguments for the run's
-            :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+        **kwargs: keyword arguments for the run's
+            :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
             method
 
     Returns:
@@ -1766,6 +1766,20 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
         """The name of the annotation backend."""
         return self.name
 
+    def load_credentials(self, **kwargs):
+        self._load_parameters(**kwargs)
+
+    def _load_parameters(self, **kwargs):
+        name = self.method
+        parameters = fo.annotation_config.backends.get(name, {})
+
+        for name, value in kwargs.items():
+            if value is None:
+                value = parameters.get(name, None)
+
+            if value is not None:
+                setattr(self, name, value)
+
     def _sanitize_label_schema(self, label_schema):
         if not label_schema:
             return
@@ -2138,17 +2152,6 @@ class AnnotationResults(foa.AnnotationResults):
     def cleanup(self):
         """Deletes all information for this run from the annotation backend."""
         raise NotImplementedError("subclass must implement cleanup()")
-
-    def _load_config_parameters(self, **kwargs):
-        config = self.config
-        parameters = fo.annotation_config.backends.get(config.name, {})
-
-        for name, value in kwargs.items():
-            if value is None:
-                value = parameters.get(name, None)
-
-            if value is not None:
-                setattr(config, name, value)
 
     def _update_id_map(self, label_field, new_id_map):
         """Adds the given label IDs into this object's :attr:`id_map`.

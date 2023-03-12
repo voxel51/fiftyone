@@ -8,11 +8,13 @@ import {
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {
+  currentSlice,
+  defaultGroupSlice,
   getSampleSrc,
   groupField,
   groupId,
+  groupSample as groupSampleSelectorFamily,
   hasPinnedSlice,
-  mainGroupSample,
   pinnedSlice,
   pinnedSliceSample,
   selectedMediaField,
@@ -42,7 +44,7 @@ import { GroupBar, GroupSampleBar } from "./Bars";
 import Looker from "./Looker";
 import Sample from "./Sample";
 
-const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "600";
+const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
 const PixelatingSuspense = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -86,6 +88,7 @@ const GroupSample: React.FC<
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
+
   return (
     <div
       className={
@@ -120,17 +123,54 @@ const useSlice = (sample: any): string => {
   return sample[field].name;
 };
 
+const DefaultGroupSample: React.FC<{
+  lookerRef: MutableRefObject<VideoLooker | undefined>;
+  lookerRefCallback?: (looker) => void;
+}> = ({ lookerRef, lookerRefCallback }) => {
+  const defaultSlice = useRecoilValue(defaultGroupSlice);
+  const sample = useRecoilValue(groupSampleSelectorFamily(defaultSlice));
+  const clearModal = useClearModal();
+  const reset = useResetRecoilState(sidebarOverride);
+
+  const hover = fos.useHoveredSample(sample);
+
+  return (
+    <GroupSample
+      sampleId={sample._id}
+      slice={defaultSlice}
+      pinned={false}
+      onClick={reset}
+      {...hover.handlers}
+    >
+      <Looker
+        key={sample._id}
+        sample={sample}
+        lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
+        onClose={clearModal}
+      />
+    </GroupSample>
+  );
+};
+
 const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
-}> = ({ lookerRef }) => {
-  const sample = useRecoilValue(mainGroupSample);
-
+  lookerRefCallback?: (looker) => void;
+}> = ({ lookerRef, lookerRefCallback }) => {
+  const sample = useRecoilValue(groupSampleSelectorFamily(null));
+  const currentModalSlice = useRecoilValue(currentSlice(true));
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
   const reset = useResetRecoilState(sidebarOverride);
-
   const slice = useSlice(sample);
   const hover = fos.useHoveredSample(sample);
+
+  if (
+    sample._media_type === "point-cloud" &&
+    currentModalSlice === sample.group.name
+  ) {
+    return <DefaultGroupSample lookerRef={lookerRef} />;
+  }
 
   return (
     <GroupSample
@@ -140,7 +180,13 @@ const MainSample: React.FC<{
       onClick={reset}
       {...hover.handlers}
     >
-      <Looker key={sample._id} lookerRef={lookerRef} onClose={clearModal} />
+      <Looker
+        sample={sample}
+        key={sample._id}
+        lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
+        onClose={clearModal}
+      />
     </GroupSample>
   );
 };
@@ -206,7 +252,9 @@ const PinnedSample: React.FC = () => {
   );
 };
 
-const DualView: React.FC = () => {
+const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
+  lookerRefCallback,
+}) => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
   const key = useRecoilValue(groupId);
@@ -276,7 +324,10 @@ const DualView: React.FC = () => {
 
             {isImageVisible ? (
               <PixelatingSuspense>
-                <MainSample lookerRef={lookerRef} />
+                <MainSample
+                  lookerRef={lookerRef}
+                  lookerRefCallback={lookerRefCallback}
+                />
               </PixelatingSuspense>
             ) : is3DVisible ? (
               <PixelatingSuspense>
@@ -302,21 +353,23 @@ const DualView: React.FC = () => {
   );
 };
 
-const Group: React.FC = () => {
+const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
+  lookerRefCallback,
+}) => {
   const hasPinned = useRecoilValue(hasPinnedSlice);
   const key = useRecoilValue(groupId);
 
   if (!hasPinned) {
     return (
       <>
-        <GroupList key={key} /> <Sample />
+        <GroupList key={key} /> <Sample lookerRefCallback={lookerRefCallback} />
       </>
     );
   }
 
   return (
     <Suspense>
-      <DualView />
+      <DualView lookerRefCallback={lookerRefCallback} />
     </Suspense>
   );
 };

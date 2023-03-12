@@ -205,7 +205,7 @@ const Column: React.FC = () => {
           ...opts,
           selected: snapshot.getLoadable(fos.selectedSamples).contents.has(id),
           highlight:
-            (await snapshot.getPromise(fos.mainGroupSample))?._id === id,
+            (await snapshot.getPromise(fos.groupSample(null)))?._id === id,
         });
       },
     [opts]

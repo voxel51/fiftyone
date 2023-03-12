@@ -84,6 +84,15 @@ class RunConfig(Config):
         """The :class:`Run` class associated with this config."""
         return etau.get_class(self.cls[: -len("Config")])
 
+    def load_credentials(self, **kwargs):
+        """Loads any necessary credentials from the given keyword arguments or
+        the relevant FiftyOne config.
+
+        Args:
+            **kwargs: subclass-specific credentials
+        """
+        pass
+
     def build(self):
         """Builds the :class:`Run` instance associated with this config.
 
@@ -312,13 +321,14 @@ class Run(Configurable):
             )
 
     @classmethod
-    def list_runs(cls, samples, type=None):
+    def list_runs(cls, samples, type=None, **kwargs):
         """Returns the list of run keys on the given collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             type (None): a :class:`fiftyone.core.runs.Run` type. If provided,
                 only runs that are a subclass of this type are included
+            **kwargs: optional config parameters to match
 
         Returns:
             a list of run keys
@@ -329,12 +339,30 @@ class Run(Configurable):
         if etau.is_str(type):
             type = etau.get_class(type)
 
-        if type is not None:
+        if type is not None or kwargs:
             keys = []
             for key in run_docs.keys():
-                run_info = cls.get_run_info(samples, key)
-                if issubclass(run_info.config.run_cls, type):
-                    keys.append(key)
+                try:
+                    run_info = cls.get_run_info(samples, key)
+                    config = run_info.config
+                except:
+                    logger.warning(
+                        "Failed to load info for %s with key '%s'",
+                        cls._run_str(),
+                        key,
+                    )
+                    continue
+
+                if type is not None and not issubclass(config.run_cls, type):
+                    continue
+
+                if kwargs and any(
+                    getattr(config, key, None) != value
+                    for key, value in kwargs.items()
+                ):
+                    continue
+
+                keys.append(key)
         else:
             keys = run_docs.keys()
 
@@ -527,7 +555,9 @@ class Run(Configurable):
         run_doc.save()
 
     @classmethod
-    def load_run_results(cls, samples, key, cache=True, load_view=True):
+    def load_run_results(
+        cls, samples, key, cache=True, load_view=True, **kwargs
+    ):
         """Loads the :class:`RunResults` for the given key on the collection.
 
         Args:
@@ -536,6 +566,8 @@ class Run(Configurable):
             cache (True): whether to cache the results on the collection
             load_view (True): whether to load the run view in the results
                 (True) or the full dataset (False)
+            **kwargs: keyword arguments for the run's
+                :meth:`RunConfig.load_credentials` method
 
         Returns:
             a :class:`RunResults`, or None if the run did not save results
@@ -554,9 +586,10 @@ class Run(Configurable):
         if not run_doc.results:
             return None
 
-        # Load run info
+        # Load run config
         run_info = cls.get_run_info(samples, key)
         config = run_info.config
+        config.load_credentials(**kwargs)
 
         if load_view:
             run_samples = cls.load_run_view(samples, key)
@@ -730,7 +763,14 @@ class Run(Configurable):
 
 
 class RunResults(etas.Serializable):
-    """Base class for storing the results of a run."""
+    """Base class for storing the results of a run.
+
+    Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`RunConfig` used
+        backend (None): a :class:`Run` instance. If not provided, one is
+            instantiated from ``config``
+    """
 
     def __init__(self, samples, config, backend=None):
         if backend is None and config is not None:
@@ -771,15 +811,6 @@ class RunResults(etas.Serializable):
 
     def _set_key(self, key):
         self._key = key
-
-    def load_credentials(self, **kwargs):
-        """Loads any necessary credentials to use these results from the given
-        keyword arguments or the relevant FiftyOne config.
-
-        Args:
-            **kwargs: subclass-specific credentials
-        """
-        pass
 
     def save(self):
         """Saves the results to the database."""

@@ -85,7 +85,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.members = members
         self.classes_as_attrs = classes_as_attrs
 
-        # store privately so it isn't serialized
+        # store privately so these aren't serialized
         self._api_key = api_key
 
     @property
@@ -102,6 +102,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             return True
 
         return False
+
+    def load_credentials(self, url=None, api_key=None):
+        self._load_parameters(url=url, api_key=api_key)
 
 
 class LabelboxBackend(foua.AnnotationBackend):
@@ -1257,16 +1260,6 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         super().__init__(samples, config, id_map, backend=backend)
         self.project_id = project_id
         self.frame_id_map = frame_id_map
-
-    def load_credentials(self, url=None, api_key=None):
-        """Load the Labelbox credentials from the given keyword arguments or
-        the FiftyOne annotation config.
-
-        Args:
-            url (None): the url of the Labelbox server
-            api_key (None): the Labelbox API key
-        """
-        self._load_config_parameters(url=url, api_key=api_key)
 
     def launch_editor(self):
         """Launches the Labelbox editor and loads the project for this
