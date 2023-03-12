@@ -496,17 +496,6 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         """
         self._load_config_parameters(url=url, api_key=api_key)
 
-    def _load_config_parameters(self, **kwargs):
-        config = self.config
-        parameters = fo.annotation_config.backends.get(config.name, {})
-
-        for name, value in kwargs.items():
-            if value is None:
-                value = parameters.get(name, None)
-
-            if value is not None:
-                setattr(config, name, value)
-
     def launch_editor(self):
         """Open a Label Studio tab in browser."""
         project_url = f"{self.config.url}/projects/{self.project_id}"
