@@ -43,9 +43,10 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
-        url: the URL of the Label Studio server
-        api_key: the API key to use for authentication
-        project_name: the name of the project to use on the Label Studio server
+        url (None): the URL of the Label Studio server
+        api_key (None): the API key to use for authentication
+        project_name (None): the name of the project to use on the Label Studio
+            server
     """
 
     def __init__(
@@ -63,6 +64,7 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
         self.url = url
         self.project_name = project_name
 
+        # store privately so these aren't serialized
         self._api_key = api_key
 
     @property
@@ -72,6 +74,9 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
     @api_key.setter
     def api_key(self, value):
         self._api_key = value
+
+    def load_credentials(self, url=None, api_key=None):
+        self._load_parameters(url=url, api_key=api_key)
 
 
 class LabelStudioBackend(foua.AnnotationBackend):
@@ -485,16 +490,6 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         super().__init__(samples, config, id_map=id_map, backend=backend)
         self.project_id = project_id
         self.uploaded_tasks = uploaded_tasks
-
-    def load_credentials(self, url=None, api_key=None):
-        """Load the Label Studio credentials from the given keyword arguments
-        or the FiftyOne annotation config.
-
-        Args:
-            url (None): the url of the Label Studio server
-            api_key (None): the Label Studio API key
-        """
-        self._load_config_parameters(url=url, api_key=api_key)
 
     def launch_editor(self):
         """Open a Label Studio tab in browser."""

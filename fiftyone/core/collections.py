@@ -3144,20 +3144,16 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
             cache (True): whether to cache the results on the collection
-            **kwargs: optional keyword arguments for the run's
-                :meth:`fiftyone.core.evaluation.EvaluationResults.load_credentials`
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.evaluation.EvaluationMethodConfig.load_credentials`
                 method
 
         Returns:
             a :class:`fiftyone.core.evaluation.EvaluationResults`
         """
-        results = foev.EvaluationMethod.load_run_results(
-            self, eval_key, cache=cache
+        return foev.EvaluationMethod.load_run_results(
+            self, eval_key, cache=cache, **kwargs
         )
-        if results is not None:
-            results.load_credentials(**kwargs)
-
-        return results
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -3250,19 +3246,16 @@ class SampleCollection(object):
             cache (True): whether to cache the results on the collection
             load_view (True): whether to load the view on which the results
                 were computed (True) or the full dataset (False)
-            **kwargs: optional keyword arguments for the run's
-                :meth:`fiftyone.core.brain.BrainResults.load_credentials` method
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.brain.BrainMethodConfig.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.core.brain.BrainResults`
         """
-        results = fob.BrainMethod.load_run_results(
-            self, brain_key, cache=cache, load_view=load_view
+        return fob.BrainMethod.load_run_results(
+            self, brain_key, cache=cache, load_view=load_view, **kwargs
         )
-        if results is not None:
-            results.load_credentials(**kwargs)
-
-        return results
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -7972,20 +7965,16 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
             cache (True): whether to cache the results on the collection
-            **kwargs: optional keyword arguments for run's
-                :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+            **kwargs: keyword arguments for run's
+                :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
 
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationMethod.load_run_results(
-            self, anno_key, cache=cache, load_view=False
+        return foan.AnnotationMethod.load_run_results(
+            self, anno_key, cache=cache, load_view=False, **kwargs
         )
-        if results is not None:
-            results.load_credentials(**kwargs)
-
-        return results
 
     def load_annotation_view(self, anno_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -8034,8 +8023,8 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
-            **kwargs: optional keyword arguments for the run's
-                :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
 
         Returns:

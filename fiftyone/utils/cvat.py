@@ -3146,6 +3146,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     def headers(self, value):
         self._headers = value
 
+    def load_credentials(
+        self, url=None, username=None, password=None, headers=None
+    ):
+        self._load_parameters(
+            url=url, username=username, password=password, headers=headers
+        )
+
 
 class CVATBackend(foua.AnnotationBackend):
     """Class for interacting with the CVAT annotation backend."""
@@ -3275,23 +3282,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
-
-    def load_credentials(
-        self, url=None, username=None, password=None, headers=None
-    ):
-        """Load the CVAT credentials from the given keyword arguments or the
-        FiftyOne annotation config.
-
-        Args:
-            url (None): the url of the CVAT server
-            username (None): the CVAT username
-            password (None): the CVAT password
-            headers (None): an optional dict of headers to add to all CVAT API
-                requests
-        """
-        self._load_config_parameters(
-            url=url, username=username, password=password, headers=headers
-        )
 
     def launch_editor(self):
         """Launches the CVAT editor and loads the first task for this
