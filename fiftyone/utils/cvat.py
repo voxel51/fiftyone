@@ -4225,6 +4225,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "with existing projects, provide the 'occluded_attr' "
                     "and 'group_id_attr' arguments."
                 )
+
             config.label_schema = label_schema
 
         num_samples = len(samples)

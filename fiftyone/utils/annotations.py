@@ -251,7 +251,7 @@ def annotate(
     )
 
     # It is possible that the annotation backend may update the run's config
-    # (e.g., when uploading to an existing project, its label schema may be
+    # (eg when uploading to an existing project, the label schema may be
     # inherited), so we update the config now
     anno_backend.update_run_config(samples, anno_key, config)
 

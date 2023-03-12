@@ -814,14 +814,20 @@ class RunResults(etas.Serializable):
 
     def save(self):
         """Saves the results to the database."""
-        run = self._backend
-        samples = self._samples
-        key = self._key
-
         # Only cache if the results are already cached
-        cache = run.has_cached_run_results(samples, key)
+        cache = self.backend.has_cached_run_results(self.samples, self.key)
 
-        run.save_run_results(samples, key, self, overwrite=True, cache=cache)
+        self.backend.save_run_results(
+            self.samples,
+            self.key,
+            self,
+            overwrite=True,
+            cache=cache,
+        )
+
+    def save_config(self):
+        """Saves these results config to the database."""
+        self.backend.update_run_config(self.samples, self.key, self.config)
 
     def attributes(self):
         """Returns the list of class attributes that will be serialized by
