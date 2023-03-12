@@ -626,7 +626,7 @@ def _make_keypoint_list_filter(args, view, path, field):
 
     if isinstance(field.field, (fof.FloatField, fof.IntField)):
         f = F(name)
-        #adding support if filter will applied on categorical variable i.e. 'labels' 
+        #adding support if filter will applied on categorical variable i.e. 'label' 
         k = F('labels')
         if 'values' in args:
             val = args["values"]
