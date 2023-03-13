@@ -1,11 +1,16 @@
 import {
   ModalSample,
   selectedLabels,
+  useBrowserStorage,
   useUnprocessedStateUpdate,
 } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-import { selectorFamily, Snapshot, useRecoilCallback } from "recoil";
-import { searchBrainKeyValue } from "./Similar";
+import {
+  selectorFamily,
+  Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
@@ -56,6 +61,10 @@ export const getQueryIds = async (
 export const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
+  const datasetId = useRecoilValue(fos.dataset).id;
+  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
+    useBrowserStorage("lastUsedBrainKeys");
+  const current = lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -75,6 +84,14 @@ export const useSortBySimilarity = (close) => {
         };
 
         combinedParameters["query"] = query ?? queryIds;
+
+        // save the brainkey into local storage
+        setLastUsedBrainKeys(
+          JSON.stringify({
+            ...current,
+            [datasetId]: combinedParameters.brainKey,
+          })
+        );
 
         try {
           const data: fos.StateUpdate = await getFetchFunction()(
@@ -97,7 +114,6 @@ export const useSortBySimilarity = (close) => {
             set(fos.selectedLabels, {});
             set(fos.hiddenLabels, {});
             set(fos.modal, null);
-            set(searchBrainKeyValue, combinedParameters.brainKey);
             close();
 
             return data;

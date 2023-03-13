@@ -16,6 +16,7 @@ import {
   sortType,
   useSortBySimilarity,
 } from "./utils";
+import { useBrowserStorage } from "@fiftyone/state";
 
 const DEFAULT_K = 25;
 
@@ -33,11 +34,6 @@ interface SortBySimilarityProps {
   bounds?: any; // fix me
 }
 
-export const searchBrainKeyValue = atom<string>({
-  key: "searchBrainKeyValue",
-  default: "",
-});
-
 const SortBySimilarity = ({
   modal,
   bounds,
@@ -45,13 +41,18 @@ const SortBySimilarity = ({
   isImageSearch,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
-  const lastUsedBrainKey = useRecoilValue(searchBrainKeyValue);
+  const datasetId = useRecoilValue(fos.dataset).id;
+  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
+    useBrowserStorage("lastUsedBrainKeys");
+  const lastUsedBrainkey = lastUsedBrainkeys
+    ? JSON.parse(lastUsedBrainkeys)[datasetId]
+    : null;
   const [open, setOpen] = useState(false);
 
   const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
     () =>
       current || {
-        brainKey: lastUsedBrainKey,
+        brainKey: lastUsedBrainkey,
         distField: null,
         reverse: false,
         k: DEFAULT_K,
