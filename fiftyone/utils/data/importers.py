@@ -1540,9 +1540,6 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         if self._media_fields:
             _parse_media_fields(sd, self._media_fields, self._rel_dir)
 
-        if self._media_fields:
-            _parse_media_fields(sd, self._media_fields, self._rel_dir)
-
         if (self._media_type == fomm.VIDEO) or (
             self._media_type == fomm.GROUP
             and fomm.get_media_type(sd["filepath"]) == fomm.VIDEO
@@ -2007,22 +2004,24 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
+# @todo dynamically get these
+_MEDIA_FIELDS = {
+    "Segmentation": "mask_path",
+    "Heatmap": "map_path",
+    "OrthographicProjectionMetadata": "filepath",
+}
+
+
 def _parse_media_fields(sd, media_fields, rel_dir):
     for field_name in media_fields:
         value = sd.get(field_name, None)
-        if value is None:
-            continue
-
         if isinstance(value, dict):
-            label_type = value.get("_cls", None)
-            if label_type == "Segmentation":
-                mask_path = value.get("mask_path", None)
-                if mask_path is not None and not fos.isabs(mask_path):
-                    value["mask_path"] = fos.join(rel_dir, mask_path)
-            elif label_type == "Heatmap":
-                map_path = value.get("map_path", None)
-                if map_path is not None and not fos.isabs(map_path):
-                    value["map_path"] = fos.join(rel_dir, map_path)
+            document_type = value.get("_cls", None)
+            key = _MEDIA_FIELDS.get(document_type, None)
+            if key is not None:
+                path = value.get(key, None)
+                if path is not None and not fos.isabs(path):
+                    value[key] = fos.join(rel_dir, path)
         elif etau.is_str(value):
             if not fos.isabs(value):
                 sd[field_name] = fos.join(rel_dir, value)
