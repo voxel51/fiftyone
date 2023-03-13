@@ -247,6 +247,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
         return OpenImagesDetectionResults(
             samples,
             self.config,
+            eval_key,
             matches,
             precision,
             recall,
@@ -263,6 +264,7 @@ class OpenImagesDetectionResults(DetectionResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`OpenImagesEvaluationConfig` used
+        eval_key: the evaluation key
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -280,6 +282,7 @@ class OpenImagesDetectionResults(DetectionResults):
         self,
         samples,
         config,
+        eval_key,
         matches,
         precision,
         recall,
@@ -291,6 +294,7 @@ class OpenImagesDetectionResults(DetectionResults):
         super().__init__(
             samples,
             config,
+            eval_key,
             matches,
             classes=classes,
             missing=missing,
@@ -408,7 +412,7 @@ class OpenImagesDetectionResults(DetectionResults):
             raise ValueError("Classes %s not found" % missing_classes)
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         precision = d["precision"]
         recall = d["recall"]
         thresholds = d.get("thresholds", None)
@@ -416,6 +420,7 @@ class OpenImagesDetectionResults(DetectionResults):
             d,
             samples,
             config,
+            eval_key,
             precision=precision,
             recall=recall,
             thresholds=thresholds,

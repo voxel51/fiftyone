@@ -369,6 +369,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         return DetectionResults(
             samples,
             self.config,
+            eval_key,
             matches,
             classes=classes,
             missing=missing,
@@ -482,6 +483,7 @@ class DetectionResults(BaseEvaluationResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`DetectionEvaluationConfig` used
+        eval_key: the evaluation key
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -497,6 +499,7 @@ class DetectionResults(BaseEvaluationResults):
         self,
         samples,
         config,
+        eval_key,
         matches,
         classes=None,
         missing=None,
@@ -517,6 +520,7 @@ class DetectionResults(BaseEvaluationResults):
         super().__init__(
             samples,
             config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,
@@ -530,7 +534,7 @@ class DetectionResults(BaseEvaluationResults):
         self.ious = np.array(ious)
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         ious = d["ious"]
@@ -555,6 +559,7 @@ class DetectionResults(BaseEvaluationResults):
         return cls(
             samples,
             config,
+            eval_key,
             matches,
             classes=classes,
             missing=missing,

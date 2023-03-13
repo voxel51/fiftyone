@@ -154,6 +154,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
             return DetectionResults(
                 samples,
                 self.config,
+                eval_key,
                 matches,
                 classes=classes,
                 missing=missing,
@@ -278,6 +279,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
         return ActivityNetDetectionResults(
             samples,
             self.config,
+            eval_key,
             matches,
             precision,
             recall,
@@ -296,6 +298,7 @@ class ActivityNetDetectionResults(DetectionResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`ActivityNetEvaluationConfig` used
+        eval_key: the evaluation key
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -318,6 +321,7 @@ class ActivityNetDetectionResults(DetectionResults):
         self,
         samples,
         config,
+        eval_key,
         matches,
         precision,
         recall,
@@ -331,6 +335,7 @@ class ActivityNetDetectionResults(DetectionResults):
         super().__init__(
             samples,
             config,
+            eval_key,
             matches,
             classes=classes,
             missing=missing,
@@ -459,7 +464,7 @@ class ActivityNetDetectionResults(DetectionResults):
         return inds[0]
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         precision = d["precision"]
         recall = d["recall"]
         iou_threshs = d["iou_threshs"]
@@ -468,6 +473,7 @@ class ActivityNetDetectionResults(DetectionResults):
             d,
             samples,
             config,
+            eval_key,
             precision=precision,
             recall=recall,
             iou_threshs=iou_threshs,

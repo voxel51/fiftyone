@@ -84,9 +84,6 @@ class SimilarityTests(unittest.TestCase):
         bad_keys = dataset.list_brain_runs(type=EvaluationMethod)
         self.assertEqual(bad_keys, [])
 
-        # @todo remove once fiftyone-brain is updated
-        results._backend = info.config.build()
-
         results.save()
 
         self.assertEqual(dataset.list_brain_runs(), ["still_img_sim"])
