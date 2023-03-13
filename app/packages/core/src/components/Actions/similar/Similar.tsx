@@ -131,7 +131,9 @@ const SortBySimilarity = ({
         icon: "SearchIcon",
         ariaLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
-        onClick: () => sortBySimilarity(state),
+        onClick: () => {
+          state.query && state.query.length > 0 && sortBySimilarity(state);
+        },
       },
       ...loadingButton,
       ...groupButtons,
@@ -153,7 +155,9 @@ const SortBySimilarity = ({
               placeholder={"Type anything!"}
               value={(state.query as string) ?? ""}
               setter={(value) => updateState({ query: value })}
-              onEnter={() => sortBySimilarity(state)}
+              onEnter={() =>
+                state.query && state.query.length > 0 && sortBySimilarity(state)
+              }
             />
           )}
           {isImageSearch && !hasSorting && (
