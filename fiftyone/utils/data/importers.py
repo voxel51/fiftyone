@@ -2011,6 +2011,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 def _parse_media_fields(sd, media_fields, rel_dir):
     for field_name, key in media_fields.items():
         value = sd.get(field_name, None)
+        if value is None:
+            continue
+
         if isinstance(value, dict):
             if key is False:
                 try:
