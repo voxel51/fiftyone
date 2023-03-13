@@ -1137,6 +1137,128 @@ class SetValuesTests(unittest.TestCase):
             [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
         )
 
+    def test_set_values_validation(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Classification(label="bar"),
+            labels=fo.Classifications(
+                classifications=[fo.Classification(label="foo")]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample, sample, sample, sample, sample])
+
+        # Test emebedd field validation
+
+        with self.assertRaises(ValueError):
+            dataset.set_values("predictions", [1, 2, 3, 4, 5])
+
+        for value in dataset.values("predictions"):
+            self.assertIsInstance(value, fo.Classification)
+
+        dataset.set_values("predictions.int", [1, 2, 3, 4, 5])
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            [1, 2, 3, 4, 5],
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_values("predictions.int", [5, 4, "c", 2, 1])
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            [1, 2, 3, 4, 5],
+        )
+
+        dataset.set_values(
+            "predictions.int",
+            ["e", "d", "c", "b", "a"],
+            validate=False,
+        )
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            ["e", "d", "c", "b", "a"],
+        )
+
+        dataset.set_values("predictions.int", [1, 2, 3, 4, 5], dynamic=True)
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            [1, 2, 3, 4, 5],
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIsInstance(schema["predictions.int"], fo.IntField)
+
+        dataset.set_values(
+            "predictions.labels",
+            [fo.Classification() for _ in range(len(dataset))],
+            dynamic=True,
+        )
+
+        for value in dataset.values("predictions.labels"):
+            self.assertIsInstance(value, fo.Classification)
+
+        # Test embedded list field validation
+
+        with self.assertRaises(ValueError):
+            dataset.set_values("labels", [1, 2, 3, 4, 5])
+
+        for value in dataset.values("labels"):
+            self.assertIsInstance(value, fo.Classifications)
+
+        dataset.set_values(
+            "labels.classifications.int",
+            [[1], [2], [3], [4], [5]],
+        )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [[1], [2], [3], [4], [5]],
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_values(
+                "labels.classifications.int",
+                [[5], [4], ["c"], [2], [1]],
+            )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [[1], [2], [3], [4], [5]],
+        )
+
+        dataset.set_values(
+            "labels.classifications.int",
+            [["e"], ["d"], ["c"], ["b"], ["a"]],
+            validate=False,
+        )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [["e"], ["d"], ["c"], ["b"], ["a"]],
+        )
+
+        dataset.set_values(
+            "labels.classifications.int",
+            [[1], [2], [3], [4], [5]],
+            dynamic=True,
+        )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [[1], [2], [3], [4], [5]],
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIsInstance(
+            schema["labels.classifications.int"],
+            fo.IntField,
+        )
+
     def test_set_values_dynamic1(self):
         dataset = _make_labels_dataset()
 

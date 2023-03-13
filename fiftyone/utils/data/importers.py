@@ -11,8 +11,8 @@ import logging
 import os
 import random
 
-from bson import json_util, ObjectId
-import cv2
+from bson import json_util
+from mongoengine.base import get_document
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -1594,7 +1594,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._frame_labels_dir = fos.join(self.dataset_dir, "frames")
 
         if fos.isdir(self._fields_dir):
-            self._media_fields = fos.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in fos.list_subdirs(self._fields_dir)
+            }
 
         samples_path = fos.join(self.dataset_dir, "samples.json")
         samples = fos.read_json(samples_path).get("samples", [])
@@ -1756,7 +1758,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = fos.join(self.dataset_dir, "metadata.json")
 
         if fos.isdir(self._fields_dir):
-            self._media_fields = fos.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in fos.list_subdirs(self._fields_dir)
+            }
 
         self._samples_path = fos.join(self.dataset_dir, "samples.json")
         if not fos.isfile(self._samples_path):
@@ -2008,21 +2012,30 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
 
 def _parse_media_fields(sd, media_fields, rel_dir):
-    for field_name in media_fields:
+    for field_name, key in media_fields.items():
         value = sd.get(field_name, None)
         if value is None:
             continue
 
         if isinstance(value, dict):
-            label_type = value.get("_cls", None)
-            if label_type == "Segmentation":
-                mask_path = value.get("mask_path", None)
-                if mask_path is not None and not fos.isabs(mask_path):
-                    value["mask_path"] = fos.join(rel_dir, mask_path)
-            elif label_type == "Heatmap":
-                map_path = value.get("map_path", None)
-                if map_path is not None and not fos.isabs(map_path):
-                    value["map_path"] = fos.join(rel_dir, map_path)
+            if key is False:
+                try:
+                    _cls = value.get("_cls", None)
+                    key = get_document(_cls)._MEDIA_FIELD
+                except Exception as e:
+                    logger.warning(
+                        "Failed to infer media field for '%s'. Reason: %s",
+                        field_name,
+                        e,
+                    )
+                    key = None
+
+                media_fields[field_name] = key
+
+            if key is not None:
+                path = value.get(key, None)
+                if path is not None and not fos.isabs(path):
+                    value[key] = fos.join(rel_dir, path)
         elif etau.is_str(value):
             if not fos.isabs(value):
                 sd[field_name] = fos.join(rel_dir, value)
