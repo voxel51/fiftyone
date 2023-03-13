@@ -635,13 +635,15 @@ def _make_keypoint_list_filter(args, view, path, field):
 
     if isinstance(field.field, (fof.StringField)):
         f = F(name)
-        if 'values' in args:
+        if "values" in args:
             val = args["values"]
             expr = f.is_in(val)
             if args["exclude"]:
                 expr = ~expr
-                
+
             return {"filter": expr}
+
+    raise ValueError(f"Filtering {field} keypoint fields is not supported")
 
 
 def _apply_others(expr, f, args, is_label):
