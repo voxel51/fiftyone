@@ -129,11 +129,11 @@ class LabelStudioBackend(foua.AnnotationBackend):
             url=self.config.url, api_key=self.config.api_key
         )
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         api = self.connect_to_api()
 
         logger.info("Uploading media to Label Studio...")
-        results = api.upload_samples(samples, self)
+        results = api.upload_samples(samples, anno_key, self)
         logger.info("Upload complete")
 
         if launch_editor:
@@ -385,12 +385,13 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         return [export_label_to_label_studio(l) for l in labels]
 
-    def upload_samples(self, samples, backend):
+    def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to Label Studio according to the given
         backend's annotation and server configuration.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            anno_key: the annotation key
             backend: a :class:`LabelStudioBackend` to use to perform the upload
 
         Returns:
@@ -410,9 +411,10 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         return LabelStudioAnnotationResults(
             samples,
             config,
-            id_map=id_map,
-            project_id=project.id,
-            uploaded_tasks=uploaded_tasks,
+            anno_key,
+            id_map,
+            project.id,
+            uploaded_tasks,
             backend=backend,
         )
 
@@ -485,9 +487,16 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
     """
 
     def __init__(
-        self, samples, config, id_map, project_id, uploaded_tasks, backend=None
+        self,
+        samples,
+        config,
+        anno_key,
+        id_map,
+        project_id,
+        uploaded_tasks,
+        backend=None,
     ):
-        super().__init__(samples, config, id_map=id_map, backend=backend)
+        super().__init__(samples, config, anno_key, id_map, backend=backend)
         self.project_id = project_id
         self.uploaded_tasks = uploaded_tasks
 
@@ -504,7 +513,7 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
             api.delete_project(self.project_id)
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         # int keys were serialized as strings...
         uploaded_tasks = {
             int(task_id): source_id
@@ -514,6 +523,7 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         return cls(
             samples,
             config,
+            anno_key,
             d["id_map"],
             d["project_id"],
             uploaded_tasks,

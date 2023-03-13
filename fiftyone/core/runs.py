@@ -409,7 +409,7 @@ class Run(Configurable):
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
         if run_results is not None:
-            run_results._set_key(new_key)
+            run_results._key = new_key
             results_cache[new_key] = run_results
 
     @classmethod
@@ -545,7 +545,6 @@ class Run(Configurable):
             # We use `json_util.dumps` so that run results may contain BSON
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
-            run_results._set_key(key)
 
         # Cache the results for future use in this session
         if cache:
@@ -724,7 +723,7 @@ class Run(Configurable):
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
         if run_results is not None:
-            run_results._set_key(None)
+            run_results._key = None
 
         # Must manually delete run result, which is stored via GridFS
         if run_doc.results:
@@ -768,11 +767,12 @@ class RunResults(etas.Serializable):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`RunConfig` used
+        key: the key for the run
         backend (None): a :class:`Run` instance. If not provided, one is
             instantiated from ``config``
     """
 
-    def __init__(self, samples, config, backend=None):
+    def __init__(self, samples, config, key, backend=None):
         if backend is None and config is not None:
             backend = config.build()
             backend.ensure_usage_requirements()
@@ -780,7 +780,7 @@ class RunResults(etas.Serializable):
         self._samples = samples
         self._config = config
         self._backend = backend
-        self._key = None
+        self._key = key
 
     @property
     def cls(self):
@@ -808,9 +808,6 @@ class RunResults(etas.Serializable):
     def key(self):
         """The run key for these results."""
         return self._key
-
-    def _set_key(self, key):
-        self._key = key
 
     def save(self):
         """Saves the results to the database."""
@@ -856,12 +853,10 @@ class RunResults(etas.Serializable):
             return None
 
         run_results_cls = etau.get_class(d["cls"])
-        run_results = run_results_cls._from_dict(d, samples, config)
-        run_results._set_key(key)
-        return run_results
+        return run_results_cls._from_dict(d, samples, config, key)
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, key):
         """Subclass implementation of :meth:`from_dict`.
 
         Args:
@@ -869,6 +864,7 @@ class RunResults(etas.Serializable):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`RunConfig` for the run
+            key: the run key
 
         Returns:
             a :class:`RunResults`

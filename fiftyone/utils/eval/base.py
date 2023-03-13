@@ -21,6 +21,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`fiftyone.core.evaluation.EvaluationMethodConfig`
             used
+        eval_key: the evaluation key
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
@@ -41,6 +42,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         self,
         samples,
         config,
+        eval_key,
         ytrue,
         ypred,
         confs=None,
@@ -51,7 +53,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         missing=None,
         backend=None,
     ):
-        super().__init__(samples, config, backend=backend)
+        super().__init__(samples, config, eval_key, backend=backend)
 
         if missing is None:
             missing = "(none)"
@@ -361,7 +363,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         return cmat, labels, ids
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
@@ -373,6 +375,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         return cls(
             samples,
             config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,

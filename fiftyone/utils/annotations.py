@@ -239,21 +239,14 @@ def annotate(
     )
     config.label_schema = label_schema
 
-    #
     # Don't allow overwriting an existing run with same `anno_key`, since we
     # need the existing run in order to perform workflows like automatically
     # cleaning up the backend's tasks
-    #
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
     results = anno_backend.upload_annotations(
-        samples, launch_editor=launch_editor
+        samples, anno_key, launch_editor=launch_editor
     )
-
-    # It is possible that the annotation backend may update the run's config
-    # (eg when uploading to an existing project, the label schema may be
-    # inherited), so we update the config now
-    anno_backend.update_run_config(samples, anno_key, config)
 
     anno_backend.save_run_results(samples, anno_key, results)
 
@@ -1995,12 +1988,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         """
         self._api = api
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label
         schema to the annotation backend.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            anno_key: the annotation key
             launch_editor (False): whether to launch the annotation backend's
                 editor after uploading the samples
 
@@ -2108,13 +2102,14 @@ class AnnotationResults(foa.AnnotationResults):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         config: an :class:`AnnotationBackendConfig`
+        anno_key: the annotation key
         id_map: a dictionary recording the existing label IDs, in the format
             described above
         backend (None): an :class:`AnnotationBackend`
     """
 
-    def __init__(self, samples, config, id_map, backend=None):
-        super().__init__(samples, config, backend=backend)
+    def __init__(self, samples, config, anno_key, id_map, backend=None):
+        super().__init__(samples, config, anno_key, backend=backend)
         self.id_map = id_map
 
     def __enter__(self):
@@ -2204,7 +2199,7 @@ class AnnotationResults(foa.AnnotationResults):
         return _unwrap(_to_list(ids1) + _to_list(ids2))
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         """Builds an :class:`AnnotationResults` from a JSON dict representation
         of it.
 
@@ -2213,6 +2208,7 @@ class AnnotationResults(foa.AnnotationResults):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`AnnotationBackendConfig` for the run
+            anno_key: the annotation key
 
         Returns:
             an :class:`AnnotationResults`
