@@ -1,4 +1,5 @@
 import {
+  Method,
   ModalSample,
   selectedLabels,
   useUnprocessedStateUpdate,
@@ -211,5 +212,15 @@ export const sortType = selectorFamily<string, boolean>({
       }
 
       return "patches";
+    },
+});
+
+export const currentBrainConfig = selectorFamily<Method | undefined, string>({
+  key: "currenBrainConfig",
+  get:
+    (key: string) =>
+    ({ get }) => {
+      const { samples: methods } = get(fos.similarityMethods);
+      return methods.find((method) => method.key === key);
     },
 });

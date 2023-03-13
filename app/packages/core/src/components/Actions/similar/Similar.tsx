@@ -12,10 +12,12 @@ import Warning from "./Warning";
 import GroupButton, { ButtonDetail } from "./GroupButton";
 import {
   availableSimilarityKeys,
+  currentBrainConfig,
   currentSimilarityKeys,
   sortType,
   useSortBySimilarity,
 } from "./utils";
+import MaxKWarning from "./MaxKWarning";
 
 const DEFAULT_K = 25;
 
@@ -46,6 +48,7 @@ const SortBySimilarity = ({
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
   const [open, setOpen] = useState(false);
+  const [showMaxKWarning, setShowMaxKWarning] = useState(false);
 
   const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
     () =>
@@ -71,6 +74,7 @@ const SortBySimilarity = ({
   );
   const sortBySimilarity = useSortBySimilarity(close);
   const type = useRecoilValue(sortType(modal));
+  const brainConfig = useRecoilValue(currentBrainConfig(state.brainKey));
 
   const reset = useRecoilCallback(
     ({ reset }) =>
@@ -89,6 +93,20 @@ const SortBySimilarity = ({
   useLayoutEffect(() => {
     current && setState(current);
   }, [current]);
+
+  const validateK = (value: string) => {
+    if (/^[0-9\b]+$/.test(value)) {
+      if (!brainConfig?.maxK) {
+        setShowMaxKWarning(false);
+        return true;
+      } else {
+        setShowMaxKWarning(true);
+        Number(value) <= brainConfig.maxK;
+      }
+    }
+    setShowMaxKWarning(false);
+    return false;
+  };
 
   const loadingButton: ButtonDetail[] = isLoading
     ? [
@@ -180,7 +198,7 @@ const SortBySimilarity = ({
             Find the
             <Input
               placeholder={"k"}
-              validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
+              validator={(value) => value === "" || validateK(value)}
               value={state?.k ? String(state.k) : ""}
               setter={(value) => {
                 updateState({ k: value == "" ? undefined : Number(value) });
@@ -191,18 +209,29 @@ const SortBySimilarity = ({
                 margin: 3,
               }}
             />
-            <Button
-              text={state.reverse ? "least" : "most"}
-              title={`select most or least`}
-              onClick={() => updateState({ reverse: !state.reverse })}
-              style={{
-                textAlign: "center",
-                width: 50,
-                display: "inline-block",
-                margin: 3,
-              }}
-            />
-            similar samples using this brain key
+            {brainConfig?.supportsLeastSimilarity === false ? (
+              "most"
+            ) : (
+              <Button
+                text={state.reverse ? "least" : "most"}
+                title={`select most or least`}
+                onClick={() => updateState({ reverse: !state.reverse })}
+                style={{
+                  textAlign: "center",
+                  width: 50,
+                  display: "inline-block",
+                  margin: 3,
+                }}
+              />
+            )}
+            similar samples
+            {showMaxKWarning && (
+              <MaxKWarning
+                maxK={brainConfig?.maxK}
+                onClose={() => setShowMaxKWarning(false)}
+              />
+            )}
+            using this brain key
             <RadioGroup
               choices={choices.choices}
               value={state?.brainKey}
