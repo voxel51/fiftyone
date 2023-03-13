@@ -194,6 +194,7 @@ class COCOEvaluation(DetectionEvaluation):
             return DetectionResults(
                 samples,
                 self.config,
+                eval_key,
                 matches,
                 classes=classes,
                 missing=missing,
@@ -211,6 +212,7 @@ class COCOEvaluation(DetectionEvaluation):
         return COCODetectionResults(
             samples,
             self.config,
+            eval_key,
             matches,
             precision,
             recall,
@@ -228,6 +230,7 @@ class COCODetectionResults(DetectionResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`COCOEvaluationConfig` used
+        eval_key: the evaluation key
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -248,6 +251,7 @@ class COCODetectionResults(DetectionResults):
         self,
         samples,
         config,
+        eval_key,
         matches,
         precision,
         recall,
@@ -260,6 +264,7 @@ class COCODetectionResults(DetectionResults):
         super().__init__(
             samples,
             config,
+            eval_key,
             matches,
             classes=classes,
             missing=missing,
@@ -388,7 +393,7 @@ class COCODetectionResults(DetectionResults):
         return inds[0]
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         precision = d["precision"]
         recall = d["recall"]
         iou_threshs = d["iou_threshs"]
@@ -397,6 +402,7 @@ class COCODetectionResults(DetectionResults):
             d,
             samples,
             config,
+            eval_key,
             precision=precision,
             recall=recall,
             iou_threshs=iou_threshs,

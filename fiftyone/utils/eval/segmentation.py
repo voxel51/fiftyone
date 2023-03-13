@@ -361,6 +361,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         return SegmentationResults(
             samples,
             self.config,
+            eval_key,
             confusion_matrix,
             classes,
             missing=missing,
@@ -374,6 +375,7 @@ class SegmentationResults(BaseEvaluationResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`SegmentationEvaluationConfig` used
+        eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
         missing (None): a missing (background) class
@@ -384,6 +386,7 @@ class SegmentationResults(BaseEvaluationResults):
         self,
         samples,
         config,
+        eval_key,
         pixel_confusion_matrix,
         classes,
         missing=None,
@@ -397,6 +400,7 @@ class SegmentationResults(BaseEvaluationResults):
         super().__init__(
             samples,
             config,
+            eval_key,
             ytrue,
             ypred,
             weights=weights,
@@ -411,10 +415,11 @@ class SegmentationResults(BaseEvaluationResults):
         return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         return cls(
             samples,
             config,
+            eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
             missing=d.get("missing", None),
@@ -490,7 +495,7 @@ def _extract_contour_band_values(pred_mask, gt_mask, bandwidth):
 def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     missing = 0 if values[0] == 0 else None
     results = SegmentationResults(
-        None, None, confusion_matrix, values, missing=missing
+        None, None, None, confusion_matrix, values, missing=missing
     )
     metrics = results.metrics(average=average)
     if metrics["support"] == 0:
