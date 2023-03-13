@@ -144,12 +144,13 @@ export const availableSimilarityKeys = selectorFamily<
       const { samples: methods } = get(fos.similarityMethods);
 
       if (params.isImageSearch) {
-        return methods.map(({ key }) => key);
+        return methods.map(({ key }) => key).sort();
       }
 
       return methods
         .filter((method) => method.supportsPrompts === true)
-        .map(({ key }) => key);
+        .map(({ key }) => key)
+        .sort();
     },
 });
 
@@ -202,10 +203,9 @@ export const currentSimilarityKeys = selectorFamily<
     ({ modal, isImageSearch }) =>
     ({ get }) => {
       const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
-      const result = keys.sort();
       return {
         total: keys.length,
-        choices: result.slice(0, 11),
+        choices: keys.slice(0, 11),
       };
     },
 });
