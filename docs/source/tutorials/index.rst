@@ -121,7 +121,7 @@ your datasets and turn your good models into *great models*.
     :header: Fine-tuning YOLOv8 model predictions
     :description: Visualize and evaluate YOLOv8 model predictions before fine-tuning for your custom use case.
     :link: yolov8.html
-    :image: ../_static/images/tutorials/qdrant.png
+    :image: ../_static/images/tutorials/yolov8.png
     :tags: Model-Evaluation
 
 .. End of tutorial cards
