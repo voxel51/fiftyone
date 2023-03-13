@@ -103,7 +103,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
         return get(pinnedSlice);
       }
 
-      return get(groupSlice(modal)) || get(defaultGroupSlice);
+      return get(groupSlice(modal)) || get(defaultGroupSlice) || null;
     },
 });
 

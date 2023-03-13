@@ -54,10 +54,6 @@ export const aggregationQuery = graphQLSelectorFamily<
         view: !root ? get(viewAtoms.view) : [],
       };
 
-      if (!aggForm.dataset) {
-        return new Promise(() => {});
-      }
-
       return {
         form: aggForm,
       };

@@ -2,7 +2,6 @@ import { Loading } from "@fiftyone/components";
 import {
   collapseFields,
   resolveGroups,
-  ResponseFrom,
   State,
   stateSubscription,
   transformDataset,
@@ -13,32 +12,22 @@ import {
   viewsAreEqual,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { startTransition, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
 import { RecoilSync } from "recoil-sync";
 import {
-  createOperationDescriptor,
-  Environment,
-  getRequest,
-  handlePotentialSnapshotErrors,
   GraphQLResponseWithData,
-  GraphQLTaggedNode,
   VariablesOf,
   readInlineData,
 } from "relay-runtime";
 
-import { datasetFragment } from "@fiftyone/relay";
+import { datasetFragment, datasetFragment$key } from "@fiftyone/relay";
 
 import Setup from "../components/Setup";
 import { datasetQuery } from "../pages/datasets/__generated__/datasetQuery.graphql";
 
-import {
-  LocationState,
-  Queries,
-  RoutingContext,
-  useRouterContext,
-} from "../routing";
+import { Queries, RoutingContext, useRouterContext } from "../routing";
 import { getDatasetName, getSavedViewName } from "./utils";
 
 enum Events {
@@ -222,14 +211,14 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           read={(itemKey) => {
             const entry = router.get();
             if (itemKey === "entry") {
-              return router.get();
+              return entry;
             }
 
-            const { preloaded: query, data } = entry;
-            return HANDLERS[query.name](
+            const { preloadedQuery, data } = entry;
+            return HANDLERS[preloadedQuery.name](
               itemKey,
-              PROCESSORS[query.name](data),
-              query.variables,
+              PROCESSORS[preloadedQuery.name](data),
+              preloadedQuery.variables,
               router.history.location.state,
               true
             );
@@ -237,7 +226,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           listen={({ updateItems }) => {
             return router.subscribe(
               (entry) => {
-                const { preloaded, data } = entry;
+                const { preloadedQuery, data } = entry;
                 const items = [
                   "dataset",
                   "sidebarGroupsDefinition__false",
@@ -247,10 +236,10 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   "frameFields",
                   "viewCls",
                 ].reduce((map, itemKey) => {
-                  const result = HANDLERS[preloaded.name](
+                  const result = HANDLERS[preloadedQuery.name](
                     itemKey,
-                    PROCESSORS[preloaded.name](data),
-                    preloaded.variables,
+                    PROCESSORS[preloadedQuery.name](data),
+                    preloadedQuery.variables,
                     router.history.location.state
                   );
                   if (result !== undefined) {
@@ -282,7 +271,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
 const PROCESSORS = {
   DatasetPageQuery: (response) => {
-    const data = readInlineData(datasetFragment, response);
+    const data = readInlineData<datasetFragment$key>(datasetFragment, response);
     const dataset = { ...transformDataset(data.dataset) };
     dataset.sampleFields = collapseFields(data.dataset.sampleFields);
     dataset.frameFields = collapseFields(data.dataset.frameFields);
@@ -328,11 +317,6 @@ const WRITE_HANDLERS = {
       view = [];
     }
 
-    console.log(
-      viewsAreEqual(view, router.state.view),
-      view,
-      router.state.view
-    );
     const params = new URLSearchParams(router.get().search);
     const current = params.get("view");
 

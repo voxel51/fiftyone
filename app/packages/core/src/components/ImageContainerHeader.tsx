@@ -82,7 +82,7 @@ const Count = () => {
 };
 
 const GroupsCount = () => {
-  let element = useRecoilValue(fos.elementNames);
+  const element = useRecoilValue(fos.elementNames);
   const total = useRecoilValue(
     fos.count({ path: "_", extended: false, modal: false })
   );

@@ -11,9 +11,8 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import withQueryNode from "../../withQueryNode";
 
-export const DatasetPageQueryNode = graphql`
+const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
     $search: String = ""
     $count: Int
@@ -44,4 +43,4 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   );
 };
 
-export default withQueryNode(DatasetPage, DatasetPageQueryNode);
+export default DatasetPage;

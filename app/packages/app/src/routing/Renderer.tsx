@@ -1,12 +1,22 @@
 import { Loading } from "@fiftyone/components";
 import { custom } from "@recoiljs/refine";
-import React, { Suspense, useEffect, useState } from "react";
+import React, {
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { atom, useRecoilValue } from "recoil";
 import { syncEffect } from "recoil-sync";
 
 import { Queries } from ".";
-import { Entry, RoutingContext } from "./RouterContext";
+import { Entry, RouterContext, RoutingContext } from "./RouterContext";
 import style from "./pending.module.css";
+import {
+  PageQueryContext,
+  PageSubscription,
+} from "@fiftyone/relay/src/PageQuery";
 
 const Pending = () => {
   return <div className={style.pending} />;
@@ -38,10 +48,6 @@ const Renderer: React.FC<{ router: RoutingContext<Queries> }> = ({
     );
   }, [router]);
 
-  const orthographicProjectionField = Object.entries({})
-    .find((el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata")
-    ?.at(0) as string | undefined;
-
   const loading = <Loading>Pixelating...</Loading>;
 
   if (!routeEntry) return loading;
@@ -54,12 +60,37 @@ const Renderer: React.FC<{ router: RoutingContext<Queries> }> = ({
   );
 };
 
-const Route = <T extends Queries>({ route }: { route: Entry<T> }) => {
-  const Component = route.component.read();
+const Route = ({ route }: { route: Entry<Queries> }) => {
+  const router = useContext(RouterContext);
+  const Component = route.component;
+  const subscriptions = useRef(new Set<PageSubscription<Queries>>());
+  useEffect(() => {
+    return router?.subscribe(
+      ({ concreteRequest, preloadedQuery }) => {
+        subscriptions.current.forEach((cb) => {
+          cb({
+            concreteRequest,
+            preloadedQuery,
+          });
+        });
+      },
+      () => null
+    );
+  }, [router]);
 
-  const { prepared } = route;
+  return (
+    <PageQueryContext
+      concreteRequest={route.concreteRequest}
+      preloadedQuery={route.preloadedQuery}
+      subscribe={(fn: PageSubscription<Queries>) => {
+        subscriptions.current.add(fn);
 
-  return <Component prepared={prepared.read()} />;
+        return () => subscriptions.current.delete(fn);
+      }}
+    >
+      <Component prepared={route.preloadedQuery} />
+    </PageQueryContext>
+  );
 };
 
 export default Renderer;

@@ -13,7 +13,11 @@ import useSendEvent from "./useSendEvent";
 import * as atoms from "../recoil";
 import { collapseFields } from "../";
 
-const useSetView = (patch = false, selectSlice = false) => {
+const useSetView = (
+  patch = false,
+  selectSlice = false,
+  onComplete: () => void = undefined
+) => {
   const send = useSendEvent(true);
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
@@ -78,10 +82,12 @@ const useSetView = (patch = false, selectSlice = false) => {
                 frameFields: collapseFields(frameFields),
                 sampleFields: collapseFields(sampleFields),
               });
+              onComplete && onComplete();
             },
           });
         });
-      }
+      },
+    [patch, selectSlice, onComplete]
   );
 };
 

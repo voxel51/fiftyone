@@ -1,27 +1,50 @@
 import React from "react";
 import { PreloadedQuery } from "react-relay";
-import { GraphQLTaggedNode, OperationType } from "relay-runtime";
+import { ConcreteRequest, OperationType } from "relay-runtime";
 
-interface PageQuery<T extends OperationType> {
-  ref: PreloadedQuery<T>;
-  query: GraphQLTaggedNode;
+export interface PageQuery<T extends OperationType> {
+  preloadedQuery: PreloadedQuery<T>;
+  concreteRequest: ConcreteRequest;
+}
+export type PageSubscription<T extends OperationType> = (
+  pageQuery: PageQuery<T>
+) => void;
+
+let pageQueryRef: PageQuery<any> = null;
+
+const subscribers = new Set<PageSubscription<OperationType>>();
+
+export function getPageQuery<T extends OperationType>(): [
+  PageQuery<T>,
+  (subscription: PageSubscription<T>) => () => void
+] {
+  return [
+    pageQueryRef as PageQuery<T>,
+    (subscription) => {
+      subscribers.add(subscription);
+
+      return () => subscribers.delete(subscription);
+    },
+  ];
 }
 
-let pageQueryRef: PageQuery<OperationType> = null;
-
-export function getPageQuery<T extends OperationType>(): PageQuery<T> {
-  return pageQueryRef as PageQuery<T>;
-}
-
-export function PageQuery<T extends OperationType>({
-  query,
+export function PageQueryContext<T extends OperationType>({
+  concreteRequest,
   preloadedQuery,
   children,
-}: React.PropsWithChildren<{
-  query: GraphQLTaggedNode;
-  preloadedQuery: PreloadedQuery<T>;
-}>) {
-  pageQueryRef = { ref: preloadedQuery, query };
+  subscribe,
+}: React.PropsWithChildren<
+  PageQuery<T> & {
+    subscribe: (fn: PageSubscription<T>) => () => void;
+  }
+>) {
+  pageQueryRef = { preloadedQuery, concreteRequest };
+
+  React.useEffect(() => {
+    return subscribe((pageQuery) => {
+      pageQueryRef = pageQuery;
+    });
+  }, [subscribe]);
 
   return <>{children}</>;
 }

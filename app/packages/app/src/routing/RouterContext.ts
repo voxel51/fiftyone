@@ -1,20 +1,18 @@
-import { ResponseFrom, State } from "@fiftyone/state";
+import { State } from "@fiftyone/state";
 import {
   isElectron,
   isNotebook,
   NotFoundError,
   Resource,
 } from "@fiftyone/utilities";
-import { createBrowserHistory, createMemoryHistory } from "history";
+import { createBrowserHistory, createMemoryHistory, Location } from "history";
 import React from "react";
 import { loadQuery, PreloadedQuery } from "react-relay";
 import {
   ConcreteRequest,
-  createOperationDescriptor,
   Environment,
-  getRequest,
-  GraphQLTaggedNode,
   fetchQuery,
+  OperationType,
   VariablesOf,
 } from "relay-runtime";
 
@@ -28,19 +26,20 @@ export interface RouteData<T extends Queries> {
   variables: VariablesOf<T>;
 }
 
-export interface LocationState {
+type LocationState<T extends OperationType> = {
   view?: State.Stage[];
   savedViewSlug?: string;
+} & VariablesOf<T>;
+
+interface FiftyOneLocation extends Location {
+  state: LocationState<Queries>;
 }
 
-export interface Entry<T extends Queries> {
-  component: Resource<Route<T>>;
-  query: Resource<ConcreteRequest>;
-  pathname: string;
-  prepared: Resource<PreloadedQuery<T>>;
-  routeData: RouteData<T>;
-  state: LocationState;
-  search: string;
+export interface Entry<T extends Queries> extends FiftyOneLocation {
+  component: Route<T>;
+  concreteRequest: ConcreteRequest;
+  preloadedQuery: PreloadedQuery<T>;
+  data: T["response"];
   cleanup: () => void;
 }
 
@@ -48,17 +47,10 @@ export interface RoutingContext<T extends Queries> {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
   load: () => Promise<Entry<T>>;
-  pathname: string;
-  state: LocationState;
   subscribe: (
     cb: (entry: Entry<T>) => void,
-    onPending: () => void
+    onPending?: () => void
   ) => () => void;
-}
-
-interface Match<T extends Queries> {
-  route: RouteDefinition<T>;
-  match: RouteData<T>;
 }
 
 export interface Router<T extends Queries> {
@@ -75,29 +67,26 @@ export const createRouter = (
       ? createMemoryHistory()
       : createBrowserHistory();
 
-  let currentEntry: Entry<Queries>;
+  let currentEntryResource: Resource<Entry<Queries>>;
 
   let nextId = 0;
   const subscribers = new Map();
 
   const cleanup = history.listen(({ location }) => {
-    if (!currentEntry) return;
-    const state = location.state as LocationState;
+    if (!currentEntryResource) return;
     subscribers.forEach(([_, onPending]) => onPending());
-    prepareMatch(
-      environment,
-      matchRoute(routes, location.pathname, location.search, state)
-    ).then((match) => {
-      const { cleanup } = currentEntry;
-      currentEntry = {
-        ...match,
-        pathname: location.pathname,
-        search: location.search,
-        state,
-      };
-      requestAnimationFrame(() => {
-        subscribers.forEach(([cb]) => cb(currentEntry));
-        cleanup();
+    currentEntryResource.load().then(({ cleanup }) => {
+      currentEntryResource = getEntryResource(
+        environment,
+        routes,
+        location as FiftyOneLocation
+      );
+
+      currentEntryResource.load().then((entry) => {
+        requestAnimationFrame(() => {
+          subscribers.forEach(([cb]) => cb(entry));
+          cleanup();
+        });
       });
     });
   });
@@ -105,39 +94,24 @@ export const createRouter = (
   const context: RoutingContext<Queries> = {
     history,
     load() {
-      if (!currentEntry) {
-        const state = history.location.state as LocationState;
-        return prepareMatch(
+      if (!currentEntryResource) {
+        currentEntryResource = getEntryResource(
           environment,
-          matchRoute(
-            routes,
-            history.location.pathname,
-            history.location.search,
-            state
-          )
-        ).then((entry) => {
-          currentEntry = {
-            ...entry,
-            pathname: history.location.pathname,
-            search: location.search,
-            state,
-          };
-          return currentEntry;
-        });
+          routes,
+          history.location as FiftyOneLocation
+        );
       }
-      return Promise.resolve(currentEntry);
+      return currentEntryResource.load();
     },
     get() {
-      if (!currentEntry) {
+      if (!currentEntryResource) {
         throw new Error("no entry loaded");
       }
-      return currentEntry;
-    },
-    get pathname() {
-      return currentEntry.pathname;
-    },
-    get state() {
-      return currentEntry.state;
+      const entry = currentEntryResource.get();
+      if (!entry) {
+        throw new Error("entry is loading");
+      }
+      return entry;
     },
     subscribe(cb, onPending) {
       const id = nextId++;
@@ -155,77 +129,73 @@ export const createRouter = (
   };
 };
 
-export const matchRoute = <T extends Queries>(
-  routes: RouteDefinition<T>[],
-  pathname: string,
-  search: string,
-  variables: Partial<VariablesOf<T>>
-): { route: RouteDefinition<T>; match: MatchPathResult<T> } => {
-  for (let index = 0; index < routes.length; index++) {
-    const route = routes[index];
-    const match = matchPath(pathname, route, search, variables);
-
-    if (match) return { route, match };
-  }
-
-  throw new NotFoundError({ path: pathname });
-};
-
-const prepareMatch = <T extends Queries>(
+const getEntryResource = <T extends Queries>(
   environment: Environment,
-  { route, match: matchData }: Match<T>
-) => {
-  const component = route.component.get();
-  if (component == null) {
-    route.component.load();
+  routes: RouteDefinition<T>[],
+  location: FiftyOneLocation
+): Resource<Entry<T>> => {
+  let route: RouteDefinition<T>;
+  let matchResult: MatchPathResult<T>;
+  for (let index = 0; index < routes.length; index++) {
+    route = routes[index];
+    const match = matchPath<T>(
+      location.pathname,
+      route,
+      location.search,
+      location.state
+    );
+
+    if (match) {
+      matchResult = match;
+      break;
+    }
   }
 
-  if (route.query.get() == null) {
-    route.query.load();
+  if (matchResult == null) {
+    throw new NotFoundError({ path: location.pathname });
   }
-  let resolveEntry;
-  const prepared = new Resource(() =>
-    route.query.load().then((q) => {
-      const preloaded = loadQuery(environment, q, matchData.variables || {}, {
-        fetchPolicy: "store-or-network",
-      });
 
-      const subscription = fetchQuery(
-        environment,
-        q,
-        matchData.variables || {},
-        { fetchPolicy: "store-or-network" }
-      ).subscribe({
-        next: (data) =>
-          route.component.load().then(() => {
+  return new Resource(() => {
+    return Promise.all([route.component.load(), route.query.load()]).then(
+      ([component, concreteRequest]) => {
+        const preloadedQuery = loadQuery(
+          environment,
+          concreteRequest,
+          matchResult.variables || {},
+          {
+            fetchPolicy: "store-or-network",
+          }
+        );
+
+        let resolveEntry: (entry: Entry<T>) => void;
+        let rejectEntry: (reason?: any) => void;
+        const promise = new Promise<Entry<T>>((resolve, reject) => {
+          resolveEntry = resolve;
+          rejectEntry = reject;
+        });
+        const subscription = fetchQuery(
+          environment,
+          concreteRequest,
+          matchResult.variables || {},
+          { fetchPolicy: "store-or-network" }
+        ).subscribe({
+          next: (data) =>
             resolveEntry({
-              component: route.component,
-              prepared,
-              preloaded,
-              query: route.query,
-              routeData: matchData,
+              ...location,
+              component,
               data,
+              concreteRequest,
+              preloadedQuery,
               cleanup: () => {
                 subscription?.unsubscribe();
               },
-            });
-          }),
-      });
+            }),
+          error: (error) => rejectEntry(error),
+        });
 
-      return preloaded;
-    })
-  );
-
-  prepared.load();
-
-  return new Promise<{
-    component: Resource<Route<T>>;
-    prepared: Resource<PreloadedQuery<T, {}>>;
-    query: Resource<ConcreteRequest>;
-    routeData: RouteData<T>;
-    cleanup: () => void;
-  }>((resolve) => {
-    resolveEntry = resolve;
+        return promise;
+      }
+    );
   });
 };
 

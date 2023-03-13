@@ -7,7 +7,6 @@ import { Route } from "../routing";
 import { IndexPageQuery } from "./__generated__/IndexPageQuery.graphql";
 import style from "./index.module.css";
 import { usePreloadedQuery } from "react-relay";
-import withQueryNode from "../withQueryNode";
 
 const IndexPageQueryNode = graphql`
   query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
@@ -29,4 +28,4 @@ const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   );
 };
 
-export default withQueryNode(IndexPage, IndexPageQueryNode);
+export default IndexPage;

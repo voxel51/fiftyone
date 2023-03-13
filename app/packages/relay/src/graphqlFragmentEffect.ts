@@ -1,39 +1,59 @@
 import {
   createOperationDescriptor,
-  getRequest,
   GraphQLTaggedNode,
   readInlineData,
 } from "relay-runtime";
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
 import { AtomEffect } from "recoil";
 import { getPageQuery } from "./PageQuery";
+import { Snapshot } from "react-relay";
 
 export default function graphQLFragmentEffect<T extends KeyType>(
   fragment: GraphQLTaggedNode
 ): AtomEffect<KeyTypeData<T>> {
   return ({ setSelf, trigger }) => {
-    const ref = getPageQuery();
-    const request = getRequest(ref.query);
-    const operation = createOperationDescriptor(request, ref.ref.variables);
-    const operationDisposable = ref.ref.environment.retain(operation);
-    const snapshot = ref.ref.environment.lookup(operation.fragment);
-    if (trigger === "get") {
-      const data = readInlineData<T>(fragment, snapshot.data as T);
-      setSelf(data);
+    if (trigger == "set") {
+      throw new Error("fragement not writeable");
     }
 
-    const subscriptionDisposable = ref.ref.environment.subscribe(
-      snapshot,
-      (newSnapshot) => {
-        if (!newSnapshot.isMissingData && newSnapshot.data != null) {
-          setSelf(readInlineData(fragment, newSnapshot.data as T));
-        }
+    const setter = (snapshot: Snapshot) => {
+      if (!snapshot.isMissingData && snapshot.data != null) {
+        setSelf(readInlineData(fragment, snapshot.data as T));
       }
+    };
+    const [{ preloadedQuery, concreteRequest }, subscribe] = getPageQuery();
+    let operation = createOperationDescriptor(
+      concreteRequest,
+      preloadedQuery.variables
+    );
+    let operationDisposable = preloadedQuery.environment.retain(operation);
+    const snapshot = preloadedQuery.environment.lookup(operation.fragment);
+    setter(snapshot);
+
+    const subscriptionDisposable = preloadedQuery.environment.subscribe(
+      snapshot,
+      setter
     );
 
-    return () => {
+    const unsubscribe = () => {
       operationDisposable?.dispose();
       subscriptionDisposable?.dispose();
     };
+
+    subscribe(({ preloadedQuery, concreteRequest }) => {
+      operationDisposable?.dispose();
+      subscriptionDisposable?.dispose();
+
+      operation = createOperationDescriptor(
+        concreteRequest,
+        preloadedQuery.variables
+      );
+      operationDisposable = preloadedQuery.environment.retain(operation);
+      preloadedQuery.environment.subscribe(snapshot, setter);
+
+      return unsubscribe;
+    });
+
+    return unsubscribe;
   };
 }

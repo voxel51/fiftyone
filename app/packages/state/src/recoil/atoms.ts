@@ -165,6 +165,12 @@ export const dataset = atom({
           mediaType: rfn.string(),
           viewName: rfn.nullable(rfn.string()),
           skeletons: rfn.custom((v) => v),
+          groupMediaTypes: rfn.nullable(
+            rfn.writableArray(
+              rfn.object({ name: rfn.string(), mediaType: rfn.string() })
+            )
+          ),
+          defaultGroupSlice: rfn.nullable(rfn.string()),
         })
       ),
       storeKey: "router",
