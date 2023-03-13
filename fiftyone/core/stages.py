@@ -33,6 +33,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
+fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -7558,8 +7559,10 @@ def _make_match_empty_labels_pipeline(
 def _get_default_similarity_run(sample_collection):
     if isinstance(sample_collection, fop.PatchesView):
         patches_field = sample_collection.patches_field
-        brain_keys = sample_collection._get_similarity_keys(
-            patches_field=patches_field
+
+        brain_keys = sample_collection.list_brain_runs(
+            type=fob.Similarity,
+            patches_field=patches_field,
         )
 
         if not brain_keys:
@@ -7579,9 +7582,14 @@ def _get_default_similarity_run(sample_collection):
         gt_field = sample_collection.gt_field
         pred_field = sample_collection.pred_field
 
-        brain_keys = sample_collection._get_similarity_keys(
-            patches_field=gt_field
-        ) + sample_collection._get_similarity_keys(patches_field=pred_field)
+        brain_keys = sample_collection.list_brain_runs(
+            type=fob.Similarity,
+            patches_field=gt_field,
+        )
+        brain_keys += sample_collection.list_brain_runs(
+            type=fob.Similarity,
+            patches_field=pred_field,
+        )
 
         if not brain_keys:
             raise ValueError(
@@ -7593,11 +7601,13 @@ def _get_default_similarity_run(sample_collection):
             )
     else:
         # Try sample indexes first
-        brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+        brain_keys = sample_collection.list_brain_runs(
+            type=fob.Similarity, patches_field=None
+        )
 
         # It's allowable to use a patches index too
         if not brain_keys:
-            brain_keys = sample_collection._get_similarity_keys()
+            brain_keys = sample_collection.list_brain_runs(type=fob.Similarity)
 
         if not brain_keys:
             raise ValueError(

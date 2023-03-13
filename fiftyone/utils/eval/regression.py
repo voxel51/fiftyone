@@ -275,6 +275,7 @@ class SimpleEvaluation(RegressionEvaluation):
         results = RegressionResults(
             samples,
             self.config,
+            eval_key,
             _ytrue,
             _ypred,
             confs=_confs,
@@ -328,6 +329,7 @@ class RegressionResults(foe.EvaluationResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`RegressionEvaluationConfig` used
+        eval_key: the evaluation key
         ytrue: a list of ground truth values
         ypred: a list of predicted values
         confs (None): an optional list of confidences for the predictions
@@ -345,6 +347,7 @@ class RegressionResults(foe.EvaluationResults):
         self,
         samples,
         config,
+        eval_key,
         ytrue,
         ypred,
         confs=None,
@@ -352,7 +355,7 @@ class RegressionResults(foe.EvaluationResults):
         missing=None,
         backend=None,
     ):
-        super().__init__(samples, config, backend=backend)
+        super().__init__(samples, config, eval_key, backend=backend)
 
         ytrue, ypred, confs, ids = _parse_values(
             ytrue, ypred, confs, ids, missing=missing
@@ -487,7 +490,7 @@ class RegressionResults(foe.EvaluationResults):
         )
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
@@ -496,6 +499,7 @@ class RegressionResults(foe.EvaluationResults):
         return cls(
             samples,
             config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,

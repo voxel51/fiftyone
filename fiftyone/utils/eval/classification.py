@@ -271,6 +271,7 @@ class SimpleEvaluation(ClassificationEvaluation):
         results = ClassificationResults(
             samples,
             self.config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,
@@ -409,6 +410,7 @@ class TopKEvaluation(ClassificationEvaluation):
         results = ClassificationResults(
             samples,
             self.config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,
@@ -595,6 +597,7 @@ class BinaryEvaluation(ClassificationEvaluation):
         results = BinaryClassificationResults(
             samples,
             self.config,
+            eval_key,
             ytrue,
             ypred,
             confs,
@@ -658,6 +661,7 @@ class ClassificationResults(BaseEvaluationResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`ClassificationEvaluationConfig` used
+        eval_key: the evaluation key
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
@@ -683,6 +687,7 @@ class BinaryClassificationResults(ClassificationResults):
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`ClassificationEvaluationConfig` used
+        eval_key: the evaluation key
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs: a list of confidences for the predictions
@@ -697,6 +702,7 @@ class BinaryClassificationResults(ClassificationResults):
         self,
         samples,
         config,
+        eval_key,
         ytrue,
         ypred,
         confs,
@@ -709,6 +715,7 @@ class BinaryClassificationResults(ClassificationResults):
         super().__init__(
             samples,
             config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,
@@ -828,7 +835,7 @@ class BinaryClassificationResults(ClassificationResults):
         return self.classes
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d["confs"]
@@ -839,6 +846,7 @@ class BinaryClassificationResults(ClassificationResults):
         return cls(
             samples,
             config,
+            eval_key,
             ytrue,
             ypred,
             confs,

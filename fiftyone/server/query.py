@@ -17,8 +17,7 @@ import strawberry as gql
 from bson import ObjectId, json_util
 
 import fiftyone as fo
-import fiftyone.brain.internal.core.similarity as fobs
-import fiftyone.brain.internal.core.visualization as fobv
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
@@ -100,12 +99,12 @@ class BrainRunConfig(RunConfig):
 
     @gql.field
     def type(self) -> t.Optional[BrainRunType]:
-        if issubclass(fobs.SimilarityConfig, etau.get_class(self.cls)):
+        if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
             return BrainRunType.similarity
-        if issubclass(
-            fobv.ManualVisualizationConfig, etau.get_class(self.cls)
-        ):
+
+        if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
             return BrainRunType.visualization
+
         return None
 
 
