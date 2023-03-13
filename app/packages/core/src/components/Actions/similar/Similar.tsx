@@ -101,17 +101,14 @@ const SortBySimilarity = ({
 
   const validateK = (value: string) => {
     if (/^[0-9\b]+$/.test(value)) {
-      if (!brainConfig?.maxK) {
-        setShowMaxKWarning(false);
-        return true;
-      } else {
+      if (brainConfig?.maxK) {
         if (Number(value) > brainConfig.maxK) {
           setShowMaxKWarning(true);
         } else {
           setShowMaxKWarning(false);
         }
-        return Number(value) <= brainConfig.maxK;
       }
+      return true;
     }
     setShowMaxKWarning(false);
     return false;
