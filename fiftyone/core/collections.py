@@ -9188,7 +9188,7 @@ class SampleCollection(object):
             elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
                 field.document_type, fol._HasMedia
             ):
-                media_fields[field_name] = field.document_type
+                media_fields[field_name] = field.document_type._MEDIA_FIELD
 
         if whitelist is not None:
             if etau.is_container(whitelist):
