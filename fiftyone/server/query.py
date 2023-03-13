@@ -6,6 +6,7 @@ FiftyOne Server queries.
 |
 """
 import typing as t
+from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
@@ -112,7 +113,8 @@ class BrainRunConfig(RunConfig):
     def max_k(self) -> t.Optional[int]:
         try:
             cls = etau.get_class(self.cls)
-            return None if cls().max_k is None else int(cls().max_k)
+            instance = cls(**asdict(self))
+            return instance.max_k
         except:
             return None
 
@@ -120,7 +122,8 @@ class BrainRunConfig(RunConfig):
     def supportsLeastSimilarity(self) -> t.Optional[bool]:
         try:
             cls = etau.get_class(self.cls)
-            return bool(cls().supports_least_similarity)
+            instance = cls(**asdict(self))
+            return instance.supports_least_similarity
         except:
             return None
 
