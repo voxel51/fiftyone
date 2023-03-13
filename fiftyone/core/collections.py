@@ -5367,7 +5367,7 @@ class SampleCollection(object):
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select. My contain ``embedded.field.name`` as well
+                select. May contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

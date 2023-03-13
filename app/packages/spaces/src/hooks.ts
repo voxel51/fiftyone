@@ -12,6 +12,7 @@ import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
 import {
+  panelsCloseEffect,
   panelsStateAtom,
   panelStatePartialSelector,
   panelStateSelector,
@@ -19,7 +20,12 @@ import {
   previousTabsGroupAtom,
   spaceSelector,
 } from "./state";
-import { PanelsStateObject, SpaceNodeJSON, SpaceNodeType } from "./types";
+import {
+  PanelsCloseEffect,
+  PanelsStateObject,
+  SpaceNodeJSON,
+  SpaceNodeType,
+} from "./types";
 import { getNodes } from "./utils";
 
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
@@ -247,4 +253,26 @@ export function usePanelTabAutoPosition() {
   }
 
   return autoPosition;
+}
+
+export function useSetPanelCloseEffect(panelId?: string) {
+  const panelContext = usePanelContext();
+  const computedPanelId = panelId || (panelContext?.node?.id as string);
+
+  return (effect: PanelsCloseEffect[string]) => {
+    panelsCloseEffect[computedPanelId] = effect;
+  };
+}
+
+export function usePanelCloseEffect(panelId?: string) {
+  const panelContext = usePanelContext();
+  const computedPanelId = panelId || (panelContext?.node?.id as string);
+
+  return () => {
+    const panelCloseEffect = panelsCloseEffect[computedPanelId];
+    if (panelCloseEffect) {
+      delete panelsCloseEffect[computedPanelId];
+      panelCloseEffect();
+    }
+  };
 }

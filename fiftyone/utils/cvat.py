@@ -3510,6 +3510,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._headers = headers
         self._organization = organization
 
+        self._orginization = None
         self._server_version = None
         self._session = None
         self._user_id_map = {}
@@ -3670,6 +3671,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         self._add_referer()
         self._add_organization()
+
+        if self._orginization:
+            self._add_organization()
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:

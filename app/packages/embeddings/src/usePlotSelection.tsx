@@ -1,24 +1,21 @@
-import { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
+import { SELECTION_SCOPE } from "./constants";
+import { useResetExtendedSelection } from "@fiftyone/state";
 
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
-  const [filters, setFilters] = useRecoilState(fos.filters);
-  const [overrideStage, setOverrideStage] = useRecoilState(
-    fos.extendedSelectionOverrideStage
-  );
-  const [extendedSelection, setExtendedSelection] = useRecoilState(
+  const setFilters = useSetRecoilState(fos.filters);
+  const resetExtendedSelection = useResetExtendedSelection();
+  const [{ selection, scope }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     fos.selectedSamples
   );
-  const hasExtendedSelection =
-    extendedSelection && extendedSelection.length > 0;
   const [plotSelection, setPlotSelection] = usePanelStatePartial(
     "plotSelection",
     [],
@@ -28,16 +25,18 @@ export function usePlotSelection() {
   const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);
   function handleSelected(selectedResults) {
     setSelectedSamples(new Set());
-    setExtendedSelection(selectedResults);
+    setExtendedSelection({
+      selection: selectedResults,
+      scope: SELECTION_SCOPE,
+    });
     if (selectedResults === null) {
       clearSelection();
     }
   }
 
   function clearSelection() {
-    setExtendedSelection(null);
+    resetExtendedSelection();
     setPlotSelection(null);
-    setOverrideStage(null);
     setSelectedSamples(new Set());
     setFilters({});
   }
@@ -63,8 +62,8 @@ export function usePlotSelection() {
   } else if (plotSelection && plotSelection.length) {
     resolvedSelection = plotSelection;
     selectionStyle = "plot";
-  } else if (extendedSelection && extendedSelection.length) {
-    resolvedSelection = extendedSelection;
+  } else if (selection && selection.length) {
+    resolvedSelection = selection;
     selectionStyle = "extended";
   }
 
@@ -76,5 +75,6 @@ export function usePlotSelection() {
     resolvedSelection,
     hasSelection,
     selectionStyle,
+    selectionIsExternal: scope !== SELECTION_SCOPE,
   };
 }
