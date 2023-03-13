@@ -1,4 +1,3 @@
-
 **/*.DS_store
 .vscode
 
@@ -27,3 +26,4 @@ dist/
 coverage.xml
 .coverage.*
 pyvenv.cfg
+.venv
