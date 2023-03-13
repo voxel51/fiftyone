@@ -108,6 +108,22 @@ class BrainRunConfig(RunConfig):
             return BrainRunType.visualization
         return None
 
+    @gql.field
+    def max_k(self) -> t.Optional[int]:
+        try:
+            cls = etau.get_class(self.cls)
+            return None if cls().max_k is None else int(cls().max_k)
+        except:
+            return None
+
+    @gql.field
+    def supportsLeastSimilarity(self) -> t.Optional[bool]:
+        try:
+            cls = etau.get_class(self.cls)
+            return bool(cls().supports_least_similarity)
+        except:
+            return None
+
 
 @gql.type
 class BrainRun(Run):
