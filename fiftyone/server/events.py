@@ -267,7 +267,11 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         _app_count += 1
 
     current = state.dataset.name if state.dataset else None
-    current_saved_view_slug = state.saved_view_slug
+    current_saved_view_slug = (
+        fou.to_slug(state.view.name)
+        if state.view is not None and state.view.name
+        else None
+    )
     if not isinstance(payload.initializer, fos.StateDescription):
         update = False
         if (
@@ -280,15 +284,11 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 state.selected = []
                 state.selected_labels = []
                 state.view = None
-                state.view_name = None
-                state.saved_view_slug = None
             except:
                 state.dataset = None
                 state.selected = []
                 state.selected_labels = []
                 state.view = None
-                state.view_name = None
-                state.saved_view_slug = None
             else:
                 if payload.initializer.view:
                     try:
@@ -298,7 +298,6 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                         state.view = state.dataset.load_saved_view(doc.name)
                         state.selected = []
                         state.selected_labels = []
-                        state.saved_view_slug = payload.initializer.view
                         state.view_name = doc.name
                     except:
                         pass
@@ -314,14 +313,10 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 state.view = state.dataset.load_saved_view(doc.name)
                 state.selected = []
                 state.selected_labels = []
-                state.saved_view_slug = payload.initializer.view
-                state.view_name = doc.name
             except:
                 state.view = None
                 state.selected = []
                 state.selected_labels = []
-                state.view_name = None
-                state.saved_view_slug = None
                 pass
 
         if update:

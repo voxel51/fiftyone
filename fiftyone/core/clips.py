@@ -20,6 +20,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fost
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
@@ -406,6 +407,131 @@ class ClipsView(fov.DatasetView):
             self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
+class TrajectoriesView(ClipsView):
+    """A :class:`ClipsView` of object trajectories from a video
+    :class:`fiftyone.core.dataset.Dataset`.
+
+    Trajectories views contain an ordered collection of clips, each of which
+    corresponds to a unique object trajectory from the source collection.
+
+    Clips retrieved from trajectories views are returned as :class:`ClipView`
+    objects.
+
+    Args:
+        source_collection: the
+            :class:`fiftyone.core.collections.SampleCollection` from which this
+            view was created
+        clips_stage: the :class:`fiftyone.core.stages.ToTrajectories` stage
+            that defines how the clips were created
+        clips_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
+            the clips in this view
+    """
+
+    def __init__(
+        self,
+        source_collection,
+        clips_stage,
+        clips_dataset,
+        _stages=None,
+        _name=None,
+    ):
+        if not isinstance(clips_stage, fost.ToTrajectories):
+            raise ValueError(
+                "Trajectory views must be defined by a %s stage; found %s"
+                % (fost.ToTrajectories, type(clips_stage))
+            )
+
+        if _stages is None:
+            _stages = []
+
+        trajectory_stages = self._make_trajectory_stages(
+            source_collection, clips_stage, clips_dataset
+        )
+        _stages = trajectory_stages + _stages
+
+        self._num_trajectory_stages = len(trajectory_stages)
+        self._classification_field = None
+        self._source_collection = source_collection
+        self._clips_stage = clips_stage
+        self._clips_dataset = clips_dataset
+        self.__stages = _stages
+        self.__name = _name
+
+    def __copy__(self):
+        return self.__class__(
+            self._source_collection,
+            deepcopy(self._clips_stage),
+            self._clips_dataset,
+            _stages=deepcopy(self.__stages[self._num_trajectory_stages :]),
+            _name=self.__name,
+        )
+
+    @property
+    def _stages(self):
+        return self.__stages
+
+    @property
+    def _all_stages(self):
+        return (
+            self._source_collection.view()._all_stages
+            + [self._clips_stage]
+            + self.__stages[self._num_trajectory_stages :]
+        )
+
+    @staticmethod
+    def _make_trajectory_stages(source_collection, clips_stage, clips_dataset):
+        field, _ = source_collection._handle_frame_field(clips_stage.field)
+
+        trajectory_stages = []
+
+        #
+        # Exclude all frame-level fields that weren't explicitly requested
+        #
+
+        exclude_fields = set(source_collection.get_frame_field_schema().keys())
+        exclude_fields -= set(source_collection._get_default_frame_fields())
+        exclude_fields.discard(field)
+        if clips_stage.config and clips_stage.config.get("other_fields", None):
+            other_fields = clips_stage.config["other_fields"]
+            if other_fields == True:
+                exclude_fields.clear()
+            else:
+                if etau.is_str(other_fields):
+                    other_fields = [other_fields]
+
+                for other_field in other_fields:
+                    (
+                        _field,
+                        is_frame_field,
+                    ) = source_collection._handle_frame_field(other_field)
+                    if is_frame_field:
+                        exclude_fields.discard(_field)
+
+        if exclude_fields:
+            exclude_stage = fost.ExcludeFields(
+                [source_collection._FRAMES_PREFIX + f for f in exclude_fields]
+            )
+            exclude_stage.validate(clips_dataset)
+            trajectory_stages.append(exclude_stage)
+
+        #
+        # Select correct trajectory
+        #
+
+        filter_stage = fost.FilterLabels(
+            clips_stage.field,
+            (
+                (F("label") == F("$" + field + ".label"))
+                & (F("index") == F("$" + field + ".index"))
+            ),
+            only_matches=False,
+        )
+        filter_stage.validate(clips_dataset)
+        trajectory_stages.append(filter_stage)
+
+        return trajectory_stages
+
+
 def make_clips_dataset(
     sample_collection,
     field_or_expr,
@@ -522,8 +648,10 @@ def make_clips_dataset(
         dataset.add_sample_field(
             field_or_expr,
             fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Label,
+            embedded_doc_type=foo.DynamicEmbeddedDocument,
         )
+        dataset.add_sample_field(field_or_expr + ".label", fof.StringField)
+        dataset.add_sample_field(field_or_expr + ".index", fof.IntField)
 
     if other_fields:
         src_schema = sample_collection.get_field_schema()
@@ -631,7 +759,12 @@ def _write_support_clips(
             [{"$unwind": "$support"}, {"$set": {"_rand": {"$rand": {}}}}]
         )
 
-    pipeline.append({"$out": dataset._sample_collection_name})
+    pipeline.extend(
+        [
+            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$out": dataset._sample_collection_name},
+        ]
+    )
 
     src_collection._aggregate(post_pipeline=pipeline)
 
@@ -685,6 +818,7 @@ def _write_temporal_detection_clips(
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
+                    "_dataset_id": dataset._doc.id,
                 }
             },
             {"$unset": support_path},
@@ -744,11 +878,12 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                     "$set": {
                         "support": {"$slice": ["$" + _tmp_field, 2, 2]},
                         field: {
-                            "_cls": "Label",
+                            "_cls": "DynamicEmbeddedDocument",
                             "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
                             "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
                         },
                         "_rand": {"$rand": {}},
+                        "_dataset_id": dataset._doc.id,
                     },
                 },
                 {"$unset": _tmp_field},
@@ -818,7 +953,12 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
             post_pipeline=[
                 {"$project": project},
                 {"$unwind": "$support"},
-                {"$set": {"_rand": {"$rand": {}}}},
+                {
+                    "$set": {
+                        "_rand": {"$rand": {}},
+                        "_dataset_id": dataset._doc.id,
+                    }
+                },
                 {"$out": dataset._sample_collection_name},
             ]
         )

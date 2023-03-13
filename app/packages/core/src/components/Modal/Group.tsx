@@ -8,16 +8,18 @@ import {
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {
+  currentSlice,
+  defaultGroupSlice,
   getSampleSrc,
   groupField,
   groupId,
+  groupSample as groupSampleSelectorFamily,
   hasPinnedSlice,
-  mainGroupSample,
-  modalNavigation,
   pinnedSlice,
   pinnedSliceSample,
   selectedMediaField,
   sidebarOverride,
+  useBrowserStorage,
   useClearModal,
   useOnSelectLabel,
 } from "@fiftyone/state";
@@ -26,21 +28,29 @@ import React, {
   MutableRefObject,
   Suspense,
   useCallback,
-  useRef,
-  useState,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 
+import { Loading, useTheme } from "@fiftyone/components";
+import { VideoLooker } from "@fiftyone/looker";
+import classNames from "classnames";
+import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import GroupList from "../Group";
-import Sample from "./Sample";
-import classNames from "classnames";
 import { GroupBar, GroupSampleBar } from "./Bars";
-import { VideoLooker } from "@fiftyone/looker";
 import Looker from "./Looker";
-import { Resizable } from "re-resizable";
-import { Loading, useTheme } from "@fiftyone/components";
+import Sample from "./Sample";
+
+const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
+
+const PixelatingSuspense = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>{children}</Suspense>
+  );
+};
 
 const GroupSample: React.FC<
   React.PropsWithChildren<{
@@ -78,6 +88,7 @@ const GroupSample: React.FC<
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
+
   return (
     <div
       className={
@@ -112,18 +123,59 @@ const useSlice = (sample: any): string => {
   return sample[field].name;
 };
 
+const DefaultGroupSample: React.FC<{
+  lookerRef: MutableRefObject<VideoLooker | undefined>;
+  lookerRefCallback?: (looker) => void;
+}> = ({ lookerRef, lookerRefCallback }) => {
+  const defaultSlice = useRecoilValue(defaultGroupSlice);
+  const sample = useRecoilValue(groupSampleSelectorFamily(defaultSlice));
+  const clearModal = useClearModal();
+  const reset = useResetRecoilState(sidebarOverride);
+
+  const hover = fos.useHoveredSample(sample);
+
+  return (
+    <GroupSample
+      sampleId={sample._id}
+      slice={defaultSlice}
+      pinned={false}
+      onClick={reset}
+      {...hover.handlers}
+    >
+      <Looker
+        key={sample._id}
+        sample={sample}
+        lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
+        onClose={clearModal}
+      />
+    </GroupSample>
+  );
+};
+
 const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
-}> = ({ lookerRef }) => {
-  const sample = useRecoilValue(mainGroupSample);
-  const navigation = useRecoilValue(modalNavigation);
-
+  lookerRefCallback?: (looker) => void;
+}> = ({ lookerRef, lookerRefCallback }) => {
+  const sample = useRecoilValue(groupSampleSelectorFamily(null));
+  const currentModalSlice = useRecoilValue(currentSlice(true));
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
   const reset = useResetRecoilState(sidebarOverride);
-
   const slice = useSlice(sample);
   const hover = fos.useHoveredSample(sample);
+
+  if (
+    sample._media_type === "point-cloud" &&
+    currentModalSlice === sample.group.name
+  ) {
+    return (
+      <DefaultGroupSample
+        lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
+      />
+    );
+  }
 
   return (
     <GroupSample
@@ -134,22 +186,18 @@ const MainSample: React.FC<{
       {...hover.handlers}
     >
       <Looker
+        sample={sample}
         key={sample._id}
         lookerRef={lookerRef}
-        onNext={() => navigation.getIndex(navigation.index + 1)}
+        lookerRefCallback={lookerRefCallback}
         onClose={clearModal}
-        onPrevious={
-          navigation.index > 0
-            ? () => navigation.getIndex(navigation.index - 1)
-            : undefined
-        }
       />
     </GroupSample>
   );
 };
 
 const withVisualizerPlugin = <T extends {}>(Component: React.FC<T>) => {
-  return (props: T) => {
+  const PluginComponentWrapper = (props: T) => {
     const { sample, urls } = useRecoilValue(pinnedSliceSample);
     const [plugin] = usePlugin(PluginComponentType.Visualizer);
     const mediaField = useRecoilValue(selectedMediaField(true));
@@ -179,6 +227,8 @@ const withVisualizerPlugin = <T extends {}>(Component: React.FC<T>) => {
       <Component {...props} />
     );
   };
+
+  return PluginComponentWrapper;
 };
 
 const PluggableSample: React.FC<{}> = withVisualizerPlugin(() => {
@@ -207,73 +257,125 @@ const PinnedSample: React.FC = () => {
   );
 };
 
-const DualView: React.FC = () => {
+const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
+  lookerRefCallback,
+}) => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
-  const [width, setWidth] = React.useState("70%");
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
+
+  const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
+  const is3DVisible = useRecoilValue(fos.groupMediaIs3DVisible);
+  const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
+
+  const shouldSplitVertically = useMemo(
+    () => is3DVisible && isImageVisible,
+    [is3DVisible, isImageVisible]
+  );
+
+  const [width, setWidth] = useBrowserStorage(
+    "group-modal-split-view-width",
+    shouldSplitVertically ? DEFAULT_SPLIT_VIEW_LEFT_WIDTH : "100%"
+  );
+
+  useEffect(() => {
+    if (!shouldSplitVertically) {
+      setWidth("100%");
+    }
+  }, [shouldSplitVertically, setWidth]);
 
   return (
     <div className={groupContainer}>
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
-        <Resizable
-          size={{ height: "100% !important", width }}
-          minWidth={300}
-          maxWidth={"90%"}
-          enable={{
-            top: false,
-            right: true,
-            bottom: false,
-            left: false,
-            topRight: false,
-            bottomRight: false,
-            bottomLeft: false,
-            topLeft: false,
-          }}
-          onResizeStop={(e, direction, ref, { width: delta }) => {
-            setWidth(width + delta);
-          }}
-          style={{
-            position: "relative",
-            borderRight: `1px solid ${theme.primary.plainBorder}`,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <GroupList key={`${key}-${mediaField}`} />
+        {(isCarouselVisible || isImageVisible) && (
+          <Resizable
+            size={{ height: "100% !important", width }}
+            minWidth={300}
+            maxWidth={shouldSplitVertically ? "90%" : "100%"}
+            enable={{
+              top: false,
+              right: shouldSplitVertically ? true : false,
+              bottom: false,
+              left: false,
+              topRight: false,
+              bottomRight: false,
+              bottomLeft: false,
+              topLeft: false,
+            }}
+            onResizeStop={(e, direction, ref, { width: delta }) => {
+              if (width === "100%") {
+                setWidth(DEFAULT_SPLIT_VIEW_LEFT_WIDTH);
+              } else {
+                setWidth(String(Number(width) + delta));
+              }
+            }}
+            style={{
+              position: "relative",
+              borderRight: `1px solid ${theme.primary.plainBorder}`,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            {isCarouselVisible && (
+              <GroupList
+                key={`${key}-${mediaField}`}
+                fullHeight={!is3DVisible && !isImageVisible}
+              />
+            )}
 
-          <Suspense fallback={<Loading>Pixelating...</Loading>}>
-            <MainSample lookerRef={lookerRef} />
-          </Suspense>
-        </Resizable>
+            {isImageVisible ? (
+              <PixelatingSuspense>
+                <MainSample
+                  lookerRef={lookerRef}
+                  lookerRefCallback={lookerRefCallback}
+                />
+              </PixelatingSuspense>
+            ) : is3DVisible ? (
+              <PixelatingSuspense>
+                <PinnedSample />
+              </PixelatingSuspense>
+            ) : null}
+          </Resizable>
+        )}
 
-        <Suspense fallback={<Loading>Pixelating...</Loading>}>
-          <PinnedSample />
-        </Suspense>
+        {shouldSplitVertically && (
+          <PixelatingSuspense>
+            <PinnedSample />
+          </PixelatingSuspense>
+        )}
+
+        {!shouldSplitVertically && is3DVisible && (
+          <PixelatingSuspense>
+            <PinnedSample />
+          </PixelatingSuspense>
+        )}
       </div>
     </div>
   );
 };
 
-const Group: React.FC = () => {
+const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
+  lookerRefCallback,
+}) => {
   const hasPinned = useRecoilValue(hasPinnedSlice);
   const key = useRecoilValue(groupId);
 
+  if (!hasPinned) {
+    return (
+      <>
+        <GroupList key={key} /> <Sample lookerRefCallback={lookerRefCallback} />
+      </>
+    );
+  }
+
   return (
-    <>
-      {hasPinned ? (
-        <Suspense>
-          <DualView />
-        </Suspense>
-      ) : (
-        <>
-          <GroupList key={key} /> <Sample />
-        </>
-      )}
-    </>
+    <Suspense>
+      <DualView lookerRefCallback={lookerRefCallback} />
+    </Suspense>
   );
 };
 

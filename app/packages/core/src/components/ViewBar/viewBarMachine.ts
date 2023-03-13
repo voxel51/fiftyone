@@ -68,12 +68,18 @@ function operate(type, operator, value, isString = true, fieldNames) {
   return type.split("|").reduce((acc, t) => {
     if (acc !== undefined) return acc;
     const parser = PARAM_PARSER[t];
-    return parser.validate(
-      !isString ? parser.castFrom(value, fieldNames) : value,
-      fieldNames
-    )
-      ? parser[operator](value, fieldNames)
-      : acc;
+    try {
+      if (
+        parser.validate(
+          !isString ? parser.castFrom(value, fieldNames) : value,
+          fieldNames
+        )
+      ) {
+        return parser[operator](value, fieldNames);
+      }
+    } catch {}
+
+    return acc;
   }, undefined);
 }
 
@@ -142,7 +148,7 @@ function setStages(ctx, stageInfo) {
               stageInfoResult.params[j].type,
               "castFrom",
               p[1],
-              false,
+              typeof p[1] === "string",
               ctx.fieldNames
             ),
             true,

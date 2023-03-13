@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { computeMinMaxForColorBufferAttribute } from "../../../utils";
-import { ColorBy } from "../../state";
+import { ShadeBy } from "../../state";
 import {
   Gradients,
   RgbShader,
@@ -10,8 +10,10 @@ import {
 } from "./shaders";
 
 type PointCloudMeshArgs = {
-  colorBy: ColorBy;
-  pointSize: number;
+  defaultShadingColor: string;
+  shadeBy: ShadeBy;
+  pointSize: string;
+  isPointSizeAttenuated: boolean;
   points: THREE.Points;
   rotation: [number, number, number];
   minZ: number | null | undefined;
@@ -37,8 +39,10 @@ const ShadingGradients: Gradients = [
 ];
 
 export const PointCloudMesh = ({
+  defaultShadingColor,
+  isPointSizeAttenuated,
   minZ,
-  colorBy,
+  shadeBy,
   pointSize,
   points,
   rotation,
@@ -70,44 +74,66 @@ export const PointCloudMesh = ({
     }
   }, [boundingBox, pointsGeometry, points, onLoad]);
 
-  if (minZ === undefined) {
+  if (minZ === null || minZ === undefined) {
     minZ = boundingBox.min.z;
   }
 
   const pointsMaterial = useMemo(() => {
-    const customShaderNormalizedPointSize = pointSize * 100;
+    const pointSizeNum = Number(pointSize);
 
-    if (colorBy === "height") {
+    if (shadeBy === "height") {
       return (
         <ShadeByHeight
           gradients={ShadingGradients}
           min={minZ}
           max={boundingBox.max.z}
-          pointSize={customShaderNormalizedPointSize}
+          pointSize={pointSizeNum}
+          isPointSizeAttenuated={isPointSizeAttenuated}
         />
       );
     }
 
-    if (colorBy === "intensity") {
+    if (shadeBy === "intensity") {
       return (
         <ShadeByIntensity
           {...colorMinMax}
           gradients={ShadingGradients}
-          pointSize={customShaderNormalizedPointSize}
+          pointSize={pointSizeNum}
+          isPointSizeAttenuated={isPointSizeAttenuated}
         />
       );
     }
 
-    if (pointsGeometry.getAttribute("color")) {
-      return <RgbShader pointSize={customShaderNormalizedPointSize} />;
+    if (shadeBy === "rgb") {
+      return (
+        <RgbShader
+          pointSize={pointSizeNum}
+          isPointSizeAttenuated={isPointSizeAttenuated}
+        />
+      );
     }
 
-    return <pointsMaterial color={"white"} size={pointSize} />;
-  }, [colorMinMax, colorBy, minZ, pointSize, boundingBox, pointsGeometry]);
+    return (
+      <pointsMaterial
+        color={defaultShadingColor}
+        // 1000 and 2 are arbitrary values that seem to work well
+        size={isPointSizeAttenuated ? pointSizeNum / 1000 : pointSizeNum / 2}
+        sizeAttenuation={isPointSizeAttenuated}
+      />
+    );
+  }, [
+    colorMinMax,
+    shadeBy,
+    minZ,
+    pointSize,
+    boundingBox,
+    defaultShadingColor,
+    isPointSizeAttenuated,
+  ]);
 
   return (
     <primitive
-      key={`${pointSize}-${colorBy}`}
+      key={`${pointSize}-${shadeBy}-${isPointSizeAttenuated}`}
       scale={1}
       object={points}
       rotation={rotation}

@@ -1983,6 +1983,48 @@ class EmbeddingsMixin(object):
         return np.stack([self.embed(arg) for arg in args])
 
 
+class PromptMixin(object):
+    """Mixin for :class:`Model` classes that can generate prompt embeddings.
+
+    This mixin allows for the possibility that only some instances of a class
+    are capable of generating prompt embeddings, per the value of the
+    :meth:`can_embed_prompts` property.
+    """
+
+    @property
+    def can_embed_prompts(self):
+        """Whether this instance can generate prompt embeddings."""
+        raise NotImplementedError(
+            "subclasses must implement can_embed_prompts"
+        )
+
+    def embed_prompt(self, arg):
+        """Generates an embedding for the given prompt.
+
+        Args:
+            arg: the prompt
+
+        Returns:
+            a numpy array containing the embedding
+        """
+        raise NotImplementedError("subclasses must implement embed_prompt")
+
+    def embed_prompts(self, args):
+        """Generates embeddings for the given prompts.
+
+        Subclasses can override this method to increase efficiency, but, by
+        default, this method simply iterates over the data and applies
+        :meth:`embed_prompt` to each.
+
+        Args:
+            args: an iterable of prompts
+
+        Returns:
+            a numpy array containing the embeddings stacked along axis 0
+        """
+        return np.stack([self.embed_prompt(arg) for arg in args])
+
+
 class TorchModelMixin(object):
     """Mixin for :class:`Model` classes that support feeding data for inference
     via a :class:`torch:torch.utils.data.DataLoader`.

@@ -4,7 +4,7 @@ import { Assessment, Fullscreen, FullscreenExit } from "@mui/icons-material";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
-import { PillButton } from "./utils";
+import { PillButton } from "@fiftyone/components";
 import Distributions from "./Distributions";
 import { useWindowSize } from "@fiftyone/state";
 import { Resizable } from "re-resizable";

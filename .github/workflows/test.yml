@@ -24,6 +24,7 @@ jobs:
       - name: Upload
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage-final.json
           flags: app
 
@@ -92,6 +93,7 @@ jobs:
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           flags: python
       - name: Run no wrapper tests

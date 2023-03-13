@@ -2822,6 +2822,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+        self.assertListEqual(
+            dataset2.distinct("_dataset_id"), [dataset2._doc.id]
+        )
 
         # Include dynamic attributes
 
@@ -3088,6 +3091,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertEqual(
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
+        )
+        self.assertListEqual(
+            dataset2.distinct("_dataset_id"), [dataset2._doc.id]
         )
 
         # Test import/export of saved views

@@ -1153,10 +1153,14 @@ def is_integer_mask_targets(mask_targets):
     return all(
         map(
             lambda k: isinstance(k, numbers.Integral)
-            or (isinstance(k, str) and k.isdigit()),
+            or (isinstance(k, str) and _is_valid_int_string(k)),
             mask_targets.keys(),
         )
     )
+
+
+def _is_valid_int_string(s):
+    return s.replace("-", "", 1).isdigit()
 
 
 def is_rgb_mask_targets(mask_targets):

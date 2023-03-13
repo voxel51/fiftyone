@@ -132,6 +132,8 @@ from .core.models import (
 )
 from .core.odm import (
     DatasetAppConfig,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
     KeypointSkeleton,
     SidebarGroupDocument,
 )
@@ -195,6 +197,7 @@ from .core.stages import (
     ToPatches,
     ToEvaluationPatches,
     ToClips,
+    ToTrajectories,
     ToFrames,
 )
 from .core.session import (

@@ -357,7 +357,7 @@ class AppConfig(EnvConfig):
             d,
             "sidebar_mode",
             env_var="FIFTYONE_APP_SIDEBAR_MODE",
-            default="best",
+            default="fast",
         )
         self.theme = self.parse_string(
             d,

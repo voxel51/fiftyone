@@ -33,6 +33,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
+fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -744,7 +745,7 @@ class ExcludeFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>",
+                "type": "list<field>|field|list<str>|str",
                 "placeholder": "list,of,fields",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
@@ -1187,7 +1188,7 @@ class ExcludeLabels(ViewStage):
             },
             {
                 "name": "fields",
-                "type": "NoneType|list<str>|str",
+                "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "fields",
                 "default": "None",
             },
@@ -6265,11 +6266,10 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts the samples in a collection by visual similiarity to a specified
-    set of query ID(s).
+    """Sorts a collection by similiarity to a specified query.
 
     In order to use this stage, you must first use
-    :meth:`fiftyone.brain.compute_similarity` to index your dataset by visual
+    :meth:`fiftyone.brain.compute_similarity` to index your dataset by
     similiarity.
 
     Examples::
@@ -6278,25 +6278,53 @@ class SortBySimilarity(ViewStage):
         import fiftyone.brain as fob
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("quickstart").clone()
+        dataset = foz.load_zoo_dataset("quickstart")
 
-        fob.compute_similarity(dataset, brain_key="similarity")
+        fob.compute_similarity(
+            dataset, model="clip-vit-base32-torch", brain_key="clip"
+        )
 
         #
-        # Sort the samples by their visual similarity to the first sample
-        # in the dataset
+        # Sort samples by their similarity to a sample by its ID
         #
 
         query_id = dataset.first().id
-        stage = fo.SortBySimilarity(query_id)
+
+        stage = fo.SortBySimilarity(query_id, k=5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort samples by their similarity to a manually computed vector
+        #
+
+        model = foz.load_zoo_model("clip-vit-base32-torch")
+        embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+        query = embeddings.mean(axis=0)
+
+        stage = fo.SortBySimilarity(query, k=5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sort samples by their similarity to a text prompt
+        #
+
+        query = "kites high in the air"
+
+        stage = fo.SortBySimilarity(query, k=5)
         view = dataset.add_stage(stage)
 
     Args:
-        query_ids: an ID or iterable of query IDs. These may be sample IDs or
-            label IDs depending on ``brain_key``
+        query: the query, which can be any of the following:
+
+            -   an ID or iterable of IDs
+            -   a ``num_dims`` vector or ``num_queries x num_dims`` array of
+                vectors
+            -   a prompt or iterable of prompts (if supported by the index)
+
         k (None): the number of matches to return. By default, the entire
             collection is sorted
-        reverse (False): whether to sort by least similarity
+        reverse (False): whether to sort by least similarity (True) or greatest
+            similarity (False). Some backends may not support least similarity
         dist_field (None): the name of a float field in which to store the
             distance of each example to the specified query. The field is
             created if necessary
@@ -6308,19 +6336,17 @@ class SortBySimilarity(ViewStage):
 
     def __init__(
         self,
-        query_ids,
+        query,
         k=None,
         reverse=False,
         dist_field=None,
         brain_key=None,
         _state=None,
     ):
-        if etau.is_str(query_ids):
-            query_ids = [query_ids]
-        else:
-            query_ids = list(query_ids)
+        query, query_kwarg = _parse_similarity_query(query)
 
-        self._query_ids = query_ids
+        self._query = query
+        self._query_kwarg = query_kwarg
         self._k = k
         self._reverse = reverse
         self._dist_field = dist_field
@@ -6329,9 +6355,9 @@ class SortBySimilarity(ViewStage):
         self._pipeline = None
 
     @property
-    def query_ids(self):
-        """The list of query IDs."""
-        return self._query_ids
+    def query(self):
+        """The query."""
+        return self._query
 
     @property
     def k(self):
@@ -6364,7 +6390,7 @@ class SortBySimilarity(ViewStage):
 
     def _kwargs(self):
         return [
-            ["query_ids", self._query_ids],
+            ["query", self._query_kwarg],
             ["k", self._k],
             ["reverse", self._reverse],
             ["dist_field", self._dist_field],
@@ -6376,9 +6402,9 @@ class SortBySimilarity(ViewStage):
     def _params(cls):
         return [
             {
-                "name": "query_ids",
-                "type": "list<id>|id",
-                "placeholder": "list,of,ids",
+                "name": "query",
+                "type": "list<str>|str",
+                "placeholder": "query",
             },
             {
                 "name": "k",
@@ -6411,7 +6437,7 @@ class SortBySimilarity(ViewStage):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
-            "query_ids": self._query_ids,
+            "query": self._query_kwarg,
             "k": self._k,
             "reverse": self._reverse,
             "dist_field": self._dist_field,
@@ -6446,12 +6472,42 @@ class SortBySimilarity(ViewStage):
                 context.enter_context(results)  # pylint: disable=no-member
 
             return results.sort_by_similarity(
-                self._query_ids,
+                self._query,
                 k=self._k,
                 reverse=self._reverse,
                 dist_field=self._dist_field,
                 _mongo=True,
             )
+
+
+def _parse_similarity_query(query):
+    if isinstance(query, np.ndarray):
+        # Query vector(s)
+        query_kwarg = fou.serialize_numpy_array(query, ascii=True)
+        return query, query_kwarg
+
+    if not etau.is_str(query):
+        # Query IDs or prompts
+        query = list(query)
+        return query, query
+
+    try:
+        # Query ID
+        ObjectId(query)
+        return query, query
+    except:
+        pass
+
+    try:
+        # Already serialized query vector(s)
+        query_kwarg = query
+        query = fou.deserialize_numpy_array(query, ascii=True)
+        return query, query_kwarg
+    except:
+        pass
+
+    # Query prompt
+    return query, query
 
 
 class Take(ViewStage):
@@ -6980,6 +7036,129 @@ class ToClips(ViewStage):
         ]
 
 
+class ToTrajectories(ViewStage):
+    """Creates a view that contains one clip for each unique object trajectory
+    defined by their ``(label, index)`` in a frame-level field of a video
+    collection.
+
+    The returned view will contain:
+
+    -   A ``sample_id`` field that records the sample ID from which each clip
+        was taken
+    -   A ``support`` field that records the ``[first, last]`` frame support of
+        each clip
+    -   A sample-level label field that records the ``label`` and ``index`` of
+        each trajectory
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Create a trajectories view for the vehicles in the dataset
+        #
+
+        stage1 = fo.FilterLabels("frames.detections", F("label") == "vehicle")
+        stage2 = fo.ToTrajectories("frames.detections")
+        trajectories = dataset.add_stage(stage1).add_stage(stage2)
+
+        print(trajectories)
+
+    Args:
+        field: a frame-level label list field of any of the following types:
+
+            -   :class:`fiftyone.core.labels.Detections`
+            -   :class:`fiftyone.core.labels.Polylines`
+            -   :class:`fiftyone.core.labels.Keypoints`
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+    """
+
+    def __init__(self, field, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._field = field
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def field(self):
+        """The label field for which to extract trajectories."""
+        return self._field
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field": self._field,
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
+            clips_dataset = focl.make_clips_dataset(
+                sample_collection, self._field, trajectories=True, **kwargs
+            )
+
+            state["name"] = clips_dataset.name
+            self._state = state
+        else:
+            clips_dataset = fod.load_dataset(name)
+
+        return focl.TrajectoriesView(sample_collection, self, clips_dataset)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["config", self._config],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "field",
+                "type": "field",
+                "placeholder": "field",
+            },
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
 class ToFrames(ViewStage):
     """Creates a view that contains one sample per frame in a video collection.
 
@@ -7380,8 +7559,10 @@ def _make_match_empty_labels_pipeline(
 def _get_default_similarity_run(sample_collection):
     if isinstance(sample_collection, fop.PatchesView):
         patches_field = sample_collection.patches_field
-        brain_keys = sample_collection._get_similarity_keys(
-            patches_field=patches_field
+
+        brain_keys = sample_collection.list_brain_runs(
+            type=fob.Similarity,
+            patches_field=patches_field,
         )
 
         if not brain_keys:
@@ -7401,9 +7582,14 @@ def _get_default_similarity_run(sample_collection):
         gt_field = sample_collection.gt_field
         pred_field = sample_collection.pred_field
 
-        brain_keys = sample_collection._get_similarity_keys(
-            patches_field=gt_field
-        ) + sample_collection._get_similarity_keys(patches_field=pred_field)
+        brain_keys = sample_collection.list_brain_runs(
+            type=fob.Similarity,
+            patches_field=gt_field,
+        )
+        brain_keys += sample_collection.list_brain_runs(
+            type=fob.Similarity,
+            patches_field=pred_field,
+        )
 
         if not brain_keys:
             raise ValueError(
@@ -7415,11 +7601,13 @@ def _get_default_similarity_run(sample_collection):
             )
     else:
         # Try sample indexes first
-        brain_keys = sample_collection._get_similarity_keys(patches_field=None)
+        brain_keys = sample_collection.list_brain_runs(
+            type=fob.Similarity, patches_field=None
+        )
 
         # It's allowable to use a patches index too
         if not brain_keys:
-            brain_keys = sample_collection._get_similarity_keys()
+            brain_keys = sample_collection.list_brain_runs(type=fob.Similarity)
 
         if not brain_keys:
             raise ValueError(
@@ -7492,6 +7680,7 @@ _STAGES = [
     ToPatches,
     ToEvaluationPatches,
     ToClips,
+    ToTrajectories,
     ToFrames,
 ]
 

@@ -1871,6 +1871,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             rel_dir = self.dataset_dir
 
         media_fields = self._media_fields
+        dataset_id = dataset._doc.id
 
         def _parse_sample(sd):
             if not fos.isabs(sd["filepath"]):
@@ -1882,6 +1883,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             if media_fields:
                 _parse_media_fields(sd, media_fields, rel_dir)
 
+            sd["_dataset_id"] = dataset_id
             return sd
 
         sample_ids = foo.insert_documents(
@@ -1908,8 +1910,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 frames = [f for f in frames if f["_sample_id"] in _sample_ids]
                 num_frames = len(frames)
 
+            def _parse_frame(fd):
+                fd["_dataset_id"] = dataset_id
+                return fd
+
             foo.insert_documents(
-                frames,
+                map(_parse_frame, frames),
                 dataset._frame_collection,
                 ordered=self.ordered,
                 progress=True,
@@ -2023,8 +2029,6 @@ def _parse_media_fields(sd, media_fields, rel_dir):
 
 
 def _import_saved_views(dataset, views):
-    dataset_doc = dataset._doc
-
     for d in views:
         if etau.is_str(d):
             d = json_util.loads(d)
@@ -2036,17 +2040,15 @@ def _import_saved_views(dataset, views):
 
         d.pop("_id", None)
         view_doc = foo.SavedViewDocument.from_dict(d)
-        view_doc.dataset_id = str(dataset_doc.id)
-        view_doc.save()
+        view_doc.dataset_id = str(dataset._doc.id)
+        view_doc.save(upsert=True)
 
-        dataset_doc.saved_views.append(view_doc)
+        dataset._doc.saved_views.append(view_doc)
 
-    dataset_doc.save()
+    dataset.save()
 
 
 def _import_runs(dataset, runs, results_dir, run_cls):
-    dataset_doc = dataset._doc
-
     # Import run documents
     for key, d in runs.items():
         if etau.is_str(d):
@@ -2054,14 +2056,14 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
         d.pop("_id", None)
         run_doc = foo.RunDocument.from_dict(d)
-        run_doc.dataset_id = str(dataset_doc.id)
+        run_doc.dataset_id = str(dataset._doc.id)
         run_doc.results = None
-        run_doc.save()
+        run_doc.save(upsert=True)
 
-        runs = getattr(dataset_doc, run_cls._runs_field())
+        runs = getattr(dataset._doc, run_cls._runs_field())
         runs[key] = run_doc
 
-    dataset_doc.save()
+    dataset.save()
 
     # Import run results
     for key in runs.keys():
@@ -2070,7 +2072,7 @@ def _import_runs(dataset, runs, results_dir, run_cls):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
             d = fos.read_json(json_path)
-            results = fors.RunResults.from_dict(d, view, run_info.config)
+            results = fors.RunResults.from_dict(d, view, run_info.config, key)
             run_cls.save_run_results(dataset, key, results, cache=False)
 
 

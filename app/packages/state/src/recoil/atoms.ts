@@ -1,9 +1,9 @@
 import { atom, atomFamily, useRecoilCallback } from "recoil";
 
-import { Sample, RGB } from "@fiftyone/looker/src/state";
+import { Sample } from "@fiftyone/looker/src/state";
 
-import { State } from "./types";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { State } from "./types";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -22,10 +22,10 @@ export interface SampleData {
 
 export interface ModalNavigation {
   index: number;
-  getIndex: (index: number) => void;
+  setIndex: (index: number) => void;
 }
 
-interface ModalSample extends SampleData {
+export interface ModalSample extends SampleData {
   navigation: ModalNavigation;
 }
 
@@ -43,6 +43,44 @@ export const useRefresh = () => {
     []
   );
 };
+
+// recoil effect that syncs state with local storage
+export const getBrowserStorageEffectForKey =
+  (
+    key: string,
+    props: {
+      sessionStorage?: boolean;
+      valueClass?: "string" | "number" | "boolean";
+    } = { sessionStorage: false, valueClass: "string" }
+  ) =>
+  ({ setSelf, onSet }) => {
+    const { valueClass, sessionStorage } = props;
+
+    const storage = sessionStorage
+      ? window.sessionStorage
+      : window.localStorage;
+
+    const value = storage.getItem(key);
+    let procesedValue;
+
+    if (valueClass === "number") {
+      procesedValue = Number(value);
+    } else if (valueClass === "boolean") {
+      procesedValue = value === "true";
+    } else {
+      procesedValue = value;
+    }
+
+    if (value != null) setSelf(procesedValue);
+
+    onSet((newValue, _oldValue, isReset) => {
+      if (isReset) {
+        storage.removeItem(key);
+      } else {
+        storage.setItem(key, newValue);
+      }
+    });
+  };
 
 export const modal = atom<ModalSample | null>({
   key: "modal",
@@ -145,7 +183,7 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export const selectedSampleObjects = atom<Map<String, Sample>>({
+export const selectedSampleObjects = atom<Map<string, Sample>>({
   key: "selectedSampleObjects",
   default: new Map(),
 });
@@ -175,7 +213,7 @@ export const alpha = atomFamily<number, boolean>({
 
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
-  default: 1,
+  default: 0,
 });
 
 export const appTeamsIsOpen = atom({
@@ -208,18 +246,16 @@ export const sidebarOverride = atom<string>({
   default: null,
 });
 
-export const extendedSelection = atom<string[]>({
+export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
   key: "extendedSelection",
-  default: null,
+  default: { selection: null },
 });
 export const extendedSelectionOverrideStage = atom<any>({
   key: "extendedSelectionOverrideStage",
   default: null,
 });
 
-export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
+export const similarityParameters = atom<State.SortBySimilarityParameters>({
   key: "similarityParameters",
   default: null,
 });
@@ -242,20 +278,43 @@ export const lookerPanels = atom({
   },
 });
 
+export const groupMediaIsCarouselVisible = atom<boolean>({
+  key: "groupMediaIsCarouselVisible",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIs3DVisible = atom<boolean>({
+  key: "groupMediaIs3DVisible",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIsImageVisible = atom<boolean>({
+  key: "groupMediaIsImageVisible",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsImageVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",
-  effects: [
-    ({ setSelf, onSet }) => {
-      const muiModeKey = "mui-mode";
-      const muiMode = localStorage.getItem(muiModeKey) as "light" | "dark";
-      if (muiMode != null) setSelf(muiMode);
-      onSet((newValue, oldValue, isReset) => {
-        if (isReset) localStorage.removeItem(muiModeKey);
-        else localStorage.setItem(muiModeKey, newValue);
-      });
-    },
-  ],
+  effects: [getBrowserStorageEffectForKey("mui-mode")],
 });
 
 export const canEditSavedViews = atom({

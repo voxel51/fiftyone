@@ -203,7 +203,7 @@ class DatasetAppConfig(EmbeddedDocument):
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
         sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("all", "best", "fast")``
+            Supported values are ``("fast", "all", "best")``
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
@@ -336,8 +336,7 @@ def _make_default_sidebar_groups(sample_collection):
         )
 
     sidebar_groups = [
-        SidebarGroupDocument(name="tags"),
-        SidebarGroupDocument(name="label tags"),
+        SidebarGroupDocument(name="tags", paths=["tags", "_label_tags"]),
         SidebarGroupDocument(name="metadata", paths=metadata),
         SidebarGroupDocument(name="labels", paths=labels),
     ]
