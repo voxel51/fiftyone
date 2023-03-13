@@ -124,13 +124,13 @@ class SaveContext(object):
                 % (self._dataset.name, sample._dataset.name)
             )
 
-        sample_op, frame_ops = sample._save(deferred=True)
-        updated = sample_op is not None or frame_ops
+        sample_ops, frame_ops = sample._save(deferred=True)
+        updated = sample_ops or frame_ops
 
         self._curr_batch_size += 1
 
-        if sample_op is not None:
-            self._sample_ops.append(sample_op)
+        if sample_ops:
+            self._sample_ops.extend(sample_ops)
 
         if frame_ops:
             self._frame_ops.extend(frame_ops)
@@ -1946,7 +1946,7 @@ class SampleCollection(object):
         finally:
             if new_group_field:
                 self._dataset._doc.media_type = fom.GROUP
-                self._dataset._doc.save()
+                self._dataset.save()
 
     def set_label_values(
         self,
@@ -3100,13 +3100,30 @@ class SampleCollection(object):
         """
         return eval_key in self.list_evaluations()
 
-    def list_evaluations(self):
+    def list_evaluations(self, type=None, **kwargs):
         """Returns a list of all evaluation keys on this collection.
+
+        Args:
+            type (None): an :class:`fiftyone.core.evaluations.EvaluationMethod`
+                type. If provided, only runs that are a subclass of this type
+                are included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of evaluation keys
         """
-        return foev.EvaluationMethod.list_runs(self)
+        return foev.EvaluationMethod.list_runs(self, type=type, **kwargs)
+
+    def rename_evaluation(self, eval_key, new_eval_key):
+        """Replaces the key for the given evaluation with a new key.
+
+        Args:
+            eval_key: an evaluation key
+            new_anno_key: a new evaluation key
+        """
+        return foev.EvaluationMethod.update_run_key(
+            self, eval_key, new_eval_key
+        )
 
     def get_evaluation_info(self, eval_key):
         """Returns information about the evaluation with the given key on this
@@ -3120,19 +3137,22 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
-    def load_evaluation_results(self, eval_key, cache=True):
+    def load_evaluation_results(self, eval_key, cache=True, **kwargs):
         """Loads the results for the evaluation with the given key on this
         collection.
 
         Args:
             eval_key: an evaluation key
             cache (True): whether to cache the results on the collection
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.evaluation.EvaluationMethodConfig.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.core.evaluation.EvaluationResults`
         """
         return foev.EvaluationMethod.load_run_results(
-            self, eval_key, cache=cache
+            self, eval_key, cache=cache, **kwargs
         )
 
     def load_evaluation_view(self, eval_key, select_fields=False):
@@ -3180,13 +3200,28 @@ class SampleCollection(object):
         """
         return brain_key in self.list_brain_runs()
 
-    def list_brain_runs(self):
+    def list_brain_runs(self, type=None, **kwargs):
         """Returns a list of all brain keys on this collection.
+
+        Args:
+            type (None): a :class:`fiftyone.core.brain.BrainMethod` type. If
+                provided, only runs that are a subclass of this type are
+                included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of brain keys
         """
-        return fob.BrainMethod.list_runs(self)
+        return fob.BrainMethod.list_runs(self, type=type, **kwargs)
+
+    def rename_brain_run(self, brain_key, new_brain_key):
+        """Replaces the key for the given brain run with a new key.
+
+        Args:
+            brain_key: a brain key
+            new_brain_key: a new brain key
+        """
+        return fob.BrainMethod.update_run_key(self, brain_key, new_brain_key)
 
     def get_brain_info(self, brain_key):
         """Returns information about the brain method run with the given key on
@@ -3200,7 +3235,9 @@ class SampleCollection(object):
         """
         return fob.BrainMethod.get_run_info(self, brain_key)
 
-    def load_brain_results(self, brain_key, cache=True, load_view=True):
+    def load_brain_results(
+        self, brain_key, cache=True, load_view=True, **kwargs
+    ):
         """Loads the results for the brain method run with the given key on
         this collection.
 
@@ -3209,12 +3246,15 @@ class SampleCollection(object):
             cache (True): whether to cache the results on the collection
             load_view (True): whether to load the view on which the results
                 were computed (True) or the full dataset (False)
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.brain.BrainMethodConfig.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.core.brain.BrainResults`
         """
         return fob.BrainMethod.load_run_results(
-            self, brain_key, cache=cache, load_view=load_view
+            self, brain_key, cache=cache, load_view=load_view, **kwargs
         )
 
     def load_brain_view(self, brain_key, select_fields=False):
@@ -3245,41 +3285,6 @@ class SampleCollection(object):
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
-
-    def _get_similarity_keys(self, **kwargs):
-        from fiftyone.brain import SimilarityConfig
-
-        return self._get_brain_runs_with_type(SimilarityConfig, **kwargs)
-
-    def _get_visualization_keys(self, **kwargs):
-        from fiftyone.brain import VisualizationConfig
-
-        return self._get_brain_runs_with_type(VisualizationConfig, **kwargs)
-
-    def _get_brain_runs_with_type(self, run_type, **kwargs):
-        brain_keys = []
-        for brain_key in self.list_brain_runs():
-            try:
-                brain_info = self.get_brain_info(brain_key)
-            except:
-                logger.warning(
-                    "Failed to load info for brain method run '%s'", brain_key
-                )
-                continue
-
-            run_cls = etau.get_class(brain_info.config.cls)
-            if not issubclass(run_cls, run_type):
-                continue
-
-            if any(
-                getattr(brain_info.config, key, None) != value
-                for key, value in kwargs.items()
-            ):
-                continue
-
-            brain_keys.append(brain_key)
-
-        return brain_keys
 
     @classmethod
     def list_view_stages(cls):
@@ -5367,7 +5372,7 @@ class SampleCollection(object):
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select. My contain ``embedded.field.name`` as well
+                select. May contain ``embedded.field.name`` as well
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5837,14 +5842,13 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by_similarity(
-        self, query_ids, k=None, reverse=False, dist_field=None, brain_key=None
+        self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the samples in the collection by visual similiarity to a
-        specified set of query ID(s).
+        """Sorts the collection by similiarity to a specified query.
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-        visual similiarity.
+        similiarity.
 
         Examples::
 
@@ -5854,22 +5858,49 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            fob.compute_similarity(dataset, brain_key="similarity")
+            fob.compute_similarity(
+                dataset, model="clip-vit-base32-torch", brain_key="clip"
+            )
 
             #
-            # Sort the samples by their visual similarity to the first sample
-            # in the dataset
+            # Sort samples by their similarity to a sample by its ID
             #
 
             query_id = dataset.first().id
-            view = dataset.sort_by_similarity(query_id)
+
+            view = dataset.sort_by_similarity(query_id, k=5)
+
+            #
+            # Sort samples by their similarity to a manually computed vector
+            #
+
+            model = foz.load_zoo_model("clip-vit-base32-torch")
+            embeddings = dataset.take(2, seed=51).compute_embeddings(model)
+            query = embeddings.mean(axis=0)
+
+            view = dataset.sort_by_similarity(query, k=5)
+
+            #
+            # Sort samples by their similarity to a text prompt
+            #
+
+            query = "kites high in the air"
+
+            view = dataset.sort_by_similarity(query, k=5)
 
         Args:
-            query_ids: an ID or iterable of query IDs. These may be sample IDs
-                or label IDs depending on ``brain_key``
+            query: the query, which can be any of the following:
+
+                -   an ID or iterable of IDs
+                -   a ``num_dims`` vector or ``num_queries x num_dims`` array
+                    of vectors
+                -   a prompt or iterable of prompts (if supported by the index)
+
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
-            reverse (False): whether to sort by least similarity
+            reverse (False): whether to sort by least similarity (True) or
+                greatest similarity (False). Some backends may not support
+                least similarity
             dist_field (None): the name of a float field in which to store the
                 distance of each example to the specified query. The field is
                 created if necessary
@@ -5883,7 +5914,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SortBySimilarity(
-                query_ids,
+                query,
                 k=k,
                 reverse=reverse,
                 dist_field=dist_field,
@@ -6156,6 +6187,57 @@ class SampleCollection(object):
             a :class:`fiftyone.core.clips.ClipsView`
         """
         return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
+
+    @view_stage
+    def to_trajectories(self, field, **kwargs):
+        """Creates a view that contains one clip for each unique object
+        trajectory defined by their ``(label, index)`` in a frame-level field
+        of a video collection.
+
+        The returned view will contain:
+
+        -   A ``sample_id`` field that records the sample ID from which each
+            clip was taken
+        -   A ``support`` field that records the ``[first, last]`` frame
+            support of each clip
+        -   A sample-level label field that records the ``label`` and ``index``
+            of each trajectory
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Create a trajectories view for the vehicles in the dataset
+            #
+
+            trajectories = (
+                dataset
+                .filter_labels("frames.detections", F("label") == "vehicle")
+                .to_trajectories("frames.detections")
+            )
+
+            print(trajectories)
+
+        Args:
+            field: a frame-level label list field of any of the following
+                types:
+
+                -   :class:`fiftyone.core.labels.Detections`
+                -   :class:`fiftyone.core.labels.Polylines`
+                -   :class:`fiftyone.core.labels.Keypoints`
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.clips.TrajectoriesView`
+        """
+        return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
     @view_stage
     def to_frames(self, **kwargs):
@@ -7831,13 +7913,30 @@ class SampleCollection(object):
         """
         return anno_key in self.list_annotation_runs()
 
-    def list_annotation_runs(self):
+    def list_annotation_runs(self, type=None, **kwargs):
         """Returns a list of all annotation keys on this collection.
+
+        Args:
+            type (None): a :class:`fiftyone.core.annotations.AnnotationMethod`
+                type. If provided, only runs that are a subclass of this type
+                are included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationMethod.list_runs(self)
+        return foan.AnnotationMethod.list_runs(self, type=type, **kwargs)
+
+    def rename_annotation_run(self, anno_key, new_anno_key):
+        """Replaces the key for the given annotation run with a new key.
+
+        Args:
+            anno_key: an annotation key
+            new_anno_key: a new annotation key
+        """
+        return foan.AnnotationMethod.update_run_key(
+            self, anno_key, new_anno_key
+        )
 
     def get_annotation_info(self, anno_key):
         """Returns information about the annotation run with the given key on
@@ -7866,17 +7965,16 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
             cache (True): whether to cache the results on the collection
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+            **kwargs: keyword arguments for run's
+                :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationMethod.load_run_results(
-            self, anno_key, cache=cache, load_view=False
+        return foan.AnnotationMethod.load_run_results(
+            self, anno_key, cache=cache, load_view=False, **kwargs
         )
-        results.load_credentials(**kwargs)
-        return results
 
     def load_annotation_view(self, anno_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -7925,8 +8023,9 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
+                method
 
         Returns:
             ``None``, unless ``unexpected=="return"`` and unexpected labels are

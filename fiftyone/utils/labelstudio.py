@@ -43,9 +43,10 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
-        url: the URL of the Label Studio server
-        api_key: the API key to use for authentication
-        project_name: the name of the project to use on the Label Studio server
+        url (None): the URL of the Label Studio server
+        api_key (None): the API key to use for authentication
+        project_name (None): the name of the project to use on the Label Studio
+            server
     """
 
     def __init__(
@@ -63,6 +64,7 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
         self.url = url
         self.project_name = project_name
 
+        # store privately so these aren't serialized
         self._api_key = api_key
 
     @property
@@ -72,6 +74,9 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
     @api_key.setter
     def api_key(self, value):
         self._api_key = value
+
+    def load_credentials(self, url=None, api_key=None):
+        self._load_parameters(url=url, api_key=api_key)
 
 
 class LabelStudioBackend(foua.AnnotationBackend):
@@ -124,11 +129,11 @@ class LabelStudioBackend(foua.AnnotationBackend):
             url=self.config.url, api_key=self.config.api_key
         )
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         api = self.connect_to_api()
 
         logger.info("Uploading media to Label Studio...")
-        results = api.upload_samples(samples, self)
+        results = api.upload_samples(samples, anno_key, self)
         logger.info("Upload complete")
 
         if launch_editor:
@@ -380,12 +385,13 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         return [export_label_to_label_studio(l) for l in labels]
 
-    def upload_samples(self, samples, backend):
+    def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to Label Studio according to the given
         backend's annotation and server configuration.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            anno_key: the annotation key
             backend: a :class:`LabelStudioBackend` to use to perform the upload
 
         Returns:
@@ -405,9 +411,10 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         return LabelStudioAnnotationResults(
             samples,
             config,
-            id_map=id_map,
-            project_id=project.id,
-            uploaded_tasks=uploaded_tasks,
+            anno_key,
+            id_map,
+            project.id,
+            uploaded_tasks,
             backend=backend,
         )
 
@@ -480,32 +487,18 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
     """
 
     def __init__(
-        self, samples, config, id_map, project_id, uploaded_tasks, backend=None
+        self,
+        samples,
+        config,
+        anno_key,
+        id_map,
+        project_id,
+        uploaded_tasks,
+        backend=None,
     ):
-        super().__init__(samples, config, id_map=id_map, backend=backend)
+        super().__init__(samples, config, anno_key, id_map, backend=backend)
         self.project_id = project_id
         self.uploaded_tasks = uploaded_tasks
-
-    def load_credentials(self, url=None, api_key=None):
-        """Load the Label Studio credentials from the given keyword arguments
-        or the FiftyOne annotation config.
-
-        Args:
-            url (None): the url of the Label Studio server
-            api_key (None): the Label Studio API key
-        """
-        self._load_config_parameters(url=url, api_key=api_key)
-
-    def _load_config_parameters(self, **kwargs):
-        config = self.config
-        parameters = fo.annotation_config.backends.get(config.name, {})
-
-        for name, value in kwargs.items():
-            if value is None:
-                value = parameters.get(name, None)
-
-            if value is not None:
-                setattr(config, name, value)
 
     def launch_editor(self):
         """Open a Label Studio tab in browser."""
@@ -520,7 +513,7 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
             api.delete_project(self.project_id)
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         # int keys were serialized as strings...
         uploaded_tasks = {
             int(task_id): source_id
@@ -530,6 +523,7 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         return cls(
             samples,
             config,
+            anno_key,
             d["id_map"],
             d["project_id"],
             uploaded_tasks,

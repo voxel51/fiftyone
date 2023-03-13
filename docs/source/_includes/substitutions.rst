@@ -145,3 +145,5 @@
 
 .. |Space| replace:: :class:`Space <fiftyone.core.spaces.Space>`
 .. |Panel| replace:: :class:`Panel <fiftyone.core.spaces.Panel>`
+
+.. |OrthographicProjectionMetadata| replace:: :class:`OrthographicProjectionMetadata <fiftyone.utils.utils3d.OrthographicProjectionMetadata>`

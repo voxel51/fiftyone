@@ -43,13 +43,14 @@ interface InputProps {
   onFocus?: () => void;
   onBlur?: () => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  style?: React.CSSProperties;
 }
 
 const Input = React.memo(
   forwardRef(
     (
       {
-        color = null,
+        color = undefined,
         placeholder,
         validator = () => true,
         setter,
@@ -59,6 +60,7 @@ const Input = React.memo(
         onFocus,
         onBlur,
         onKeyDown,
+        style,
       }: InputProps,
       ref
     ) => {
@@ -66,7 +68,9 @@ const Input = React.memo(
       color = color ?? theme.primary.plainColor;
 
       return (
-        <StyledInputContainer style={{ borderBottom: `1px solid ${color}` }}>
+        <StyledInputContainer
+          style={{ borderBottom: `1px solid ${color}`, ...style }}
+        >
           <StyledInput
             ref={ref}
             placeholder={placeholder}
@@ -85,7 +89,7 @@ const Input = React.memo(
             }}
             style={disabled ? { color: theme.text.secondary } : {}}
             disabled={disabled}
-            onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
+            onFocus={(_: React.FocusEvent<HTMLInputElement>) => {
               onFocus && onFocus();
             }}
             onBlur={onBlur}

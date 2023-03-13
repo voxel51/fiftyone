@@ -1430,6 +1430,76 @@ source dataset, there are some differences compared to non-clip views:
     |Classification| field populated when generating clip views based on
     |TemporalDetection| labels, as described above)
 
+.. _trajectory-views:
+
+Trajectory views
+----------------
+
+You can use
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+to create views into your video datasets that contain one sample per each
+unique object trajectory defined by their ``(label, index)`` in a frame-level
+|Detections| or |Polylines| field.
+
+Trajectory views are a special case of :ref:`clip views <clip-views>` where
+each clip has been filtered to contain only the identifying object, rather than
+than all objects with the trajectory's frame support.
+
+For example, if you have frame-level
+:ref:`object detections <object-detection>` with their ``index`` attributes
+populated, then you can create a trajectories view that contains one clip for
+each object of a specific type using
+:meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+and
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Create a trajectories view for the vehicles in the dataset
+    trajectories = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "vehicle")
+        .to_trajectories("frames.detections")
+    )
+    print(trajectories)
+
+    session = fo.launch_app(view=trajectories)
+
+.. code-block:: text
+
+    Dataset:    quickstart-video
+    Media type: video
+    Num clips:  109
+    Clip fields:
+        id:         fiftyone.core.fields.ObjectIdField
+        sample_id:  fiftyone.core.fields.ObjectIdField
+        filepath:   fiftyone.core.fields.StringField
+        support:    fiftyone.core.fields.FrameSupportField
+        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'vehicle']}, only_matches=True, trajectories=False)
+        2. ToTrajectories(field='frames.detections', config=None)
+
+.. warning::
+
+    Trajectory views can contain signficantly more frames than their source
+    collection, since the number of frames is now `O(# boxes)` rather than
+    `O(# video frames)`.
+
 .. _frame-views:
 
 Frame views
@@ -1706,14 +1776,14 @@ to restrict attention to or exclude frames from a view by their IDs:
 
 .. _similarity-views:
 
-Visual similarity
-_________________
+Similarity views
+________________
 
-If you have indexed your dataset by
-:ref:`visual similarity <brain-similarity>`, then you can use the
+If your dataset is :ref:`indexed by similarity <brain-similarity>`, then you
+can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-stage to programmatically query your data by visual similarity to image(s) or
-object patch(es) of interest.
+stage to programmatically query your data by similarity to image(s) or object
+patch(es) of interest.
 
 .. _image-similarity-views:
 
@@ -1723,7 +1793,7 @@ Image similarity
 The example below indexes a dataset by image similarity using
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to sort the dataset by visual similarity to a chosen image:
+to sort the dataset by similarity to a chosen image:
 
 .. code-block:: python
     :linenos:
@@ -1742,7 +1812,7 @@ to sort the dataset by visual similarity to a chosen image:
     # Select a random query image
     query_id = dataset.take(1).first().id
 
-    # Sort the samples by visual similarity to the query image
+    # Sort the samples by similarity to the query image
     view = dataset.sort_by_similarity(query_id, brain_key="image_sim")
     print(view)
 
@@ -1753,7 +1823,7 @@ to sort the dataset by visual similarity to a chosen image:
 
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
-    :ref:`App guide <app-image-similarity>` to see how to sort images by visual
+    :ref:`App guide <app-image-similarity>` to see how to sort images by
     similarity via point-and-click in the App!
 
 .. _object-similarity-views:
@@ -1765,7 +1835,7 @@ The example below indexes the objects in a |Detections| field of a dataset by
 similarity using
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to retrieve the 15 most visually similar objects to a chosen object:
+to retrieve the 15 most similar objects to a chosen object:
 
 .. code-block:: python
     :linenos:
@@ -1790,7 +1860,7 @@ to retrieve the 15 most visually similar objects to a chosen object:
     # Select a random query object
     query_id = patches.take(1).first().id
 
-    # Retrieve the 15 most visually similar objects
+    # Retrieve the 15 most similar objects
     similar_objects = patches.sort_by_similarity(query_id, k=15, brain_key="gt_sim")
 
     # View results in the App
@@ -1801,7 +1871,7 @@ to retrieve the 15 most visually similar objects to a chosen object:
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
     :ref:`App guide <app-object-similarity>` to see how to sort objects by
-    visual similarity via point-and-click in the App!
+    similarity via point-and-click in the App!
 
 .. _geolocation-views:
 

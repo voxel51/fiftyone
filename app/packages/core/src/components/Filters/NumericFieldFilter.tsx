@@ -210,7 +210,10 @@ const NumericFieldFilter = ({
     setIsMatching && setIsMatching(!nestedField);
   };
 
-  if (!(hasBounds || hasNonfinites) || !field) {
+  // we do not want to show nestedfield's index field
+  // if confidence only has none value, we do not want to show it
+  // but we want to show 'no results' fields with empty intfield/floatfield
+  if (!field || (!hasBounds && !hasNonfinites && hasNone)) {
     return null;
   }
 
@@ -223,12 +226,9 @@ const NumericFieldFilter = ({
       {named && name && (
         <FieldLabelAndInfo
           nested
-          field={field!}
+          field={field}
           color={color}
-          template={({
-            label,
-            hoverTarget,
-          }) => (
+          template={({ label, hoverTarget }) => (
             <NamedRangeSliderHeader>
               <span ref={hoverTarget}>{label}</span>
             </NamedRangeSliderHeader>
@@ -281,7 +281,7 @@ const NumericFieldFilter = ({
             })}
             formatter={
               [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
-                ? (v) => v ? formatDateTime(v, timeZone) : null
+                ? (v) => (v ? formatDateTime(v, timeZone) : null)
                 : (v) => null
             }
             value={false}

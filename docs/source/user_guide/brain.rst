@@ -30,15 +30,14 @@ workflow:
   isolating examples of critical scenarios, to recommending new samples to add
   to your training dataset, and more!
 
-* :ref:`Visual similarity <brain-similarity>`: When constructing a dataset or
-  training a model, have you ever wanted to find similar examples to an image
-  or object of interest? For example, you may have found a failure case of your
-  model and now want to search for similar scenarios in your evaluation set to
-  diagnose the issue, or you want to mine your data lake to augment your
-  training set to fix the issue. Use the FiftyOne Brain to index your data
-  by *visual similarity* and you can easily query and sort your datasets to
-  find similar examples, both programmatically and via point-and-click in the
-  App.
+* :ref:`Similarity <brain-similarity>`: When constructing a dataset or training
+  a model, have you ever wanted to find similar examples to an image or object
+  of interest? For example, you may have found a failure case of your model and
+  now want to search for similar scenarios in your evaluation set to diagnose
+  the issue, or you want to mine your data lake to augment your training set to
+  fix the issue. Use the FiftyOne Brain to index your data by *similarity* and
+  you can easily query and sort your datasets to find similar examples, both
+  programmatically and via point-and-click in the App.
 
 * :ref:`Uniqueness <brain-image-uniqueness>`:
   During the training loop for a model, the best results will
@@ -315,18 +314,17 @@ large groups of people, and small/distant people.
 
 .. _brain-similarity:
 
-Visual similarity
-_________________
+Similarity
+__________
 
 The FiftyOne Brain provides a
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` method
-that you can use to index the images or object patches in a dataset by visual
-similarity.
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` method that
+you can use to index the images or object patches in a dataset by similarity.
 
 Once you've indexed a dataset by similarity, you can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-view stage to programmatically sort your dataset by visual similarity to any
-image(s) or object patch(es) of your choice in your dataset. In addition, the
+view stage to programmatically sort your dataset by similarity to any image(s)
+or object patch(es) of your choice in your dataset. In addition, the
 :ref:`FiftyOne App <fiftyone-app>` provides a convenient
 :ref:`point-and-click interface <app-similarity>` for sorting by similarity
 with respect to an index you've computed whenever one or more images or labels
@@ -346,8 +344,8 @@ subsets of your datasets or their object patches. See
 Embedding methods
 -----------------
 
-Like :ref:`embeddings visualization <brain-embeddings-visualization>`, visual
-similarity leverages deep embeddings to generate a visual index for a dataset.
+Like :ref:`embeddings visualization <brain-embeddings-visualization>`,
+similarity leverages deep embeddings to generate an index for a dataset.
 
 The `embeddings` and `model` parameters of
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` support a
@@ -367,8 +365,8 @@ Image similarity
 ----------------
 
 This section demonstrates the basic workflow of indexing an image dataset by
-visual similarity and then using the :ref:`FiftyOne App <app-image-similarity>`
-and the
+similarity and then using the :ref:`FiftyOne App <app-image-similarity>` and
+the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to query the index.
 
@@ -378,9 +376,9 @@ name for the index via the `brain_key` argument.
 
 Next, load the dataset in the App and select some image(s). Whenever there is
 an active selection in the App, a similarity menu icon will appear above the
-grid, enabling you to sort by visual similarity to your current selection. The
-menu will list the `brain_key` for all applicable similarity indexes so you
-can choose which index to use to perform the search. You can also optionally
+grid, enabling you to sort by similarity to your current selection. The menu
+will list the `brain_key` for all applicable similarity indexes so you can
+choose which index to use to perform the search. You can also optionally
 specify a maximum number of matches to return (`k`) and whether to sort in
 order of least similarity (`reverse`):
 
@@ -447,8 +445,8 @@ Object similarity
 -----------------
 
 This section demonstrates the basic workflow of indexing a dataset of objects
-by visual similarity and then using the
-:ref:`FiftyOne App <app-object-similarity>` and the
+by similarity and then using the :ref:`FiftyOne App <app-object-similarity>`
+and the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to query the index.
 
@@ -465,11 +463,11 @@ Next, load the dataset in the App and switch to
 :ref:`object patches view <app-object-patches>` by clicking the patches icon
 above the grid and choosing the label field of interest from the dropdown.
 Now, whenever you have selected one or more patches in the App, a similarity
-menu icon will appear above the grid, enabling you to sort by visual similarity
-to your current selection. The menu will list the `brain_key` for all
-applicable similarity indexes so you can choose which index to use to perform
-the search. You can also optionally specify a maximum number of matches to
-return (`k`) and whether to sort in order of least similarity (`reverse`):
+menu icon will appear above the grid, enabling you to sort by similarity to
+your current selection. The menu will list the `brain_key` for all applicable
+similarity indexes so you can choose which index to use to perform the search.
+You can also optionally specify a maximum number of matches to return (`k`) and
+whether to sort in order of least similarity (`reverse`):
 
 .. code-block:: python
     :linenos:
@@ -537,7 +535,7 @@ contains the sorted results:
 Applications
 ------------
 
-How can visual simiarlity be used in practice? A common pattern is to mine your
+How can simiarlity be used in practice? A common pattern is to mine your
 dataset for similar examples to certain images or object patches of interest,
 e.g., those that represent failure modes of a model that need to be studied in
 more detail or underrepresented classes that need more training examples.
@@ -657,13 +655,13 @@ dataset.
 
 For example, let's use the
 :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`
-method to identify the least visually similar images in our dataset:
+method to identify the least similar images in our dataset:
 
 .. code-block:: python
     :linenos:
 
     # Use the similarity index to identify the 1% of images that are least
-    # visually similar w.r.t. the other images
+    # similar w.r.t. the other images
     results.find_duplicates(fraction=0.01)
 
     print(results.neighbors_map)
@@ -991,12 +989,18 @@ demonstrated empirical value in many model training exercises.
 Managing brain runs
 ___________________
 
-When you run a brain method on a dataset, the run is recorded on the dataset,
-allowing you to retrive information about it later, delete it (along with any
-modifications to your dataset that were performed by it), or even retrieve the
-view into your dataset that you processed.
+When you run a brain method with a ``brain_key`` argument, the run is recorded
+on the dataset and you can retrieve information about it later, rename it,
+delete it (along with any modifications to your dataset that were performed by
+it), and even retrieve the view that you computed on using the following
+methods on your dataset:
 
-Brain method runs can be accessed later by their `brain_key`:
+-   :meth:`list_brain_runs() <fiftyone.core.collections.SampleCollection.list_brain_runs>`
+-   :meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_brain_info>`
+-   :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`
+-   :meth:`load_brain_view() <fiftyone.core.collections.SampleCollection.load_brain_view>`
+-   :meth:`rename_brain_run() <fiftyone.core.collections.SampleCollection.rename_brain_run>`
+-   :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
 
 .. tabs::
 
@@ -1004,8 +1008,8 @@ Brain method runs can be accessed later by their `brain_key`:
 
         The
         :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-        method accepts a `brain_key` parameter that specifies the brain key
-        under which to store the results of the visualization.
+        method accepts an optional `brain_key` parameter that specifies the
+        brain key under which to store the results of the visualization.
 
     .. tab:: Similarity
 
@@ -1063,7 +1067,10 @@ The example below demonstrates the basic interface:
     # Load the view on which a brain run was performed
     same_view = dataset.load_brain_view("visualization")
 
+    # Rename a brain run
+    dataset.rename_brain_run("visualization", "still_visualization")
+
     # Delete brain runs
     # This will delete any stored results and fields that were populated
-    dataset.delete_brain_run("visualization")
+    dataset.delete_brain_run("still_visualization")
     dataset.delete_brain_run("uniqueness")

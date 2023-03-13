@@ -211,25 +211,22 @@ describe("ResolveGroups works", () => {
   it("dataset groups should resolve when curent is undefined", () => {
     const test = sidebar.resolveGroups(mockDataset, undefined);
 
-    expect(test.length).toBe(6);
+    expect(test.length).toBe(5);
     expect(test[0].name).toBe("tags");
     expect(test[0].paths.length).toBe(0);
-    expect(test[1].name).toBe("label tags");
-    expect(test[1].paths.length).toBe(0);
-    expect(test[2].name).toBe("metadata");
-    expect(test[2].paths.length).toBe(5);
-    expect(test[3].name).toBe("labels");
-    expect(test[3].paths.length).toBe(2);
-    expect(test[4].name).toBe("primitives");
-    expect(test[4].paths.length).toBe(3);
-    expect(test[5].name).toBe("other");
-    expect(test[5].paths.length).toBe(2);
+    expect(test[1].name).toBe("metadata");
+    expect(test[1].paths.length).toBe(5);
+    expect(test[2].name).toBe("labels");
+    expect(test[2].paths.length).toBe(2);
+    expect(test[3].name).toBe("primitives");
+    expect(test[3].paths.length).toBe(3);
+    expect(test[4].name).toBe("other");
+    expect(test[4].paths.length).toBe(2);
   });
 
   it("when dataset appconfig does not have sidebarGroups settings, use default settings", () => {
     const mockSidebarGroups = [
       { name: "tags", paths: [], expanded: true },
-      { name: "label tags", paths: [], expanded: true },
       {
         name: "metadata",
         paths: [
@@ -260,12 +257,12 @@ describe("ResolveGroups works", () => {
 
     const test = sidebar.resolveGroups(mockDataset, mockSidebarGroups);
 
-    expect(test.length).toBe(8);
-    expect(test[5].name).toBe("other");
+    expect(test.length).toBe(7);
+    expect(test[4].name).toBe("other");
+    expect(test[4].expanded).toBeFalsy();
+    expect(test[5].name).toBe("test group a");
     expect(test[5].expanded).toBeFalsy();
-    expect(test[6].name).toBe("test group a");
+    expect(test[6].name).toBe("test group b");
     expect(test[6].expanded).toBeFalsy();
-    expect(test[7].name).toBe("test group b");
-    expect(test[7].expanded).toBeFalsy();
   });
 });

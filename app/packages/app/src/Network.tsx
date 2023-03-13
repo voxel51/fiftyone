@@ -1,4 +1,4 @@
-import { ErrorBoundary, Loading, RouteRenderer } from "@fiftyone/components";
+import { Loading, RouteRenderer } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { RelayEnvironmentKey } from "@fiftyone/state";
 
@@ -27,9 +27,7 @@ const Network: React.FC<{
       environmentKey={RelayEnvironmentKey}
     >
       <fos.RouterContext.Provider value={context}>
-        <ErrorBoundary>
-          <Renderer />
-        </ErrorBoundary>
+        <Renderer />
       </fos.RouterContext.Provider>
     </RecoilRelayEnvironmentProvider>
   );

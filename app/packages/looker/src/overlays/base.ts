@@ -41,6 +41,7 @@ export interface SelectData {
 }
 
 export interface RegularLabel extends BaseLabel {
+  _id?: string;
   label?: string;
   confidence?: number | NONFINITE;
 }

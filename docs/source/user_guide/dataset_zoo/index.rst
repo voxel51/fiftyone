@@ -11,7 +11,7 @@ that you can download and load into FiftyOne via a few simple commands.
 .. note::
 
     For some datasets, FiftyOne's Dataset Zoo uses the
-    `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_ or
+    `TorchVision Datasets <https://pytorch.org/vision/stable/datasets.html>`_ or
     `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_, depending on
     which ML library you have installed.
 

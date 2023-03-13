@@ -1723,7 +1723,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "ftfy", "regex"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
