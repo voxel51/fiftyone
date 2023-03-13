@@ -633,6 +633,8 @@ def _make_keypoint_list_filter(args, view, path, field):
 
         return {"filter": expr}
 
+    raise ValueError(f"Filtering {field} keypoint fields is not supported")
+
 
 def _apply_others(expr, f, args, is_label):
     is_matching = args.get("isMatching", False)
