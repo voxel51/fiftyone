@@ -1,4 +1,9 @@
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
@@ -112,6 +117,12 @@ const SortBySimilarity = ({
     return false;
   };
 
+  const meetKRequirement = !(
+    brainConfig?.maxK &&
+    state.k &&
+    state.k > brainConfig.maxK
+  );
+
   const loadingButton: ButtonDetail[] = isLoading
     ? [
         {
@@ -148,12 +159,21 @@ const SortBySimilarity = ({
         icon: "SearchIcon",
         ariaLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
-        onClick: () => sortBySimilarity(state),
+        onClick: () => meetKRequirement && sortBySimilarity(state),
       },
       ...loadingButton,
       ...groupButtons,
     ];
   }
+
+  // if I switch to different brain key, update whether to show maxK warning
+  useEffect(() => {
+    if (brainConfig?.maxK && state.k && state.k > brainConfig.maxK) {
+      setShowMaxKWarning(true);
+    } else {
+      setShowMaxKWarning(false);
+    }
+  }, [state.brainKey]);
 
   return (
     <Popout modal={modal} bounds={bounds} style={{ minWidth: 280 }}>
@@ -170,7 +190,7 @@ const SortBySimilarity = ({
               placeholder={"Type anything!"}
               value={(state.query as string) ?? ""}
               setter={(value) => updateState({ query: value })}
-              onEnter={() => sortBySimilarity(state)}
+              onEnter={() => meetKRequirement && sortBySimilarity(state)}
             />
           )}
           {isImageSearch && !hasSorting && (
