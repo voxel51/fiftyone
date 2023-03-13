@@ -13,6 +13,7 @@ import random
 
 from bson import json_util, ObjectId
 import cv2
+from mongoengine.base import get_document
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -1591,7 +1592,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._frame_labels_dir = fos.join(self.dataset_dir, "frames")
 
         if fos.isdir(self._fields_dir):
-            self._media_fields = fos.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in fos.list_subdirs(self._fields_dir)
+            }
 
         samples_path = fos.join(self.dataset_dir, "samples.json")
         samples = fos.read_json(samples_path).get("samples", [])
@@ -1753,7 +1756,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = fos.join(self.dataset_dir, "metadata.json")
 
         if fos.isdir(self._fields_dir):
-            self._media_fields = fos.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in fos.list_subdirs(self._fields_dir)
+            }
 
         self._samples_path = fos.join(self.dataset_dir, "samples.json")
         if not fos.isfile(self._samples_path):
@@ -2004,20 +2009,23 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
-# @todo dynamically get these
-_MEDIA_FIELDS = {
-    "Segmentation": "mask_path",
-    "Heatmap": "map_path",
-    "OrthographicProjectionMetadata": "filepath",
-}
-
-
 def _parse_media_fields(sd, media_fields, rel_dir):
-    for field_name in media_fields:
+    for field_name, key in media_fields.items():
         value = sd.get(field_name, None)
         if isinstance(value, dict):
-            document_type = value.get("_cls", None)
-            key = _MEDIA_FIELDS.get(document_type, None)
+            if key is False:
+                try:
+                    _cls = value.get("_cls", None)
+                    key = get_document(_cls)._MEDIA_FIELD
+                    media_fields[field_name] = key
+                except Exception as e:
+                    logger.warning(
+                        "Failed to infer media field for '%s'. Reason: %s",
+                        field_name,
+                        e,
+                    )
+                    key = None
+
             if key is not None:
                 path = value.get(key, None)
                 if path is not None and not fos.isabs(path):
