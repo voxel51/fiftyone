@@ -45,12 +45,13 @@ const SortBySimilarity = ({
   isImageSearch,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
+  const lastUsedBrainKey = useRecoilValue(searchBrainKeyValue);
   const [open, setOpen] = useState(false);
 
   const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
     () =>
       current || {
-        brainKey: null,
+        brainKey: lastUsedBrainKey,
         distField: null,
         reverse: false,
         k: DEFAULT_K,
@@ -82,8 +83,11 @@ const SortBySimilarity = ({
   const isLoading = useRecoilValue(fos.similaritySorting);
 
   useLayoutEffect(() => {
-    choices.choices.length === 1 &&
-      updateState({ brainKey: choices.choices[0] });
+    if (!choices.choices.includes(state.brainKey)) {
+      const newKey =
+        choices.choices.length > 0 ? choices.choices[0] : undefined;
+      updateState({ brainKey: newKey });
+    }
   }, [choices]);
 
   useLayoutEffect(() => {

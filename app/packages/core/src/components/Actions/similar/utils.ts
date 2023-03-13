@@ -97,6 +97,7 @@ export const useSortBySimilarity = (close) => {
             set(fos.selectedLabels, {});
             set(fos.hiddenLabels, {});
             set(fos.modal, null);
+            set(searchBrainKeyValue, combinedParameters.brainKey);
             close();
 
             return data;
@@ -184,10 +185,8 @@ export const currentSimilarityKeys = selectorFamily<
   get:
     ({ modal, isImageSearch }) =>
     ({ get }) => {
-      const searchBrainKey = get(searchBrainKeyValue);
       const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
-      const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
-
+      const result = keys.sort();
       return {
         total: keys.length,
         choices: result.slice(0, 11),
