@@ -20,7 +20,6 @@ import numpy as np
 
 import eta.core.utils as etau
 
-import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
@@ -34,6 +33,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
+fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -7607,7 +7607,7 @@ def _get_default_similarity_run(sample_collection):
 
         # It's allowable to use a patches index too
         if not brain_keys:
-            brain_keys = sample_collection.list_brain_runs(type=Similarity)
+            brain_keys = sample_collection.list_brain_runs(type=fob.Similarity)
 
         if not brain_keys:
             raise ValueError(
