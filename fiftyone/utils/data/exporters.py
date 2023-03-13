@@ -242,7 +242,7 @@ def export_samples(
     if label_field is not None:
         media_fields = samples._get_media_fields(whitelist=label_field)
         if media_fields:
-            samples.download_media(media_fields=media_fields)
+            samples.download_media(media_fields=list(media_fields.keys()))
 
     sample_collection = samples
 
@@ -1978,17 +1978,15 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         return outpath
 
     def _export_media_fields(self, sd):
-        for field_name, label_type in self._media_fields.items():
+        for field_name, key in self._media_fields.items():
             value = sd.get(field_name, None)
             if value is None:
                 continue
 
-            if label_type is None:
+            if key is not None:
+                self._export_media_field(value, field_name, key=key)
+            else:
                 self._export_media_field(sd, field_name)
-            elif issubclass(label_type, fol.Segmentation):
-                self._export_media_field(value, field_name, key="mask_path")
-            elif issubclass(label_type, fol.Heatmap):
-                self._export_media_field(value, field_name, key="map_path")
 
     def _export_media_field(self, d, field_name, key=None):
         if key is not None:
@@ -2254,17 +2252,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             media_exporter.close()
 
     def _export_media_fields(self, sd):
-        for field_name, label_type in self._media_fields.items():
+        for field_name, key in self._media_fields.items():
             value = sd.get(field_name, None)
             if value is None:
                 continue
 
-            if label_type is None:
+            if key is not None:
+                self._export_media_field(value, field_name, key=key)
+            else:
                 self._export_media_field(sd, field_name)
-            elif issubclass(label_type, fol.Segmentation):
-                self._export_media_field(value, field_name, key="mask_path")
-            elif issubclass(label_type, fol.Heatmap):
-                self._export_media_field(value, field_name, key="map_path")
 
     def _export_media_field(self, d, field_name, key=None):
         if key is not None:
