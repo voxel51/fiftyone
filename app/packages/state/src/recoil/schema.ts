@@ -25,6 +25,8 @@ import {
 
 import * as atoms from "./atoms";
 import { State } from "./types";
+import _ from "lodash";
+import { Sample } from "@fiftyone/looker/src/state";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -315,6 +317,38 @@ export const labelPaths = selectorFamily<
 
         return path;
       });
+    },
+});
+
+const convertToLabelValue = (sampleId, path) => (raw) => {
+  const labelId = raw._id;
+  const field = path.split(".").shift();
+  return { labelId, field, sampleId };
+};
+
+export const labelValues = selectorFamily<
+  string[],
+  { sample: Sample; expanded?: boolean }
+>({
+  key: "labelValues",
+  get:
+    ({ sample, expanded = true }) =>
+    ({ get }) => {
+      const paths = get(labelPaths({ expanded }));
+      let results = [];
+
+      for (const path of paths) {
+        const convert = convertToLabelValue(sample._id, path);
+        const value = _.get(sample, path, null);
+        if (value !== null) {
+          if (Array.isArray(value)) {
+            results = [...results, ...value.map(convert)];
+          } else {
+            results.push(convert(value));
+          }
+        }
+      }
+      return results;
     },
 });
 

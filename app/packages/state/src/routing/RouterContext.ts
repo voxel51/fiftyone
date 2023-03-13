@@ -263,6 +263,7 @@ async function fetchGraphQL(
   );
 
   if ("errors" in data && data.errors) {
+    console.error(data);
     throw new GraphQLError({
       errors: data.errors as GQLError[],
       variables,
