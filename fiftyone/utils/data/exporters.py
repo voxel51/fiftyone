@@ -12,7 +12,6 @@ import os
 import warnings
 
 from bson import json_util
-import numpy as np
 
 import eta.core.datasets as etad
 import eta.core.image as etai

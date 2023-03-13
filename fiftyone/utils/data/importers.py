@@ -11,8 +11,7 @@ import logging
 import os
 import random
 
-from bson import json_util, ObjectId
-import cv2
+from bson import json_util
 from mongoengine.base import get_document
 
 import eta.core.datasets as etad
@@ -2017,7 +2016,6 @@ def _parse_media_fields(sd, media_fields, rel_dir):
                 try:
                     _cls = value.get("_cls", None)
                     key = get_document(_cls)._MEDIA_FIELD
-                    media_fields[field_name] = key
                 except Exception as e:
                     logger.warning(
                         "Failed to infer media field for '%s'. Reason: %s",
@@ -2025,6 +2023,8 @@ def _parse_media_fields(sd, media_fields, rel_dir):
                         e,
                     )
                     key = None
+
+                media_fields[field_name] = key
 
             if key is not None:
                 path = value.get(key, None)
