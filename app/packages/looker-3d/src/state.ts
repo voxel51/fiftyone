@@ -50,7 +50,7 @@ export const currentActionAtom = atom<Actions>({
 
 export const currentPointSizeAtom = atom<string>({
   key: "pointSize",
-  default: "1",
+  default: "2",
   effects: [getBrowserStorageEffectForKey("pointSize")],
 });
 

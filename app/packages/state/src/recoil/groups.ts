@@ -196,17 +196,24 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
   get: ({ get }) => get(groupQuery),
 });
 
-export const activeModalSample = selector<
-  AppSample | ResponseFrom<pinnedSampleQuery>["sample"]
+export const activeModalSample = selectorFamily<
+  AppSample | ResponseFrom<pinnedSampleQuery>["sample"],
+  SliceName
 >({
   key: "activeModalSample",
-  get: ({ get }) => {
-    if (get(sidebarOverride)) {
-      return get(pinnedSliceSample).sample;
-    }
+  get:
+    (sliceName) =>
+    ({ get }) => {
+      if (!sliceName || !get(isGroup)) {
+        return get(modalAtom).sample;
+      }
 
-    return get(modal)?.sample;
-  },
+      if (get(sidebarOverride) || get(pinnedSlice) === sliceName) {
+        return get(pinnedSliceSample).sample;
+      }
+
+      return get(groupSample(sliceName));
+    },
 });
 
 const groupSampleQuery = graphQLSelectorFamily<

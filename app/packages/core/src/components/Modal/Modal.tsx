@@ -219,13 +219,10 @@ const SampleModal = () => {
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
-        e.preventDefault();
         navigatePrevious();
       } else if (e.key === "ArrowRight") {
-        e.preventDefault();
         navigateNext();
       } else if (e.key === "c") {
-        e.preventDefault();
         setIsNavigationHidden((prev) => !prev);
       }
       // note: don't stop event propagation here

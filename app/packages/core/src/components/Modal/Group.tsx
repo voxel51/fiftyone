@@ -169,7 +169,12 @@ const MainSample: React.FC<{
     sample._media_type === "point-cloud" &&
     currentModalSlice === sample.group.name
   ) {
-    return <DefaultGroupSample lookerRef={lookerRef} />;
+    return (
+      <DefaultGroupSample
+        lookerRef={lookerRef}
+        lookerRefCallback={lookerRefCallback}
+      />
+    );
   }
 
   return (
