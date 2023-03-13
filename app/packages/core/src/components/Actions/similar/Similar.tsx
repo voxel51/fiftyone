@@ -100,8 +100,12 @@ const SortBySimilarity = ({
         setShowMaxKWarning(false);
         return true;
       } else {
-        setShowMaxKWarning(true);
-        Number(value) <= brainConfig.maxK;
+        if (Number(value) > brainConfig.maxK) {
+          setShowMaxKWarning(true);
+        } else {
+          setShowMaxKWarning(false);
+        }
+        return Number(value) <= brainConfig.maxK;
       }
     }
     setShowMaxKWarning(false);
@@ -204,13 +208,13 @@ const SortBySimilarity = ({
                 updateState({ k: value == "" ? undefined : Number(value) });
               }}
               style={{
-                width: 30,
+                width: 40,
                 display: "inline-block",
                 margin: 3,
               }}
             />
             {brainConfig?.supportsLeastSimilarity === false ? (
-              "most"
+              "most "
             ) : (
               <Button
                 text={state.reverse ? "least" : "most"}
@@ -224,7 +228,7 @@ const SortBySimilarity = ({
                 }}
               />
             )}
-            similar samples
+            {`similar samples `}
             {showMaxKWarning && (
               <MaxKWarning
                 maxK={brainConfig?.maxK}
