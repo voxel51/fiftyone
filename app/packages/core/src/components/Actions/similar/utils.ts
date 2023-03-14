@@ -142,7 +142,9 @@ export const availableSimilarityKeys = selectorFamily<
         get(fos.isPatchesView) ||
         (params.modal && get(fos.hasSelectedLabels))
       ) {
-        return get(availablePatchesSimilarityKeys(params));
+        return get(availablePatchesSimilarityKeys(params)).map(
+          ({ key }) => key
+        );
       }
 
       const { samples: methods } = get(fos.similarityMethods);
@@ -159,7 +161,7 @@ export const availableSimilarityKeys = selectorFamily<
 });
 
 const availablePatchesSimilarityKeys = selectorFamily<
-  string[],
+  Method[],
   {
     modal: boolean;
     isImageSearch: boolean;
@@ -169,12 +171,12 @@ const availablePatchesSimilarityKeys = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      let patches: [string, string][] = [];
+      let patches: [Method, string][] = [];
       let { patches: methods } = get(fos.similarityMethods);
       if (!params.isImageSearch) {
         methods = methods.filter(([method]) => method.supportsPrompts === true);
       }
-      patches = methods.map(([{ key }, field]) => [key, field]);
+      patches = methods.map(([method, field]) => [method, field]);
 
       if (params.modal) {
         if (get(fos.hasSelectedLabels)) {
@@ -182,9 +184,7 @@ const availablePatchesSimilarityKeys = selectorFamily<
             Object.values(get(selectedLabels)).map(({ field }) => field)
           );
 
-          return patches
-            .filter(([_, field]) => fields.has(field))
-            .map(([key]) => key);
+          return patches.filter(([_, field]) => fields.has(field));
         } else {
           const { sample } = get(fos.modal) as ModalSample;
 
@@ -236,8 +236,16 @@ export const sortType = selectorFamily<string, boolean>({
 export const currentBrainConfig = selectorFamily<Method | undefined, string>({
   key: "currenBrainConfig",
   get:
-    (key: string) =>
+    (key) =>
     ({ get }) => {
+      if (get(fos.isPatchesView)) {
+        const { patches: patches } = get(fos.similarityMethods);
+        const patch = patches.find(([method, _]) => method.key === key);
+        if (patch) {
+          return patch[0];
+        }
+      }
+
       const { samples: methods } = get(fos.similarityMethods);
       return methods.find((method) => method.key === key);
     },
