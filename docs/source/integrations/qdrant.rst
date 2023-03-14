@@ -201,31 +201,32 @@ or by setting the `default_similarity_backend` parameter of your
 Authentication
 --------------
 
-In order to connect to a Labelbox server, you must provide your API key, which
+In order to connect to a Qdrant server, you must provide your server url, which 
 can be done in a variety of ways.
 
 **Environment variables (recommended)**
 
-The recommended way to configure your Labelbox API key is to store it in the
-`FIFTYONE_LABELBOX_API_KEY` environment variable. This is automatically
-accessed by FiftyOne whenever a connection to Labelbox is made.
+The recommended way to configure your Qdrant server URL is to store it in the 
+`FIFTYONE_QDRANT_URL` environment variable. This is automatically accessed by 
+FiftyOne whenever a connection to Qdrant is made.
 
 .. code-block:: shell
 
-    export FIFTYONE_LABELBOX_API_KEY=...
+    export FIFTYONE_QDRANT_URL=localhost:6333
 
-**FiftyOne annotation config**
+
+**FiftyOne Brain config**
 
 You can also store your credentials in your
-:ref:`annotation config <annotation-config>` located at
-`~/.fiftyone/annotation_config.json`:
+:ref:`Brain config <brain-config>` located at
+`~/.fiftyone/brain_config.json`:
 
 .. code-block:: text
 
     {
-        "backends": {
-            "labelbox": {
-                "api_key": ...,
+        "similarity_backends": {
+            "qdrant": {
+                "url": "http://localhost:6333",
             }
         }
     }
@@ -234,295 +235,83 @@ Note that this file will not exist until you create it.
 
 **Keyword arguments**
 
-You can manually provide your API key as a keyword argument each time you call
-methods like
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
-:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-that require connections to Labelbox:
+You can manually provide this as a keyword argument each time you call methods 
+like :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that 
+require connections to Qdrant:
 
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        api_key=...,
+    import fiftyone.brain as fob 
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fob.compute_similarity(
+        dataset,
+        backend="qdrant",
+        brain_key="qdrant",
+        model="resnet-50-imagenet-torch"
+        url="http://localhost:6333",
+        ...
     )
 
-**Command line prompt**
 
-If you have not stored your API key via another method, you will be prompted to
-enter it interactively in your shell each time you call a method that requires
-a connection to Labelbox:
+.. _qdrant-query-parameters:
 
-.. code:: python
-    :linenos:
+Qdrant query parameters
+-----------------------
 
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        launch_editor=True,
-    )
+The Qdrant backend supports a variety of query parameters that can be used to
+customize your similarity queries. These parameters broadly fall into four 
+categories:
 
-.. code-block:: text
+1. Basic vector database parameters
+2. Hierarchical navigable small world (HNSW) parameters
+3. Write-ahead-log (WAL) parameters
+4. Performance/optimizers parameters
 
-    Please enter your API key.
-    You can avoid this in the future by setting your `FIFTYONE_LABELBOX_API_KEY` environment variable.
-    API key: ...
+For detailed information on these parameters, see the 
+`Qdrant documentation <https://qdrant.tech/documentation/configuration/>`_.
 
-.. _labelbox-on-premises:
+You can specify these parameters in a variety of ways:
 
-On-premises servers
--------------------
-
-If you have an
-`on-premises Labelbox server <https://docs.labelbox.com/docs/labelbox-on-premises>`_,
-you can configure the URL of your server in any of the following ways:
-
--   Set the `FIFTYONE_LABELBOX_URL` environment variable:
-
-.. code-block:: shell
-
-    export FIFTYONE_LABELBOX_URL=http://localhost:8080
-
--   Store the `url` of your server in your
-    :ref:`annotation config <annotation-config>` at
-    `~/.fiftyone/annotation_config.json`:
+In  your FiftyOne Brain config located at `~/.fiftyone/brain_config.json`. Here
+is an example of a config that specifies all of the available parameters:
 
 .. code-block:: text
 
     {
-        "backends": {
-            "labelbox": {
-                "url": "http://localhost:8080"
+        "similarity_backends": {
+            "qdrant": {
+                "url": "http://localhost:6333",
+                "shard_number": null,
+                "replication_factor": null,
+                "write_consistency_factor": null,
+                "hnsw_config": {
+                    "m": 16,
+                    "ef_construct": 100,
+                    "full_scan_threshold": 10000,
+                    "max_indexing_threads": null,
+                    "on_disk": null,
+                    "payload_m": null
+                },
+                "wal_config": {
+                    "wal_capacity_mb": 32,
+                    "wal_segments_ahead": 0
+                },
+                "optimizers_config": {
+                    "deleted_threshold": 0.2,
+                    "vacuum_min_vector_number": 1000,
+                    "default_segment_number": 0,
+                    "max_segment_size": null,
+                    "memmap_threshold": null,
+                    "indexing_threshold": 20000,
+                    "flush_interval_sec": 5,
+                    "max_optimization_threads": 1
+                }
             }
         }
     }
-
--   Pass the `url` parameter manually each time you call
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
-
-.. code:: python
-    :linenos:
-
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        url="http://localhost:8080",
-        api_key=...,
-    )
-
-
-.. _labelbox-label-schema:
-
-Label schema
-------------
-
-The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
-you to define the annotation schema that you wish to be used.
-
-The label schema may define new label field(s) that you wish to populate, and
-it may also include existing label field(s), in which case you can add, delete,
-or edit the existing labels on your FiftyOne dataset.
-
-The `label_schema` argument is the most flexible way to define how to construct
-tasks in Labelbox. In its most verbose form, it is a dictionary that defines
-the label type, annotation type, possible classes, and possible attributes for
-each label field:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_schema = {
-        "new_field": {
-            "type": "classifications",
-            "classes": ["class1", "class2"],
-            "attributes": {
-                "attr1": {
-                    "type": "select",
-                    "values": ["val1", "val2"],
-                },
-                "attr2": {
-                    "type": "radio",
-                    "values": [True, False],
-                }
-            },
-        },
-        "existing_field": {
-            "classes": ["class3", "class4"],
-            "attributes": {
-                "attr3": {
-                    "type": "text",
-                }
-            }
-        },
-    }
-
-    dataset.annotate(anno_key, backend="labelbox", label_schema=label_schema)
-
-You can also define class-specific attributes by setting elements of the
-`classes` list to dicts that specify groups of `classes` and their
-corresponding `attributes`. For example, in the configuration below, `attr1`
-only applies to `class1` and `class2` while `attr2` applies to all classes:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_schema = {
-        "new_field": {
-            "type": "detections",
-            "classes": [
-                {
-                    "classes": ["class1", "class2"],
-                    "attributes": {
-                        "attr1": {
-                            "type": "select",
-                            "values": ["val1", "val2"],
-                        }
-                     }
-                },
-                "class3",
-                "class4",
-            ],
-            "attributes": {
-                "attr2": {
-                    "type": "radio",
-                    "values": [True, False],
-                }
-            },
-        },
-    }
-
-    dataset.annotate(anno_key, backend="labelbox", label_schema=label_schema)
-
-Alternatively, if you are only editing or creating a single label field, you
-can use the `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to specify the components of the label schema
-individually:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_field = "new_field",
-    label_type = "classifications"
-    classes = ["class1", "class2"]
-
-    # These are optional
-    attributes = {
-        "attr1": {
-            "type": "select",
-            "values": ["val1", "val2"],
-        },
-        "attr2": {
-            "type": "radio",
-            "values": [True, False],
-        }
-    }
-
-    dataset.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field=label_field,
-        label_type=label_type,
-        classes=classes,
-        attributes=attributes,
-    )
-
-When you are annotating existing label fields, you can omit some of these
-parameters from
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, as
-FiftyOne can infer the appropriate values to use:
-
--   **label_type**: if omitted, the |Label| type of the field will be used to
-    infer the appropriate value for this parameter
--   **classes**: if omitted for a non-semantic segmentation field, the observed
-    labels on your dataset will be used to construct a classes list
-
-.. note::
-
-    See :ref:`this section <labelbox-editing-labels-paid>` for details about
-    editing existing labels.
-
-.. _labelbox-label-attributes:
-
-Label attributes
-----------------
-
-The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <using-labels>` beyond the default `label` attribute
-are included in the annotation tasks.
-
-When adding new label fields for which you want to include attributes, you must
-use the dictionary syntax demonstrated below to define the schema of each
-attribute that you wish to label:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "occluded": {
-            "type": "radio",
-            "values": [True, False],
-        },
-        "weather": {
-            "type": "select",
-            "values": ["cloudy", "sunny", "overcast"],
-        },
-        "caption": {
-            "type": "text",
-        }
-    }
-
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="new_field",
-        label_type="detections",
-        classes=["dog", "cat", "person"],
-        attributes=attributes,
-    )
-
-You can always omit this parameter if you do not require attributes beyond the
-default `label`.
-
-For Labelbox, the following `type` values are supported:
-
--   `text`: a free-form text box. In this case, `values` is unused
--   `select`: a selection dropdown. In this case, `values` is required
--   `radio`: a radio button list UI. In this case, `values` is required
--   `checkbox`: a list of checkboxes. In this case, `values` is required
-
-When you are annotating existing label fields, the `attributes` parameter can
-take additional values:
-
--   `True` (default): export all custom attributes observed on the existing
-    labels, using their observed values to determine the appropriate UI type
-    and possible values, if applicable
--   `False`: do not include any custom attributes in the export
--   a list of custom attributes to include in the export
--   a full dictionary syntax described above
-
-Note that only scalar-valued label attributes are supported. Other attribute
-types like lists, dictionaries, and arrays will be omitted.
-
-.. note::
-
-    Labelbox does not support default values for attributes, so the `default`
-    key :ref:`described here <annotation-label-attributes>` will be ignored if
-    included in label schemas provided when annotating with Labelbox.
 
 .. _qdrant-managing-brain-runs:
 
@@ -761,16 +550,18 @@ Query embeddings with Qdrant index
 -------------------------------------------
 
 You can query a SimilarityResult instance using the 
-`sort_by_similarity()` method. This can be applied to an entire dataset, or a
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>` 
+method. This can be applied to an entire dataset, or a
 view into a dataset. The query can be any of the following:
 
 1. A single numerical vector of the same length as the embeddings
 2. An ID (sample or patch)
 3. A list of IDs (sample or patches)
+4. A text prompt
 
-Additionally, if the model used to compute the embeddings supports text prompts,
-then the query can also be a text prompt. Here are examples of all of these, 
-using the CLIP model, which supports text prompts:
+A query can only be a text prompt if the model used to compute the embeddings 
+supports text prompts. Here are examples of all of these, using the CLIP model, 
+which supports text prompts:
 
 .. code:: python
     :linenos:
@@ -805,9 +596,6 @@ using the CLIP model, which supports text prompts:
 
     view = dataset.sort_by_similarity(query, brain_key="qdrant", k = 10)
     print(view)
-
-
-
 
 .. _qdrant-edit-collection:
 
@@ -860,9 +648,42 @@ You can also get the total number of vectors in the index using the
 Advanced usage
 --------------------------
 
-You can also specify configuration parameters for the Qdrant client. These 
-include `hnsw_config`, `wal_config`, and `optimizers_config` parameters. These
-can be specified as arguments to the `compute_similarity()` method, as 
-environment variables, or as settings in your FiftyOne Brain config file.
+As mentioned above, you can also specify configuration parameters for the Qdrant 
+client, including `hnsw_config`, `wal_config`, and `optimizers_config` 
+parameters. These parameters may impact the quality of your query results, as 
+well as the time and memory required to perform approximate nearest neighbor
+searches. Additionally, you can specify the replication factor and shard number
+for the vector database. 
 
-TO DO
+Here's an example of creating a similarity index with custom configuration for 
+the Qdrant backend. Just for fun, we will also specify a custom collection name,
+pass in a dot product similarity metric, and only generate the similarity index
+for a view into our data.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(100)
+    collection_name = "custom-collection-name"
+
+    res = fob.compute_similarity(
+        view, 
+        model =  "clip-vit-base32-torch"
+        brain_key = "qdrant", 
+        backend="qdrant",
+        collection_name=collection_name,
+        hnsw_config = {
+            "ef_construct": 100,
+        },
+        replication_factor = 2,
+        shards_number = 2,
+        metric = "dotproduct",
+    )
+
+    qdrant_client = res.client
+    print(qdrant_client.get_collection(collection_name = collection_name))
