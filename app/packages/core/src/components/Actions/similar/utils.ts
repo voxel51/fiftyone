@@ -205,7 +205,7 @@ export const currentSimilarityKeys = selectorFamily<
       const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
       return {
         total: keys.length,
-        choices: keys.slice(0, 11),
+        choices: keys,
       };
     },
 });
