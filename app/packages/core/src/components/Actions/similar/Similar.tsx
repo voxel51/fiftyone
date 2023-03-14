@@ -163,17 +163,15 @@ const SortBySimilarity = ({
     ];
   }
 
-  // if I switch to different brain key
-  // update whether to show maxK warning
-  // reset reverse setting
-  useEffect(() => {
-    if (brainConfig?.maxK && state.k && state.k > brainConfig.maxK) {
+  const onChangeBrainKey = (brainKey: string) => {
+    const config = useRecoilValue(currentBrainConfig(brainKey));
+    if (config?.maxK && state.k && state.k > config.maxK) {
       setShowMaxKWarning(true);
     } else {
       setShowMaxKWarning(false);
     }
-    updateState({ reverse: false });
-  }, [state.brainKey]);
+    updateState({ reverse: false, brainKey });
+  };
 
   return (
     <Popout modal={modal} bounds={bounds} style={{ minWidth: 280 }}>
@@ -259,7 +257,7 @@ const SortBySimilarity = ({
             <RadioGroup
               choices={choices.choices}
               value={state?.brainKey}
-              setValue={(brainKey) => updateState({ brainKey })}
+              setValue={(brainKey) => onChangeBrainKey(brainKey)}
             />
           </div>
           Optional: store the distance between each sample and the query in this
