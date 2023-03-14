@@ -58,19 +58,17 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    orthographic_projection_metadata_field_name = (
-        _get_orthographic_projection_metadata_field_name(collection)
-    )
+    opm_field = _get_orthographic_projection_metadata_field_name(collection)
+    if opm_field:
+        additional_fields = [opm_field + ".filepath"]
+    else:
+        additional_fields = None
 
     urls = _create_media_urls(
         collection,
         sample,
         url_cache,
-        additional_fields=[
-            f"{orthographic_projection_metadata_field_name}.filepath"
-        ]
-        if orthographic_projection_metadata_field_name
-        else None,
+        additional_fields=additional_fields,
     )
 
     is_video = media_type == fom.VIDEO
@@ -105,8 +103,8 @@ async def get_metadata(
             if isinstance(exc, FFmpegNotFoundException):
                 raise exc
 
-            # Something went wrong (ie non-existent file), so we gracefully return
-            # some placeholder metadata so the App grid can be rendered
+            # Something went wrong (ie non-existent file), so we gracefully
+            # return some placeholder metadata so the App grid can be rendered
             if is_video:
                 metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
             else:
