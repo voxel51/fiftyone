@@ -177,14 +177,7 @@ const Grid: React.FC<{}> = () => {
     initialized.current = true;
   }, []);
 
-  return (
-    <>
-      <div id={id} className={flashlightLooker}></div>
-      <Suspense>
-        <EmptySamples />
-      </Suspense>
-    </>
-  );
+  return <div id={id} className={flashlightLooker}></div>;
 };
 
 export default Grid;
