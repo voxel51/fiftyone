@@ -3071,6 +3071,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
             or when using ``task_size`` and generating multiple tasks
+        organization (None): the name of the organization to use when sending
+            requests to CVAT
     """
 
     def __init__(
@@ -3082,7 +3084,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         username=None,
         password=None,
         headers=None,
-        organization=None,
         task_size=None,
         segment_size=None,
         image_quality=75,
@@ -3098,6 +3099,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr=None,
         group_id_attr=None,
         issue_tracker=None,
+        organization=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3117,7 +3119,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.occluded_attr = occluded_attr
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
-        self._organization = organization
+        self.organization = organization
 
         # store privately so these aren't serialized
         self._username = username
@@ -3147,14 +3149,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     @headers.setter
     def headers(self, value):
         self._headers = value
-
-    @property
-    def organization(self):
-        return self._organization
-
-    @organization.setter
-    def organization(self, value):
-        self._organization = value
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -3500,9 +3494,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         username (None): the CVAT username
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all requests
+        organization (None): the name of the organization to use when sending
+            requests to CVAT
     """
 
-    def __init__(self, name, url, username=None, password=None, headers=None, organization=None):
+    def __init__(
+        self,
+        name,
+        url,
+        username=None,
+        password=None,
+        headers=None,
+        organization=None,
+    ):
         self._name = name
         self._url = url.rstrip("/")
         self._username = username
@@ -3676,7 +3680,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.headers["Referer"] = self.login_url
 
     def _add_organization(self):
-        if "X-Organization" not in self._session.headers and self._organization:
+        if (
+            "X-Organization" not in self._session.headers
+            and self._organization
+        ):
             self._session.headers["X-Organization"] = self._organization
 
     def close(self):
