@@ -103,6 +103,14 @@ async def get_metadata(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
+        elif opm_field:
+            metadata_cache[filepath] = await read_metadata(
+                session,
+                sample[opm_field]["filepath"],
+                None,  # @todo provide this
+                local_only,
+                False,
+            )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
@@ -113,33 +121,35 @@ async def get_metadata(
                 )
 
     if filepath not in metadata_cache:
-        try:
-            if local_only or foc.media_cache.is_local_or_cached(filepath):
-                # Retrieve media metadata from local disk
-                local_path = await foc.media_cache._async_get_local_path(
-                    filepath, session, download=True
-                )
-                metadata_cache[filepath] = await read_local_metadata(
-                    local_path, is_video
-                )
-            else:
-                # Retrieve metadata from remote source
-                metadata_cache[filepath] = await read_url_metadata(
-                    session, filepath_url, is_video
-                )
-        except Exception as exc:
-            # Immediately fail so the user knows they should install FFmpeg
-            if isinstance(exc, FFmpegNotFoundException):
-                raise exc
-
-            # Something went wrong (ie non-existent file), so we gracefully
-            # return some placeholder metadata so the App grid can be rendered
-            if is_video:
-                metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
-            else:
-                metadata_cache[filepath] = dict(aspect_ratio=1)
+        metadata_cache[filepath] = await read_metadata(
+            session, filepath, filepath_url, local_only, is_video
+        )
 
     return dict(urls=urls, **metadata_cache[filepath])
+
+
+async def read_metadata(session, filepath, filepath_url, local_only, is_video):
+    try:
+        if local_only or foc.media_cache.is_local_or_cached(filepath):
+            # Retrieve media metadata from local disk
+            local_path = await foc.media_cache._async_get_local_path(
+                filepath, session, download=True
+            )
+            return await read_local_metadata(local_path, is_video)
+        else:
+            # Retrieve metadata from remote source
+            return await read_url_metadata(session, filepath_url, is_video)
+    except Exception as exc:
+        # Immediately fail so the user knows they should install FFmpeg
+        if isinstance(exc, FFmpegNotFoundException):
+            raise exc
+
+        # Something went wrong (ie non-existent file), so we gracefully
+        # return some placeholder metadata so the App grid can be rendered
+        if is_video:
+            return dict(aspect_ratio=1, frame_rate=30)
+        else:
+            return dict(aspect_ratio=1)
 
 
 async def read_url_metadata(session, url, is_video):
@@ -511,6 +521,7 @@ async def _create_media_urls(
         if path in cache:
             if field == "filepath":
                 filepath_url = cache[path]
+
             media_urls.append(dict(field=field, url=cache[path]))
             continue
 
