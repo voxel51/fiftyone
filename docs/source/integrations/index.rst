@@ -82,6 +82,13 @@ on the cards below to see how!
     :image: ../_static/images/integrations/lightning_flash.png
     :tags: Model-Training,Model-Evaluation
 
+.. customcarditem::
+    :header: Qdrant
+    :description: Use our Qdrant integration to use vector search to query your FiftyOne datasets at scale.
+    :link: qdrant.html
+    :image: ../_static/images/integrations/qdrant.png
+    :tags: Datasets
+
 .. End of integrations cards
 
 .. raw:: html
@@ -107,3 +114,4 @@ on the cards below to see how!
     Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
     Lightning Flash <lightning_flash.rst>
+    Qdrant <qdrant.rst>
