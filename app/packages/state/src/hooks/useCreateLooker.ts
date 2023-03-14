@@ -82,8 +82,8 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
           )
           ?.at(0) as string | undefined;
         if (orthographicProjectionField) {
-          sampleMediaFilePath = sample[orthographicProjectionField][
-            "filepath"
+          sampleMediaFilePath = urls[
+            `${orthographicProjectionField}.filepath`
           ] as string;
         }
       }

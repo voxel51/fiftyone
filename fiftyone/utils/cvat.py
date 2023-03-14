@@ -3073,6 +3073,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
             or when using ``task_size`` and generating multiple tasks
+        organization (None): the name of the organization to use when sending
+            requests to CVAT
     """
 
     def __init__(
@@ -3099,6 +3101,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr=None,
         group_id_attr=None,
         issue_tracker=None,
+        organization=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3118,6 +3121,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.occluded_attr = occluded_attr
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
+        self.organization = organization
 
         # store privately so these aren't serialized
         self._username = username
@@ -3237,6 +3241,7 @@ class CVATBackend(foua.AnnotationBackend):
             username=self.config.username,
             password=self.config.password,
             headers=self.config.headers,
+            organization=self.config.organization,
         )
 
     def upload_annotations(self, samples, anno_key, launch_editor=False):
@@ -3483,14 +3488,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         username (None): the CVAT username
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all requests
+        organization (None): the name of the organization to use when sending
+            requests to CVAT
     """
 
-    def __init__(self, name, url, username=None, password=None, headers=None):
+    def __init__(
+        self,
+        name,
+        url,
+        username=None,
+        password=None,
+        headers=None,
+        organization=None,
+    ):
         self._name = name
         self._url = url.rstrip("/")
         self._username = username
         self._password = password
         self._headers = headers
+        self._organization = organization
 
         self._server_version = None
         self._session = None
@@ -3651,10 +3667,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._login(username, password)
 
         self._add_referer()
+        self._add_organization()
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:
             self._session.headers["Referer"] = self.login_url
+
+    def _add_organization(self):
+        if (
+            "X-Organization" not in self._session.headers
+            and self._organization
+        ):
+            self._session.headers["X-Organization"] = self._organization
 
     def close(self):
         self._session.close()

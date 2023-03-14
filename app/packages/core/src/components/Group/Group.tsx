@@ -90,7 +90,12 @@ const Column: React.FC = () => {
   const createLooker = fos.useCreateLooker(
     true,
     true,
-    { ...opts, thumbnailTitle: (sample) => sample[groupField].name },
+    {
+      ...opts,
+      thumbnailTitle: (sample) => {
+        return sample[groupField]?.name;
+      },
+    },
     true
   );
 
