@@ -10,7 +10,7 @@ import { fetchPlot } from "./fetch";
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed(false));
   const datasetName = useRecoilValue(fos.datasetName);
-  const [brainKey] = useBrainResult();
+  const [brainKey, setBrainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
   const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
@@ -37,7 +37,10 @@ export function useViewChangeEffect() {
     setOverrideStage(null);
     setLoadingPlot(true);
     fetchPlot({ datasetName, brainKey, view, labelField })
-      .catch((err) => setLoadingPlotError(err))
+      .catch((err) => {
+        setLoadingPlotError(err);
+        // setBrainKey(null);
+      })
       .then((res) => {
         if (!res || !res.index_size) {
           if (res?.index_size === 0) {
