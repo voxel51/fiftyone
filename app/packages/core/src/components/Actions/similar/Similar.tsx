@@ -1,20 +1,15 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useState } from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
-import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { useExternalLink } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Button } from "../../utils";
+import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
+import { Button } from "../../utils";
 import Popout from "../Popout";
-import Warning from "./Warning";
 import GroupButton, { ButtonDetail } from "./GroupButton";
+import MaxKWarning from "./MaxKWarning";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -22,7 +17,7 @@ import {
   sortType,
   useSortBySimilarity,
 } from "./utils";
-import MaxKWarning from "./MaxKWarning";
+import Warning from "./Warning";
 
 const DEFAULT_K = 25;
 
@@ -99,20 +94,24 @@ const SortBySimilarity = ({
     current && setState(current);
   }, [current]);
 
-  const validateK = (value: string) => {
-    if (/^[0-9\b]+$/.test(value)) {
-      if (brainConfig?.maxK) {
-        if (Number(value) > brainConfig.maxK) {
-          setShowMaxKWarning(true);
-        } else {
-          setShowMaxKWarning(false);
+  const validateK = useCallback(
+    (value: string) => {
+      if (/^[0-9\b]+$/.test(value)) {
+        console.log(brainConfig);
+        if (brainConfig?.maxK) {
+          if (Number(value) > brainConfig.maxK) {
+            setShowMaxKWarning(true);
+          } else {
+            setShowMaxKWarning(false);
+          }
         }
+        return true;
       }
-      return true;
-    }
-    setShowMaxKWarning(false);
-    return false;
-  };
+      setShowMaxKWarning(false);
+      return false;
+    },
+    [brainConfig?.maxK]
+  );
 
   const meetKRequirement = !(
     brainConfig?.maxK &&
@@ -163,15 +162,19 @@ const SortBySimilarity = ({
     ];
   }
 
-  const onChangeBrainKey = (brainKey: string) => {
-    const config = useRecoilValue(currentBrainConfig(brainKey));
-    if (config?.maxK && state.k && state.k > config.maxK) {
-      setShowMaxKWarning(true);
-    } else {
-      setShowMaxKWarning(false);
-    }
-    updateState({ reverse: false, brainKey });
-  };
+  const onChangeBrainKey = useRecoilCallback(
+    ({ snapshot }) =>
+      async (brainKey: string) => {
+        const config = await snapshot.getPromise(currentBrainConfig(brainKey));
+        if (config?.maxK && state.k && state.k > config.maxK) {
+          setShowMaxKWarning(true);
+        } else {
+          setShowMaxKWarning(false);
+        }
+        updateState({ reverse: false, brainKey });
+      },
+    [updateState, state]
+  );
 
   return (
     <Popout modal={modal} bounds={bounds} style={{ minWidth: 280 }}>
