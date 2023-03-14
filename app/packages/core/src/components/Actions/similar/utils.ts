@@ -13,6 +13,7 @@ import {
 } from "recoil";
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useMemo } from "react";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -64,7 +65,9 @@ export const useSortBySimilarity = (close) => {
   const datasetId = useRecoilValue(fos.dataset).id;
   const [lastUsedBrainkeys, setLastUsedBrainKeys] =
     useBrowserStorage("lastUsedBrainKeys");
-  const current = lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
+  const current = useMemo(() => {
+    return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
+  }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
     ({ snapshot, set }) =>

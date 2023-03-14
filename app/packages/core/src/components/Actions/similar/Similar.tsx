@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
@@ -42,11 +42,13 @@ const SortBySimilarity = ({
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
   const datasetId = useRecoilValue(fos.dataset).id;
-  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
+  const [lastUsedBrainKeys, setLastUsedBrainKeys] =
     useBrowserStorage("lastUsedBrainKeys");
-  const lastUsedBrainkey = lastUsedBrainkeys
-    ? JSON.parse(lastUsedBrainkeys)[datasetId]
-    : null;
+
+  const lastUsedBrainkey = useMemo(() => {
+    return lastUsedBrainKeys ? JSON.parse(lastUsedBrainKeys)[datasetId] : null;
+  }, [lastUsedBrainKeys, datasetId]);
+
   const [open, setOpen] = useState(false);
 
   const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
@@ -89,7 +91,7 @@ const SortBySimilarity = ({
         choices.choices.length > 0 ? choices.choices[0] : undefined;
       updateState({ brainKey: newKey });
     }
-  }, [choices]);
+  }, [choices, state.brainKey, updateState]);
 
   useLayoutEffect(() => {
     current && setState(current);
