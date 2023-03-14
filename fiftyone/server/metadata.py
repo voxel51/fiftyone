@@ -72,8 +72,8 @@ async def get_metadata(
 
     opm_field = _get_orthographic_projection_metadata_field_name(collection)
     if opm_field:
-        opm_field_filepath_ref = opm_field + ".filepath"
-        additional_fields = [opm_field_filepath_ref]
+        opm_path = opm_field + ".filepath"
+        additional_fields = [opm_path]
     else:
         additional_fields = None
 
@@ -106,24 +106,24 @@ async def get_metadata(
                 )
         elif opm_field:
             for field_url in urls:
-                if field_url["field"] == opm_field_filepath_ref:
-                    opm_img_url = field_url["url"]
-                    metadata_cache[filepath] = await read_metadata(
-                        session,
-                        sample[opm_field]["filepath"],
-                        opm_img_url,
-                        local_only,
-                        False,
-                    )
+                if field_url["field"] == opm_path:
+                    opm_img_path = _deep_get(sample, opm_path)
+                    if opm_img_path:
+                        metadata_cache[filepath] = await read_metadata(
+                            session,
+                            opm_img_path,
+                            field_url["url"],
+                            local_only,
+                            False,
+                        )
+
                     break
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                metadata_cache[sample["filepath"]] = dict(
-                    aspect_ratio=width / height,
-                )
+                metadata_cache[filepath] = dict(aspect_ratio=width / height)
 
     if filepath not in metadata_cache:
         metadata_cache[filepath] = await read_metadata(
