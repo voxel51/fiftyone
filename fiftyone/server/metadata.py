@@ -86,9 +86,11 @@ async def get_metadata(
                     frame_rate=frame_rate,
                 )
         elif opm_field:
-            metadata_cache[filepath] = await read_metadata(
-                sample[opm_field]["filepath"], False
-            )
+            opm_img_path = _deep_get(sample, opm_field + ".filepath")
+            if opm_img_path:
+                metadata_cache[filepath] = await read_metadata(
+                    opm_img_path, False
+                )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
