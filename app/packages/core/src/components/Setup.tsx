@@ -47,7 +47,7 @@ const Code = styled.pre`
 
 const port = (() => {
   if (isElectron()) {
-    return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
+    return parseInt(process.env.FIFTYONE_DEFAULT_APP_PORT) || 5151;
   }
 
   if (typeof window !== "undefined" && window.location.port !== undefined) {
