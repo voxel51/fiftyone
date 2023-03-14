@@ -1,4 +1,10 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
 import { useExternalLink } from "@fiftyone/components";
@@ -19,7 +25,6 @@ import {
 } from "./utils";
 import Warning from "./Warning";
 import { useBrowserStorage } from "@fiftyone/state";
-
 
 const DEFAULT_K = 25;
 
@@ -102,28 +107,21 @@ const SortBySimilarity = ({
     current && setState(current);
   }, [current]);
 
-  const validateK = useCallback(
-    (value: string) => {
-      if (/^[0-9\b]+$/.test(value)) {
-        console.log(brainConfig);
-        if (brainConfig?.maxK) {
-          if (Number(value) > brainConfig.maxK) {
-            setShowMaxKWarning(true);
-          } else {
-            setShowMaxKWarning(false);
-          }
-        }
-        return true;
-      }
+  // show warning if k is undefined or k > maxK
+  useEffect(() => {
+    if (state.k == undefined) {
+      setShowMaxKWarning(true);
+    } else if (brainConfig?.maxK && state.k > brainConfig.maxK) {
+      setShowMaxKWarning(true);
+    } else {
       setShowMaxKWarning(false);
-      return false;
-    },
-    [brainConfig?.maxK]
-  );
+    }
+  }, [state.k, state.brainKey]);
 
   const meetKRequirement = !(
     brainConfig?.maxK &&
     state.k &&
+    state.k !== undefined &&
     state.k > brainConfig.maxK
   );
 
@@ -163,7 +161,11 @@ const SortBySimilarity = ({
         icon: "SearchIcon",
         ariaLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
-        onClick: () => meetKRequirement && state.query && state.query.length > 0 && sortBySimilarity(state),
+        onClick: () =>
+          meetKRequirement &&
+          state.query &&
+          state.query.length > 0 &&
+          sortBySimilarity(state),
       },
       ...loadingButton,
       ...groupButtons,
@@ -199,7 +201,12 @@ const SortBySimilarity = ({
               placeholder={"Type anything!"}
               value={(state.query as string) ?? ""}
               setter={(value) => updateState({ query: value })}
-              onEnter={() => meetKRequirement && state.query && state.query.length > 0 && sortBySimilarity(state)}
+              onEnter={() =>
+                meetKRequirement &&
+                state.query &&
+                state.query.length > 0 &&
+                sortBySimilarity(state)
+              }
             />
           )}
           {isImageSearch && !hasSorting && (
@@ -231,7 +238,7 @@ const SortBySimilarity = ({
             Find the
             <Input
               placeholder={"k"}
-              validator={(value) => value === "" || validateK(value)}
+              validator={(value) => /^[0-9\b]+$/.test(value) || value === ""}
               value={state?.k ? String(state.k) : ""}
               setter={(value) => {
                 updateState({ k: value == "" ? undefined : Number(value) });
@@ -261,6 +268,7 @@ const SortBySimilarity = ({
             {showMaxKWarning && (
               <MaxKWarning
                 maxK={brainConfig?.maxK}
+                currentK={state.k}
                 onClose={() => setShowMaxKWarning(false)}
               />
             )}

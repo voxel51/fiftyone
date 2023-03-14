@@ -4,7 +4,8 @@ import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 
 type Props = {
   onClose: () => void;
-  maxK: number;
+  maxK: number | undefined;
+  currentK: number | undefined;
 };
 
 const MaxKWarning: React.FunctionComponent<Props> = (props) => {
@@ -21,7 +22,9 @@ const MaxKWarning: React.FunctionComponent<Props> = (props) => {
       }}
     >
       <div style={{ color: theme.warning[400] }}>
-        Max K of selected model: {props.maxK}
+        {props.currentK
+          ? `Max K of selected model: ${props.maxK}`
+          : `K cannot be empty`}
       </div>
       <ClearOutlinedIcon
         onClick={props.onClose}
