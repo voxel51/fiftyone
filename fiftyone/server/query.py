@@ -502,13 +502,15 @@ async def serialize_dataset(
                 if brain_method.config.type() is not None
                 else None
             )
+
             max_k = (
-                brain_method.config.max_k().value
+                brain_method.config.max_k()
                 if brain_method.config.max_k() is not None
                 else None
             )
+
             supportsLeastSimilarity = (
-                brain_method.config.supportsLeastSimilarity().value
+                brain_method.config.supportsLeastSimilarity()
                 if brain_method.config.supportsLeastSimilarity() is not None
                 else None
             )
