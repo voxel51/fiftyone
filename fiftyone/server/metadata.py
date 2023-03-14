@@ -70,20 +70,18 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    orthographic_projection_metadata_field_name = (
-        _get_orthographic_projection_metadata_field_name(collection)
-    )
+    opm_field = _get_orthographic_projection_metadata_field_name(collection)
+    if opm_field:
+        additional_fields = [opm_field + ".filepath"]
+    else:
+        additional_fields = None
 
     filepath_url, urls = await _create_media_urls(
         collection,
         sample,
         url_cache,
         session,
-        additional_fields=[
-            f"{orthographic_projection_metadata_field_name}.filepath"
-        ]
-        if orthographic_projection_metadata_field_name
-        else None,
+        additional_fields=additional_fields,
     )
 
     local_only = (
@@ -115,37 +113,33 @@ async def get_metadata(
                 )
 
     if filepath not in metadata_cache:
-        metadata_cache[filepath] = await read_metadata(
-            session, filepath, is_video, local_only, filepath_url
-        )
+        try:
+            if local_only or foc.media_cache.is_local_or_cached(filepath):
+                # Retrieve media metadata from local disk
+                local_path = await foc.media_cache._async_get_local_path(
+                    filepath, session, download=True
+                )
+                metadata_cache[filepath] = await read_local_metadata(
+                    local_path, is_video
+                )
+            else:
+                # Retrieve metadata from remote source
+                metadata_cache[filepath] = await read_url_metadata(
+                    session, filepath_url, is_video
+                )
+        except Exception as exc:
+            # Immediately fail so the user knows they should install FFmpeg
+            if isinstance(exc, FFmpegNotFoundException):
+                raise exc
+
+            # Something went wrong (ie non-existent file), so we gracefully
+            # return some placeholder metadata so the App grid can be rendered
+            if is_video:
+                metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
+            else:
+                metadata_cache[filepath] = dict(aspect_ratio=1)
 
     return dict(urls=urls, **metadata_cache[filepath])
-
-
-async def read_metadata(session, filepath, is_video, local_only, filepath_url):
-    try:
-        if local_only or foc.media_cache.is_local_or_cached(filepath):
-            # Retrieve media metadata from local disk
-            local_path = await foc.media_cache._async_get_local_path(
-                filepath, session, download=True
-            )
-            metadata = await read_local_metadata(local_path, is_video)
-        else:
-            # Retrieve metadata from remote source
-            metadata = await read_url_metadata(session, filepath_url, is_video)
-    except Exception as exc:
-        # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(exc, FFmpegNotFoundException):
-            raise exc
-
-        # Something went wrong (ie non-existent file), so we gracefully return
-        # some placeholder metadata so the App grid can be rendered
-        if is_video:
-            metadata = dict(aspect_ratio=1, frame_rate=30)
-        else:
-            metadata = dict(aspect_ratio=1)
-
-    return metadata
 
 
 async def read_url_metadata(session, url, is_video):
