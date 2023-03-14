@@ -503,6 +503,8 @@ provided:
 -   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
     created task(s). This argument can be a list of URLs when annotating videos
     or when using `task_size` and generating multiple tasks
+-   **organization** (*None*): the name of the organization to use when sending
+    requests to CVAT
 
 .. _cvat-label-schema:
 
