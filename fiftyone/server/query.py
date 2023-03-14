@@ -497,12 +497,29 @@ async def serialize_dataset(
             data.group_slice = collection.group_slice
 
         for brain_method in data.brain_methods:
-            value = (
+            type = (
                 brain_method.config.type().value
                 if brain_method.config.type() is not None
                 else None
             )
-            setattr(brain_method.config, "type", value)
+            max_k = (
+                brain_method.config.max_k().value
+                if brain_method.config.max_k() is not None
+                else None
+            )
+            supportsLeastSimilarity = (
+                brain_method.config.supportsLeastSimilarity().value
+                if brain_method.config.supportsLeastSimilarity() is not None
+                else None
+            )
+
+            setattr(brain_method.config, "type", type)
+            setattr(brain_method.config, "max_k", max_k)
+            setattr(
+                brain_method.config,
+                "supportsLeastSimilarity",
+                supportsLeastSimilarity,
+            )
 
         return data
 
