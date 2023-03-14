@@ -72,7 +72,8 @@ async def get_metadata(
 
     opm_field = _get_orthographic_projection_metadata_field_name(collection)
     if opm_field:
-        additional_fields = [opm_field + ".filepath"]
+        opm_field_filepath_ref = opm_field + ".filepath"
+        additional_fields = [opm_field_filepath_ref]
     else:
         additional_fields = None
 
@@ -104,13 +105,17 @@ async def get_metadata(
                     frame_rate=frame_rate,
                 )
         elif opm_field:
-            metadata_cache[filepath] = await read_metadata(
-                session,
-                sample[opm_field]["filepath"],
-                None,  # @todo provide this
-                local_only,
-                False,
-            )
+            for field_url in urls:
+                if field_url["field"] == opm_field_filepath_ref:
+                    opm_img_url = field_url["url"]
+                    metadata_cache[filepath] = await read_metadata(
+                        session,
+                        sample[opm_field]["filepath"],
+                        opm_img_url,
+                        local_only,
+                        False,
+                    )
+                    break
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
@@ -498,7 +503,7 @@ async def _create_media_urls(
     cache: t.Dict,
     session: aiohttp.ClientSession,
     additional_fields: t.Optional[t.List[str]] = None,
-) -> t.Tuple[str, t.Dict[str, str]]:
+) -> t.Tuple[str, t.List[t.Dict[str, str]]]:
     filepath_url = None
     local_only = (
         collection.media_type == fom.IMAGE
