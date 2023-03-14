@@ -40,7 +40,8 @@ class OnPlotLoad(HTTPEndpoint):
 
         try:
             results = dataset.load_brain_results(brain_key)
-        except Exception as e:
+            assert results is not None
+        except:
             msg = (
                 "Failed to load results for brain run with key '%s'. Try "
                 "regenerating the results"
