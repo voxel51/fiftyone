@@ -217,7 +217,12 @@ const SampleModal = () => {
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === "INPUT") return;
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
+          return;
+        }
+      }
       if (e.key === "ArrowLeft") {
         navigatePrevious();
       } else if (e.key === "ArrowRight") {
