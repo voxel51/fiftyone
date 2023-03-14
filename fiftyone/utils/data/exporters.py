@@ -241,7 +241,7 @@ def export_samples(
     if label_field is not None:
         media_fields = samples._get_media_fields(whitelist=label_field)
         if media_fields:
-            samples.download_media(media_fields=media_fields)
+            samples.download_media(media_fields=list(media_fields.keys()))
 
     sample_collection = samples
 

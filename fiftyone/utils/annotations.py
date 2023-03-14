@@ -2327,7 +2327,7 @@ def draw_labeled_images(
 
     media_fields = samples._get_media_fields(whitelist=label_fields)
     if media_fields:
-        samples.download_media(media_fields=media_fields)
+        samples.download_media(media_fields=list(media_fields.keys()))
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir, idempotent=False

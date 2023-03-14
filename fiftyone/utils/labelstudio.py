@@ -241,7 +241,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         media_fields = samples._get_media_fields(whitelist=label_schema)
         if media_fields:
-            samples.download_media(media_fields=media_fields)
+            samples.download_media(media_fields=list(media_fields.keys()))
 
         tasks = [
             {

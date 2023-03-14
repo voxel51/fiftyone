@@ -12,6 +12,8 @@ import shutil
 import struct
 import typing as t
 
+from functools import reduce
+
 import asyncio
 import aiofiles
 import aiohttp
@@ -67,29 +69,25 @@ async def get_metadata(
     """
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
+
+    opm_field = _get_orthographic_projection_metadata_field_name(collection)
+    if opm_field:
+        additional_fields = [opm_field + ".filepath"]
+    else:
+        additional_fields = None
+
     filepath_url, urls = await _create_media_urls(
-        collection, sample, url_cache, session
+        collection,
+        sample,
+        url_cache,
+        session,
+        additional_fields=additional_fields,
     )
+
     local_only = (
         collection.media_type == fom.IMAGE
         and foc.media_cache.config.cache_app_images
     )
-
-    has_orthographic_projection_metadata = False
-    orthographic_projection_field = collection.get_field_schema(
-        embedded_doc_type=OrthographicProjectionMetadata
-    )
-
-    if len(orthographic_projection_field) > 0 and (
-        media_type == fom.POINT_CLOUD or media_type == fom.GROUP
-    ):
-        has_orthographic_projection_metadata = True
-        orthographic_projection_metadata_field_name = next(
-            iter(orthographic_projection_field)
-        )
-        orthographic_projection_image_path = sample[
-            orthographic_projection_metadata_field_name
-        ]["filepath"]
 
     is_video = media_type == fom.VIDEO
 
@@ -105,14 +103,6 @@ async def get_metadata(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
-        elif has_orthographic_projection_metadata:
-            metadata_cache[filepath] = await read_metadata(
-                session,
-                orthographic_projection_image_path,
-                False,
-                local_only,
-                None,  # @todo need a image URL here?
-            )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
@@ -123,37 +113,33 @@ async def get_metadata(
                 )
 
     if filepath not in metadata_cache:
-        metadata_cache[filepath] = await read_metadata(
-            session, filepath, is_video, local_only, filepath_url
-        )
+        try:
+            if local_only or foc.media_cache.is_local_or_cached(filepath):
+                # Retrieve media metadata from local disk
+                local_path = await foc.media_cache._async_get_local_path(
+                    filepath, session, download=True
+                )
+                metadata_cache[filepath] = await read_local_metadata(
+                    local_path, is_video
+                )
+            else:
+                # Retrieve metadata from remote source
+                metadata_cache[filepath] = await read_url_metadata(
+                    session, filepath_url, is_video
+                )
+        except Exception as exc:
+            # Immediately fail so the user knows they should install FFmpeg
+            if isinstance(exc, FFmpegNotFoundException):
+                raise exc
+
+            # Something went wrong (ie non-existent file), so we gracefully
+            # return some placeholder metadata so the App grid can be rendered
+            if is_video:
+                metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
+            else:
+                metadata_cache[filepath] = dict(aspect_ratio=1)
 
     return dict(urls=urls, **metadata_cache[filepath])
-
-
-async def read_metadata(session, filepath, is_video, local_only, filepath_url):
-    try:
-        if local_only or foc.media_cache.is_local_or_cached(filepath):
-            # Retrieve media metadata from local disk
-            local_path = await foc.media_cache._async_get_local_path(
-                filepath, session, download=True
-            )
-            metadata = await read_local_metadata(local_path, is_video)
-        else:
-            # Retrieve metadata from remote source
-            metadata = await read_url_metadata(session, filepath_url, is_video)
-    except Exception as exc:
-        # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(exc, FFmpegNotFoundException):
-            raise exc
-
-        # Something went wrong (ie non-existent file), so we gracefully return
-        # some placeholder metadata so the App grid can be rendered
-        if is_video:
-            metadata = dict(aspect_ratio=1, frame_rate=30)
-        else:
-            metadata = dict(aspect_ratio=1)
-
-    return metadata
 
 
 async def read_url_metadata(session, url, is_video):
@@ -501,6 +487,7 @@ async def _create_media_urls(
     sample: t.Dict,
     cache: t.Dict,
     session: aiohttp.ClientSession,
+    additional_fields: t.Optional[t.List[str]] = None,
 ) -> t.Tuple[str, t.Dict[str, str]]:
     filepath_url = None
     local_only = (
@@ -513,10 +500,14 @@ async def _create_media_urls(
         else ["filepath"]
     )
 
+    if additional_fields is not None:
+        media_fields.extend(additional_fields)
+
     media_urls = []
 
     for field in media_fields:
-        path = sample.get(field, None)
+        path = _deep_get(sample, field)
+
         if path in cache:
             if field == "filepath":
                 filepath_url = cache[path]
@@ -540,3 +531,33 @@ async def _create_media_urls(
             filepath_url = cache[path]
 
     return filepath_url, media_urls
+
+
+def _get_orthographic_projection_metadata_field_name(
+    collection: SampleCollection,
+) -> t.Optional[str]:
+    orthographic_projection_field = collection.get_field_schema(
+        embedded_doc_type=OrthographicProjectionMetadata
+    )
+    media_type = collection.media_type
+
+    has_projection_metadata = len(orthographic_projection_field) > 0 and (
+        media_type == fom.POINT_CLOUD or media_type == fom.GROUP
+    )
+
+    if has_projection_metadata:
+        return next(iter(orthographic_projection_field))
+
+    return None
+
+
+def _deep_get(sample, keys, default=None):
+    """
+    Get a value from a nested dictionary by specifying keys delimited by '.',
+    similar to lodash's ``_.get()``.
+    """
+    return reduce(
+        lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
+        keys.split("."),
+        sample,
+    )

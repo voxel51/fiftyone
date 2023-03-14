@@ -1540,9 +1540,6 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         if self._media_fields:
             _parse_media_fields(sd, self._media_fields, self._rel_dir)
 
-        if self._media_fields:
-            _parse_media_fields(sd, self._media_fields, self._rel_dir)
-
         if (self._media_type == fomm.VIDEO) or (
             self._media_type == fomm.GROUP
             and fomm.get_media_type(sd["filepath"]) == fomm.VIDEO
