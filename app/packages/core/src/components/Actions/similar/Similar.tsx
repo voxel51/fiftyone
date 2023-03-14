@@ -119,10 +119,8 @@ const SortBySimilarity = ({
   }, [state.k, state.brainKey]);
 
   const meetKRequirement = !(
-    brainConfig?.maxK &&
-    state.k &&
-    state.k !== undefined &&
-    state.k > brainConfig.maxK
+    (brainConfig?.maxK && state.k > brainConfig.maxK) ||
+    state.k == undefined
   );
 
   const loadingButton: ButtonDetail[] = isLoading
