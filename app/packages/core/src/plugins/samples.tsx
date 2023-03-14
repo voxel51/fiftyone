@@ -1,6 +1,6 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import AppsIcon from "@mui/icons-material/Apps";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid";
@@ -21,7 +21,6 @@ registerComponent({
   component: () => (
     <FlashlightContainer>
       <Grid key={"grid"} />
-      <EmptySamples />
       <ContainerHeader key={"header"} />
     </FlashlightContainer>
   ),

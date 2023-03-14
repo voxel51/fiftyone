@@ -119,7 +119,7 @@ export const groupField = selector<string>({
 export const groupId = selector<string>({
   key: "groupId",
   get: ({ get }) => {
-    return get(modalAtom).sample[get(groupField)]._id;
+    return get(modalAtom)?.sample[get(groupField)]?._id;
   },
 });
 
