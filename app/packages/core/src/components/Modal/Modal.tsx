@@ -1,4 +1,13 @@
+import {
+  ErrorBoundary,
+  HelpPanel,
+  JSONPanel,
+  LookerArrowLeftIcon,
+  LookerArrowRightIcon,
+} from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
+import { modalNavigation, useEventHandler } from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
   Fragment,
@@ -10,16 +19,6 @@ import React, {
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import {
-  ErrorBoundary,
-  HelpPanel,
-  JSONPanel,
-  LookerArrowLeftIcon,
-  LookerArrowRightIcon,
-} from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
-import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
@@ -218,6 +217,7 @@ const SampleModal = () => {
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === "INPUT") return;
       if (e.key === "ArrowLeft") {
         navigatePrevious();
       } else if (e.key === "ArrowRight") {
@@ -230,10 +230,7 @@ const SampleModal = () => {
     [navigateNext, navigatePrevious]
   );
 
-  useEffect(() => {
-    document.addEventListener("keydown", keyboardHandler);
-    return () => document.removeEventListener("keydown", keyboardHandler);
-  }, [keyboardHandler]);
+  useEventHandler(document, "keydown", keyboardHandler);
 
   const tooltip = fos.useTooltip();
 
