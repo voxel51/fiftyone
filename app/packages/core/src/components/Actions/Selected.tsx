@@ -73,8 +73,10 @@ const useSelectVisible = (
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
+    const isGroup = await snapshot.getPromise(fos.isGroup);
     const selected = await snapshot.getPromise(fos.selectedLabels);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
+
     set(fos.selectedLabels, {
       ...selected,
       ...toLabelMap(visible || []),
@@ -143,6 +145,20 @@ const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const toIds = (labels: State.SelectedLabel[]) =>
   new Set([...labels].map(({ labelId }) => labelId));
 
+const useVisibleSampleLabels = (lookerRef) => {
+  const isGroup = useRecoilValue(fos.isGroup);
+  const activeSlice = useRecoilValue(fos.currentSlice(true));
+  const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
+  const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
+  const r = lookerRef.current ? lookerRef.current.getCurrentSampleLabels() : [];
+
+  if (isGroup) {
+    return labelValues;
+  } else {
+    return r;
+  }
+};
+
 const useModalActions = (
   lookerRef: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
@@ -153,9 +169,7 @@ const useModalActions = (
   const clearSelection = useClearSampleSelection(close);
   const hasSorting = useRecoilValue(fos.similarityParameters);
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
-  const visibleSampleLabels = lookerRef.current
-    ? lookerRef.current.getCurrentSampleLabels()
-    : [];
+  const visibleSampleLabels = useVisibleSampleLabels(lookerRef);
   const isVideo =
     useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
   const visibleFrameLabels =
