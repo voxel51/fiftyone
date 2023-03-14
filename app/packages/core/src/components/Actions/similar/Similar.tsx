@@ -163,13 +163,16 @@ const SortBySimilarity = ({
     ];
   }
 
-  // if I switch to different brain key, update whether to show maxK warning
+  // if I switch to different brain key
+  // update whether to show maxK warning
+  // reset reverse setting
   useEffect(() => {
     if (brainConfig?.maxK && state.k && state.k > brainConfig.maxK) {
       setShowMaxKWarning(true);
     } else {
       setShowMaxKWarning(false);
     }
+    updateState({ reverse: false });
   }, [state.brainKey]);
 
   return (
