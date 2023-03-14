@@ -23,6 +23,7 @@ export interface Coloring {
 }
 
 export type OrthogrpahicProjectionMetadata = {
+  _id: string;
   _cls: "OrthographicProjectionMetadata";
   filepath: string;
   height: number;
