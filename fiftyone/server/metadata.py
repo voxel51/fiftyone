@@ -85,6 +85,10 @@ async def get_metadata(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
+        elif opm_field:
+            metadata_cache[filepath] = await read_metadata(
+                sample[opm_field]["filepath"], False
+            )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
