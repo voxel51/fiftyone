@@ -2,13 +2,19 @@ import {
   Method,
   ModalSample,
   selectedLabels,
+  useBrowserStorage,
   useUnprocessedStateUpdate,
 } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-import { selectorFamily, Snapshot, useRecoilCallback } from "recoil";
-import { searchBrainKeyValue } from "./Similar";
+import {
+  selectorFamily,
+  Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useMemo } from "react";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -57,6 +63,12 @@ export const getQueryIds = async (
 export const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
+  const datasetId = useRecoilValue(fos.dataset).id;
+  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
+    useBrowserStorage("lastUsedBrainKeys");
+  const current = useMemo(() => {
+    return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
+  }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -76,6 +88,14 @@ export const useSortBySimilarity = (close) => {
         };
 
         combinedParameters["query"] = query ?? queryIds;
+
+        // save the brainkey into local storage
+        setLastUsedBrainKeys(
+          JSON.stringify({
+            ...current,
+            [datasetId]: combinedParameters.brainKey,
+          })
+        );
 
         try {
           const data: fos.StateUpdate = await getFetchFunction()(
@@ -128,12 +148,13 @@ export const availableSimilarityKeys = selectorFamily<
       const { samples: methods } = get(fos.similarityMethods);
 
       if (params.isImageSearch) {
-        return methods.map(({ key }) => key);
+        return methods.map(({ key }) => key).sort();
       }
 
       return methods
         .filter((method) => method.supportsPrompts === true)
-        .map(({ key }) => key);
+        .map(({ key }) => key)
+        .sort();
     },
 });
 
@@ -185,13 +206,10 @@ export const currentSimilarityKeys = selectorFamily<
   get:
     ({ modal, isImageSearch }) =>
     ({ get }) => {
-      const searchBrainKey = get(searchBrainKeyValue);
       const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
-      const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
-
       return {
         total: keys.length,
-        choices: result.slice(0, 11),
+        choices: keys,
       };
     },
 });
