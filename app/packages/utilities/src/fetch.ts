@@ -178,7 +178,7 @@ export const getAPI = () => {
   }
   return isElectron()
     ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
-        process.env.FIFTYONE_DEFAULT_APP_PORT || 5151
+        process.env.FIFTYONE_SERVER_PORT || 5151
       }`
     : window.location.origin;
 };
