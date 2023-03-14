@@ -160,6 +160,7 @@ const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const activeSlice = useRecoilValue(fos.currentSlice(true));
   const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
   const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
+
   const currentSampleLabels = lookerRef.current
     ? lookerRef.current.getCurrentSampleLabels()
     : [];

@@ -117,6 +117,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/qdrant.png
     :tags: Dataset-Evaluation,Model-Evaluation,Embeddings
 
+.. customcarditem::
+    :header: Fine-tuning YOLOv8 model predictions
+    :description: Visualize and evaluate YOLOv8 model predictions before fine-tuning for your custom use case.
+    :link: yolov8.html
+    :image: ../_static/images/tutorials/yolov8.png
+    :tags: Model-Evaluation
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -153,3 +160,4 @@ your datasets and turn your good models into *great models*.
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
    Embeddings with Qdrant <qdrant.ipynb>
+   Fine-tuning YOLOv8 models <yolov8.ipynb>
