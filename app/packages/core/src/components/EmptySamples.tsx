@@ -38,11 +38,14 @@ const ActionContainer = styled(TextContainer)`
   position: relative;
 `;
 
-function EmptySamples() {
+export default function EmptySamples() {
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const totalSamples = useRecoilValue(
-    fos.count({ path: "", extended: false, modal: false })
+    fos.count({ path: "", extended: true, modal: false })
   );
+
+  console.log({ totalSamples });
+
   const theme = useTheme();
   const setView = fos.useSetView();
 
@@ -109,4 +112,4 @@ function EmptySamples() {
   );
 }
 
-export default React.memo(EmptySamples);
+// export default React.memo(EmptySamples);
