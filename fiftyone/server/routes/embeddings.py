@@ -37,9 +37,13 @@ class OnPlotLoad(HTTPEndpoint):
         label_field = data["labelField"]
 
         dataset = fosu.load_and_cache_dataset(dataset_name)
-        results = dataset.load_brain_results(brain_key)
+        load_brain_results_error = None
+        try:
+            results = dataset.load_brain_results(brain_key)
+        except Exception as err:
+            load_brain_results_error = err
 
-        if results is None:
+        if results is None or load_brain_results_error is not None:
             return {
                 "error": f'Failed to load results for brain run with key "{brain_key}". Try regenerating the results.'
             }
