@@ -21,9 +21,6 @@ registerComponent({
   component: () => (
     <FlashlightContainer>
       <Grid key={"grid"} />
-      <Suspense>
-        <EmptySamples />
-      </Suspense>
       <ContainerHeader key={"header"} />
     </FlashlightContainer>
   ),
