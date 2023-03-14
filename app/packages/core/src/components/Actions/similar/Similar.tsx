@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
@@ -16,6 +16,7 @@ import {
   sortType,
   useSortBySimilarity,
 } from "./utils";
+import { useBrowserStorage } from "@fiftyone/state";
 
 const DEFAULT_K = 25;
 
@@ -33,11 +34,6 @@ interface SortBySimilarityProps {
   bounds?: any; // fix me
 }
 
-export const searchBrainKeyValue = atom<string>({
-  key: "searchBrainKeyValue",
-  default: "",
-});
-
 const SortBySimilarity = ({
   modal,
   bounds,
@@ -45,12 +41,20 @@ const SortBySimilarity = ({
   isImageSearch,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
+  const datasetId = useRecoilValue(fos.dataset).id;
+  const [lastUsedBrainKeys, setLastUsedBrainKeys] =
+    useBrowserStorage("lastUsedBrainKeys");
+
+  const lastUsedBrainkey = useMemo(() => {
+    return lastUsedBrainKeys ? JSON.parse(lastUsedBrainKeys)[datasetId] : null;
+  }, [lastUsedBrainKeys, datasetId]);
+
   const [open, setOpen] = useState(false);
 
   const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
     () =>
       current || {
-        brainKey: null,
+        brainKey: lastUsedBrainkey,
         distField: null,
         reverse: false,
         k: DEFAULT_K,
@@ -82,9 +86,12 @@ const SortBySimilarity = ({
   const isLoading = useRecoilValue(fos.similaritySorting);
 
   useLayoutEffect(() => {
-    choices.choices.length === 1 &&
-      updateState({ brainKey: choices.choices[0] });
-  }, [choices]);
+    if (!choices.choices.includes(state.brainKey)) {
+      const newKey =
+        choices.choices.length > 0 ? choices.choices[0] : undefined;
+      updateState({ brainKey: newKey });
+    }
+  }, [choices, state.brainKey, updateState]);
 
   useLayoutEffect(() => {
     current && setState(current);
@@ -126,7 +133,9 @@ const SortBySimilarity = ({
         icon: "SearchIcon",
         ariaLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
-        onClick: () => sortBySimilarity(state),
+        onClick: () => {
+          state.query && state.query.length > 0 && sortBySimilarity(state);
+        },
       },
       ...loadingButton,
       ...groupButtons,
@@ -148,7 +157,9 @@ const SortBySimilarity = ({
               placeholder={"Type anything!"}
               value={(state.query as string) ?? ""}
               setter={(value) => updateState({ query: value })}
-              onEnter={() => sortBySimilarity(state)}
+              onEnter={() =>
+                state.query && state.query.length > 0 && sortBySimilarity(state)
+              }
             />
           )}
           {isImageSearch && !hasSorting && (
