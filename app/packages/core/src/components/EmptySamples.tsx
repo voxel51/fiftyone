@@ -43,6 +43,9 @@ export default function EmptySamples() {
   const totalSamples = useRecoilValue(
     fos.count({ path: "", extended: true, modal: false })
   );
+
+  console.log({ totalSamples });
+
   const theme = useTheme();
   const setView = fos.useSetView();
 
