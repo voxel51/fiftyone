@@ -24,15 +24,15 @@ export const getQueryIds = async (
   const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
   const methods = await snapshot.getPromise(fos.similarityMethods);
 
+  const labels_field = methods.patches
+    .filter(([method]) => method.key === brainKey)
+    .map(([_, value]) => value)[0];
+
   if (selectedLabelIds.size) {
     return [...selectedLabelIds].filter(
       (id) => selectedLabels[id].field === labels_field
     );
   }
-
-  const labels_field = methods.patches
-    .filter(([method]) => method.key === brainKey)
-    .map(([_, value]) => value)[0];
 
   const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
@@ -184,7 +184,9 @@ const availablePatchesSimilarityKeys = selectorFamily<
             Object.values(get(selectedLabels)).map(({ field }) => field)
           );
 
-          return patches.filter(([_, field]) => fields.has(field));
+          return patches
+            .filter(([_, field]) => fields.has(field))
+            .map(([key]) => key);
         } else {
           const { sample } = get(fos.modal) as ModalSample;
 
