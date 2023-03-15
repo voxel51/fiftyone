@@ -94,7 +94,6 @@ export const useSortBySimilarity = (close) => {
             set(fos.modal, null);
             set(fos.similaritySorting, false);
             set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
-            set(fos.selectedLabels, {});
             set(fos.hiddenLabels, {});
             set(fos.modal, null);
             close();
