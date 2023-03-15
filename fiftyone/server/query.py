@@ -216,15 +216,15 @@ class Dataset:
     info: t.Optional[JSON]
 
     @gql.field
-    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
-        if not slug:
-            return None
+    def stages(
+        self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
+    ) -> t.Optional[BSONArray]:
+        if slug:
+            for view in self.saved_views:
+                if view.slug == slug:
+                    return view.stage_dicts()
 
-        for view in self.saved_views:
-            if view.slug == slug:
-                return view.stage_dicts()
-
-        return None
+        return view or []
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -393,10 +393,14 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
-        ds = fod.load_dataset(dataset_name)
-        return [
-            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
-        ]
+        try:
+            ds = fod.load_dataset(dataset_name)
+            return [
+                SavedView.from_doc(view_doc)
+                for view_doc in ds._doc.saved_views
+            ]
+        except:
+            return None
 
 
 def _flatten_fields(
@@ -426,6 +430,9 @@ async def serialize_dataset(
     saved_view_slug: t.Optional[str] = None,
 ) -> Dataset:
     def run():
+        if not fod.dataset_exists(dataset_name):
+            return None
+
         dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         view_name = None

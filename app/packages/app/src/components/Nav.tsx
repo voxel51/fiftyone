@@ -1,23 +1,23 @@
 import {
   Button,
+  DocsLink,
   GitHubLink,
   Header,
   IconButton,
-  SlackLink,
   iconContainer,
-  DocsLink,
+  SlackLink,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
-import { isElectron } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
-import { useColorScheme } from "@mui/material";
+import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
+import { useColorScheme } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
-import { useDebounce } from "react-use";
 import { graphql, useFragment, usePaginationFragment } from "react-relay";
+import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 
 import ga from "../ga";
@@ -26,7 +26,7 @@ import Teams from "./Teams";
 
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
-import { NavGA } from "./__generated__/NavGA.graphql";
+import { NavGA$key } from "./__generated__/NavGA.graphql";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -68,7 +68,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
   };
 };
 
-export const useGA = (fragment: NavGA) => {
+export const useGA = (fragment: NavGA$key) => {
   const info = useFragment(
     graphql`
       fragment NavGA on Query {

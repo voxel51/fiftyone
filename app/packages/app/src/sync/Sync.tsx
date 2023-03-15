@@ -1,10 +1,7 @@
 import { Loading } from "@fiftyone/components";
 import {
-  collapseFields,
-  resolveGroups,
   State,
   stateSubscription,
-  transformDataset,
   useClearModal,
   useRefresh,
   useReset,
@@ -12,20 +9,13 @@ import {
   viewsAreEqual,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
-import { RecoilSync } from "recoil-sync";
-import {
-  GraphQLResponseWithData,
-  VariablesOf,
-  readInlineData,
-} from "relay-runtime";
 
-import { datasetFragment, datasetFragment$key } from "@fiftyone/relay";
+import { Writer } from "@fiftyone/relay";
 
 import Setup from "../components/Setup";
-import { datasetQuery } from "../pages/datasets/__generated__/datasetQuery.graphql";
 
 import { Queries, RoutingContext, useRouterContext } from "../routing";
 import { getDatasetName, getSavedViewName } from "./utils";
@@ -147,58 +137,9 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return () => controller.abort();
   }, []);
 
-  const sidebarGroupsRef = useRef<State.SidebarGroup[]>();
-
-  const HANDLERS = {
-    DatasetPageQuery: (
-      itemKey: string,
-      response: State.Dataset | null,
-      variables: VariablesOf<datasetQuery>
-    ) => {
-      switch (itemKey) {
-        case "dataset":
-          return response || null;
-        case "sidebarGroupsDefinition__false":
-          if (!response) return [];
-          sidebarGroupsRef.current = resolveGroups(
-            response.sampleFields,
-            response.frameFields,
-            response,
-            sidebarGroupsRef.current
-          );
-          return sidebarGroupsRef.current;
-        case "sampleFields":
-          return response?.sampleFields || [];
-        case "frameFields":
-          return response?.frameFields || [];
-        case "view":
-          const view = variables.savedViewSlug
-            ? response?.stages
-            : variables.view || [];
-          return view;
-        case "viewCls":
-          return response?.viewCls || null;
-        case "viewName":
-          return variables.savedViewSlug || null;
-        default:
-          break;
-      }
-    },
-    IndexPageQuery: (itemKey: string, _: GraphQLResponseWithData) => {
-      switch (itemKey) {
-        case "dataset":
-          return null;
-        case "sidebarGroupsDefinition__false":
-          return undefined;
-        case "view":
-          return [];
-        case "viewCls":
-          return undefined;
-        default:
-          break;
-      }
-    },
-  };
+  const external = useMemo(() => {
+    return new Map([["routeEntry", () => router.get()]]);
+  }, [router]);
 
   return (
     <>
@@ -207,83 +148,24 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         <Loading>Pixelating...</Loading>
       )}
       {readyState === AppReadyState.OPEN && (
-        <RecoilSync
+        <Writer<Queries>
           storeKey="router"
-          read={(itemKey) => {
-            const entry = router.get();
-            if (itemKey === "entry") {
-              return entry;
-            }
-
-            const { preloadedQuery, data } = entry;
-
-            return HANDLERS[preloadedQuery.name](
-              itemKey,
-              PROCESSORS[preloadedQuery.name](data),
-              preloadedQuery.variables,
-              router.history.location.state,
-              true
-            );
-          }}
-          listen={({ updateItems }) => {
-            return router.subscribe(
-              (entry) => {
-                const { preloadedQuery, data } = entry;
-                const items = [
-                  "dataset",
-                  "sidebarGroupsDefinition__false",
-                  "view",
-                  "viewName",
-                  "sampleFields",
-                  "frameFields",
-                  "viewCls",
-                ].reduce((map, itemKey) => {
-                  const result = HANDLERS[preloadedQuery.name](
-                    itemKey,
-                    PROCESSORS[preloadedQuery.name](data),
-                    preloadedQuery.variables,
-                    router.history.location.state
-                  );
-                  if (result !== undefined) {
-                    map.set(itemKey, result);
-                  }
-
-                  return map;
-                }, new Map());
-
-                items.set("entry", entry);
-
-                updateItems(items);
-              },
-              () => {}
-            );
-          }}
-          write={({ diff }) => {
-            diff.forEach((value, key) => {
-              WRITE_HANDLERS[key] && WRITE_HANDLERS[key](router, value);
+          read={() => router.get().data}
+          subscription={(update) => {
+            return router.subscribe((entry) => {
+              update(entry.data);
             });
           }}
+          writer={(itemKey, value) => {
+            WRITE_HANDLERS[itemKey] && WRITE_HANDLERS[itemKey](router, value);
+          }}
+          external={external}
         >
           {children}
-        </RecoilSync>
+        </Writer>
       )}
     </>
   );
-};
-
-const PROCESSORS = {
-  DatasetPageQuery: (response) => {
-    const data = readInlineData<datasetFragment$key>(datasetFragment, response);
-    if (!data.dataset) {
-      return null;
-    }
-    const dataset = { ...transformDataset(data.dataset) };
-    dataset.sampleFields = collapseFields(data.dataset.sampleFields);
-    dataset.frameFields = collapseFields(data.dataset.frameFields);
-
-    return dataset;
-  },
-  IndexPageQuery: (_: GraphQLResponseWithData) => null,
 };
 
 const WRITE_HANDLERS = {
@@ -313,7 +195,6 @@ const WRITE_HANDLERS = {
 
     router.history.push(`${router.get().pathname}${search}`, { view: [] });
   },
-  dataset: null,
   view: (
     router: RoutingContext<Queries>,
     view: DefaultValue | State.Stage[]
@@ -325,20 +206,11 @@ const WRITE_HANDLERS = {
     const params = new URLSearchParams(router.get().search);
     const current = params.get("view");
 
-    if (!viewsAreEqual(view, router.state.view) || current) {
+    if (!viewsAreEqual(view, router.get().state.view) || current) {
       router.history.push(`${router.get().pathname}`, { view });
     }
   },
   sidebarGroupsDefinition__false: null,
-  viewCls: (router, viewCls) => {
-    return viewCls;
-  },
-  sampleFields: (router, v) => {
-    return v;
-  },
-  frameFields: (router, v) => {
-    return v;
-  },
 };
 
 export default Sync;

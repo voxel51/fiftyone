@@ -17,8 +17,8 @@ import {
 } from "relay-runtime";
 
 import { Queries, Route } from ".";
+import { matchPath, MatchPathResult } from "./matchPath";
 import RouteDefinition from "./RouteDefinition";
-import { MatchPathResult, matchPath } from "./matchPath";
 
 export interface RouteData<T extends Queries> {
   path: string;
@@ -72,9 +72,9 @@ export const createRouter = (
   let nextId = 0;
   const subscribers = new Map();
 
-  const cleanup = history.listen(({ location, ...r }) => {
+  const cleanup = history.listen(({ location }) => {
     if (!currentEntryResource) return;
-    subscribers.forEach(([_, onPending]) => onPending());
+    subscribers.forEach(([_, onPending]) => onPending && onPending());
     currentEntryResource.load().then(({ cleanup }) => {
       currentEntryResource = getEntryResource(
         environment,

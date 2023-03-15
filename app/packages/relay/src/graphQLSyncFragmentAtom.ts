@@ -3,23 +3,24 @@ import { atom, AtomOptions } from "recoil";
 import { syncEffect } from "recoil-sync";
 import { GraphQLTaggedNode } from "relay-runtime";
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
-import { stores_INTERNAL } from "./Writer";
+import { stores_INTERNAL } from "./internal";
 
-export type GraphQLSyncFragmentAtomFamilyOptions<K> = Omit<
-  Omit<AtomOptions<K>, "default">,
-  "effects"
->;
+export type GraphQLSyncFragmentAtomOptions<K> = AtomOptions<K>;
 
-export type GraphQLSyncFragmentSyncOptions<T extends KeyType, K> = {
-  fragment: GraphQLTaggedNode;
-  read: (data: KeyTypeData<T>) => K;
+export type GraphQLSyncFragmentSyncAtomOptions<
+  T extends KeyType,
+  K = KeyTypeData<T>
+> = {
+  fragments: GraphQLTaggedNode[];
+  keys?: string[];
+  read?: (data: KeyTypeData<T>) => K;
   storeKey: string;
   refine?: rfn.Checker<K>;
 };
 
-function graphQLSyncFragmentAtom<T extends KeyType, K>(
-  fragmentOptions: GraphQLSyncFragmentSyncOptions<T, K>,
-  options: GraphQLSyncFragmentAtomFamilyOptions<K>
+export function graphQLSyncFragmentAtom<T extends KeyType, K = KeyTypeData<T>>(
+  fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
+  options: GraphQLSyncFragmentAtomOptions<K>
 ) {
   if (!stores_INTERNAL.has(fragmentOptions.storeKey)) {
     stores_INTERNAL.set(fragmentOptions.storeKey, new Map());
@@ -27,7 +28,8 @@ function graphQLSyncFragmentAtom<T extends KeyType, K>(
 
   const store = stores_INTERNAL.get(fragmentOptions.storeKey);
   store.set(options.key, {
-    fragmentInput: fragmentOptions.fragment,
+    fragments: fragmentOptions.fragments,
+    keys: fragmentOptions.keys,
     reader: fragmentOptions.read,
   });
 
@@ -36,8 +38,10 @@ function graphQLSyncFragmentAtom<T extends KeyType, K>(
     effects: [
       syncEffect({
         storeKey: fragmentOptions.storeKey,
-        refine: rfn.voidable(rfn.custom<K>((v) => v as K)),
+        refine:
+          fragmentOptions.refine || rfn.voidable(rfn.custom<K>((v) => v as K)),
       }),
+      ...(options.effects || []),
     ],
   });
 }

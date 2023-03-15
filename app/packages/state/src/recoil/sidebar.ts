@@ -1,13 +1,4 @@
 import {
-  atomFamily,
-  DefaultValue,
-  selector,
-  selectorFamily,
-  useRecoilStateLoadable,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
-import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
@@ -19,7 +10,15 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { syncEffect } from "recoil-sync";
+import {
+  atomFamily,
+  DefaultValue,
+  selector,
+  selectorFamily,
+  useRecoilStateLoadable,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 
 import * as aggregationAtoms from "./aggregations";
 import {
@@ -31,14 +30,21 @@ import {
   pathIsShown,
 } from "./schema";
 
+import {
+  datasetFragment,
+  graphQLSyncFragmentAtomFamily,
+  setSidebarGroups,
+  setSidebarGroupsMutation,
+  sidebarGroupsFragment,
+  sidebarGroupsFragment$data,
+  sidebarGroupsFragment$key,
+} from "@fiftyone/relay";
+import { commitMutation, VariablesOf } from "react-relay";
+import { collapseFields } from "../utils";
+import { isLargeVideo, resolvedSidebarMode } from "./options";
+import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
-import { isLargeVideo, resolvedSidebarMode } from "./options";
-import { commitMutation, VariablesOf } from "react-relay";
-import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
-import { custom } from "@recoiljs/refine";
-import { read } from "fs";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -223,10 +229,10 @@ const NONE = [null, undefined];
 export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
-  dataset: State.Dataset,
-  current?: State.SidebarGroup[]
+  current: State.SidebarGroup[],
+  config?: sidebarGroupsFragment$data["appConfig"]["sidebarGroups"]
 ): State.SidebarGroup[] => {
-  const sidebarGroups = dataset?.appConfig?.sidebarGroups;
+  const sidebarGroups = config;
 
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
@@ -270,7 +276,7 @@ export const resolveGroups = (
     .filter((path) => !present.has(path));
 
   updater("labels", labels);
-  dataset.frameFields.length && updater("frame labels", frameLabels);
+  frameFields.length && updater("frame labels", frameLabels);
   updater("primitives", primitives);
 
   const fields = Object.fromEntries(
@@ -303,7 +309,7 @@ export const resolveGroups = (
 
   other = [
     ...other,
-    ...dataset.frameFields
+    ...frameFields
       .reduce(fieldsReducer([...VALID_PRIMITIVE_TYPES, DICT_FIELD]), [])
       .map((path) => `frames.${path}`),
   ];
@@ -337,22 +343,34 @@ const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
   };
 };
 
-export const sidebarGroupsDefinition = atomFamily<
-  State.SidebarGroup[],
-  boolean
->({
-  key: "sidebarGroupsDefinition",
-  default: [],
-  effects: (modal) =>
-    modal
-      ? []
-      : [
-          syncEffect({
-            refine: custom((v) => v),
-            storeKey: "router",
-          }),
-        ],
-});
+export const sidebarGroupsDefinition = (() => {
+  let current: State.SidebarGroup[] = [];
+  return graphQLSyncFragmentAtomFamily<
+    sidebarGroupsFragment$key,
+    State.SidebarGroup[],
+    boolean
+  >(
+    {
+      fragments: [datasetFragment, sidebarGroupsFragment],
+      keys: ["dataset"],
+      storeKey: "router",
+      sync: (modal) => !modal,
+      read: (data) => {
+        current = resolveGroups(
+          collapseFields(data.sampleFields),
+          collapseFields(data.frameFields),
+          current,
+          data.appConfig.sidebarGroups
+        );
+        return current;
+      },
+    },
+    {
+      key: "sidebarGroupsDefinition",
+      default: [],
+    }
+  );
+})();
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],

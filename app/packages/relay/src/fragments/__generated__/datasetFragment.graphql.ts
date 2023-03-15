@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<77a0772837f036be3491f6c5ccfe2e64>>
+ * @generated SignedSource<<d0a1758d0a26c641e19ffddccf132857>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,11 +19,6 @@ export type datasetFragment$data = {
       readonly mediaFields: ReadonlyArray<string> | null;
       readonly modalMediaField: string | null;
       readonly plugins: any | null;
-      readonly sidebarGroups: ReadonlyArray<{
-        readonly expanded: boolean | null;
-        readonly name: string;
-        readonly paths: ReadonlyArray<string> | null;
-      }> | null;
       readonly sidebarMode: SidebarMode | null;
     } | null;
     readonly brainMethods: ReadonlyArray<{
@@ -59,15 +54,6 @@ export type datasetFragment$data = {
       readonly version: string | null;
       readonly viewStages: ReadonlyArray<string> | null;
     }> | null;
-    readonly frameFields: ReadonlyArray<{
-      readonly dbField: string | null;
-      readonly description: string | null;
-      readonly embeddedDocType: string | null;
-      readonly ftype: string;
-      readonly info: any | null;
-      readonly path: string;
-      readonly subfield: string | null;
-    }> | null;
     readonly groupField: string | null;
     readonly groupMediaTypes: ReadonlyArray<{
       readonly mediaType: MediaType;
@@ -85,34 +71,15 @@ export type datasetFragment$data = {
     }>;
     readonly mediaType: MediaType | null;
     readonly name: string;
-    readonly sampleFields: ReadonlyArray<{
-      readonly dbField: string | null;
-      readonly description: string | null;
-      readonly embeddedDocType: string | null;
-      readonly ftype: string;
-      readonly info: any | null;
-      readonly path: string;
-      readonly subfield: string | null;
-    }>;
     readonly savedViewSlug: string | null;
-    readonly savedViews: ReadonlyArray<{
-      readonly color: string | null;
-      readonly datasetId: string | null;
-      readonly description: string | null;
-      readonly id: string | null;
-      readonly name: string | null;
-      readonly slug: string | null;
-      readonly viewStages: ReadonlyArray<string> | null;
-    }> | null;
     readonly skeletons: ReadonlyArray<{
       readonly edges: ReadonlyArray<ReadonlyArray<number>>;
       readonly labels: ReadonlyArray<string> | null;
       readonly name: string;
     }>;
-    readonly stages: any | null;
     readonly version: string | null;
-    readonly viewCls: string | null;
     readonly viewName: string | null;
+    readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   } | null;
   readonly " $fragmentType": "datasetFragment";
 };
@@ -126,6 +93,6 @@ const node: ReaderInlineDataFragment = {
   "name": "datasetFragment"
 };
 
-(node as any).hash = "8d24693ec0086f96d6c5380ecead36ca";
+(node as any).hash = "6ed11d33730564beab44f8c1b3bf9f01";
 
 export default node;

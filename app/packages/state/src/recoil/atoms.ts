@@ -1,10 +1,18 @@
 import { Sample } from "@fiftyone/looker/src/state";
-import * as rfn from "@recoiljs/refine";
 import { atom, atomFamily, useRecoilCallback } from "recoil";
 
+import {
+  datasetFragment,
+  datasetFragment$key,
+  frameFieldsFragment,
+  frameFieldsFragment$key,
+  graphQLSyncFragmentAtom,
+  sampleFieldsFragment,
+  sampleFieldsFragment$key,
+} from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { StrictField } from "@fiftyone/utilities";
-import { syncEffect } from "recoil-sync";
+import { collapseFields, transformDataset } from "../utils";
 import { State } from "./types";
 
 export interface AppSample extends Sample {
@@ -149,60 +157,57 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
  *
  * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
  */
-export const dataset = atom({
-  key: "dataset",
-  default: null,
-  effects: [
-    syncEffect({
-      refine: rfn.nullable(
-        rfn.object({
-          appConfig: rfn.custom((v) => v),
-          id: rfn.string(),
-          name: rfn.string(),
-          info: rfn.custom((v) => v),
-          createdAt: rfn.nullable(rfn.number()),
-          lastLoadedAt: rfn.nullable(rfn.number()),
-          mediaType: rfn.string(),
-          viewName: rfn.nullable(rfn.string()),
-          skeletons: rfn.custom((v) => v),
-          groupMediaTypes: rfn.nullable(
-            rfn.writableArray(
-              rfn.object({ name: rfn.string(), mediaType: rfn.string() })
-            )
-          ),
-          defaultGroupSlice: rfn.nullable(rfn.string()),
-        })
-      ),
-      storeKey: "router",
-    }),
-  ],
-});
+export const dataset = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  State.Dataset
+>(
+  {
+    fragments: [datasetFragment],
+    storeKey: "router",
+    read: (data) => {
+      if (!data.dataset) {
+        return null;
+      }
+      return { ...transformDataset(data.dataset) };
+    },
+  },
+  {
+    key: "dataset",
+    default: null,
+  }
+);
 
-export const sampleFields = atom<StrictField[]>({
-  key: "sampleFields",
-  default: [],
-  effects: [
-    syncEffect({
-      storeKey: "router",
-      refine: rfn.writableArray(
-        rfn.custom<StrictField>((v) => v as StrictField)
-      ),
-    }),
-  ],
-});
+export const sampleFields = graphQLSyncFragmentAtom<
+  sampleFieldsFragment$key,
+  StrictField[]
+>(
+  {
+    storeKey: "router",
+    fragments: [datasetFragment, sampleFieldsFragment],
+    keys: ["dataset"],
+    read: (data) => collapseFields(data.sampleFields || []),
+  },
+  {
+    key: "sampleFields",
+    default: [],
+  }
+);
 
-export const frameFields = atom<StrictField[]>({
-  key: "frameFields",
-  default: [],
-  effects: [
-    syncEffect({
-      storeKey: "router",
-      refine: rfn.writableArray(
-        rfn.custom<StrictField>((v) => v as StrictField)
-      ),
-    }),
-  ],
-});
+export const frameFields = graphQLSyncFragmentAtom<
+  frameFieldsFragment$key,
+  StrictField[]
+>(
+  {
+    storeKey: "router",
+    fragments: [datasetFragment, frameFieldsFragment],
+    keys: ["dataset"],
+    read: (data) => collapseFields(data.frameFields || []),
+  },
+  {
+    key: "frameFields",
+    default: [],
+  }
+);
 
 export const selectedViewName = atom<string>({
   key: "selectedViewName",

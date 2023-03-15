@@ -1,14 +1,14 @@
+import { Snapshot } from "react-relay";
+import { AtomEffect } from "recoil";
 import {
   createOperationDescriptor,
   GraphQLTaggedNode,
   readInlineData,
 } from "relay-runtime";
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
-import { AtomEffect } from "recoil";
 import { getPageQuery } from "./PageQuery";
-import { Snapshot } from "react-relay";
 
-export default function graphQLFragmentEffect<T extends KeyType>(
+export function graphQLFragmentEffect<T extends KeyType>(
   fragment: GraphQLTaggedNode
 ): AtomEffect<KeyTypeData<T>> {
   return ({ setSelf, trigger }) => {
@@ -57,3 +57,5 @@ export default function graphQLFragmentEffect<T extends KeyType>(
     return unsubscribe;
   };
 }
+
+export default graphQLFragmentEffect;

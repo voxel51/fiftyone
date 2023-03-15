@@ -3,7 +3,10 @@ import { graphql } from "relay-runtime";
 export default graphql`
   fragment datasetFragment on Query @inline {
     dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
-      stages(slug: $savedViewSlug)
+      ...frameFieldsFragment
+      ...sampleFieldsFragment
+      ...sidebarGroupsFragment
+      ...viewFragment
       id
       name
       mediaType
@@ -18,30 +21,7 @@ export default graphql`
         mediaFields
         modalMediaField
         plugins
-        sidebarGroups {
-          expanded
-          paths
-          name
-        }
         sidebarMode
-      }
-      sampleFields {
-        ftype
-        subfield
-        embeddedDocType
-        path
-        dbField
-        description
-        info
-      }
-      frameFields {
-        ftype
-        subfield
-        embeddedDocType
-        path
-        dbField
-        description
-        info
       }
       maskTargets {
         name
@@ -77,15 +57,6 @@ export default graphql`
           patchesField
         }
       }
-      savedViews {
-        id
-        datasetId
-        name
-        slug
-        description
-        color
-        viewStages
-      }
       lastLoadedAt
       createdAt
       skeletons {
@@ -98,7 +69,6 @@ export default graphql`
         edges
       }
       version
-      viewCls
       viewName
       savedViewSlug
       info

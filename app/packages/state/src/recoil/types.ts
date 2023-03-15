@@ -1,4 +1,3 @@
-import { StrictField } from "@fiftyone/utilities";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
@@ -108,7 +107,6 @@ export namespace State {
     modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
-    sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
   }
 
@@ -116,14 +114,11 @@ export namespace State {
    * The dataset object returned by the API.
    */
   export interface Dataset {
-    stages?: Stage[];
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
-    savedViews: SavedView[];
-    frameFields: StrictField[];
     lastLoadedAt: DateTime;
     maskTargets: {
       [key: string]: Targets;
@@ -131,7 +126,6 @@ export namespace State {
     groupSlice?: string;
     mediaType: MediaType;
     name: string;
-    sampleFields: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton?: KeypointSkeleton;
@@ -143,7 +137,6 @@ export namespace State {
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
-    viewCls: string;
   }
 
   /**

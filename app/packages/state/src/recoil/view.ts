@@ -1,53 +1,70 @@
-import { atom, selector } from "recoil";
-import { syncEffect } from "recoil-sync";
 import * as rfn from "@recoiljs/refine";
+import { atom, selector } from "recoil";
 
+import {
+  datasetFragment,
+  graphQLSyncFragmentAtom,
+  viewFragment,
+  viewFragment$key,
+} from "@fiftyone/relay";
 import { State } from "./types";
 
-export const view = atom<State.Stage[]>({
-  key: "view",
-  default: [],
-  effects: [
-    syncEffect({
-      storeKey: "router",
-      refine: rfn.writableArray(
-        rfn.writableObject({
-          _cls: rfn.string(),
-          kwargs: rfn.writableArray(
-            rfn.tuple(
-              rfn.string(),
-              rfn.nullable(
-                rfn.custom<unknown>((v) => {
-                  return v;
-                })
-              )
-            ) as rfn.Checker<[string, unknown]>
-          ),
-          _uuid: rfn.optional(rfn.string()),
-        })
-      ),
-    }),
-  ],
-});
+export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
+  {
+    fragments: [datasetFragment, viewFragment],
+    keys: ["dataset"],
+    storeKey: "router",
+    read: (data) => data.stages,
+    refine: rfn.writableArray(
+      rfn.writableObject({
+        _cls: rfn.string(),
+        kwargs: rfn.writableArray(
+          rfn.tuple(
+            rfn.string(),
+            rfn.nullable(
+              rfn.custom<unknown>((v) => {
+                return v;
+              })
+            )
+          ) as rfn.Checker<[string, unknown]>
+        ),
+        _uuid: rfn.optional(rfn.string()),
+      })
+    ),
+  },
+  {
+    key: "view",
+    default: [],
+  }
+);
 
-export const viewCls = atom({
-  key: "viewCls",
-  default: null,
-  effects: [
-    syncEffect({ storeKey: "router", refine: rfn.nullable(rfn.string()) }),
-  ],
-});
+export const viewCls = graphQLSyncFragmentAtom<viewFragment$key, string>(
+  {
+    fragments: [datasetFragment, viewFragment],
+    keys: ["dataset"],
+    read: (data) => data.viewCls,
+    storeKey: "router",
+    refine: rfn.nullable(rfn.string()),
+  },
+  {
+    key: "viewCls",
+    default: null,
+  }
+);
 
-export const viewName = atom<string>({
-  key: "viewName",
-  default: null,
-  effects: [
-    syncEffect({
-      storeKey: "router",
-      refine: rfn.nullable(rfn.string()),
-    }),
-  ],
-});
+export const viewName = graphQLSyncFragmentAtom<viewFragment$key, string>(
+  {
+    fragments: [datasetFragment, viewFragment],
+    keys: ["dataset"],
+    read: (data) => data.viewName,
+    storeKey: "router",
+    refine: rfn.nullable(rfn.string()),
+  },
+  {
+    key: "viewName",
+    default: null,
+  }
+);
 
 export const isRootView = selector<boolean>({
   key: "isRootView",

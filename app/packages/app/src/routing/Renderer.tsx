@@ -1,5 +1,4 @@
 import { Loading } from "@fiftyone/components";
-import { custom } from "@recoiljs/refine";
 import React, {
   Suspense,
   useContext,
@@ -7,27 +6,28 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { atom, useRecoilValue } from "recoil";
-import { syncEffect } from "recoil-sync";
 
-import { Queries } from ".";
-import { Entry, RouterContext, RoutingContext } from "./RouterContext";
-import style from "./pending.module.css";
 import {
   PageQueryContext,
   PageSubscription,
 } from "@fiftyone/relay/src/PageQuery";
+import { custom } from "@recoiljs/refine";
+import { atom, useRecoilValue } from "recoil";
+import { syncEffect } from "recoil-sync";
+import { Queries } from ".";
+import style from "./pending.module.css";
+import { Entry, RouterContext, RoutingContext } from "./RouterContext";
 
 const Pending = () => {
   return <div className={style.pending} />;
 };
 
 export const entry = atom<Entry<Queries>>({
-  key: "entry",
+  key: "routeEntry",
   effects: [
     syncEffect({
-      storeKey: "router",
       refine: custom<Entry<Queries>>((v) => v as Entry<Queries>),
+      storeKey: "router",
     }),
   ],
   dangerouslyAllowMutability: true,
@@ -36,7 +36,7 @@ export const entry = atom<Entry<Queries>>({
 const Renderer: React.FC<{ router: RoutingContext<Queries> }> = ({
   router,
 }) => {
-  const routeEntry = useRecoilValue<Entry<Queries>>(entry);
+  const routeEntry = useRecoilValue(entry);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {

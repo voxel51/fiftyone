@@ -94,6 +94,7 @@ type BrainRunConfig implements RunConfig {
   embeddingsField: String
   method: String
   patchesField: String
+  supportsPrompts: Boolean
 }
 
 enum ColorBy {
@@ -138,7 +139,7 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  stages(slug: String = null): BSONArray
+  stages(slug: String = null, view: BSONArray = null): BSONArray
 }
 
 type DatasetAppConfig {
@@ -369,7 +370,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -420,6 +421,7 @@ interface Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type SampleField {
