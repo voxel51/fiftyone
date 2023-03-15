@@ -152,13 +152,14 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const HANDLERS = {
     DatasetPageQuery: (
       itemKey: string,
-      response: State.Dataset,
+      response: State.Dataset | null,
       variables: VariablesOf<datasetQuery>
     ) => {
       switch (itemKey) {
         case "dataset":
-          return response;
+          return response || null;
         case "sidebarGroupsDefinition__false":
+          if (!response) return [];
           sidebarGroupsRef.current = resolveGroups(
             response.sampleFields,
             response.frameFields,
@@ -167,16 +168,16 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           );
           return sidebarGroupsRef.current;
         case "sampleFields":
-          return response.sampleFields;
+          return response?.sampleFields || [];
         case "frameFields":
-          return response.frameFields;
+          return response?.frameFields || [];
         case "view":
           const view = variables.savedViewSlug
-            ? response.stages
-            : variables.view;
+            ? response?.stages
+            : variables.view || [];
           return view;
         case "viewCls":
-          return response.viewCls;
+          return response?.viewCls || null;
         case "viewName":
           return variables.savedViewSlug || null;
         default:
@@ -215,6 +216,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             }
 
             const { preloadedQuery, data } = entry;
+
             return HANDLERS[preloadedQuery.name](
               itemKey,
               PROCESSORS[preloadedQuery.name](data),
@@ -251,7 +253,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
                 items.set("entry", entry);
 
-                requestAnimationFrame(() => updateItems(items));
+                updateItems(items);
               },
               () => {}
             );
@@ -272,6 +274,9 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 const PROCESSORS = {
   DatasetPageQuery: (response) => {
     const data = readInlineData<datasetFragment$key>(datasetFragment, response);
+    if (!data.dataset) {
+      return null;
+    }
     const dataset = { ...transformDataset(data.dataset) };
     dataset.sampleFields = collapseFields(data.dataset.sampleFields);
     dataset.frameFields = collapseFields(data.dataset.frameFields);

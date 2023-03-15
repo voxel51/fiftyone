@@ -1,10 +1,10 @@
+import { Sample } from "@fiftyone/looker/src/state";
 import * as rfn from "@recoiljs/refine";
 import { atom, atomFamily, useRecoilCallback } from "recoil";
-import { Sample } from "@fiftyone/looker/src/state";
 
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { syncEffect } from "recoil-sync";
 import { StrictField } from "@fiftyone/utilities";
+import { syncEffect } from "recoil-sync";
 import { State } from "./types";
 
 export interface AppSample extends Sample {

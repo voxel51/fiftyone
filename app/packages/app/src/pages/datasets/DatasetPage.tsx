@@ -3,6 +3,7 @@ import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
 import "@fiftyone/relay";
+import { NotFoundError } from "@fiftyone/utilities";
 import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
@@ -21,6 +22,9 @@ const DatasetPageQueryNode = graphql`
     $name: String!
     $view: BSONArray
   ) {
+    dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
+      name
+    }
     ...NavFragment
     ...datasetFragment
     ...savedViewsFragment
@@ -29,13 +33,17 @@ const DatasetPageQueryNode = graphql`
 `;
 
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
-  const queryRef = usePreloadedQuery(DatasetPageQueryNode, prepared);
+  const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
+
+  if (!data.dataset?.name) {
+    throw new NotFoundError({ path: `/datasets/${prepared.variables.name}` });
+  }
 
   return (
     <>
-      <Nav fragment={queryRef} hasDataset={true} />
+      <Nav fragment={data} hasDataset={true} />
       <div className={style.page}>
-        <ViewSelection.datasetQueryContext.Provider value={queryRef}>
+        <ViewSelection.datasetQueryContext.Provider value={data}>
           <Dataset />
         </ViewSelection.datasetQueryContext.Provider>
       </div>

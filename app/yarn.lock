@@ -4249,10 +4249,7 @@ __metadata:
     "@types/mime": ^2.0.3
     "@types/react": ^18.0.9
     "@types/react-dom": ^18.0.3
-    "@types/react-relay": 14.1.0
     "@types/react-router": ^5.1.18
-    "@types/relay-compiler": ^8.0.2
-    "@types/relay-runtime": ^14.1.7
     "@types/styled-components": ^5.1.23
     "@use-gesture/react": 10.1.1
     "@vitejs/plugin-react-refresh": ^1.3.3
@@ -4575,8 +4572,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
+    "@recoiljs/refine": ^0.1.1
     prettier: ^2.7.1
     react-relay: ^14.0.0
+    recoil-sync: ^0.2.0
     relay-compiler: ^14.0.0
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
@@ -8351,16 +8350,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-relay@npm:14.1.0":
-  version: 14.1.0
-  resolution: "@types/react-relay@npm:14.1.0"
-  dependencies:
-    "@types/react": "*"
-    "@types/relay-runtime": "*"
-  checksum: 48f608a77ccc712156a7f7477d6ff9a20e46913997851b60829e5396872de0072e5656cec5ddce399c32326215b76189e4bbf7c46251d61ed45cca03592383fe
-  languageName: node
-  linkType: hard
-
 "@types/react-relay@npm:^14.1.0":
   version: 14.1.2
   resolution: "@types/react-relay@npm:14.1.2"
@@ -8448,13 +8437,6 @@ __metadata:
   version: 13.0.3
   resolution: "@types/relay-runtime@npm:13.0.3"
   checksum: b6151ddc74bd306873a854afaa651f972c7ca6e7685c9fe791f32f3ce1cff56e30c64db457abfa8488957af6a8e3462a5097d4b87ae2076d25e0ec59a115ac5f
-  languageName: node
-  linkType: hard
-
-"@types/relay-runtime@npm:^14.1.7":
-  version: 14.1.7
-  resolution: "@types/relay-runtime@npm:14.1.7"
-  checksum: 14f2df5dd8ada725103686ce9a23a9422a04d20115cdac3ac1f0bc12c26011ca04b9411db12d5fc612d70b8c7aeed9aa35c4569b385fc4195efe3f6d096b021f
   languageName: node
   linkType: hard
 

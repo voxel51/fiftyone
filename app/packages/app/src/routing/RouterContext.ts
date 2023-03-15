@@ -72,7 +72,7 @@ export const createRouter = (
   let nextId = 0;
   const subscribers = new Map();
 
-  const cleanup = history.listen(({ location }) => {
+  const cleanup = history.listen(({ location, ...r }) => {
     if (!currentEntryResource) return;
     subscribers.forEach(([_, onPending]) => onPending());
     currentEntryResource.load().then(({ cleanup }) => {

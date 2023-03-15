@@ -1,7 +1,7 @@
-import { ErrorBoundary, Loading } from "@fiftyone/components";
+import { ErrorBoundary } from "@fiftyone/components";
 import { RelayEnvironmentKey } from "@fiftyone/state";
 
-import React, { Suspense } from "react";
+import React from "react";
 import { RelayEnvironmentProvider } from "react-relay";
 import { IEnvironment } from "relay-runtime";
 import { RecoilRelayEnvironment } from "recoil-relay";
@@ -14,20 +14,20 @@ const Network: React.FC<{
   context: RoutingContext<Queries>;
 }> = ({ environment, context }) => {
   return (
-    <RelayEnvironmentProvider environment={environment}>
-      <RecoilRelayEnvironment
-        environment={environment}
-        environmentKey={RelayEnvironmentKey}
-      >
-        <RouterContext.Provider value={context}>
-          <ErrorBoundary>
+    <ErrorBoundary>
+      <RelayEnvironmentProvider environment={environment}>
+        <RecoilRelayEnvironment
+          environment={environment}
+          environmentKey={RelayEnvironmentKey}
+        >
+          <RouterContext.Provider value={context}>
             <Sync>
               <Renderer router={context} />
             </Sync>
-          </ErrorBoundary>
-        </RouterContext.Provider>
-      </RecoilRelayEnvironment>
-    </RelayEnvironmentProvider>
+          </RouterContext.Provider>
+        </RecoilRelayEnvironment>
+      </RelayEnvironmentProvider>
+    </ErrorBoundary>
   );
 };
 
