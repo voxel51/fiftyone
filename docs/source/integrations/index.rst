@@ -1,3 +1,4 @@
+
 .. _integrations:
 
 FiftyOne Integrations
@@ -89,6 +90,13 @@ on the cards below to see how!
     :image: ../_static/images/integrations/qdrant.png
     :tags: Datasets
 
+.. customcarditem::
+    :header: Pinecone
+    :description: Use our Pinecone integration to easily index your FiftyOne datasets and query your computer vision data at scale.
+    :link: pinecone.html
+    :image: ../_static/images/integrations/pinecone.png
+    :tags: Dataset-Evaluation,Embeddings,Filtering,Brain
+
 .. End of integrations cards
 
 .. raw:: html
@@ -114,4 +122,8 @@ on the cards below to see how!
     Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
     Lightning Flash <lightning_flash.rst>
+<<<<<<< HEAD
     Qdrant <qdrant.rst>
+=======
+    Pinecone <pinecone.rst>
+>>>>>>> pinecone-integration

@@ -4,17 +4,17 @@ import { VariablesOf } from "react-relay";
 import { GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
-import * as filterAtoms from "./filters";
 import { ResponseFrom } from "../utils";
-import { groupStatistics, groupId, currentSlice } from "./groups";
-import { RelayEnvironmentKey } from "./relay";
-import * as selectors from "./selectors";
-import * as schemaAtoms from "./schema";
-import * as viewAtoms from "./view";
-import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
+import * as filterAtoms from "./filters";
+import { currentSlice, groupId, groupStatistics } from "./groups";
+import { sidebarSampleId } from "./modal";
+import { RelayEnvironmentKey } from "./relay";
+import * as schemaAtoms from "./schema";
 import { field } from "./schema";
+import * as selectors from "./selectors";
 import { MATCH_LABEL_TAGS } from "./sidebar";
+import * as viewAtoms from "./view";
 
 /**
  * GraphQL Selector Family for Aggregations.
@@ -38,6 +38,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      const group = get(groupId) || null;
       const aggForm = {
         index: get(refresher),
         dataset: get(selectors.datasetName),
@@ -46,12 +47,13 @@ export const aggregationQuery = graphQLSelectorFamily<
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal && mixed ? get(groupId) : null,
+        groupId: !root && modal ? group : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
-        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-        slice: get(currentSlice(modal)),
+        sampleIds:
+          !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
+        slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
         view: !root ? get(viewAtoms.view) : [],
       };
 

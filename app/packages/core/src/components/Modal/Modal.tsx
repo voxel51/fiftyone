@@ -1,4 +1,13 @@
+import {
+  ErrorBoundary,
+  HelpPanel,
+  JSONPanel,
+  LookerArrowLeftIcon,
+  LookerArrowRightIcon,
+} from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
+import { modalNavigation, useEventHandler } from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
   Fragment,
@@ -10,16 +19,6 @@ import React, {
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import {
-  ErrorBoundary,
-  HelpPanel,
-  JSONPanel,
-  LookerArrowLeftIcon,
-  LookerArrowRightIcon,
-} from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
-import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
@@ -218,14 +217,17 @@ const SampleModal = () => {
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
+          return;
+        }
+      }
       if (e.key === "ArrowLeft") {
-        e.preventDefault();
         navigatePrevious();
       } else if (e.key === "ArrowRight") {
-        e.preventDefault();
         navigateNext();
       } else if (e.key === "c") {
-        e.preventDefault();
         setIsNavigationHidden((prev) => !prev);
       }
       // note: don't stop event propagation here
@@ -233,10 +235,7 @@ const SampleModal = () => {
     [navigateNext, navigatePrevious]
   );
 
-  useEffect(() => {
-    document.addEventListener("keydown", keyboardHandler);
-    return () => document.removeEventListener("keydown", keyboardHandler);
-  }, [keyboardHandler]);
+  useEventHandler(document, "keydown", keyboardHandler);
 
   const tooltip = fos.useTooltip();
 

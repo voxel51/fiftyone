@@ -33,7 +33,7 @@ import {
 import { State } from "./types";
 import * as viewAtoms from "./view";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
-import { isLargeVideo, resolvedSidebarMode } from "./options";
+import { isLargeVideo } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import { getCurrentEnvironment } from "../hooks/useRouter";
