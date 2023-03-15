@@ -10,6 +10,7 @@ import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 
 import * as atoms from "./atoms";
 import * as colorAtoms from "./color";
+import { filters, modalFilters } from "./filters";
 import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
@@ -53,6 +54,14 @@ export const lookerOptions = selectorFamily<
           }
         : {};
 
+      const filter = withFilter
+        ? modal
+          ? get(modalFilters)
+          : get(filters)
+        : {};
+
+      const selectedLabelTags = filter["_label_tags"]?.values ?? [];
+
       return {
         showJSON: panels.json.isOpen,
         showHelp: panels.help.isOpen,
@@ -67,6 +76,7 @@ export const lookerOptions = selectorFamily<
         coloring: get(colorAtoms.coloring(modal)),
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
+        selectedLabelTags,
         fullscreen: get(atoms.fullscreen),
         filter: withFilter ? get(pathFilter(modal)) : undefined,
         activePaths: get(schemaAtoms.activeFields({ modal })),
