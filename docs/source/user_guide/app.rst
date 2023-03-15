@@ -1625,6 +1625,30 @@ in the upper-right corner of the modal:
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
 
+.. _app-text-similarity:
+
+Text similarity
+---------------
+
+If you have indexed your dataset with a model that
+:ref:`supports text queries <brain-similarity-text>`, you can use the text
+similarity menu in the App to search for images (or object patches) of interest
+via arbitrary text queries!
+
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
+
+.. image:: /images/brain/brain-text-similarity.gif
+   :alt: text-similarity
+   :align: center
+
+.. note::
+
+    Did you know? You can also perform text queries
+    :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
+    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
+
 .. _app-multiple-media-fields:
 
 Multiple media fields

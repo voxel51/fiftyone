@@ -210,7 +210,6 @@ automatically selected in the :ref:`Samples panel <app-samples-panel>`:
    :alt: image-visualization
    :align: center
 
-|br|
 The GIF shows the variety of insights that are revealed by running this simple
 protocol:
 
@@ -291,6 +290,12 @@ or object patch(es) of your choice in your dataset. In addition, the App
 provides a convenient :ref:`point-and-click interface <app-similarity>` for
 sorting by similarity with respect to an index on a dataset.
 
+.. note::
+
+    Did you know? You can
+    :ref:`search by natural language <brain-similarity-text>` using similarity
+    indexes!
+
 Embedding methods
 -----------------
 
@@ -309,11 +314,6 @@ variety of ways to generate embeddings for your data:
 -   Provide the name of a |VectorField| or |ArrayField| of your dataset in
     which precomputed embeddings are stored
 
-.. note::
-
-    Refer to :ref:`this section <brain-similarity-api>` for more information
-    about creating, managing and deleting similarity indexes.
-
 .. _brain-similarity-backends:
 
 Similarity backends
@@ -325,10 +325,10 @@ optional `backend` parameter to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to switch to
 another supported backend:
 
--   **sklearn** (*default*): a builtin similarity backend powered by
-    `scikit-learn <https://scikit-learn.org>`_
+-   **sklearn** (*default*): a builtin
+    `scikit-learn <https://scikit-learn.org>`_ backend
 -   **qdrant**: a :ref:`Qdrant <qdrant-integration>` backend
--   **pinecone**: a :ref:`Pinecone <piencone-integration>` backend
+-   **pinecone**: a :ref:`Pinecone <pinecone-integration>` backend
 
 .. note::
 
@@ -390,7 +390,6 @@ to query by greatest or least similarity (if supported).
    :alt: image-similarity
    :align: center
 
-|br|
 Alternatively, you can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically :ref:`construct a view <using-views>` that
@@ -488,7 +487,6 @@ to query by greatest or least similarity (if supported).
    :alt: object-similarity
    :align: center
 
-|br|
 Alternatively, you can directly use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically :ref:`construct a view <using-views>` that
@@ -524,6 +522,127 @@ contains the sorted results:
     For large datasets, you may notice longer load times the first time you use
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
+
+.. _brain-similarity-text:
+
+Text similarity
+---------------
+
+When you create a similarity index powered by the
+:ref:`CLIP model <model-zoo-clip-vit-base32-torch>`, you can also search by
+arbitrary natural language queries
+:ref:`natively in the App <app-text-similarity>`!
+
+.. tabs::
+
+  .. group-tab:: Image similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index images by similarity
+        image_index = fob.compute_similarity(
+            dataset,
+            model="clip-vit-base32-torch",
+            brain_key="img_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+    You can verify that an index supports text queries by checking that it
+    `supports_prompts`:
+
+    .. code-block:: python
+        :linenos:
+
+        # If you have already loaded the index
+        print(image_index.config.supports_prompts)  # True
+
+        # Without loading the index
+        info = dataset.get_brain_info("img_sim")
+        print(info.config.supports_prompts)  # True
+
+  .. group-tab:: Object similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index ground truth objects by similarity
+        object_index = fob.compute_similarity(
+            dataset,
+            patches_field="ground_truth",
+            model="clip-vit-base32-torch",
+            brain_key="gt_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+    You can verify that an index supports text queries by checking that it
+    `supports_prompts`:
+
+    .. code-block:: python
+        :linenos:
+
+        # If you have already loaded the index
+        print(object_index.config.supports_prompts)  # True
+
+        # Without loading the index
+        info = dataset.get_brain_info("gt_sim")
+        print(info.config.supports_prompts)  # True
+
+.. image:: /images/brain/brain-text-similarity.gif
+   :alt: text-similarity
+   :align: center
+
+You can also perform text queries via the SDK by passing a prompt directly to
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+along with the `brain_key` of a compatible similarity index:
+
+.. tabs::
+
+  .. group-tab:: Image similarity
+
+    .. code-block:: python
+        :linenos:
+
+        # Perform a text query
+        query = "kites high in the air"
+        view = dataset.sort_by_similarity(query, k=15, brain_key="img_sim")
+
+        session.view = view
+
+  .. group-tab:: Object similarity
+
+    .. code-block:: python
+        :linenos:
+
+        # Convert to patches view
+        patches = dataset.to_patches("ground_truth")
+
+        # Perform a text query
+        query = "cute puppies"
+        view = patches.sort_by_similarity(query, k=15, brain_key="gt_sim")
+
+        session.view = view
+
+.. note::
+
+    In general, any custom model that is made available via the
+    :ref:`model zoo interface <model-zoo-add>` that implements the
+    :class:`PromptMixin <fiftyone.core.models.PromptMixin>` interface can
+    support text similarity queries!
 
 .. _brain-similarity-duplicates:
 
