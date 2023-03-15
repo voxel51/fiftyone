@@ -60,7 +60,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema },
-      options: { activePaths, coloring, timeZone },
+      options: { activePaths, coloring, timeZone, selectedLabelTags, ...props },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -209,26 +209,34 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     } = {
       [withPath(LABELS_PATH, CLASSIFICATION)]: (
         path,
-        { label }: Classification
+        { label, tags }: Classification
       ) => ({
         value: label,
         title: `${path}: ${label}`,
         color: getColor(
           coloring.pool,
           coloring.seed,
-          coloring.by === "label" ? label : path
+          selectedLabelTags?.some((tag) => tags.includes(tag))
+            ? "_label_tag"
+            : coloring.by === "label"
+            ? label
+            : path
         ),
       }),
       [withPath(LABELS_PATH, CLASSIFICATIONS)]: (
         path,
-        { label }: Classification
+        { label, tags }: Classification
       ) => ({
         value: label,
         title: `${path}: ${label}`,
         color: getColor(
           coloring.pool,
           coloring.seed,
-          coloring.by === "label" ? label : path
+          selectedLabelTags?.some((tag) => tags.includes(tag))
+            ? "_label_tag"
+            : coloring.by === "label"
+            ? label
+            : path
         ),
       }),
       [withPath(LABELS_PATH, REGRESSION)]: (path, { value }: Regression) => {
