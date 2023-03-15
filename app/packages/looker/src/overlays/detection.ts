@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2023, Voxel51, Inc.
  */
-import { NONFINITES } from "@fiftyone/utilities";
+import { getColor, NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
 import { OverlayMask } from "../numpy";
@@ -87,6 +87,15 @@ export default class DetectionOverlay<
       this.fillRectFor3d(ctx, state, this.getColor(state));
     } else {
       this.strokeRect(ctx, state, this.getColor(state));
+    }
+
+    if (this.isTagFiltered(state)) {
+      const coloring = state.options.coloring;
+      this.strokeRect(
+        ctx,
+        state,
+        getColor(coloring.pool, coloring.seed, "_label_tags")
+      );
     }
 
     if (this.isSelected(state)) {
