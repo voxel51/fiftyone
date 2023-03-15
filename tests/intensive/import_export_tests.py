@@ -19,7 +19,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.brain as fob
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 

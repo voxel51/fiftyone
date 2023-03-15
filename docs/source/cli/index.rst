@@ -81,6 +81,7 @@ The FiftyOne command-line interface.
         quickstart          Launch a FiftyOne quickstart.
         annotation          Tools for working with the FiftyOne annotation API.
         app                 Tools for working with the FiftyOne App.
+        brain               Tools for working with the FiftyOne Brain.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
@@ -1319,6 +1320,68 @@ Connect to a remote FiftyOne App in your web browser.
 
     # Connect to a remote App using a custom local port
     fiftyone app connect ... --local-port <port>
+
+.. _cli-fiftyone-brain:
+
+FiftyOne Brain
+--------------
+
+Tools for working with the FiftyOne Brain.
+
+.. code-block:: text
+
+    fiftyone brain [-h] [--all-help] {config} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {config,launch,view,connect}
+        config              Tools for working with your FiftyOne Brain config.
+
+.. _cli-fiftyone-brain-config:
+
+Brain Config
+~~~~~~~~~~~~
+
+Tools for working with your FiftyOne Brain config.
+
+.. code-block:: text
+
+    fiftyone brain config [-h] [-l] [FIELD]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      FIELD         a brain config field to print
+
+    optional arguments:
+      -h, --help    show this help message and exit
+      -l, --locate  print the location of your brain config on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print your entire brain config
+    fiftyone brain config
+
+.. code-block:: shell
+
+    # Print a specific brain config field
+    fiftyone brain config <field>
+
+.. code-block:: shell
+
+    # Print the location of your brain config on disk (if one exists)
+    fiftyone brain config --locate
 
 .. _cli-fiftyone-zoo:
 

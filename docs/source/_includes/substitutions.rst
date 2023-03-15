@@ -115,7 +115,10 @@
 .. |BrainResults| replace:: :class:`BrainResults <fiftyone.core.brain.BrainResults>`
 .. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
 
+.. |SimilarityConfig| replace:: :class:`SimilarityConfig <fiftyone.brain.similarity.SimilarityConfig>`
 .. |SimilarityIndex| replace:: :class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>`
+
+.. |VisualizationConfig| replace:: :class:`VisualizationConfig <fiftyone.brain.visualization.VisualizationConfig>`
 .. |VisualizationResults| replace:: :class:`VisualizationResults <fiftyone.brain.visualization.VisualizationResults>`
 
 .. |RegressionResults| replace:: :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`

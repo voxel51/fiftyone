@@ -40,6 +40,7 @@ import fiftyone.zoo.models as fozm
 import fiftyone.brain as fob
 import fiftyone.brain.config as fobc
 
+
 _TABLE_FORMAT = "simple"
 _MAX_CONSTANT_VALUE_COL_WIDTH = 79
 
