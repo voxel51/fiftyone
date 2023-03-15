@@ -251,7 +251,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, tag),
+              color: getColor(coloring.pool, coloring.seed, "tags"),
               title: tag,
               value: tag,
             });
@@ -261,7 +261,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         Object.entries(sample._label_tags).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           elements.push({
-            color: getColor(coloring.pool, coloring.seed, path),
+            color: getColor(coloring.pool, coloring.seed, "_label_tags"),
             title: value,
             value,
           });
