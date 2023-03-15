@@ -140,7 +140,6 @@ export default class DetectionOverlay<
       this.labelBoundingBox = null;
       return;
     }
-
     const color = this.getColor(state);
 
     const [tlx, tly, _, __] = this.label.bounding_box;

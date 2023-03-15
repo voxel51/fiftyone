@@ -99,20 +99,30 @@ export abstract class CoordinateOverlay<
     );
   }
 
-  getColor({ options: { coloring } }: Readonly<State>): string {
+  getColor(state: Readonly<State>): string {
     let key;
 
-    switch (coloring.by) {
+    switch (state.options.coloring.by) {
       case "field":
-        return getColor(coloring.pool, coloring.seed, this.field);
+        return getColor(
+          state.options.coloring.pool,
+          state.options.coloring.seed,
+          this.field
+        );
       case "instance":
         key = this.label.index !== undefined ? "index" : "id";
         break;
       default:
         key = "label";
     }
-
-    return getColor(coloring.pool, coloring.seed, this.label[key]);
+    const labelKey = this.isTagFiltered(state)
+      ? "_label_tags"
+      : this.label[key];
+    return getColor(
+      state.options.coloring.pool,
+      state.options.coloring.seed,
+      labelKey
+    );
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;
