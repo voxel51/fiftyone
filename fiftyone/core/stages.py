@@ -6343,10 +6343,11 @@ class SortBySimilarity(ViewStage):
         brain_key=None,
         _state=None,
     ):
-        query, query_kwarg = _parse_similarity_query(query)
+        query, query_kwarg, is_prompt = _parse_similarity_query(query)
 
         self._query = query
         self._query_kwarg = query_kwarg
+        self._is_prompt = is_prompt
         self._k = k
         self._reverse = reverse
         self._dist_field = dist_field
@@ -6462,7 +6463,9 @@ class SortBySimilarity(ViewStage):
         if self._brain_key is not None:
             brain_key = self._brain_key
         else:
-            brain_key = _get_default_similarity_run(sample_collection)
+            brain_key = _get_default_similarity_run(
+                sample_collection, supports_prompts=self._is_prompt
+            )
 
         results = sample_collection.load_brain_results(brain_key)
 
@@ -6484,17 +6487,27 @@ def _parse_similarity_query(query):
     if isinstance(query, np.ndarray):
         # Query vector(s)
         query_kwarg = fou.serialize_numpy_array(query, ascii=True)
-        return query, query_kwarg
+        return query, query_kwarg, False
 
     if not etau.is_str(query):
         # Query IDs or prompts
         query = list(query)
-        return query, query
+
+        if query:
+            try:
+                # Query IDs
+                ObjectId(query[0])
+                is_prompt = False
+            except:
+                # Query prompts
+                is_prompt = True
+
+        return query, query, is_prompt
 
     try:
         # Query ID
         ObjectId(query)
-        return query, query
+        return query, query, False
     except:
         pass
 
@@ -6502,12 +6515,12 @@ def _parse_similarity_query(query):
         # Already serialized query vector(s)
         query_kwarg = query
         query = fou.deserialize_numpy_array(query, ascii=True)
-        return query, query_kwarg
+        return query, query_kwarg, False
     except:
         pass
 
     # Query prompt
-    return query, query
+    return query, query, True
 
 
 class Take(ViewStage):
@@ -7556,13 +7569,19 @@ def _make_match_empty_labels_pipeline(
     return stage.to_mongo(sample_collection)
 
 
-def _get_default_similarity_run(sample_collection):
+def _get_default_similarity_run(sample_collection, supports_prompts=False):
+    if supports_prompts:
+        kwargs = dict(supports_prompts=True)
+    else:
+        kwargs = {}
+
     if isinstance(sample_collection, fop.PatchesView):
         patches_field = sample_collection.patches_field
 
         brain_keys = sample_collection.list_brain_runs(
             type=fob.Similarity,
             patches_field=patches_field,
+            **kwargs,
         )
 
         if not brain_keys:
@@ -7585,10 +7604,12 @@ def _get_default_similarity_run(sample_collection):
         brain_keys = sample_collection.list_brain_runs(
             type=fob.Similarity,
             patches_field=gt_field,
+            **kwargs,
         )
         brain_keys += sample_collection.list_brain_runs(
             type=fob.Similarity,
             patches_field=pred_field,
+            **kwargs,
         )
 
         if not brain_keys:
@@ -7602,12 +7623,17 @@ def _get_default_similarity_run(sample_collection):
     else:
         # Try sample indexes first
         brain_keys = sample_collection.list_brain_runs(
-            type=fob.Similarity, patches_field=None
+            type=fob.Similarity,
+            patches_field=None,
+            **kwargs,
         )
 
         # It's allowable to use a patches index too
         if not brain_keys:
-            brain_keys = sample_collection.list_brain_runs(type=fob.Similarity)
+            brain_keys = sample_collection.list_brain_runs(
+                type=fob.Similarity,
+                **kwargs,
+            )
 
         if not brain_keys:
             raise ValueError(
