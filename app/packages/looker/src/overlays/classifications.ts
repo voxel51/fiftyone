@@ -222,7 +222,7 @@ export class ClassificationsOverlay<
   }
 
   isTagFiltered(state: Readonly<State>, label: Label): boolean {
-    return state.options.selectedLabelTags.some((tag) =>
+    return state.options.selectedLabelTags?.some((tag) =>
       label.tags.includes(tag)
     );
   }

@@ -93,6 +93,12 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label.id);
   }
 
+  isTagFiltered(state: Readonly<State>): boolean {
+    return state.options.selectedLabelTags?.some((tag) =>
+      this.label.tags.includes(tag)
+    );
+  }
+
   getColor({ options: { coloring } }: Readonly<State>): string {
     let key;
 

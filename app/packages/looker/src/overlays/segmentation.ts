@@ -262,7 +262,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   isTagFiltered(state: Readonly<State>): boolean {
-    return state.options.selectedLabelTags.some((tag) =>
+    return state.options.selectedLabelTags?.some((tag) =>
       this.label.tags.includes(tag)
     );
   }

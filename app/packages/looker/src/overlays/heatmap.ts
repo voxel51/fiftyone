@@ -179,7 +179,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   isTagFiltered(state: Readonly<State>): boolean {
-    return state.options.selectedLabelTags.some((tag) =>
+    return state.options.selectedLabelTags?.some((tag) =>
       this.label.tags.includes(tag)
     );
   }
