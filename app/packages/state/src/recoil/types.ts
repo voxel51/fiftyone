@@ -76,6 +76,8 @@ export namespace State {
       cls: string;
       supportsPrompts: boolean | null;
       type: string | null;
+      maxK: number | null;
+      supportsLeastSimilarity: boolean | null;
     };
   }
 

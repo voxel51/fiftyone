@@ -6,6 +6,7 @@ FiftyOne Server queries.
 |
 """
 import typing as t
+from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
@@ -106,6 +107,24 @@ class BrainRunConfig(RunConfig):
             return BrainRunType.visualization
 
         return None
+
+    @gql.field
+    def max_k(self) -> t.Optional[int]:
+        try:
+            cls = etau.get_class(self.cls)
+            instance = cls(**asdict(self))
+            return instance.max_k
+        except:
+            return None
+
+    @gql.field
+    def supportsLeastSimilarity(self) -> t.Optional[bool]:
+        try:
+            cls = etau.get_class(self.cls)
+            instance = cls(**asdict(self))
+            return instance.supports_least_similarity
+        except:
+            return None
 
 
 @gql.type
@@ -481,12 +500,31 @@ async def serialize_dataset(
             data.group_slice = collection.group_slice
 
         for brain_method in data.brain_methods:
-            value = (
+            type = (
                 brain_method.config.type().value
                 if brain_method.config.type() is not None
                 else None
             )
-            setattr(brain_method.config, "type", value)
+
+            max_k = (
+                brain_method.config.max_k()
+                if brain_method.config.max_k() is not None
+                else None
+            )
+
+            supportsLeastSimilarity = (
+                brain_method.config.supportsLeastSimilarity()
+                if brain_method.config.supportsLeastSimilarity() is not None
+                else None
+            )
+
+            setattr(brain_method.config, "type", type)
+            setattr(brain_method.config, "max_k", max_k)
+            setattr(
+                brain_method.config,
+                "supportsLeastSimilarity",
+                supportsLeastSimilarity,
+            )
 
         return data
 
