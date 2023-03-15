@@ -1,21 +1,29 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { atom, useRecoilCallback, useRecoilValue } from "recoil";
 
-import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { useExternalLink } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Button } from "../../utils";
+import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
+import { Button } from "../../utils";
 import Popout from "../Popout";
-import Warning from "./Warning";
 import GroupButton, { ButtonDetail } from "./GroupButton";
+import MaxKWarning from "./MaxKWarning";
 import {
   availableSimilarityKeys,
+  currentBrainConfig,
   currentSimilarityKeys,
   sortType,
   useSortBySimilarity,
 } from "./utils";
+import Warning from "./Warning";
 import { useBrowserStorage } from "@fiftyone/state";
 
 const DEFAULT_K = 25;
@@ -50,6 +58,7 @@ const SortBySimilarity = ({
   }, [lastUsedBrainKeys, datasetId]);
 
   const [open, setOpen] = useState(false);
+  const [showMaxKWarning, setShowMaxKWarning] = useState(false);
 
   const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
     () =>
@@ -75,6 +84,7 @@ const SortBySimilarity = ({
   );
   const sortBySimilarity = useSortBySimilarity(close);
   const type = useRecoilValue(sortType(modal));
+  const brainConfig = useRecoilValue(currentBrainConfig(state.brainKey));
 
   const reset = useRecoilCallback(
     ({ reset }) =>
@@ -96,6 +106,22 @@ const SortBySimilarity = ({
   useLayoutEffect(() => {
     current && setState(current);
   }, [current]);
+
+  // show warning if k is undefined or k > maxK
+  useEffect(() => {
+    if (state.k == undefined) {
+      setShowMaxKWarning(true);
+    } else if (brainConfig?.maxK && state.k > brainConfig.maxK) {
+      setShowMaxKWarning(true);
+    } else {
+      setShowMaxKWarning(false);
+    }
+  }, [state.k, state.brainKey]);
+
+  const meetKRequirement = !(
+    (brainConfig?.maxK && state.k > brainConfig.maxK) ||
+    state.k == undefined
+  );
 
   const loadingButton: ButtonDetail[] = isLoading
     ? [
@@ -133,14 +159,30 @@ const SortBySimilarity = ({
         icon: "SearchIcon",
         ariaLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
-        onClick: () => {
-          state.query && state.query.length > 0 && sortBySimilarity(state);
-        },
+        onClick: () =>
+          meetKRequirement &&
+          state.query &&
+          state.query.length > 0 &&
+          sortBySimilarity(state),
       },
       ...loadingButton,
       ...groupButtons,
     ];
   }
+
+  const onChangeBrainKey = useRecoilCallback(
+    ({ snapshot }) =>
+      async (brainKey: string) => {
+        const config = await snapshot.getPromise(currentBrainConfig(brainKey));
+        if (config?.maxK && state.k && state.k > config.maxK) {
+          setShowMaxKWarning(true);
+        } else {
+          setShowMaxKWarning(false);
+        }
+        updateState({ reverse: false, brainKey });
+      },
+    [updateState, state]
+  );
 
   return (
     <Popout modal={modal} bounds={bounds} style={{ minWidth: 280 }}>
@@ -158,7 +200,10 @@ const SortBySimilarity = ({
               value={(state.query as string) ?? ""}
               setter={(value) => updateState({ query: value })}
               onEnter={() =>
-                state.query && state.query.length > 0 && sortBySimilarity(state)
+                meetKRequirement &&
+                state.query &&
+                state.query.length > 0 &&
+                sortBySimilarity(state)
               }
             />
           )}
@@ -191,33 +236,45 @@ const SortBySimilarity = ({
             Find the
             <Input
               placeholder={"k"}
-              validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
+              validator={(value) => /^[0-9\b]+$/.test(value) || value === ""}
               value={state?.k ? String(state.k) : ""}
               setter={(value) => {
                 updateState({ k: value == "" ? undefined : Number(value) });
               }}
               style={{
-                width: 30,
+                width: 40,
                 display: "inline-block",
                 margin: 3,
               }}
             />
-            <Button
-              text={state.reverse ? "least" : "most"}
-              title={`select most or least`}
-              onClick={() => updateState({ reverse: !state.reverse })}
-              style={{
-                textAlign: "center",
-                width: 50,
-                display: "inline-block",
-                margin: 3,
-              }}
-            />
-            similar samples using this brain key
+            {brainConfig?.supportsLeastSimilarity === false ? (
+              "most "
+            ) : (
+              <Button
+                text={state.reverse ? "least" : "most"}
+                title={`select most or least`}
+                onClick={() => updateState({ reverse: !state.reverse })}
+                style={{
+                  textAlign: "center",
+                  width: 50,
+                  display: "inline-block",
+                  margin: 3,
+                }}
+              />
+            )}
+            {`similar samples `}
+            {showMaxKWarning && (
+              <MaxKWarning
+                maxK={brainConfig?.maxK}
+                currentK={state.k}
+                onClose={() => setShowMaxKWarning(false)}
+              />
+            )}
+            using this brain key
             <RadioGroup
               choices={choices.choices}
               value={state?.brainKey}
-              setValue={(brainKey) => updateState({ brainKey })}
+              setValue={(brainKey) => onChangeBrainKey(brainKey)}
             />
           </div>
           Optional: store the distance between each sample and the query in this
