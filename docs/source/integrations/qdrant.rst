@@ -330,8 +330,8 @@ to see the available brain keys on a dataset:
     dataset.list_brain_runs()
 
 Or, you can use
-:meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_annotation_info>`
-to retrieve information about the configuration of an annotation run:
+:meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_brain_info>`
+to retrieve information about the configuration of a brain run:
 
 .. code:: python
     :linenos:
@@ -382,7 +382,7 @@ a FiftyOne dataset using the Qdrant backend.
 
 .. note::
 
-    All of the examples below assume you have configured your Labelbox server
+    All of the examples below assume you have configured your Qdrant server
     as described in :ref:`this section <qdrant-setup>`.
 
 .. _qdrant-new-similarity-index:
@@ -390,8 +390,9 @@ a FiftyOne dataset using the Qdrant backend.
 Create new similarity index
 -----------------------------
 
-In order to create a new `QdrantSimilarityIndex`, you need to specify either the
-`embeddings` or `model` argument to 
+In order to create a new 
+:ref:`QdrantSimilarityIndex <fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex>`
+, you need to specify either the `embeddings` or `model` argument to 
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
 
 .. code:: python
@@ -452,6 +453,39 @@ In order to create a new `QdrantSimilarityIndex`, you need to specify either the
 
     print(dataset.get_brain_info(brain_key))
 
+.. _qdrant-connect-to-existing-index:
+
+Connect to existing index
+--------------------------
+
+If you have already created a Qdrant collection for your dataset, you can 
+connect to it using the 
+:ref:`QdrantSimilarityIndex <fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex>` 
+class by passing `embeddings=False` to 
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fob.compute_similarity(
+        dataset, 
+        embeddings=False,
+        model="resnet-50-imagenet-torch",
+        brain_key = "qdrant", 
+        backend="qdrant",
+    )
+
+This will create a new 
+:ref:`QdrantSimilarityIndex <fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex>`
+associated with the existing Qdrant collection, with needing to recompute the
+embeddings on your data.
+
 .. _qdrant-patch-similarity-index:
 
 Create a patch embeddings similarity index
@@ -473,7 +507,7 @@ by specifying a `patches_field` argument to
     fob.compute_similarity(
         dataset, 
         patches_field="detections",
-        model =  "resnet-50-imagenet-torch"
+        model = "resnet-50-imagenet-torch"
         brain_key = "qdrant_patches", 
         backend="qdrant",
     )
@@ -485,8 +519,9 @@ by specifying a `patches_field` argument to
 Connect to Qdrant client
 ------------------------
 
-You can connect to the Qdrant client instance using the `client` attribute. You
-can then access all of the Qdrant client's methods:
+You can connect to the Qdrant client instance using the 
+:ref:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex.client` 
+attribute. You can then access all of the Qdrant client's methods:
 
 .. code:: python
     :linenos:
@@ -499,7 +534,7 @@ can then access all of the Qdrant client's methods:
 
     res = fob.compute_similarity(
         dataset, 
-        model =  "resnet-50-imagenet-torch"
+        model = "resnet-50-imagenet-torch"
         brain_key = "qdrant", 
         backend="qdrant",
         collection_name="fiftyone-quickstart",
@@ -516,8 +551,8 @@ Retrieve embeddings from Qdrant index
 --------------------------------------
 
 You can retrieve the embeddings from a Qdrant index using the 
-`get_embeddings()` method. This can be applied to an entire dataset, or a view
-into a dataset:
+:meth:`get_embeddings() fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex.get_embeddings`
+method. This can be applied to an entire dataset, or a view into a dataset:
 
 .. code:: python
     :linenos:
@@ -530,7 +565,7 @@ into a dataset:
 
     qdrant_index = fob.compute_similarity(
         dataset, 
-        model =  "resnet-50-imagenet-torch"
+        model = "resnet-50-imagenet-torch"
         brain_key = "qdrant", 
         backend="qdrant",
         collection_name="fiftyone-quickstart",
@@ -576,7 +611,7 @@ which supports text prompts:
 
     fob.compute_similarity(
         dataset, 
-        model =  "clip-vit-base32-torch"
+        model = "clip-vit-base32-torch"
         brain_key = "qdrant", 
         backend="qdrant",
         collection_name="fiftyone-quickstart",
@@ -603,10 +638,13 @@ Editing a Qdrant collection
 ----------------------------
 
 You can edit a Qdrant collection by adding or removing samples and patches from
-the collection. This can be done using the `add_to_index()` and 
-`remove_from_index()` methods. These methods can come in handy if you want to 
-add or remove samples or object patches from your dataset, and then update the
-Qdrant index to reflect these changes.
+the collection. This can be done using the 
+:meth:`add_to_index() fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex.add_to_index`
+and 
+:meth:`remove_from_index() fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex.remove_from_index`
+methods. These methods can come in handy if you want to add or remove samples or
+object patches from your dataset, and then update the Qdrant index to reflect
+these changes.
 
 .. code:: python
     :linenos:
@@ -618,7 +656,7 @@ Qdrant index to reflect these changes.
 
     qdrant_index = fob.compute_similarity(
         dataset, 
-        model =  "clip-vit-base32-torch"
+        model = "clip-vit-base32-torch"
         brain_key = "qdrant", 
         backend="qdrant",
         collection_name="fiftyone-quickstart",
@@ -634,7 +672,8 @@ Qdrant index to reflect these changes.
     
 
 You can also get the total number of vectors in the index using the 
-`total_index_size` attribute. Continuing the above code:
+:ref:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityIndex.total_index_size` 
+attribute. Continuing the above code:
 
 .. code:: python
     :linenos:
@@ -673,7 +712,7 @@ for a view into our data.
 
     res = fob.compute_similarity(
         view, 
-        model =  "clip-vit-base32-torch"
+        model = "clip-vit-base32-torch"
         brain_key = "qdrant", 
         backend="qdrant",
         collection_name=collection_name,
