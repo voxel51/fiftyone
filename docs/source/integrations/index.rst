@@ -122,8 +122,5 @@ on the cards below to see how!
     Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
     Lightning Flash <lightning_flash.rst>
-<<<<<<< HEAD
     Qdrant <qdrant.rst>
-=======
     Pinecone <pinecone.rst>
->>>>>>> pinecone-integration
