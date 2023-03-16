@@ -1,3 +1,5 @@
 *
 !Dockerfile
 !dist
+!deployment/
+!docker/
