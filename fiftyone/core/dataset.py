@@ -7040,13 +7040,14 @@ def _clone_view_doc(view_doc):
 def _clone_run(run_doc):
     _run_doc = run_doc.copy()
     _run_doc.id = ObjectId()
+    _run_doc.results = None
 
     # Unfortunately the only way to copy GridFS files is to read-write them...
     # https://jira.mongodb.org/browse/TOOLS-2208
-    run_doc.results.seek(0)
-    results_bytes = run_doc.results.read()
-    _run_doc.results = None
-    _run_doc.results.put(results_bytes, content_type="application/json")
+    if run_doc.results:
+        run_doc.results.seek(0)
+        results_bytes = run_doc.results.read()
+        _run_doc.results.put(results_bytes, content_type="application/json")
 
     return _run_doc
 

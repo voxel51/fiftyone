@@ -121,41 +121,37 @@ export const setFetchFunction = (
     });
 
     if (response.status >= 400) {
+      const errorMetadata = {
+        code: response.status,
+        statusText: response.statusText,
+        bodyResponse: "",
+        route: response.url,
+        payload: body as object,
+        stack: null,
+        requestHeaders: headers,
+        responseHeaders: response.headers,
+        message: "",
+      };
+      let ErrorClass = NetworkError;
+
       try {
         const error = await response.json();
 
-        throw new ServerError(
-          {
-            code: response.status,
-            statusText: response.statusText,
-            bodyResponse: error,
-            route: response.url,
-            payload: body as object,
-            stack: (error as unknown as { stack: string }).stack,
-            requestHeaders: headers,
-            responseHeaders: response.headers,
-          },
-          error.message
-        );
+        errorMetadata.bodyResponse = error;
+        if (error.stack) errorMetadata.stack = error?.stack;
+        errorMetadata.message = error?.message;
+        ErrorClass = ServerError;
       } catch {
-        let bodyResponse = "";
-
+        // if response body is not JSON
         try {
-          bodyResponse = await response.text();
-        } catch {}
-        throw new NetworkError(
-          {
-            code: response.status,
-            statusText: response.statusText,
-            bodyResponse,
-            route: response.url,
-            payload: body as object,
-            requestHeaders: headers,
-            responseHeaders: response.headers,
-          },
-          response.statusText
-        );
+          errorMetadata.bodyResponse = await response.text();
+        } catch {
+          // skip response body if it cannot be read as text
+        }
+        errorMetadata.message = response.statusText;
       }
+
+      throw new ErrorClass(errorMetadata, errorMetadata.message);
     }
 
     return await response[result]();
