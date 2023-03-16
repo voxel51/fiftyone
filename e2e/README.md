@@ -13,7 +13,13 @@ avoid duplicate setups, both suites will exist here.
 **Running Locally**
 
 -   Make sure `python` is available in path.
--   Run `yarn dev`.
+-   Run `yarn start`.
+-   To run in watch mode, run `yarn start:watch`.
+-   If you want additional flexibility, all command line options are forwarded
+    to Cypress. For example, to run a single spec, run
+    `yarn start --spec cypress/e2e/hello-world.cy.ts`. For more options, visit
+    [cypress command line](https://docs.cypress.io/guides/guides/command-line)
+    page.
 
 **TODO**
 
@@ -21,13 +27,7 @@ This is a WIP and there a few things that need to be setup in order for its
 initial version to be viable:
 
 -   [x] initial setup cypress
--   [x] define tests approach (see below)
--   [x] verify approach works in a couple cases
 -   [x] run python from cypress
+-   [x] verify approach works in a couple cases
 -   [ ] setup on CI / github actions
--   [ ] modify install.bash to setup cypress for dev installs
--   [ ] update this readme once more fleshed out
-
-**Approach**
-
-See e2e/cypress/integration/quickstart/smoke.spec.ts
+-   [ ] document best practices
