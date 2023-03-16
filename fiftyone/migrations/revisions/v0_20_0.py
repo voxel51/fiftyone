@@ -133,7 +133,7 @@ def _up_similarity_indexes(db, dataset_dict):
 def _down_similarity_indexes(db, dataset_dict):
     brain_runs = dataset_dict.get("brain_methods", {})
 
-    for _id in brain_runs.value():
+    for _id in brain_runs.values():
         try:
             run_dict = db.runs.find_one({"_id": _id})
         except:
