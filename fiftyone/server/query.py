@@ -6,7 +6,6 @@ FiftyOne Server queries.
 |
 """
 import typing as t
-from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
@@ -110,19 +109,26 @@ class BrainRunConfig(RunConfig):
 
     @gql.field
     def max_k(self) -> t.Optional[int]:
-        try:
-            cls = etau.get_class(self.cls)
-            instance = cls(**asdict(self))
-            return instance.max_k
-        except:
-            return None
+        config = self._create_config()
+        return getattr(config, "max_k", None) if config else None
 
     @gql.field
-    def supportsLeastSimilarity(self) -> t.Optional[bool]:
+    def supports_least_similarity(self) -> t.Optional[bool]:
+        config = self._create_config()
+        return (
+            getattr(config, "supports_least_similarity", None)
+            if config
+            else None
+        )
+
+    def _create_config(self):
         try:
             cls = etau.get_class(self.cls)
-            instance = cls(**asdict(self))
-            return instance.supports_least_similarity
+            return cls(
+                embeddings_field=self.embeddings_field,
+                patches_field=self.patches_field,
+                supports_prompts=self.supports_prompts,
+            )
         except:
             return None
 
@@ -509,9 +515,9 @@ async def serialize_dataset(
                 else None
             )
 
-            supportsLeastSimilarity = (
-                brain_method.config.supportsLeastSimilarity()
-                if brain_method.config.supportsLeastSimilarity() is not None
+            supports_least_similarity = (
+                brain_method.config.supports_least_similarity()
+                if brain_method.config.supports_least_similarity() is not None
                 else None
             )
 
@@ -519,8 +525,8 @@ async def serialize_dataset(
             setattr(brain_method.config, "max_k", max_k)
             setattr(
                 brain_method.config,
-                "supportsLeastSimilarity",
-                supportsLeastSimilarity,
+                "supports_least_similarity",
+                supports_least_similarity,
             )
 
         return data
