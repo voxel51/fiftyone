@@ -4,7 +4,6 @@ import {
   DATE_TIME_FIELD,
   formatDate,
   formatDateTime,
-  FRAME_SUPPORT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
@@ -49,14 +48,14 @@ const format = ({
   if (value === null) return;
 
   switch (ftype) {
-    case FRAME_SUPPORT_FIELD:
-      value = `[${value[0]}, ${value[1]}]`;
     case DATE_FIELD:
       // @ts-ignore
       value = formatDate(value.datetime as number);
+      break;
     case DATE_TIME_FIELD:
       // @ts-ignore
       value = formatDateTime(value.datetime as number, timeZone);
+      break;
   }
 
   return prettify(value as string);
