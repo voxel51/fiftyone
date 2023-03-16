@@ -33,6 +33,7 @@ class Sort(HTTPEndpoint):
         )
         state = fose.get_state()
         state.selected = []
+        state.selected_labels = []
 
         await fose.dispatch_event(subscription, fose.StateUpdate(state))
         return {
