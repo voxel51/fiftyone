@@ -325,10 +325,10 @@ optional `backend` parameter to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to switch to
 another supported backend:
 
--   **sklearn** (*default*): a builtin
-    `scikit-learn <https://scikit-learn.org>`_ backend
--   **qdrant**: a :ref:`Qdrant <qdrant-integration>` backend
--   **pinecone**: a :ref:`Pinecone <pinecone-integration>` backend
+-   **sklearn** (*default*): a `scikit-learn <https://scikit-learn.org>`_
+    backend
+-   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
+-   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
 
 .. note::
 
@@ -1694,7 +1694,7 @@ FiftyOne provides a brain config that you can use to either temporarily
 or permanently configure the behavior of brain methods.
 
 Viewing your config
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 You can print your current brain config at any time via the Python library
 and the CLI:

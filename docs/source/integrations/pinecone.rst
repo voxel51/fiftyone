@@ -5,121 +5,118 @@ Pinecone Integration
 
 .. default-role:: code
 
-`Pinecone <https://www.pinecone.io/>`_ is one of the most popular vector search 
-engine tools available, and we've made it easy to use Pinecone's vector search 
+`Pinecone <https://www.pinecone.io>`_ is one of the most popular vector search
+engines available, and we've made it easy to use Pinecone's vector search
 capabilities on your computer vision data directly from FiftyOne!
 
-FiftyOne provides :ref:`simple setup instructions <pinecone-setup>` that you can
-use to specify your Pinecone API key and environment.
+Follow these :ref:`simple instructions <pinecone-setup>` to configure your
+credentials and get started using Pinecone + FiftyOne.
 
-FiftyOne provides an API to create collections, upload data, and run search 
-queries using Pinecone, all programmatically in Python. Currently, these methods
-are explicitly supported for sample-level and patch-level embeddings for image
-datasets. 
+FiftyOne provides an API to create Pinecone indexes, upload vectors, and run
+similarity queries, both :ref:`programmatically <pinecone-query>` in Python and
+via point-and-click in the App.
 
 .. note::
 
-    If you have a video dataset, you can convert videos to frames and then use
-    the FiftyOne Pinecone integration to perform search on the frames.
+    Did you know? You can
+    :ref:`search by natural language <brain-similarity-text>` using Pinecone
+    similarity indexes!
+
+.. image:: /images/brain/brain-object-similarity.gif
+   :alt: object-similarity
+   :align: center
 
 .. _pinecone-basic-recipe:
 
 Basic recipe
 ____________
 
-The basic workflow to use Pinecone to create a similarity index on your FiftyOne
-datasets and use this to query your data is as follows:
+The basic workflow to use Pinecone to create a similarity index on your
+FiftyOne datasets and use this to query your data is as follows:
 
-1) Load a :ref:`dataset <loading-datasets>` into FiftyOne
+1)  Load a :ref:`dataset <loading-datasets>` into FiftyOne
 
-2) Compute embedding vectors for samples or patches in your dataset, or select a
-    model to use to generate embeddings
+2)  Compute embedding vectors for samples or patches in your dataset, or select
+    a model to use to generate embeddings
 
-3) Use the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-   method on your dataset or view to generate a similarity index for the samples
-   or object patches using Pinecone by setting the parameter 
-   `backend="pinecone"`, and setting a Brain key if desired
+3)  Use the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
+    methodto generate a Pinecone similarity index for the samples or object
+    patches in a dataset by setting the parameter `backend="pinecone"` and
+    specifying a `brain_key` of your choice
 
-4) Use this Pinecone similarity index to query your data with the 
-   :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-   , specifying the corresponding Brain key if there are multiple similarity
-   indexes on your dataset
+4)  Use this Pinecone similarity index to query your data with
+    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 
-5) If desired, delete the Pinecone collection
+5)  If desired, delete the index
 
 |br|
 The example below demonstrates this workflow.
 
 .. note::
 
-    You must create a `Pinecone account <https://www.pinecone.io/>`_ in order to
-    run this example.
-
-    Note that you can store your Pinecone API key, environment, and vector 
-    search configs as described in :ref:`this section <pinecone-setup>` to avoid 
-    entering them manually each time you interact with Pinecone. Copy your 
-    `Pinecone API key <https://app.pinecone.io/organizations>`_. 
-
-    You'll also need to install the
-    `Pinecone Python client <hhttps://github.com/pinecone-io/pinecone-python-client>`_:
+    You must create a `Pinecone account <https://www.pinecone.io/>`_, download
+    a `Pinecone API key <https://app.pinecone.io/organizations>`_, and install
+    the
+    `Pinecone Python client <hhttps://github.com/pinecone-io/pinecone-python-client>`_
+    to run this example:
 
     .. code-block:: shell
 
         pip install -U pinecone-client
 
-First we load a dataset into FiftyOne and compute embeddings for the samples:
+    Note that you can store your Pinecone credentials as described in
+    :ref:`this section <pinecone-setup>` to avoid entering them manually each
+    time you interact with your Pinecone index.
+
+First let's load a dataset into FiftyOne and compute embeddings for the
+samples:
 
 .. code-block:: python
     :linenos:
 
-    # Step 2: Load your data into FiftyOne
+    import fiftyone as fo
     import fiftyone.brain as fob
     import fiftyone.zoo as foz
 
+    # Step 1: Load your data into FiftyOne
     dataset = foz.load_zoo_dataset(
-        "quickstart", dataset_name="pinecone-vector-search-example"
+        "quickstart",
+        dataset_name="pinecone-vector-search-example",
     )
-    dataset.persistent = True
 
-    # Steps 3 and 4: Compute embeddings and similarity index for your data
+    # Steps 2 and 3: Compute embeddings and create a similarity index
     pinecone_index = fob.compute_similarity(
         dataset, 
-        brain_key = "pinecone",
+        brain_key="pinecone_index",
         backend="pinecone",
-        api_key=...,
-        environment=...,
     )
 
-Once the similarity index has been generated, we can query our data in
-FiftyOne by specifying the Brain key:
+Once the similarity index has been generated, we can query our data in FiftyOne
+by specifying the `brain_key`:
 
 .. code-block:: python
     :linenos:
 
-    dataset = fo.load_dataset("pinecone-vector-search-example")
-    brain_key = "pinecone"
-
-   # Step 5: Query your data
-    query = dataset.first().id # query by sample ID
+    # Step 4: Query your data
+    query = dataset.first().id  # query by sample ID
     view = dataset.sort_by_similarity(
         query, 
-        brain_key = brain_key
-        k = 10 # limit to 10 most similar samples
+        brain_key=brain_key,
+        k=10,  # limit to 10 most similar samples
     )
 
-    # Step 6: Cleanup
+    # Step 5 (optional): Cleanup
 
-    # Delete collection from Pinecone
+    # Delete the Pinecone index
     pinecone_index = dataset.load_brain_results(brain_key)
-    pinecone_client = pinecone_index.connect_to_api()
-    results.cleanup() 
+    pinecone_index.cleanup()
 
     # Delete run record from FiftyOne
-    dataset.delete_brain_run(brain_key)
+    dataset.delete_brain_run("pinecone_index")
 
 .. note::
 
-    See :ref:`this section <pinecone-examples>` to see a variety of common
+    Skip to :ref:`this section <pinecone-examples>` to see a variety of common
     Pinecone query patterns.
 
 .. _pinecone-setup:
@@ -127,27 +124,27 @@ FiftyOne by specifying the Brain key:
 Setup
 _____
 
-The easiest way to `create a free Pinecone account <https://www.pinecone.io/>`_, 
-and copy your Pinecone API key.  
+The easiest way to get started with Pinecone is to
+`create a free Pinecone account <https://www.pinecone.io>`_ and copy your
+Pinecone API key.
 
 Installing the Pinecone client
 ------------------------------
 
 In order to use the Pinecone backend, you must install the
-`Pinecone Python client 
-<https://github.com/pinecone-io/pinecone-python-client>`_:
+`Pinecone Python client <https://github.com/pinecone-io/pinecone-python-client>`_:
 
 .. code-block:: shell
 
-    pip install -U pinecone-client
+    pip install pinecone-client
 
 Using the Pinecone backend
 --------------------------
 
 By default, calling
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` or 
-:meth:`sort_by_similarity() <fiftyone.core.collection.sort_by_similarity>` will
-use an Sklearn backend.
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+will use an sklearn backend.
 
 To use the Pinecone backend, simply set the optional `backend` parameter of
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to
@@ -158,25 +155,20 @@ To use the Pinecone backend, simply set the optional `backend` parameter of
 
     import fiftyone.brain as fob
 
-    fob.compute_similarity(
-        view,
-        backend="pinecone",
-        ...
-    )
+    fob.compute_similarity(view, backend="pinecone", ...)
 
 Alternatively, you can permanently configure FiftyOne to use the Pinecone
-backend by setting the `FIFTYONE_DEFAULT_SIMILARITY_BACKEND` environment
+backend by setting the `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment
 variable:
 
 .. code-block:: shell
 
-    export FIFTYONE_DEFAULT_SIMILARITY_BACKEND=pinecone
+    export FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND=pinecone
 
 or by setting the `default_similarity_backend` parameter of your
-:ref:`Fiftyone Brain config <fiftyone-brain-config>` located at
-`~/.fiftyone/brain_config.json`:
+:ref:`brain config <brain-config>` located at `~/.fiftyone/brain_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "default_similarity_backend": "pinecone"
@@ -185,30 +177,29 @@ or by setting the `default_similarity_backend` parameter of your
 Authentication
 --------------
 
-In order to connect to a Pinecone server, you must provide your server url, 
-which  can be done in a variety of ways.
+In order to connect to a Pinecone server, you must provide your API key and
+environment, which can be done in a variety of ways.
 
 **Environment variables (recommended)**
 
-The recommended way to configure your Pinecone connection is to store your 
-Pinecone API key and environment as environment variables in the
-`FIFTYONE_PINECONE_API_KEY` and `FIFTYONE_PINECONE_ENVIRONMENT` environment 
-variable. These are automatically accessed by FiftyOne whenever a connection to 
-Pinecone is made.
+The recommended way to configure your Pinecone credentials is to store them
+in the
+`FIFTYONE_BRAIN_SIMILARITY_PINECONE_API_KEY` and
+`FIFTYONE_BRAIN_SIMILARITY_PINECONE_ENVIRONMENT` environment variables. These
+are automatically accessed by FiftyOne whenever a connection to Pinecone is
+made.
 
 .. code-block:: shell
 
-    export FIFTYONE_PINECONE_API_KEY=XXXXXX
-    export FIFTYONE_PINECONE_ENVIRONMENT="us-west1-gcp"
-
+    export FIFTYONE_BRAIN_SIMILARITY_PINECONE_API_KEY=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_PINECONE_ENVIRONMENT="us-west1-gcp"
 
 **FiftyOne Brain config**
 
-You can also store your credentials in your
-:ref:`Brain config <brain-config>` located at
-`~/.fiftyone/brain_config.json`:
+You can also store your credentials in your :ref:`brain config <brain-config>`
+located at `~/.fiftyone/brain_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "similarity_backends": {
@@ -223,9 +214,10 @@ Note that this file will not exist until you create it.
 
 **Keyword arguments**
 
-You can manually provide these as keyword arguments each time you call methods 
-like :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that 
-require connections to Pinecone:
+You can manually provide your Pinecone credentials as keyword arguments each
+time you call methods like
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that require
+connections to Pinecone:
 
 .. code:: python
     :linenos:
@@ -234,68 +226,98 @@ require connections to Pinecone:
     
     dataset = foz.load_zoo_dataset("quickstart")
 
-    fob.compute_similarity(
+    pinecone_index = fob.compute_similarity(
         dataset,
+        ...
         backend="pinecone",
-        brain_key="pinecone",
-        model="resnet-50-imagenet-torch"
+        brain_key="pinecone_index",
         api_key="XXXXXX",
         environment="us-west1-gcp",
-        ...
     )
 
+Note that, when using this strategy, you must manually provide the credentials
+when loading an index later via
+:meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`:
 
-.. _pinecone-query-parameters:
+.. code:: python
+    :linenos:
 
-Pinecone query parameters
+    import fiftyone.brain as fob
+
+    pinecone_index = dataset.load_brain_results(
+        "pinecone_index",
+        api_key="XXXXXX",
+        environment="us-west1-gcp",
+    )
+
+.. _pinecone-config-parameters:
+
+Pinecone config parameters
 --------------------------
 
 The Pinecone backend supports a variety of query parameters that can be used to
 customize your similarity queries. These parameters include:
 
-* `index_name`: the name of the Pinecone index to use. If not specified, one is
-  generated for the index by FiftyOne.
-* `pods`: the number of pods to use for the index. If not specified, the
-  default value is 1.
-* `pod_type`: the type of pod to use for the index. If not specified, the
-  default value is "p1".
-* `replicas`: the number of replicas to use for the index. If not specified, 
-  the default value is 1.
-* `shards`: the number of shards to use for the index. If not specified, the 
-  default value is 1.
-* `metric`: the distance/similarity metric to use for the index. If not 
-  specified, the default value is "cosine". Allowed values are 
-  `("cosine", "dotproduct", "euclidean")`.
+*   **metric**: the distance/similarity metric to use for the index. If not
+    specified, the default value is `"cosine"`. Supported values are
+    `("cosine", "dotproduct", "euclidean")`
+*   **index_name**: the name of the Pinecone index to use or create. If not
+    specified, a new unique name is generated automatically
+*   **pods**: an optional number of pods to use when creating a new index
+*   **pod_type**: an optional pod type to use when creating a new index
+*   **replicas**: an optional number of replicas to use when creating a new
+    index
+*   **shards**: an optional number of shards to use when creating a new index
 
 For detailed information on these parameters, see the 
-`Pinecone index documentation <https://docs.pinecone.io/docs/indexes>`_.
+`Pinecone documentation <https://docs.pinecone.io/docs/indexes>`_.
 
-You can specify these parameters in a variety of ways:
+You can specify these parameters via any of the strategies described in the
+previous section. Here's an example of a :ref:`brain config <brain-config>`
+that includes all of the available parameters:
 
-In your FiftyOne Brain config located at `~/.fiftyone/brain_config.json`. Here
-is an example of a config that specifies all of the available parameters:
-
-.. code-block:: text
+.. code-block:: json
 
     {
         "similarity_backends": {
             "pinecone": {
-            "config_cls": "fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig",
-            "api_key": "XXXXXXXXXXXX",
-            "environment": "us-west1-gcp",
-            "pods": 1,
-            "pod_type": "p1",
-            "replicas": 1,
-            "shards": 1,
-            "metric": "cosine"
-            },
+                "api_key": "XXXXXXXXXXXX",
+                "environment": "us-west1-gcp",
+                "project_name": null,
+                "index_type": null,
+                "namespace": null,
+                "metric": "cosine",
+                "replicas": 1,
+                "shards": 1,
+                "pods": 1,
+                "pod_type": "p1",
+            }
         }
     }
+
+However, typically these parameters are directly passed to
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to configure
+a specific new index:
+
+.. code:: python
+    :linenos:
+
+    pinecone_index = fob.compute_similarity(
+        dataset,
+        ...
+        backend="pinecone",
+        brain_key="pinecone_index",
+        index_name="your-index-name",
+        metric="cosine",
+        pod_type="s1",
+        pods=2,
+        ...
+    )
 
 .. _pinecone-managing-brain-runs:
 
 Managing brain runs
-________________________
+___________________
 
 FiftyOne provides a variety of methods that you can use to manage brain runs.
 
@@ -306,7 +328,18 @@ to see the available brain keys on a dataset:
 .. code:: python
     :linenos:
 
+    # List all brain runs
     dataset.list_brain_runs()
+
+    # Only list similarity runs
+    dataset.list_brain_runs(type=fob.Similarity)
+
+    # Only list specific similarity runs
+    dataset.list_brain_runs(
+        type=fob.Similarity,
+        patches_field="ground_truth",
+        supports_prompts=True,
+    )
 
 Or, you can use
 :meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_brain_info>`
@@ -319,10 +352,7 @@ to retrieve information about the configuration of a brain run:
     print(info)
 
 Use :meth:`load_brain_results() <fiftyone.core.collections.SampleCollection.load_brain_results>`
-to load the :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
-instance for a brain run.
-
-
+to load the |SimilarityIndex| instance for a brain run.
 
 You can use
 :meth:`rename_brain_run() <fiftyone.core.collections.SampleCollection.rename_brain_run>`
@@ -331,7 +361,7 @@ to rename the brain key associated with an existing similarity results run:
 .. code:: python
     :linenos:
 
-    dataset.rename_brain_run(sim_key, new_sim_key)
+    dataset.rename_brain_run(brain_key, new_brain_key)
 
 Finally, you can use
 :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
@@ -347,9 +377,14 @@ dataset:
 
     Calling
     :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
-    only deletes the **record** of the brain run from your FiftyOne
-    dataset; it will not delete any Pinecone collection associated with your 
-    dataset.
+    only deletes the **record** of the brain run from your FiftyOne dataset; it
+    will not delete any associated Pinecone index, which you can do as follows:
+
+    .. code:: python
+
+        # Delete the Pinecone index
+        pinecone_index = dataset.load_brain_results(brain_key)
+        pinecone_index.cleanup()
 
 .. _pinecone-examples:
 
@@ -366,13 +401,13 @@ a FiftyOne dataset using the Pinecone backend.
 
 .. _pinecone-new-similarity-index:
 
-Create new similarity index
------------------------------
+Create a similarity index
+-------------------------
 
-In order to create a new 
-:ref:`PineconeSimilarityIndex <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex>`
-, you need to specify either the `embeddings` or `model` argument to 
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
+In order to create a new Pinecone similarity index, you need to specify either
+the `embeddings` or `model` argument to
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`. Here's a few
+possibilities:
 
 .. code:: python
     :linenos:
@@ -382,106 +417,57 @@ In order to create a new
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
-    model_name = "resnet-50-imagenet-torch"
+    model_name = "clip-vit-base32-torch"
     model = foz.load_zoo_model(model_name)
+    brain_key = "pinecone_index"
 
-    brain_key = "pinecone"
-
-    ## Option 1: Compute embeddings on the fly from model name
+    # Option 1: Compute embeddings on the fly from model name
     fob.compute_similarity(
         dataset,
-        brain_key,
-        model = model_name,
+        model=model_name,
         backend="pinecone",
-        api_key="XXXXXXXXX",
-        environment="us-west1-gcp",
+        brain_key=brain_key,
     )
 
-    ## Option 2: Compute embeddings on the fly from model instance
+    # Option 2: Compute embeddings on the fly from model instance
     fob.compute_similarity(
         dataset,
-        brain_key,
         model=model
         backend="pinecone",
-        api_key="XXXXXXXXX",
-        environment="us-west1-gcp",
+        brain_key=brain_key,
     )
 
-    ## Option 3: Pass in pre-computed embeddings as a NumPy array
-    embeddings = fob.compute_embeddings(
-        dataset,
-        model = model,
-    )
-
+    # Option 3: Pass precomputed embeddings as a numpy array
+    embeddings = dataset.compute_embeddings(model)
     fob.compute_similarity(
         dataset,
-        brain_key,
         embeddings=embeddings,
         backend="pinecone",
-        api_key="XXXXXXXXX",
-        environment="us-west1-gcp",
+        brain_key=brain_key,
     )
 
-    ## Option 4: Pass in pre-computed embeddings by field name
-    fob.compute_embeddings(
-        dataset,
-        model = model,
-        embeddings_field="embeddings",
-    )
-
+    # Option 4: Pass precomputed embeddings by field name
+    dataset.compute_embeddings(model, embeddings_field="embeddings")
     fob.compute_similarity(
         dataset,
-        brain_key,
         embeddings_field="embeddings",
         backend="pinecone",
-        api_key="XXXXXXXXX",
-        environment="us-west1-gcp",
+        brain_key=brain_key,
     )
 
-    print(dataset.get_brain_info(brain_key))
+.. note::
 
-.. _pinecone-connect-to-existing-index:
-
-Connect to existing Pinecone index
------------------------------------
-
-If you have already created a Pinecone index storing the embedding vectors for
-the samples or patches in your dataset, you can connect to it to your dataset
-by passing in `embeddings=False` to 
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.brain as fob
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-
-    fob.compute_similarity(
-        dataset,
-        brain_key,
-        model = "clip-vit-base32-torch",
-        embeddings=False,
-        backend="pinecone",
-        api_key="XXXXXXXXX",
-        environment="us-west1-gcp",
-    )
-
-This creates a 
-:ref:`PineconeSimilarityIndex <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex>`
-with the relevant data, without requiring that you recompute the embeddings.
-This approach can be useful if you are computing your embeddings in a separate
-process or on a different machine.
+    You can customize the Pinecone index by passing any
+    :ref:`supported parameters <pinecone-config-parameters>` as extra kwargs.
 
 .. _pinecone-patch-similarity-index:
 
-Create a patch embeddings similarity index
--------------------------------------------
+Create a patch similarity index
+-------------------------------
 
-You can also create a similarity index for object patches within your dataset 
-by specifying a `patches_field` argument to 
+You can also create a similarity index for
+:ref:`object patches <brain-object-similarity>` within your dataset by
+specifying a `patches_field` argument to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
 
 .. code:: python
@@ -494,26 +480,27 @@ by specifying a `patches_field` argument to
     dataset = foz.load_zoo_dataset("quickstart")
 
     fob.compute_similarity(
-        dataset, 
-        patches_field="detections",
-        model = "resnet-50-imagenet-torch"
-        brain_key = "pinecone_patches", 
+        dataset,
+        patches_field="ground_truth",
+        model="clip-vit-base32-torch",
         backend="pinecone",
-        api_key="XXXXXXXXX",
-        environment="us-west1-gcp",
+        brain_key="pinecone_patches",
     )
 
-    print(dataset.get_brain_info(brain_key))
+.. note::
 
-.. _pinecone-connect-to-client:
+    You can customize the Pinecone index by passing any
+    :ref:`supported parameters <pinecone-config-parameters>` as extra kwargs.
 
-Connect to Pinecone client
----------------------------
+.. _pinecone-connect-to-existing-index:
 
-You can connect to an instance of the Pinecone index storing your FiftyOne 
-dataset's embeddings using the
-:ref:`index <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex.index>`
-attribute. You can then access all of the Pinecone index's methods:
+Connect to an existing index
+----------------------------
+
+If you have already created a Pinecone index storing the embedding vectors for
+the samples or patches in your dataset, you can connect to it by passing the
+`index_name` to
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
 
 .. code:: python
     :linenos:
@@ -522,39 +509,77 @@ attribute. You can then access all of the Pinecone index's methods:
     import fiftyone.brain as fob
     import fiftyone.zoo as foz
 
-    api_key = "XXXXXXXXX"
-    environment = "us-west1-gcp"
-    index_name = "fiftyone-quickstart"
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fob.compute_similarity(
+        dataset,
+        model="clip-vit-base32-torch",      # zoo model used (if applicable)
+        embeddings=False,                   # don't compute embeddings
+        index_name="your-index",            # the existing Pinecone index
+        brain_key="pinecone_index",
+        backend="pinecone",
+    )
+
+.. _pinecone-add-remove-embeddings:
+
+Add/remove embeddings from an index
+-----------------------------------
+
+You can use
+:meth:`add_to_index() <fiftyone.brain.similarity.SimilarityIndex.add_to_index>`
+and
+:meth:`remove_from_index() <fiftyone.brain.similarity.SimilarityIndex.remove_from_index>`
+to add and remove embeddings from an existing Pinecone index.
+
+These methods can come in handy if you modify your FiftyOne dataset and need
+to update the Pinecone index to reflect these changes:
+
+.. code:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    res = fob.compute_similarity(
-        dataset, 
-        model = "resnet-50-imagenet-torch"
-        brain_key = "pinecone", 
+    pinecone_index = fob.compute_similarity(
+        dataset,
+        model="clip-vit-base32-torch",
+        brain_key="pinecone_index",
         backend="pinecone",
-        index_name=index_name,
-        api_key=api_key,
-        environment=environment,
     )
+    print(pinecone_index.total_index_size)  # 200
 
-    pinecone_index = res.index
-    print(pinecone_index)
+    view = dataset.take(10)
+    sample_ids = view.values("id")
 
-    ### or connect directly to Pinecone client:
-    import pinecone
-    pinecone.init(api_key=api_key, environment=environment)
-    print(pinecone.list_indexes())
-    print(pinecone.describe_index(index_name))
+    # Delete 10 samples from a dataset
+    dataset.delete_samples(view)
+
+    # Delete the corresponding vectors from the index
+    pinecone_index.remove_from_index(sample_ids=sample_ids)
+
+    # Add 20 samples to a dataset
+    add_samples = [fo.Sample(filepath="tmp%d.jpg" % i) for i in range(20)]
+    sample_ids = dataset.add_samples(add_samples)
+
+    # Add corresponding embeddings to the index
+    embeddings = np.random.rand(20, 512)
+    pinecone_index.add_to_index(embeddings, sample_ids)
+
+    print(pinecone_index.total_index_size)  # 210
 
 .. _pinecone-get-embeddings:
 
-Retrieve embeddings from Pinecone index
-----------------------------------------
+Retrieve embeddings from an index
+---------------------------------
 
-You can retrieve the embeddings from a Pinecone index using the 
-:method:`get_embeddings() <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex.get_embeddings>`
-method. This can be applied to an entire dataset, or a view into a dataset:
+You can use
+:meth:`get_embeddings() <fiftyone.brain.similarity.SimilarityIndex.get_embeddings>`
+to retrieve embeddings from a Pinecone index by ID:
 
 .. code:: python
     :linenos:
@@ -567,41 +592,32 @@ method. This can be applied to an entire dataset, or a view into a dataset:
 
     pinecone_index = fob.compute_similarity(
         dataset, 
-        model = "resnet-50-imagenet-torch"
-        brain_key = "pinecone", 
+        model="clip-vit-base32-torch"
+        brain_key="pinecone_index",
         backend="pinecone",
-        index_name="fiftyone-quickstart",
-        api_key=api_key,
-        environment=environment,
     )
 
-    dataset_embeddings = pinecone_index.get_embeddings(dataset)
+    # Retrieve embeddings for the entire dataset
+    ids = dataset.values("id")
+    embeddings, sample_ids, _ = pinecone_index.get_embeddings(sample_ids=ids)
 
-    ## create a view into the dataset
-    view = dataset.take(10)
-    ## get embeddings for the view
-    view_embeddings, sample_ids, _ = pinecone_index.compute_embeddings(view)
+    # Retrieve embeddings for a view
+    ids = dataset.take(10).values("id")
+    embeddings, sample_ids, _ = pinecone_index.get_embeddings(sample_ids=ids)
 
-.. _pinecone-query-embeddings:
+.. _pinecone-query:
 
-Query embeddings with Pinecone index
--------------------------------------------
+Querying a Pinecone index
+-------------------------
 
-You can query a 
-:ref:`PineconeSimilarityIndex <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex>`
-instance using the 
-:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>` 
-method. This can be applied to an entire dataset, or a view into a dataset. The 
-query can be any of the following:
+You can query a Pinecone index by appending a
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+stage to any dataset or view. The query can be any of the following:
 
-1. A single numerical vector of the same length as the embeddings
-2. An ID (sample or patch)
-3. A list of IDs (sample or patches)
-4. A text prompt
-
-A query can only be a text prompt if the model used to compute the embeddings 
-supports text prompts. Here are examples of all of these, using the CLIP model, 
-which supports text prompts:
+*   An ID (sample or patch)
+*   A query vector of same dimension as the index
+*   A list of IDs (samples or patches)
+*   A text prompt (if :ref:`supported by the model <brain-similarity-text>`)
 
 .. code:: python
     :linenos:
@@ -616,76 +632,111 @@ which supports text prompts:
 
     fob.compute_similarity(
         dataset, 
-        model = "clip-vit-base32-torch"
-        brain_key = "pinecone", 
+        model="clip-vit-base32-torch"
+        brain_key="pinecone_index",
         backend="pinecone",
-        index_name="fiftyone-quickstart",
-        api_key=api_key,
-        environment=environment,
     )
 
-    ## query by numerical vector
-    query = np.random.rand(512) ## 512 is the length of the CLIP embeddings
+    # Query by vector
+    query = np.random.rand(512)  # matches the dimension of CLIP embeddings
+    view = dataset.sort_by_similarity(query, k=10, brain_key="pinecone_index")
 
-    ## query by single ID
+    # Query by sample ID
     query = dataset.first().id
+    view = dataset.sort_by_similarity(query, k=10, brain_key="pinecone_index")
 
-    ## query by list of IDs
+    # Query by a list of IDs
     query = [dataset.first().id, dataset.last().id]
+    view = dataset.sort_by_similarity(query, k=10, brain_key="pinecone_index")
 
-    ## query by text prompt
+    # Query by text prompt
     query = "a photo of a dog"
+    view = dataset.sort_by_similarity(query, k=10, brain_key="pinecone_index")
 
-    view = dataset.sort_by_similarity(query, brain_key="pinecone", k = 10)
-    print(view)
+.. note::
 
-.. _pinecone-edit-collection:
+    Performing a similarity search on a |DatasetView| will **only** return
+    results from the view; if the view contains samples that were not included
+    in the index, they will never be included in the result.
 
-Editing a Pinecone collection
-------------------------------
+    This means that you can index an entire |Dataset| once and then perform
+    searches on subsets of the dataset by
+    :ref:`constructing views <using-views>` that contain the images of
+    interest.
 
-You can edit a Pinecone index by adding or removing samples and patches from
-the index. This can be done using the 
-:method:`add_to_index() <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex.add_to_index>` 
-and 
-:method:`remove_from_index() <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex.remove_from_index>`
-methods. These methods can come in handy if you want to add or remove samples 
-or object patches from your dataset, and then update the Pinecone index to 
-reflect these changes.
+.. _pinecone-access-client:
+
+Accessing the Pinecone client
+-----------------------------
+
+You can use the `index` property of a Pinecone index to directly access the
+underlying Pinecone client instance and use its methods as desired:
 
 .. code:: python
     :linenos:
 
     import fiftyone as fo
+    import fiftyone.brain as fob
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
 
     pinecone_index = fob.compute_similarity(
-        dataset, 
-        model = "clip-vit-base32-torch"
-        brain_key = "pinecone", 
+        dataset,
+        model="clip-vit-base32-torch"
+        brain_key="pinecone_index",
         backend="pinecone",
-        index_name="fiftyone-quickstart",
-        api_key=api_key,
-        environment=environment,
     )
 
-    samples_to_delete = dataset.take(10)
-    dataset.delete_samples(samples_to_delete)
-    pinecone_index.remove_from_index(samples_to_delete)
-    
-    samples_to_add = dataset.take(20)
-    dataset.add_samples(samples_to_add)
-    pinecone_index.add_to_index(samples_to_add)
-    
+    print(pinecone_index.index)
 
-You can also get the total number of vectors in the index using the 
-:ref:`total_index_size <fiftyone.brain.internal.core.pinecone.PineconeSimilarityIndex.total_index_size>`
-attribute. Continuing the above code:
+    # The Pinecone SDK is already initialized for you
+    import pinecone
+    print(pinecone.list_indexes())
+
+.. _pinecone-advanced-usage:
+
+Advanced usage
+--------------
+
+As :ref:`previously mentioned <pinecone-config-parameters>`, you can customize
+your Pinecone indexes by providing optional parameters to
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`.
+
+Here's an example of creating a similarity index backed by a customized
+Pinecone index. Just for fun, we'll specify a custom index name, use dot
+product similarity, and populate the index for only a subset of our dataset:
 
 .. code:: python
     :linenos:
 
-    print(pinecone_index.total_index_size)
-    ## will return 210, since we removed 10 samples and then added 20 samples 
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Create a custom Pinecone index
+    pinecone_index = fob.compute_similarity(
+        dataset,
+        model="clip-vit-base32-torch",
+        embeddings=False,  # compute these later
+        metric="dotproduct",
+        brain_key="pinecone_index",
+        backend="pinecone",
+        index_name="custom-pinecone-index",
+        pod_type="s1",
+        pods=2,
+        shards=2,
+    )
+
+    # Add embeddings for a subset of the dataset
+    view = dataset.take(100)
+    embeddings, sample_ids, _ = pinecone_index.compute_embeddings(view)
+    pinecone_index.add_to_index(embeddings, sample_ids)
+
+    print(pinecone_index.index)
+
+    # The Pinecone SDK is already initialized for you
+    import pinecone
+    print(pinecone.list_indexes())
