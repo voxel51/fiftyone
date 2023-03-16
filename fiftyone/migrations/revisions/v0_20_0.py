@@ -144,9 +144,6 @@ def _update_runs(
     config_updates,
     results_updates,
 ):
-    if runs_field not in dataset_dict:
-        return
-
     runs = dataset_dict.get(runs_field, {})
 
     for run_id in runs.values():
@@ -156,7 +153,6 @@ def _update_runs(
             continue
 
         config = run_dict.get("config", {})
-
         if config and all(
             config.get(k, None) == v for k, v in config_match.items()
         ):
@@ -164,10 +160,10 @@ def _update_runs(
             config.update(**config_updates)
 
             # Update RunResults
-            results_id = config.get("results", None)
+            results_id = run_dict.get("results", None)
             if results_id is not None:
                 try:
-                    config["results"] = _update_run_results(
+                    run_dict["results"] = _update_run_results(
                         db, results_id, results_updates
                     )
                 except:
