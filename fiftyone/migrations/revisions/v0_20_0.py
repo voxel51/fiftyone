@@ -6,6 +6,11 @@ FiftyOne v0.20.0 revision.
 |
 """
 
+_OLD_SKLEARN_CONFIG_CLS = "fiftyone.brain.similarity.SimilarityConfig"
+_NEW_SKLEARN_CONFIG_CLS = (
+    "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+)
+
 
 def up(db, dataset_name):
     match_d = {"name": dataset_name}
@@ -53,7 +58,7 @@ def up(db, dataset_name):
         coll_name = dataset_dict.get("frame_collection_name", None)
         if coll_name is not None:
             db[coll_name].update_many({}, {"$set": {"_dataset_id": _id}})
-    
+
     app_config = dataset_dict.get("app_config", None)
     if app_config is not None:
         sidebar_groups = app_config.get("sidebar_groups", None)
@@ -71,7 +76,10 @@ def up(db, dataset_name):
             if label_tags_idx is not None:
                 sidebar_groups.pop(label_tags_idx)
 
+    _up_similarity_indexes(db, dataset_dict)
+
     db.datasets.replace_one(match_d, dataset_dict)
+
 
 def down(db, dataset_name):
     match_d = {"name": dataset_name}
@@ -101,4 +109,38 @@ def down(db, dataset_name):
                     {"name": "label tags", "paths": []},
                 )
 
+    _down_similarity_indexes(db, dataset_dict)
+
     db.datasets.replace_one(match_d, dataset_dict)
+
+
+def _up_similarity_indexes(db, dataset_dict):
+    brain_runs = dataset_dict.get("brain_methods", {})
+
+    for _id in brain_runs.values():
+        try:
+            run_dict = db.runs.find_one({"_id": _id})
+        except:
+            continue
+
+        config_cls = run_dict.get("config", {}).get("cls", None)
+        if config_cls == _OLD_SKLEARN_CONFIG_CLS:
+            run_dict["config"]["method"] = "sklearn"
+            run_dict["config"]["cls"] = _NEW_SKLEARN_CONFIG_CLS
+            db.runs.replace_one({"_id": _id}, run_dict)
+
+
+def _down_similarity_indexes(db, dataset_dict):
+    brain_runs = dataset_dict.get("brain_methods", {})
+
+    for _id in brain_runs.value():
+        try:
+            run_dict = db.runs.find_one({"_id": _id})
+        except:
+            continue
+
+        config_cls = run_dict.get("config", {}).get("cls", None)
+        if config_cls == _NEW_SKLEARN_CONFIG_CLS:
+            run_dict["config"]["method"] = "similarity"
+            run_dict["config"]["cls"] = _OLD_SKLEARN_CONFIG_CLS
+            db.runs.replace_one({"_id": _id}, run_dict)
