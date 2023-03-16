@@ -47,5 +47,8 @@
     "workspaces": [
         "packages/*"
     ],
-    "packageManager": "yarn@3.2.1"
+    "packageManager": "yarn@3.2.1",
+    "dependencies": {
+        "cypress-visual-regression": "^2.1.1"
+    }
 }

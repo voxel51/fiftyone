@@ -307,7 +307,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
 
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
-      <Canvas onClick={() => setAction(null)}>
+      <Canvas onClick={() => setAction(null)} data-cy="looker3d">
         <Screenshot />
         <Environment
           controlsRef={controlsRef}

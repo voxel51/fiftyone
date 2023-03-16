@@ -1,3 +1,4 @@
+import { DEFAULT_APP_ADDRESS } from "lib/constants";
 import { PythonRunner } from "lib/python-runner";
 import waitOn from "wait-on";
 
@@ -38,7 +39,7 @@ export const customTasks = {
     console.log(`Waiting for fiftyone app to start, timeout = ${timeout} ms`);
     return new Promise((resolve, reject) =>
       waitOn({
-        resources: ["http://127.0.0.1:5151"],
+        resources: [DEFAULT_APP_ADDRESS],
         timeout: timeout,
       })
         // need to return null to indicate success

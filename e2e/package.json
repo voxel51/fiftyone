@@ -10,7 +10,7 @@
         "wait-on": "^7.0.1"
     },
     "scripts": {
-        "start:watch": "nodemon -r source-map-support/register index.ts --watch lib --watch cypress --watch cypress.config.ts --watch index.ts",
+        "start:watch": "nodemon -r source-map-support/register index.ts --watch lib --watch cypress --watch cypress.config.ts --watch index.ts -e js,jsx,ts,tsx,py,json",
         "start": "ts-node index.ts"
     },
     "devDependencies": {

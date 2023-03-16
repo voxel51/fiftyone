@@ -1,12 +1,16 @@
 import cypress from "cypress";
 import http from "http";
+import { DEFAULT_APP_PORT } from "lib/constants";
 
 const runCypress = () => {
-  const args = ["cypress", "run", "--browser", "chrome", "--headless"];
+  const args = ["cypress", "run", "--browser", "chrome"];
 
   cypress.cli
     .parseRunArguments([...args, ...process.argv.slice(2)])
-    .then((options) => cypress.run(options))
+    .then((options) => {
+      console.log("cypress run options", options);
+      cypress.run(options);
+    })
     .catch((err) => console.error(err));
 };
 
@@ -15,7 +19,7 @@ const ghostServer = http
   .createServer((_, res) => {
     res.writeHead(200);
   })
-  .listen(5151, () => {
+  .listen(DEFAULT_APP_PORT, () => {
     // cypress does work with `null` baseUrl but that causes tests to run twice
     // it's because cypress caches test runner process for each unique baseUrl
     // todo: better strategy?

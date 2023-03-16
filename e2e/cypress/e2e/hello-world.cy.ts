@@ -18,12 +18,6 @@ describe("hello world", () => {
   it("should load the app", () => {
     expect(true).to.equal(true);
     cy.visit("/");
-    cy.wait(5000);
-  });
-
-  it("should load the app again", () => {
-    expect(true).to.equal(true);
-    cy.visit("/datasets", {});
   });
 
   after(() => {

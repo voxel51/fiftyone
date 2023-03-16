@@ -3,6 +3,7 @@ import dedent from "dedent";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { DEFAULT_APP_PORT } from "./constants";
 
 export class PythonRunner {
   public static exec(sourceCode: string) {
@@ -11,18 +12,29 @@ export class PythonRunner {
     const sourceFilePath = path.join(os.tmpdir(), `${randomFileName}.py`);
     fs.writeFileSync(sourceFilePath, dedentedSourceCode, "utf-8");
 
+    const env = {
+      ...process.env,
+      // todo: might want to set PYTHONPATH here to point to the python source code
+      FIFTYONE_DATABASE_NAME: "cypress",
+      FIFTYONE_DEFAULT_APP_PORT: DEFAULT_APP_PORT,
+    };
+
     const proc = spawn("python", [sourceFilePath], {
-      env: {
-        ...process.env,
-        // todo: might want to set PYTHONPATH here to point to the python source code
-        FIFTYONE_DATABASE_NAME: "cypress",
-      },
+      env,
     });
     const pId = proc.pid;
 
     console.log(`Spawning python process, pId = ${pId}. Source code:`);
     console.log("=====================================");
     console.log(sourceCode);
+    console.log("=====================================");
+    console.log("fiftyone related env:");
+    console.log("=====================================");
+    Object.entries(env).forEach(([key, value]) => {
+      if (key.startsWith("FIFTYONE")) {
+        console.log(`${key} = ${value}`);
+      }
+    });
     console.log("=====================================");
 
     proc.stdout.on("data", (data) => {
