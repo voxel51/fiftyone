@@ -10,9 +10,9 @@ import unittest
 import numpy as np
 
 import fiftyone as fo
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 from fiftyone.core.brain import BrainMethod
 from fiftyone.core.evaluation import EvaluationMethod
-import fiftyone.brain as fob
 
 from decorators import drop_datasets
 

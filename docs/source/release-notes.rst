@@ -1026,7 +1026,7 @@ Brain
 - Graceful handling of missing/uncomputable embeddings in
   :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 - Graceful handling of edge cases like `fraction <= 0` in
-  :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
+  :meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`,
 - Removed a spurious warning message that was previously logged when computing
   patch embeddings for a collection containing samples with no patches
 
@@ -1415,21 +1415,17 @@ App
 Brain
 
 - Added new
-  :meth:`find_unique() <fiftyone.brain.similarity.SimilarityResults.find_unique>`,
-  :meth:`unique_view() <fiftyone.brain.similarity.SimilarityResults.unique_view>`, and
-  :meth:`visualize_unique() <fiftyone.brain.similarity.SimilarityResults.visualize_unique>`
-  methods to the
-  :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
-  object returned by
+  :meth:`find_unique() <fiftyone.brain.similarity.DuplicatesMixin.find_unique>`,
+  :meth:`unique_view() <fiftyone.brain.similarity.DuplicatesMixin.unique_view>`, and
+  :meth:`visualize_unique() <fiftyone.brain.similarity.DuplicatesMixin.visualize_unique>`
+  methods to the |SimilarityIndex| object returned by
   :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that enable
   you to identify a maximally unique set of images or objects in a dataset
 - Added new
-  :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
-  :meth:`duplicates_view() <fiftyone.brain.similarity.SimilarityResults.duplicates_view>`, and
-  :meth:`visualize_duplicates() <fiftyone.brain.similarity.SimilarityResults.visualize_duplicates>`
-  methods to the
-  :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
-  object returned by
+  :meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`,
+  :meth:`duplicates_view() <fiftyone.brain.similarity.DuplicatesMixin.duplicates_view>`, and
+  :meth:`visualize_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.visualize_duplicates>`
+  methods to the |SimilarityIndex| object returned by
   :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that enable
   you to identify near-duplicate images or objects in a dataset
 - Added a new

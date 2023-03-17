@@ -9,6 +9,7 @@ from collections import defaultdict
 from copy import deepcopy
 import logging
 import os
+import weakref
 
 from eta.core.config import ConfigError
 import eta.core.learning as etal
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _MODELS_MANIFEST_PATT = os.path.join(_THIS_DIR, "manifest-*.json")
+_MODELS = weakref.WeakValueDictionary()
 
 
 def list_zoo_models():
@@ -154,6 +156,7 @@ def load_zoo_model(
     download_if_necessary=True,
     install_requirements=False,
     error_level=None,
+    cache=True,
     **kwargs,
 ):
     """Loads the model of the given name from the FiftyOne Model Zoo.
@@ -178,12 +181,18 @@ def load_zoo_model(
             -   2: ignore unsatisifed requirements
 
             By default, ``fo.config.requirement_error_level`` is used
+        cache (True): whether to store a weak reference to the model so that
+            running this method again will return the same instance while the
+            model is still in use. If False, no weak reference is stored/used
         **kwargs: keyword arguments to inject into the model's ``Config``
             instance
 
     Returns:
         a :class:`fiftyone.core.models.Model`
     """
+    if cache and name in _MODELS:
+        return _MODELS[name]
+
     if error_level is None:
         error_level = fo.config.requirement_error_level
 
@@ -204,7 +213,12 @@ def load_zoo_model(
     config_dict = deepcopy(model.default_deployment_config_dict)
     model_path = model.get_path_in_dir(models_dir)
 
-    return fom.load_model(config_dict, model_path=model_path, **kwargs)
+    model = fom.load_model(config_dict, model_path=model_path, **kwargs)
+
+    if cache:
+        _MODELS[name] = model
+
+    return model
 
 
 def find_zoo_model(name):

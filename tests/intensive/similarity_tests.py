@@ -12,7 +12,7 @@ You must run these tests interactively as follows::
 import unittest
 
 import fiftyone as fo
-import fiftyone.brain as fob
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.zoo as foz
 
 

@@ -203,7 +203,7 @@ Configuring your backend
 
 Annotation backends may be configured in a variety of backend-specific ways,
 which you can see by inspecting the parameters of a backend's associated
-|AnnotationBackendConfig| clas.
+|AnnotationBackendConfig| class.
 
 The relevant classes for the builtin annotation backends are:
 
