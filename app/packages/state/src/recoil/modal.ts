@@ -7,6 +7,6 @@ export const sidebarSampleId = selector({
   get: ({ get }) => {
     const override = get(sidebarOverride);
 
-    return override ? override : get(groupSample(null))._id;
+    return override ? override : get(groupSample(null)).sample._id;
   },
 });
