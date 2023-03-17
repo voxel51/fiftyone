@@ -123,14 +123,12 @@ const useSlice = (sample: any): string => {
   return sample[field].name;
 };
 
-const DefaultGroupSample: React.FC<{
+const AltGroupSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
   lookerRefCallback?: (looker) => void;
-}> = ({ lookerRef, lookerRefCallback }) => {
-  const defaultSlice = useRecoilValue(defaultGroupSlice);
-  const { sample, urls } = useRecoilValue(
-    groupSampleSelectorFamily(defaultSlice)
-  );
+  altSlice: string;
+}> = ({ lookerRef, lookerRefCallback, altSlice }) => {
+  const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(altSlice));
   const clearModal = useClearModal();
   const reset = useResetRecoilState(sidebarOverride);
 
@@ -139,7 +137,7 @@ const DefaultGroupSample: React.FC<{
   return (
     <GroupSample
       sampleId={sample._id}
-      slice={defaultSlice}
+      slice={altSlice}
       pinned={false}
       onClick={reset}
       {...hover.handlers}
@@ -161,21 +159,35 @@ const MainSample: React.FC<{
   lookerRefCallback?: (looker) => void;
 }> = ({ lookerRef, lookerRefCallback }) => {
   const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(null));
-  const currentModalSlice = useRecoilValue(currentSlice(true));
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
   const reset = useResetRecoilState(sidebarOverride);
-  const slice = useSlice(sample);
   const hover = fos.useHoveredSample(sample);
 
-  if (
-    sample._media_type === "point-cloud" &&
-    currentModalSlice === sample.group.name
-  ) {
+  const thisSampleSlice = useSlice(sample);
+  const currentModalSlice = useRecoilValue(currentSlice(true));
+  const defaultSlice = useRecoilValue(defaultGroupSlice);
+  const allSlices = useRecoilValue(fos.groupSlices);
+  const altSlice = useMemo(() => {
+    if (
+      sample._media_type !== "point-cloud" ||
+      currentModalSlice !== sample.group.name
+    )
+      return undefined;
+
+    if (currentModalSlice === defaultSlice) {
+      return allSlices.find((s) => s !== defaultSlice);
+    }
+
+    return defaultSlice;
+  }, [currentModalSlice, defaultSlice, sample, allSlices]);
+
+  if (altSlice) {
     return (
-      <DefaultGroupSample
+      <AltGroupSample
         lookerRef={lookerRef}
         lookerRefCallback={lookerRefCallback}
+        altSlice={altSlice}
       />
     );
   }
@@ -183,7 +195,7 @@ const MainSample: React.FC<{
   return (
     <GroupSample
       sampleId={sample._id}
-      slice={slice}
+      slice={thisSampleSlice}
       pinned={pinned}
       onClick={reset}
       {...hover.handlers}
