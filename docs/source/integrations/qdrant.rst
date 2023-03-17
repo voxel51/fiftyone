@@ -85,10 +85,7 @@ Next let's load a dataset into FiftyOne and compute embeddings for the samples:
     import fiftyone.zoo as foz
 
     # Step 2: Load your data into FiftyOne
-    dataset = foz.load_zoo_dataset(
-        "quickstart",
-        dataset_name="qdrant-vector-search-example",
-    )
+    dataset = foz.load_zoo_dataset("quickstart")
 
     # Steps 3 and 4: Compute embeddings and create a similarity index
     qdrant_index = fob.compute_similarity(
@@ -163,7 +160,7 @@ To use the Qdrant backend, simply set the optional `backend` parameter of
 
     import fiftyone.brain as fob
 
-    fob.compute_similarity(view, backend="qdrant", ...)
+    fob.compute_similarity(..., backend="qdrant", ...)
 
 Alternatively, you can permanently configure FiftyOne to use the Qdrant backend
 by setting the `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment
@@ -227,10 +224,7 @@ require connections to Qdrant:
 
     import fiftyone.brain as fob 
     
-    dataset = foz.load_zoo_dataset("quickstart")
-
     qdrant_index = fob.compute_similarity(
-        dataset,
         ...
         backend="qdrant",
         brain_key="qdrant_index",
@@ -243,8 +237,6 @@ when loading an index later via
 
 .. code:: python
     :linenos:
-
-    import fiftyone.brain as fob
 
     qdrant_index = dataset.load_brain_results(
         "qdrant_index",
@@ -317,14 +309,12 @@ a specific new index:
     :linenos:
 
     qdrant_index = fob.compute_similarity(
-        dataset,
         ...
         backend="qdrant",
         brain_key="qdrant_index",
         collection_name="your-collection-name",
         metric="cosine",
         replication_factor=1,
-        ...
     )
 
 .. _qdrant-managing-brain-runs:
@@ -340,6 +330,8 @@ to see the available brain keys on a dataset:
 
 .. code:: python
     :linenos:
+
+    import fiftyone.brain as fob
 
     # List all brain runs
     dataset.list_brain_runs()
@@ -568,17 +560,17 @@ to update the Qdrant index to reflect these changes:
     print(qdrant_index.total_index_size)  # 200
 
     view = dataset.take(10)
-    sample_ids = view.values("id")
+    ids = view.values("id")
 
     # Delete 10 samples from a dataset
     dataset.delete_samples(view)
 
     # Delete the corresponding vectors from the index
-    qdrant_index.remove_from_index(sample_ids=sample_ids)
+    qdrant_index.remove_from_index(sample_ids=ids)
 
     # Add 20 samples to a dataset
-    add_samples = [fo.Sample(filepath="tmp%d.jpg" % i) for i in range(20)]
-    sample_ids = dataset.add_samples(add_samples)
+    samples = [fo.Sample(filepath="tmp%d.jpg" % i) for i in range(20)]
+    sample_ids = dataset.add_samples(samples)
 
     # Add corresponding embeddings to the index
     embeddings = np.random.rand(20, 512)
@@ -614,10 +606,14 @@ to retrieve embeddings from a Qdrant index by ID:
     # Retrieve embeddings for the entire dataset
     ids = dataset.values("id")
     embeddings, sample_ids, _ = qdrant_index.get_embeddings(sample_ids=ids)
+    print(embeddings.shape)  # (200, 512)
+    print(sample_ids.shape)  # (200,)
 
     # Retrieve embeddings for a view
     ids = dataset.take(10).values("id")
     embeddings, sample_ids, _ = qdrant_index.get_embeddings(sample_ids=ids)
+    print(embeddings.shape)  # (10, 512)
+    print(sample_ids.shape)  # (10,)
 
 .. _qdrant-query:
 
@@ -719,7 +715,7 @@ In particular, the `hnsw_config`, `wal_config`, and `optimizers_config`
 parameters may impact the quality of your query results, as well as the time
 and memory required to perform approximate nearest neighbor searches.
 Additionally, you can specify parameters like `replication_factor` and
-`shards_number` to further tune performance.
+`shard_number` to further tune performance.
 
 Here's an example of creating a similarity index backed by a customized Qdrant
 collection. Just for fun, we'll specify a custom collection name, use dot
@@ -738,18 +734,17 @@ product similarity, and populate the index for only a subset of our dataset:
     qdrant_index = fob.compute_similarity(
         dataset,
         model="clip-vit-base32-torch",
-        embeddings=False,  # compute these later
+        embeddings=False,  # we'll add embeddings below
         metric="dotproduct",
         brain_key="qdrant_index",
         backend="qdrant",
         collection_name="custom-quickstart-index",
-        hnsw_config={"ef_construct": 100},
         replication_factor=2,
-        shards_number=2,
+        shard_number=2,
     )
 
     # Add embeddings for a subset of the dataset
-    view = dataset.take(100)
+    view = dataset.take(10)
     embeddings, sample_ids, _ = qdrant_index.compute_embeddings(view)
     qdrant_index.add_to_index(embeddings, sample_ids)
 

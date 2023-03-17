@@ -804,7 +804,7 @@ the index without initially adding any embeddings to it:
         image_index = fob.compute_similarity(
             dataset,
             model="clip-vit-base32-torch",  # custom model
-            embeddings=False,               # compute embeddings later
+            embeddings=False,               # add embeddings later
             backend="sklearn",              # custom backend
             brain_key="img_sim",
         )
@@ -820,7 +820,7 @@ the index without initially adding any embeddings to it:
             dataset,
             patches_field="ground_truth",   # field containing objects of interest
             model="clip-vit-base32-torch",  # custom model
-            embeddings=False,               # compute embeddings later
+            embeddings=False,               # add embeddings later
             backend="sklearn",              # custom backend
             brain_key="gt_sim",
         )
@@ -902,7 +902,6 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
         embeddings, sample_ids, _ = image_index.compute_embeddings(view1)
         image_index.add_to_index(embeddings, sample_ids)
         print(image_index.total_index_size)  # 100
-
 
         #
         # Approach 2: manually compute embeddings for `view2`
@@ -1054,9 +1053,9 @@ to delete embeddings from an index by their ID:
     .. code:: python
         :linenos:
 
-        sample_ids = dataset.take(50).values("id")
+        ids = dataset.take(50).values("id")
 
-        image_index.remove_from_index(sample_ids=sample_ids)
+        image_index.remove_from_index(sample_ids=ids)
         print(image_index.total_index_size)  # 150
 
         # Must save after edits when using the sklearn backend
@@ -1782,8 +1781,9 @@ You can permanently customize your brain config by creating a
 `~/.fiftyone/brain_config.json` file on your machine. The JSON file may contain
 any desired subset of config fields that you wish to customize.
 
-For example, the following config JSON file customizes the URL of your Qdrant
-server without changing any other default config settings:
+For example, the following config JSON file customizes the URL of your
+:ref:`Qdrant server <qdrant-integration>` without changing any other default
+config settings:
 
 .. code-block:: json
 
@@ -1823,7 +1823,8 @@ declare in this way will be passed as keyword arguments to methods like
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` whenever the
 corresponding backend is in use.
 
-For example, you can configure the URL of your Qdrant server as follows:
+For example, you can configure the URL of your
+:ref:`Qdrant server <qdrant-integration>` as follows:
 
 .. code-block:: shell
 
