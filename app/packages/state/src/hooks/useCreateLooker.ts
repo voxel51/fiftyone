@@ -32,7 +32,9 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal ? useRecoilValue(groupSample(null))._id : null;
+  const activeId = isModal
+    ? useRecoilValue(groupSample(null)).sample._id
+    : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
