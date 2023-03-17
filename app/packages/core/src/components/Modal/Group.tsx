@@ -128,7 +128,9 @@ const DefaultGroupSample: React.FC<{
   lookerRefCallback?: (looker) => void;
 }> = ({ lookerRef, lookerRefCallback }) => {
   const defaultSlice = useRecoilValue(defaultGroupSlice);
-  const sample = useRecoilValue(groupSampleSelectorFamily(defaultSlice));
+  const { sample, urls } = useRecoilValue(
+    groupSampleSelectorFamily(defaultSlice)
+  );
   const clearModal = useClearModal();
   const reset = useResetRecoilState(sidebarOverride);
 
@@ -145,6 +147,7 @@ const DefaultGroupSample: React.FC<{
       <Looker
         key={sample._id}
         sample={sample}
+        urls={urls}
         lookerRef={lookerRef}
         lookerRefCallback={lookerRefCallback}
         onClose={clearModal}
@@ -157,7 +160,7 @@ const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
   lookerRefCallback?: (looker) => void;
 }> = ({ lookerRef, lookerRefCallback }) => {
-  const sample = useRecoilValue(groupSampleSelectorFamily(null));
+  const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(null));
   const currentModalSlice = useRecoilValue(currentSlice(true));
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
@@ -187,6 +190,7 @@ const MainSample: React.FC<{
     >
       <Looker
         sample={sample}
+        urls={urls}
         key={sample._id}
         lookerRef={lookerRef}
         lookerRefCallback={lookerRefCallback}
