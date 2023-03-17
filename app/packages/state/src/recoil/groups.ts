@@ -19,6 +19,7 @@ import {
   getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
+  SampleData,
   sidebarOverride,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
@@ -212,7 +213,7 @@ export const activeModalSample = selectorFamily<
         return get(pinnedSliceSample).sample;
       }
 
-      return get(groupSample(sliceName));
+      return get(groupSample(sliceName)).sample;
     },
 });
 
@@ -241,27 +242,27 @@ const groupSampleQuery = graphQLSelectorFamily<
     },
 });
 
-export const groupSample = selectorFamily<AppSample, SliceName>({
+export const groupSample = selectorFamily<SampleData, SliceName>({
   key: "mainGroupSample",
   get:
     (sliceName) =>
     ({ get }) => {
       if (sliceName) {
-        return get(groupSampleQuery(sliceName)).sample.sample as AppSample;
+        return get(groupSampleQuery(sliceName)).sample as AppSample;
       }
 
       const field = get(groupField);
       const group = get(isGroup);
 
-      const sample = get(modal).sample;
+      const sample = get(modal);
 
       if (!field || !group) return sample;
 
-      if (sample[field].name === get(groupSlice(true))) {
+      if (sample.sample[field].name === get(groupSlice(true))) {
         return sample;
       }
 
-      return get(groupSampleQuery(sliceName)).sample.sample as AppSample;
+      return get(groupSampleQuery(sliceName)).sample as AppSample;
     },
 });
 
