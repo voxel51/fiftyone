@@ -83,10 +83,9 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-            -pno:dash
       - name: Run no wrapper tests
         run: |
-          pytest tests/no_wrapper --verbose -pno:dash
+          pytest tests/no_wrapper --verbose
       # Intended to run even if the tests above failed
       - name: Run isolated tests
         if: success() || failure()
