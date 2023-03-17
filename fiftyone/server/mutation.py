@@ -322,7 +322,11 @@ class Mutation:
         # If the current view is deleted, set the view state to the full
         # dataset view
         state = get_state()
-        if view_name and state.view_name == view_name:
+        if (
+            view_name
+            and state.view is not None
+            and state.view.name == view_name
+        ):
             state.view = dataset.view()
             state.view_name = None
 
