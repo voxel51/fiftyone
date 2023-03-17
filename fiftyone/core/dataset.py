@@ -443,6 +443,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _init_frames(self):
         if self._frame_doc_cls is not None:
+            # Legacy datasets may not have frame fields declared yet
+            if not self._doc.frame_fields:
+                self._doc.frame_fields = [
+                    foo.SampleFieldDocument.from_field(field)
+                    for field in self._frame_doc_cls._fields.values()
+                ]
+
             return
 
         frame_collection_name = _make_frame_collection_name(
@@ -451,6 +458,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame_doc_cls = _create_frame_document_cls(
             self, frame_collection_name, field_docs=self._doc.frame_fields
         )
+
         _create_indexes(None, frame_collection_name)
 
         self._doc.frame_collection_name = frame_collection_name
