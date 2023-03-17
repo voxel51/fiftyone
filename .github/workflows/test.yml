@@ -87,7 +87,8 @@ jobs:
             --ignore tests/isolated/ \
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
-            --ignore tests/no_wrapper
+            --ignore tests/no_wrapper \
+            -pno:dash
       - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
         uses: codecov/codecov-action@v3
@@ -97,7 +98,7 @@ jobs:
           flags: python
       - name: Run no wrapper tests
         run: |
-          pytest tests/no_wrapper --verbose
+          pytest tests/no_wrapper --verbose -pno:dash
       # Intended to run even if the tests above failed
       - name: Run isolated tests
         if: success() || failure()
