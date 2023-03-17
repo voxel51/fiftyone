@@ -114,7 +114,7 @@ export const Environment = ({
     return Math.ceil(maxInProjectionPlane * 1.1); // add 10% padding
   }, [bounds, isDefaultUpX, isDefaultUpY, isDefaultUpZ]);
 
-  const numGridLlines = useMemo(() => {
+  const numGridLines = useMemo(() => {
     const numLines = Math.ceil(gridSize / 10);
     return numLines === 1 ? 5 : numLines;
   }, [gridSize]);
@@ -135,7 +135,7 @@ export const Environment = ({
 
       {isGridOn && (
         <gridHelper
-          args={[gridSize, numGridLlines]}
+          args={[gridSize, numGridLines]}
           quaternion={gridHelperQuarternion}
         />
       )}
