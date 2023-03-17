@@ -442,23 +442,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.sample_fields[idx] = field_doc
 
     def _init_frames(self):
-        if not self._is_clips:
-            frame_collection_name = _make_frame_collection_name(
-                self._sample_collection_name
-            )
-            frame_doc_cls = _create_frame_document_cls(
-                self, frame_collection_name, field_docs=self._doc.frame_fields
-            )
+        if self._frame_doc_cls is not None:
+            return
 
-            _create_indexes(None, frame_collection_name)
+        frame_collection_name = _make_frame_collection_name(
+            self._sample_collection_name
+        )
+        frame_doc_cls = _create_frame_document_cls(
+            self, frame_collection_name, field_docs=self._doc.frame_fields
+        )
+        _create_indexes(None, frame_collection_name)
 
-            self._doc.frame_collection_name = frame_collection_name
-            self._frame_doc_cls = frame_doc_cls
-
+        self._doc.frame_collection_name = frame_collection_name
         self._doc.frame_fields = [
             foo.SampleFieldDocument.from_field(field)
-            for field in self._frame_doc_cls._fields.values()
+            for field in frame_doc_cls._fields.values()
         ]
+        self._frame_doc_cls = frame_doc_cls
 
     @property
     def group_field(self):
