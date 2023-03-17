@@ -11,7 +11,6 @@ from copy import deepcopy
 import itertools
 import random
 import reprlib
-from tracemalloc import start
 import uuid
 import warnings
 
@@ -23,7 +22,6 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
-import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
@@ -7586,13 +7584,11 @@ def _get_default_similarity_run(sample_collection, supports_prompts=False):
 
         if not brain_keys:
             raise ValueError(
-                "Dataset '%s' has no similarity results for field '%s'. You "
-                "must run "
-                "`fiftyone.brain.compute_similarity(..., patches_field='%s', ...)` "
-                "in order to sort the patches in this view by similarity"
+                "Dataset '%s' has no compatible%s similarity results for "
+                "field '%s'"
                 % (
                     sample_collection.dataset_name,
-                    patches_field,
+                    " %s" % kwargs if kwargs else "",
                     patches_field,
                 )
             )
@@ -7614,11 +7610,14 @@ def _get_default_similarity_run(sample_collection, supports_prompts=False):
 
         if not brain_keys:
             raise ValueError(
-                "Dataset '%s' has no similarity results for its '%s' or '%s' "
-                "fields. You must run "
-                "`fiftyone.brain.compute_similarity(..., patches_field=label_field, ...)` "
-                "in order to sort the patches in this view by similarity"
-                % (sample_collection.dataset_name, gt_field, pred_field)
+                "Dataset '%s' has no compatible%s similarity results for its "
+                "'%s' or '%s' fields"
+                % (
+                    sample_collection.dataset_name,
+                    " %s" % kwargs if kwargs else "",
+                    gt_field,
+                    pred_field,
+                )
             )
     else:
         # Try sample indexes first
@@ -7637,9 +7636,12 @@ def _get_default_similarity_run(sample_collection, supports_prompts=False):
 
         if not brain_keys:
             raise ValueError(
-                "Dataset '%s' has no similarity results for its samples. You "
-                "must run `fiftyone.brain.compute_similarity()` in order to "
-                "sort by similarity" % sample_collection.dataset_name
+                "Dataset '%s' has no compatible%s similarity results for its "
+                "samples"
+                % (
+                    sample_collection.dataset_name,
+                    " %s" % kwargs if kwargs else "",
+                )
             )
 
     brain_key = brain_keys[0]

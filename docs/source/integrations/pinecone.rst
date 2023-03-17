@@ -79,10 +79,7 @@ samples:
     import fiftyone.zoo as foz
 
     # Step 1: Load your data into FiftyOne
-    dataset = foz.load_zoo_dataset(
-        "quickstart",
-        dataset_name="pinecone-vector-search-example",
-    )
+    dataset = foz.load_zoo_dataset("quickstart")
 
     # Steps 2 and 3: Compute embeddings and create a similarity index
     pinecone_index = fob.compute_similarity(
@@ -155,7 +152,7 @@ To use the Pinecone backend, simply set the optional `backend` parameter of
 
     import fiftyone.brain as fob
 
-    fob.compute_similarity(view, backend="pinecone", ...)
+    fob.compute_similarity(..., backend="pinecone", ...)
 
 Alternatively, you can permanently configure FiftyOne to use the Pinecone
 backend by setting the `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment
@@ -224,10 +221,7 @@ connections to Pinecone:
 
     import fiftyone.brain as fob 
     
-    dataset = foz.load_zoo_dataset("quickstart")
-
     pinecone_index = fob.compute_similarity(
-        dataset,
         ...
         backend="pinecone",
         brain_key="pinecone_index",
@@ -241,8 +235,6 @@ when loading an index later via
 
 .. code:: python
     :linenos:
-
-    import fiftyone.brain as fob
 
     pinecone_index = dataset.load_brain_results(
         "pinecone_index",
@@ -290,7 +282,7 @@ that includes all of the available parameters:
                 "replicas": 1,
                 "shards": 1,
                 "pods": 1,
-                "pod_type": "p1",
+                "pod_type": "p1"
             }
         }
     }
@@ -303,7 +295,6 @@ a specific new index:
     :linenos:
 
     pinecone_index = fob.compute_similarity(
-        dataset,
         ...
         backend="pinecone",
         brain_key="pinecone_index",
@@ -311,7 +302,6 @@ a specific new index:
         metric="cosine",
         pod_type="s1",
         pods=2,
-        ...
     )
 
 .. _pinecone-managing-brain-runs:
@@ -327,6 +317,8 @@ to see the available brain keys on a dataset:
 
 .. code:: python
     :linenos:
+
+    import fiftyone.brain as fob
 
     # List all brain runs
     dataset.list_brain_runs()
@@ -554,17 +546,17 @@ to update the Pinecone index to reflect these changes:
     print(pinecone_index.total_index_size)  # 200
 
     view = dataset.take(10)
-    sample_ids = view.values("id")
+    ids = view.values("id")
 
     # Delete 10 samples from a dataset
     dataset.delete_samples(view)
 
     # Delete the corresponding vectors from the index
-    pinecone_index.remove_from_index(sample_ids=sample_ids)
+    pinecone_index.remove_from_index(sample_ids=ids)
 
     # Add 20 samples to a dataset
-    add_samples = [fo.Sample(filepath="tmp%d.jpg" % i) for i in range(20)]
-    sample_ids = dataset.add_samples(add_samples)
+    samples = [fo.Sample(filepath="tmp%d.jpg" % i) for i in range(20)]
+    sample_ids = dataset.add_samples(samples)
 
     # Add corresponding embeddings to the index
     embeddings = np.random.rand(20, 512)
@@ -600,10 +592,14 @@ to retrieve embeddings from a Pinecone index by ID:
     # Retrieve embeddings for the entire dataset
     ids = dataset.values("id")
     embeddings, sample_ids, _ = pinecone_index.get_embeddings(sample_ids=ids)
+    print(embeddings.shape)  # (200, 512)
+    print(sample_ids.shape)  # (200,)
 
     # Retrieve embeddings for a view
     ids = dataset.take(10).values("id")
     embeddings, sample_ids, _ = pinecone_index.get_embeddings(sample_ids=ids)
+    print(embeddings.shape)  # (10, 512)
+    print(sample_ids.shape)  # (10,)
 
 .. _pinecone-query:
 
@@ -690,7 +686,7 @@ underlying Pinecone client instance and use its methods as desired:
 
     print(pinecone_index.index)
 
-    # The Pinecone SDK is already initialized for you
+    # The Pinecone SDK is already initialized for you as well
     import pinecone
     print(pinecone.list_indexes())
 
@@ -720,7 +716,7 @@ product similarity, and populate the index for only a subset of our dataset:
     pinecone_index = fob.compute_similarity(
         dataset,
         model="clip-vit-base32-torch",
-        embeddings=False,  # compute these later
+        embeddings=False,  # we'll add embeddings below
         metric="dotproduct",
         brain_key="pinecone_index",
         backend="pinecone",
@@ -731,12 +727,12 @@ product similarity, and populate the index for only a subset of our dataset:
     )
 
     # Add embeddings for a subset of the dataset
-    view = dataset.take(100)
+    view = dataset.take(10)
     embeddings, sample_ids, _ = pinecone_index.compute_embeddings(view)
     pinecone_index.add_to_index(embeddings, sample_ids)
 
     print(pinecone_index.index)
 
-    # The Pinecone SDK is already initialized for you
+    # The Pinecone SDK is already initialized for you as well
     import pinecone
     print(pinecone.list_indexes())
