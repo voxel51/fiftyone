@@ -391,7 +391,7 @@ def _create_media_urls(
     cache: t.Dict,
     additional_fields: t.Optional[t.List[str]] = None,
 ) -> t.Dict[str, str]:
-    media_fields = collection.app_config.media_fields
+    media_fields = collection.app_config.media_fields.copy()
 
     if additional_fields is not None:
         media_fields.extend(additional_fields)
