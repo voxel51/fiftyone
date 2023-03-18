@@ -103,7 +103,16 @@ async def get_metadata(
     if filepath not in metadata_cache:
         try:
             # Retrieve media metadata from disk
-            metadata_cache[filepath] = await read_metadata(filepath, is_video)
+            if opm_field:
+                opm_img_path = _deep_get(sample, opm_field + ".filepath")
+                if opm_img_path:
+                    metadata_cache[filepath] = await read_metadata(
+                        opm_img_path, False
+                    )
+                else:
+                    metadata_cache[filepath] = await read_metadata(
+                        filepath, is_video
+                    )
         except Exception as exc:
             # Immediately fail so the user knows they should install FFmpeg
             if isinstance(exc, FFmpegNotFoundException):
