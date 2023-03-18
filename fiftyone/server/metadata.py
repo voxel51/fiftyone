@@ -113,6 +113,10 @@ async def get_metadata(
                     metadata_cache[filepath] = await read_metadata(
                         filepath, is_video
                     )
+            else:
+                metadata_cache[filepath] = await read_metadata(
+                    filepath, is_video
+                )
         except Exception as exc:
             # Immediately fail so the user knows they should install FFmpeg
             if isinstance(exc, FFmpegNotFoundException):
