@@ -165,7 +165,7 @@ class SerializableDocument(object):
         Returns:
             a :class:`SerializableDocument`
         """
-        return deepcopy(self)
+        raise NotImplementedError("Subclass must implement copy()")
 
     def merge(self, doc, merge_lists=True, merge_dicts=True, overwrite=True):
         """Merges the contents of the given document into this document.
@@ -283,15 +283,6 @@ class MongoEngineBaseDocument(SerializableDocument):
     def __delitem__(self, name):
         self.clear_field(name)
 
-    def __deepcopy__(self, memo):
-        # pylint: disable=no-member, unsubscriptable-object
-        kwargs = {
-            f: deepcopy(self.get_field(f), memo)
-            for f in self._fields_ordered
-            if f not in ("_cls", "_id", "id")
-        }
-        return self.__class__(**kwargs)
-
     @property
     def field_names(self):
         return self._get_field_names(include_private=False)
@@ -379,6 +370,12 @@ class MongoEngineBaseDocument(SerializableDocument):
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return self._fields_ordered
+
+    def copy(self):
+        # pylint: disable=no-member, unsubscriptable-object
+        return self.__class__(
+            **{f: deepcopy(self.get_field(f)) for f in self._fields_ordered}
+        )
 
     def to_dict(self, extended=False):
         # pylint: disable=no-member
@@ -494,9 +491,15 @@ class BaseDocument(MongoEngineBaseDocument):
 
         return super().__eq__(other)
 
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return self._fields_ordered
+    def copy(self):
+        # pylint: disable=no-member, unsubscriptable-object
+        return self.__class__(
+            **{
+                f: deepcopy(self.get_field(f))
+                for f in self._fields_ordered
+                if f != "id"
+            }
+        )
 
     @property
     def in_db(self):
