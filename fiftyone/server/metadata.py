@@ -28,6 +28,7 @@ from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
 import fiftyone.core.cache as foc
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
@@ -78,7 +79,7 @@ async def get_metadata(
 
     opm_field, additional_fields = _get_additional_media_fields(collection)
 
-    filepath_result, filepath_source, urls = _create_media_urls(
+    filepath_result, filepath_source, urls = await _create_media_urls(
         collection,
         sample,
         url_cache,
@@ -497,7 +498,10 @@ async def _create_media_urls(
 ) -> t.Dict[str, str]:
     filepath_source = None
     media_fields = collection.app_config.media_fields.copy()
-
+    local_only = (
+        collection.media_type == fom.IMAGE
+        and foc.media_cache.config.cache_app_images
+    )
     if additional_fields is not None:
         media_fields.extend(additional_fields)
 
@@ -512,13 +516,18 @@ async def _create_media_urls(
     )
     filepath = None
     media_urls = []
-
     for field in media_fields:
         path = _deep_get(sample, field)
+        if not path:
+            continue
 
         if path in cache:
-            if field == "filepath":
-                filepath_url = cache[path]
+            if opm_filepath == field:
+                filepath = path
+                filepath_source = cache[path]
+            elif not opm_filepath and field == "filepath":
+                filepath_source = cache[path]
+                filepath = path
 
             media_urls.append(dict(field=field, url=cache[path]))
             continue
@@ -536,10 +545,14 @@ async def _create_media_urls(
 
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
-        if field == "filepath":
-            filepath_url = cache[path]
+        if opm_filepath == field:
+            filepath_source = url
+            filepath = path
+        elif not opm_filepath and field == "filepath":
+            filepath_source = url
+            filepath = path
 
-    return filepath_url, media_urls
+    return filepath, filepath_source, media_urls
 
 
 def _get_additional_media_fields(

@@ -2,12 +2,12 @@ import {
   FrameLooker,
   ImageLooker,
   PcdLooker,
-  VideoLooker,
+  VideoLooker
 } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   getMimeType,
-  LIST_FIELD,
+  LIST_FIELD
 } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";

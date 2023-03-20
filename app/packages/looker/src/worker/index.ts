@@ -11,7 +11,7 @@ import {
   LABEL_LIST,
   setFetchFunction,
   Stage,
-  VALID_LABEL_TYPES,
+  VALID_LABEL_TYPES
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "../constants";
@@ -117,7 +117,6 @@ const imputeOverlayFromPath = async (
   const overlayPngImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`]
   );
-  console.log(overlayPngImageUrl);
 
   const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",

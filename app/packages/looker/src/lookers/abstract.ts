@@ -8,7 +8,7 @@ import {
   LABEL_LISTS_MAP,
   LIST_FIELD,
   Schema,
-  withPath,
+  withPath
 } from "@fiftyone/utilities";
 import { v4 as uuid } from "uuid";
 
@@ -18,7 +18,7 @@ import {
   FONT_SIZE,
   PAD,
   POINT_RADIUS,
-  STROKE_WIDTH,
+  STROKE_WIDTH
 } from "../constants";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
@@ -31,7 +31,7 @@ import {
   LabelData,
   Optional,
   Sample,
-  StateUpdate,
+  StateUpdate
 } from "../state";
 import {
   createWorker,
@@ -40,7 +40,7 @@ import {
   getFitRect,
   getMimeType,
   mergeUpdates,
-  snapBox,
+  snapBox
 } from "../util";
 
 import { Events } from "../elements/base";
