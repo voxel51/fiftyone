@@ -32,6 +32,18 @@ def execute_operator(operator_name, request_params):
     return ExecutionResult(ctx, raw_result, None)
 
 
+def resolve_type(operator_name, request_params):
+    if operator_exists(operator_name) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_name)
+
+    operator = get_operator(operator_name)
+    ctx = ExecutionContext(request_params)
+    try:
+        return operator.resolve_type(ctx, request_params.get("type", "inputs"))
+    except Exception as e:
+        return ExecutionResult(ctx, None, str(e))
+
+
 class ExecutionContext:
     def __init__(self, execution_request_params):
         self.request_params = execution_request_params
