@@ -11,6 +11,7 @@ from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
 import fiftyone.server.constants as foc
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
 
@@ -28,8 +29,17 @@ class Values(HTTPEndpoint):
         sample_id = data.get("sample_id", None)
         stages = data.get("view", [])
         extended = data.get("extended", None)
+        group_id = data.get("group_id", None)
+        slice = data.get("slice", None)
 
-        view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
+        view = fosv.get_view(
+            dataset,
+            stages=stages,
+            extended_stages=extended,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
+        )
 
         if sample_id is not None:
             view = view.select(sample_id)

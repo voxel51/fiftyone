@@ -771,22 +771,28 @@ class CountValues(Aggregation):
                 }
             ]
 
-        if self._search or self._selected:
+        exprs = []
+        if self._search:
+            exprs.append(
+                {
+                    "$regexMatch": {
+                        "input": "$_id",
+                        "regex": self._search,
+                        "options": None,
+                    }
+                },
+            )
+
+        if self._selected:
+            exprs.append({"$not": {"$in": ["$_id", self._selected]}})
+
+        if exprs:
             pipeline += [
                 {
                     "$match": {
-                        "$expr": {
-                            "$and": [
-                                {"$not": {"$in": ["$_id", self._selected]}},
-                                {
-                                    "$regexMatch": {
-                                        "input": "$_id",
-                                        "regex": self._search,
-                                        "options": None,
-                                    }
-                                },
-                            ]
-                        }
+                        "$expr": {"$and": exprs}
+                        if len(exprs) > 1
+                        else exprs[0]
                     }
                 }
             ]
