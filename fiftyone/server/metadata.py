@@ -385,13 +385,7 @@ def _create_media_urls(
     opm_field: t.Optional[str] = None,
 ) -> t.Dict[str, str]:
     filepath_source = None
-    media_fields = list(
-        (
-            collection.app_config.media_fields
-            if collection.app_config
-            else ["filepath"]
-        )
-    )
+    media_fields = collection.app_config.media_fields.copy()
 
     if additional_fields is not None:
         media_fields.extend(additional_fields)
