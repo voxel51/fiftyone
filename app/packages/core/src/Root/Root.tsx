@@ -53,7 +53,7 @@ const rootQuery = graphql`
   }
 `;
 
-const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
+export const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
   const refresh = useRecoilValue(fos.refresher);
 
   return (search: string) => {

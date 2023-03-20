@@ -25,6 +25,7 @@ const PromptContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  z-index: 999;
 `;
 
 const PromptModal = styled.div`
