@@ -11,18 +11,18 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import * as fos from "@fiftyone/state";
-import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { Selector, useTheme } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
+import * as fos from "@fiftyone/state";
+import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 
-import withSuspense from "../withSuspense";
+import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
+import withSuspense from "../withSuspense";
 import ResultComponent from "./ResultComponent";
 import Wrapper from "./Wrapper";
-import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
-import Checkbox from "../../Common/Checkbox";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -65,6 +65,8 @@ const categoricalSearchResults = selectorFamily<
     async ({ get }) => {
       const search = get(categoricalSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
+      const mixed = get(groupStatistics(modal)) === "group";
+      const group = get(groupId) || null;
       let sampleId: string | undefined = undefined;
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
       if (modal) {
@@ -88,7 +90,10 @@ const categoricalSearchResults = selectorFamily<
           path,
           search,
           selected,
-          sample_id: sampleId,
+          group_id: modal ? group : null,
+          mixed,
+          slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          sample_id: modal && !group && !mixed ? sampleId : null,
           ...sorting,
         });
       }
@@ -154,7 +159,7 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
         const keys = path.split(".");
         let parent = keys[0];
 
-        let f = get(fos.field(parent));
+        const f = get(fos.field(parent));
         if (!f && parent === "frames") {
           parent = `frames.${keys[1]}`;
         }
