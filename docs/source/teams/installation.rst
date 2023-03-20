@@ -177,10 +177,10 @@ of environment variables shown below:
 .. code-block:: shell
 
     # Option 3
+    export AZURE_STORAGE_ACCOUNT=...
     export AZURE_CLIENT_ID=...
     export AZURE_CLIENT_SECRET=...
     export AZURE_TENANT_ID=...
-    export AZURE_STORAGE_ACCOUNT=...
 
 4. Provide your Azure credentials in any manner recognized by
 `azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
@@ -191,7 +191,6 @@ the following:
 .. code-block:: shell
 
     [default]
-    account_name = ...
     conn_str = ...
     alias = ...  # optional
 
@@ -234,7 +233,7 @@ alias:
 .. note::
 
     If you use a
-    :ref:`custom Azure domain <https://learn.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name?tabs=azure-portal>`_,
+    `custom Azure domain <https://learn.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name?tabs=azure-portal>`_,
     you can provide it by setting the
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
