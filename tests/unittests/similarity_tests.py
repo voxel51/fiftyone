@@ -10,9 +10,9 @@ import unittest
 import numpy as np
 
 import fiftyone as fo
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 from fiftyone.core.brain import BrainMethod
 from fiftyone.core.evaluation import EvaluationMethod
-import fiftyone.brain as fob
 
 from decorators import drop_datasets
 
@@ -83,9 +83,6 @@ class SimilarityTests(unittest.TestCase):
 
         bad_keys = dataset.list_brain_runs(type=EvaluationMethod)
         self.assertEqual(bad_keys, [])
-
-        # @todo remove once fiftyone-brain is updated
-        results._backend = info.config.build()
 
         results.save()
 

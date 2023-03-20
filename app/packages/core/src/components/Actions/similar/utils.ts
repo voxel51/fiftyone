@@ -1,13 +1,20 @@
 import {
+  Method,
   ModalSample,
   selectedLabels,
+  useBrowserStorage,
   useUnprocessedStateUpdate,
 } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-import { selectorFamily, Snapshot, useRecoilCallback } from "recoil";
-import { searchBrainKeyValue } from "./Similar";
+import {
+  selectorFamily,
+  Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useMemo } from "react";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -17,15 +24,15 @@ export const getQueryIds = async (
   const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
   const methods = await snapshot.getPromise(fos.similarityMethods);
 
+  const labels_field = methods.patches
+    .filter(([method]) => method.key === brainKey)
+    .map(([_, value]) => value)[0];
+
   if (selectedLabelIds.size) {
     return [...selectedLabelIds].filter(
       (id) => selectedLabels[id].field === labels_field
     );
   }
-
-  const labels_field = methods.patches
-    .filter(([method]) => method.key === brainKey)
-    .map(([_, value]) => value)[0];
 
   const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
@@ -56,6 +63,12 @@ export const getQueryIds = async (
 export const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
+  const datasetId = useRecoilValue(fos.dataset).id;
+  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
+    useBrowserStorage("lastUsedBrainKeys");
+  const current = useMemo(() => {
+    return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
+  }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -75,6 +88,14 @@ export const useSortBySimilarity = (close) => {
         };
 
         combinedParameters["query"] = query ?? queryIds;
+
+        // save the brainkey into local storage
+        setLastUsedBrainKeys(
+          JSON.stringify({
+            ...current,
+            [datasetId]: combinedParameters.brainKey,
+          })
+        );
 
         try {
           const data: fos.StateUpdate = await getFetchFunction()(
@@ -120,23 +141,26 @@ export const availableSimilarityKeys = selectorFamily<
         get(fos.isPatchesView) ||
         (params.modal && get(fos.hasSelectedLabels))
       ) {
-        return get(availablePatchesSimilarityKeys(params));
+        return get(availablePatchesSimilarityKeys(params)).map(
+          ({ key }) => key
+        );
       }
 
       const { samples: methods } = get(fos.similarityMethods);
 
       if (params.isImageSearch) {
-        return methods.map(({ key }) => key);
+        return methods.map(({ key }) => key).sort();
       }
 
       return methods
         .filter((method) => method.supportsPrompts === true)
-        .map(({ key }) => key);
+        .map(({ key }) => key)
+        .sort();
     },
 });
 
 const availablePatchesSimilarityKeys = selectorFamily<
-  string[],
+  Method[],
   {
     modal: boolean;
     isImageSearch: boolean;
@@ -146,12 +170,12 @@ const availablePatchesSimilarityKeys = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      let patches: [string, string][] = [];
+      let patches: [Method, string][] = [];
       let { patches: methods } = get(fos.similarityMethods);
       if (!params.isImageSearch) {
         methods = methods.filter(([method]) => method.supportsPrompts === true);
       }
-      patches = methods.map(([{ key }, field]) => [key, field]);
+      patches = methods.map(([method, field]) => [method, field]);
 
       if (params.modal) {
         if (get(fos.hasSelectedLabels)) {
@@ -183,13 +207,10 @@ export const currentSimilarityKeys = selectorFamily<
   get:
     ({ modal, isImageSearch }) =>
     ({ get }) => {
-      const searchBrainKey = get(searchBrainKeyValue);
       const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
-      const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
-
       return {
         total: keys.length,
-        choices: result.slice(0, 11),
+        choices: keys,
       };
     },
 });
@@ -210,5 +231,23 @@ export const sortType = selectorFamily<string, boolean>({
       }
 
       return "patches";
+    },
+});
+
+export const currentBrainConfig = selectorFamily<Method | undefined, string>({
+  key: "currenBrainConfig",
+  get:
+    (key) =>
+    ({ get }) => {
+      if (get(fos.isPatchesView)) {
+        const { patches: patches } = get(fos.similarityMethods);
+        const patch = patches.find(([method, _]) => method.key === key);
+        if (patch) {
+          return patch[0];
+        }
+      }
+
+      const { samples: methods } = get(fos.similarityMethods);
+      return methods.find((method) => method.key === key);
     },
 });
