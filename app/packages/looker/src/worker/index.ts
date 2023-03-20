@@ -117,7 +117,6 @@ const imputeOverlayFromPath = async (
   const overlayPngImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`]
   );
-  console.log(overlayPngImageUrl);
 
   const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",
