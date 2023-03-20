@@ -1486,7 +1486,11 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         dataset_dir: the dataset directory
         rel_dir (None): a relative directory to prepend to each filepath if it
             is not absolute. This path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.storage.normalize_path`
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        import_saved_views (True): whether to include saved views in the
+            import. Only applicable when importing full datasets
+        import_runs (True): whether to include annotation/brain/evaluation
+            runs in the import. Only applicable when importing full datasets
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1498,6 +1502,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        import_saved_views=True,
+        import_runs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1510,6 +1516,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.import_saved_views = import_saved_views
+        self.import_runs = import_runs
 
         self._metadata = None
         self._rel_dir = None
@@ -1612,12 +1620,16 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         # Import saved views
         saved_views = self._metadata.get("saved_views", None)
-        if saved_views:
+        if (
+            saved_views
+            and self.import_saved_views
+            and self.max_samples is None
+        ):
             _import_saved_views(dataset, saved_views)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
-        if annotation_runs:
+        if annotation_runs and self.import_runs and self.max_samples is None:
             for anno_key in annotation_runs.keys():
                 if dataset.has_annotation_run(anno_key):
                     logger.warning(
@@ -1634,7 +1646,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         # Import brain method runs
         brain_methods = self._metadata.get("brain_methods", None)
-        if brain_methods:
+        if brain_methods and self.import_runs and self.max_samples is None:
             for brain_key in brain_methods.keys():
                 if dataset.has_brain_run(brain_key):
                     logger.warning(
@@ -1651,7 +1663,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         # Import evaluation runs
         evaluations = self._metadata.get("evaluations", None)
-        if evaluations:
+        if evaluations and self.import_runs and self.max_samples is None:
             for eval_key in evaluations.keys():
                 if dataset.has_evaluation(eval_key):
                     logger.warning(
@@ -1707,7 +1719,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         rel_dir (None): a relative directory to prepend to the ``filepath`` of
             each sample if the filepath is not absolute. This path is converted
             to an absolute path (if necessary) via
-            :func:`fiftyone.core.storage.normalize_path`
+            :func:`fiftyone.core.utils.normalize_path`
+        import_saved_views (True): whether to include saved views in the
+            import. Only applicable when importing full datasets
+        import_runs (True): whether to include annotation/brain/evaluation
+            runs in the import. Only applicable when importing full datasets
         ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1720,6 +1736,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        import_saved_views=True,
+        import_runs=True,
         ordered=True,
         shuffle=False,
         seed=None,
@@ -1733,6 +1751,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.import_saved_views = import_saved_views
+        self.import_runs = import_runs
         self.ordered = ordered
 
         self._data_dir = None
@@ -1927,14 +1947,18 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         # Import saved views
         #
 
-        if empty_import:
+        if (
+            empty_import
+            and self.import_saved_views
+            and self.max_samples is None
+        ):
             _import_saved_views(dataset, views)
 
         #
         # Import runs
         #
 
-        if empty_import:
+        if empty_import and self.import_runs and self.max_samples is None:
             _import_runs(
                 dataset,
                 annotations,

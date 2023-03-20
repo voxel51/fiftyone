@@ -100,6 +100,13 @@ def down(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
+    sample_collection_name = dataset_dict.get("sample_collection_name", None)
+    frame_collection_name = dataset_dict.get("frame_collection_name", None)
+    if sample_collection_name and not frame_collection_name:
+        dataset_dict["frame_collection_name"] = (
+            "frames." + sample_collection_name
+        )
+
     app_config = dataset_dict.get("app_config", None)
     if app_config is not None:
         sidebar_groups = app_config.get("sidebar_groups", None)
