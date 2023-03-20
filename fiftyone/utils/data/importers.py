@@ -1486,7 +1486,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         dataset_dir: the dataset directory
         rel_dir (None): a relative directory to prepend to each filepath if it
             is not absolute. This path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         import_saved_views (True): whether to include saved views in the
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
@@ -1719,7 +1719,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         rel_dir (None): a relative directory to prepend to the ``filepath`` of
             each sample if the filepath is not absolute. This path is converted
             to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         import_saved_views (True): whether to include saved views in the
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
