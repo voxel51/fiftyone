@@ -29,8 +29,7 @@ class Operator:
             raise ValueError("Operator name cannot be None")
 
         self.name = name
-        self.description = description
-        self.definition = OperatorDefinition()
+        self.definition = OperatorDefinition(description)
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -45,10 +44,23 @@ class Operator:
         """Executes the operator. Subclasses must implement this method."""
         raise NotImplementedError("subclass must implement execute()")
 
+    def resolve_type(self, ctx, type):
+        if type == "inputs":
+            return self.resolve_input(ctx)
+        elif type == "outputs":
+            return self.resolve_output(ctx)
+        else:
+            raise ValueError("Invalid type '%s'" % type)
+
+    def resolve_input(self, ctx):
+        return self.definition._inputs
+
+    def resolve_output(self, ctx):
+        return self.definition._outputs
+
     def to_json(self):
         """Returns a JSON representation of the operator."""
         return {
             "name": self.name,
-            "description": self.description,
             "definition": self.definition.to_json(),
         }

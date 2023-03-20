@@ -9,7 +9,8 @@ from .types import Object, Property
 
 
 class OperatorDefinition:
-    def __init__(self):
+    def __init__(self, description=None):
+        self.description = description
         self._inputs = Object()
         self._outputs = Object()
 
@@ -31,6 +32,7 @@ class OperatorDefinition:
 
     def to_json(self):
         return {
+            "description": self.description,
             "inputs": self._inputs.to_json(),
             "outputs": self._outputs.to_json(),
         }
