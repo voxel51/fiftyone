@@ -160,8 +160,8 @@ environment variables to point to your Azure credentials on disk:
     export AZURE_CREDENTIALS_FILE=/path/to/azure-credentials.ini
     export AZURE_PROFILE=default  # optional
 
-3. Provide your Azure credentials on a per-session basis by setting any set of
-environment variables shown below:
+3. Provide your Azure credentials on a per-session basis by setting any group
+of environment variables shown below:
 
 .. code-block:: shell
 
@@ -185,7 +185,8 @@ environment variables shown below:
 4. Provide your Azure credentials in any manner recognized by
 `azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
 
-In the options above, the `.ini` file should have syntax similar the following:
+In the options above, the `.ini` file should have syntax similar to one of
+the following:
 
 .. code-block:: shell
 
@@ -233,7 +234,7 @@ alias:
 .. note::
 
     If you use a
-    :ref:`custom Azure domain <https://learn.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name?tabs=azure-portal>_,
+    :ref:`custom Azure domain <https://learn.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name?tabs=azure-portal>`_,
     you can provide it by setting the
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
