@@ -145,7 +145,6 @@ const PainterFactory3D = (
     const [xmin, ymin] = min_bound;
     const [xmax, ymax] = max_bound;
 
-    debugger;
     const [x, y, z] = label.location; // centroid of bounding box
     const [lx, ly, lz] = label.dimensions; // length of bounding box in each dimension
 
