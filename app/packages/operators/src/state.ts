@@ -1,17 +1,19 @@
 import {
   atom,
   selector,
+  selectorFamily,
   useRecoilValue,
   useRecoilState,
   useRecoilCallback,
   useSetRecoilState,
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
   executeOperator,
+  ExecutionContext,
 } from "./operators";
 import * as fos from "@fiftyone/state";
 import { BROWSER_CONTROL_KEYS } from "./constants";
@@ -31,26 +33,24 @@ export const operatorPromptState = selector({
     const { operatorName, params } = promptingOperator;
     const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 
-    const inputFields = operator.definition.inputs.properties.map((input) => {
-      return {
-        name: input.name,
-        label: input.label || input.name,
-        type: input.type,
-        default: input.default,
-      };
-    });
-    const outputFields = operator.definition.outputs.properties.map(
-      (output) => {
-        return {
-          name: output.name,
-          label: output.label || output.name,
-          type: output.type,
-          default: output.default,
-        };
-      }
-    );
-    return { inputFields, outputFields, operator };
+    const inputFields = operator.definition.inputs.toProps();
+    const outputFields = operator.definition.outputs.toProps();
+    return { outputFields, operatorName };
   },
+});
+
+export const currentOperatorParamsSelector = selectorFamily({
+  key: "currentOperatorParamsSelector",
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const promptingOperator = get(promptingOperatorState);
+      if (!promptingOperator) {
+        return {};
+      }
+      const { params } = promptingOperator;
+      return params;
+    },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -66,19 +66,81 @@ export const usePromptOperatorInput = () => {
   );
 
   const prompt = (operatorName) => {
-    const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
     setPromptingOperator({ operatorName, params: {} });
   };
 
   return prompt;
 };
 
+const currentContextSelector = selectorFamily({
+  key: "currentContextSelector",
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const datasetName = get(fos.datasetName);
+      const view = get(fos.view);
+      const extended = get(fos.extendedStages);
+      const filters = get(fos.filters);
+      const selectedSamples = get(fos.selectedSamples);
+      const params = get(currentOperatorParamsSelector(operatorName));
+      return {
+        datasetName,
+        view,
+        extended,
+        filters,
+        selectedSamples,
+        params,
+      };
+    },
+});
+
+const useExecutionContext = (operatorName, hooks = {}) => {
+  const curCtx = useRecoilValue(currentContextSelector(operatorName));
+  const { datasetName, view, extended, filters, selectedSamples, params } =
+    curCtx;
+  const ctx = useMemo(() => {
+    return new ExecutionContext(
+      params,
+      {
+        datasetName,
+        view,
+        extended,
+        filters,
+        selectedSamples,
+      },
+      hooks
+    );
+  }, [params, datasetName, view, extended, filters, selectedSamples, hooks]);
+
+  return ctx;
+};
+
 export const useOperatorPrompt = () => {
+  console.log("useOperatorPrompt");
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
-  const { inputFields, outputFields, operator } =
-    useRecoilValue(operatorPromptState);
+  const { outputFields } = useRecoilValue(operatorPromptState);
+
+  const { operatorName } = promptingOperator;
+  const ctx = useExecutionContext(operatorName);
+  const operator = getLocalOrRemoteOperator(operatorName).operator;
+  const hooks = operator.useHooks(ctx);
+  console.log("hooks", hooks);
+  const [inputFields, setInputFields] = useState([]);
+  const resolveInputFields = useCallback(async () => {
+    console.log("resolveInputFields");
+    ctx.hooks = hooks;
+    const resolved = await operator.resolveInput(ctx);
+    console.log("resolved", resolved.toProps());
+    setInputFields(resolved.toProps());
+  }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
+
+  useEffect(() => {
+    console.log("useEffect resolveInputFields");
+    resolveInputFields();
+  }, [ctx.params]);
+
   const setFieldValue = useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
       (fieldName, value) => {
@@ -127,7 +189,8 @@ export const useOperatorPrompt = () => {
   }, [onKeyDown]);
 
   useEffect(() => {
-    if (operator && !operator.needsUserInput()) {
+    if (operator && !operator.needsUserInput() && !operator.needsResolution()) {
+      debugger;
       execute();
     }
   }, [operator]);
@@ -174,7 +237,13 @@ export function filterChoicesByQuery(query, all) {
 export const availableOperators = selector({
   key: "availableOperators",
   get: ({ get }) => {
-    return listLocalAndRemoteOperators();
+    return listLocalAndRemoteOperators().allOperators.map((operator) => {
+      return {
+        label: operator.name,
+        value: operator.name,
+        description: operator.definition.description,
+      };
+    });
   },
 });
 
@@ -189,13 +258,7 @@ export const operatorBrowserQueryState = atom({
 export const operatorBrowserChoices = selector({
   key: "operatorBrowserChoices",
   get: ({ get }) => {
-    const allChoices = get(availableOperators).allOperators.map((operator) => {
-      return {
-        label: operator.label || operator.name,
-        value: operator.name,
-        description: operator.definition.description,
-      };
-    });
+    const allChoices = get(availableOperators);
     const query = get(operatorBrowserQueryState);
     if (query && query.length > 0) {
       return filterChoicesByQuery(query, allChoices);
@@ -231,8 +294,9 @@ export function useOperatorBrowser() {
   const onSubmit = () => {
     console.log("onSubmit", selectedValue);
     close();
-    if (selectedValue) {
-      promptForInput(selectedValue);
+    const acceptedValue = selectedValue || choices[0]?.value;
+    if (acceptedValue) {
+      promptForInput(acceptedValue);
     }
   };
 
@@ -342,21 +406,20 @@ const operatorExecutionNeedsOutputState = atom({
 });
 
 export function useOperatorExecutor(name) {
+  const { operator } = getLocalOrRemoteOperator(name);
   const [isExecuting, setIsExecuting] = useRecoilState(
     operatorIsExecutingState
   );
   const [error, setError] = useRecoilState(operatorExecutionErrorState);
   const [result, setResult] = useRecoilState(operatorExecutionResultState);
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const extended = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
+
   const [needsOutput, setNeedsOutput] = useRecoilState(
     operatorExecutionNeedsOutputState
   );
   const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const { operator } = getLocalOrRemoteOperator(name);
-  const hooks = operator.useHooks();
+  const ctx = useExecutionContext(name);
+  const hooks = operator.useHooks(ctx);
+  console.log({ ctx });
 
   const clear = () => {
     setError(null);
@@ -364,33 +427,36 @@ export function useOperatorExecutor(name) {
     setIsExecuting(false);
   };
 
-  const execute = useRecoilCallback((state) => async (params) => {
-    setIsExecuting(true);
-    try {
-      const result = await executeOperator(
-        name,
-        params,
-        {
-          datasetName,
-          view,
-          extended,
-          filters,
-          state,
-          selectedSamples,
-        },
+  const execute = useRecoilCallback(
+    (state) => async (paramOverrides) => {
+      setIsExecuting(true);
+      const { params, ...currentContext } = await state.snapshot.getPromise(
+        currentContextSelector(name)
+      );
+      const ctx = new ExecutionContext(
+        paramOverrides || params,
+        currentContext,
         hooks
       );
-      setResult(result.result);
-      setError(result.error);
-      setNeedsOutput(result.hasOutputContent());
-    } catch (e) {
-      console.error("Error executing operator");
-      console.error(e);
-      setError(e);
-      setResult(null);
-    }
-    setIsExecuting(false);
-  });
+      ctx.state = state;
+      console.log("execute", { ctx });
+      try {
+        ctx.hooks = hooks;
+        ctx.state = state;
+        const result = await executeOperator(name, ctx);
+        setResult(result.result);
+        setError(result.error);
+        setNeedsOutput(result.hasOutputContent());
+      } catch (e) {
+        console.error("Error executing operator");
+        console.error(e);
+        setError(e);
+        setResult(null);
+      }
+      setIsExecuting(false);
+    },
+    [ctx]
+  );
   return {
     isExecuting,
     execute,
