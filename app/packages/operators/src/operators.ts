@@ -1,6 +1,6 @@
 import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import * as types from "./types";
-import { CallbackInterface } from "recoil";
+import { CallbackInterface, useREcoilVa } from "recoil";
 import * as fos from "@fiftyone/state";
 import {
   SpaceNode,
@@ -14,15 +14,16 @@ import copyToClipboard from "copy-to-clipboard";
 export class ExecutionContext {
   public state: CallbackInterface;
   constructor(
-    public params: Map<string, any> = new Map(),
-    _currentContext: any,
-    public hooks: { [key: string]: any } = {}
+    public params: any = {},
+    public _currentContext: any,
+    public hooks: any = {}
   ) {
     this.state = _currentContext.state;
   }
 }
 
 function isObjWithContent(obj: any) {
+  if (obj === null) return false;
   return typeof obj === "object" && Object.keys(obj).length > 0;
 }
 
@@ -80,6 +81,9 @@ export class Operator {
   needsUserInput() {
     return this.definition.inputs.properties.length > 0;
   }
+  needsResolution() {
+    return this.definition.inputs.needsResolution();
+  }
   needsOutput(result: OperatorResult) {
     if (
       this.definition.outputs.properties.length > 0 &&
@@ -92,12 +96,41 @@ export class Operator {
     }
     return false;
   }
-  useHooks() {
+  useHooks(ctx: ExecutionContext) {
     // This can be overridden to use hooks in the execute function
     return {};
   }
+  async resolveInputRemove(ctx: ExecutionContext) {
+    const { inputs } = this.definition;
+    return resolveRemoteType(this.name, ctx, "inputs");
+  }
+  async resolveInput(ctx: ExecutionContext) {
+    const { inputs } = this.definition;
+    if (inputs.needsResolution()) {
+      if (this.isRemote) {
+        return this.resolveInputRemove(ctx);
+      }
+      const resolvedInputs = new types.ObjectType();
+      for (const property of inputs.properties) {
+        if (property.hasResolver) {
+          const resolved = await property.resolver(property, ctx);
+          resolvedInputs.addProperty(resolved);
+        } else {
+          resolvedInputs.addProperty(property);
+        }
+      }
+      return resolvedInputs;
+    }
+    return inputs;
+  }
   async execute(ctx: ExecutionContext) {
     throw new Error(`Operator ${this.name} does not implement execute`);
+  }
+  public isRemote: boolean = false;
+  static fromRemoteJSON(json: any) {
+    const operator = this.fromJSON(json);
+    operator.isRemote = true;
+    return operator;
   }
   static fromJSON(json: any) {
     const operator = new Operator(json.name, json.description);
@@ -129,7 +162,9 @@ export function registerOperator(operator: Operator) {
 export async function loadOperatorsFromServer() {
   try {
     const { operators, errors } = await getFetchFunction()("GET", "/operators");
-    const operatorInstances = operators.map((d: any) => Operator.fromJSON(d));
+    const operatorInstances = operators.map((d: any) =>
+      Operator.fromRemoteJSON(d)
+    );
     for (const operator of operatorInstances) {
       remoteRegistry.register(operator);
     }
@@ -159,12 +194,6 @@ export async function loadOperatorsFromServer() {
   }
 }
 
-export function useLocalOperators() {}
-
-export function useRemoteOperators() {}
-
-export function useOperators() {}
-
 export function getLocalOrRemoteOperator(operatorName) {
   let operator;
   let isRemote = false;
@@ -189,15 +218,10 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
-export async function executeOperator(
-  operatorName,
-  params,
-  currentContext,
-  hooks
-) {
+export async function executeOperator(operatorName, ctx: ExecutionContext) {
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
+  const currentContext = ctx._currentContext;
 
-  const ctx = new ExecutionContext(params, currentContext, hooks);
   let result;
   let error;
   if (isRemote) {
@@ -206,7 +230,7 @@ export async function executeOperator(
       "/operators/execute",
       {
         operator_name: operatorName,
-        params: params,
+        params: ctx.params,
         dataset_name: currentContext.datasetName,
         extended: currentContext.extended,
         view: currentContext.view,
@@ -223,10 +247,37 @@ export async function executeOperator(
       result = await operator.execute(ctx);
     } catch (e) {
       error = e;
+      console.error(`Error executing operator ${operatorName}:`);
       console.error(error);
     }
   }
   return new OperatorResult(operator, result, error);
+}
+
+export async function resolveRemoteType(
+  operatorName,
+  ctx: ExecutionContext,
+  target: "inputs" | "outputs"
+) {
+  const currentContext = ctx._currentContext;
+  const typeAsJSON = await getFetchFunction()(
+    "POST",
+    "/operators/resolve-type",
+    {
+      operator_name: operatorName,
+      target,
+      params: ctx.params,
+      dataset_name: currentContext.datasetName,
+      extended: currentContext.extended,
+      view: currentContext.view,
+      filters: currentContext.filters,
+      selected: currentContext.selectedSamples
+        ? Array.from(currentContext.selectedSamples)
+        : [],
+    }
+  );
+
+  return types.typeFromJSON(typeAsJSON);
 }
 
 //
@@ -251,7 +302,7 @@ class ClearSelectedSamples extends Operator {
       setSelected: fos.useSetSelected(),
     };
   }
-  async execute({ state, hooks }: ExecutionContext) {
+  async execute({ hooks, state }: ExecutionContext) {
     // needs to mutate the server / session
     hooks.setSelected([]);
     state.reset(fos.selectedSamples);
@@ -342,6 +393,187 @@ class CloseAllPanels extends Operator {
   }
 }
 
+class OpenDataset extends Operator {
+  constructor() {
+    super("open_dataset", "Open Dataset");
+    const datasetProprety = this.definition.inputs.addProperty(
+      new types.Property(
+        "dataset",
+        new types.Enum([]),
+        "Name of the dataset",
+        true
+      )
+    );
+    datasetProprety.resolver = (property: any, ctx: ExecutionContext) => {
+      console.log("datasetProprety.resolver", ctx);
+      property.type = new types.Enum(ctx.hooks.availableDatasets);
+      return property;
+    };
+  }
+  useHooks(ctx: ExecutionContext): object {
+    // const useSearch = getUseSearch();
+
+    // const {values, total} = useSearch(ctx.params.dataset);
+    return {
+      availableDatasets: ["quickstart", "quickstart-geo", "quickstart-groups"],
+      setDataset: fos.useSetDataset(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    hooks.setDataset(params.dataset);
+  }
+}
+
+class ClearView extends Operator {
+  constructor() {
+    super("clear_view", "Clear view bar");
+  }
+  async execute({ state }: ExecutionContext) {
+    state.reset(fos.view);
+  }
+}
+class ClearSidebarFilters extends Operator {
+  constructor() {
+    super("clear_sidebar_filters", "Clear sidebar filters");
+  }
+  async execute({ state }: ExecutionContext) {
+    state.reset(fos.filters);
+  }
+}
+
+class ClearAllStages extends Operator {
+  constructor() {
+    super("clear_all_stages", "Clear all selections, filters, and view");
+  }
+  useHooks(): {} {
+    return {
+      setSelected: fos.useSetSelected(),
+      resetExtended: fos.useResetExtendedSelection(),
+    };
+  }
+  async execute({ state, hooks }: ExecutionContext) {
+    state.reset(fos.view);
+    state.reset(fos.filters);
+    hooks.resetExtended();
+    state.reset(fos.selectedSamples);
+    hooks.setSelected([]);
+  }
+}
+
+class RefreshColors extends Operator {
+  constructor() {
+    super("refresh_colors", "Refresh colors");
+  }
+  async execute({ state }: ExecutionContext) {
+    const modal = await state.snapshot.getPromise(fos.modal);
+    console.log("modal", modal);
+    const colorsSeed = await state.snapshot.getPromise(fos.colorSeed(!!modal));
+    state.set(fos.colorSeed(!!modal), colorsSeed + 1);
+  }
+}
+
+class ShowSelectedSamples extends Operator {
+  constructor() {
+    super("show_selected_samples", "Show selected samples");
+  }
+  useHooks(): {} {
+    return {
+      setSelected: fos.useSetSelected(),
+    };
+  }
+  async execute({ hooks, state }: ExecutionContext) {
+    const selectedSamples = await state.snapshot.getPromise(
+      fos.selectedSamples
+    );
+    console.log("selectedSamples", selectedSamples);
+    state.set(fos.extendedSelection, {
+      selection: Array.from(selectedSamples),
+      scope: "global",
+    });
+  }
+}
+
+class ConvertExtendedSelectionToSelectedSamples extends Operator {
+  constructor() {
+    super(
+      "convert_extended_selection_to_selected_samples",
+      "Convert extended selection to selected samples"
+    );
+  }
+  useHooks(): {} {
+    return {
+      setSelected: fos.useSetSelected(),
+      resetExtended: fos.useResetExtendedSelection(),
+    };
+  }
+  async execute({ hooks, state }: ExecutionContext) {
+    const extendedSelection = await state.snapshot.getPromise(
+      fos.extendedSelection
+    );
+    console.log("extendedSelection", extendedSelection);
+    state.set(fos.selectedSamples, new Set(extendedSelection.selection));
+    state.set(fos.extendedSelection, { selection: null });
+    hooks.setSelected(extendedSelection.selection);
+    hooks.resetExtended();
+  }
+}
+
+class DynamicFormExample extends Operator {
+  constructor() {
+    super("dynamic_form_example", "Dynamic Form Example");
+    this.definition.inputs.addProperty(
+      new types.Property(
+        "mode",
+        new types.Enum(["simple", "advanced"]),
+        "Mode",
+        true,
+        "simple"
+      )
+    );
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const [sampleId] = useRecoilValue(fos.selectedSamples) || [];
+    return {
+      sampleId,
+    };
+  }
+  async resolveInput(ctx: ExecutionContext) {
+    const inputs = new types.ObjectType();
+    inputs.addProperty(
+      new types.Property(
+        "mode",
+        new types.Enum(["simple", "advanced"]),
+        "Mode",
+        true,
+        "simple"
+      )
+    );
+    inputs.addProperty(
+      new types.Property("name", new types.String(), "Name", true)
+    );
+    if (ctx.params.mode === "advanced") {
+      inputs.addProperty(
+        new types.Property(
+          "sampleId",
+          new types.String(),
+          "Sample ID",
+          true,
+          ctx.hooks.sampleId
+        )
+      );
+      inputs.addProperty(
+        new types.Property("threshold", new types.Number(), "Threshold", true)
+      );
+      if (ctx.params.threshold > 5) {
+        inputs.addProperty(
+          new types.Property("clamp", new types.Boolean(), "Clamping", true)
+        );
+      }
+    }
+    return inputs;
+  }
+}
+
 export function registerBuiltInOperators() {
   registerOperator(new CopyViewAsJSON());
   registerOperator(new ViewFromJSON());
@@ -349,6 +581,14 @@ export function registerBuiltInOperators() {
   registerOperator(new ClearSelectedSamples());
   registerOperator(new OpenAllPanels());
   registerOperator(new CloseAllPanels());
+  registerOperator(new OpenDataset());
+  registerOperator(new ClearView());
+  registerOperator(new ClearSidebarFilters());
+  registerOperator(new ClearAllStages());
+  registerOperator(new RefreshColors());
+  registerOperator(new ShowSelectedSamples());
+  registerOperator(new ConvertExtendedSelectionToSelectedSamples());
+  registerOperator(new DynamicFormExample());
 }
 
 export async function loadOperators() {
