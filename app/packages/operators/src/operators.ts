@@ -412,10 +412,9 @@ class OpenAllPanels extends Operator {
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
     const availablePanels = usePanels();
-    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
     const openPanelOperator = useOperatorExecutor("open_panel");
-    return { availablePanels, openedPanels, spaces, openPanelOperator };
+    return { availablePanels, openedPanels, openPanelOperator };
   }
   async execute({ hooks }: ExecutionContext) {
     const { availablePanels, openedPanels, openPanelOperator } = hooks;
@@ -452,9 +451,20 @@ class OpenAllPanels extends Operator {
 //   }
 // }
 
-class CloseAllPanels extends Operator {
+class ClosePanel extends Operator {
   constructor() {
-    super("close_all_panel", "Close all panels");
+    super("close_panel", "Close a panel");
+    // todo: dynamically generate the list
+    this.definition.inputs.addProperty(
+      new types.Property(
+        "name",
+        new types.Enum(["Histograms", "Embeddings"]),
+        "Name of the panel",
+        true,
+        "",
+        ["Histograms", "Embeddings"]
+      )
+    );
   }
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -462,12 +472,38 @@ class CloseAllPanels extends Operator {
     const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
     return { openedPanels, spaces };
   }
-  async execute({ hooks }: ExecutionContext) {
+  async execute({ hooks, params }: ExecutionContext) {
     const { openedPanels, spaces } = hooks;
+    const { name, id } = params;
+    const targetPanel = openedPanels.find(
+      (panel) => id === panel.id || name === panel.type
+    );
+    if (!targetPanel)
+      return console.error(
+        `Opened panel with ${id ? "id" : "name"} "${
+          id || name
+        }" cannot be found`
+      );
+    spaces.removeNode(targetPanel);
+  }
+}
+
+class CloseAllPanels extends Operator {
+  constructor() {
+    super("close_all_panel", "Close all panels");
+  }
+  useHooks(): object {
+    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const closePanel = useOperatorExecutor("close_panel");
+    return { openedPanels, closePanel };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    const { openedPanels, closePanel } = hooks;
     for (const panel of openedPanels) {
       // do not close pinned, root or space panel
       if (panel.pinned || panel.isRoot() || panel.isSpace()) continue;
-      spaces.removeNode(panel);
+      closePanel.execute(panel);
     }
   }
 }
@@ -692,6 +728,9 @@ export function registerBuiltInOperators() {
   registerOperator(new ConvertExtendedSelectionToSelectedSamples());
   registerOperator(new DynamicFormExample());
   registerOperator(new OpenPanel());
+  registerOperator(new OpenAllPanels());
+  registerOperator(new ClosePanel());
+  registerOperator(new CloseAllPanels());
   // registerOperator(new FindSpace());
 }
 
