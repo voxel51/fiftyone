@@ -11,6 +11,7 @@ class BaseType:
 class Object(BaseType):
     def __init__(self):
         self.properties = []
+        self._needsResolution = False
 
     def add_property(self, property):
         self.properties.append(property)
@@ -20,7 +21,11 @@ class Object(BaseType):
         return {
             "name": self.__class__.__name__,
             "properties": [p.to_json() for p in self.properties],
+            "needsResolution": self._needsResolution,
         }
+
+    def dynamic(self):
+        self._needsResolution = True
 
 
 class Property:
