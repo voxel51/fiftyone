@@ -10,7 +10,11 @@ import React, {
 } from "react";
 import { atom, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
+import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import { Field } from "@fiftyone/utilities";
+import { coloring } from "@fiftyone/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -259,6 +263,12 @@ function FieldInfoExpanded({
     el.current.style.top = top + "px";
     el.current.style.left = left + "px";
   };
+  const colorSettings = useRecoilValue(coloring(false));
+  const colorBy = colorSettings.by;
+  const onClickCustomizeColor = () => {
+    // open the color customization modal based on colorBy status
+    // pass in the field info
+  };
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
@@ -272,6 +282,13 @@ function FieldInfoExpanded({
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      {field.embeddedDocType && (
+        <CustomizeColor
+          onClick={onClickCustomizeColor}
+          color={color}
+          colorBy={colorBy}
+        />
+      )}
       <FieldInfoExpandedContainer color={color}>
         {/* <FieldInfoTitle color={color}><span>{field.path}</span></FieldInfoTitle> */}
         {field.description && (
@@ -303,6 +320,32 @@ function FieldInfoExpanded({
     document.body
   );
 }
+
+type CustomizeColorProp = {
+  color: string;
+  onClick: () => void;
+  colorBy: string;
+};
+
+const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
+  ...props
+}) => {
+  return (
+    <FieldInfoTableContainer onClick={props.onClick}>
+      <tr>
+        <td>
+          <PaletteIcon sx={{ color: props.color }} fontSize={"small"} />
+        </td>
+        <td>
+          <ContentValue>
+            Customize colors by{" "}
+            {props.colorBy == "field" ? "field" : "attribute value"}
+          </ContentValue>
+        </td>
+      </tr>
+    </FieldInfoTableContainer>
+  );
+};
 
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (
