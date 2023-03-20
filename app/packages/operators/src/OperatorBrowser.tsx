@@ -12,6 +12,7 @@ const BrowserContainer = styled.form`
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  z-index: 999;
 `;
 
 const BrowserModal = styled.div`
