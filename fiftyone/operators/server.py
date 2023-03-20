@@ -10,7 +10,7 @@ from .registry import list_operators, operator_exists, get_operator
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from fiftyone.server.decorators import route
-from .executor import execute_operator
+from .executor import execute_operator, resolve_type
 from .loader import list_module_errors
 from starlette.exceptions import HTTPException
 
@@ -44,7 +44,26 @@ class ExecuteOperator(HTTPEndpoint):
         return json
 
 
+class ResolveType(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        operator_name = data.get("operator_name", None)
+        target_type = data.get("type", None)
+        print(operator_name)
+        if operator_name is None:
+            raise ValueError("Operator name must be provided")
+        if operator_exists(operator_name) is False:
+            erroDetail = {
+                "message": "Operator '%s' does not exist" % operator_name,
+                "loading_errors": list_module_errors(),
+            }
+            raise HTTPException(status_code=404, detail=erroDetail)
+        result = resolve_type(operator_name, data)
+        return result.to_json()
+
+
 OperatorRoutes = [
     ("/operators", ListOperators),
     ("/operators/execute", ExecuteOperator),
+    ("/operators/resolve-type", ResolveType),
 ]
