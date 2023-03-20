@@ -858,6 +858,24 @@ class SampleFieldTests(unittest.TestCase):
             self.assertIsInstance(fields["vector_field"], fo.VectorField)
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 
+    @drop_datasets
+    def test_reserved_keywords_fields(self):
+        with self.assertRaises(ValueError):
+            fo.Sample(filepath="img.png", pk=321)
+
+        sample1 = fo.Sample(
+            filepath="img.png",
+        )
+
+        with self.assertRaises(ValueError):
+            sample1.pk = 321
+
+        with self.assertRaises(ValueError):
+            sample1["pk"] = 321
+
+        with self.assertRaises(ValueError):
+            sample1["pk"]
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
