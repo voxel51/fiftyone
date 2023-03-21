@@ -71,7 +71,7 @@ export const useSortBySimilarity = (close) => {
   }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ reset, snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
 
@@ -117,6 +117,8 @@ export const useSortBySimilarity = (close) => {
             set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
             set(fos.hiddenLabels, {});
             set(fos.modal, null);
+            reset(fos.selectedLabels);
+            reset(fos.selectedSamples);
             close();
 
             return data;
