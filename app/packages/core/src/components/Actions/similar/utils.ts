@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import {
   Method,
   ModalSample,
@@ -5,6 +6,8 @@ import {
   useBrowserStorage,
   useUnprocessedStateUpdate,
 } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useMemo } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import {
   selectorFamily,
@@ -12,9 +15,6 @@ import {
   useRecoilCallback,
   useRecoilValue,
 } from "recoil";
-import * as fos from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { useMemo } from "react";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -71,7 +71,7 @@ export const useSortBySimilarity = (close) => {
   }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ reset, snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
 
@@ -110,13 +110,15 @@ export const useSortBySimilarity = (close) => {
             }
           );
 
-          update(({ set }) => {
+          update(({ reset, set }) => {
             set(fos.similarityParameters, combinedParameters);
             set(fos.modal, null);
             set(fos.similaritySorting, false);
             set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
             set(fos.hiddenLabels, {});
             set(fos.modal, null);
+            reset(fos.selectedLabels);
+            reset(fos.selectedSamples);
             close();
 
             return data;
@@ -194,7 +196,9 @@ const availablePatchesSimilarityKeys = selectorFamily<
       }
 
       return patches
-        .filter(([_, field]) => get(fos.labelPaths({})).includes(field))
+        .filter(([_, field]) =>
+          get(fos.labelPaths({ expanded: false })).includes(field)
+        )
         .map(([key]) => key);
     },
 });

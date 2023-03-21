@@ -42,6 +42,5 @@ class Sort(HTTPEndpoint):
                     dataset_name=dataset_name,
                     serialized_view=stages,
                 )
-            ),
-            "state": state,
+            )
         }
