@@ -28,6 +28,15 @@ avoid duplicate setups, both suites will exist here.
 **Note: E2E tests communicate to the app via port 8787 and use `cypress` as the
 database name.**
 
+** Relevant Cypress environment variables ** These are Cypress environment
+variables, as opposed to node environment variables. You can set these by
+specifying the `--env` flag. For example, to collect baseline screenshots for
+your specs and to pause between tests, you can run:
+
+```
+yarn start --env type=base,pause_between_tests=true
+```
+
 **TODO**
 
 This is a WIP and there a few things that need to be setup in order for its

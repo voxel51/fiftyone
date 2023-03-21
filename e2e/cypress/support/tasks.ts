@@ -1,5 +1,5 @@
-import { DEFAULT_APP_ADDRESS } from "lib/constants";
-import { PythonRunner } from "lib/python-runner";
+import { DEFAULT_APP_ADDRESS } from "../../lib/constants";
+import { PythonRunner } from "../../lib/python-runner";
 import waitOn from "wait-on";
 
 // note: these tasks in node context, i.e. outside of cypress

@@ -40,10 +40,11 @@ describe("pointcloud only datasets", () => {
 
   it("should open modal with 3D viewer when sample is clicked", () => {
     cy.get("[data-cy=looker]").click();
-    cy.get("[data-cy=looker3d");
+
     cy.waitForLookerToRender();
-    cy.visualSnapshot("3D cone rendered");
-    cy.wait(100000);
+
+    cy.compareSnapshot("pointcloud only dataset modal open");
+    cy.screenshot("test");
   });
 
   after(() => {

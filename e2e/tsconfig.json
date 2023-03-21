@@ -4,15 +4,15 @@
     },
     "compilerOptions": {
         "target": "ES6",
-        "esModuleInterop": true,
         "moduleResolution": "node",
+        "esModuleInterop": true,
+        "module": "CommonJS",
         "lib": ["ES6", "dom", "dom.iterable"],
-        "types": ["cypress", "@percy/cypress", "node"],
+        "types": ["cypress", "cypress-visual-regression", "node"],
         "sourceMap": true,
         "noEmit": true,
         "allowSyntheticDefaultImports": true,
-        "forceConsistentCasingInFileNames": true,
-        "baseUrl": "."
+        "forceConsistentCasingInFileNames": true
     },
     "include": [
         "lib/**/*",
