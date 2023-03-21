@@ -8,13 +8,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { atom, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
 import { InfoIcon, useTheme } from "@fiftyone/components";
 import { Field } from "@fiftyone/utilities";
-import { coloring } from "@fiftyone/state";
+import { coloring, colorModal } from "@fiftyone/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -256,6 +261,7 @@ function FieldInfoExpanded({
   const [isCollapsed, setIsCollapsed] = useState(
     descTooLong || tooManyInfoKeys
   );
+  const setIsCustomizingColor = useSetRecoilState(colorModal);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
@@ -268,6 +274,8 @@ function FieldInfoExpanded({
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
     // pass in the field info
+    console.info("clicked customize color", field, colorBy);
+    setIsCustomizingColor(true);
   };
 
   useEffect(updatePosition, [field, isCollapsed]);
@@ -282,14 +290,14 @@ function FieldInfoExpanded({
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {field.embeddedDocType && (
-        <CustomizeColor
-          onClick={onClickCustomizeColor}
-          color={color}
-          colorBy={colorBy}
-        />
-      )}
       <FieldInfoExpandedContainer color={color}>
+        {field.embeddedDocType && (
+          <CustomizeColor
+            onClick={onClickCustomizeColor}
+            color={color}
+            colorBy={colorBy}
+          />
+        )}
         {/* <FieldInfoTitle color={color}><span>{field.path}</span></FieldInfoTitle> */}
         {field.description && (
           <ExpFieldInfoDesc
@@ -332,17 +340,19 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
 }) => {
   return (
     <FieldInfoTableContainer onClick={props.onClick}>
-      <tr>
-        <td>
-          <PaletteIcon sx={{ color: props.color }} fontSize={"small"} />
-        </td>
-        <td>
-          <ContentValue>
-            Customize colors by{" "}
-            {props.colorBy == "field" ? "field" : "attribute value"}
-          </ContentValue>
-        </td>
-      </tr>
+      <tbody>
+        <tr style={{ cursor: "pointer" }}>
+          <td>
+            <PaletteIcon sx={{ color: props.color }} fontSize={"small"} />
+          </td>
+          <td>
+            <ContentValue>
+              Customize colors by{" "}
+              {props.colorBy == "field" ? "field" : "attribute value"}
+            </ContentValue>
+          </td>
+        </tr>
+      </tbody>
     </FieldInfoTableContainer>
   );
 };

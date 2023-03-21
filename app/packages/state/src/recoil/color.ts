@@ -1,4 +1,4 @@
-import { selectorFamily } from "recoil";
+import { atom, atomFamily, DefaultValue, selectorFamily } from "recoil";
 
 import { Coloring } from "@fiftyone/looker";
 import {
@@ -93,4 +93,37 @@ export const pathColor = selectorFamily<
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+export const guardRecoilDefaultValue = (
+  candidate: unknown
+): candidate is DefaultValue => {
+  if (candidate instanceof DefaultValue) return true;
+  return false;
+};
+
+export const customizeColorSelector = selectorFamily<
+  atoms.CustomizeColor,
+  string
+>({
+  key: "customizeColorSelector",
+  get:
+    (fieldPath) =>
+    ({ get }) =>
+      get(atoms.customizeColors(fieldPath)),
+  set:
+    (fieldPath) =>
+    ({ set, reset }, newFieldSetting) => {
+      // if newFieldSetting is DefaultValue, the set method will delete the atom from the atomFamily and update customizeColorFields
+      if (newFieldSetting instanceof DefaultValue) {
+        reset(atoms.customizeColors(fieldPath));
+        set(atoms.customizeColorFields, (preValue) =>
+          preValue.filter((field) => field !== fieldPath)
+        );
+      } else {
+        // create the atom and update the customizeColorFields list
+        set(atoms.customizeColors(fieldPath), newFieldSetting);
+        set(atoms.customizeColorFields, (preValue) => [...preValue, fieldPath]);
+      }
+    },
 });

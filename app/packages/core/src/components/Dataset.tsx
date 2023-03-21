@@ -1,7 +1,8 @@
-import { modal } from "@fiftyone/state";
+import { colorModal, modal } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import ColorModal from "./ColorModal/ColorModal";
 
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
@@ -23,10 +24,12 @@ const Body = styled.div`
 
 function Dataset() {
   const isModalActive = Boolean(useRecoilValue(modal));
+  const isCustomizeColorModalActive = useRecoilValue(colorModal);
 
   return (
     <>
       {isModalActive && <Modal />}
+      {isCustomizeColorModalActive && <ColorModal />}
       <Container>
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />

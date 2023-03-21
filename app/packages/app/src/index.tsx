@@ -15,6 +15,7 @@ import {
   useRouter,
   useRefresh,
   getSavedViewName,
+  colorModal,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
@@ -58,6 +59,7 @@ const App: React.FC = ({}) => {
   );
 
   const isModalActive = Boolean(useRecoilValue(modal));
+  const isCustomizeColorModalActive = Boolean(useRecoilValue(colorModal));
   const handleError = useErrorHandler();
 
   useEffect(() => {
@@ -65,6 +67,12 @@ const App: React.FC = ({}) => {
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
+  // is this necessary for color modal too?
+  useEffect(() => {
+    document
+      .getElementById("colorModal")
+      ?.classList.toggle("modalon", isCustomizeColorModalActive);
+  }, [isCustomizeColorModalActive]);
 
   useEffect(() => {
     const controller = new AbortController();
