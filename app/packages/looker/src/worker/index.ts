@@ -11,7 +11,7 @@ import {
   LABEL_LIST,
   setFetchFunction,
   Stage,
-  VALID_LABEL_TYPES
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
 import { CHUNK_SIZE } from "../constants";
@@ -115,7 +115,7 @@ const imputeOverlayFromPath = async (
 
   // convert absolute file path to a URL that we can "fetch" from
   const overlayPngImageUrl = getSampleSrc(
-    sources[`${field}.${overlayPathField}`]
+    sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
 
   const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
@@ -341,7 +341,7 @@ const getSendChunk =
     if (value) {
       Promise.all(
         value.frames.map((frame) =>
-          processLabels(frame, value.coloring, "frames.")
+          processLabels(frame, value.coloring, "frames.", {})
         )
       ).then((buffers) => {
         postMessage(
