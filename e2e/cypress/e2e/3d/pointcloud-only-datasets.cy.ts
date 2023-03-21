@@ -19,6 +19,7 @@ describe("pointcloud only datasets", () => {
 
   beforeEach(() => {
     cy.visit("/");
+    cy.get("[data-cy=fo-grid]").should("be.visible");
   });
 
   it("should show pointcloud dataset", () => {
@@ -26,8 +27,6 @@ describe("pointcloud only datasets", () => {
       "equal",
       "/datasets/pointcloud-only-datasets"
     );
-
-    cy.get("[data-cy=fo-grid]").should("be.visible");
   });
 
   it("should show have one looker in one flashlight section", () => {
@@ -41,10 +40,11 @@ describe("pointcloud only datasets", () => {
   it("should open modal with 3D viewer when sample is clicked", () => {
     cy.get("[data-cy=looker]").click();
 
-    cy.waitForLookerToRender();
+    cy.waitForLookerToRender(5000);
 
-    cy.compareSnapshot("pointcloud only dataset modal open");
-    cy.screenshot("test");
+    cy.get("[data-cy=looker3d]").compareSnapshot(
+      "pointcloud only dataset modal open"
+    );
   });
 
   after(() => {

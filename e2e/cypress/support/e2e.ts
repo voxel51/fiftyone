@@ -3,4 +3,4 @@ import compareSnapshotCommand from "cypress-visual-regression/dist/command";
 
 import "./commands";
 
-compareSnapshotCommand({ capture: "runner" });
+compareSnapshotCommand({ capture: "runner", overwrite: true });

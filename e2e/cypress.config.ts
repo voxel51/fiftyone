@@ -12,28 +12,24 @@ export default defineConfig({
 
       on("before:browser:launch", (browser, launchOptions) => {
         if (browser.name === "chrome" && browser.isHeadless) {
-          // fullPage screenshot size is 1400x1200 on non-retina screens
-          // and 2800x2400 on retina screens
-          launchOptions.args.push("--window-size=1400,1200");
+          // fullPage screenshot size is 1200x800 on non-retina screens
+          launchOptions.args.push("--window-size=1200,800");
 
-          // force screen to be non-retina (1400x1200 size)
+          // force screen to be non-retina (1200x800 size)
           launchOptions.args.push("--force-device-scale-factor=1");
-
-          // force screen to be retina (2800x2400 size)
-          // launchOptions.args.push('--force-device-scale-factor=2')
         }
 
         if (browser.name === "electron" && browser.isHeadless) {
-          // fullPage screenshot size is 1400x1200
-          launchOptions.preferences.width = 1400;
-          launchOptions.preferences.height = 1200;
+          // fullPage screenshot size is 1200x800
+          launchOptions.preferences.width = 1200;
+          launchOptions.preferences.height = 800;
         }
 
         if (browser.name === "firefox" && browser.isHeadless) {
-          // menubars take up height on the screen
-          // so fullPage screenshot size is 1400x1126
-          launchOptions.args.push("--width=1400");
-          launchOptions.args.push("--height=1200");
+          // menubars take up height on the screen (74 px)
+          // so fullPage screenshot size is 726
+          launchOptions.args.push("--width=1200");
+          launchOptions.args.push("--height=726");
         }
 
         return launchOptions;
@@ -46,8 +42,8 @@ export default defineConfig({
     defaultCommandTimeout: Duration.Seconds(10),
     pageLoadTimeout: Duration.Seconds(5),
     responseTimeout: Duration.Seconds(5),
-    viewportWidth: 1400,
-    viewportHeight: 1200,
+    viewportWidth: 1200,
+    viewportHeight: 800,
     chromeWebSecurity: false,
     screenshotsFolder: "cypress/snapshots/base",
   },
