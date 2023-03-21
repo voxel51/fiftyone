@@ -40,5 +40,6 @@
 }
 
 .pointSizeAttenuationLabel {
+  /* mui should override label styles with these, but doesn't */
   font-family: inherit !important;
 }
