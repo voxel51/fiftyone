@@ -2,12 +2,12 @@ import {
   FrameLooker,
   ImageLooker,
   PcdLooker,
-  VideoLooker,
+  VideoLooker
 } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   getMimeType,
-  LIST_FIELD,
+  LIST_FIELD
 } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -25,16 +25,14 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
-  highlight: boolean = false
+  highlight = false
 ) => {
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal
-    ? useRecoilValue(groupSample(null)).sample._id
-    : null;
+  const activeId = isModal ? useRecoilValue(groupSample(null))._id : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
@@ -102,6 +100,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
             dbField: null,
           },
         },
+        sources: urls,
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,

@@ -18,7 +18,7 @@ import {
   VideoLooker,
 } from "@fiftyone/looker";
 
-import { useEventHandler } from "@fiftyone/state";
+import { useEventHandler, useSetSelected } from "@fiftyone/state";
 
 import * as fos from "@fiftyone/state";
 import { State } from "@fiftyone/state";
@@ -26,10 +26,13 @@ import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
 const useClearSampleSelection = (close) => {
+  const setSelected = useSetSelected();
+
   return useRecoilTransaction_UNSTABLE(
     ({ set }) =>
       () => {
         set(fos.selectedSamples, new Set());
+        setSelected([]);
         close();
       },
     [close]

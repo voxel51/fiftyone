@@ -23,10 +23,12 @@ import strawberry as gql
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import fiftyone.core.labels as fol
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
 import fiftyone.core.cache as foc
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
@@ -35,6 +37,11 @@ from fiftyone.core.config import HTTPRetryConfig
 
 logger = logging.getLogger(__name__)
 
+_ADDITIONAL_MEDIA_FIELDS = {
+    fol.Heatmap: "map_path",
+    fol.Segmentation: "mask_path",
+    OrthographicProjectionMetadata: "filepath",
+}
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
@@ -70,20 +77,18 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    opm_field = _get_orthographic_projection_metadata_field_name(collection)
-    if opm_field:
-        opm_path = opm_field + ".filepath"
-        additional_fields = [opm_path]
-    else:
-        additional_fields = None
+    opm_field, additional_fields = _get_additional_media_fields(collection)
 
-    filepath_url, urls = await _create_media_urls(
+    filepath_result, filepath_source, urls = await _create_media_urls(
         collection,
         sample,
         url_cache,
         session,
         additional_fields=additional_fields,
+        opm_field=opm_field,
     )
+    if filepath_result is not None:
+        filepath = filepath_result
 
     local_only = (
         collection.media_type == fom.IMAGE
@@ -104,20 +109,6 @@ async def get_metadata(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
-        elif opm_field:
-            for field_url in urls:
-                if field_url["field"] == opm_path:
-                    opm_img_path = _deep_get(sample, opm_path)
-                    if opm_img_path:
-                        metadata_cache[filepath] = await read_metadata(
-                            session,
-                            opm_img_path,
-                            field_url["url"],
-                            local_only,
-                            False,
-                        )
-
-                    break
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
@@ -127,7 +118,7 @@ async def get_metadata(
 
     if filepath not in metadata_cache:
         metadata_cache[filepath] = await read_metadata(
-            session, filepath, filepath_url, local_only, is_video
+            session, filepath, filepath_source, local_only, is_video
         )
 
     return dict(urls=urls, **metadata_cache[filepath])
@@ -503,29 +494,40 @@ async def _create_media_urls(
     cache: t.Dict,
     session: aiohttp.ClientSession,
     additional_fields: t.Optional[t.List[str]] = None,
-) -> t.Tuple[str, t.List[t.Dict[str, str]]]:
-    filepath_url = None
+    opm_field: t.Optional[str] = None,
+) -> t.Dict[str, str]:
+    filepath_source = None
+    media_fields = collection.app_config.media_fields.copy()
     local_only = (
         collection.media_type == fom.IMAGE
         and foc.media_cache.config.cache_app_images
     )
-    media_fields = (
-        collection.app_config.media_fields
-        if collection.app_config
-        else ["filepath"]
-    )
-
     if additional_fields is not None:
         media_fields.extend(additional_fields)
 
+    use_opm = (
+        collection.media_type == fom.POINT_CLOUD
+        or collection.media_type == fom.GROUP
+    )
+    opm_filepath = (
+        f"{opm_field}.{_ADDITIONAL_MEDIA_FIELDS[OrthographicProjectionMetadata]}"
+        if use_opm
+        else None
+    )
+    filepath = None
     media_urls = []
-
     for field in media_fields:
         path = _deep_get(sample, field)
+        if not path:
+            continue
 
         if path in cache:
-            if field == "filepath":
-                filepath_url = cache[path]
+            if opm_filepath == field:
+                filepath = path
+                filepath_source = cache[path]
+            elif not opm_filepath and field == "filepath":
+                filepath_source = cache[path]
+                filepath = path
 
             media_urls.append(dict(field=field, url=cache[path]))
             continue
@@ -543,28 +545,31 @@ async def _create_media_urls(
 
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
-        if field == "filepath":
-            filepath_url = cache[path]
+        if opm_filepath == field:
+            filepath_source = url
+            filepath = path
+        elif not opm_filepath and field == "filepath":
+            filepath_source = url
+            filepath = path
 
-    return filepath_url, media_urls
+    return filepath, filepath_source, media_urls
 
 
-def _get_orthographic_projection_metadata_field_name(
+def _get_additional_media_fields(
     collection: SampleCollection,
-) -> t.Optional[str]:
-    orthographic_projection_field = collection.get_field_schema(
-        embedded_doc_type=OrthographicProjectionMetadata
-    )
-    media_type = collection.media_type
+) -> t.List[str]:
+    additional = []
+    opm_field = None
+    for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
+        for field_name in collection.get_field_schema(
+            embedded_doc_type=cls, flat=True
+        ):
+            if cls == OrthographicProjectionMetadata:
+                opm_field = field_name
 
-    has_projection_metadata = len(orthographic_projection_field) > 0 and (
-        media_type == fom.POINT_CLOUD or media_type == fom.GROUP
-    )
+            additional.append(f"{field_name}.{subfield_name}")
 
-    if has_projection_metadata:
-        return next(iter(orthographic_projection_field))
-
-    return None
+    return opm_field, additional
 
 
 def _deep_get(sample, keys, default=None):
