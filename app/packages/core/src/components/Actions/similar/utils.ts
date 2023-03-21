@@ -110,7 +110,7 @@ export const useSortBySimilarity = (close) => {
             }
           );
 
-          update(({ set }) => {
+          update(({ reset, set }) => {
             set(fos.similarityParameters, combinedParameters);
             set(fos.modal, null);
             set(fos.similaritySorting, false);
