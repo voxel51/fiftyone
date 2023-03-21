@@ -94,6 +94,8 @@ async def get_metadata(
         collection.media_type == fom.IMAGE
         and foc.media_cache.config.cache_app_images
     )
+    if filepath_result is not None:
+        filepath = filepath_result
 
     is_video = media_type == fom.VIDEO
 
