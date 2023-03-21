@@ -83,11 +83,37 @@ class ReactivateNotebookCell(Event):
 
 
 @dataclass
+class Refresh(Event):
+    """Refresh event"""
+
+
+@dataclass
+class SelectSamples(Event):
+    """Select samples event"""
+
+    sample_ids: t.List[str]
+
+
+@dataclass
+class LabelData:
+    label_id: str
+    field: str
+    sample_id: str
+    frame_number: t.Optional[int] = None
+
+
+@dataclass
+class SelectLabels(Event):
+    """Select labels event"""
+
+    labels: t.List[LabelData]
+
+
+@dataclass
 class StateUpdate(Event):
     """State update event"""
 
     state: fos.StateDescription
-    refresh: bool = False
 
 
 @dataclass

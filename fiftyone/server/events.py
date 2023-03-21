@@ -26,6 +26,8 @@ from fiftyone.core.session.events import (
     dict_factory,
     EventType,
     ListenPayload,
+    SelectLabels,
+    SelectSamples,
     StateUpdate,
 )
 import fiftyone.core.state as fos
@@ -58,12 +60,18 @@ async def dispatch_event(
         subscription: the calling subscription id
         event: the event
     """
+    global _state
     if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
         add_screenshot(event)
         return
 
+    if isinstance(event, SelectLabels):
+        _state.selected_labels = event.labels
+
+    if isinstance(event, SelectSamples):
+        _state.selected = event.sample_ids
+
     if isinstance(event, StateUpdate):
-        global _state
         _state = event.state
 
     if isinstance(event, ReactivateNotebookCell):

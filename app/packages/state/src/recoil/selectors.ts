@@ -11,11 +11,10 @@ import { selectedSamples } from "./atoms";
 import { config } from "./config";
 import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
+import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
-import _ from "lodash";
 import { isPatchesView } from "./view";
-import { pathFilter } from "./pathFilters";
 
 export const datasetName = selector<string | undefined>({
   key: "datasetName",
@@ -194,28 +193,24 @@ export const getTarget = selector({
   },
 });
 
-export const selectedLabelIds = selector<Set<string>>({
-  key: "selectedLabelIds",
+export const selectedLabelMap = selector<State.SelectedLabelMap>({
+  key: "selectedLabelMap",
   get: ({ get }) => {
-    const labels = get(atoms.selectedLabels);
-    return new Set(Object.keys(labels));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+    return get(atoms.selectedLabels).reduce(
+      (acc, { labelId, ...label }) => ({
+        [labelId]: label,
+        ...acc,
+      }),
+      {}
+    );
   },
 });
 
-export const selectedLabelList = selector<State.SelectedLabel[]>({
-  key: "selectedLabelList",
+export const selectedLabelIds = selector<Set<string>>({
+  key: "selectedLabelIds",
   get: ({ get }) => {
-    const labels = get(atoms.selectedLabels);
-    return Object.entries(labels).map(([labelId, label]) => ({
-      labelId,
-      ...label,
-    }));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+    const labels = get(selectedLabelMap);
+    return new Set(Object.keys(labels));
   },
 });
 
@@ -422,7 +417,7 @@ export const viewStateForm = selectorFamily<
       return {
         filters: get(modal ? modalFilters : filters),
         sampleIds: omitSelected ? [] : [...get(selectedSamples)],
-        labels: get(selectedLabelList),
+        labels: get(atoms.selectedLabels),
         extended: get(extendedStages),
         slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
         addStages: addStages ? JSON.parse(addStages) : [],

@@ -1,6 +1,6 @@
 import React from "react";
 import { DefaultValue } from "recoil";
-import { RecoilSync } from "recoil-sync";
+import { ItemSnapshot, RecoilSync } from "recoil-sync";
 import { OperationType, readInlineData } from "relay-runtime";
 import { stores_INTERNAL } from "./internal";
 
@@ -10,6 +10,9 @@ type WriterProps<T extends OperationType> = React.PropsWithChildren<{
   writer: (itemKey: string, value: unknown) => void;
   read: () => T["response"];
   subscription: (update: (data: T["response"]) => void) => () => void;
+  updateExternals: React.MutableRefObject<
+    ((items: ItemSnapshot) => void) | undefined
+  >;
 }>;
 
 export function Writer<T extends OperationType>({
@@ -19,6 +22,7 @@ export function Writer<T extends OperationType>({
   subscription,
   writer,
   external,
+  updateExternals,
 }: WriterProps<T>) {
   const store = React.useMemo(() => stores_INTERNAL.get(storeKey), [storeKey]);
 
@@ -31,23 +35,19 @@ export function Writer<T extends OperationType>({
 
         value = item.reader(
           item.fragments.reduce((data, fragment, i) => {
-            const result = readInlineData(fragment, data);
             if (item.keys && item.keys[i]) {
-              return result[item.keys[i]];
+              data = data[item.keys[i]];
             }
-            return result;
+            return readInlineData(fragment, data);
           }, query as { " $fragmentSpreads": unknown })
         );
       } catch (e) {
-        console.log(
-          itemKey,
-          e
-        ); /* fragment not present, use default atom value */
+        /* fragment not present, use default atom value */
       }
 
-      return value;
+      return value || undefined;
     },
-    [store]
+    [read, store]
   );
 
   return (
@@ -68,15 +68,28 @@ export function Writer<T extends OperationType>({
       )}
       storeKey={storeKey}
       listen={React.useCallback(
-        ({ updateAllKnownItems }) => {
-          return subscription((data) => {
+        ({ updateAllKnownItems, updateItems }) => {
+          updateExternals.current = (items) => {
+            items.forEach((_, key) => {
+              if (!external.has(key)) {
+                throw new Error(`${key} is not external`);
+              }
+            });
+            updateItems(items);
+          };
+          const cleanup = subscription((data) => {
             const values = new Map();
             external.forEach((fn, itemKey) => values.set(itemKey, fn()));
             store.forEach((_, key) => values.set(key, readValue(key, data)));
             updateAllKnownItems(values);
           });
+
+          return () => {
+            cleanup();
+            updateExternals.current = undefined;
+          };
         },
-        [external, readValue, store, subscription]
+        [external, readValue, store, subscription, updateExternals]
       )}
       write={React.useCallback(
         ({ diff }) => {

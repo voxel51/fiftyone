@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<35c6a1bad1666bbde7248987fafc921c>>
+ * @generated SignedSource<<6709f44750bdd91c9d5bc2d8fd87e3b5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,24 +18,7 @@ export type sidebarGroupsFragment$data = {
       readonly paths: ReadonlyArray<string> | null;
     }> | null;
   } | null;
-  readonly frameFields: ReadonlyArray<{
-    readonly dbField: string | null;
-    readonly description: string | null;
-    readonly embeddedDocType: string | null;
-    readonly ftype: string;
-    readonly info: any | null;
-    readonly path: string;
-    readonly subfield: string | null;
-  }> | null;
-  readonly sampleFields: ReadonlyArray<{
-    readonly dbField: string | null;
-    readonly description: string | null;
-    readonly embeddedDocType: string | null;
-    readonly ftype: string;
-    readonly info: any | null;
-    readonly path: string;
-    readonly subfield: string | null;
-  }>;
+  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "sampleFieldsFragment">;
   readonly " $fragmentType": "sidebarGroupsFragment";
 };
 export type sidebarGroupsFragment$key = {
@@ -48,6 +31,6 @@ const node: ReaderInlineDataFragment = {
   "name": "sidebarGroupsFragment"
 };
 
-(node as any).hash = "4f071de619c9112ac2e811bab5c0af91";
+(node as any).hash = "5fea8ee29a267e33b6edf9e7e4f1359d";
 
 export default node;

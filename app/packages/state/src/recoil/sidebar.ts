@@ -32,14 +32,18 @@ import {
 
 import {
   datasetFragment,
+  frameFieldsFragment,
+  frameFieldsFragment$key,
   graphQLSyncFragmentAtomFamily,
+  sampleFieldsFragment,
+  sampleFieldsFragment$key,
   setSidebarGroups,
   setSidebarGroupsMutation,
   sidebarGroupsFragment,
   sidebarGroupsFragment$data,
   sidebarGroupsFragment$key,
 } from "@fiftyone/relay";
-import { commitMutation, VariablesOf } from "react-relay";
+import { commitMutation, readInlineData, VariablesOf } from "react-relay";
 import { collapseFields } from "../utils";
 import { isLargeVideo, resolvedSidebarMode } from "./options";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
@@ -357,8 +361,16 @@ export const sidebarGroupsDefinition = (() => {
       sync: (modal) => !modal,
       read: (data) => {
         current = resolveGroups(
-          collapseFields(data.sampleFields),
-          collapseFields(data.frameFields),
+          collapseFields(
+            readInlineData(
+              sampleFieldsFragment,
+              data as sampleFieldsFragment$key
+            ).sampleFields
+          ),
+          collapseFields(
+            readInlineData(frameFieldsFragment, data as frameFieldsFragment$key)
+              .frameFields
+          ),
           current,
           data.appConfig.sidebarGroups
         );

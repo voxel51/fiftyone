@@ -5,7 +5,12 @@ import {
   NotFoundError,
   Resource,
 } from "@fiftyone/utilities";
-import { createBrowserHistory, createMemoryHistory, Location } from "history";
+import {
+  Action,
+  createBrowserHistory,
+  createMemoryHistory,
+  Location,
+} from "history";
 import React from "react";
 import { loadQuery, PreloadedQuery } from "react-relay";
 import {
@@ -43,14 +48,18 @@ export interface Entry<T extends Queries> extends FiftyOneLocation {
   cleanup: () => void;
 }
 
+type Subscription = (entry: Entry<Queries>, action?: Action) => void;
+
+type Subscribe = (
+  subscription: Subscription,
+  onPending?: () => void
+) => () => void;
+
 export interface RoutingContext<T extends Queries> {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
-  load: () => Promise<Entry<T>>;
-  subscribe: (
-    cb: (entry: Entry<T>) => void,
-    onPending?: () => void
-  ) => () => void;
+  load: (hard?: boolean) => Promise<Entry<T>>;
+  subscribe: Subscribe;
 }
 
 export interface Router<T extends Queries> {
@@ -70,10 +79,12 @@ export const createRouter = (
   let currentEntryResource: Resource<Entry<Queries>>;
 
   let nextId = 0;
-  const subscribers = new Map();
+  const subscribers = new Map<
+    number,
+    [Subscription, (() => void) | undefined]
+  >();
 
-  const cleanup = history.listen(({ location }) => {
-    if (!currentEntryResource) return;
+  const update = (location: FiftyOneLocation, action?: Action) => {
     subscribers.forEach(([_, onPending]) => onPending && onPending());
     currentEntryResource.load().then(({ cleanup }) => {
       currentEntryResource = getEntryResource(
@@ -84,23 +95,31 @@ export const createRouter = (
 
       currentEntryResource.load().then((entry) => {
         requestAnimationFrame(() => {
-          subscribers.forEach(([cb]) => cb(entry));
+          subscribers.forEach(([cb]) => cb(entry, action));
           cleanup();
         });
       });
     });
+  };
+
+  const cleanup = history.listen(({ location, action }) => {
+    if (!currentEntryResource) return;
+    update(location as FiftyOneLocation, action);
   });
 
   const context: RoutingContext<Queries> = {
     history,
-    load() {
-      if (!currentEntryResource) {
+    load(hard = false) {
+      const runUpdate = currentEntryResource && hard;
+      if (!currentEntryResource || hard) {
         currentEntryResource = getEntryResource(
           environment,
           routes,
-          history.location as FiftyOneLocation
+          history.location as FiftyOneLocation,
+          hard
         );
       }
+      runUpdate && update(history.location as FiftyOneLocation);
       return currentEntryResource.load();
     },
     get() {
@@ -132,7 +151,8 @@ export const createRouter = (
 const getEntryResource = <T extends Queries>(
   environment: Environment,
   routes: RouteDefinition<T>[],
-  location: FiftyOneLocation
+  location: FiftyOneLocation,
+  hard = false
 ): Resource<Entry<T>> => {
   let route: RouteDefinition<T>;
   let matchResult: MatchPathResult<T>;
@@ -155,6 +175,8 @@ const getEntryResource = <T extends Queries>(
     throw new NotFoundError({ path: location.pathname });
   }
 
+  const fetchPolicy = hard ? "network-only" : "store-or-network";
+
   return new Resource(() => {
     return Promise.all([route.component.load(), route.query.load()]).then(
       ([component, concreteRequest]) => {
@@ -163,7 +185,7 @@ const getEntryResource = <T extends Queries>(
           concreteRequest,
           matchResult.variables || {},
           {
-            fetchPolicy: "store-or-network",
+            fetchPolicy,
           }
         );
 
@@ -177,11 +199,13 @@ const getEntryResource = <T extends Queries>(
           environment,
           concreteRequest,
           matchResult.variables || {},
-          { fetchPolicy: "store-or-network" }
+          { fetchPolicy }
         ).subscribe({
-          next: (data) =>
+          next: (data) => {
+            const { state, ...rest } = location;
             resolveEntry({
-              ...location,
+              state: matchResult.variables as LocationState<T>,
+              ...rest,
               component,
               data,
               concreteRequest,
@@ -189,7 +213,9 @@ const getEntryResource = <T extends Queries>(
               cleanup: () => {
                 subscription?.unsubscribe();
               },
-            }),
+            });
+          },
+
           error: (error) => rejectEntry(error),
         });
 

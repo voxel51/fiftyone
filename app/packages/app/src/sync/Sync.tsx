@@ -1,9 +1,15 @@
 import { Loading } from "@fiftyone/components";
 import {
+  setSelected,
+  setSelectedMutation,
+  setView,
+  setViewMutation,
+  Writer,
+} from "@fiftyone/relay";
+import {
   State,
   stateSubscription,
   useClearModal,
-  useRefresh,
   useReset,
   useScreenshot,
   viewsAreEqual,
@@ -12,16 +18,18 @@ import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
-
-import { Writer } from "@fiftyone/relay";
-
+import { ItemSnapshot } from "recoil-sync";
+import { commitMutation } from "relay-runtime";
 import Setup from "../components/Setup";
-
 import { Queries, RoutingContext, useRouterContext } from "../routing";
+import useRefresh from "../useRefresh";
 import { getDatasetName, getSavedViewName } from "./utils";
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
+  REFRESH = "refresh",
+  SELECT_LABELS = "select_labels",
+  SELECT_SAMPLES = "select_samples",
   STATE_UPDATE = "state_update",
 }
 
@@ -31,6 +39,11 @@ enum AppReadyState {
   CLOSED = 2,
 }
 
+interface SessionData {
+  selectedSamples: string[];
+  selectedLabels: State.SelectedLabel[];
+}
+
 const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
   const readyStateRef = useRef<AppReadyState>();
@@ -38,14 +51,14 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const subscription = useRecoilValue(stateSubscription);
   const handleError = useErrorHandler();
 
-  const refresh = useRefresh();
   const reset = useReset();
   const clearModal = useClearModal();
 
   React.useEffect(() => {
     readyState === AppReadyState.CLOSED && reset();
   }, [readyState, reset]);
-
+  const router = useRouterContext();
+  const refresh = useRefresh();
   const screenshot = useScreenshot(
     new URLSearchParams(window.location.search).get("context") as
       | "ipython"
@@ -53,8 +66,11 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       | "databricks"
       | undefined
   );
-
-  const router = useRouterContext();
+  const sessionRef = useRef<SessionData>({
+    selectedSamples: [],
+    selectedLabels: [],
+  });
+  const updateExternals = useRef<(items: ItemSnapshot) => void>();
   React.useEffect(() => {
     const controller = new AbortController();
 
@@ -72,31 +88,53 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               controller.abort();
               screenshot();
               break;
+            case Events.REFRESH:
+              refresh();
+              break;
+            case Events.SELECT_LABELS:
+              sessionRef.current.selectedLabels = toCamelCase(
+                JSON.parse(msg.data).selected_labels
+              ) as State.SelectedLabel[];
+              updateExternals.current &&
+                updateExternals.current(
+                  new Map([
+                    [
+                      "selectedLabels",
+                      new Set(sessionRef.current.selectedLabels),
+                    ],
+                  ])
+                );
+              break;
+            case Events.SELECT_SAMPLES:
+              sessionRef.current.selectedSamples = JSON.parse(
+                msg.data
+              ).sample_ids;
+              updateExternals.current &&
+                updateExternals.current(
+                  new Map([
+                    [
+                      "selectedSamples",
+                      new Set(sessionRef.current.selectedSamples),
+                    ],
+                  ])
+                );
+              break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
-              const { colorscale, config, ...data } = payload.state;
 
-              payload.refresh && refresh();
-              const state = {
-                ...toCamelCase(data),
-                view: data.view,
-                viewName: data.view_name,
-              } as State.Description;
-
-              if (readyStateRef.current !== AppReadyState.OPEN) {
-                router.load().then(() => {
-                  setReadyState(AppReadyState.OPEN);
-                });
-              }
+              sessionRef.current.selectedSamples = payload.state.selected;
+              sessionRef.current.selectedLabels = toCamelCase(
+                payload.state.selected_labels
+              ) as State.SelectedLabel[];
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
               );
 
-              if (state.savedViewSlug) {
+              if (payload.state.saved_view_slug) {
                 searchParams.set(
                   "view",
-                  encodeURIComponent(state.savedViewSlug)
+                  encodeURIComponent(payload.state.saved_view_slug)
                 );
               } else {
                 searchParams.delete("view");
@@ -107,12 +145,18 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                 search = `?${search}`;
               }
 
-              const path = state.dataset
-                ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
+              const path = payload.state.dataset
+                ? `/datasets/${encodeURIComponent(
+                    payload.state.dataset
+                  )}${search}`
                 : `/${search}`;
 
-              //router.history.replace(path, { view: data.view || [] });
-
+              router.history.replace(path, { view: payload.state.view || [] });
+              if (readyStateRef.current !== AppReadyState.OPEN) {
+                router.load().then(() => {
+                  setReadyState(AppReadyState.OPEN);
+                });
+              }
               break;
             }
           }
@@ -130,7 +174,13 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           view: getSavedViewName(router.history.location),
         },
         subscription,
-        events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
+        events: [
+          Events.DEACTIVATE_NOTEBOOK_CELL,
+          Events.REFRESH,
+          Events.SELECT_LABELS,
+          Events.SELECT_SAMPLES,
+          Events.STATE_UPDATE,
+        ],
       }
     );
 
@@ -138,7 +188,11 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   }, []);
 
   const external = useMemo(() => {
-    return new Map([["routeEntry", () => router.get()]]);
+    return new Map<string, () => unknown>([
+      ["routeEntry", () => router.get()],
+      ["selectedSamples", () => new Set(sessionRef.current.selectedSamples)],
+      ["selectedLabels", () => sessionRef.current.selectedLabels],
+    ]);
   }, [router]);
 
   return (
@@ -152,14 +206,31 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           storeKey="router"
           read={() => router.get().data}
           subscription={(update) => {
-            return router.subscribe((entry) => {
+            return router.subscribe((entry, action) => {
+              if (action === "POP") {
+                commitMutation<setViewMutation>(
+                  entry.preloadedQuery.environment,
+                  {
+                    mutation: setView,
+                    variables: {
+                      view: entry.state.view,
+                      savedViewSlug: entry.state.savedViewSlug,
+                      form: {},
+                      datasetName: getDatasetName(entry),
+                      subscription,
+                    },
+                  }
+                );
+              }
               update(entry.data);
             });
           }}
           writer={(itemKey, value) => {
-            WRITE_HANDLERS[itemKey] && WRITE_HANDLERS[itemKey](router, value);
+            WRITE_HANDLERS[itemKey] &&
+              WRITE_HANDLERS[itemKey](router, value, subscription);
           }}
           external={external}
+          updateExternals={updateExternals}
         >
           {children}
         </Writer>
@@ -169,6 +240,38 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 };
 
 const WRITE_HANDLERS = {
+  selectedSamples: (
+    router: RoutingContext<Queries>,
+    selected: Set<string>,
+    subscription: string
+  ) => {
+    commitMutation<setSelectedMutation>(
+      router.get().preloadedQuery.environment,
+      {
+        mutation: setSelected,
+        variables: {
+          selected: [...selected],
+          subscription,
+        },
+      }
+    );
+  },
+  sidebarGroupsDefinition__false: null,
+  view: (
+    router: RoutingContext<Queries>,
+    view: DefaultValue | State.Stage[]
+  ) => {
+    if (view instanceof DefaultValue) {
+      view = [];
+    }
+
+    const params = new URLSearchParams(router.get().search);
+    const current = params.get("view");
+
+    if (!viewsAreEqual(view, router.get().state.view || []) || current) {
+      router.history.push(`${router.get().pathname}`, { view });
+    }
+  },
   viewName: (
     router: RoutingContext<Queries>,
     slug: string | null | DefaultValue
@@ -195,22 +298,6 @@ const WRITE_HANDLERS = {
 
     router.history.push(`${router.get().pathname}${search}`, { view: [] });
   },
-  view: (
-    router: RoutingContext<Queries>,
-    view: DefaultValue | State.Stage[]
-  ) => {
-    if (view instanceof DefaultValue) {
-      view = [];
-    }
-
-    const params = new URLSearchParams(router.get().search);
-    const current = params.get("view");
-
-    if (!viewsAreEqual(view, router.get().state.view) || current) {
-      router.history.push(`${router.get().pathname}`, { view });
-    }
-  },
-  sidebarGroupsDefinition__false: null,
 };
 
 export default Sync;

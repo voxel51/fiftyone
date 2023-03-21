@@ -14,7 +14,11 @@ import eta.core.serial as etas
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
-from fiftyone.core.session.events import StateUpdate
+from fiftyone.core.session.events import (
+    SelectLabels,
+    SelectSamples,
+    StateUpdate,
+)
 from fiftyone.core.spaces import default_spaces, Space
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -146,10 +150,7 @@ class Mutation:
         session: t.Optional[str],
         selected: t.List[str],
     ) -> bool:
-        state = get_state()
-
-        state.selected = selected
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, SelectSamples(sample_ids=selected))
         return True
 
     @gql.mutation
@@ -170,15 +171,20 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        dataset_name: str,
-        view: t.Optional[BSONArray],
-        saved_view_slug: t.Optional[str],
-        form: t.Optional[StateForm],
-        info: Info,
+        dataset_name: t.Optional[str] = None,
+        view: t.Optional[BSONArray] = None,
+        saved_view_slug: t.Optional[str] = None,
+        form: t.Optional[StateForm] = None,
+        info: Info = Info,
     ) -> ViewResponse:
         state = get_state()
         state.selected = []
         state.selected_labels = []
+        if not dataset_name:
+            state.dataset = None
+            state.view = None
+            state.spaces = default_spaces
+            await dispatch_event(subscription, StateUpdate(state=state))
 
         result_view = None
 

@@ -24,11 +24,12 @@ const DatasetPageQueryNode = graphql`
   ) {
     dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
       name
+      ...datasetFragment
     }
     ...NavFragment
-    ...datasetFragment
     ...savedViewsFragment
     ...configFragment
+    ...stageDefinitionsFragment
   }
 `;
 

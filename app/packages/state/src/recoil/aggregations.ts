@@ -4,16 +4,16 @@ import { VariablesOf } from "react-relay";
 import { GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
-import * as filterAtoms from "./filters";
 import { ResponseFrom } from "../utils";
-import { groupStatistics, groupId, currentSlice } from "./groups";
-import { RelayEnvironmentKey } from "./relay";
-import * as selectors from "./selectors";
-import * as schemaAtoms from "./schema";
-import * as viewAtoms from "./view";
-import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
+import * as filterAtoms from "./filters";
+import { currentSlice, groupId, groupStatistics } from "./groups";
+import { sidebarSampleId } from "./modal";
+import { RelayEnvironmentKey } from "./relay";
+import * as schemaAtoms from "./schema";
 import { field } from "./schema";
+import * as selectors from "./selectors";
+import * as viewAtoms from "./view";
 
 /**
  * GraphQL Selector Family for Aggregations.
@@ -37,9 +37,15 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({ extended, modal, paths, root = false }) =>
     ({ get }) => {
       const mixed = get(groupStatistics(modal)) === "group";
+      const dataset = get(selectors.datasetName);
+
+      if (!dataset) {
+        throw new Promise(() => null);
+      }
+
       const aggForm = {
         index: get(refresher),
-        dataset: get(selectors.datasetName),
+        dataset,
         extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
         filters:
           extended && !root

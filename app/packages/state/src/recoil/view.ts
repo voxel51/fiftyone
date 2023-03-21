@@ -4,10 +4,27 @@ import { atom, selector } from "recoil";
 import {
   datasetFragment,
   graphQLSyncFragmentAtom,
+  stageDefinitionsFragment,
+  stageDefinitionsFragment$data,
+  stageDefinitionsFragment$key,
   viewFragment,
   viewFragment$key,
 } from "@fiftyone/relay";
 import { State } from "./types";
+
+export const stageDefinitions = graphQLSyncFragmentAtom<
+  stageDefinitionsFragment$key,
+  stageDefinitionsFragment$data["stageDefinitions"]
+>(
+  {
+    storeKey: "router",
+    fragments: [stageDefinitionsFragment],
+    read: (data) => {
+      return data.stageDefinitions;
+    },
+  },
+  { key: "stageDefinitions", default: [] }
+);
 
 export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
   {

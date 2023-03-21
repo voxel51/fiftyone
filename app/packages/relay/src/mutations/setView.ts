@@ -8,7 +8,7 @@ export default r(graphql`
     $session: String
     $view: BSONArray!
     $savedViewSlug: String
-    $datasetName: String!
+    $datasetName: String
     $form: StateForm!
   ) {
     setView(

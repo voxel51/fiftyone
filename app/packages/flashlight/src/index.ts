@@ -27,7 +27,7 @@ import {
 import tile from "./tile";
 import { argMin, getDims } from "./util";
 
-export type FlashlightOptions = Optional<Options>;
+export interface FlashlightOptions extends Optional<Options> {}
 
 export interface FlashlightConfig<K> {
   get: Get<K>;
@@ -41,14 +41,14 @@ export interface FlashlightConfig<K> {
 }
 
 export default class Flashlight<K> {
-  private loading = false;
+  private loading: boolean = false;
   private container: HTMLDivElement;
   private element: HTMLDivElement;
   private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
   private pixelsSet: boolean;
-  private ctx = 0;
+  private ctx: number = 0;
   private resizeTimeout: ReturnType<typeof setTimeout>;
 
   constructor(config: FlashlightConfig<K>) {
@@ -200,15 +200,10 @@ export default class Flashlight<K> {
         ...this.state.sections.map((section) => section.getItems()).flat(),
         ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
       ];
-
       const active = this.state.activeSection;
       const activeItemIndex = this.state.sections[active].itemIndex;
       let sections = this.tile(items);
-      console.log(
-        items.length,
-        sections.map((section) => section.map(({ items }) => items)).flat(2)
-          .length
-      );
+
       const lastSection = sections[sections.length - 1];
       if (
         sections.length &&
@@ -308,7 +303,7 @@ export default class Flashlight<K> {
     }
 
     this.loading = true;
-    const ctx = this.ctx;
+    let ctx = this.ctx;
     return this.state
       .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
       .then(({ items, nextRequestKey }) => {
@@ -438,7 +433,7 @@ export default class Flashlight<K> {
     });
   }
 
-  private render(zooming = false) {
+  private render(zooming: boolean = false) {
     if (
       this.state.sections.length === 0 &&
       this.state.currentRequestKey === null

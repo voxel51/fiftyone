@@ -1,11 +1,9 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
-import { v4 as uuid } from "uuid";
-
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
-
 import { useEventHandler } from "@fiftyone/state";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
+import { v4 as uuid } from "uuid";
 import { flashlightLooker } from "./Grid.module.css";
 import { rowAspectRatioThreshold } from "./recoil";
 import useExpandSample from "./useExpandSample";
@@ -40,7 +38,7 @@ const Grid: React.FC<{}> = () => {
       initialRequestKey: 1,
       options: { rowAspectRatioThreshold: threshold, offset: 52 },
       onItemClick: expandSample,
-      onResize: (s) => resize.current(s),
+      onResize: resize.current,
       onItemResize: (id, dimensions) =>
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
       get: pager,
@@ -108,6 +106,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.similarityParameters),
       useRecoilValue(fos.selectedMediaField(false)),
       useRecoilValue(fos.extendedStagesUnsorted),
+      useRecoilValue(fos.extendedStages),
     ]
   );
 

@@ -38,6 +38,9 @@ from fiftyone.core.session.events import (
     CloseSession,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
+    Refresh,
+    SelectLabels,
+    SelectSamples,
     StateUpdate,
 )
 import fiftyone.core.session.notebooks as fosn
@@ -656,7 +659,7 @@ class Session(object):
 
     def refresh(self) -> None:
         """Refreshes the current App window."""
-        self._client.send_event(StateUpdate(state=self._state, refresh=True))
+        self._client.send_event(Refresh())
 
     @property
     def selected(self) -> t.List[str]:
@@ -666,14 +669,14 @@ class Session(object):
         return list(self._state.selected)
 
     @selected.setter  # type: ignore
-    @update_state()
     def selected(self, sample_ids: t.List[str]) -> None:
         self._state.selected = list(sample_ids) if sample_ids else []
+        self._client.send_event(SelectSamples(sample_ids))
 
-    @update_state()
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
         self._state.selected = []
+        self._client.send_event(SelectSamples([]))
 
     @update_state()
     def select_samples(
@@ -694,6 +697,7 @@ class Session(object):
             ids = []
 
         self._state.selected = list(ids)
+        self._client.send_event(SelectSamples(self._state.selected))
 
     @property
     def selected_labels(self) -> t.List[dict]:
@@ -1048,6 +1052,16 @@ def _attach_listeners(session: "Session"):
         session, "_state", event.state
     )
     session._client.add_event_listener("state_update", on_state_update)
+
+    on_select_samples: t.Callable[
+        [SelectSamples], None
+    ] = lambda event: setattr(session._state, "selected", event.sample_ids)
+    session._client.add_event_listener("select_samples", on_select_samples)
+
+    on_select_labels: t.Callable[[SelectLabels], None] = lambda event: setattr(
+        session._state, "selected_labels", event.labels
+    )
+    session._client.add_event_listener("select_labels", on_select_labels)
 
     if focx.is_notebook_context() and not focx.is_colab_context():
 

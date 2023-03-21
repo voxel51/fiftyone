@@ -1,6 +1,4 @@
 import { Sample } from "@fiftyone/looker/src/state";
-import { atom, atomFamily, useRecoilCallback } from "recoil";
-
 import {
   datasetFragment,
   datasetFragment$key,
@@ -12,6 +10,9 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { StrictField } from "@fiftyone/utilities";
+import * as rfn from "@recoiljs/refine";
+import { atom, atomFamily } from "recoil";
+import { syncEffect } from "recoil-sync";
 import { collapseFields, transformDataset } from "../utils";
 import { State } from "./types";
 
@@ -43,16 +44,6 @@ export const refresher = atom<number>({
   key: "refresher",
   default: 0,
 });
-
-export const useRefresh = () => {
-  return useRecoilCallback(
-    ({ set }) =>
-      () => {
-        set(refresher, (cur) => cur + 1);
-      },
-    []
-  );
-};
 
 // recoil effect that syncs state with local storage
 export const getBrowserStorageEffectForKey =
@@ -163,12 +154,13 @@ export const dataset = graphQLSyncFragmentAtom<
 >(
   {
     fragments: [datasetFragment],
+    keys: ["dataset"],
     storeKey: "router",
-    read: (data) => {
-      if (!data.dataset) {
+    read: (dataset) => {
+      if (!dataset) {
         return null;
       }
-      return { ...transformDataset(data.dataset) };
+      return { ...transformDataset(dataset) };
     },
   },
   {
@@ -185,7 +177,7 @@ export const sampleFields = graphQLSyncFragmentAtom<
     storeKey: "router",
     fragments: [datasetFragment, sampleFieldsFragment],
     keys: ["dataset"],
-    read: (data) => collapseFields(data.sampleFields || []),
+    read: (dataset) => collapseFields(dataset.sampleFields || []),
   },
   {
     key: "sampleFields",
@@ -214,15 +206,33 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
-// only used in extended view, for tagging purpose
-export const selectedLabels = atom<State.SelectedLabelMap>({
+export const selectedLabels = atom<State.SelectedLabel[]>({
   key: "selectedLabels",
-  default: {},
+  default: [],
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.writableArray(
+        rfn.object({
+          field: rfn.string(),
+          frameNumber: rfn.voidable(rfn.number()),
+          labelId: rfn.string(),
+          sampleId: rfn.string(),
+        })
+      ),
+    }),
+  ],
 });
 
 export const selectedSamples = atom<Set<string>>({
   key: "selectedSamples",
   default: new Set(),
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.set(rfn.string()),
+    }),
+  ],
 });
 
 export const selectedSampleObjects = atom<Map<string, Sample>>({

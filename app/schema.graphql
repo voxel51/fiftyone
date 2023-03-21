@@ -305,10 +305,10 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    datasetName: String!
-    view: BSONArray
-    savedViewSlug: String
-    form: StateForm
+    datasetName: String = null
+    view: BSONArray = null
+    savedViewSlug: String = null
+    form: StateForm = null
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
   setGroupSlice(
@@ -390,6 +390,7 @@ type Query {
     filter: SampleFilter = null
   ): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
+  stageDefinitions: [StageDefinition!]!
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -503,6 +504,18 @@ enum SidebarMode {
   all
   best
   fast
+}
+
+type StageDefinition {
+  name: String!
+  params: [StageParameter!]!
+}
+
+type StageParameter {
+  name: String!
+  type: String!
+  default: String
+  placeholder: String
 }
 
 input StateForm {

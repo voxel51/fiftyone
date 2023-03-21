@@ -3,7 +3,7 @@ import { useMachine } from "@xstate/react";
 import Color from "color";
 import React, { useCallback, useEffect, useRef } from "react";
 import { GlobalHotKeys } from "react-hotkeys";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { useOutsideClick } from "@fiftyone/state";
@@ -72,16 +72,18 @@ const viewBarKeyMap = {
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const view = useRecoilValue(fos.view);
+
+  const stageDefinitions = useRecoilValue(fos.stageDefinitions);
   const setView = fos.useSetView();
 
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
-
   useEffect(() => {
     send({
       type: "UPDATE",
       view,
       setView,
       fieldNames: fieldPaths,
+      stageDefinitions,
     });
   }, [view, fieldPaths]);
 

@@ -76,6 +76,8 @@ class Client:
                                 "close_session",
                                 "reactivate_notebook_cell",
                                 "reload_session",
+                                "select_labels",
+                                "select_samples",
                                 "state_update",
                             ],
                             initializer=state.serialize(),

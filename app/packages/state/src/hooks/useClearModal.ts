@@ -20,7 +20,7 @@ import * as fos from "../recoil";
 
 export default () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) =>
+    ({ reset, set, get }) =>
       () => {
         const fullscreen = get(fos.fullscreen);
         if (fullscreen) {
@@ -29,9 +29,9 @@ export default () => {
 
         const currentOptions = get(fos.savedLookerOptions);
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
-        set(fos.selectedLabels, {});
-        set(fos.hiddenLabels, {});
-        set(fos.modal, null);
+        reset(fos.selectedLabels);
+        reset(fos.hiddenLabels);
+        reset(fos.modal);
       },
     []
   );
