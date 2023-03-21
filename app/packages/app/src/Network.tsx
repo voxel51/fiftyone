@@ -37,6 +37,8 @@ export const NetworkRenderer = ({ makeRoutes }) => {
   const { context, environment } = fos.useRouter(makeRoutes, []);
 
   const isModalActive = Boolean(useRecoilValue(fos.modal));
+  // is this necessary for color modal too?
+  const isCustomizeColorModalActive = useRecoilValue(fos.colorModal);
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);
@@ -44,6 +46,13 @@ export const NetworkRenderer = ({ makeRoutes }) => {
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
+  // is this necessary for color modal too?
+  useEffect(() => {
+    document.body.classList.toggle("noscroll", isCustomizeColorModalActive);
+    document
+      .getElementById("colorModal")
+      ?.classList.toggle("modalon", isCustomizeColorModalActive);
+  }, [isCustomizeColorModalActive]);
 
   return <Network environment={environment} context={context} />;
 };

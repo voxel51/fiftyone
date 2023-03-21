@@ -87,6 +87,31 @@ export const modal = atom<ModalSample | null>({
   default: null,
 });
 
+export const colorModal = atom<boolean>({
+  key: "colorModal",
+  default: false,
+});
+
+export interface CustomizeColor {
+  field: string;
+  colorField: string; // must be string field, int field, or boolean field
+  opacityField?: string; // must be float field
+  colors: string[]; // hex colors, overwrite the default color palette
+  labelColors: {
+    [label: string]: string;
+  };
+}
+
+export const customizeColors = atomFamily<CustomizeColor, string>({
+  key: "customizeColors",
+  default: null,
+});
+
+export const customizeColorFields = atom<string[]>({
+  key: "customizeColorFields",
+  default: [],
+});
+
 export interface SortResults {
   count: boolean;
   asc: boolean;
