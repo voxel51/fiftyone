@@ -39,7 +39,7 @@
 
 ARG PYTHON_VERSION=3.10
 
-FROM python:${PYTHON_VERSION}-buster as builder
+FROM python:${PYTHON_VERSION} as builder
 
 COPY ./*.whl .
 
@@ -47,7 +47,7 @@ RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython \
     && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
 
-FROM python:${PYTHON_VERSION}-slim-buster as release
+FROM python:${PYTHON_VERSION}-slim as release
 
 WORKDIR /opt
 
@@ -70,7 +70,8 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
-    pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    pip --no-cache-dir install -U pip setuptools wheel \
+    && pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
     && chown --changes --silent --no-dereference --recursive voxel51:voxel51 /opt
 
 # run as the voxel51 user
