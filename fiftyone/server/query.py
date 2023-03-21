@@ -481,13 +481,9 @@ async def serialize_dataset(
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]
-
-                data.id = view._dataset._doc.id
-
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
-                data.id = ObjectId()
                 data.media_type = view.media_type
 
             collection = view
