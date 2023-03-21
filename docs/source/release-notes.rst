@@ -3,6 +3,28 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.20.0:
+
+FiftyOne 0.20.0
+---------------
+*Released March 22, 2023*
+
+News
+
+- Released a :ref:`Qdrant integration <qdrant-integration>` for native text and
+  image searches of your FiftyOne datasets!
+- Released a :ref:`Pinecone integration <pinecone-integration>` for native text
+  and image searches of your FiftyOne datasets!
+
+App
+
+-
+
+Core
+
+-
+
+
 .. _release-notes-v0.19.1:
 
 FiftyOne 0.19.1
