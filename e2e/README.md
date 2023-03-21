@@ -12,14 +12,21 @@ avoid duplicate setups, both suites will exist here.
 
 **Running Locally**
 
--   Make sure `python` is available in path.
+-   Make sure `python` is available in path. If you have a virtual environment
+    you use, make sure to activate that.
+-   Make a copy of `.env.cypress.example` and fill in the relevant values.
 -   Run `yarn start`.
--   To run in watch mode, run `yarn start:watch`.
--   If you want additional flexibility, all command line options are forwarded
-    to Cypress. For example, to run a single spec, run
-    `yarn start --spec cypress/e2e/hello-world.cy.ts`. For more options, visit
+-   To run in watch mode, run `yarn start:watch` that launches cypress using
+    nodemon.
+-   You might find it useful that all command line options are forwarded to
+    Cypress. For example, to run a single spec in headed mode, run
+    `yarn start:watch --spec cypress/e2e/hello-world.cy.ts --headed`. For more
+    options, visit
     [cypress command line](https://docs.cypress.io/guides/guides/command-line)
     page.
+
+**Note: E2E tests communicate to the app via port 8787 and use `cypress` as the
+database name.**
 
 **TODO**
 
@@ -31,3 +38,5 @@ initial version to be viable:
 -   [x] verify approach works in a couple cases
 -   [ ] setup on CI / github actions
 -   [ ] document best practices
+-   [ ] use renovate bot to automatically increment versions of libraries whose
+        usage is covered

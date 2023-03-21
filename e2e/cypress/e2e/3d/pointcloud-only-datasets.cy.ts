@@ -8,24 +8,42 @@ describe("pointcloud only datasets", () => {
   let pId: number;
 
   before(() => {
-    cy.executePython("3d/pointcloud-only-datasets.cy.py").then((pId_) => {
-      pId = pId_;
-    });
+    cy.executePythonFixture("3d/pointcloud-only-datasets - before.cy.py").then(
+      (pId_) => {
+        pId = pId_;
+      }
+    );
 
     return cy.waitForFiftyOneApp(Duration.Seconds(20));
   });
 
-  it("should show a pointcloud dataset", () => {
+  beforeEach(() => {
     cy.visit("/");
+  });
+
+  it("should show pointcloud dataset", () => {
     cy.location("pathname").should(
       "equal",
       "/datasets/pointcloud-only-datasets"
     );
-    cy.get("[data-cy=fo-grid]").should("have.length", 1);
-    cy.get("canvas").click();
-    cy.get("[data-cy=looker3d").wait(1000).screenshot();
-    // suspend for demo
-    cy.wait(Duration.Minutes(30));
+
+    cy.get("[data-cy=fo-grid]").should("be.visible");
+  });
+
+  it("should show have one looker in one flashlight section", () => {
+    cy.get("[data-cy=flashlight-section]")
+      .should("be.visible")
+      .and("have.length", 1);
+
+    cy.get("[data-cy=looker]").should("be.visible").and("have.length", 1);
+  });
+
+  it("should open modal with 3D viewer when sample is clicked", () => {
+    cy.get("[data-cy=looker]").click();
+    cy.get("[data-cy=looker3d");
+    cy.waitForLookerToRender();
+    cy.visualSnapshot("3D cone rendered");
+    cy.wait(100000);
   });
 
   after(() => {

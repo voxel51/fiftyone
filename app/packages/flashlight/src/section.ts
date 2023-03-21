@@ -10,6 +10,12 @@ import {
   flashlightSectionHidden,
 } from "./styles.module.css";
 
+const getNewSectionElementDiv = () => {
+  const section = document.createElement("div");
+  section.setAttribute("data-cy", "flashlight-section");
+  return section;
+};
+
 export default class SectionElement implements Section {
   private attached: boolean = false;
   private top: number;
@@ -19,7 +25,7 @@ export default class SectionElement implements Section {
   private horizontal: boolean;
   readonly index: number;
   readonly itemIndex: number;
-  private readonly section: HTMLDivElement = document.createElement("div");
+  private readonly section: HTMLDivElement = getNewSectionElementDiv();
   private readonly rows: [
     { aspectRatio: number; extraMargins: number },
     [HTMLDivElement, ItemData][]

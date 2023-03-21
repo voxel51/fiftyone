@@ -6,4 +6,6 @@ export class Duration {
   static Minutes(minutes: number) {
     return minutes * 1000 * 60;
   }
+
+  static LOOKER_RENDER_MAX_TIME_MS = 100;
 }
