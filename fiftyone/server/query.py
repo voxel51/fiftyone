@@ -17,8 +17,7 @@ import strawberry as gql
 from bson import ObjectId, json_util
 
 import fiftyone as fo
-import fiftyone.brain.internal.core.similarity as fobs
-import fiftyone.brain.internal.core.visualization as fobv
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
@@ -100,13 +99,38 @@ class BrainRunConfig(RunConfig):
 
     @gql.field
     def type(self) -> t.Optional[BrainRunType]:
-        if issubclass(fobs.SimilarityConfig, etau.get_class(self.cls)):
+        if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
             return BrainRunType.similarity
-        if issubclass(
-            fobv.ManualVisualizationConfig, etau.get_class(self.cls)
-        ):
+
+        if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
             return BrainRunType.visualization
+
         return None
+
+    @gql.field
+    def max_k(self) -> t.Optional[int]:
+        config = self._create_config()
+        return getattr(config, "max_k", None) if config else None
+
+    @gql.field
+    def supports_least_similarity(self) -> t.Optional[bool]:
+        config = self._create_config()
+        return (
+            getattr(config, "supports_least_similarity", None)
+            if config
+            else None
+        )
+
+    def _create_config(self):
+        try:
+            cls = etau.get_class(self.cls)
+            return cls(
+                embeddings_field=self.embeddings_field,
+                patches_field=self.patches_field,
+                supports_prompts=self.supports_prompts,
+            )
+        except:
+            return None
 
 
 @gql.type
@@ -479,12 +503,31 @@ async def serialize_dataset(
             data.group_slice = collection.group_slice
 
         for brain_method in data.brain_methods:
-            value = (
+            type = (
                 brain_method.config.type().value
                 if brain_method.config.type() is not None
                 else None
             )
-            setattr(brain_method.config, "type", value)
+
+            max_k = (
+                brain_method.config.max_k()
+                if brain_method.config.max_k() is not None
+                else None
+            )
+
+            supports_least_similarity = (
+                brain_method.config.supports_least_similarity()
+                if brain_method.config.supports_least_similarity() is not None
+                else None
+            )
+
+            setattr(brain_method.config, "type", type)
+            setattr(brain_method.config, "max_k", max_k)
+            setattr(
+                brain_method.config,
+                "supports_least_similarity",
+                supports_least_similarity,
+            )
 
         return data
 

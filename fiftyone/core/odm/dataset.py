@@ -213,8 +213,8 @@ class DatasetAppConfig(EmbeddedDocument):
             -   ``"map"``: See the :ref:`map plugin docs <app-map-panel>` for
                 supported options
             -   ``"point-cloud"``: See the
-                :ref:`3D visualizer docs <3d-visualizer-config>` for supported
-                options
+                :ref:`3D visualizer docs <app-3d-visualizer-config>` for
+                supported options
     """
 
     # strict=False lets this class ignore unknown fields from other versions

@@ -1568,17 +1568,12 @@ Image similarity
 
 Whenever one or more images are selected in the App, the similarity menu icon
 appears above the grid. If you have indexed the dataset by
-:ref:`image similarity <brain-image-similarity>`, then you will see the
-``brain_key`` (or multiple keys to choose from) for the applicable indexes in
-this menu.
+:ref:`image similarity <brain-image-similarity>`, then you will be able to sort
+by similarity to your current selection.
 
-Choose the ``brain_key`` of interest and click apply, and a new
-|SortBySimilarity| view stage will be appended to the view bar and your view
-will be updated to show the results of the query.
-
-In the menu, you can optionally specify a maximum number of matches to return
-(``k``) and whether to sort in order of least similarity rather than most
-similarity (``reverse``).
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
 
 .. image:: /images/brain/brain-image-similarity.gif
     :alt: image-similarity
@@ -1597,9 +1592,8 @@ Object similarity
 
 Whenever one or more labels or patches are selected in the App, the similarity
 menu icon appears above the sample grid. If you have indexed the dataset by
-:ref:`object similarity <brain-object-similarity>`, then you will see the
-``brain_key`` (or multiple keys to choose from) for the applicable indexes in
-this menu.
+:ref:`object similarity <brain-object-similarity>`, then you will be able to
+sort by similarity to your current selection.
 
 The typical workflow for object similarity is to first switch to
 :ref:`object patches view <app-object-patches>` for the label field of
@@ -1608,13 +1602,9 @@ selected one or more patches from the grid, and the resulting view will sort
 the patches according to the similarity of their objects with respect to the
 objects in the query patches.
 
-Choose the ``brain_key`` of interest and click apply, and a new
-|SortBySimilarity| view stage will be appended to the view bar and your view
-will be updated to show the results of the query.
-
-In the menu, you can optionally specify a maximum number of matches to return
-(``k``) and whether to sort in order of least similarity rather than most
-similarity (``reverse``).
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
 
 .. image:: /images/brain/brain-object-similarity.gif
     :alt: object-similarity
@@ -1634,6 +1624,30 @@ in the upper-right corner of the modal:
     For large datasets, you may notice longer load times the first time you use
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
+
+.. _app-text-similarity:
+
+Text similarity
+---------------
+
+If you have indexed your dataset with a model that
+:ref:`supports text queries <brain-similarity-text>`, you can use the text
+similarity menu in the App to search for images (or object patches) of interest
+via arbitrary text queries!
+
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
+
+.. image:: /images/brain/brain-text-similarity.gif
+   :alt: text-similarity
+   :align: center
+
+.. note::
+
+    Did you know? You can also perform text queries
+    :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
+    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
 
 .. _app-multiple-media-fields:
 

@@ -110,6 +110,8 @@ export const DatasetNodeQuery = graphql`
           patchesField
           supportsPrompts
           type
+          maxK
+          supportsLeastSimilarity
         }
       }
       savedViews {
