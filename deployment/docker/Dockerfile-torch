@@ -15,6 +15,9 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     --find-links=/wheelhouse/tmp/wheels torchvision==0.14.1 torch==1.13.1 \
     && mkdir -p "${HOME}/fiftyone/__models__"
 
+# You must download the `__models__` directory first:
+#   gcloud storage cp -r gs://fiftyone-app-release-dependencies/__models__ .
+# Please see https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ/edit?pli=1#heading=h.74je1akw3gzg
 COPY --chown=voxel51:voxel51 __models__ fiftyone/__models__
 
 # run as the voxel51 user
