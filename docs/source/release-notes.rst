@@ -248,6 +248,20 @@ Tutorials
 - Updated the media in the :doc:`Open Images tutorial </tutorials/open_images>`
   `#2665 <https://github.com/voxel51/fiftyone/pull/2665>`_
 
+.. _release-notes-teams-v1.1.1:
+
+FiftyOne Teams 1.1.1
+--------------------
+*Released February 14, 2023*
+
+Includes all features from :ref:`FiftyOne 0.19.1 <release-notes-v0.19.1>`,
+plus:
+
+Plugins
+
+- Resolved a bug that prevented Teams deployments from recognizing installed
+  plugins
+
 .. _release-notes-v0.19.1:
 
 FiftyOne 0.19.1
@@ -266,6 +280,41 @@ Core
 - Fixed a bug in certain environments that prevented progress bars from
   rendering correctly
   `#2647 <https://github.com/voxel51/fiftyone/pull/2647>`_
+
+.. _release-notes-teams-v1.1:
+
+FiftyOne Teams 1.1
+------------------
+*Released February 9, 2023*
+
+Includes all features from :ref:`FiftyOne 0.19.0 <release-notes-v0.19.0>`,
+plus:
+
+User roles
+
+- Renamed the existing Guest role to
+  `Collaborator <https://docs.voxel51.com/teams/roles_and_permissions.html#collaborator>`_
+- Added a new
+  `Guest <https://docs.voxel51.com/teams/roles_and_permissions.html#guest>`_
+  role. Note that Guest is a view-only role and does not contribute to your
+  license count. You can add unlimited Guest users to your deployment!
+
+Homepage
+
+- Added a Recent views widget to the homepage that shows the most recent saved
+  views that you have viewed in the Teams UI
+
+Dataset page
+
+- Added support for cloning the current view (including any filters,
+  selections, etc) into a new dataset from the UI
+- Added support for exporting the current view to local disk or a cloud bucket
+  in various formats (filepaths only, filepaths and tags, media only, labels
+  only, media and labels)
+
+Deployment
+
+- Added support for deploying Teams into environments with proxy networks
 
 .. _release-notes-v0.19.0:
 
@@ -470,6 +519,20 @@ Docs
   `#2452 <https://github.com/voxel51/fiftyone/pull/2452>`_
 - Added a :ref:`filtering <filtering-cheat-sheet>` cheat sheet
   `#2447 <https://github.com/voxel51/fiftyone/pull/2447>`_
+
+.. _release-notes-teams-v1.0:
+
+FiftyOne Teams 1.0
+------------------
+*Released November 8, 2022*
+
+Includes all features from :ref:`FiftyOne 0.18.0 <release-notes-v0.18.0>`,
+plus:
+
+News
+
+- FiftyOne Teams is now generally available,
+  :ref:`read more here <fiftyone-teams>`!
 
 .. _release-notes-v0.18.0:
 
