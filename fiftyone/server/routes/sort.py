@@ -23,7 +23,7 @@ class Sort(HTTPEndpoint):
         filters = data.get("filters", {})
         stages = data.get("view", None)
         subscription = data.get("subscription", None)
-        fosv.get_view(
+        view = fosv.get_view(
             dataset_name,
             stages=stages,
             filters=filters,
@@ -34,6 +34,7 @@ class Sort(HTTPEndpoint):
         state = fose.get_state()
         state.selected = []
         state.selected_labels = []
+        state.view = view
 
         await fose.dispatch_event(subscription, fose.StateUpdate(state))
         return {
