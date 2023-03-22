@@ -245,7 +245,7 @@ Tutorials
   dataset `#2818 <https://github.com/voxel51/fiftyone/pull/2818>`_
 - Added a :doc:`YOLOv8 tutorial </tutorials/yolov8>`
   `#2755 <https://github.com/voxel51/fiftyone/pull/2755>`_
-- Updated the media in the :doc:`OpenImages tutorial </tutorials/open_images>`
+- Updated the media in the :doc:`Open Images tutorial </tutorials/open_images>`
   `#2665 <https://github.com/voxel51/fiftyone/pull/2665>`_
 
 .. _release-notes-v0.19.1:
