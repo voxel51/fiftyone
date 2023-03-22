@@ -1,6 +1,7 @@
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
-import { useEventHandler } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
+import { deferrer, stringifyObj, useEventHandler } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -9,9 +10,6 @@ import { rowAspectRatioThreshold } from "./recoil";
 import useExpandSample from "./useExpandSample";
 import usePage from "./usePage";
 import useResize from "./useResize";
-
-import * as fos from "@fiftyone/state";
-import { deferrer, stringifyObj } from "@fiftyone/state";
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());

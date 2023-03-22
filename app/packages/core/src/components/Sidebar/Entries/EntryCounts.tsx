@@ -21,7 +21,6 @@ const showEntryCounts = selectorFamily<
       if (
         params.modal ||
         params.path === "" ||
-        params.path.split(".")[0] === "tags" ||
         mode === "all" ||
         get(pathIsExpanded(params))
       ) {
@@ -40,12 +39,13 @@ export const PathEntryCounts = ({
   modal: boolean;
 }) => {
   const getAtom = useCallback(
-    (extended: boolean) =>
-      fos.count({
+    (extended: boolean) => {
+      return fos.count({
         extended,
         modal,
         path,
-      }),
+      });
+    },
     [modal, path]
   );
   const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
@@ -71,37 +71,35 @@ const labelTagCount = selectorFamily<
   key: `labelTagCount`,
   get:
     ({ tag, ...rest }) =>
-    ({ get }) =>
-      get(
+    ({ get }) => {
+      const labeltags = get(
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...rest,
         })
-      )[tag] || 0,
+      );
+      return labeltags[tag] ?? 0;
+    },
 });
 
-export const tagIsMatched = selectorFamily<
-  boolean,
-  { key: fos.State.TagKey; tag: string; modal: boolean }
+export const labelTagsCount = selectorFamily<
+  { count: number; results: [string, number][] },
+  { modal: boolean; extended: boolean }
 >({
-  key: "tagIsActive",
+  key: `labelTagsCount`,
   get:
-    ({ key, tag, modal }) =>
+    ({ ...props }) =>
     ({ get }) => {
-      return get(fos.matchedTags({ key, modal })).has(tag);
-    },
-  set:
-    ({ key, tag, modal }) =>
-    ({ get, set }, toggle) => {
-      const atom = fos.matchedTags({ key, modal });
-      const current = get(atom);
-
-      set(
-        atom,
-        toggle
-          ? new Set([tag, ...current])
-          : new Set([...current].filter((t) => t !== tag))
+      const labelTagObj = get(
+        fos.cumulativeCounts({
+          ...fos.MATCH_LABEL_TAGS,
+          ...props,
+        })
       );
+      if (!labelTagObj) return { count: 0, results: [] };
+      const labelTags = Object.entries(labelTagObj);
+      const count = labelTags.reduce((acc, [key, value]) => acc + value, 0);
+      return { count, results: labelTags };
     },
 });
 

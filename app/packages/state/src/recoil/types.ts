@@ -73,6 +73,10 @@ export namespace State {
       method: string;
       patchesField: string | null;
       cls: string;
+      supportsPrompts: boolean | null;
+      type: string | null;
+      maxK: number | null;
+      supportsLeastSimilarity: boolean | null;
     };
   }
 
@@ -142,24 +146,28 @@ export namespace State {
   /**
    * @hidden
    */
-  export interface Filter {}
-
-  export enum TagKey {
-    SAMPLE = "sample",
-    LABEL = "label",
+  export interface CategoricalFilter<T> {
+    values: T[];
+    isMatching: boolean;
+    exclude: boolean;
   }
+
+  /**
+   * @hidden
+   */
+  type Filter = CategoricalFilter<string>;
 
   export interface SortBySimilarityParameters {
     brainKey: string;
     distField?: string;
     k?: number;
     reverse?: boolean;
+    query?: string | string[];
+    queryIds?: string[];
   }
 
   export interface Filters {
-    tags?: {
-      [key in TagKey]?: string[];
-    };
+    _label_tags?: CategoricalFilter<string>;
     [key: string]: Filter;
   }
 

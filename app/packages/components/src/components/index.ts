@@ -1,7 +1,7 @@
 export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as ErrorBoundary } from "./ErrorBoundary";
-export { default as ExternalLink } from "./ExternalLink";
+export { default as ExternalLink, useExternalLink } from "./ExternalLink";
 export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
 export { default as IconButton } from "./IconButton";
@@ -19,3 +19,5 @@ export { default as ThemeProvider, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
 export { default as PillButton } from "./PillButton";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
+export { default as CopyButton } from "./CopyButton";
+export { default as CodeBlock } from "./CodeBlock";

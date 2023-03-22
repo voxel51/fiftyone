@@ -140,7 +140,7 @@ export default function Selection(props: SelectionProps) {
               maxHeight: compact
                 ? VIEW_LIST_MAX_COMPACT_HEIGHT
                 : VIEW_LIST_MAX_HEIGHT,
-              overflow: "scroll",
+              overflow: "auto",
               background: theme.background.level1,
               "&:hover": {
                 background: theme.background.level1,

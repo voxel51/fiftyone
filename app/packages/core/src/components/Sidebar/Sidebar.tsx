@@ -1,29 +1,28 @@
+import { animated, config, Controller } from "@react-spring/web";
 import React, { useCallback, useRef, useState } from "react";
-import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
 
-import { useEventHandler } from "@fiftyone/state";
-import { scrollbarStyles } from "../utils";
-import { Resizable } from "re-resizable";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useEventHandler } from "@fiftyone/state";
 import { Box } from "@mui/material";
-import ViewSelection from "./ViewSelection";
+import { Resizable } from "re-resizable";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import { scrollbarStyles } from "../utils";
+import { replace } from "./Entries/GroupEntries";
 import { resizeHandle } from "./Sidebar.module.css";
-
+import ViewSelection from "./ViewSelection";
 const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
   currentOrder: string[],
   newOrder: string[],
-  activeKey: string = null,
+  activeKey: string | null = null,
   delta = 0,
-  lastTouched: string = null
+  lastTouched: string | null = null
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -652,6 +651,10 @@ const InteractiveSidebar = ({
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
     if (!down.current) return;
 
+    // do not allow dragging sample tags and label tags
+    const entry = items.current[down.current].entry;
+    if (["_label_tags", "tags"].includes(entry.path)) return;
+
     requestAnimationFrame(() => {
       animate(clientY);
       scrollWith(lastDirection.current, clientY);
@@ -752,14 +755,18 @@ const InteractiveSidebar = ({
             if (entry.kind === fos.EntryKind.GROUP) {
               group = entry.name;
             }
+
             const { shadow, cursor, ...springs } =
               items.current[key].controller.springs;
+            const keyTrigger = ["tags", "_label_tags"].includes(key[1])
+              ? null
+              : trigger;
             const { children } = render(
               key,
               group,
               entry,
               items.current[key].controller,
-              trigger
+              keyTrigger
             );
             const style = {};
             if (entry.kind === fos.EntryKind.INPUT) {

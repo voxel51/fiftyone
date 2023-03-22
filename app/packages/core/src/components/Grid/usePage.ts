@@ -24,7 +24,6 @@ const usePage = (
             const { zoom, ...params } = await snapshot.getPromise(
               pageParameters(modal)
             );
-
             const { results, more } = await getFetchFunction()(
               "POST",
               "/samples",

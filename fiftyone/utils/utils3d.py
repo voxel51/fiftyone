@@ -16,8 +16,9 @@ import eta.core.image as etai
 import eta.core.numutils as etan
 
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 from fiftyone.core.odm import DynamicEmbeddedDocument
@@ -410,7 +411,7 @@ def _compute_intersection_points(box1, box2):
     return intersection_points
 
 
-class OrthographicProjectionMetadata(DynamicEmbeddedDocument):
+class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     """Class for storing metadata about orthographic projections.
 
     Args:
@@ -422,6 +423,8 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument):
         width: the width of the image, in pixels
         height: the height of the image, in pixels
     """
+
+    _MEDIA_FIELD = "filepath"
 
     filepath = fof.StringField()
     min_bound = fof.ListField(fof.FloatField())
@@ -531,8 +534,8 @@ def compute_orthographic_projection_images(
 
     if out_group_slice is not None:
         out_samples = []
-    else:
-        all_metadata = []
+
+    all_metadata = []
 
     with fou.ProgressBar(total=len(filepaths)) as pb:
         for filepath, group in pb(zip(filepaths, groups)):
@@ -554,18 +557,17 @@ def compute_orthographic_projection_images(
             metadata.filepath = image_path
 
             if out_group_slice is not None:
-                sample = fos.Sample(filepath=image_path)
+                sample = Sample(filepath=image_path)
                 sample[group_field] = group.element(out_group_slice)
                 sample[metadata_field] = metadata
-
                 out_samples.append(sample)
-            else:
-                all_metadata.append(metadata)
+
+            all_metadata.append(metadata)
 
     if out_group_slice is not None:
         samples.add_samples(out_samples)
-    else:
-        point_cloud_view.set_values(metadata_field, all_metadata)
+
+    point_cloud_view.set_values(metadata_field, all_metadata)
 
 
 def compute_orthographic_projection_image(

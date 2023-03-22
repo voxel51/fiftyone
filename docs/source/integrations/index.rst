@@ -1,3 +1,4 @@
+
 .. _integrations:
 
 FiftyOne Integrations
@@ -76,6 +77,20 @@ on the cards below to see how!
     :tags: Annotation
 
 .. customcarditem::
+    :header: Qdrant
+    :description: Use our Qdrant integration to enable vector search and query your FiftyOne datasets at scale.
+    :link: qdrant.html
+    :image: ../_static/images/integrations/qdrant.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: Pinecone
+    :description: Use our Pinecone integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: pinecone.html
+    :image: ../_static/images/integrations/pinecone.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
     :header: Lightning Flash
     :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
@@ -106,4 +121,6 @@ on the cards below to see how!
     CVAT <cvat.rst>
     Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
+    Qdrant <qdrant.rst>
+    Pinecone <pinecone.rst>
     Lightning Flash <lightning_flash.rst>

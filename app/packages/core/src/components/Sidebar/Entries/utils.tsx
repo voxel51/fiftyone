@@ -1,5 +1,6 @@
 import { atomFamily } from "recoil";
 import styled from "styled-components";
+import { Field } from "@fiftyone/utilities";
 
 export const InputDiv = styled.div`
   box-sizing: border-box;
@@ -32,4 +33,16 @@ export const pathIsExpanded = atomFamily<
 >({
   key: "pathIsExpanded",
   default: false,
+});
+
+export const makePseudoField = (path: string): Field => ({
+  name: path.split(".").slice(1).join("."),
+  ftype: "",
+  subfield: null,
+  description: "",
+  info: null,
+  fields: {},
+  dbField: null,
+  path: path,
+  embeddedDocType: null,
 });

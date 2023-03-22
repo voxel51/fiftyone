@@ -95,6 +95,14 @@ type BrainRunConfig implements RunConfig {
   method: String
   patchesField: String
   supportsPrompts: Boolean
+  type: BrainRunType
+  maxK: Int
+  supportsLeastSimilarity: Boolean
+}
+
+enum BrainRunType {
+  similarity
+  visualization
 }
 
 enum ColorBy {
@@ -461,6 +469,8 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
+  id: String
+  datasetId: String
   name: String
   description: String
   color: String
@@ -469,8 +479,6 @@ type SavedView {
   createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
-  id: String
-  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }

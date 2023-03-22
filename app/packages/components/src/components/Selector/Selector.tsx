@@ -20,6 +20,16 @@ export type UseSearch<T> = {
   (search: string): { values: T[]; total?: number };
 };
 
+type Props<T> = {
+  active?: number;
+  search: string;
+  useSearch: UseSearch<T>;
+  onSelect: (value: T) => void;
+  onResults: (results: T[]) => void;
+  component: React.FC<{ value: T; className: string }>;
+  toKey?: (value: T) => string;
+};
+
 const SelectorResults = <T extends unknown>({
   active,
   onSelect,
@@ -28,15 +38,7 @@ const SelectorResults = <T extends unknown>({
   onResults,
   component,
   toKey = (value) => String(value),
-}: {
-  active?: number;
-  search: string;
-  useSearch: UseSearch<T>;
-  onSelect: (value: T) => void;
-  onResults: (results: T[]) => void;
-  component: React.FC<{ value: T; className: string }>;
-  toKey?: (value: T) => string;
-}) => {
+}: Props<T>) => {
   const { values, total } = useSearch(search);
 
   useLayoutEffect(() => {

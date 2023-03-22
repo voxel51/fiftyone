@@ -54,6 +54,10 @@ export default graphql`
         embeddingsField
         method
         patchesField
+        supportsPrompts
+        type
+        maxK
+        supportsLeastSimilarity
       }
     }
     lastLoadedAt

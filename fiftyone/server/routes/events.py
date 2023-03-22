@@ -25,7 +25,7 @@ class Events(HTTPEndpoint):
         self, request: Request, data: dict
     ) -> t.Union[t.Dict, EventSourceResponse]:
         polling = data.pop("polling", False)
-        payload = ListenPayload.from_dict(data)
+        payload = await ListenPayload.from_dict(data)
         if polling:
             return await dispatch_polling_event_listener(request, payload)
 

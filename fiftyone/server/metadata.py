@@ -11,6 +11,8 @@ import shutil
 import struct
 import typing as t
 
+from functools import reduce
+
 import asyncio
 import aiofiles
 import strawberry as gql
@@ -18,6 +20,7 @@ import strawberry as gql
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import fiftyone.core.labels as fol
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
@@ -25,6 +28,11 @@ import fiftyone.core.media as fom
 
 logger = logging.getLogger(__name__)
 
+_ADDITIONAL_MEDIA_FIELDS = {
+    fol.Heatmap: "map_path",
+    fol.Segmentation: "mask_path",
+    OrthographicProjectionMetadata: "filepath",
+}
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
@@ -55,23 +63,18 @@ async def get_metadata(
     """
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
-    urls = _create_media_urls(collection, sample, url_cache)
 
-    has_orthographic_projection_metadata = False
-    orthographic_projection_field = collection.get_field_schema(
-        embedded_doc_type=OrthographicProjectionMetadata
+    opm_field, additional_fields = _get_additional_media_fields(collection)
+
+    filepath_result, filepath_source, urls = _create_media_urls(
+        collection,
+        sample,
+        url_cache,
+        additional_fields=additional_fields,
+        opm_field=opm_field,
     )
-
-    if len(orthographic_projection_field) > 0 and (
-        media_type == fom.POINT_CLOUD or media_type == fom.GROUP
-    ):
-        has_orthographic_projection_metadata = True
-        orthographic_projection_metadata_field_name = next(
-            iter(orthographic_projection_field)
-        )
-        orthographic_projection_image_path = sample[
-            orthographic_projection_metadata_field_name
-        ]["filepath"]
+    if filepath_result is not None:
+        filepath = filepath_result
 
     is_video = media_type == fom.VIDEO
 
@@ -87,30 +90,28 @@ async def get_metadata(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
-        elif has_orthographic_projection_metadata:
-            metadata_cache[filepath] = await read_metadata(
-                orthographic_projection_image_path, False
-            )
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                metadata_cache[sample["filepath"]] = dict(
+                metadata_cache[filepath] = dict(
                     aspect_ratio=width / height,
                 )
 
     if filepath not in metadata_cache:
         try:
             # Retrieve media metadata from disk
-            metadata_cache[filepath] = await read_metadata(filepath, is_video)
+            metadata_cache[filepath] = await read_metadata(
+                filepath_source, is_video
+            )
         except Exception as exc:
             # Immediately fail so the user knows they should install FFmpeg
             if isinstance(exc, FFmpegNotFoundException):
                 raise exc
 
-            # Something went wrong (ie non-existent file), so we gracefully return
-            # some placeholder metadata so the App grid can be rendered
+            # Something went wrong (ie non-existent file), so we gracefully
+            # return some placeholder metadata so the App grid can be rendered
             if is_video:
                 metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
             else:
@@ -377,16 +378,72 @@ class FFmpegNotFoundException(RuntimeError):
 
 
 def _create_media_urls(
-    collection: SampleCollection, sample: t.Dict, cache: t.Dict
+    collection: SampleCollection,
+    sample: t.Dict,
+    cache: t.Dict,
+    additional_fields: t.Optional[t.List[str]] = None,
+    opm_field: t.Optional[str] = None,
 ) -> t.Dict[str, str]:
-    media_fields = collection.app_config.media_fields
+    filepath_source = None
+    media_fields = collection.app_config.media_fields.copy()
+
+    if additional_fields is not None:
+        media_fields.extend(additional_fields)
+
+    use_opm = (
+        collection.media_type == fom.POINT_CLOUD
+        or collection.media_type == fom.GROUP
+    )
+    opm_filepath = (
+        f"{opm_field}.{_ADDITIONAL_MEDIA_FIELDS[OrthographicProjectionMetadata]}"
+        if use_opm
+        else None
+    )
+    filepath = None
     media_urls = []
 
     for field in media_fields:
-        path = sample.get(field, None)
+        path = _deep_get(sample, field)
+
         if path not in cache:
             cache[path] = path
 
+        if opm_filepath == field:
+            filepath_source = path
+            filepath = path
+        elif not opm_filepath and field == "filepath":
+            filepath_source = path
+            filepath = path
+
         media_urls.append(dict(field=field, url=path))
 
-    return media_urls
+    return filepath, filepath_source, media_urls
+
+
+def _get_additional_media_fields(
+    collection: SampleCollection,
+) -> t.List[str]:
+    additional = []
+    opm_field = None
+    for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
+        for field_name in collection.get_field_schema(
+            embedded_doc_type=cls, flat=True
+        ):
+            if cls == OrthographicProjectionMetadata:
+                opm_field = field_name
+
+            additional.append(f"{field_name}.{subfield_name}")
+
+    return opm_field, additional
+
+
+def _deep_get(sample, keys, default=None):
+    """
+    Get a value from a nested dictionary by specifying keys delimited by '.',
+    similar to lodash's ``_.get()``.
+    """
+    return reduce(
+        lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
+        keys.split("."),
+        sample,
+    )

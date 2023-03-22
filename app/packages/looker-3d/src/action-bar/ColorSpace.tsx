@@ -22,7 +22,7 @@ export const ChooseColorSpace = ({
 
   return (
     <>
-      <ActionItem>
+      <ActionItem title="Shade By">
         <ColorLensIcon
           sx={{ fontSize: 24 }}
           color="inherit"

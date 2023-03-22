@@ -613,7 +613,7 @@ Customizing your ML backend
 
 Behind the scenes, FiftyOne uses either
 `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ or
-`TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_
+`TorchVision Datasets <https://pytorch.org/vision/stable/datasets.html>`_
 libraries to download and wrangle some zoo datasets, depending on which ML
 library you have installed. In order to load datasets using TF, you must have
 the `tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`_

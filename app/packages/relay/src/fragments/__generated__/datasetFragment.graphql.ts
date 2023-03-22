@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ab43814213a439682574729402e514e1>>
+ * @generated SignedSource<<17fa1a68d4a6d064c94c5966cd8cfa1f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+export type BrainRunType = "similarity" | "visualization" | "%future added value";
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
@@ -24,8 +25,12 @@ export type datasetFragment$data = {
     readonly config: {
       readonly cls: string;
       readonly embeddingsField: string | null;
+      readonly maxK: number | null;
       readonly method: string | null;
       readonly patchesField: string | null;
+      readonly supportsLeastSimilarity: boolean | null;
+      readonly supportsPrompts: boolean | null;
+      readonly type: BrainRunType | null;
     } | null;
     readonly key: string;
     readonly timestamp: any | null;
@@ -91,6 +96,6 @@ const node: ReaderInlineDataFragment = {
   "name": "datasetFragment"
 };
 
-(node as any).hash = "67adbb4471463838441b82a81cf650a4";
+(node as any).hash = "3a94150872c97f8a30d68ce80ad83efe";
 
 export default node;
