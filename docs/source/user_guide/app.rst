@@ -298,16 +298,14 @@ attribute names in the App's sidebar:
 Sidebar mode
 ------------
 
-Each time you load a new dataset or view in the App, the sidebar updates to
-show statistics for the current collection. For large datasets with many
-samples or fields, this may involve substantial computation.
+Each time you load a new dataset or view in the App, the sidebar will update to
+show statistics for the current collection based on the **sidebar mode**:
 
-Therefore, the App supports three sidebar modes that you can choose between:
-
+-   `fast` (*default*): only compute counts for fields whose filter tray is
+    expanded
 -   `all`: always compute counts for all fields
--   `fast`: only compute counts for fields whose filter tray is expanded
--   `best` (*default*): automatically choose between `all` and `fast` mode
-    based on the size of the dataset
+-   `best`: automatically choose between `fast` and `all` mode based on the
+    size of the dataset
 
 When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:
@@ -340,8 +338,8 @@ the :ref:`dataset's App config <custom-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Set the default sidebar mode to "fast"
-    dataset.app_config.sidebar_mode = "fast"
+    # Set the default sidebar mode to "best"
+    dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
     session.refresh()
@@ -611,6 +609,145 @@ hovering, a slider appears to adjust the setting manually.
     down the `SHIFT` key when zoom-scrolling or using the arrow keys to
     navigate between samples/labels to restrict your inputs to the App and thus
     prevent them from also affecting your browser window.
+
+.. _app-3d-visualizer:
+
+Using the 3D visualizer
+_______________________
+
+The 3D visualizer allows you to interactively visualize
+:ref:`point cloud samples <point-cloud-datasets>` along with any associated
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
+
+.. image:: /images/app/app-3d-visualizer.gif
+   :alt: 3d-visualizer
+   :align: center
+
+The table below summarizes the mouse/keyboard controls that the 3D visualizer
+supports:
+
+.. table::
+    :widths: 30 30 40
+
+    +--------------+----------------+-------------------------------+
+    | Input        | Action         | Description                   |
+    +==============+================+===============================+
+    | Wheel        | Zoom           | Zoom in and out               |
+    +--------------+----------------+-------------------------------+
+    | Drag         | Rotate         | Rotate the camera             |
+    +--------------+----------------+-------------------------------+
+    | Shift + drag | Translate      | Translate the camera          |
+    +--------------+----------------+-------------------------------+
+    | T            | Top-down       | Reset camera to top-down view |
+    +--------------+----------------+-------------------------------+
+    | E            | Ego-view       | Reset the camera to ego view  |
+    +--------------+----------------+-------------------------------+
+    | ESC          | Escape context | Escape the current context    |
+    +--------------+----------------+-------------------------------+
+
+In addition, the HUD at the bottom of the 3D visualizer provides the following
+controls:
+
+-   Use the points icon to change the size of the points in the cloud
+-   Use the palette icon to choose whether the point cloud is colored by
+    height, intensity, RGB, or no coloring
+-   Click the `T` to reset the camera to top-down view
+-   Click the `E` to reset the camera to ego-view
+
+When coloring by intensity, the color of each point is computed by mapping the
+`r` channel of the `rgb` field of the
+`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+onto a fixed colormap, which is scaled so that the full colormap is matched to
+the observed dynamic range of `r` values for each sample.
+
+Similarly, when coloring by height, the `z` value of each point is mapped to
+the full colormap using the same strategy.
+
+.. _app-3d-orthographic-projections:
+
+Viewing 3D samples in the grid
+------------------------------
+
+When you load point cloud collections in the App, any
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`
+fields will be visualized in the App using an orthographic projection
+(onto the xy plane by default).
+
+In addition, if you have populated
+:ref:`orthographic projection images <orthographic-projection-images>` on your
+dataset, the projection images will be rendered for each sample in the grid:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example point cloud dataset
+    dataset = (
+        foz.load_zoo_dataset("quickstart-groups")
+        .select_group_slices("pcd")
+        .clone()
+    )
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-orthographic-projections.gif
+    :alt: orthographic-projections
+    :align: center
+
+.. _app-3d-visualizer-config:
+
+Configuring the 3D visualizer
+-----------------------------
+
+The 3D visualizer can be configured by including any subset of the settings
+shown below under the `plugins.3d` key of your
+:ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    // The default values are shown below
+    {
+        "plugins": {
+            "3d": {
+                // Whether to show the 3D visualizer
+                "enabled": true,
+
+                // The initial camera position in the 3D scene
+                "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
+
+                // The default up direction for the scene
+                "defaultUp": [0, 0, 1],
+
+                "pointCloud": {
+                    // Don't render points below this z value
+                    "minZ": null
+                }
+            }
+        }
+    }
+
+You can also store dataset-specific plugin settings by storing any subset of
+the above values on a :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Configure the 3D visualuzer for a dataset's PCD/Label data
+    dataset.app_config.plugins["3d"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+    }
+    dataset.save()
+
+.. note::
+
+    Dataset-specific plugin settings will override any settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
 
 .. _app-spaces:
 
@@ -1410,13 +1547,13 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 
 .. _app-similarity:
 
-Sorting by visual similarity
-____________________________
+Sorting by similarity
+_____________________
 
 Whenever you select samples, patches, or labels in the App in a |Dataset| that
-has been indexed by :ref:`visual similarity <brain-similarity>`, you can use
-the similarity menu in the App to sort or filter your current view based on
-visual similarity to the chosen image or object.
+has been :ref:`indexed by similarity <brain-similarity>`, you can use the
+similarity menu in the App to sort or filter your current view based on
+similarity to the chosen image or object.
 
 .. note::
 
@@ -1431,17 +1568,12 @@ Image similarity
 
 Whenever one or more images are selected in the App, the similarity menu icon
 appears above the grid. If you have indexed the dataset by
-:ref:`image similarity <brain-image-similarity>`, then you will see the
-``brain_key`` (or multiple keys to choose from) for the applicable indexes in
-this menu.
+:ref:`image similarity <brain-image-similarity>`, then you will be able to sort
+by similarity to your current selection.
 
-Choose the ``brain_key`` of interest and click apply, and a new
-|SortBySimilarity| view stage will be appended to the view bar and your view
-will be updated to show the results of the query.
-
-In the menu, you can optionally specify a maximum number of matches to return
-(``k``) and whether to sort in order of least similarity rather than most
-similarity (``reverse``).
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
 
 .. image:: /images/brain/brain-image-similarity.gif
     :alt: image-similarity
@@ -1460,9 +1592,8 @@ Object similarity
 
 Whenever one or more labels or patches are selected in the App, the similarity
 menu icon appears above the sample grid. If you have indexed the dataset by
-:ref:`object similarity <brain-object-similarity>`, then you will see the
-``brain_key`` (or multiple keys to choose from) for the applicable indexes in
-this menu.
+:ref:`object similarity <brain-object-similarity>`, then you will be able to
+sort by similarity to your current selection.
 
 The typical workflow for object similarity is to first switch to
 :ref:`object patches view <app-object-patches>` for the label field of
@@ -1471,22 +1602,18 @@ selected one or more patches from the grid, and the resulting view will sort
 the patches according to the similarity of their objects with respect to the
 objects in the query patches.
 
-Choose the ``brain_key`` of interest and click apply, and a new
-|SortBySimilarity| view stage will be appended to the view bar and your view
-will be updated to show the results of the query.
-
-In the menu, you can optionally specify a maximum number of matches to return
-(``k``) and whether to sort in order of least similarity rather than most
-similarity (``reverse``).
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
 
 .. image:: /images/brain/brain-object-similarity.gif
     :alt: object-similarity
     :align: center
 
 |br|
-You can also sort by visual similarity to an object from the expanded sample
-view in the App by selecting an object and then using the similarity menu that
-appears in the upper-right corner of the modal:
+You can also sort by similarity to an object from the expanded sample view in
+the App by selecting an object and then using the similarity menu that appears
+in the upper-right corner of the modal:
 
 .. image:: /images/brain/brain-object-similarity-modal.gif
     :alt: object-similarity-modal
@@ -1497,6 +1624,30 @@ appears in the upper-right corner of the modal:
     For large datasets, you may notice longer load times the first time you use
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
+
+.. _app-text-similarity:
+
+Text similarity
+---------------
+
+If you have indexed your dataset with a model that
+:ref:`supports text queries <brain-similarity-text>`, you can use the text
+similarity menu in the App to search for images (or object patches) of interest
+via arbitrary text queries!
+
+You can use the advanced settings menu to choose between multiple brain keys
+and optionally specify a maximum number of matches to return (`k`) and whether
+to query by greatest or least similarity (if supported).
+
+.. image:: /images/brain/brain-text-similarity.gif
+   :alt: text-similarity
+   :align: center
+
+.. note::
+
+    Did you know? You can also perform text queries
+    :ref:`via the SDK <brain-similarity-text>` by passing a prompt directly to
+    :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`!
 
 .. _app-multiple-media-fields:
 

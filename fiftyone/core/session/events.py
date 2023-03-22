@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import re
 import typing as t
 
+import asyncio
 from dacite import from_dict
 
 import eta.core.utils as etau
@@ -54,6 +55,16 @@ class Event:
             data["state"] = fos.StateDescription.from_dict(data["state"])
 
         return from_dict(event_cls, data)
+
+    @staticmethod
+    async def from_data_async(
+        event_name: str, data: t.Union[str, dict]
+    ) -> EventType:
+        def run():
+            return Event.from_data(event_name, data)
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, run)
 
 
 @dataclass
@@ -111,11 +122,11 @@ class ListenPayload:
     polling: t.Optional[bool] = False
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ListenPayload":
+    async def from_dict(cls, d: dict) -> "ListenPayload":
         init = d["initializer"]
 
         if isinstance(init, dict) and "_CLS" in init:
-            d["initializer"] = fos.StateDescription.from_dict(init)
+            d["initializer"] = await _load_state(init)
 
         return from_dict(cls, d)
 
@@ -147,3 +158,11 @@ def get_screenshot(subscription: str, pop=False) -> Screenshot:
     return (
         _SCREENSHOTS.pop(subscription) if pop else _SCREENSHOTS[subscription]
     )
+
+
+async def _load_state(data: dict):
+    def run():
+        return fos.StateDescription.from_dict(data)
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, run)

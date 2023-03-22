@@ -430,7 +430,9 @@ def export_to_scale(
             whitelist=label_fields
         )
         if media_fields:
-            sample_collection.download_media(media_fields=media_fields)
+            sample_collection.download_media(
+                media_fields=list(media_fields.keys())
+            )
 
     # Export the labels
     labels = {}

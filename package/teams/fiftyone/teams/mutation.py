@@ -94,6 +94,7 @@ class Mutation(fosm.Mutation):
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
+                extended_stages=form.extended if form else None,
             )
 
         result_view = fosm._build_result_view(result_view, form)

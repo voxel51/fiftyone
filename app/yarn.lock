@@ -4309,6 +4309,7 @@ __metadata:
     relay-compiler: ^14.1.0
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
+    searchable-react-json-view: ^0.0.8
     styled-components: ^5.3.3
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -4341,6 +4342,7 @@ __metadata:
     "@storybook/react": ^6.5.13
     "@storybook/testing-library": ^0.0.13
     "@types/react-input-autosize": ^2.2.1
+    "@types/react-syntax-highlighter": ^15.5.6
     babel-loader: ^8.3.0
     classnames: ^2.3.1
     framer-motion: ^6.2.7
@@ -4348,6 +4350,7 @@ __metadata:
     prettier: ^2.7.1
     react-input-autosize: ^3.0.0
     react-laag: ^2.0.3
+    react-syntax-highlighter: ^15.5.0
     react-use: ^17.3.2
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -4543,7 +4546,6 @@ __metadata:
     copy-to-clipboard: ^3.3.1
     fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
-    json-format-highlight: ^1.0.4
     lru-cache: ^6.0.0
     mime: ^2.5.2
     prettier: ^2.7.1
@@ -8419,6 +8421,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/react-syntax-highlighter@npm:^15.5.6":
+  version: 15.5.6
+  resolution: "@types/react-syntax-highlighter@npm:15.5.6"
+  dependencies:
+    "@types/react": "*"
+  checksum: 81a9f26da41606ff595d42a064ec4097cd17c4ef242558aa5b3b76a1063729b2ae73f063350069a4692218cf6843d7ea59d3eaeac4df2a4894d969d911fb80b2
+  languageName: node
+  linkType: hard
+
 "@types/react-transition-group@npm:^4.2.0, @types/react-transition-group@npm:^4.4.5":
   version: 4.4.5
   resolution: "@types/react-transition-group@npm:4.4.5"
@@ -12135,6 +12146,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"core-js@npm:^1.0.0":
+  version: 1.2.7
+  resolution: "core-js@npm:1.2.7"
+  checksum: 0b76371bfa98708351cde580f9287e2360d2209920e738ae950ae74ad08639a2e063541020bf666c28778956fc356ed9fe56d962129c88a87a6a4a0612526c75
+  languageName: node
+  linkType: hard
+
 "core-js@npm:^3.0.4, core-js@npm:^3.6.5, core-js@npm:^3.8.2":
   version: 3.26.1
   resolution: "core-js@npm:3.26.1"
@@ -13706,7 +13724,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"encoding@npm:^0.1.13":
+"encoding@npm:^0.1.11, encoding@npm:^0.1.13":
   version: 0.1.13
   resolution: "encoding@npm:0.1.13"
   dependencies:
@@ -15036,12 +15054,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fault@npm:^1.0.0":
+  version: 1.0.4
+  resolution: "fault@npm:1.0.4"
+  dependencies:
+    format: ^0.2.0
+  checksum: 5ac610d8b09424e0f2fa8cf913064372f2ee7140a203a79957f73ed557c0e79b1a3d096064d7f40bde8132a69204c1fe25ec23634c05c6da2da2039cff26c4e7
+  languageName: node
+  linkType: hard
+
 "fb-watchman@npm:^2.0.0":
   version: 2.0.1
   resolution: "fb-watchman@npm:2.0.1"
   dependencies:
     bser: 2.1.1
   checksum: 8510230778ab3a51c27dffb1b76ef2c24fab672a42742d3c0a45c2e9d1e5f20210b1fbca33486088da4a9a3958bde96b5aec0a63aac9894b4e9df65c88b2cbd6
+  languageName: node
+  linkType: hard
+
+"fbemitter@npm:^2.0.0":
+  version: 2.1.1
+  resolution: "fbemitter@npm:2.1.1"
+  dependencies:
+    fbjs: ^0.8.4
+  checksum: 28b3024456e320275d759d594f0b2099964f5c6289c768d856481e795db557c425bae9845ff382922eb32ec331da77fc3f6be3832a7e9fcdfa0f4fb1fc7f703c
   languageName: node
   linkType: hard
 
@@ -15058,6 +15094,21 @@ __metadata:
   version: 1.0.2
   resolution: "fbjs-css-vars@npm:1.0.2"
   checksum: 72baf6d22c45b75109118b4daecb6c8016d4c83c8c0f23f683f22e9d7c21f32fff6201d288df46eb561e3c7d4bb4489b8ad140b7f56444c453ba407e8bd28511
+  languageName: node
+  linkType: hard
+
+"fbjs@npm:^0.8.0, fbjs@npm:^0.8.4":
+  version: 0.8.18
+  resolution: "fbjs@npm:0.8.18"
+  dependencies:
+    core-js: ^1.0.0
+    isomorphic-fetch: ^2.1.1
+    loose-envify: ^1.0.0
+    object-assign: ^4.1.0
+    promise: ^7.1.1
+    setimmediate: ^1.0.5
+    ua-parser-js: ^0.7.30
+  checksum: 668731b946a765908c9cbe51d5160f973abb78004b3d122587c3e930e3e1ddcc0ce2b17f2a8637dc9d733e149aa580f8d3035a35cc2d3bc78b78f1b19aab90e2
   languageName: node
   linkType: hard
 
@@ -15309,6 +15360,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"flux@npm:^3.1.3":
+  version: 3.1.3
+  resolution: "flux@npm:3.1.3"
+  dependencies:
+    fbemitter: ^2.0.0
+    fbjs: ^0.8.0
+  peerDependencies:
+    react: ^15.0.2 || ^16.0.0-beta || ^16.0.0
+  checksum: 8aa8b0d80cbdd6c751f52876573f934282a784c2382b32518fffac94f462d02a8c85d6c83ed266df6db4ebea58442ba9d8d7e5127797df6476944b1ab531560a
+  languageName: node
+  linkType: hard
+
 "flux@npm:^4.0.1":
   version: 4.0.3
   resolution: "flux@npm:4.0.3"
@@ -15439,6 +15502,13 @@ __metadata:
     combined-stream: ^1.0.8
     mime-types: ^2.1.12
   checksum: 01135bf8675f9d5c61ff18e2e2932f719ca4de964e3be90ef4c36aacfc7b9cb2fceb5eca0b7e0190e3383fe51c5b37f4cb80b62ca06a99aaabfcfd6ac7c9328c
+  languageName: node
+  linkType: hard
+
+"format@npm:^0.2.0":
+  version: 0.2.2
+  resolution: "format@npm:0.2.2"
+  checksum: 646a60e1336250d802509cf24fb801e43bd4a70a07510c816fa133aa42cdbc9c21e66e9cc0801bb183c5b031c9d68be62e7fbb6877756e52357850f92aa28799
   languageName: node
   linkType: hard
 
@@ -16638,6 +16708,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"highlight.js@npm:^10.4.1, highlight.js@npm:~10.7.0":
+  version: 10.7.3
+  resolution: "highlight.js@npm:10.7.3"
+  checksum: defeafcd546b535d710d8efb8e650af9e3b369ef53e28c3dc7893eacfe263200bba4c5fcf43524ae66d5c0c296b1af0870523ceae3e3104d24b7abf6374a4fea
+  languageName: node
+  linkType: hard
+
 "history@npm:^5.3.0":
   version: 5.3.0
   resolution: "history@npm:5.3.0"
@@ -17715,7 +17792,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-stream@npm:^1.1.0":
+"is-stream@npm:^1.0.1, is-stream@npm:^1.1.0":
   version: 1.1.0
   resolution: "is-stream@npm:1.1.0"
   checksum: 063c6bec9d5647aa6d42108d4c59723d2bd4ae42135a2d4db6eadbd49b7ea05b750fd69d279e5c7c45cf9da753ad2c00d8978be354d65aa9f6bb434969c6a2ae
@@ -17936,6 +18013,16 @@ __metadata:
   version: 4.0.0
   resolution: "isobject@npm:4.0.0"
   checksum: bbcb522e46d54fb22418ba49fb9a82057ffa201c8401fb6e018c042e2c98cf7d9c7b185aff88e035ec8adea0814506dc2aeff2d08891bbc158e1671a49e99c06
+  languageName: node
+  linkType: hard
+
+"isomorphic-fetch@npm:^2.1.1":
+  version: 2.2.1
+  resolution: "isomorphic-fetch@npm:2.2.1"
+  dependencies:
+    node-fetch: ^1.0.1
+    whatwg-fetch: ">=0.10.0"
+  checksum: bb5daa7c3785d6742f4379a81e55b549a469503f7c9bf9411b48592e86632cf5e8fe8ea878dba185c0f33eb7c510c23abdeb55aebfdf5d3c70f031ced68c5424
   languageName: node
   linkType: hard
 
@@ -18691,13 +18778,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-format-highlight@npm:^1.0.4":
-  version: 1.0.4
-  resolution: "json-format-highlight@npm:1.0.4"
-  checksum: 51c9d6b79abd4be9e0cf1253fc17630aed6a881b4f3eb1781292506d4e3faedb229ac0ef76d9d5f999401d3f457757986c37029f7ace1e25932a0761100aec27
-  languageName: node
-  linkType: hard
-
 "json-parse-better-errors@npm:^1.0.1, json-parse-better-errors@npm:^1.0.2":
   version: 1.0.2
   resolution: "json-parse-better-errors@npm:1.0.2"
@@ -19340,6 +19420,16 @@ __metadata:
   version: 2.0.0
   resolution: "lowercase-keys@npm:2.0.0"
   checksum: 24d7ebd56ccdf15ff529ca9e08863f3c54b0b9d1edb97a3ae1af34940ae666c01a1e6d200707bce730a8ef76cb57cc10e65f245ecaaf7e6bc8639f2fb460ac23
+  languageName: node
+  linkType: hard
+
+"lowlight@npm:^1.17.0":
+  version: 1.20.0
+  resolution: "lowlight@npm:1.20.0"
+  dependencies:
+    fault: ^1.0.0
+    highlight.js: ~10.7.0
+  checksum: 14a1815d6bae202ddee313fc60f06d46e5235c02fa483a77950b401d85b4c1e12290145ccd17a716b07f9328bd5864aa2d402b6a819ff3be7c833d9748ff8ba7
   languageName: node
   linkType: hard
 
@@ -20343,6 +20433,16 @@ __metadata:
     encoding:
       optional: true
   checksum: 8d816ffd1ee22cab8301c7756ef04f3437f18dace86a1dae22cf81db8ef29c0bf6655f3215cb0cdb22b420b6fe141e64b26905e7f33f9377a7fa59135ea3e10b
+  languageName: node
+  linkType: hard
+
+"node-fetch@npm:^1.0.1":
+  version: 1.7.3
+  resolution: "node-fetch@npm:1.7.3"
+  dependencies:
+    encoding: ^0.1.11
+    is-stream: ^1.0.1
+  checksum: 3bb0528c05d541316ebe52770d71ee25a6dce334df4231fd55df41a644143e07f068637488c18a5b0c43f05041dbd3346752f9e19b50df50569a802484544d5b
   languageName: node
   linkType: hard
 
@@ -21919,6 +22019,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prismjs@npm:^1.27.0":
+  version: 1.29.0
+  resolution: "prismjs@npm:1.29.0"
+  checksum: 007a8869d4456ff8049dc59404e32d5666a07d99c3b0e30a18bd3b7676dfa07d1daae9d0f407f20983865fd8da56de91d09cb08e6aa61f5bc420a27c0beeaf93
+  languageName: node
+  linkType: hard
+
+"prismjs@npm:~1.27.0":
+  version: 1.27.0
+  resolution: "prismjs@npm:1.27.0"
+  checksum: 85c7f4a3e999073502cc9e1882af01e3709706369ec254b60bff1149eda701f40d02512acab956012dc7e61cfd61743a3a34c1bd0737e8dbacd79141e5698bbc
+  languageName: node
+  linkType: hard
+
 "probe-image-size@npm:^7.2.3":
   version: 7.2.3
   resolution: "probe-image-size@npm:7.2.3"
@@ -22683,6 +22797,32 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-syntax-highlighter@npm:^15.5.0":
+  version: 15.5.0
+  resolution: "react-syntax-highlighter@npm:15.5.0"
+  dependencies:
+    "@babel/runtime": ^7.3.1
+    highlight.js: ^10.4.1
+    lowlight: ^1.17.0
+    prismjs: ^1.27.0
+    refractor: ^3.6.0
+  peerDependencies:
+    react: ">= 0.14.0"
+  checksum: c082b48f30f8ba8d0c55ed1d761910630860077c7ff5793c4c912adcb5760df06436ed0ad62be0de28113aac9ad2af55eccd995f8eee98df53382e4ced2072fb
+  languageName: node
+  linkType: hard
+
+"react-textarea-autosize@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "react-textarea-autosize@npm:6.1.0"
+  dependencies:
+    prop-types: ^15.6.0
+  peerDependencies:
+    react: ">=0.14.0 <17.0.0"
+  checksum: 931721953f6a61baca6889ff9a41741a77d15f6514ad6326466f2ad11a89327e0edbbf82330b90c202d92b6d939707ac7ff8261cf7280022b3067fc2b5b187c2
+  languageName: node
+  linkType: hard
+
 "react-textarea-autosize@npm:^8.3.2":
   version: 8.4.0
   resolution: "react-textarea-autosize@npm:8.4.0"
@@ -22996,6 +23136,17 @@ __metadata:
     css-unit-converter: ^1.1.1
     postcss-value-parser: ^3.3.0
   checksum: 8fd27c06c4b443b84749a69a8b97d10e6ec7d142b625b41923a8807abb22b9e37e44df14e26cc606a802957be07bdce5e8ee2976a6952a7b438a7727007101e9
+  languageName: node
+  linkType: hard
+
+"refractor@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "refractor@npm:3.6.0"
+  dependencies:
+    hastscript: ^6.0.0
+    parse-entities: ^2.0.0
+    prismjs: ~1.27.0
+  checksum: 39b01c4168c77c5c8486f9bf8907bbb05f257f15026057ba5728535815a2d90eed620468a4bfbb2b8ceefbb3ce3931a1be8b17152dbdbc8b0eef92450ff750a2
   languageName: node
   linkType: hard
 
@@ -24050,6 +24201,21 @@ __metadata:
   version: 5.2.0
   resolution: "screenfull@npm:5.2.0"
   checksum: 21eae33b780eb4679ea0ea2d14734b11168cf35049c45a2bf24ddeb39c67a788e7a8fb46d8b61ca6d8367fd67ce9dd4fc8bfe476489249c7189c2a79cf83f51a
+  languageName: node
+  linkType: hard
+
+"searchable-react-json-view@npm:^0.0.8":
+  version: 0.0.8
+  resolution: "searchable-react-json-view@npm:0.0.8"
+  dependencies:
+    flux: ^3.1.3
+    react-base16-styling: ^0.6.0
+    react-lifecycles-compat: ^3.0.4
+    react-textarea-autosize: ^6.1.0
+  peerDependencies:
+    react: ^16.0.0 || ^15.5.4
+    react-dom: ^16.0.0 || ^15.5.4
+  checksum: 42b374db16e9916ae3ead259145653d27762c92f0187277fe8a9b5ef2f54532f0e7d4e54708c92166e0a0ba2bcd58256e623e6074b4ba5b415b2a5c433036f01
   languageName: node
   linkType: hard
 
@@ -27514,6 +27680,13 @@ __metadata:
   version: 2.0.4
   resolution: "whatwg-fetch@npm:2.0.4"
   checksum: de7c65a68d7d62e2f144a6b30293370b3ad82b65ebcd68f2ac8e8bbe7ede90febd98ba9486b78c1cbc950e0e8838fa5c2727f939899ab3fc7b71a04be52d33a5
+  languageName: node
+  linkType: hard
+
+"whatwg-fetch@npm:>=0.10.0":
+  version: 3.6.2
+  resolution: "whatwg-fetch@npm:3.6.2"
+  checksum: ee976b7249e7791edb0d0a62cd806b29006ad7ec3a3d89145921ad8c00a3a67e4be8f3fb3ec6bc7b58498724fd568d11aeeeea1f7827e7e1e5eae6c8a275afed
   languageName: node
   linkType: hard
 

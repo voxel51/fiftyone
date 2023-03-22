@@ -11,7 +11,8 @@ import {
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
-import { matchedTags } from "../filters";
+
+import { filters, modalFilters } from "../filters";
 
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
@@ -71,11 +72,10 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
     ({ get }) => {
       const paths = get(schemaAtoms.activeFields({ modal }));
       const hidden = get(selectors.hiddenLabelIds);
-      const matchedLabelTags = get(
-        matchedTags({ key: State.TagKey.LABEL, modal })
-      );
 
-      const filters = paths.reduce((f, path) => {
+      const current = modal ? get(modalFilters) : get(filters);
+
+      const newFilters = paths.reduce((f, path) => {
         if (path.startsWith("_")) return f;
 
         const field = get(schemaAtoms.field(path));
@@ -106,14 +106,15 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
               return false;
             }
 
-            let matched = true;
-            if (matchedLabelTags.size) {
-              matched =
-                value.tags &&
-                value.tags.some((tag) => matchedLabelTags.has(tag));
-            }
-
-            return matched && fs.every((filter) => filter(value));
+            return (
+              matchesLabelTags(
+                value as { tags: string[] },
+                current._label_tags
+              ) &&
+              fs.every((filter) => {
+                return filter(value);
+              })
+            );
           };
         } else if (field) {
           f[path] = get(primitiveFilter({ modal, path }));
@@ -123,14 +124,34 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
       }, {});
 
       return (path, value) => {
-        if (!filters[path]) {
+        if (!newFilters[path]) {
           return false;
         }
 
-        return filters[path](value);
+        return newFilters[path](value);
       };
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
+
+const matchesLabelTags = (
+  value: {
+    tags: string[];
+  },
+  filter?: State.CategoricalFilter<string>
+) => {
+  if (!filter) {
+    return true;
+  }
+
+  const { isMatching, values, exclude } = filter;
+
+  if (isMatching) {
+    return true;
+  }
+
+  const contains = value.tags.some((tag) => values.includes(tag));
+  return exclude ? !contains : contains;
+};

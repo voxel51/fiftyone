@@ -12,7 +12,6 @@ import os
 import warnings
 
 from bson import json_util
-import numpy as np
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -242,7 +241,7 @@ def export_samples(
     if label_field is not None:
         media_fields = samples._get_media_fields(whitelist=label_field)
         if media_fields:
-            samples.download_media(media_fields=media_fields)
+            samples.download_media(media_fields=list(media_fields.keys()))
 
     sample_collection = samples
 
@@ -1779,6 +1778,10 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the media in the
             exported labels
+        export_saved_views (True): whether to include saved views in the export.
+            Only applicable when exporting full datasets
+        export_runs (True): whether to include annotation/brain/evaluation
+            runs in the export. Only applicable when exporting full datasets
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -1789,6 +1792,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         export_media=None,
         rel_dir=None,
         abs_paths=False,
+        export_saved_views=True,
+        export_runs=True,
         pretty_print=False,
     ):
         if export_media is None:
@@ -1799,6 +1804,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.export_media = export_media
         self.rel_dir = rel_dir
         self.abs_paths = abs_paths
+        self.export_saved_views = export_saved_views
+        self.export_runs = export_runs
         self.pretty_print = pretty_print
 
         self._data_dir = None
@@ -1901,26 +1908,26 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # Exporting the information below only makes sense when exporting an
         # entire dataset
 
-        if dataset.has_saved_views:
+        if dataset.has_saved_views and self.export_saved_views:
             self._metadata["saved_views"] = [
                 json_util.dumps(v.to_dict()) for v in dataset._doc.saved_views
             ]
 
-        if dataset.has_annotation_runs:
+        if dataset.has_annotation_runs and self.export_runs:
             self._metadata["annotation_runs"] = {
                 k: json_util.dumps(v.to_dict())
                 for k, v in dataset._doc.annotation_runs.items()
             }
             _export_annotation_results(dataset, self._anno_dir)
 
-        if dataset.has_brain_runs:
+        if dataset.has_brain_runs and self.export_runs:
             self._metadata["brain_methods"] = {
                 k: json_util.dumps(v.to_dict())
                 for k, v in dataset._doc.brain_methods.items()
             }
             _export_brain_results(dataset, self._brain_dir)
 
-        if dataset.has_evaluations:
+        if dataset.has_evaluations and self.export_runs:
             self._metadata["evaluations"] = {
                 k: json_util.dumps(v.to_dict())
                 for k, v in dataset._doc.evaluations.items()
@@ -1978,17 +1985,15 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         return outpath
 
     def _export_media_fields(self, sd):
-        for field_name, label_type in self._media_fields.items():
+        for field_name, key in self._media_fields.items():
             value = sd.get(field_name, None)
             if value is None:
                 continue
 
-            if label_type is None:
+            if key is not None:
+                self._export_media_field(value, field_name, key=key)
+            else:
                 self._export_media_field(sd, field_name)
-            elif issubclass(label_type, fol.Segmentation):
-                self._export_media_field(value, field_name, key="mask_path")
-            elif issubclass(label_type, fol.Heatmap):
-                self._export_media_field(value, field_name, key="map_path")
 
     def _export_media_field(self, d, field_name, key=None):
         if key is not None:
@@ -2254,17 +2259,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             media_exporter.close()
 
     def _export_media_fields(self, sd):
-        for field_name, label_type in self._media_fields.items():
+        for field_name, key in self._media_fields.items():
             value = sd.get(field_name, None)
             if value is None:
                 continue
 
-            if label_type is None:
+            if key is not None:
+                self._export_media_field(value, field_name, key=key)
+            else:
                 self._export_media_field(sd, field_name)
-            elif issubclass(label_type, fol.Segmentation):
-                self._export_media_field(value, field_name, key="mask_path")
-            elif issubclass(label_type, fol.Heatmap):
-                self._export_media_field(value, field_name, key="map_path")
 
     def _export_media_field(self, d, field_name, key=None):
         if key is not None:

@@ -1,17 +1,22 @@
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  ImageLooker,
+  PcdLooker,
+  VideoLooker
+} from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   getMimeType,
-  LIST_FIELD,
+  LIST_FIELD
 } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
-import { mainGroupSample, selectedMediaField } from "../recoil";
+import { groupSample, selectedMediaField } from "../recoil";
 
 import { SampleData, selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName } from "../recoil/selectors";
+import { datasetName, mediaTypeSelector } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -20,18 +25,19 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
-  highlight: boolean = false
+  highlight = false
 ) => {
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal ? useRecoilValue(mainGroupSample)._id : null;
+  const activeId = isModal ? useRecoilValue(groupSample(null))._id : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
+  const mediaType = useRecoilValue(mediaTypeSelector);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -45,11 +51,15 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
+        | typeof PcdLooker
         | typeof VideoLooker = ImageLooker;
 
       const mimeType = getMimeType(sample);
 
-      if (mimeType !== null) {
+      // checking for pcd extension instead of media_type because this also applies for group slices
+      if (urls.filepath.endsWith(".pcd")) {
+        constructor = PcdLooker;
+      } else if (mimeType !== null) {
         const isVideo = mimeType.startsWith("video/");
 
         if (isVideo && (isFrame || isPatch)) {
@@ -60,8 +70,22 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
           constructor = VideoLooker;
         }
       } else {
-        // todo: check media type; constructor = PcdLooker if media_type is point-cloud
         constructor = ImageLooker;
+      }
+
+      let sampleMediaFilePath = urls[mediaField];
+
+      if (constructor === PcdLooker) {
+        const orthographicProjectionField = Object.entries(sample)
+          .find(
+            (el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+          )
+          ?.at(0) as string | undefined;
+        if (orthographicProjectionField) {
+          sampleMediaFilePath = urls[
+            `${orthographicProjectionField}.filepath`
+          ] as string;
+        }
       }
 
       const config: ReturnType<T["getInitialState"]>["config"] = {
@@ -76,10 +100,11 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
             dbField: null,
           },
         },
+        sources: urls,
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,
-        src: getSampleSrc(urls[mediaField]),
+        src: getSampleSrc(sampleMediaFilePath),
         support: isClip ? sample.support : undefined,
         thumbnail,
         dataset,
@@ -113,6 +138,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       highlight,
       selected,
       view,
+      mediaType,
     ]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);

@@ -406,18 +406,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _set_media_type(self, media_type):
         self._doc.media_type = media_type
 
-        if media_type == fom.VIDEO:
-            self._declare_frame_fields()
+        if self._contains_videos(any_slice=True):
+            self._init_frames()
 
-        if media_type != fom.GROUP:
-            self._update_metadata_field(media_type)
-
-            self._doc.save()
-            self.reload()
-        else:
+        if media_type == fom.GROUP:
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
-            self._doc.save()
+            self.save()
+        else:
+            self._update_metadata_field(media_type)
+
+            self.save()
+            self.reload()
 
     def _update_metadata_field(self, media_type):
         idx = None
@@ -441,12 +441,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
 
-    def _declare_frame_fields(self):
-        # pylint: disable=no-member
+    def _init_frames(self):
+        if self._frame_doc_cls is not None:
+            # Legacy datasets may not have frame fields declared yet
+            if not self._doc.frame_fields:
+                self._doc.frame_fields = [
+                    foo.SampleFieldDocument.from_field(field)
+                    for field in self._frame_doc_cls._fields.values()
+                ]
+
+            return
+
+        frame_collection_name = _make_frame_collection_name(
+            self._sample_collection_name
+        )
+        frame_doc_cls = _create_frame_document_cls(
+            self, frame_collection_name, field_docs=self._doc.frame_fields
+        )
+
+        _create_indexes(None, frame_collection_name)
+
+        self._doc.frame_collection_name = frame_collection_name
         self._doc.frame_fields = [
             foo.SampleFieldDocument.from_field(field)
-            for field in self._frame_doc_cls._fields.values()
+            for field in frame_doc_cls._fields.values()
         ]
+        self._frame_doc_cls = frame_doc_cls
 
     @property
     def group_field(self):
@@ -579,7 +599,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._doc.default_group_slice = slice_name
-        self._doc.save()
+        self.save()
 
         if self._group_slice is None:
             self._group_slice = slice_name
@@ -607,7 +627,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.name = name
         self._doc.slug = slug
-        self._doc.save(safe=True)
+        self.save()
 
         # Update singleton
         self._instances.pop(_name, None)
@@ -638,7 +658,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @persistent.setter
     def persistent(self, value):
         self._doc.persistent = value
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def tags(self):
@@ -663,7 +683,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @tags.setter
     def tags(self, value):
         self._doc.tags = value
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def description(self):
@@ -683,7 +703,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @description.setter
     def description(self, description):
         self._doc.description = description
-        self._doc.save()
+        self.save()
 
     @property
     def info(self):
@@ -707,7 +727,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @info.setter
     def info(self, info):
         self._doc.info = info
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def app_config(self):
@@ -749,7 +769,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             config = DatasetAppConfig()
 
         self._doc.app_config = config
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def classes(self):
@@ -777,7 +797,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @classes.setter
     def classes(self, classes):
         self._doc.classes = classes
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def default_classes(self):
@@ -803,7 +823,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_classes.setter
     def default_classes(self, classes):
         self._doc.default_classes = classes
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def mask_targets(self):
@@ -860,7 +880,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @mask_targets.setter
     def mask_targets(self, targets):
         self._doc.mask_targets = targets
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def default_mask_targets(self):
@@ -908,7 +928,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def skeletons(self):
@@ -944,7 +964,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @skeletons.setter
     def skeletons(self, skeletons):
         self._doc.skeletons = skeletons
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def default_skeleton(self):
@@ -977,7 +997,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_skeleton.setter
     def default_skeleton(self, skeleton):
         self._doc.default_skeleton = skeleton
-        self._doc.save(safe=True)
+        self.save()
 
     @property
     def deleted(self):
@@ -1521,7 +1541,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.default_group_slice = default
 
         self._doc.group_field = field_name
-        self._doc.save()
+        self.save()
 
         self._group_slice = self._doc.default_group_slice
 
@@ -1963,6 +1983,46 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
+    def add_group_slice(self, name, media_type):
+        """Adds a group slice with the given media type to the dataset, if
+        necessary.
+
+        Args:
+            name: a group slice name
+            media_type: the media type of the slice
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        existing_media_type = self._doc.group_media_types.get(name, None)
+        if existing_media_type is not None:
+            if media_type == existing_media_type:
+                return
+
+            raise ValueError(
+                "Group slice '%s' with media type %s != %s already exists"
+                % (name, existing_media_type, media_type)
+            )
+
+        if media_type not in fom.MEDIA_TYPES:
+            raise ValueError("Invalid media type '%s'" % media_type)
+
+        # If this is the first video slice, we need to initialize frames
+        if media_type == fom.VIDEO and not any(
+            slice_media_type == fom.VIDEO
+            for slice_media_type in self._doc.group_media_types.values()
+        ):
+            self._init_frames()
+
+        self._doc.group_media_types[name] = media_type
+
+        # If dataset doesn't yet have a default group slice, assign it
+        if self._doc.default_group_slice is None:
+            self._doc.default_group_slice = name
+            self._group_slice = name
+
+        self.save()
+
     def rename_group_slice(self, name, new_name):
         """Renames the group slice with the given name.
 
@@ -1988,7 +2048,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.group_slice == name:
             self.group_slice = new_name
 
-        self._doc.save()
+        self.save()
 
     def delete_group_slice(self, name):
         """Deletes all samples in the given group slice from the dataset.
@@ -2014,7 +2074,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._group_slice == name:
             self._group_slice = new_default
 
-        self._doc.save()
+        self.save()
 
     def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the dataset.
@@ -2525,7 +2585,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # We omit None here to allow samples with None-valued new fields to
         # be added without raising nonexistent field errors. This is safe
         # because None and missing are equivalent in our data model
-        return {k: v for k, v in d.items() if v is not None}
+        d = {k: v for k, v in d.items() if v is not None}
+
+        d["_dataset_id"] = self._doc.id
+
+        return d
 
     def _bulk_write(self, ops, frames=False, ordered=False):
         if frames:
@@ -3163,7 +3227,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is not None:
             _save_view(view, fields=fields)
 
-        self._doc.save()
+        try:
+            self._doc.save(safe=True)
+        except moe.DoesNotExist:
+            name = self.name
+            self._deleted = True
+            raise ValueError("Dataset '%s' is deleted" % name)
 
     def _save_field(self, field):
         if self._is_generated:
@@ -3182,9 +3251,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         field_doc.info = field.info
 
         try:
-            self._doc.save(safe=True)
+            self.save()
         except:
-            self._reload(hard=True)
+            self.reload()
             raise
 
     @property
@@ -3213,8 +3282,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def save_view(
         self,
-        name=name,
-        view=view,
+        name,
+        view,
         description=None,
         color=None,
         overwrite=False,
@@ -3239,6 +3308,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             name: a name for the saved view
             view: a :class:`fiftyone.core.view.DatasetView`
+            description (None): an optional string description
+            color (None): an optional RGB hex string like ``'#FF6D04'``
             overwrite (False): whether to overwrite an existing saved view with
                 the same name
         """
@@ -3263,10 +3334,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             created_at=now,
             last_modified_at=now,
         )
-        view_doc.save()
+        view_doc.save(upsert=True)
 
         self._doc.saved_views.append(view_doc)
-        self._doc.save()
+        self.save()
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -3339,10 +3410,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.last_modified_at = datetime.utcnow()
             view_doc.save()
 
-    def load_saved_view(
-        self,
-        name,
-    ):
+    def load_saved_view(self, name):
         """Loads the saved view with the given name.
 
         Examples::
@@ -3383,7 +3451,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         deleted_id = view_doc.id
 
         view_doc.delete()
-        self._doc.save()
+        self.save()
+
         return str(deleted_id)
 
     def delete_saved_views(self):
@@ -3392,7 +3461,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             view_doc.delete()
 
         self._doc.saved_views = []
-        self._doc.save()
+        self.save()
 
     def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
@@ -3682,6 +3751,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "$project": {
                         "_id": False,
                         "_sample_id": "$_id",
+                        "_dataset_id": self._doc.id,
                         "frame_number": {
                             "$range": [
                                 1,
@@ -3715,7 +3785,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reset_docs(self._sample_collection_name)
 
         # Clips datasets directly inherit frames from source dataset
-        if not self._is_clips:
+        if self._frame_collection_name is not None and not self._is_clips:
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
@@ -5578,24 +5648,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset = cls(name)
 
         media_type = d.get("media_type", None)
-        if media_type is not None:
-            dataset.media_type = media_type
 
         if media_type == fom.GROUP:
-            # group_field and group_slice are inferred when adding samples
             dataset._doc.group_media_types = d.get("group_media_types", {})
             dataset._doc.default_group_slice = d.get(
                 "default_group_slice", None
             )
-            dataset.save()
+
+        if media_type is not None:
+            dataset.media_type = media_type
 
         dataset._apply_field_schema(d.get("sample_fields", {}))
-
-        if "frame_fields" in d:
-            if media_type == fom.GROUP:
-                dataset._declare_frame_fields()
-
-            dataset._apply_frame_field_schema(d["frame_fields"])
+        dataset._apply_frame_field_schema(d.get("frame_fields", {}))
 
         dataset._doc.info = d.get("info", {})
 
@@ -5962,11 +6026,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _frame_collection(self):
+        if self._frame_collection_name is None:
+            return None
+
         return foo.get_db_conn()[self._frame_collection_name]
 
     @property
     def _frame_indexes(self):
-        index_info = self._frame_collection.index_information()
+        frame_collection = self._frame_collection
+        if frame_collection is None:
+            return None
+
+        index_info = frame_collection.index_information()
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
@@ -6043,24 +6114,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.group_field is not None and field_name != self.group_field:
             raise ValueError("Dataset has no group field '%s'" % field_name)
 
-        if slice_name not in self._doc.group_media_types:
-            # If this is the first video slice, we need to initialize the frame
-            # field schema
-            if media_type == fom.VIDEO and not any(
-                slice_media_type == fom.VIDEO
-                for slice_media_type in self._doc.group_media_types.values()
-            ):
-                self._declare_frame_fields()
-
-            self._doc.group_media_types[slice_name] = media_type
-
-            # If dataset doesn't yet have a default group slice, use the first
-            # observed value
-            if self._doc.default_group_slice is None:
-                self._doc.default_group_slice = slice_name
-                self._group_slice = slice_name
-
-            self._doc.save()
+        self.add_group_slice(slice_name, media_type)
 
     def _expand_frame_schema(self, frames, dynamic):
         if not dynamic:
@@ -6207,9 +6261,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self, self.name, virtual=True
         )
 
+        new_media_type = doc.media_type != self.media_type
+
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
+
+        if new_media_type:
+            self._set_media_type(doc.media_type)
 
         if self._group_slice is None:
             self._group_slice = doc.default_group_slice
@@ -6229,7 +6288,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self._doc.save()
+        self.save()
 
 
 def _get_random_characters(n):
@@ -6320,12 +6379,9 @@ def _create_dataset(
         frame_doc_cls = src_dataset._frame_doc_cls
         frame_fields = src_dataset._doc.frame_fields
     else:
-        # @todo don't create frame collection until media type is VIDEO?
-        frame_collection_name = _make_frame_collection_name(
-            sample_collection_name
-        )
-        frame_doc_cls = _create_frame_document_cls(obj, frame_collection_name)
-        frame_fields = []
+        frame_collection_name = None
+        frame_doc_cls = None
+        frame_fields = None
 
     dataset_doc = foo.DatasetDocument(
         id=_id,
@@ -6341,7 +6397,7 @@ def _create_dataset(
         frame_fields=frame_fields,
         app_config=DatasetAppConfig(),
     )
-    dataset_doc.save()
+    dataset_doc.save(upsert=True)
 
     if _clips:
         _create_indexes(sample_collection_name, None)
@@ -6354,8 +6410,9 @@ def _create_dataset(
 def _create_indexes(sample_collection_name, frame_collection_name):
     conn = foo.get_db_conn()
 
-    collection = conn[sample_collection_name]
-    collection.create_index("filepath")
+    if sample_collection_name is not None:
+        sample_collection = conn[sample_collection_name]
+        sample_collection.create_index("filepath")
 
     if frame_collection_name is not None:
         frame_collection = conn[frame_collection_name]
@@ -6481,10 +6538,12 @@ def _do_load_dataset(obj, name):
 
     if _src_dataset is not None:
         frame_doc_cls = _src_dataset._frame_doc_cls
-    else:
+    elif frame_collection_name is not None:
         frame_doc_cls = _create_frame_document_cls(
             obj, frame_collection_name, field_docs=dataset_doc.frame_fields
         )
+    else:
+        frame_doc_cls = None
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -6531,7 +6590,13 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     _id = ObjectId()
 
     sample_collection_name = _make_sample_collection_name(_id)
-    frame_collection_name = _make_frame_collection_name(sample_collection_name)
+
+    if contains_videos:
+        frame_collection_name = _make_frame_collection_name(
+            sample_collection_name
+        )
+    else:
+        frame_collection_name = None
 
     #
     # Clone dataset document
@@ -6578,19 +6643,21 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
                 if f.name in set(frame_schema.keys())
             ]
 
-    dataset_doc.save()
+    dataset_doc.save(upsert=True)
 
     # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
+    pipeline.append({"$set": {"_dataset_id": _id}})
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
+        pipeline.append({"$set": {"_dataset_id": _id}})
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -6782,19 +6849,16 @@ def _merge_dataset_doc(
             dataset.media_type = src_media_type
 
     curr_doc = dataset._doc
-    has_frame_fields = dataset._has_frame_fields()
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
         doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
-        if has_frame_fields:
-            frame_schema = collection_or_doc.get_frame_field_schema()
+        frame_schema = collection_or_doc.get_frame_field_schema() or {}
     else:
         doc = collection_or_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
-        if has_frame_fields:
-            frame_schema = {f.name: f.to_field() for f in doc.frame_fields}
+        frame_schema = {f.name: f.to_field() for f in doc.frame_fields or []}
 
     if curr_doc.media_type == fom.GROUP:
         # Get the group field this way because a view might omit the field
@@ -6836,6 +6900,12 @@ def _merge_dataset_doc(
                         "type '%s'" % (name, media_type, name, curr_media_type)
                     )
 
+        if dataset._frame_collection is None and any(
+            media_type == fom.VIDEO
+            for media_type in src_group_media_types.values()
+        ):
+            dataset._init_frames()
+
         if curr_doc.default_group_slice is None:
             curr_doc.default_group_slice = src_default_group_slice
 
@@ -6846,6 +6916,8 @@ def _merge_dataset_doc(
             "Cannot merge a collection with media_type='%s' into a dataset "
             "with media_type='%s'" % (src_media_type, dataset.media_type)
         )
+
+    has_frame_fields = dataset._has_frame_fields()
 
     # Omit fields first in case `fields` is a dict that changes field names
     if omit_fields is not None:
@@ -6880,7 +6952,7 @@ def _merge_dataset_doc(
         schema, expand_schema=expand_schema
     )
 
-    if has_frame_fields and frame_schema is not None:
+    if has_frame_fields and frame_schema:
         dataset._frame_doc_cls.merge_field_schema(
             frame_schema, expand_schema=expand_schema
         )
@@ -6936,7 +7008,7 @@ def _clone_extras(dst_dataset, src_doc):
     for _view_doc in src_doc.saved_views:
         view_doc = _clone_view_doc(_view_doc)
         view_doc.dataset_id = dst_doc.id
-        view_doc.save()
+        view_doc.save(upsert=True)
 
         dst_doc.saved_views.append(view_doc)
 
@@ -6944,7 +7016,7 @@ def _clone_extras(dst_dataset, src_doc):
     for anno_key, _run_doc in src_doc.annotation_runs.items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
-        run_doc.save()
+        run_doc.save(upsert=True)
 
         dst_doc.annotation_runs[anno_key] = run_doc
 
@@ -6952,7 +7024,7 @@ def _clone_extras(dst_dataset, src_doc):
     for brain_key, _run_doc in src_doc.brain_methods.items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
-        run_doc.save()
+        run_doc.save(upsert=True)
 
         dst_doc.brain_methods[brain_key] = run_doc
 
@@ -6960,7 +7032,7 @@ def _clone_extras(dst_dataset, src_doc):
     for eval_key, _run_doc in src_doc.evaluations.items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
-        run_doc.save()
+        run_doc.save(upsert=True)
 
         dst_doc.evaluations[eval_key] = run_doc
 
@@ -6976,13 +7048,14 @@ def _clone_view_doc(view_doc):
 def _clone_run(run_doc):
     _run_doc = run_doc.copy()
     _run_doc.id = ObjectId()
+    _run_doc.results = None
 
     # Unfortunately the only way to copy GridFS files is to read-write them...
     # https://jira.mongodb.org/browse/TOOLS-2208
-    run_doc.results.seek(0)
-    results_bytes = run_doc.results.read()
-    _run_doc.results = None
-    _run_doc.results.put(results_bytes, content_type="application/json")
+    if run_doc.results:
+        run_doc.results.seek(0)
+        results_bytes = run_doc.results.read()
+        _run_doc.results.put(results_bytes, content_type="application/json")
 
     return _run_doc
 
@@ -7072,6 +7145,7 @@ def _add_collection_with_new_ids(
             detach_groups=True,
             post_pipeline=[
                 {"$unset": "_id"},
+                {"$set": {"_dataset_id": dataset._doc.id}},
                 {
                     "$merge": {
                         "into": dataset._sample_collection_name,
@@ -7103,6 +7177,7 @@ def _add_collection_with_new_ids(
         detach_groups=True,
         post_pipeline=[
             {"$unset": "_id"},
+            {"$set": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -7118,6 +7193,7 @@ def _add_collection_with_new_ids(
         post_pipeline=[
             {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
             {"$unset": "_id"},
+            {"$set": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -7411,15 +7487,18 @@ def _merge_samples_pipeline(
     else:
         when_not_matched = "discard"
 
-    sample_pipeline.append(
-        {
-            "$merge": {
-                "into": dst_dataset._sample_collection_name,
-                "on": key_field,
-                "whenMatched": when_matched,
-                "whenNotMatched": when_not_matched,
-            }
-        }
+    sample_pipeline.extend(
+        [
+            {"$set": {"_dataset_id": dst_dataset._doc.id}},
+            {
+                "$merge": {
+                    "into": dst_dataset._sample_collection_name,
+                    "on": key_field,
+                    "whenMatched": when_matched,
+                    "whenNotMatched": when_not_matched,
+                }
+            },
+        ]
     )
 
     #
@@ -7478,7 +7557,7 @@ def _merge_samples_pipeline(
         else:
             _omit_frame_fields = set()
 
-        _omit_frame_fields.update(["id", "_sample_id"])
+        _omit_frame_fields.add("id")
         _omit_frame_fields.discard(frame_key_field)
         _omit_frame_fields.discard("frame_number")
 
@@ -7497,15 +7576,23 @@ def _merge_samples_pipeline(
                 frames=True,
             )
 
-        frame_pipeline.append(
-            {
-                "$merge": {
-                    "into": dst_dataset._frame_collection_name,
-                    "on": [frame_key_field, "frame_number"],
-                    "whenMatched": when_frame_matched,
-                    "whenNotMatched": "insert",
-                }
-            }
+        frame_pipeline.extend(
+            [
+                {
+                    "$set": {
+                        "_dataset_id": dst_dataset._doc.id,
+                        "_sample_id": "$" + frame_key_field,
+                    }
+                },
+                {
+                    "$merge": {
+                        "into": dst_dataset._frame_collection_name,
+                        "on": [frame_key_field, "frame_number"],
+                        "whenMatched": when_frame_matched,
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ]
         )
 
     #

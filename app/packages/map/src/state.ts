@@ -1,5 +1,6 @@
 import { dataset, extendedSelection, theme } from "@fiftyone/state";
 import { atom, selector } from "recoil";
+import { SELECTION_SCOPE } from "./constants";
 
 export interface Settings {
   clustering?: boolean;
@@ -58,13 +59,7 @@ export const geoFields = selector<string[]>({
 
 export const hasSelection = selector<boolean>({
   key: "hasSelection",
-  get: ({ get }) => get(extendedSelection)?.length > 0,
-  set: ({ reset }, newValue) => {
-    if (newValue === true) {
-      throw new Error("not allowed");
-    }
-    reset(extendedSelection);
-  },
+  get: ({ get }) => get(extendedSelection).scope === SELECTION_SCOPE,
 });
 
 export const MAP_STYLES = {

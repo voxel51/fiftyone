@@ -191,7 +191,7 @@ class ListAttribute(Attribute):
 # @todo remove this in favor of dynamic-only attributes
 class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
-    that contains a dict of of :class:`Attribute` instances.
+    that contains a dict of :class:`Attribute` instances.
     """
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
@@ -493,7 +493,7 @@ class Detection(_HasAttributesDict, _HasID, Label):
         return sg.box(x, y, x + w, y + h)
 
     @classmethod
-    def from_mask(cls, mask, label, **attributes):
+    def from_mask(cls, mask, label=None, **attributes):
         """Creates a :class:`Detection` instance with its ``mask`` attribute
         populated from the given full image mask.
 
@@ -502,7 +502,7 @@ class Detection(_HasAttributesDict, _HasID, Label):
 
         Args:
             mask: a boolean or 0/1 numpy array
-            label: the label string
+            label (None): the label string
             **attributes: additional attributes for the :class:`Detection`
 
         Returns:
@@ -696,7 +696,7 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         _render_polyline(mask, self, target, thickness)
         return Segmentation(mask=mask)
 
-    def to_shapely(self, frame_size=None):
+    def to_shapely(self, frame_size=None, filled=None):
         """Returns a Shapely representation of this instance.
 
         The type of geometry returned depends on the number of shapes
@@ -706,6 +706,8 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         Args:
             frame_size (None): the ``(width, height)`` of the image. If
                 provided, the returned geometry will use absolute coordinates
+            filled (None): whether to treat the shape as filled (True) or
+                hollow (False) regardless of its :attr:`filled` attribute
 
         Returns:
             one of the following:
@@ -721,6 +723,11 @@ class Polyline(_HasAttributesDict, _HasID, Label):
                 :attr:`filled` is False and :attr:`points` contains multiple
                 shapes
         """
+        if filled is not None:
+            _filled = filled
+        else:
+            _filled = self.filled
+
         if self.closed:
             points = []
             for shape in self.points:  # pylint: disable=not-an-iterable
@@ -736,24 +743,24 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             points = [[(x * w, y * h) for x, y in shape] for shape in points]
 
         if len(points) == 1:
-            if self.filled:
+            if _filled:
                 return sg.Polygon(points[0])
 
             return sg.LineString(points[0])
 
-        if self.filled:
+        if _filled:
             return sg.MultiPolygon(list(zip(points, itertools.repeat(None))))
 
         return sg.MultiLineString(points)
 
     @classmethod
-    def from_mask(cls, mask, label, tolerance=2, **attributes):
+    def from_mask(cls, mask, label=None, tolerance=2, **attributes):
         """Creates a :class:`Polyline` instance with polygons describing the
         non-zero region(s) of the given full image mask.
 
         Args:
             mask: a boolean or 0/1 numpy array
-            label: the label string
+            label (None): the label string
             tolerance (2): a tolerance, in pixels, when generating approximate
                 polygons for each region. Typical values are 1-3 pixels
             **attributes: additional attributes for the :class:`Polyline`
@@ -769,6 +776,64 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         return cls(
             label=label, points=points, filled=True, closed=True, **attributes
         )
+
+    @classmethod
+    def from_cuboid(cls, vertices, label=None, **attributes):
+        """Constructs a cuboid from its 8 vertices in the format below::
+
+               7--------6
+              /|       /|
+             / |      / |
+            3--------2  |
+            |  4-----|--5
+            | /      | /
+            |/       |/
+            0--------1
+
+        Args:
+            vertices: a list of 8 ``(x, y)`` vertices in the above format
+            label (None): the label string
+            **attributes: additional arguments for the :class:`Polyline`
+
+        Returns:
+            a :class:`Polyline`
+        """
+        vertices = np.asarray(vertices)
+        front = vertices[:4]
+        back = vertices[4:]
+        top = vertices[[3, 2, 6, 7], :]
+        bottom = vertices[[0, 1, 5, 4], :]
+        faces = [front.tolist(), back.tolist(), top.tolist(), bottom.tolist()]
+        return cls(label=label, points=faces, closed=True, **attributes)
+
+    @classmethod
+    def from_rotated_box(cls, xc, yc, w, h, theta, label=None, **attributes):
+        """Constructs a rotated bounding box from its center, dimensions, and
+        rotation.
+
+        Args:
+            xc: the x-center coordinate in ``[0, 1]``
+            yc: the y-center coorindate in ``[0, 1]``
+            w: the box width in ``[0, 1]``
+            y: the box height in ``[0, 1]``
+            theta: the counter-clockwise rotation of the box in radians
+            label (None): the label string
+            **attributes: additional arguments for the :class:`Polyline`
+
+        Returns:
+            a :class:`Polyline`
+        """
+        R = _rotation_matrix(theta)
+        x = 0.5 * w * np.array([1, -1, -1, 1])
+        y = 0.5 * h * np.array([1, 1, -1, -1])
+        points = (R.dot(np.stack((x, y))).T + np.array((xc, yc))).tolist()
+        return cls(label=label, points=[points], closed=True, **attributes)
+
+
+def _rotation_matrix(theta):
+    return np.array(
+        [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
+    )
 
 
 class Polylines(_HasLabelList, Label):
