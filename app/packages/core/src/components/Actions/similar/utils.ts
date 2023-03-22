@@ -61,7 +61,7 @@ export const getQueryIds = async (
 };
 
 export const useSortBySimilarity = (close) => {
-  const update = useUnprocessedStateUpdate();
+  const update = useUnprocessedStateUpdate(true);
   const handleError = useErrorHandler();
   const datasetId = useRecoilValue(fos.dataset).id;
   const [lastUsedBrainkeys, setLastUsedBrainKeys] =
