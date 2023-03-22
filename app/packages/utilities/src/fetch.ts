@@ -17,7 +17,7 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob" | "arrayBuffer",
+    result?: "json" | "blob" | "text" | "arrayBuffer",
     retries?: number,
     retryCodes?: number[] | "arrayBuffer"
   ): Promise<R>;
@@ -295,7 +295,7 @@ const pollingEventSource = (
   },
   signal: AbortSignal,
   body = {},
-  opened: boolean = false
+  opened = false
 ): void => {
   if (signal.aborted) {
     return;
