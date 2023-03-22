@@ -8,6 +8,7 @@ export type ShaderProps = {
   min: number;
   max: number;
   pointSize: number;
+  isPointSizeAttenuated: boolean;
 };
 
 const useGradientMap = (gradients: Gradients) => {
@@ -40,11 +41,50 @@ const useGradientMap = (gradients: Gradients) => {
   );
 };
 
-const ColorByHeightShaders = {
+const ShadeByRgbShaders = {
+  vertexShader: /* glsl */ `
+  // this uniform is used to pass the point size to the vertex shader from JS
+  uniform float pointSize;
+
+  // this uniform is used to indicate whether the point size should be attenuated based on distance from camera
+  uniform bool isPointSizeAttenuated;
+
+  // these attributes are injected into the vertex shader based on geometry
+  attribute vec3 color;
+
+  // this attribute is used to pass the color to the fragment shader
+  varying vec3 vColor;
+
+  void main() {
+    // assign color to the varying variable so that it can be used in fragment shader
+    vColor = color;
+
+    // do a model-view transform to get the position of the point in camera space
+    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+    // (1.0 / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+
+    // do a projection transform to get the position of the point in clip space
+    gl_Position = projectionMatrix * mvPosition;
+  }
+
+  `,
+  fragmentShader: /* glsl */ `
+  varying vec3 vColor;
+
+  void main() {
+    gl_FragColor = vec4(vColor, 1.0);
+  } 
+  `,
+};
+
+const ShadeByHeightShaders = {
   vertexShader: /* glsl */ `
   uniform float maxZ;
   uniform float minZ;
   uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
 
   varying vec2 vUv;
   varying float hValue;
@@ -60,7 +100,7 @@ const ColorByHeightShaders = {
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
     gl_Position = projectionMatrix * mvPosition;
   }`,
   fragmentShader: /* glsl */ `
@@ -74,11 +114,12 @@ const ColorByHeightShaders = {
   }`,
 };
 
-const ColorByIntensityShaders = {
+const ShadeByIntensityShaders = {
   vertexShader: /* glsl */ `
   uniform float max;
   uniform float min;
   uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
 
   varying vec2 vUv;
   varying float hValue;
@@ -91,11 +132,11 @@ const ColorByIntensityShaders = {
   void main() {
     vUv = uv;
     vec3 pos = position;
-    hValue = remap(min, max, color.x);
+    hValue = remap(min, max, color.r);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
     gl_Position = projectionMatrix * mvPosition;
   }
 `,
@@ -116,6 +157,7 @@ export const ShadeByHeight = ({
   min,
   max,
   pointSize,
+  isPointSizeAttenuated,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
 
@@ -127,9 +169,10 @@ export const ShadeByHeight = ({
           maxZ: { value: max },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
-        vertexShader: ColorByHeightShaders.vertexShader,
-        fragmentShader: ColorByHeightShaders.fragmentShader,
+        vertexShader: ShadeByHeightShaders.vertexShader,
+        fragmentShader: ShadeByHeightShaders.fragmentShader,
       }}
     />
   );
@@ -140,6 +183,7 @@ export const ShadeByIntensity = ({
   min,
   max,
   pointSize,
+  isPointSizeAttenuated,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
 
@@ -151,60 +195,29 @@ export const ShadeByIntensity = ({
           max: { value: max },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
-        vertexShader: ColorByIntensityShaders.vertexShader,
-        fragmentShader: ColorByIntensityShaders.fragmentShader,
+        vertexShader: ShadeByIntensityShaders.vertexShader,
+        fragmentShader: ShadeByIntensityShaders.fragmentShader,
       }}
     />
   );
 };
 
-const ColorByRgbShaders = {
-  vertexShader: /* glsl */ `
-  // this uniform is used to pass the point size to the vertex shader from JS
-  uniform float pointSize;
-
-  // these attributes are injected into the vertex shader based on geometry
-  attribute vec3 color;
-  attribute float scale;
-
-  // this attribute is used to pass the color to the fragment shader
-  varying vec3 vColor;
-
-  void main() {
-    // assign color to the varying variable so that it can be used in fragment shader
-    vColor = color;
-
-    // do a model-view transform to get the position of the point in camera space
-    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-
-    // (scale / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
-    gl_PointSize = pointSize * (1.0 / length(mvPosition.xyz));
-
-    // do a projection transform to get the position of the point in clip space
-    gl_Position = projectionMatrix * mvPosition;
-  }
-
-  `,
-  fragmentShader: /* glsl */ `
-  varying vec3 vColor;
-
-  void main() {
-    gl_FragColor = vec4(vColor, 1.0);
-  } 
-  `,
-};
-
-export const RgbShader = ({ pointSize }: { pointSize: number }) => {
+export const RgbShader = ({
+  pointSize,
+  isPointSizeAttenuated,
+}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated">) => {
   return (
     <shaderMaterial
       {...{
         scale: { value: 1 },
         uniforms: {
           pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
         },
-        vertexShader: ColorByRgbShaders.vertexShader,
-        fragmentShader: ColorByRgbShaders.fragmentShader,
+        vertexShader: ShadeByRgbShaders.vertexShader,
+        fragmentShader: ShadeByRgbShaders.fragmentShader,
       }}
     />
   );

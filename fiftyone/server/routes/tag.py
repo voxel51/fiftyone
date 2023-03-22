@@ -43,16 +43,14 @@ class Tag(HTTPEndpoint):
             dataset,
             stages=stages,
             filters=filters,
-            slice=slice,
             extended_stages=extended,
             labels=labels,
             hidden_labels=hidden_labels,
-            sample_ids=sample_ids,
             sample_filter=SampleFilter(
                 group=GroupElementFilter(id=group_id, slice=slice)
             ),
             target_labels=target_labels,
-            modal=modal,
+            sample_ids=sample_ids,
         )
 
         if target_labels:
@@ -67,7 +65,6 @@ class Tag(HTTPEndpoint):
             dataset,
             stages=stages,
             filters=filters,
-            slice=slice,
             extended_stages=extended,
             labels=labels,
             hidden_labels=hidden_labels,
@@ -76,10 +73,10 @@ class Tag(HTTPEndpoint):
                 group=GroupElementFilter(id=group_id, slice=slice)
             ),
             target_labels=False,
-            modal=modal,
         )
 
-        if view.media_type == fom.VIDEO and current_frame is not None:
+        is_video = view.media_type == fom.VIDEO
+        if is_video and current_frame is not None:
             default_filter = F("frame_number") == 1
             current_filter = F("frame_number").is_in([current_frame, 1])
             filter_frames = lambda f: F("frames").filter(f)
@@ -93,7 +90,7 @@ class Tag(HTTPEndpoint):
         samples = []
         async for document in foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(attach_frames=True, detach_frames=False),
+            view._pipeline(attach_frames=is_video, detach_frames=is_video),
         ):
             samples.append(document)
 

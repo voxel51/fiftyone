@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResult } from "./useBrainResult";
@@ -10,10 +10,7 @@ import { fetchPlot } from "./fetch";
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed(false));
   const datasetName = useRecoilValue(fos.datasetName);
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    fos.selectedSamples
-  );
-  const [brainKey] = useBrainResult();
+  const [brainKey, setBrainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
   const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
@@ -31,13 +28,8 @@ export function useViewChangeEffect() {
     null,
     true
   );
-  const filters = useRecoilValue(fos.filters);
-  const extended = useRecoilValue(fos.extendedStagesUnsorted);
-  const [overrideStage, setOverrideStage] = useRecoilState(
+  const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
-  );
-  const [extendedSelection, setExtendedSelection] = useRecoilState(
-    fos.extendedSelection
   );
   const warnings = useWarnings();
 
@@ -45,8 +37,18 @@ export function useViewChangeEffect() {
     setOverrideStage(null);
     setLoadingPlot(true);
     fetchPlot({ datasetName, brainKey, view, labelField })
-      .catch((err) => setLoadingPlotError(err))
+      .catch((err) => {
+        setLoadingPlotError(err);
+        // setBrainKey(null);
+      })
       .then((res) => {
+        if (!res || !res.index_size) {
+          if (res?.index_size === 0) {
+            warnings.add(`No samples in the current view.`);
+          }
+          return;
+        }
+
         const notUsed = res.index_size - res.available_count;
         const missing = res.missing_count;
         const total = res.index_size;

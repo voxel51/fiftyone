@@ -120,6 +120,7 @@ export const PARSER = {
         array = stripped.split(",");
       }
       return (
+        typeof value !== "string" &&
         Array.isArray(array) &&
         array.every((e) => PARSER.field.validate(e, fields))
       );
@@ -137,7 +138,11 @@ export const PARSER = {
       } catch {
         array = stripped.split(",");
       }
-      return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
+      return (
+        typeof value !== "string" &&
+        Array.isArray(array) &&
+        array.every((e) => PARSER.id.validate(e))
+      );
     },
   },
   "list<str>": {
@@ -159,7 +164,11 @@ export const PARSER = {
       } catch {
         array = stripped.split(",");
       }
-      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
+      return (
+        typeof value !== "string" &&
+        Array.isArray(array) &&
+        array.every((e) => PARSER.str.validate(e))
+      );
     },
   },
   NoneType: {

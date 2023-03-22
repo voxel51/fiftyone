@@ -1465,7 +1465,7 @@ The relationships in FIW are:
 
 Within FiftyOne, each sample corresponds to a single face image and contains
 primitive labels of the Family ID, Member ID, etc. The relationship labels are
-stored as :ref:`multi-label Classifications <multilabel-classifications>`,
+stored as :ref:`multi-label classifications <multilabel-classification>`,
 where each classification represents one relationship that the member has with
 another member in the family. The number of relationships will differ from one
 person to the next, but all faces of one person will have the same relationship

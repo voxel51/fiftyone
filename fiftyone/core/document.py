@@ -439,7 +439,11 @@ class _Document(object):
 
     def _parse_fields(self, fields=None, omit_fields=None):
         if fields is None:
-            fields = {f: f for f in self.field_names if f != "id"}
+            fields = {
+                f: f
+                for f in self.field_names
+                if f not in ("id", "_dataset_id")
+            }
         elif etau.is_str(fields):
             fields = {fields: fields}
 

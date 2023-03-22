@@ -1,7 +1,7 @@
-import { useRef, Fragment } from "react";
+import { useRef, Fragment, useEffect } from "react";
 import { useExternalLink } from "@fiftyone/utilities";
 import { Loading, Selector, useTheme } from "@fiftyone/components";
-import { usePanelStatePartial } from "@fiftyone/spaces";
+import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   HighlightAlt,
   Close,
@@ -44,6 +44,13 @@ export default function Embeddings({ containerHeight, dimensions }) {
     true
   );
   const warnings = useWarnings();
+  const setPanelCloseEffect = useSetPanelCloseEffect();
+
+  useEffect(() => {
+    setPanelCloseEffect(() => {
+      plotSelection.clearSelection();
+    });
+  }, []);
 
   const selectorStyle = {
     background: theme.neutral.softBg,
@@ -73,7 +80,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 containerStyle={selectorStyle}
               />
             )}
-            {plotSelection.hasSelection && (
+            {!plotSelection.selectionIsExternal && (
               <PlotOption
                 to={plotSelection.clearSelection}
                 title={"Clear selection (Esc)"}
@@ -145,7 +152,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
         <p>
           <Link
             style={{ color: theme.text.primary }}
-            href="https://docs.voxel51.com/user_guide/brain.html#visualizing-embeddings"
+            href="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
           >
             Learn more
           </Link>{" "}

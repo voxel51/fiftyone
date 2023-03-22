@@ -5,14 +5,15 @@ FiftyOne Server /values route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import regex as re
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
-
 import fiftyone.server.constants as foc
-from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.view as fosv
+from fiftyone.server.decorators import route
 
 
 class Values(HTTPEndpoint):
@@ -28,13 +29,29 @@ class Values(HTTPEndpoint):
         sample_id = data.get("sample_id", None)
         stages = data.get("view", [])
         extended = data.get("extended", None)
+        group_id = data.get("group_id", None)
+        slice = data.get("slice", None)
 
-        view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
+        view = fosv.get_view(
+            dataset,
+            stages=stages,
+            extended_stages=extended,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(id=group_id, slice=slice)
+            ),
+        )
 
         if sample_id is not None:
             view = view.select(sample_id)
 
         sort_by = "count" if count else "_id"
+
+        # escape special characters, add support for wilcard pattern matching
+        regex_safe_search = (
+            re.escape(search).replace(r"\*", ".*").replace(r"\?", ".")
+            if search
+            else None
+        )
 
         count, first = await view._async_aggregate(
             foa.CountValues(
@@ -42,7 +59,7 @@ class Values(HTTPEndpoint):
                 _first=limit,
                 _asc=asc,
                 _sort_by=sort_by,
-                _search=search,
+                _search=regex_safe_search,
                 _selected=selected,
             )
         )

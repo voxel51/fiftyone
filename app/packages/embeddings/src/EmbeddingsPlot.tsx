@@ -31,7 +31,7 @@ export function EmbeddingsPlot({
   } = plotSelection;
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
-  const { isLoading, traces, style } = usePlot(plotSelection);
+  const { isLoading, traces, style, error } = usePlot(plotSelection);
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
@@ -52,6 +52,9 @@ export function EmbeddingsPlot({
   );
   const colorscale = useRecoilValue(fos.colorscale);
 
+  if (error) {
+    return <Loading>{error.message}</Loading>;
+  }
   if (labelSelectorLoading || isLoading || !traces)
     return <Loading>Pixelating...</Loading>;
   const data = tracesToData(

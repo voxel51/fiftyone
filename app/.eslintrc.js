@@ -10,8 +10,8 @@ module.exports = {
     "plugin:react/recommended",
     "plugin:react-hooks/recommended",
     "plugin:react/jsx-runtime",
-    "plugin:prettier/recommended",
     "plugin:@typescript-eslint/recommended",
+    "prettier",
   ],
   globals: {
     Atomics: "readonly",

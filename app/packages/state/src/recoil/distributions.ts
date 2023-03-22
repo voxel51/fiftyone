@@ -50,7 +50,7 @@ const extendedViewForm = selector({
   key: "extendedViewForm",
   get: ({ get }) => {
     return {
-      sampleIds: get(extendedSelection),
+      sampleIds: get(extendedSelection)?.selection,
       filters: get(filters),
       slice: get(groupSlice(false)),
       mixed: get(groupStatistics(false)) === "group",

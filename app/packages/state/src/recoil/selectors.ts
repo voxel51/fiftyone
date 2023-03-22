@@ -42,7 +42,7 @@ export const stateSubscription = selector<string>({
   },
 });
 
-export const mediaType = selector({
+export const mediaTypeSelector = selector({
   key: "mediaType",
   get: ({ get }) => get(atoms.dataset)?.mediaType,
   cachePolicy_UNSTABLE: {
@@ -60,7 +60,15 @@ export const savedViewsSelector = selector<State.SavedView[]>({
 
 export const isVideoDataset = selector({
   key: "isVideoDataset",
-  get: ({ get }) => get(mediaType) === "video",
+  get: ({ get }) => get(mediaTypeSelector) === "video",
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const isPointcloudDataset = selector({
+  key: "isPointcloudDataset",
+  get: ({ get }) => get(mediaTypeSelector) === "point_cloud",
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -318,25 +326,52 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-export const similarityKeys = selector<{
-  patches: [string, string][];
-  samples: string[];
+export type Method = {
+  key: string;
+  supportsPrompts: boolean;
+  maxK: number;
+  supportsLeastSimilarity: boolean;
+};
+
+export const similarityMethods = selector<{
+  patches: [Method, string][];
+  samples: Method[];
 }>({
-  key: "similarityKeys",
+  key: "similarityMethods",
   get: ({ get }) => {
     const methods = get(atoms.dataset).brainMethods;
+
     return methods
-      .filter(({ config: { method } }) => method === "similarity")
+      .filter(
+        ({ config: { type, cls } }) =>
+          type == "similarity" || cls.toLowerCase().includes("similarity")
+      )
       .reduce(
         (
           { patches, samples },
 
-          { config: { patchesField }, key }
+          {
+            config: {
+              patchesField,
+              supportsPrompts,
+              supportsLeastSimilarity,
+              maxK,
+            },
+            key,
+          }
         ) => {
           if (patchesField) {
-            patches.push([key, patchesField]);
+            patches.push([
+              { key, supportsPrompts, supportsLeastSimilarity, maxK },
+              patchesField,
+            ]);
           } else {
-            samples.push(key);
+            samples.push({
+              key,
+              supportsPrompts,
+              supportsLeastSimilarity,
+              maxK,
+            });
           }
           return { patches, samples };
         },
@@ -351,7 +386,7 @@ export const similarityKeys = selector<{
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
-    const sampleIds = get(atoms.extendedSelection);
+    const sampleIds = get(atoms.extendedSelection)?.selection;
     const extendedSelectionOverrideStage = get(
       atoms.extendedSelectionOverrideStage
     );
@@ -492,3 +527,19 @@ function getLabelIdsFromSample(sample, path, matchesFilter) {
 
   return labelIds;
 }
+
+export const hasSelectedLabels = selector<boolean>({
+  key: "hasSelectedLabels",
+  get: ({ get }) => {
+    const selected = get(selectedLabelIds);
+    return selected.size > 0;
+  },
+});
+
+export const hasSelectedSamples = selector<boolean>({
+  key: "hasSelectedSamples",
+  get: ({ get }) => {
+    const selected = get(atoms.selectedSamples);
+    return selected.size > 0;
+  },
+});

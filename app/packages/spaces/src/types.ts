@@ -70,3 +70,7 @@ export type PanelStatePartialParameter = PanelStateParameter & {
 export type PanelsStateObject = {
   [key: string]: unknown;
 };
+
+export type PanelsCloseEffect = {
+  [panelId: string]: () => void;
+};

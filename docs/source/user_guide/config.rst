@@ -651,8 +651,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view.  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
-| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `best`                      | The default loading behavior of the App's sidebar. Supported values are                   |
-|                           |                                        |                             | `{"all", "best", "fast"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
+| `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `fast`                      | The default loading behavior of the App's sidebar. Supported values are                   |
+|                           |                                        |                             | `{"fast", "all", "best"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
 |                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
@@ -712,7 +712,7 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "sidebar_mode": "best",
+            "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
             "plugins": {}
@@ -759,7 +759,7 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "sidebar_mode": "best",
+            "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
             "plugins": {}
@@ -903,7 +903,7 @@ App config.
 Plugins that you can configure include:
 
 -   The builtin :ref:`Map panel <app-map-panel>`
--   The builtin :ref:`3D visualizer <3d-visualizer-config>`
+-   The builtin :ref:`3D visualizer <app-3d-visualizer-config>`
 -   Any :ref:`custom plugins <app-plugins>` that you've registered
 
 For example, you may add the following to your JSON App config

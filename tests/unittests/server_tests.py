@@ -673,7 +673,13 @@ class ServerViewTests(unittest.TestCase):
 
     @drop_datasets
     def test_extended_view_video_match_label_tags_aggregations(self):
-        filters = {"tags": {"label": ["one"]}}
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": False,
+                "isMatching": True,
+            }
+        }
 
         dataset = fod.Dataset("test")
         dataset.media_type = "video"
@@ -811,7 +817,13 @@ class ServerViewTests(unittest.TestCase):
 
     @drop_datasets
     def test_extended_view_video_match_label_tags_samples(self):
-        filters = {"tags": {"label": ["one"]}}
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": False,
+                "isMatching": False,
+            }
+        }
 
         dataset = fod.Dataset("test")
         dataset.media_type = "video"

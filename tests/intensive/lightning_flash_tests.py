@@ -24,7 +24,7 @@ from flash import Trainer
 from flash.video import VideoClassificationData, VideoClassifier
 
 import fiftyone as fo
-import fiftyone.brain as fob
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.utils.random as four
 import fiftyone.zoo as foz
 

@@ -8,7 +8,7 @@ import {
   LABEL_LISTS_MAP,
   LIST_FIELD,
   Schema,
-  withPath,
+  withPath
 } from "@fiftyone/utilities";
 import { v4 as uuid } from "uuid";
 
@@ -18,7 +18,7 @@ import {
   FONT_SIZE,
   PAD,
   POINT_RADIUS,
-  STROKE_WIDTH,
+  STROKE_WIDTH
 } from "../constants";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
@@ -31,7 +31,7 @@ import {
   LabelData,
   Optional,
   Sample,
-  StateUpdate,
+  StateUpdate
 } from "../state";
 import {
   createWorker,
@@ -40,10 +40,11 @@ import {
   getFitRect,
   getMimeType,
   mergeUpdates,
-  snapBox,
+  snapBox
 } from "../util";
 
 import { Events } from "../elements/base";
+import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
@@ -411,7 +412,7 @@ export abstract class AbstractLooker<
   }
 
   getSample(): Promise<Sample> {
-    let sample = { ...this.sample };
+    const sample = { ...this.sample };
 
     return Promise.resolve(
       f({
@@ -522,8 +523,7 @@ export abstract class AbstractLooker<
     if (!this.state.dimensions) {
       throw new Error("media not loaded");
     }
-
-    let [tlx, tly, w, h] = this.state.windowBBox;
+    const [tlx, tly, w, h] = this.state.windowBBox;
     this.state.pan = snapBox(
       this.state.scale,
       this.state.pan,
@@ -607,11 +607,12 @@ export abstract class AbstractLooker<
     labelsWorker.addEventListener("message", listener);
 
     labelsWorker.postMessage({
+      sample: sample as ProcessSample["sample"],
       method: "processSample",
       coloring: this.state.options.coloring,
-      sample,
+      sources: this.state.config.sources,
       uuid: messageUUID,
-    });
+    } as ProcessSample);
   }
 }
 
@@ -625,7 +626,7 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   }
 
   const result = {};
-  for (let fieldName in value) {
+  for (const fieldName in value) {
     const field = schema[fieldName];
     if (!field) {
       result[fieldName] = value[fieldName];
@@ -672,7 +673,7 @@ const f = <T extends {}>({
   filter: (path: string, value) => boolean;
 }): T => {
   const result = {};
-  for (let fieldName in schema) {
+  for (const fieldName in schema) {
     if (fieldName.startsWith("_")) continue;
 
     const path = [...keys, fieldName].join(".");
