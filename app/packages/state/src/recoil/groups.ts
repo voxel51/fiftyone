@@ -251,7 +251,7 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
     (sliceName) =>
     ({ get }) => {
       if (sliceName) {
-        return get(groupSampleQuery(sliceName)).sample as AppSample;
+        return get(groupSampleQuery(sliceName));
       }
 
       const field = get(groupField);
@@ -265,7 +265,7 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
         return sample;
       }
 
-      return get(groupSampleQuery(sliceName)).sample as AppSample;
+      return get(groupSampleQuery(sliceName));
     },
 });
 
