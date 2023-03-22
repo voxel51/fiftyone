@@ -15,9 +15,12 @@ Cypress.Commands.add("executePythonCode", (sourceCode) => {
   return cy.task("executePythonProcessTask", { sourceCode });
 });
 
-Cypress.Commands.add("waitForLookerToRender", (timeout = 200) => {
-  cy.wait(timeout ?? Duration.LOOKER_RENDER_MAX_TIME_MS);
-});
+Cypress.Commands.add(
+  "waitForLookerToRender",
+  (timeout = Duration.Seconds(0.2)) => {
+    cy.wait(timeout ?? Duration.LOOKER_RENDER_MAX_TIME_MS);
+  }
+);
 
 Cypress.Commands.add("killFiftyoneApp", (pId) => {
   if (

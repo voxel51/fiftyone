@@ -5,8 +5,15 @@ import { Duration } from "./cypress/support/utils";
 import { DEFAULT_APP_ADDRESS } from "./lib/constants";
 
 export default defineConfig({
+  env: {
+    // for cypress-visual-regression
+    failSilently: false,
+    ALLOW_VISUAL_REGRESSION_TO_FAIL: false,
+    ALWAYS_GENERATE_DIFF: true,
+  },
   e2e: {
     baseUrl: DEFAULT_APP_ADDRESS,
+    videoUploadOnPasses: false,
     setupNodeEvents(on, config) {
       getCompareSnapshotsPlugin(on, config);
 
@@ -45,6 +52,6 @@ export default defineConfig({
     viewportWidth: 1200,
     viewportHeight: 800,
     chromeWebSecurity: false,
-    screenshotsFolder: "cypress/snapshots/base",
+    // screenshotsFolder: "cypress/snapshots/base",
   },
 });

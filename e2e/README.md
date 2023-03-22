@@ -48,6 +48,11 @@ yarn start --env type=base,pause_between_tests=true
    attribute.
 4. Document all usages of `cy.wait()`s in this document.
 
+#### Resources
+
+1. [AssertJS - Cypress Best Practices](https://www.youtube.com/watch?v=5XQOK0v_YRE&ab_channel=OKG%21-PaulDowman%27stecheventsandinterviews)
+2.
+
 #### Usage of `cy.wait()`s
 
 Below is a list of commands that use `cy.wait()`.
