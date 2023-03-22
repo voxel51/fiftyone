@@ -118,8 +118,8 @@ export const useWindowSize = () => {
   return windowSize;
 };
 
-export const useUnprocessedStateUpdate = () => {
-  const update = useStateUpdate();
+export const useUnprocessedStateUpdate = (ignoreSpaces = false) => {
+  const update = useStateUpdate(ignoreSpaces);
   return (resolve: StateResolver) => {
     update((t) => {
       const { colorscale, config, dataset, state } =
