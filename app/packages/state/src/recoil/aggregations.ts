@@ -27,6 +27,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     modal: boolean;
     paths: string[];
     root?: boolean;
+    mixed?: boolean;
   },
   ResponseFrom<foq.aggregationsQuery>
 >({
@@ -35,9 +36,9 @@ export const aggregationQuery = graphQLSelectorFamily<
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, paths, root = false }) =>
+    ({ extended, modal, paths, root = false, mixed = false }) =>
     ({ get }) => {
-      const mixed = get(groupStatistics(modal)) === "group";
+      mixed = mixed || get(groupStatistics(modal)) === "group";
       const group = get(groupId) || null;
       const aggForm = {
         index: get(refresher),
@@ -90,6 +91,7 @@ export const aggregation = selectorFamily({
       extended: boolean;
       modal: boolean;
       path: string;
+      mixed?: boolean;
     }) =>
     ({ get }) => {
       return get(
@@ -127,7 +129,7 @@ export const labelTagCounts = selectorFamily<
     ({ modal, extended }) =>
     ({ get }) => {
       const data = get(schemaAtoms.labelPaths({})).map((path) =>
-        get(aggregation({ extended, modal, path: `${path}.tags` }))
+        get(aggregation({ extended, modal, path: `${path}.tags`, mixed: true }))
       );
       const result = {};
 

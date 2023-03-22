@@ -99,27 +99,26 @@ class BrainRunConfig(RunConfig):
 
     @gql.field
     def type(self) -> t.Optional[BrainRunType]:
-        if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
-            return BrainRunType.similarity
+        try:
+            if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
+                return BrainRunType.similarity
 
-        if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
-            return BrainRunType.visualization
+            if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
+                return BrainRunType.visualization
+        except:
+            pass
 
         return None
 
     @gql.field
     def max_k(self) -> t.Optional[int]:
         config = self._create_config()
-        return getattr(config, "max_k", None) if config else None
+        return getattr(config, "max_k", None)
 
     @gql.field
     def supports_least_similarity(self) -> t.Optional[bool]:
         config = self._create_config()
-        return (
-            getattr(config, "supports_least_similarity", None)
-            if config
-            else None
-        )
+        return getattr(config, "supports_least_similarity", None)
 
     def _create_config(self):
         try:
@@ -481,13 +480,9 @@ async def serialize_dataset(
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]
-
-                data.id = view._dataset._doc.id
-
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
-                data.id = ObjectId()
                 data.media_type = view.media_type
 
             collection = view
@@ -503,23 +498,22 @@ async def serialize_dataset(
             data.group_slice = collection.group_slice
 
         for brain_method in data.brain_methods:
-            type = (
-                brain_method.config.type().value
-                if brain_method.config.type() is not None
-                else None
-            )
+            try:
+                type = brain_method.config.type().value
+            except:
+                type = None
 
-            max_k = (
-                brain_method.config.max_k()
-                if brain_method.config.max_k() is not None
-                else None
-            )
+            try:
+                max_k = brain_method.config.max_k()
+            except:
+                max_k = None
 
-            supports_least_similarity = (
-                brain_method.config.supports_least_similarity()
-                if brain_method.config.supports_least_similarity() is not None
-                else None
-            )
+            try:
+                supports_least_similarity = (
+                    brain_method.config.supports_least_similarity()
+                )
+            except:
+                supports_least_similarity = None
 
             setattr(brain_method.config, "type", type)
             setattr(brain_method.config, "max_k", max_k)

@@ -131,10 +131,12 @@ export const useUnprocessedStateUpdate = (ignoreSpaces = false) => {
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
         config: config ? (toCamelCase(config) as State.Config) : undefined,
-        state: {
-          ...toCamelCase(state),
-          view: state.view,
-        } as State.Description,
+        state: state
+          ? ({
+              ...toCamelCase(state),
+              view: state.view,
+            } as State.Description)
+          : null,
       };
     });
   };
