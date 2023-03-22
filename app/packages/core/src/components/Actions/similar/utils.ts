@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import {
   Method,
   ModalSample,
@@ -5,6 +6,8 @@ import {
   useBrowserStorage,
   useUnprocessedStateUpdate,
 } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useMemo } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import {
   selectorFamily,
@@ -12,9 +15,6 @@ import {
   useRecoilCallback,
   useRecoilValue,
 } from "recoil";
-import * as fos from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { useMemo } from "react";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -61,7 +61,7 @@ export const getQueryIds = async (
 };
 
 export const useSortBySimilarity = (close) => {
-  const update = useUnprocessedStateUpdate();
+  const update = useUnprocessedStateUpdate(true);
   const handleError = useErrorHandler();
   const datasetId = useRecoilValue(fos.dataset).id;
   const [lastUsedBrainkeys, setLastUsedBrainKeys] =
