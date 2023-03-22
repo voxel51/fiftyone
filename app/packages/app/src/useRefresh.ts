@@ -1,16 +1,18 @@
 import { refresher } from "@fiftyone/state";
+import { useCallback } from "react";
 import { useRecoilTransaction_UNSTABLE } from "recoil";
 import { useRouterContext } from "./routing";
 
 const useRefresh = () => {
   const router = useRouterContext();
-  return useRecoilTransaction_UNSTABLE(
+  const setter = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      () => {
-        router.load(true).then(() => set(refresher, (cur) => cur + 1));
-      },
-    [router]
+      () =>
+        set(refresher, (cur) => cur + 1),
+    []
   );
+
+  return useCallback(() => router.load(true).then(setter), [router, setter]);
 };
 
 export default useRefresh;

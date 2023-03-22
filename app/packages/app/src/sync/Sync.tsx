@@ -1,6 +1,8 @@
 import { Loading } from "@fiftyone/components";
 import {
   setSelected,
+  setSelectedLabels,
+  setSelectedLabelsMutation,
   setSelectedMutation,
   setView,
   setViewMutation,
@@ -19,7 +21,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
 import { ItemSnapshot } from "recoil-sync";
-import { commitMutation } from "relay-runtime";
+import { commitMutation, VariablesOf } from "relay-runtime";
 import Setup from "../components/Setup";
 import { Queries, RoutingContext, useRouterContext } from "../routing";
 import useRefresh from "../useRefresh";
@@ -251,6 +253,22 @@ const WRITE_HANDLERS = {
         mutation: setSelected,
         variables: {
           selected: [...selected],
+          subscription,
+        },
+      }
+    );
+  },
+  selectedLabels: (
+    router: RoutingContext<Queries>,
+    selectedLabels: VariablesOf<setSelectedLabelsMutation>["selectedLabels"],
+    subscription: string
+  ) => {
+    commitMutation<setSelectedLabelsMutation>(
+      router.get().preloadedQuery.environment,
+      {
+        mutation: setSelectedLabels,
+        variables: {
+          selectedLabels,
           subscription,
         },
       }

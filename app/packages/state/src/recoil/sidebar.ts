@@ -1,36 +1,4 @@
 import {
-  DICT_FIELD,
-  EMBEDDED_DOCUMENT_FIELD,
-  LABELS_PATH,
-  LABEL_DOC_TYPES,
-  LIST_FIELD,
-  Schema,
-  StrictField,
-  VALID_LABEL_TYPES,
-  VALID_PRIMITIVE_TYPES,
-  withPath,
-} from "@fiftyone/utilities";
-import {
-  atomFamily,
-  DefaultValue,
-  selector,
-  selectorFamily,
-  useRecoilStateLoadable,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
-
-import * as aggregationAtoms from "./aggregations";
-import {
-  buildSchema,
-  field,
-  fieldPaths,
-  fields,
-  filterPaths,
-  pathIsShown,
-} from "./schema";
-
-import {
   datasetFragment,
   frameFieldsFragment,
   frameFieldsFragment$key,
@@ -43,9 +11,39 @@ import {
   sidebarGroupsFragment$data,
   sidebarGroupsFragment$key,
 } from "@fiftyone/relay";
+import {
+  DICT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
+  LABELS_PATH,
+  LABEL_DOC_TYPES,
+  LIST_FIELD,
+  Schema,
+  StrictField,
+  VALID_LABEL_TYPES,
+  VALID_PRIMITIVE_TYPES,
+  withPath,
+} from "@fiftyone/utilities";
 import { commitMutation, readInlineData, VariablesOf } from "react-relay";
+import {
+  atomFamily,
+  DefaultValue,
+  selector,
+  selectorFamily,
+  useRecoilStateLoadable,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
+import * as aggregationAtoms from "./aggregations";
 import { isLargeVideo } from "./options";
+import {
+  buildSchema,
+  field,
+  fieldPaths,
+  fields,
+  filterPaths,
+  pathIsShown,
+} from "./schema";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
 import * as viewAtoms from "./view";
@@ -131,10 +129,6 @@ export const useEntries = (
   const [entries, setEntries] = useRecoilStateLoadable(
     sidebarEntries({ modal, loading: false, filtered: true })
   );
-  const r = useRecoilValueLoadable(sidebarGroupsDefinition(false));
-  if (r.state === "loading") {
-    throw new Error("WTF");
-  }
   const loadingEntries = useRecoilValueLoadable(
     sidebarEntries({ modal, loading: true, filtered: true })
   );
@@ -232,7 +226,7 @@ export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
   current: State.SidebarGroup[],
-  config?: sidebarGroupsFragment$data["appConfig"]["sidebarGroups"]
+  config?: NonNullable<sidebarGroupsFragment$data["appConfig"]>["sidebarGroups"]
 ): State.SidebarGroup[] => {
   const sidebarGroups = config;
 
@@ -392,7 +386,7 @@ export const sidebarGroups = selectorFamily<
     ({ modal, loading, filtered = true, persist = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
-      const groups = get(sidebarGroupsDefinition(modal))
+      let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
 

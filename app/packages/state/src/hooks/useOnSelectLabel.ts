@@ -1,5 +1,5 @@
-import * as fos from "..";
 import * as recoil from "recoil";
+import * as fos from "..";
 
 export interface SelectEvent {
   detail: {
@@ -11,13 +11,10 @@ export interface SelectEvent {
 }
 
 export function useOnSelectLabel() {
-  const send = fos.useSetSelectedLabels();
-  return recoil.useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      ({ detail: { id, field, frameNumber, sampleId } }: SelectEvent) => {
-        let labels = {
-          ...get(fos.selectedLabels),
-        };
+  return recoil.useRecoilCallback(
+    ({ set, snapshot }) =>
+      async ({ detail: { id, field, frameNumber, sampleId } }: SelectEvent) => {
+        const labels = { ...(await snapshot.getPromise(fos.selectedLabelMap)) };
         if (labels[id]) {
           delete labels[id];
         } else {
@@ -27,9 +24,8 @@ export function useOnSelectLabel() {
             frameNumber,
           };
         }
-
-        set(fos.selectedLabels, labels);
-        send(
+        set(
+          fos.selectedLabels,
           Object.entries(labels).map(([labelId, data]) => ({
             ...data,
             labelId,
