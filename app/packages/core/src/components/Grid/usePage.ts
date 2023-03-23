@@ -12,14 +12,12 @@ const usePage = (
   store: LookerStore<Lookers>
 ): [MutableRefObject<number>, Get<number>] => {
   const handleError = useErrorHandler();
-  const next = useRef(100);
-  const prev = useRef(100 - 1);
-
+  const next = useRef(0);
   return [
     next,
     useRecoilCallback(
       ({ snapshot }) =>
-        async (page: number, backward = false) => {
+        async (page: number) => {
           try {
             const { zoom, ...params } = await snapshot.getPromise(
               pageParameters(modal)
@@ -45,11 +43,8 @@ const usePage = (
               };
 
               store.samples.set(result.sample._id, data);
-              store.indices.set(
-                backward ? prev.current : next.current,
-                result.sample._id
-              );
-              backward ? prev.current-- : next.current++;
+              store.indices.set(next.current, result.sample._id);
+              next.current++;
 
               return data;
             });
@@ -65,7 +60,7 @@ const usePage = (
 
             return {
               items,
-              nextRequestKey: more ? (backward ? page - 1 : page + 1) : null,
+              nextRequestKey: more ? page + 1 : null,
             };
           } catch (error) {
             handleError(error);
