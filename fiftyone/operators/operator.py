@@ -64,3 +64,18 @@ class Operator:
             "name": self.name,
             "definition": self.definition.to_json(),
         }
+
+class DynamicOperator(Operator):
+    def __init__(
+        self,
+        name=None,
+        description=None,
+    ):
+        super().__init__(name, description)
+        self.definition._inputs.dynamic()
+
+    def resolve_input(self, ctx):
+        return self.definition._inputs
+
+    def resolve_output(self, ctx):
+        return self.definition._outputs
