@@ -112,6 +112,10 @@ export class Enum extends BaseType {
   }
 }
 
+export class SampleID extends String {
+
+}
+
 // NOTE: this should always match fiftyone/operators/types.py
 export const TYPES = [ObjectType, String, Boolean, Number, List, Enum];
 
