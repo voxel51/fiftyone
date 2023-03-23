@@ -127,7 +127,6 @@ const Selector = <T extends unknown>({
 
   return (
     <div
-      data-cy={`selector-${placeholder}`}
       onMouseEnter={() => {
         hovering.current = true;
       }}
@@ -149,6 +148,7 @@ const Selector = <T extends unknown>({
         className={style.input}
         value={editing ? search : value || ""}
         placeholder={placeholder}
+        data-cy={`selector-${placeholder}`}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {
           if (!editing) return;
