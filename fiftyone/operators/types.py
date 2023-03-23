@@ -17,6 +17,11 @@ class Object(BaseType):
         self.properties.append(property)
         return property
 
+    def define_property(self, name, type, **kwargs):
+        property = Property(name, type, **kwargs)
+        self.properties.append(property)
+        return property
+
     def to_json(self):
         return {
             "name": self.__class__.__name__,
@@ -57,8 +62,17 @@ class Boolean(BaseType):
 
 
 class Number(BaseType):
-    def __init__(self):
-        pass
+    def __init__(self, min=None, max=None, int=False):
+        self.min = min
+        self.max = max
+        self.int = int
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
+            "min": self.min,
+            "max": self.max,
+            "int": self.int,
+        }
 
 
 class List(BaseType):
@@ -71,6 +85,9 @@ class List(BaseType):
             "element_type": self.element_type.to_json(),
         }
 
+class SampleID(String):
+    def __init__(self):
+        pass
 
 class Enum(BaseType):
     def __init__(self, values):
@@ -79,23 +96,6 @@ class Enum(BaseType):
     def to_json(self):
         return {"name": self.__class__.__name__, "values": self.values}
 
-
 class Plot(BaseType):
     def __init__(self):
         pass
-
-
-class Trigger(BaseType):
-    def __init__(self, operator_name):
-        self.operator_name = operator_name
-
-    def to_json(self):
-        return {
-            "name": self.__class__.__name__,
-            "operator_name": self.operator_name,
-        }
-
-
-class SelectSamples(Trigger):
-    def __init__(self):
-        super().__init__("select_samples")

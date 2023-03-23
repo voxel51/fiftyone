@@ -20,6 +20,17 @@ export class ExecutionContext {
   ) {
     this.state = _currentContext.state;
   }
+  private _triggers: Array<Trigger> = [];
+  trigger(operatorName: string, params: any = {}) {
+    this._triggers.push(new Trigger(operatorName, params));
+  }
+}
+
+class Trigger {
+  constructor(public operatorName: string, public params: any = {}) {}
+  static fromJSON(json: any) {
+    return new Trigger(json.operatorName, json.params);
+  }
 }
 
 function isObjWithContent(obj: any) {
@@ -31,17 +42,11 @@ class OperatorResult {
   constructor(
     public operator: Operator,
     public result: any = {},
-    public error: any
+    public error: any,
+    public triggers: Trigger[] = []
   ) {}
   hasOutputContent() {
     return isObjWithContent(this.result) || isObjWithContent(this.error);
-  }
-  getTriggers() {
-    if (isObjWithContent(this.result)) {
-      const triggerProps = this.operator.definition.outputs.filter(
-        (p) => p.type === types.Trigger
-      );
-    }
   }
   toJSON() {
     return {
@@ -224,6 +229,7 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
 
   let result;
   let error;
+  let triggers;
   if (isRemote) {
     const serverResult = await getFetchFunction()(
       "POST",
@@ -242,16 +248,19 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
     );
     result = serverResult.result;
     error = serverResult.error;
+    triggers = serverResult.triggers;
   } else {
     try {
       result = await operator.execute(ctx);
+      triggers = ctx.triggers;
     } catch (e) {
       error = e;
       console.error(`Error executing operator ${operatorName}:`);
       console.error(error);
     }
   }
-  return new OperatorResult(operator, result, error);
+
+  return new OperatorResult(operator, result, error, triggers);
 }
 
 export async function resolveRemoteType(
@@ -276,6 +285,10 @@ export async function resolveRemoteType(
         : [],
     }
   );
+
+  if (typeAsJSON && typeAsJSON.error) {
+    throw new Error(typeAsJSON.error);
+  }
 
   return types.typeFromJSON(typeAsJSON);
 }
@@ -515,6 +528,29 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     state.set(fos.extendedSelection, { selection: null });
     hooks.setSelected(extendedSelection.selection);
     hooks.resetExtended();
+  }
+}
+
+// an operator that sets selected samples based on ctx.params
+class SetSelectedSamples extends Operator {
+  constructor() {
+    super("set_selected_samples", "Set selected samples");
+    this.definition.inputs.addProperty(
+      new types.Property(
+        "samples",
+        new types.List(new types.SampleID()),
+        "Samples",
+        true
+      )
+    );
+  }
+  useHooks(): {} {
+    return {
+      setSelected: fos.useSetSelected(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    hooks.setSelected(params.samples);
   }
 }
 
