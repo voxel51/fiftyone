@@ -48,6 +48,7 @@ class ExecutionContext:
     def __init__(self, execution_request_params):
         self.request_params = execution_request_params
         self.params = execution_request_params.get("params", {})
+        self._triggers = []
 
     @property
     def view(self):
@@ -77,6 +78,20 @@ class ExecutionContext:
     def dataset_name(self):
         return self.request_params.get("dataset_name", None)
 
+    def trigger(self, operator_name, operator_params = {}):
+        self._triggers.append(
+            Trigger(operator_name, operator_params)
+        )
+
+class Trigger:
+    def __init__(self, operator_name, operator_params):
+        self.operator_name = operator_name
+        self.operator_params = operator_params
+    def to_json(self):
+        return {
+            "operator_name": self.operator_name,
+            "operator_params": self.operator_params,
+        }
 
 class ExecutionResult:
     def __init__(self, ctx, result, error):
@@ -90,4 +105,5 @@ class ExecutionResult:
             "result": self.result,
             "error": self.error,
             "loading_errors": self.loading_errors,
+            "triggers": [t.to_json() for t in self.ctx._triggers]
         }
