@@ -249,7 +249,6 @@ class Dataset:
 
     @gql.field
     def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
-        raise ValueError("EE")
         if not slug:
             return None
 
