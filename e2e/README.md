@@ -1,9 +1,9 @@
 # Fiftyone Integration Test Suite
 
-This directory contains a suite of black box and UI integration tests.
-
-These are intended to simulate real users, and use little to no
-fakes/mocks/etc.
+This directory contains a suite of black box UI tests that use BDD
+(Behavior-Driven Development) assertions. The goal is to ensure that the system
+meets the desired _busines requirements_ and provides value to the end user. No
+mocks or stubs are to be used.
 
 ## Running Locally
 

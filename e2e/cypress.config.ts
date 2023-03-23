@@ -17,6 +17,9 @@ export default defineConfig({
   e2e: {
     baseUrl: DEFAULT_APP_ADDRESS,
     videoUploadOnPasses: false,
+    // retry once on test failure to account for random errors
+    // note: this is a global config, this can be configured per-test as well
+    retries: 1,
     setupNodeEvents(on, config) {
       getCompareSnapshotsPlugin(on, config);
 
