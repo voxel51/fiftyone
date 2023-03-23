@@ -1,4 +1,5 @@
 node_modules
 cypress/videos
 cypress/screenshots
+cypress/snapshots/diff
 .env.cypress
