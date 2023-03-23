@@ -4,6 +4,7 @@ import { Sample } from "@fiftyone/looker/src/state";
 
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
+import { Field } from "@fiftyone/utilities";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -87,9 +88,10 @@ export const modal = atom<ModalSample | null>({
   default: null,
 });
 
-export const colorModal = atom<boolean>({
+// the active field for customize color modal
+export const colorModal = atom<Field | null>({
   key: "colorModal",
-  default: false,
+  default: null,
 });
 
 export interface CustomizeColor {

@@ -15,6 +15,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
+import * as fos from "@fiftyone/state";
 import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
 import { InfoIcon, useTheme } from "@fiftyone/components";
@@ -270,12 +271,13 @@ function FieldInfoExpanded({
     el.current.style.left = left + "px";
   };
   const colorSettings = useRecoilValue(coloring(false));
+  const isModal = useRecoilValue(fos.modal);
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
     // pass in the field info
     console.info("clicked customize color", field, colorBy);
-    setIsCustomizingColor(true);
+    setIsCustomizingColor(field);
   };
 
   useEffect(updatePosition, [field, isCollapsed]);
@@ -291,7 +293,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {field.embeddedDocType && (
+        {field.embeddedDocType && !isModal && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}
