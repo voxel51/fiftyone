@@ -1,5 +1,6 @@
 import {
   atomFamily,
+  RecoilState,
   RecoilValueReadOnly,
   selector,
   selectorFamily,
@@ -24,6 +25,8 @@ import {
 
 import * as atoms from "./atoms";
 import { State } from "./types";
+import _ from "lodash";
+import { Sample } from "@fiftyone/looker/src/state";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -39,8 +42,7 @@ export const filterPaths = (
 ): string[] => {
   return paths
     ? paths.filter((path) => {
-        if (path.startsWith("tags.") || path.startsWith("_label_tags."))
-          return true;
+        if (path === "_label_tags") return true;
 
         const keys = path.split(".");
         let fields = schema;
@@ -133,7 +135,7 @@ export const fullSchema = selector<Schema>({
 
     const frames = get(fieldSchema({ space: State.SPACE.FRAME }));
 
-    if (Boolean(Object.keys(frames).length)) {
+    if (Object.keys(frames).length) {
       return {
         ...schema,
         frames: {
@@ -318,6 +320,38 @@ export const labelPaths = selectorFamily<
     },
 });
 
+const convertToLabelValue = (sampleId, path) => (raw) => {
+  const labelId = raw._id;
+  const field = path.split(".").shift();
+  return { labelId, field, sampleId };
+};
+
+export const labelValues = selectorFamily<
+  string[],
+  { sample: Sample; expanded?: boolean }
+>({
+  key: "labelValues",
+  get:
+    ({ sample, expanded = true }) =>
+    ({ get }) => {
+      const paths = get(labelPaths({ expanded }));
+      let results = [];
+
+      for (const path of paths) {
+        const convert = convertToLabelValue(sample._id, path);
+        const value = _.get(sample, path, null);
+        if (value !== null) {
+          if (Array.isArray(value)) {
+            results = [...results, ...value.map(convert)];
+          } else {
+            results.push(convert(value));
+          }
+        }
+      }
+      return results;
+    },
+});
+
 export const expandPath = selectorFamily<string, string>({
   key: "expandPath",
   get:
@@ -391,7 +425,7 @@ type ActiveFieldSelector = (params: {
    * @example "frames.0.label"
    */
   path: string;
-}) => RecoilValueReadOnly<boolean>;
+}) => RecoilState<boolean>;
 
 /**
  * Get or set the active state of a field.
@@ -403,8 +437,9 @@ export const activeField: ActiveFieldSelector = selectorFamily<
   key: "activeField",
   get:
     ({ modal, path }) =>
-    ({ get }) =>
-      get(activeFields({ modal })).includes(path),
+    ({ get }) => {
+      return get(activeFields({ modal })).includes(path);
+    },
 
   set:
     ({ modal, path }) =>
@@ -414,58 +449,6 @@ export const activeField: ActiveFieldSelector = selectorFamily<
         activeFields({ modal }),
         active ? [path, ...fields] : fields.filter((field) => field !== path)
       );
-    },
-});
-
-export const activeTags = selectorFamily<string[], boolean>({
-  key: "activeTags",
-  get:
-    (modal) =>
-    ({ get }) => {
-      return get(activeFields({ modal }))
-        .filter((t) => t.startsWith("tags."))
-        .map((t) => t.slice(5));
-    },
-  set:
-    (modal) =>
-    ({ get, set }, value) => {
-      if (Array.isArray(value)) {
-        const tags = value.map((v) => "tags." + v);
-        const prevActiveTags = get(activeTags(modal));
-        let active = get(activeFields({ modal })).filter((v) =>
-          v.startsWith("tags.") ? tags.includes(v) : true
-        );
-        if (tags.length && prevActiveTags.length < tags.length) {
-          active = [tags[0], ...active.filter((v) => v !== tags[0])];
-        }
-        set(activeFields({ modal }), active);
-      }
-    },
-});
-
-export const activeLabelTags = selectorFamily<string[], boolean>({
-  key: "activeLabelTags",
-  get:
-    (modal) =>
-    ({ get }) => {
-      return get(activeFields({ modal }))
-        .filter((t) => t.startsWith("_label_tags."))
-        .map((t) => t.slice("_label_tags.".length));
-    },
-  set:
-    (modal) =>
-    ({ get, set }, value) => {
-      if (Array.isArray(value)) {
-        const tags = value.map((v) => "_label_tags." + v);
-        const prevActiveTags = get(activeLabelTags(modal));
-        let active = get(activeFields({ modal })).filter((v) =>
-          v.startsWith("_label_tags.") ? tags.includes(v) : true
-        );
-        if (tags.length && prevActiveTags.length < tags.length) {
-          active = [tags[0], ...active.filter((v) => v !== tags[0])];
-        }
-        set(activeFields({ modal }), active);
-      }
     },
 });
 

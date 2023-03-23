@@ -3,6 +3,265 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.2:
+
+FiftyOne Teams 1.2
+------------------
+*Released March 22, 2023*
+
+Includes all features from :ref:`FiftyOne 0.20.0 <release-notes-v0.20.0>`,
+plus:
+
+Admin settings
+
+- Admins who use SSO to authorize new users to auto-join their FiftyOne Teams
+  deployment can now configure the :ref:`default role <teams-roles>` for those
+  users
+- Admins can now configure the
+  :ref:`default access level <teams-default-access>` that Members receive on
+  newly created datasets Dataset page
+
+Dataset page
+
+- Added support for viewing :ref:`Segmentation <semantic-segmentation>` and
+  :ref:`Heatmap <heatmaps>` data stored as images in the cloud in the App
+- Added support for exporting one or more fields of a dataset in CSV format
+  through the Teams UI
+- Stack traces for unhandled errors are now presented directly in the App so
+  that users can self-diagnose issues
+
+Deployment
+
+- Added support for sharded databases
+
+.. _release-notes-v0.20.0:
+
+FiftyOne 0.20.0
+---------------
+*Released March 22, 2023*
+
+News
+
+- Added support for querying by
+  :ref:`arbitrary text prompts <brain-similarity-text>` in the App!
+  `#2633 <https://github.com/voxel51/fiftyone/pull/2633>`_
+- Released a :ref:`Qdrant integration <qdrant-integration>` for native text and
+  image searches on FiftyOne datasets!
+- Released a :ref:`Pinecone integration <pinecone-integration>` for native text
+  and image searches on FiftyOne datasets!
+
+App
+
+- Switched the default :ref:`sidebar mode <app-sidebar-mode>` to ``fast``
+  `#2714 <https://github.com/voxel51/fiftyone/pull/2714>`_
+- Refactored sample/label tags in the App so that they are treated the same as
+  any other list field `#2557 <https://github.com/voxel51/fiftyone/pull/2557>`_
+- Added support for visualizing
+  :ref:`orthographic projection images <orthographic-projection-images>` for
+  point cloud datasets/slices
+  `#2660 <https://github.com/voxel51/fiftyone/pull/2660>`_
+- Added a filter/selection indicator to the title of all Panels that can be
+  clicked to clear the Panel's current state
+  `#2652 <https://github.com/voxel51/fiftyone/pull/2652>`_
+- Any selection state associated with a Panel is now automatically cleared when
+  the Panel is closed
+  `#2652 <https://github.com/voxel51/fiftyone/pull/2652>`_
+- Added a button to the saved view selector for clearing the current view
+  `#2661 <https://github.com/voxel51/fiftyone/pull/2661>`_
+- Added support for maximizing/hiding individual panels of the grouped modal
+  `#2688 <https://github.com/voxel51/fiftyone/pull/2688>`_
+- Added support for switching between multiple point cloud slices
+  `#2675 <https://github.com/voxel51/fiftyone/pull/2675>`_
+- Added keyboard shortcuts for opening Panels directly in split mode
+  `#2663 <https://github.com/voxel51/fiftyone/pull/2663>`_
+- Upgraded Looker3D controls
+  `#2753 <https://github.com/voxel51/fiftyone/pull/2753>`_
+- Upgraded the modal's JSON viewer
+  `#2677 <https://github.com/voxel51/fiftyone/pull/2677>`_
+- Selected labels are not reset after applying a
+  :ref:`similarity search <app-similarity>`
+  `#2820 <https://github.com/voxel51/fiftyone/pull/2820>`_
+- Stack traces for unhandled errors are now presented directly in the App so
+  that users can self-diagnose issues
+  `#2795 <https://github.com/voxel51/fiftyone/pull/2795>`_,
+  `#2797 <https://github.com/voxel51/fiftyone/pull/2797>`_
+- Improved error handling when loading invalid/missing brain results in the
+  :ref:`Embeddings panel <app-embeddings-panel>`
+  `#2651 <https://github.com/voxel51/fiftyone/pull/2651>`_,
+  `#2790 <https://github.com/voxel51/fiftyone/pull/2790>`_
+- More intuitive behavior when combining Embedding panel selections and sidebar
+  filters `#2741 <https://github.com/voxel51/fiftyone/pull/2741>`_
+- Ensure that URL is updated when loading saved views via a Python session
+  `#2740 <https://github.com/voxel51/fiftyone/pull/2740>`_
+- Switched to wildcard-based string matching in the sidebar
+  `#2736 <https://github.com/voxel51/fiftyone/pull/2736>`_
+- Plugins can now load components and utilities from runtime instead of
+  compiling their own `#2680 <https://github.com/voxel51/fiftyone/pull/2680>`_
+- Stability improvements when loading and handling errors in plugins
+  `#2758 <https://github.com/voxel51/fiftyone/pull/2758>`_
+- Informative error messages are now displayed when visualization results fail
+  to load in the Embeddings panel
+  `#2751 <https://github.com/voxel51/fiftyone/pull/2751>`_
+- Resolved some edge cases when loading views with different schemas via Python
+  sessions `#2730 <https://github.com/voxel51/fiftyone/pull/2730>`_
+- Fixed a bug that would cause saving views to intermittently fail
+  `#2667 <https://github.com/voxel51/fiftyone/pull/2667>`_
+- Fixed a bug when using saved views with Python <3.9 in the App
+  `#2676 <https://github.com/voxel51/fiftyone/pull/2676>`_,
+  `#2728 <https://github.com/voxel51/fiftyone/pull/2728>`_
+- Fixed a bug that could cause App crashes when loading
+  :class:`SelectGroupSlices <fiftyone.core.stages.SelectGroupSlices>` stages in
+  the view bar
+  `#2669 <https://github.com/voxel51/fiftyone/pull/2669>`_,
+  `#2743 <https://github.com/voxel51/fiftyone/pull/2743>`_
+- Fixed a bug that could cause App crashes when filtering keypoints
+  `#2774 <https://github.com/voxel51/fiftyone/pull/2774>`_,
+  `#2779 <https://github.com/voxel51/fiftyone/pull/2779>`_
+- Fixed a bug when lassoing patch embeddings with the Map panel open
+  `#2754 <https://github.com/voxel51/fiftyone/pull/2754>`_
+- Fixed inconsistencies with selection, tagging, active slices, and sidebar
+  stats in the modal for grouped datasets
+  `#2785 <https://github.com/voxel51/fiftyone/pull/2785>`_,
+  `#2782 <https://github.com/voxel51/fiftyone/pull/2782>`_,
+  `#2769 <https://github.com/voxel51/fiftyone/pull/2769>`_,
+  `#2759 <https://github.com/voxel51/fiftyone/pull/2759>`_,
+  `#2749 <https://github.com/voxel51/fiftyone/pull/2749>`_,
+  `#2731 <https://github.com/voxel51/fiftyone/pull/2731>`_
+- Fixed a bug when pressing enter twice in a label tag popover
+  `#2757 <https://github.com/voxel51/fiftyone/pull/2757>`_
+- Fixed a bug where keyboard listeners in the modal would interfere with other
+  input interactions
+  `#2786 <https://github.com/voxel51/fiftyone/pull/2786>`_
+- Fixed a bug where some users would see erroneous scrollbars
+  `#2794 <https://github.com/voxel51/fiftyone/pull/2794>`_
+- Fixed bugs when tagging labels in the grouped modal
+  `#2820 <https://github.com/voxel51/fiftyone/pull/2820>`_
+- Fixed a bug when retrieving values for filter dropdowns in the grouped modal
+  `#2817 <https://github.com/voxel51/fiftyone/pull/2817>`_
+- Fixed a bug that would raise an App error after deleting certain saved views
+  `#2801 <https://github.com/voxel51/fiftyone/pull/2801>`_
+- Fixed the formatting of the ``support`` field in the modal sidebar for clip
+  views
+  `#2800 <https://github.com/voxel51/fiftyone/pull/2800>`_
+- Fixed a bug with URL rendering in the sidebar
+  `#2735 <https://github.com/voxel51/fiftyone/pull/2735>`_
+- Fixed a bug when streaming filtered frame labels
+  `#2682 <https://github.com/voxel51/fiftyone/pull/2682>`_,
+  `#2733 <https://github.com/voxel51/fiftyone/pull/2733>`_
+- Fixed a bug when adding new tags to a selected sample or label
+  `#2703 <https://github.com/voxel51/fiftyone/pull/2703>`_
+- Fixed a bug when matching by tags that contain spaces
+  `#2658 <https://github.com/voxel51/fiftyone/pull/2658>`_
+
+Core
+
+- Added support for querying by vectors and text prompts
+  `#2569 <https://github.com/voxel51/fiftyone/pull/2569>`_
+- Upgraded the :ref:`similarity index interface <brain-similarity>`, including
+  :ref:`Qdrant <qdrant-integration>` and :ref:`Pinecone <pinecone-integration>`
+  support, and the ability to add/remove embeddings to an existing index
+  `#2792 <https://github.com/voxel51/fiftyone/pull/2792>`_
+- Added support for storing and visualizing cuboids and rotated bounding boxes
+  in the App `#2296 <https://github.com/voxel51/fiftyone/pull/2296>`_
+- Added support for :ref:`evaluating <evaluating-detections>` 3D object
+  detections `#2486 <https://github.com/voxel51/fiftyone/pull/2486>`_
+- Added a
+  :meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+  view stage `#1300 <https://github.com/voxel51/fiftyone/pull/1300>`_
+- Added support for generating
+  :ref:`orthographic projection images <orthographic-projection-images>` for
+  point cloud datasets/slices
+  `#2656 <https://github.com/voxel51/fiftyone/pull/2656>`_
+- Added validation to :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#2770 <https://github.com/voxel51/fiftyone/pull/2770>`_
+- Frame collections are now lazily created only when necessary
+  `#2727 <https://github.com/voxel51/fiftyone/pull/2727>`_
+- Upgraded the document save implementaton to only use upsert operations when
+  explicitly required
+  `#2727 <https://github.com/voxel51/fiftyone/pull/2727>`_
+- Added ``_dataset_id`` to all sample/frame documents in datasets
+  `#2711 <https://github.com/voxel51/fiftyone/pull/2711>`_
+- Added a :meth:`save() <fiftyone.core.runs.RunResults.save>` and
+  :meth:`save_config() <fiftyone.core.runs.RunResults.save_config>` methods to
+  :class:`RunResults <fiftyone.core.runs.RunResults>`
+  `#2696 <https://github.com/voxel51/fiftyone/pull/2696>`_,
+  `#2772 <https://github.com/voxel51/fiftyone/pull/2772>`_
+- Added support for renaming existing runs via new
+  :meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`,
+  :meth:`rename_brain_run() <fiftyone.core.collections.SampleCollection.rename_brain_run>`, and
+  :meth:`rename_evaluation() <fiftyone.core.collections.SampleCollection.rename_evaluation>`
+  methods `#2696 <https://github.com/voxel51/fiftyone/pull/2696>`_
+- Added support for filtering by run type and config parameters when using
+  :meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`,
+  :meth:`list_brain_runs() <fiftyone.core.collections.SampleCollection.list_brain_runs>`, and
+  :meth:`list_evaluations() <fiftyone.core.collections.SampleCollection.list_evaluations>`
+  `#2696 <https://github.com/voxel51/fiftyone/pull/2696>`_,
+  `#2772 <https://github.com/voxel51/fiftyone/pull/2772>`_
+- Added an :meth:`add_group_slice() <fiftyone.core.dataset.Dataset.add_group_slice>`
+  method to declare new slices on grouped datasets
+  `#2727 <https://github.com/voxel51/fiftyone/pull/2727>`_
+- Added support for controlling whether saved views and runs are
+  imported/exported in :ref:`FiftyOneDataset format <FiftyOneDataset-import>`
+  `#2806 <https://github.com/voxel51/fiftyone/pull/2806>`_
+- Added support for negative integer mask targets
+  `#2686 <https://github.com/voxel51/fiftyone/pull/2686>`_
+- Downward migrations for future-but-compatible versions of FiftyOne are now
+  skipped rather than raising an error
+  `#2683 <https://github.com/voxel51/fiftyone/pull/2683>`_
+- Fixed a bug when cloning datasets with run results
+  `#2772 <https://github.com/voxel51/fiftyone/pull/2772>`_
+- Fixed a bug with the `dynamic=True` syntax for declaring dynamic fields on
+  list documents
+  `#2767 <https://github.com/voxel51/fiftyone/pull/2767>`_
+- Fixed a bug in deferred saves where filtered list updates were not being
+  applied `#2727 <https://github.com/voxel51/fiftyone/pull/2727>`_
+
+Annotation
+
+- Added support for passing CVAT organization to annotation jobs
+  `#2716 <https://github.com/voxel51/fiftyone/pull/2716>`_
+
+Docs
+
+- Added :ref:`documentation <point-cloud-datasets>` for working with point
+  cloud-only datasets
+  `#2724 <https://github.com/voxel51/fiftyone/pull/2724>`_
+- Added :ref:`documentation <custom-embedded-documents>` for on-the-fly custom
+  embedded document creation
+  `#2687 <https://github.com/voxel51/fiftyone/pull/2687>`_
+- Fixed broken torchvision dataset links in the docs
+  `#2771 <https://github.com/voxel51/fiftyone/pull/2771>`_
+
+Zoo
+
+- Added a ``tensorflow-macos`` option when loading TF models from the
+  :ref:`Model Zoo <model-zoo>`
+  `#2685 <https://github.com/voxel51/fiftyone/pull/2685>`_
+
+Tutorials
+
+- Added a :doc:`Point-E tutorial </tutorials/pointe>` showcasing the 3D
+  Visualizer's capabilities in the context of building a 3D self-driving
+  dataset `#2818 <https://github.com/voxel51/fiftyone/pull/2818>`_
+- Added a :doc:`YOLOv8 tutorial </tutorials/yolov8>`
+  `#2755 <https://github.com/voxel51/fiftyone/pull/2755>`_
+- Updated the media in the :doc:`Open Images tutorial </tutorials/open_images>`
+  `#2665 <https://github.com/voxel51/fiftyone/pull/2665>`_
+
+.. _release-notes-teams-v1.1.1:
+
+FiftyOne Teams 1.1.1
+--------------------
+*Released February 14, 2023*
+
+Includes all features from :ref:`FiftyOne 0.19.1 <release-notes-v0.19.1>`,
+plus:
+
+Plugins
+
+- Resolved a bug that prevented Teams deployments from recognizing installed
+  plugins
+
 .. _release-notes-v0.19.1:
 
 FiftyOne 0.19.1
@@ -21,6 +280,41 @@ Core
 - Fixed a bug in certain environments that prevented progress bars from
   rendering correctly
   `#2647 <https://github.com/voxel51/fiftyone/pull/2647>`_
+
+.. _release-notes-teams-v1.1:
+
+FiftyOne Teams 1.1
+------------------
+*Released February 9, 2023*
+
+Includes all features from :ref:`FiftyOne 0.19.0 <release-notes-v0.19.0>`,
+plus:
+
+User roles
+
+- Renamed the existing Guest role to
+  `Collaborator <https://docs.voxel51.com/teams/roles_and_permissions.html#collaborator>`_
+- Added a new
+  `Guest <https://docs.voxel51.com/teams/roles_and_permissions.html#guest>`_
+  role. Note that Guest is a view-only role and does not contribute to your
+  license count. You can add unlimited Guest users to your deployment!
+
+Homepage
+
+- Added a Recent views widget to the homepage that shows the most recent saved
+  views that you have viewed in the Teams UI
+
+Dataset page
+
+- Added support for cloning the current view (including any filters,
+  selections, etc) into a new dataset from the UI
+- Added support for exporting the current view to local disk or a cloud bucket
+  in various formats (filepaths only, filepaths and tags, media only, labels
+  only, media and labels)
+
+Deployment
+
+- Added support for deploying Teams into environments with proxy networks
 
 .. _release-notes-v0.19.0:
 
@@ -225,6 +519,20 @@ Docs
   `#2452 <https://github.com/voxel51/fiftyone/pull/2452>`_
 - Added a :ref:`filtering <filtering-cheat-sheet>` cheat sheet
   `#2447 <https://github.com/voxel51/fiftyone/pull/2447>`_
+
+.. _release-notes-teams-v1.0:
+
+FiftyOne Teams 1.0
+------------------
+*Released November 8, 2022*
+
+Includes all features from :ref:`FiftyOne 0.18.0 <release-notes-v0.18.0>`,
+plus:
+
+News
+
+- FiftyOne Teams is now generally available,
+  :ref:`read more here <fiftyone-teams>`!
 
 .. _release-notes-v0.18.0:
 
@@ -1026,7 +1334,7 @@ Brain
 - Graceful handling of missing/uncomputable embeddings in
   :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 - Graceful handling of edge cases like `fraction <= 0` in
-  :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
+  :meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`,
 - Removed a spurious warning message that was previously logged when computing
   patch embeddings for a collection containing samples with no patches
 
@@ -1415,21 +1723,17 @@ App
 Brain
 
 - Added new
-  :meth:`find_unique() <fiftyone.brain.similarity.SimilarityResults.find_unique>`,
-  :meth:`unique_view() <fiftyone.brain.similarity.SimilarityResults.unique_view>`, and
-  :meth:`visualize_unique() <fiftyone.brain.similarity.SimilarityResults.visualize_unique>`
-  methods to the
-  :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
-  object returned by
+  :meth:`find_unique() <fiftyone.brain.similarity.DuplicatesMixin.find_unique>`,
+  :meth:`unique_view() <fiftyone.brain.similarity.DuplicatesMixin.unique_view>`, and
+  :meth:`visualize_unique() <fiftyone.brain.similarity.DuplicatesMixin.visualize_unique>`
+  methods to the |SimilarityIndex| object returned by
   :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that enable
   you to identify a maximally unique set of images or objects in a dataset
 - Added new
-  :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
-  :meth:`duplicates_view() <fiftyone.brain.similarity.SimilarityResults.duplicates_view>`, and
-  :meth:`visualize_duplicates() <fiftyone.brain.similarity.SimilarityResults.visualize_duplicates>`
-  methods to the
-  :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
-  object returned by
+  :meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`,
+  :meth:`duplicates_view() <fiftyone.brain.similarity.DuplicatesMixin.duplicates_view>`, and
+  :meth:`visualize_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.visualize_duplicates>`
+  methods to the |SimilarityIndex| object returned by
   :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that enable
   you to identify near-duplicate images or objects in a dataset
 - Added a new

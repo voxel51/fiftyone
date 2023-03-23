@@ -1430,6 +1430,76 @@ source dataset, there are some differences compared to non-clip views:
     |Classification| field populated when generating clip views based on
     |TemporalDetection| labels, as described above)
 
+.. _trajectory-views:
+
+Trajectory views
+----------------
+
+You can use
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+to create views into your video datasets that contain one sample per each
+unique object trajectory defined by their ``(label, index)`` in a frame-level
+|Detections| or |Polylines| field.
+
+Trajectory views are a special case of :ref:`clip views <clip-views>` where
+each clip has been filtered to contain only the identifying object, rather than
+than all objects with the trajectory's frame support.
+
+For example, if you have frame-level
+:ref:`object detections <object-detection>` with their ``index`` attributes
+populated, then you can create a trajectories view that contains one clip for
+each object of a specific type using
+:meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+and
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Create a trajectories view for the vehicles in the dataset
+    trajectories = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "vehicle")
+        .to_trajectories("frames.detections")
+    )
+    print(trajectories)
+
+    session = fo.launch_app(view=trajectories)
+
+.. code-block:: text
+
+    Dataset:    quickstart-video
+    Media type: video
+    Num clips:  109
+    Clip fields:
+        id:         fiftyone.core.fields.ObjectIdField
+        sample_id:  fiftyone.core.fields.ObjectIdField
+        filepath:   fiftyone.core.fields.StringField
+        support:    fiftyone.core.fields.FrameSupportField
+        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'vehicle']}, only_matches=True, trajectories=False)
+        2. ToTrajectories(field='frames.detections', config=None)
+
+.. warning::
+
+    Trajectory views can contain signficantly more frames than their source
+    collection, since the number of frames is now `O(# boxes)` rather than
+    `O(# video frames)`.
+
 .. _frame-views:
 
 Frame views
@@ -1801,6 +1871,91 @@ to retrieve the 15 most similar objects to a chosen object:
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
     :ref:`App guide <app-object-similarity>` to see how to sort objects by
+    similarity via point-and-click in the App!
+
+.. _text-similarity-views:
+
+Text similarity
+---------------
+
+When you create a :ref:`similarity index <brain-similarity>` powered by the
+:ref:`CLIP model <model-zoo-clip-vit-base32-torch>`, you can pass arbitrary
+natural language queries to
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+along with the `brain_key` of a compatible similarity index:
+
+.. tabs::
+
+  .. group-tab:: Image similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index images by similarity
+        image_index = fob.compute_similarity(
+            dataset,
+            model="clip-vit-base32-torch",
+            brain_key="img_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Perform a text query
+        query = "kites high in the air"
+        view = dataset.sort_by_similarity(query, k=15, brain_key="img_sim")
+
+        session.view = view
+
+  .. group-tab:: Object similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index ground truth objects by similarity
+        object_index = fob.compute_similarity(
+            dataset,
+            patches_field="ground_truth",
+            model="clip-vit-base32-torch",
+            brain_key="gt_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Convert to patches view
+        patches = dataset.to_patches("ground_truth")
+
+        # Perform a text query
+        query = "cute puppies"
+        view = patches.sort_by_similarity(query, k=15, brain_key="gt_sim")
+
+        session.view = view
+
+You can verify that a similarity index supports text queries by checking that
+it `supports_prompts`:
+
+.. code-block:: python
+    :linenos:
+
+    info = dataset.get_brain_info(brain_key)
+    print(info.config.supports_prompts)  # True
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about generating similarity indexes, and check out the
+    :ref:`App guide <app-text-similarity>` to see how to sort objects by text
     similarity via point-and-click in the App!
 
 .. _geolocation-views:

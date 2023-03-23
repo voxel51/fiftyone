@@ -7,6 +7,8 @@ Dataset samples.
 """
 import os
 
+from bson import ObjectId
+
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
@@ -70,6 +72,15 @@ class _SampleMixin(object):
             return iter(self._frames)
 
         raise ValueError("Image samples are not iterable")
+
+    @property
+    def dataset_id(self):
+        return self._doc._dataset_id
+
+    @property
+    def _dataset_id(self):
+        _id = self._doc._dataset_id
+        return ObjectId(_id) if _id is not None else None
 
     @property
     def filename(self):
@@ -543,9 +554,9 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         else:
             frame_ops = []
 
-        sample_op = super()._save(deferred=deferred)
+        sample_ops = super()._save(deferred=deferred)
 
-        return sample_op, frame_ops
+        return sample_ops, frame_ops
 
     @classmethod
     def from_frame(cls, frame, filepath=None):
@@ -594,6 +605,8 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         Returns:
             a :class:`Sample`
         """
+        d.pop("_dataset_id", None)
+
         media_type = d.pop("_media_type", None)
         if media_type is None:
             media_type = fomm.get_media_type(d.get("filepath", ""))
@@ -730,9 +743,9 @@ class SampleView(_SampleMixin, DocumentView):
         else:
             frame_ops = []
 
-        sample_op = super()._save(deferred=deferred)
+        sample_ops = super()._save(deferred=deferred)
 
-        return sample_op, frame_ops
+        return sample_ops, frame_ops
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

@@ -1,32 +1,32 @@
 import { RGB } from "@fiftyone/looker";
+import { useColorScheme } from "@mui/material";
 import {
   TransactionInterface_UNSTABLE,
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import {
+  dataset as datasetAtom,
+  extendedSelection,
+  filters,
+  groupSlice,
+  groupStatistics,
   modal,
+  patching,
+  resolveGroups,
+  savingFilters,
+  selectedLabels,
+  selectedMediaField,
+  selectedSamples,
+  sessionSpaces,
   sidebarGroupsDefinition,
+  sidebarMode,
+  similarityParameters,
+  similaritySorting,
   State,
   tagging,
-  _activeFields,
-  dataset as datasetAtom,
-  resolveGroups,
-  filters,
-  selectedLabels,
-  selectedSamples,
-  patching,
-  similaritySorting,
-  savingFilters,
-  groupSlice,
-  similarityParameters,
-  extendedSelection,
-  selectedMediaField,
-  sidebarMode,
-  groupStatistics,
   theme,
-  sessionSpaces,
+  _activeFields,
 } from "../recoil";
-import { useColorScheme } from "@mui/material";
 
 import * as viewAtoms from "../recoil/view";
 import { collapseFields, viewsAreEqual } from "../utils";
@@ -42,7 +42,7 @@ export type StateResolver =
   | StateUpdate
   | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
-const useStateUpdate = () => {
+const useStateUpdate = (ignoreSpaces = false) => {
   const { setMode } = useColorScheme();
 
   return useRecoilTransaction_UNSTABLE(
@@ -89,7 +89,7 @@ const useStateUpdate = () => {
 
       if (state?.spaces) {
         set(sessionSpaces, state.spaces);
-      } else {
+      } else if (!ignoreSpaces) {
         reset(sessionSpaces);
       }
 

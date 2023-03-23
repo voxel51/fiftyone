@@ -13,8 +13,7 @@ import React, {
   useState,
 } from "react";
 import * as recoil from "recoil";
-import * as THREE from "three";
-import { Box3, PerspectiveCamera, Vector3 } from "three";
+import { Box3, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { toEulerFromDegreesArray } from "../utils";
 import {
@@ -26,8 +25,9 @@ import {
   ViewHelp,
   ViewJSON,
 } from "./action-bar";
+import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
-import { CameraSetup } from "./environment";
+import { Environment } from "./Environment";
 import { useHotkey, usePathFilter } from "./hooks";
 import {
   defaultPluginSettings,
@@ -42,7 +42,13 @@ import {
   PolyLineProps,
 } from "./overlays";
 import { PointCloudMesh } from "./renderables";
-import { currentActionAtom, currentPointSizeAtom, shadeByAtom } from "./state";
+import {
+  currentActionAtom,
+  currentPointSizeAtom,
+  isGridOnAtom,
+  isPointSizeAttenuatedAtom,
+  shadeByAtom,
+} from "./state";
 
 type View = "pov" | "top";
 
@@ -97,7 +103,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
   );
 
   useEffect(() => {
-    THREE.Object3D.DefaultUp = new THREE.Vector3(...settings.defaultUp);
+    Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
 
   const overlays = useMemo(
@@ -138,6 +144,9 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
 
   const colorBy = recoil.useRecoilValue(shadeByAtom);
   const pointSize = recoil.useRecoilValue(currentPointSizeAtom);
+  const isPointSizeAttenuated = recoil.useRecoilValue(
+    isPointSizeAttenuatedAtom
+  );
 
   const onChangeView = useCallback(
     (view: View) => {
@@ -152,6 +161,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
         const origTarget = controls.target.clone();
 
         controls.target.set(0, 0, 0);
+
         switch (view) {
           case "top":
             if (settings.defaultCameraPosition) {
@@ -161,13 +171,31 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
                 settings.defaultCameraPosition.z
               );
             } else {
-              const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
-              if (maxZ !== null) {
-                camera.position.set(0, 0, 20 * maxZ);
-              }
+              const absMax = Math.max(
+                pointCloudBounds.max?.x,
+                pointCloudBounds.max?.y,
+                pointCloudBounds.max?.z
+              );
+
+              const upVectorNormalized = new Vector3(
+                ...settings.defaultUp
+              ).normalize();
+
+              // we want the camera to be along the up vector
+              // the scaling factor determines by how much
+              const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
+              const upVectorScaled =
+                upVectorNormalized.multiplyScalar(scalingFactor);
+
+              camera.position.set(
+                upVectorScaled.x,
+                upVectorScaled.y,
+                upVectorScaled.z
+              );
             }
             break;
           case "pov":
+            // todo: account for non-z up here
             camera.position.set(0, -10, 1);
             break;
         }
@@ -275,14 +303,18 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
 
   const theme = useTheme();
 
+  const isGridOn = recoil.useRecoilValue(isGridOnAtom);
+
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)}>
         <Screenshot />
-        <CameraSetup
+        <Environment
           controlsRef={controlsRef}
           cameraRef={cameraRef}
           settings={settings}
+          isGridOn={isGridOn}
+          bounds={pointCloudBounds}
         />
         <mesh rotation={overlayRotation}>
           {overlays
@@ -326,8 +358,8 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
             setPointCloudBounds(boundingBox);
           }}
           defaultShadingColor={theme.text.primary}
+          isPointSizeAttenuated={isPointSizeAttenuated}
         />
-        <axesHelper />
       </Canvas>
       {(hoveringRef.current || hovering) && (
         <ActionBarContainer
@@ -336,6 +368,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
         >
           {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
           <ActionsBar>
+            <ToggleGridHelper />
             <SetPointSizeButton />
             <ChooseColorSpace isRgbPresent={isRgbPresent} />
             <SetViewButton

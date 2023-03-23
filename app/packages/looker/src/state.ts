@@ -23,6 +23,7 @@ export interface Coloring {
 }
 
 export type OrthogrpahicProjectionMetadata = {
+  _id: string;
   _cls: "OrthographicProjectionMetadata";
   filepath: string;
   height: number;
@@ -154,6 +155,7 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
+  sources: { [path: string]: string };
   sampleId: string;
   fieldSchema: Schema;
   view: Stage[];
@@ -165,14 +167,14 @@ export interface FrameConfig extends BaseConfig {
   frameNumber: number;
 }
 
-export interface ImageConfig extends BaseConfig {}
+export type ImageConfig = BaseConfig;
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
   support?: [number, number];
 }
 
-export interface PcdConfig extends BaseConfig {}
+export type PcdConfig = BaseConfig;
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
@@ -191,7 +193,7 @@ export interface VideoOptions extends BaseOptions {
   volume: number;
 }
 
-export interface PcdOptions extends BaseOptions {}
+export type PcdOptions = BaseOptions;
 
 export interface TooltipOverlay {
   color: string;

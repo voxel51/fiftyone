@@ -17,6 +17,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.clips as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -37,9 +38,10 @@ class StateDescription(etas.Serializable):
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
+        spaces (None): spaces config
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
-        saved view
+            saved view
     """
 
     def __init__(
@@ -48,18 +50,19 @@ class StateDescription(etas.Serializable):
         dataset=None,
         selected=None,
         selected_labels=None,
-        view=None,
-        saved_view_slug=None,
-        view_name=None,
         spaces=None,
+        view=None,
+        view_name=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.view = view
-        self.view_name = view_name
-        self.saved_view_slug = saved_view_slug
+        self.view = (
+            dataset.load_saved_view(dataset)
+            if dataset is not None and view_name
+            else view
+        )
         self.spaces = spaces
 
     def serialize(self, reflective=True):
@@ -71,12 +74,21 @@ class StateDescription(etas.Serializable):
                 collection = self.dataset
                 if self.view is not None:
                     collection = self.view
+
+                    # @todo update App so this isn't needed?
+                    if isinstance(self.view, foc.TrajectoriesView):
+                        _view_cls = etau.get_class_name(foc.ClipsView)
+                    else:
+                        _view_cls = etau.get_class_name(self.view)
+
                     d["view"] = json.loads(
                         json_util.dumps(self.view._serialize())
                     )
-                    d["view_cls"] = etau.get_class_name(self.view)
+                    d["view_cls"] = _view_cls
 
                     d["view_name"] = self.view.name  # None for unsaved views
+                    if d.get("view_name") is not None:
+                        d["saved_view_slug"] = fou.to_slug(self.view.name)
 
                 d["sample_fields"] = serialize_fields(
                     collection.get_field_schema(flat=True), dicts=True
@@ -124,16 +136,17 @@ class StateDescription(etas.Serializable):
             dataset = fod.load_dataset(dataset)
 
         stages = d.get("view", None)
-        if dataset is not None and stages:
-            try:
-                view = fov.DatasetView._build(dataset, stages)
-            except:
-                dataset.reload()
-                view = fov.DatasetView._build(dataset, stages)
-        else:
-            view = None
-
+        view = None
         view_name = d.get("view_name", None)
+        if dataset is not None:
+            if view_name:
+                view = dataset.load_saved_view(view_name)
+            elif stages:
+                try:
+                    view = fov.DatasetView._build(dataset, stages)
+                except:
+                    dataset.reload()
+                    view = fov.DatasetView._build(dataset, stages)
 
         group_slice = d.get("group_slice", None)
         if group_slice:
@@ -160,7 +173,6 @@ class StateDescription(etas.Serializable):
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,
-            view_name=view_name,
             spaces=spaces,
         )
 

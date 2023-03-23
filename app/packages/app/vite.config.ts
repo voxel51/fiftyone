@@ -20,13 +20,17 @@ export default defineConfig({
   server: {
     proxy: {
       "/plugins": {
-        target: "http://127.0.0.1:5151",
+        target: `http://127.0.0.1:${
+          process.env.FIFTYONE_DEFAULT_APP_PORT ?? "5151"
+        }`,
         changeOrigin: false,
         secure: false,
         ws: false,
       },
       "/aggregate": {
-        target: "http://127.0.0.1:5151",
+        target: `http://127.0.0.1:${
+          process.env.FIFTYONE_DEFAULT_APP_PORT ?? "5151"
+        }`,
         changeOrigin: false,
         secure: false,
         ws: false,

@@ -82,17 +82,7 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
     def test_params_validation(self):
         dataset = fo.Dataset()
 
-        group = fo.Group()
-        group_samples = [
-            fo.Sample(
-                filepath="image.jpg", group_field=group.element("image")
-            ),
-            fo.Sample(
-                filepath=self.test_pcd_path, group_field=group.element("pcd")
-            ),
-        ]
         non_group_samples = [fo.Sample(filepath="test.jpg")]
-
         dataset.add_samples(non_group_samples)
 
         # if media type is not group, usage of group params should throw an
@@ -113,10 +103,21 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
                 output_dir=self.temp_dir.name,
             )
 
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        group_samples = [
+            fo.Sample(
+                filepath="image.jpg", group_field=group.element("image")
+            ),
+            fo.Sample(
+                filepath=self.test_pcd_path, group_field=group.element("pcd")
+            ),
+        ]
+        dataset.add_samples(group_samples)
+
         # if media type is group, in_group_slice should be valid, or omitted to
         # be implicitly derived
-        dataset.clear()
-        dataset.add_samples(group_samples)
 
         # throws with wrong slice
         with self.assertRaisesRegex(ValueError, ".*media type.*"):

@@ -1,5 +1,5 @@
 import { Bar, useTheme } from "@fiftyone/components";
-import { VideoLooker } from "@fiftyone/looker";
+import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { currentSlice, hasPinnedSlice } from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
@@ -46,7 +46,7 @@ const SelectableBar: React.FC<
 
 export const SampleBar: React.FC<{
   sampleId: string;
-  lookerRef: React.MutableRefObject<VideoLooker | undefined>;
+  lookerRef: React.MutableRefObject<AbstractLooker | undefined>;
   visible?: boolean;
   hoveringRef: MutableRefObject<boolean>;
 }> = ({ hoveringRef, lookerRef, sampleId, visible }) => {

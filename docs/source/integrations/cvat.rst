@@ -360,7 +360,8 @@ The `anno_key` argument defines a unique identifier for the annotation run, and
 you will provide it to methods like
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
 :meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
-:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`, and
+:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`,
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`, and
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
@@ -502,6 +503,8 @@ provided:
 -   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
     created task(s). This argument can be a list of URLs when annotating videos
     or when using `task_size` and generating multiple tasks
+-   **organization** (*None*): the name of the organization to use when sending
+    requests to CVAT
 
 .. _cvat-label-schema:
 
@@ -1076,6 +1079,15 @@ In addition, the
 :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
 subclasses for each backend may provide additional utilities such as support
 for programmatically monitoring the status of the annotation tasks in the run.
+
+You can use
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`
+to rename the annotation key associated with an existing annotation run:
+
+.. code:: python
+    :linenos:
+
+    dataset.rename_annotation_run(anno_key, new_anno_key)
 
 Finally, you can use
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`

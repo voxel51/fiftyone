@@ -49,6 +49,7 @@ const Wrapper = ({
     ? useSetRecoilState(isMatchingAtom)
     : null;
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
+
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
     value,
@@ -148,6 +149,7 @@ const Wrapper = ({
               valueName={name}
               color={color}
               modal={modal}
+              path={path}
               isKeyPointLabel={isKeyPoints}
             />
           }

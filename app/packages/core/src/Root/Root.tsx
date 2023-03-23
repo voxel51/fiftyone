@@ -35,7 +35,7 @@ import { RootQuery } from "./__generated__/RootQuery.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { clone, isElectron } from "@fiftyone/utilities";
+import { isElectron } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
 import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 

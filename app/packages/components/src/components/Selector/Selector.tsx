@@ -19,6 +19,16 @@ interface UseSearch<T extends unknown> {
   (search: string): { values: T[]; total?: number };
 }
 
+type Props<T> = {
+  active?: number;
+  search: string;
+  useSearch: UseSearch<T>;
+  onSelect: (value: T) => void;
+  onResults: (results: T[]) => void;
+  component: React.FC<{ value: T; className: string }>;
+  toKey?: (value: T) => string;
+};
+
 const SelectorResults = <T extends unknown>({
   active,
   onSelect,
@@ -27,15 +37,7 @@ const SelectorResults = <T extends unknown>({
   onResults,
   component,
   toKey = (value) => String(value),
-}: {
-  active?: number;
-  search: string;
-  useSearch: UseSearch<T>;
-  onSelect: (value: T) => void;
-  onResults: (results: T[]) => void;
-  component: React.FC<{ value: T; className: string }>;
-  toKey?: (value: T) => string;
-}) => {
+}: Props<T>) => {
   const { values, total } = useSearch(search);
 
   useLayoutEffect(() => {
@@ -87,6 +89,8 @@ const Selector = <T extends unknown>({
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
+  const ref = useRef<HTMLInputElement | null>(null);
+  const hovering = useRef(false);
 
   const onSelectWrapper = useMemo(() => {
     return (value: T) => {
@@ -94,9 +98,6 @@ const Selector = <T extends unknown>({
       setEditing(false);
     };
   }, [onSelect]);
-
-  const ref = useRef<HTMLInputElement | null>();
-  const hovering = useRef(false);
 
   useLayoutEffect(() => {
     if (!editing) {

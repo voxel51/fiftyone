@@ -107,6 +107,9 @@ let theme = extendJoyTheme({
           softBg: "hsl(200, 0%, 25%)",
           softBorder: "hsl(200, 0%, 20%)",
         },
+        secondary: {
+          main: "hsl(200, 0%, 70%)",
+        },
         focusVisible: "hsl(212, 97%, 43%, 0.3)",
         text: {
           primary: "hsl(200, 0%, 100%)",

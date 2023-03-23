@@ -25,7 +25,7 @@ export interface ModalNavigation {
   setIndex: (index: number) => void;
 }
 
-interface ModalSample extends SampleData {
+export interface ModalSample extends SampleData {
   navigation: ModalNavigation;
 }
 
@@ -183,7 +183,7 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export const selectedSampleObjects = atom<Map<String, Sample>>({
+export const selectedSampleObjects = atom<Map<string, Sample>>({
   key: "selectedSampleObjects",
   default: new Map(),
 });
@@ -213,7 +213,7 @@ export const alpha = atomFamily<number, boolean>({
 
 export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
-  default: 1,
+  default: 0,
 });
 
 export const appTeamsIsOpen = atom({
@@ -255,9 +255,7 @@ export const extendedSelectionOverrideStage = atom<any>({
   default: null,
 });
 
-export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
+export const similarityParameters = atom<State.SortBySimilarityParameters>({
   key: "similarityParameters",
   default: null,
 });

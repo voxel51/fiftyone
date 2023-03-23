@@ -190,13 +190,25 @@ are included in the current view.
    :alt: detection-evaluation
    :align: center
 
+.. _managing-evaluations:
+
 Managing evaluations
 --------------------
 
 When you run an evaluation with an ``eval_key`` argument, the evaluation is
-recorded on the dataset and you can retrieve information about it later, delete
-it, or even :ref:`retrieve the view <load-evaluation-view>` that you evaluated
-on:
+recorded on the dataset and you can retrieve information about it later, rename
+it, delete it (along with any modifications to your dataset that were performed
+by it), and :ref:`retrieve the view <load-evaluation-view>` that you evaluated
+on using the following methods on your dataset:
+
+-   :meth:`list_evaluations() <fiftyone.core.collections.SampleCollection.list_evaluations>`
+-   :meth:`get_evaluation_info() <fiftyone.core.collections.SampleCollection.get_evaluation_info>`
+-   :meth:`load_evaluation_results() <fiftyone.core.collections.SampleCollection.load_evaluation_results>`
+-   :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view>`
+-   :meth:`rename_evaluation() <fiftyone.core.collections.SampleCollection.rename_evaluation>`
+-   :meth:`delete_evaluation() <fiftyone.core.collections.SampleCollection.delete_evaluation>`
+
+The example below demonstrates the basic interface:
 
 .. code-block:: python
     :linenos:
@@ -212,9 +224,13 @@ on:
     results = dataset.load_evaluation_results("eval_predictions")
     results.print_report()
 
+    # Rename the evaluation
+    # This will automatically rename any evaluation fields on your dataset
+    dataset.rename_evaluation("eval_predictions", "eval")
+
     # Delete the evaluation
     # This will remove any evaluation data that was populated on your dataset
-    dataset.delete_evaluation("eval_predictions")
+    dataset.delete_evaluation("eval")
 
 The sections below discuss evaluating various types of predictions in more
 detail.
