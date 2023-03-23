@@ -148,7 +148,7 @@ async def aggregate_resolver(
             ]
         )
 
-    if form.mixed:
+    if form.mixed and view.media_type == fom.GROUP:
         view = view.select_group_slices(_allow_mixed=True)
 
     aggregations, deserializers = zip(

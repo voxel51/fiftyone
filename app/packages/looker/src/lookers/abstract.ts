@@ -412,7 +412,7 @@ export abstract class AbstractLooker<
   }
 
   getSample(): Promise<Sample> {
-    let sample = { ...this.sample };
+    const sample = { ...this.sample };
 
     return Promise.resolve(
       f({
@@ -523,7 +523,7 @@ export abstract class AbstractLooker<
     if (!this.state.dimensions) {
       throw new Error("media not loaded");
     }
-    let [tlx, tly, w, h] = this.state.windowBBox;
+    const [tlx, tly, w, h] = this.state.windowBBox;
     this.state.pan = snapBox(
       this.state.scale,
       this.state.pan,
@@ -610,6 +610,7 @@ export abstract class AbstractLooker<
       sample: sample as ProcessSample["sample"],
       method: "processSample",
       coloring: this.state.options.coloring,
+      sources: this.state.config.sources,
       uuid: messageUUID,
     } as ProcessSample);
   }
@@ -625,7 +626,7 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   }
 
   const result = {};
-  for (let fieldName in value) {
+  for (const fieldName in value) {
     const field = schema[fieldName];
     if (!field) {
       result[fieldName] = value[fieldName];
@@ -672,7 +673,7 @@ const f = <T extends {}>({
   filter: (path: string, value) => boolean;
 }): T => {
   const result = {};
-  for (let fieldName in schema) {
+  for (const fieldName in schema) {
     if (fieldName.startsWith("_")) continue;
 
     const path = [...keys, fieldName].join(".");

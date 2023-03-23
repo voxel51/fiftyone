@@ -1,5 +1,5 @@
 import { useRecoilCallback } from "recoil";
-import { patching } from "../recoil";
+import { patching, selectedSamples } from "../recoil";
 import useSetView from "./useSetView";
 
 export default function useToPatches() {
@@ -12,7 +12,7 @@ export default function useToPatches() {
   );
   const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
-    ({ set }) =>
+    ({ set, reset }) =>
       async (field) => {
         set(patching, true);
         setView(
@@ -27,6 +27,7 @@ export default function useToPatches() {
             },
           ]
         );
+        reset(selectedSamples);
       },
     []
   );
