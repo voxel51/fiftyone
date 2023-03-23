@@ -4,6 +4,6 @@
 |
 """
 
-from .operator import Operator
+from .operator import Operator, DynamicOperator
 from .registry import register_operator
 from .executor import execute_operator
