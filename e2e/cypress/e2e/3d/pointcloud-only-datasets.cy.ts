@@ -43,7 +43,6 @@ describe("pointcloud only datasets", () => {
   });
 
   after(() => {
-    // pIds.forEach((pId) => cy.killFiftyoneApp(pId));
     cy.killFiftyoneApp(pId);
   });
 });

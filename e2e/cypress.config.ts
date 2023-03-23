@@ -6,10 +6,13 @@ import { DEFAULT_APP_ADDRESS } from "./lib/constants";
 
 export default defineConfig({
   env: {
-    // for cypress-visual-regression
+    /** begin: env for cypress-visual-regression */
     failSilently: false,
-    ALLOW_VISUAL_REGRESSION_TO_FAIL: false,
-    ALWAYS_GENERATE_DIFF: true,
+    // if false, will fail the test if the snapshots are different
+    ALLOW_VISUAL_REGRESSION_TO_FAIL: true,
+    // only generate diffs for failed tests
+    ALWAYS_GENERATE_DIFF: false,
+    /** end: env for cypress-visual-regression */
   },
   e2e: {
     baseUrl: DEFAULT_APP_ADDRESS,
