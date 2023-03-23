@@ -1,25 +1,13 @@
-import {
-  ErrorBoundary,
-  HelpPanel,
-  JSONPanel,
-  LookerArrowLeftIcon,
-  LookerArrowRightIcon,
-} from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
+import React, { Fragment, useRef } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 import * as fos from "@fiftyone/state";
-import { modalNavigation, useEventHandler } from "@fiftyone/state";
-import { Controller } from "@react-spring/core";
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+
+import Draggable from "react-draggable";
+
 import ReactDOM from "react-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
-import Sidebar, { Entries } from "../Sidebar";
+import ColorModalContent from "./ColorModalContent";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -44,46 +32,25 @@ const Container = styled.div`
   box-shadow: 0 20px 25px -20px #000;
 `;
 
-const ContentColumn = styled.div`
-  flex-grow: 1;
-  width: 1px;
-  position: relative;
-  overflow: visible;
+const DraggableModalTitle = styled.div`
+  flex-direction: row;
   display: flex;
-  flex-direction: column;
-`;
-
-const Arrow = styled.span<{ isRight?: boolean }>`
-  cursor: pointer;
-  position: absolute;
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  right: ${(props) => (props.isRight ? "0.75rem" : "initial")};
-  left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
-  z-index: 99999;
-  padding: 0.75rem;
-  bottom: 40vh;
-  width: 3rem;
-  height: 3rem;
-  background-color: var(--joy-palette-background-button);
-  box-shadow: 0 1px 3px var(--joy-palette-custom-shadowDark);
-  border-radius: 3px;
-  opacity: 0.6;
-  transition: opacity 0.15s ease-in-out;
-  transition: box-shadow 0.15s ease-in-out;
-  &:hover {
-    opacity: 1;
-    box-shadow: inherit;
-    transition: box-shadow 0.15s ease-in-out;
-    transition: opacity 0.15s ease-in-out;
-  }
+  width: 100%;
+  height: 2.5rem;
+  background-color: ${({ theme }) => theme.background.level1};
+  padding: 2px;
+  cursor: pointer;
+  fontstyle: bold;
 `;
 
 const ColorModal = () => {
   const screen = { width: "30%", height: "30%" };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
+  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
+    fos.colorModal
+  );
 
   if (targetContainer) {
     return ReactDOM.createPortal(
@@ -91,15 +58,17 @@ const ColorModal = () => {
         <ModalWrapper
           ref={wrapperRef}
           onClick={(event) => event.target === wrapperRef.current}
+          aria-labelledby="draggable-color-modal"
         >
-          <Container style={{ ...screen, zIndex: 10001 }}>
-            {/* <ContentColumn>
-                    <ErrorBoundary onReset={() => {}}>
-                     
-                    </ErrorBoundary>
-                  </ContentColumn> */}
-            <div>this is the modal</div>
-          </Container>
+          <Draggable bounds="parent" handle=".draggable-colorModal-handle">
+            <Container style={{ ...screen, zIndex: 10001 }}>
+              <DraggableModalTitle className="draggable-colorModal-handle">
+                <div>{activeColorModalField?.name?.toUpperCase() ?? ""}</div>
+                <CloseIcon onClick={() => setActiveColorModalField(null)} />
+              </DraggableModalTitle>
+              <ColorModalContent />
+            </Container>
+          </Draggable>
         </ModalWrapper>
       </Fragment>,
       targetContainer
