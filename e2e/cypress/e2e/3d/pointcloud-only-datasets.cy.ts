@@ -1,5 +1,3 @@
-import { Duration } from "../../support/utils";
-
 /**
  * This test suite validates that pointcloud only datasets can be loaded in the app.
  */
@@ -14,7 +12,7 @@ describe("pointcloud only datasets", () => {
       }
     );
 
-    return cy.waitForFiftyOneApp(Duration.Seconds(20));
+    return cy.waitForFiftyOneApp();
   });
 
   beforeEach(() => {

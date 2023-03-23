@@ -8,7 +8,7 @@ export default defineConfig({
   env: {
     /** begin: env for cypress-visual-regression */
     failSilently: false,
-    // if false, will fail the test if the snapshots are different
+    // if true, will fail the test if there's a visual regression
     ALLOW_VISUAL_REGRESSION_TO_FAIL: true,
     // only generate diffs for failed tests
     ALWAYS_GENERATE_DIFF: false,
@@ -20,6 +20,9 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       getCompareSnapshotsPlugin(on, config);
 
+      // note: we're favoring headed mode for now because of a cypress bug,
+      // so the following might not be relevant, yet,
+      // but will be in the future when we run visual regression tests in headless mode
       on("before:browser:launch", (browser, launchOptions) => {
         if (browser.name === "chrome" && browser.isHeadless) {
           // fullPage screenshot size is 1200x800 on non-retina screens
@@ -55,6 +58,6 @@ export default defineConfig({
     viewportWidth: 1200,
     viewportHeight: 800,
     chromeWebSecurity: false,
-    // screenshotsFolder: "cypress/snapshots/base",
+    screenshotsFolder: "cypress/snapshots/actual",
   },
 });

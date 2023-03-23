@@ -17,7 +17,7 @@ Cypress.Commands.add("executePythonCode", (sourceCode) => {
 
 Cypress.Commands.add(
   "waitForLookerToRender",
-  (timeout = Duration.Seconds(0.2)) => {
+  (timeout = Duration.Seconds(0.4)) => {
     cy.wait(timeout ?? Duration.LOOKER_RENDER_MAX_TIME_MS);
   }
 );

@@ -24,7 +24,7 @@ export class PythonRunner {
     });
     const pId = proc.pid;
 
-    console.log(`Spawning python process, pId = ${pId}. Source code:`);
+    console.log(`Spawning python process with source code:`);
     console.log("=====================================");
     console.log(sourceCode);
     console.log("=====================================");
@@ -36,6 +36,8 @@ export class PythonRunner {
       }
     });
     console.log("=====================================");
+    console.log();
+    console.log("New python process spawned with pid:", pId);
 
     proc.stdout.on("data", (data) => {
       console.log(`${pId}: ${data.toString()}`);

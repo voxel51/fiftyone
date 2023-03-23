@@ -127,6 +127,7 @@ const Selector = <T extends unknown>({
 
   return (
     <div
+      data-cy={`selector-${placeholder}`}
       onMouseEnter={() => {
         hovering.current = true;
       }}

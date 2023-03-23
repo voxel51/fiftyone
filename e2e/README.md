@@ -17,6 +17,7 @@ fakes/mocks/etc.
     visit
     [cypress command line](https://docs.cypress.io/guides/guides/command-line)
     page.
+-   To interpret results of visual regression tests, check to see if anything
 
 **Note: E2E tests communicate to the app via port 8787 and use `cypress` as the
 database name.**
@@ -51,7 +52,6 @@ yarn start --env type=base,pause_between_tests=true
 #### Resources
 
 1. [AssertJS - Cypress Best Practices](https://www.youtube.com/watch?v=5XQOK0v_YRE&ab_channel=OKG%21-PaulDowman%27stecheventsandinterviews)
-2.
 
 #### Usage of `cy.wait()`s
 
