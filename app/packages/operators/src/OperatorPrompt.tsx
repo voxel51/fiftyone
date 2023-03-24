@@ -33,6 +33,8 @@ const PromptModal = styled.div`
   background: ${({ theme }) => theme.background.level2};
   width: 50%;
   padding: 1rem;
+  max-height: calc(80vh);
+  overflow: scroll;
 `;
 
 const Form = styled.div``;
@@ -82,9 +84,10 @@ function Prompting({ operatorPrompt }) {
           <Field
             key={field.name}
             field={field}
-            onChange={(e) =>
-              operatorPrompt.setFieldValue(field.name, e.target.value)
-            }
+            onChange={(e) => {
+              const value = getChangeResolverForType(field.type)(e);
+              operatorPrompt.setFieldValue(field.name, value);
+            }}
           />
         ))}
       </Form>
@@ -151,6 +154,20 @@ function getComponentForType(type: types.ANY_TYPE) {
       return List;
     default:
       null;
+  }
+}
+
+function getChangeResolverForType(type: types.ANY_TYPE) {
+  const TYPE = types.TYPES.find((t) => type instanceof t);
+  switch (TYPE) {
+    case types.Boolean:
+      return (e) => e.target.checked;
+    case types.String:
+    case types.Number:
+    case types.Enum:
+    case types.List:
+    default:
+      return (e) => e.target.value;
   }
 }
 
@@ -232,13 +249,14 @@ const CheckboxContainer = styled.div`
 `;
 
 function Checkbox({ field, onChange, defaultValue, readOnly }) {
+  console.log("checkbox", field);
   return (
     <CheckboxContainer>
       <StyledInput
         autoFocus
         error={field.error}
         type="checkbox"
-        defaultValue={defaultValue || field.default}
+        defaultChecked={defaultValue || field.default}
         readOnly={readOnly}
         onChange={onChange}
       />
@@ -258,6 +276,7 @@ function Emum({ field, onChange, defaultValue, readOnly }) {
       <FormControl component="fieldset" style={{ marginBottom: "1rem" }}>
         <FormLabel component="legend">{field.label}</FormLabel>
         <RadioGroup
+          row
           aria-label="gender"
           name={field.name}
           value={value}
