@@ -1,9 +1,9 @@
 # Fiftyone Integration Test Suite
 
 This directory contains a suite of black box UI tests that use BDD
-(Behavior-Driven Development) assertions. The goal is to ensure that the system
-meets the desired _busines requirements_ and provides value to the end user. No
-mocks or stubs are to be used.
+(Behavior-Driven Development) style assertions. The goal is to ensure that the
+system meets the desired _busines requirements_ and provides value to the end
+user. No mocks or stubs are to be used.
 
 ## Running Locally
 
@@ -17,7 +17,6 @@ mocks or stubs are to be used.
     visit
     [cypress command line](https://docs.cypress.io/guides/guides/command-line)
     page.
--   To interpret results of visual regression tests, check to see if anything
 
 **Note: E2E tests communicate to the app via port 8787 and use `cypress` as the
 database name.**
@@ -48,10 +47,6 @@ yarn start --env type=base,pause_between_tests=true
 3. Refrain from using `id` or `class` to select elements. Use `data-cy`
    attribute.
 4. Document all usages of `cy.wait()`s in this document.
-
-#### Resources
-
-1. [AssertJS - Cypress Best Practices](https://www.youtube.com/watch?v=5XQOK0v_YRE&ab_channel=OKG%21-PaulDowman%27stecheventsandinterviews)
 
 #### Usage of `cy.wait()`s
 
