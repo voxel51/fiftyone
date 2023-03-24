@@ -157,9 +157,6 @@ export const dataset = graphQLSyncFragmentAtom<
     keys: ["dataset"],
     storeKey: "router",
     read: (dataset) => {
-      if (!dataset) {
-        return null;
-      }
       return { ...transformDataset(dataset) };
     },
   },
@@ -206,7 +203,7 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
-export const selectedLabels = atom<State.SelectedLabel[]>({
+export const selectedLabels = atom({
   key: "selectedLabels",
   default: [],
   effects: [
@@ -224,9 +221,9 @@ export const selectedLabels = atom<State.SelectedLabel[]>({
   ],
 });
 
-export const selectedSamples = atom<Set<string>>({
+export const selectedSamples = atom({
   key: "selectedSamples",
-  default: new Set(),
+  default: new Set<string>(),
   effects: [
     syncEffect({
       storeKey: "router",
@@ -399,4 +396,10 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
     type: "panel-container",
     activeChild: "default-samples-node",
   },
+  effects: [
+    syncEffect({
+      storeKey: "router",
+      refine: rfn.custom<SpaceNodeJSON>((v) => v as SpaceNodeJSON),
+    }),
+  ],
 });

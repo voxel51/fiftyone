@@ -8,12 +8,11 @@ import {
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {
-  currentSlice,
-  defaultGroupSlice,
   getSampleSrc,
   groupField,
   groupId,
   groupSample as groupSampleSelectorFamily,
+  groupSlice,
   hasPinnedSlice,
   pinnedSlice,
   pinnedSliceSample,
@@ -165,8 +164,7 @@ const MainSample: React.FC<{
   const hover = fos.useHoveredSample(sample);
 
   const thisSampleSlice = useSlice(sample);
-  const currentModalSlice = useRecoilValue(currentSlice(true));
-  const defaultSlice = useRecoilValue(defaultGroupSlice);
+  const currentModalSlice = useRecoilValue(groupSlice(true));
   const allSlices = useRecoilValue(fos.groupSlices);
   const altSlice = useMemo(() => {
     if (
@@ -175,12 +173,8 @@ const MainSample: React.FC<{
     )
       return undefined;
 
-    if (currentModalSlice === defaultSlice) {
-      return allSlices.find((s) => s !== defaultSlice);
-    }
-
-    return defaultSlice;
-  }, [currentModalSlice, defaultSlice, sample, allSlices]);
+    return allSlices.filter((slice) => slice !== currentModalSlice)[0];
+  }, [currentModalSlice, sample, allSlices]);
 
   if (altSlice) {
     return (

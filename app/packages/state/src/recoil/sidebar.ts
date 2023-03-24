@@ -365,7 +365,7 @@ export const sidebarGroupsDefinition = (() => {
               .frameFields
           ),
           current,
-          data.appConfig.sidebarGroups
+          data.appConfig?.sidebarGroups
         );
         return current;
       },

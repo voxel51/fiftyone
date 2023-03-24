@@ -4,12 +4,7 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from "react";
-import {
-  RecoilValueReadOnly,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
 
 import {
   AbstractLooker,
@@ -28,15 +23,10 @@ import Popout from "./Popout";
 const useClearSampleSelection = (close) => {
   const setSelected = useSetSelected();
 
-  return useRecoilTransaction_UNSTABLE(
-    ({ set }) =>
-      () => {
-        set(fos.selectedSamples, new Set());
-        setSelected([]);
-        close();
-      },
-    [close]
-  );
+  return useCallback(() => {
+    setSelected(new Set());
+    close();
+  }, []);
 };
 
 const useGridActions = (close: () => void) => {
@@ -86,7 +76,6 @@ const useSelectVisible = (
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const isGroup = await snapshot.getPromise(fos.isGroup);
     const selected = await snapshot.getPromise(fos.selectedLabels);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
 
@@ -126,10 +115,10 @@ const useClearSelectedLabels = (close) => {
 };
 
 const useHideSelected = () => {
-  return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(fos.selectedLabels);
+  return useRecoilCallback(({ snapshot, set, reset }) => async () => {
+    const selected = await snapshot.getPromise(fos.selectedLabelMap);
     const hidden = await snapshot.getPromise(fos.hiddenLabels);
-    set(fos.selectedLabels, {});
+    reset(fos.selectedLabels);
     set(fos.hiddenLabels, { ...hidden, ...selected });
   });
 };
@@ -160,7 +149,7 @@ const toIds = (labels: State.SelectedLabel[]) =>
 
 const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const isGroup = useRecoilValue(fos.isGroup);
-  const activeSlice = useRecoilValue(fos.currentSlice(true));
+  const activeSlice = useRecoilValue(fos.groupSlice(true));
   const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
   const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
 
@@ -183,7 +172,6 @@ const useModalActions = (
 ) => {
   const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
-  const hasSorting = useRecoilValue(fos.similarityParameters);
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   const visibleSampleLabels = useVisibleSampleLabels(lookerRef);
   const isVideo =

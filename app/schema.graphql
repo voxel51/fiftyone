@@ -322,10 +322,8 @@ type Mutation {
   setGroupSlice(
     subscription: String!
     session: String
-    view: BSONArray!
     slice: String!
-    viewName: String = null
-  ): Dataset!
+  ): Boolean!
   createSavedView(
     subscription: String!
     session: String
@@ -378,7 +376,11 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
+  dataset(
+    name: String!
+    savedViewSlug: String
+    view: BSONArray = null
+  ): Dataset!
   datasets(
     search: String
     first: Int = 200

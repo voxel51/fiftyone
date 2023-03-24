@@ -24,10 +24,15 @@ EventType = t.Union[
     "CloseSession",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
+    "SelectSamples",
+    "SelectLabels",
+    "SetGroupSlice",
+    "SetSpaces",
     "StateUpdate",
 ]
 
 _camel_to_snake = re.compile(r"(?<!^)(?=[A-Z])")
+_SCREENSHOTS: t.Dict[str, "Screenshot"] = {}
 
 
 @dataclass
@@ -68,6 +73,20 @@ class Event:
 
 
 @dataclass
+class LabelData:
+    label_id: str
+    field: str
+    sample_id: str
+    frame_number: t.Optional[int] = None
+
+
+@dataclass
+class Screenshot:
+    bytes: bytes
+    max_width: int
+
+
+@dataclass
 class CaptureNotebookCell(Event):
     """Capture notebook cell screenshot event"""
 
@@ -84,6 +103,11 @@ class CloseSession(Event):
 @dataclass
 class DeactivateNotebookCell(Event):
     """Deactivate notebook cell event"""
+
+
+@dataclass
+class Ping(Event):
+    """Ping (builtin) event"""
 
 
 @dataclass
@@ -106,14 +130,6 @@ class SelectSamples(Event):
 
 
 @dataclass
-class LabelData:
-    label_id: str
-    field: str
-    sample_id: str
-    frame_number: t.Optional[int] = None
-
-
-@dataclass
 class SelectLabels(Event):
     """Select labels event"""
 
@@ -121,15 +137,24 @@ class SelectLabels(Event):
 
 
 @dataclass
+class SetSpaces(Event):
+    """Set spaces event"""
+
+    spaces: t.Dict
+
+
+@dataclass
+class SetGroupSlice(Event):
+    """Set group slice eventt"""
+
+    slice: str
+
+
+@dataclass
 class StateUpdate(Event):
     """State update event"""
 
     state: fos.StateDescription
-
-
-@dataclass
-class Ping(Event):
-    """Ping (builtin) event"""
 
 
 @dataclass
@@ -157,26 +182,17 @@ class ListenPayload:
         return from_dict(cls, d)
 
 
-def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
-    return dict(
-        (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
-        for k, v in data
-    )
-
-
-@dataclass
-class Screenshot:
-    bytes: bytes
-    max_width: int
-
-
-_SCREENSHOTS: t.Dict[str, Screenshot] = {}
-
-
 def add_screenshot(event: CaptureNotebookCell) -> None:
     data = event.src.split(",")[1].encode()
     _SCREENSHOTS[event.subscription] = Screenshot(
         base64.decodebytes(data), event.width
+    )
+
+
+def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
+    return dict(
+        (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
+        for k, v in data
     )
 
 

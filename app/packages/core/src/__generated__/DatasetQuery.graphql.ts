@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cd72f44b2adedf717e58152f509f121f>>
+ * @generated SignedSource<<30d9ba095810eddf31bfebd853974957>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -123,7 +123,7 @@ export type DatasetQuery$data = {
     readonly version: string | null;
     readonly viewCls: string | null;
     readonly viewName: string | null;
-  } | null;
+  };
   readonly " $fragmentSpreads": FragmentRefs<"DatasetSavedViewsFragment">;
 };
 export type DatasetQuery = {

@@ -21,8 +21,8 @@ import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import {
-  currentSlice,
   groupId,
+  groupSlice,
   groupStatistics,
   Lookers,
   refresher,
@@ -345,7 +345,7 @@ const useTagCallback = (
             groupData: isGroup
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
-                  slice: await snapshot.getPromise(currentSlice(modal)),
+                  slice: await snapshot.getPromise(groupSlice(modal)),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,

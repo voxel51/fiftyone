@@ -17,6 +17,8 @@ import fiftyone.core.odm as foo
 from fiftyone.core.session.events import (
     SelectLabels,
     SelectSamples,
+    SetSpaces,
+    SetGroupSlice,
     StateUpdate,
 )
 from fiftyone.core.spaces import default_spaces, Space
@@ -136,7 +138,9 @@ class Mutation:
         state = get_state()
 
         state.selected_labels = [asdict(l) for l in selected_labels]
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(
+            subscription, SelectLabels(labels=selected_labels)
+        )
         return True
 
     @gql.mutation
@@ -220,24 +224,12 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: BSONArray,
         slice: str,
-        info: Info,
-        view_name: t.Optional[str] = None,
-    ) -> Dataset:
+    ) -> bool:
         state = get_state()
         state.dataset.group_slice = slice
-        await dispatch_event(subscription, StateUpdate(state=state))
-        return await Dataset.resolver(
-            name=state.dataset.name,
-            view=view,
-            saved_view_slug=fou.to_slug(view_name)
-            if view_name
-            else fou.to_slug(state.view.name)
-            if state.view
-            else None,
-            info=info,
-        )
+        await dispatch_event(subscription, SetGroupSlice(slice=slice))
+        return True
 
     @gql.mutation
     async def create_saved_view(
@@ -394,7 +386,7 @@ class Mutation:
     ) -> bool:
         state = get_state()
         state.spaces = Space.from_dict(spaces)
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, SetSpaces(spaces=spaces))
         return True
 
 

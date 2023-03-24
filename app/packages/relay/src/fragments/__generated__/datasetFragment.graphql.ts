@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<17fa1a68d4a6d064c94c5966cd8cfa1f>>
+ * @generated SignedSource<<f2febc26e8fa01c03223944639f28f9e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -38,7 +38,6 @@ export type datasetFragment$data = {
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
   readonly createdAt: any | null;
-  readonly defaultGroupSlice: string | null;
   readonly defaultMaskTargets: ReadonlyArray<{
     readonly target: string;
     readonly value: string;
@@ -75,15 +74,13 @@ export type datasetFragment$data = {
   }>;
   readonly mediaType: MediaType | null;
   readonly name: string;
-  readonly savedViewSlug: string | null;
   readonly skeletons: ReadonlyArray<{
     readonly edges: ReadonlyArray<ReadonlyArray<number>>;
     readonly labels: ReadonlyArray<string> | null;
     readonly name: string;
   }>;
   readonly version: string | null;
-  readonly viewName: string | null;
-  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
 export type datasetFragment$key = {
@@ -96,6 +93,6 @@ const node: ReaderInlineDataFragment = {
   "name": "datasetFragment"
 };
 
-(node as any).hash = "3a94150872c97f8a30d68ce80ad83efe";
+(node as any).hash = "786e6e058e643d943dc7b1a5c12b61c2";
 
 export default node;

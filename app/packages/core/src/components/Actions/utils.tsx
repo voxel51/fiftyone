@@ -6,8 +6,8 @@ import styled from "styled-components";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
-  currentSlice,
   groupId,
+  groupSlice,
   groupStatistics,
   isGroup,
   State,
@@ -84,20 +84,15 @@ export const tagStatistics = selectorFamily<
           groupData: get(isGroup)
             ? {
                 id: modal ? get(groupId) : null,
-                slice: get(currentSlice(modal)),
+                slice: get(groupSlice(modal)),
                 mode: get(groupStatistics(modal)),
               }
             : null,
           hiddenLabels: get(fos.hiddenLabelsArray),
           modal,
           sampleId: modal ? get(fos.sidebarSampleId) : null,
-          selectedSamples: get(fos.selectedSamples),
-          selectedLabels: Object.entries(get(fos.selectedLabels)).map(
-            ([labelId, data]) => ({
-              labelId,
-              ...data,
-            })
-          ),
+          selectedSamples: [...get(fos.selectedSamples)],
+          selectedLabels: get(fos.selectedLabels),
           targetLabels: count_labels,
           view: get(fos.view),
         })

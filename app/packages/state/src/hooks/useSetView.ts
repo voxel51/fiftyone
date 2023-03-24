@@ -2,16 +2,17 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
+import { collapseFields } from "../";
+import * as atoms from "../recoil";
 import {
   datasetName,
+  groupSlice,
   State,
   stateSubscription,
   view,
   viewStateForm,
 } from "../recoil";
 import useSendEvent from "./useSendEvent";
-import * as atoms from "../recoil";
-import { collapseFields } from "../";
 
 const useSetView = (
   patch = false,
@@ -29,6 +30,7 @@ const useSetView = (
         set(atoms.sampleFields, sampleFields);
         set(atoms.frameFields, frameFields);
         set(atoms.view, view);
+        set(groupSlice(false));
       },
     []
   );
@@ -60,7 +62,9 @@ const useSetView = (
               form: patch
                 ? snapshot.getLoadable(
                     viewStateForm({
-                      addStages: addStages ? JSON.stringify(addStages) : null,
+                      addStages: addStages
+                        ? JSON.stringify(addStages)
+                        : undefined,
                       modal: false,
                       selectSlice,
                       omitSelected,

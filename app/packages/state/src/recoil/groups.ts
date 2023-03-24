@@ -1,4 +1,8 @@
 import {
+  datasetFragment,
+  graphQLSyncFragmentAtomFamily,
+  groupSliceFragment,
+  groupSliceFragment$key,
   mainSample,
   mainSampleQuery as mainSampleQueryGraphQL,
   paginateGroup,
@@ -20,7 +24,6 @@ import {
   modal,
   modal as modalAtom,
   SampleData,
-  sidebarOverride,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -35,26 +38,22 @@ export const isGroup = selector<boolean>({
   },
 });
 
-export const defaultGroupSlice = selector<string>({
-  key: "defaultGroupSlice",
-  get: ({ get }) => {
-    return get(dataset).defaultGroupSlice;
+export const groupSlice = graphQLSyncFragmentAtomFamily<
+  groupSliceFragment$key,
+  string | null,
+  boolean
+>(
+  {
+    storeKey: "router",
+    fragments: [datasetFragment, groupSliceFragment],
+    keys: ["dataset"],
+    read: (data) => data.groupSlice,
+    sync: (modal) => !modal,
   },
-});
-
-export const groupSlice = atomFamily<string, boolean>({
-  key: "groupSlice",
-  default: null,
-});
-
-export const resolvedGroupSlice = selectorFamily<string, boolean>({
-  key: "resolvedGroupSlice",
-  get:
-    (modal) =>
-    ({ get }) => {
-      return get(groupSlice(modal)) || get(defaultGroupSlice);
-    },
-});
+  {
+    key: "groupSlice",
+  }
+);
 
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
@@ -90,21 +89,6 @@ export const pinnedSlice = atom<string | null>({
   key: "pinnedSlice",
   default: defaultPinnedSlice,
   effects: [getBrowserStorageEffectForKey("pinnedSlice")],
-});
-
-export const currentSlice = selectorFamily<string | null, boolean>({
-  key: "currentSlice",
-  get:
-    (modal) =>
-    ({ get }) => {
-      if (!get(isGroup)) return null;
-
-      if (modal && get(sidebarOverride)) {
-        return get(pinnedSlice);
-      }
-
-      return get(groupSlice(modal)) || get(defaultGroupSlice) || null;
-    },
 });
 
 export const hasPinnedSlice = selector<boolean>({
@@ -212,7 +196,7 @@ export const activeModalSample = selectorFamily<
         return get(modalAtom).sample;
       }
 
-      if (get(sidebarOverride) || get(pinnedSlice) === sliceName) {
+      if (get(pinnedSlice) === sliceName) {
         return get(pinnedSliceSample).sample;
       }
 

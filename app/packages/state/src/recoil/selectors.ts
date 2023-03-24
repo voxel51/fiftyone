@@ -10,7 +10,7 @@ import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
 import { filters, modalFilters } from "./filters";
-import { resolvedGroupSlice } from "./groups";
+import { groupSlice } from "./groups";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -446,7 +446,7 @@ export const viewStateForm = selectorFamily<
         sampleIds: omitSelected ? [] : [...get(selectedSamples)],
         labels: get(atoms.selectedLabels),
         extended: get(extendedStages),
-        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        slice: selectSlice ? get(groupSlice(Boolean(modal))) : null,
         addStages: addStages ? JSON.parse(addStages) : [],
       };
     },

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f90e9610ed8c369949c26443297b1c4e>>
+ * @generated SignedSource<<0fb2dbd9f1aba1144f43681f376709a2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +22,7 @@ export type DatasetPageQuery$data = {
   readonly dataset: {
     readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  } | null;
+  };
   readonly " $fragmentSpreads": FragmentRefs<"NavFragment" | "configFragment" | "savedViewsFragment" | "stageDefinitionsFragment">;
 };
 export type DatasetPageQuery = {
@@ -161,6 +161,13 @@ v13 = {
 v14 = {
   "alias": null,
   "args": null,
+  "kind": "ScalarField",
+  "name": "groupSlice",
+  "storageKey": null
+},
+v15 = {
+  "alias": null,
+  "args": null,
   "concreteType": "SampleField",
   "kind": "LinkedField",
   "name": "sampleFields",
@@ -168,16 +175,16 @@ v14 = {
   "selections": (v11/*: any*/),
   "storageKey": null
 },
-v15 = {
+v16 = {
   "kind": "InlineDataFragmentSpread",
   "name": "sampleFieldsFragment",
   "selections": [
-    (v14/*: any*/)
+    (v15/*: any*/)
   ],
   "args": null,
   "argumentDefinitions": ([]/*: any*/)
 },
-v16 = {
+v17 = {
   "alias": null,
   "args": null,
   "concreteType": "SidebarGroup",
@@ -203,7 +210,7 @@ v16 = {
   ],
   "storageKey": null
 },
-v17 = {
+v18 = {
   "alias": null,
   "args": [
     {
@@ -217,39 +224,32 @@ v17 = {
   "name": "stages",
   "storageKey": null
 },
-v18 = {
+v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewCls",
   "storageKey": null
 },
-v19 = {
+v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewName",
   "storageKey": null
 },
-v20 = {
+v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v21 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "mediaType",
-  "storageKey": null
-},
 v22 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "defaultGroupSlice",
+  "name": "mediaType",
   "storageKey": null
 },
 v23 = {
@@ -268,7 +268,7 @@ v24 = {
   "plural": true,
   "selections": [
     (v8/*: any*/),
-    (v21/*: any*/)
+    (v22/*: any*/)
   ],
   "storageKey": null
 },
@@ -567,17 +567,10 @@ v47 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "savedViewSlug",
-  "storageKey": null
-},
-v48 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "colorscale",
   "storageKey": null
 },
-v49 = {
+v48 = {
   "alias": null,
   "args": null,
   "concreteType": "AppConfig",
@@ -599,7 +592,7 @@ v49 = {
       "name": "colorPool",
       "storageKey": null
     },
-    (v48/*: any*/),
+    (v47/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -682,7 +675,7 @@ v49 = {
   ],
   "storageKey": null
 },
-v50 = {
+v49 = {
   "alias": null,
   "args": null,
   "concreteType": "StageDefinition",
@@ -721,7 +714,7 @@ v50 = {
   ],
   "storageKey": null
 },
-v51 = [
+v50 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -766,7 +759,16 @@ return {
             "name": "datasetFragment",
             "selections": [
               (v13/*: any*/),
-              (v15/*: any*/),
+              {
+                "kind": "InlineDataFragmentSpread",
+                "name": "groupSliceFragment",
+                "selections": [
+                  (v14/*: any*/)
+                ],
+                "args": null,
+                "argumentDefinitions": []
+              },
+              (v16/*: any*/),
               {
                 "kind": "InlineDataFragmentSpread",
                 "name": "sidebarGroupsFragment",
@@ -779,12 +781,12 @@ return {
                     "name": "appConfig",
                     "plural": false,
                     "selections": [
-                      (v16/*: any*/)
+                      (v17/*: any*/)
                     ],
                     "storageKey": null
                   },
                   (v13/*: any*/),
-                  (v15/*: any*/)
+                  (v16/*: any*/)
                 ],
                 "args": null,
                 "argumentDefinitions": []
@@ -793,9 +795,9 @@ return {
                 "kind": "InlineDataFragmentSpread",
                 "name": "viewFragment",
                 "selections": [
-                  (v17/*: any*/),
                   (v18/*: any*/),
-                  (v19/*: any*/)
+                  (v19/*: any*/),
+                  (v20/*: any*/)
                 ],
                 "args": null,
                 "argumentDefinitions": [
@@ -809,9 +811,8 @@ return {
                   }
                 ]
               },
-              (v20/*: any*/),
-              (v8/*: any*/),
               (v21/*: any*/),
+              (v8/*: any*/),
               (v22/*: any*/),
               (v23/*: any*/),
               (v24/*: any*/),
@@ -840,8 +841,6 @@ return {
               (v45/*: any*/),
               (v46/*: any*/),
               (v34/*: any*/),
-              (v19/*: any*/),
-              (v47/*: any*/),
               (v10/*: any*/)
             ],
             "args": null,
@@ -864,8 +863,8 @@ return {
         "kind": "InlineDataFragmentSpread",
         "name": "configFragment",
         "selections": [
-          (v49/*: any*/),
-          (v48/*: any*/)
+          (v48/*: any*/),
+          (v47/*: any*/)
         ],
         "args": null,
         "argumentDefinitions": []
@@ -874,7 +873,7 @@ return {
         "kind": "InlineDataFragmentSpread",
         "name": "stageDefinitionsFragment",
         "selections": [
-          (v50/*: any*/)
+          (v49/*: any*/)
         ],
         "args": null,
         "argumentDefinitions": []
@@ -907,6 +906,7 @@ return {
           (v8/*: any*/),
           (v12/*: any*/),
           (v14/*: any*/),
+          (v15/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -915,7 +915,7 @@ return {
             "name": "appConfig",
             "plural": false,
             "selections": [
-              (v16/*: any*/),
+              (v17/*: any*/),
               (v25/*: any*/),
               (v26/*: any*/),
               (v27/*: any*/),
@@ -924,7 +924,6 @@ return {
             ],
             "storageKey": null
           },
-          (v17/*: any*/),
           (v18/*: any*/),
           (v19/*: any*/),
           (v20/*: any*/),
@@ -941,14 +940,13 @@ return {
           (v45/*: any*/),
           (v46/*: any*/),
           (v34/*: any*/),
-          (v47/*: any*/),
           (v10/*: any*/)
         ],
         "storageKey": null
       },
       {
         "alias": null,
-        "args": (v51/*: any*/),
+        "args": (v50/*: any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
@@ -985,7 +983,7 @@ return {
                 "plural": false,
                 "selections": [
                   (v8/*: any*/),
-                  (v20/*: any*/),
+                  (v21/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -1029,7 +1027,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v51/*: any*/),
+        "args": (v50/*: any*/),
         "filters": [
           "search"
         ],
@@ -1088,7 +1086,7 @@ return {
         "name": "savedViews",
         "plural": true,
         "selections": [
-          (v20/*: any*/),
+          (v21/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -1125,18 +1123,18 @@ return {
         ],
         "storageKey": null
       },
-      (v49/*: any*/),
       (v48/*: any*/),
-      (v50/*: any*/)
+      (v47/*: any*/),
+      (v49/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "b6304d343ca7372136df85756a474096",
+    "cacheID": "7f3d0e7d67f7325b799684fa971f3f67",
     "id": null,
     "metadata": {},
     "name": "DatasetPageQuery",
     "operationKind": "query",
-    "text": "query DatasetPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n  $savedViewSlug: String\n  $name: String!\n  $view: BSONArray\n) {\n  dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {\n    name\n    ...datasetFragment\n    id\n  }\n  ...NavFragment\n  ...savedViewsFragment\n  ...configFragment\n  ...stageDefinitionsFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment datasetFragment on Dataset {\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n  ...sidebarGroupsFragment\n  ...viewFragment\n  id\n  name\n  mediaType\n  defaultGroupSlice\n  groupField\n  groupMediaTypes {\n    name\n    mediaType\n  }\n  appConfig {\n    gridMediaField\n    mediaFields\n    modalMediaField\n    plugins\n    sidebarMode\n  }\n  maskTargets {\n    name\n    targets {\n      target\n      value\n    }\n  }\n  defaultMaskTargets {\n    target\n    value\n  }\n  evaluations {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      predField\n      gtField\n    }\n  }\n  brainMethods {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      embeddingsField\n      method\n      patchesField\n      supportsPrompts\n      type\n      maxK\n      supportsLeastSimilarity\n    }\n  }\n  lastLoadedAt\n  createdAt\n  skeletons {\n    name\n    labels\n    edges\n  }\n  defaultSkeleton {\n    labels\n    edges\n  }\n  version\n  viewName\n  savedViewSlug\n  info\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment savedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n\nfragment stageDefinitionsFragment on Query {\n  stageDefinitions {\n    name\n    params {\n      name\n      type\n      default\n      placeholder\n    }\n  }\n}\n\nfragment viewFragment on Dataset {\n  stages(slug: $savedViewSlug, view: $view)\n  viewCls\n  viewName\n}\n"
+    "text": "query DatasetPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n  $savedViewSlug: String\n  $name: String!\n  $view: BSONArray\n) {\n  dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {\n    name\n    ...datasetFragment\n    id\n  }\n  ...NavFragment\n  ...savedViewsFragment\n  ...configFragment\n  ...stageDefinitionsFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment datasetFragment on Dataset {\n  ...frameFieldsFragment\n  ...groupSliceFragment\n  ...sampleFieldsFragment\n  ...sidebarGroupsFragment\n  ...viewFragment\n  id\n  name\n  mediaType\n  groupField\n  groupMediaTypes {\n    name\n    mediaType\n  }\n  appConfig {\n    gridMediaField\n    mediaFields\n    modalMediaField\n    plugins\n    sidebarMode\n  }\n  maskTargets {\n    name\n    targets {\n      target\n      value\n    }\n  }\n  defaultMaskTargets {\n    target\n    value\n  }\n  evaluations {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      predField\n      gtField\n    }\n  }\n  brainMethods {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      embeddingsField\n      method\n      patchesField\n      supportsPrompts\n      type\n      maxK\n      supportsLeastSimilarity\n    }\n  }\n  lastLoadedAt\n  createdAt\n  skeletons {\n    name\n    labels\n    edges\n  }\n  defaultSkeleton {\n    labels\n    edges\n  }\n  version\n  info\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  groupSlice\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment savedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n\nfragment stageDefinitionsFragment on Query {\n  stageDefinitions {\n    name\n    params {\n      name\n      type\n      default\n      placeholder\n    }\n  }\n}\n\nfragment viewFragment on Dataset {\n  stages(slug: $savedViewSlug, view: $view)\n  viewCls\n  viewName\n}\n"
   }
 };
 })();

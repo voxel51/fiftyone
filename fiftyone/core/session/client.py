@@ -78,6 +78,8 @@ class Client:
                                 "reload_session",
                                 "select_labels",
                                 "select_samples",
+                                "set_group_slice",
+                                "set_spaces",
                                 "state_update",
                             ],
                             initializer=state.serialize(),

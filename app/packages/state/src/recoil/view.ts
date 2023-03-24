@@ -23,7 +23,7 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
       return data.stageDefinitions;
     },
   },
-  { key: "stageDefinitions", default: [] }
+  { key: "stageDefinitions" }
 );
 
 export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
@@ -51,11 +51,13 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
   },
   {
     key: "view",
-    default: [],
   }
 );
 
-export const viewCls = graphQLSyncFragmentAtom<viewFragment$key, string>(
+export const viewCls = graphQLSyncFragmentAtom<
+  viewFragment$key,
+  string | null | undefined
+>(
   {
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
@@ -65,11 +67,13 @@ export const viewCls = graphQLSyncFragmentAtom<viewFragment$key, string>(
   },
   {
     key: "viewCls",
-    default: null,
   }
 );
 
-export const viewName = graphQLSyncFragmentAtom<viewFragment$key, string>(
+export const viewName = graphQLSyncFragmentAtom<
+  viewFragment$key,
+  string | null | undefined
+>(
   {
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
@@ -79,7 +83,6 @@ export const viewName = graphQLSyncFragmentAtom<viewFragment$key, string>(
   },
   {
     key: "viewName",
-    default: null,
   }
 );
 
@@ -116,7 +119,7 @@ export const rootElementName = selector<string>({
   key: "rootElementName",
   get: ({ get }) => {
     const cls = get(viewCls);
-    if (PATCH_VIEWS.includes(cls)) {
+    if (cls && PATCH_VIEWS.includes(cls)) {
       return ELEMENT_NAMES.PATCH;
     }
 
@@ -192,14 +195,6 @@ export const isFramesView = selector<boolean>({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
-  },
-});
-
-export const currentViewSlug = selector<string>({
-  key: "currentViewSlug",
-  get: () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("view") || null;
   },
 });
 

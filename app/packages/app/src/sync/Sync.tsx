@@ -1,5 +1,7 @@
 import { Loading } from "@fiftyone/components";
 import {
+  setGroupSlice,
+  setGroupSliceMutation,
   setSelected,
   setSelectedLabels,
   setSelectedLabelsMutation,
@@ -8,6 +10,7 @@ import {
   setViewMutation,
   Writer,
 } from "@fiftyone/relay";
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 import {
   State,
   stateSubscription,
@@ -32,7 +35,9 @@ enum Events {
   REFRESH = "refresh",
   SELECT_LABELS = "select_labels",
   SELECT_SAMPLES = "select_samples",
+  SET_SPACES = "set_spaces",
   STATE_UPDATE = "state_update",
+  INIT = "init",
 }
 
 enum AppReadyState {
@@ -44,6 +49,7 @@ enum AppReadyState {
 interface SessionData {
   selectedSamples: string[];
   selectedLabels: State.SelectedLabel[];
+  spaces: SpaceNodeJSON;
 }
 
 const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
@@ -71,6 +77,10 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const sessionRef = useRef<SessionData>({
     selectedSamples: [],
     selectedLabels: [],
+    spaces: {
+      id: "",
+      children: [],
+    },
   });
   const updateExternals = useRef<(items: ItemSnapshot) => void>();
   React.useEffect(() => {
@@ -128,6 +138,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               sessionRef.current.selectedLabels = toCamelCase(
                 payload.state.selected_labels
               ) as State.SelectedLabel[];
+              sessionRef.current.spaces = payload.state.spaces;
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
@@ -153,7 +164,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   )}${search}`
                 : `/${search}`;
 
-              router.history.replace(path, { view: payload.state.view || [] });
+              router.history.push(path, { view: payload.state.view || [] });
               if (readyStateRef.current !== AppReadyState.OPEN) {
                 router.load().then(() => {
                   setReadyState(AppReadyState.OPEN);
@@ -194,6 +205,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       ["routeEntry", () => router.get()],
       ["selectedSamples", () => new Set(sessionRef.current.selectedSamples)],
       ["selectedLabels", () => sessionRef.current.selectedLabels],
+      ["sessionSpaces", () => sessionRef.current.spaces],
     ]);
   }, [router]);
 
@@ -241,10 +253,32 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   );
 };
 
-const WRITE_HANDLERS = {
+const WRITE_HANDLERS: {
+  [key: string]: (
+    router: RoutingContext<Queries>,
+    value: any,
+    subscription: string
+  ) => void;
+} = {
+  groupSlice_false: (router, slice: string, subscription) => {
+    if (typeof slice !== "string") {
+      throw new Error("slice must be defined");
+    }
+
+    commitMutation<setGroupSliceMutation>(
+      router.get().preloadedQuery.environment,
+      {
+        mutation: setGroupSlice,
+        variables: {
+          slice,
+          subscription,
+        },
+      }
+    );
+  },
   selectedSamples: (
     router: RoutingContext<Queries>,
-    selected: Set<string>,
+    selected: Set<string> | DefaultValue,
     subscription: string
   ) => {
     commitMutation<setSelectedMutation>(
@@ -252,7 +286,7 @@ const WRITE_HANDLERS = {
       {
         mutation: setSelected,
         variables: {
-          selected: [...selected],
+          selected: selected instanceof DefaultValue ? [] : [...selected],
           subscription,
         },
       }
@@ -260,7 +294,9 @@ const WRITE_HANDLERS = {
   },
   selectedLabels: (
     router: RoutingContext<Queries>,
-    selectedLabels: VariablesOf<setSelectedLabelsMutation>["selectedLabels"],
+    selectedLabels:
+      | VariablesOf<setSelectedLabelsMutation>["selectedLabels"]
+      | DefaultValue,
     subscription: string
   ) => {
     commitMutation<setSelectedLabelsMutation>(
@@ -268,13 +304,13 @@ const WRITE_HANDLERS = {
       {
         mutation: setSelectedLabels,
         variables: {
-          selectedLabels,
+          selectedLabels:
+            selectedLabels instanceof DefaultValue ? [] : selectedLabels,
           subscription,
         },
       }
     );
   },
-  sidebarGroupsDefinition__false: null,
   view: (
     router: RoutingContext<Queries>,
     view: DefaultValue | State.Stage[]

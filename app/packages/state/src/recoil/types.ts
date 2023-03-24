@@ -137,7 +137,6 @@ export namespace State {
       name: string;
       mediaType: MediaType;
     }[];
-    defaultGroupSlice?: string;
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };

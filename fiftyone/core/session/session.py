@@ -15,6 +15,8 @@ import typing as t
 import webbrowser
 from uuid import uuid4
 
+from bson import json_util
+
 try:
     import IPython.display
 except:
@@ -41,6 +43,8 @@ from fiftyone.core.session.events import (
     Refresh,
     SelectLabels,
     SelectSamples,
+    SetSpaces,
+    SetGroupSlice,
     StateUpdate,
 )
 import fiftyone.core.session.notebooks as fosn
@@ -547,7 +551,6 @@ class Session(object):
         return self._state.spaces
 
     @spaces.setter  # type: ignore
-    @update_state()
     def spaces(self, spaces: t.Optional[Space]) -> None:
         if spaces is None:
             spaces = default_spaces.copy()
@@ -559,6 +562,7 @@ class Session(object):
             )
 
         self._state.spaces = spaces
+        self._client.send_event(SetSpaces(spaces=spaces.to_json()))
 
     @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
@@ -1062,6 +1066,22 @@ def _attach_listeners(session: "Session"):
         session._state, "selected_labels", event.labels
     )
     session._client.add_event_listener("select_labels", on_select_labels)
+
+    on_set_group_slice: t.Callable[
+        [SetGroupSlice], None
+    ] = lambda event: setattr(
+        session._state.dataset,
+        "group_slice",
+        event.slice,
+    )
+    session._client.add_event_listener("set_group_slice", on_set_group_slice)
+
+    on_set_spaces: t.Callable[[SetGroupSlice], None] = lambda event: setattr(
+        session._state,
+        "spaces",
+        Space.from_dict(json_util.loads(event.spaces)),
+    )
+    session._client.add_event_listener("set_spaces", on_set_spaces)
 
     if focx.is_notebook_context() and not focx.is_colab_context():
 

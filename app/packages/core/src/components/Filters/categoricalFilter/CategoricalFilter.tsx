@@ -16,7 +16,7 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 
-import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
+import { groupId, groupSlice, groupStatistics } from "@fiftyone/state";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
@@ -92,7 +92,7 @@ const categoricalSearchResults = selectorFamily<
           selected,
           group_id: modal ? group : null,
           mixed,
-          slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          slice: mixed ? null : get(groupSlice(modal)), // when mixed, slice is not needed
           sample_id: modal && !group && !mixed ? sampleId : null,
           ...sorting,
         });

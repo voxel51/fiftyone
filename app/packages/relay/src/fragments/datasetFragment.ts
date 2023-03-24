@@ -3,13 +3,13 @@ import { graphql } from "relay-runtime";
 export default graphql`
   fragment datasetFragment on Dataset @inline {
     ...frameFieldsFragment
+    ...groupSliceFragment
     ...sampleFieldsFragment
     ...sidebarGroupsFragment
     ...viewFragment
     id
     name
     mediaType
-    defaultGroupSlice
     groupField
     groupMediaTypes {
       name
@@ -72,8 +72,6 @@ export default graphql`
       edges
     }
     version
-    viewName
-    savedViewSlug
     info
   }
 `;
