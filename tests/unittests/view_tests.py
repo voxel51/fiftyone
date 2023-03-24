@@ -2085,6 +2085,12 @@ class ViewStageTests(unittest.TestCase):
     def test_exclude_fields(self):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+        self.dataset.set_values(
+            "exclude_fields_field1", [1] * len(self.dataset)
+        )
+        self.dataset.set_values(
+            "exclude_fields_field2", [1] * len(self.dataset)
+        )
 
         for default_field in ("id", "filepath", "tags", "metadata"):
             with self.assertRaises(ValueError):
@@ -2098,7 +2104,21 @@ class ViewStageTests(unittest.TestCase):
             with self.assertRaises(AttributeError):
                 sample.exclude_fields_field1
 
-            self.assertIsNone(sample.exclude_fields_field2)
+            self.assertEqual(sample.exclude_fields_field2, 1)
+
+        base_size = self.dataset.exclude_fields(
+            ["exclude_fields_field1", "exclude_fields_field2"]
+        ).stats()["samples_bytes"]
+        excl1_size = self.dataset.exclude_fields(
+            ["exclude_fields_field1"]
+        ).stats()["samples_bytes"]
+        total_size = self.dataset.stats()["samples_bytes"]
+        self.assertLess(base_size, excl1_size)
+        self.assertLess(excl1_size, total_size)
+
+        self.dataset.delete_sample_fields(
+            ["exclude_fields_field1", "exclude_fields_field2"]
+        )
 
     def test_exclude_frame_fields(self):
         sample = fo.Sample(filepath="video.mp4")
@@ -2115,6 +2135,12 @@ class ViewStageTests(unittest.TestCase):
             for frame in sample.frames.values():
                 with self.assertRaises(AttributeError):
                     frame.int_field
+
+        excl_size = dataset.exclude_fields(["frames.int_field"]).stats()[
+            "frames_bytes"
+        ]
+        total_size = dataset.stats()["frames_bytes"]
+        assert excl_size < total_size
 
     def test_exists(self):
         sample1 = fo.Sample(filepath="video1.mp4", index=1)
@@ -3074,6 +3100,7 @@ class ViewStageTests(unittest.TestCase):
 
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)
+        self.dataset.set_values("select_fields_field", [1] * len(self.dataset))
 
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
@@ -3086,6 +3113,10 @@ class ViewStageTests(unittest.TestCase):
             sample.tags
             with self.assertRaises(AttributeError):
                 sample.select_fields_field
+
+        base_size = self.dataset.select_fields().stats()["samples_bytes"]
+        total_size = self.dataset.stats()["samples_bytes"]
+        self.assertLess(base_size, total_size)
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
