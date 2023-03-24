@@ -4447,7 +4447,6 @@ __metadata:
     "@typescript-eslint/parser": ^5.44.0
     "@vitest/coverage-c8": ^0.25.2
     concurrently: ^7.2.1
-    cypress-visual-regression: ^2.1.1
     eslint: ^8.28.0
     eslint-config-prettier: ^8.5.0
     eslint-plugin-only-warn: ^1.0.3
@@ -12579,19 +12578,6 @@ __metadata:
   version: 1.0.1
   resolution: "cyclist@npm:1.0.1"
   checksum: 3cc2fdeb358599ca0ea96f5ecf2fc530ccab7ed1f8aa1a894aebfacd2009281bd7380cb9b30db02a18cdd00b3ed1d7ce81a3b11fe56e33a6a0fe4424dc592fbe
-  languageName: node
-  linkType: hard
-
-"cypress-visual-regression@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "cypress-visual-regression@npm:2.1.1"
-  dependencies:
-    pixelmatch: ^5.2.1
-    pngjs: ^6.0.0
-    sanitize-filename: ^1.6.3
-  peerDependencies:
-    cypress: ">=9.7.0"
-  checksum: 061c33c4fa8503bf91bcdae2c096641235da63b340ed0f95fc6abf78d386d55adcebf858c9cb8bd21152991ea6d09a51e488dacfb45476fe2a8c37af94a7e3a9
   languageName: node
   linkType: hard
 
@@ -21471,17 +21457,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pixelmatch@npm:^5.2.1":
-  version: 5.3.0
-  resolution: "pixelmatch@npm:5.3.0"
-  dependencies:
-    pngjs: ^6.0.0
-  bin:
-    pixelmatch: bin/pixelmatch
-  checksum: f542713d89536551181ad9ddb666a1792ba00a8632d831093232a075cb3ccac05856e7a453ed7d0a41aaef64dcb5962e8ae5cbe646dd2761790d8ee51b0a0743
-  languageName: node
-  linkType: hard
-
 "pkg-dir@npm:^3.0.0":
   version: 3.0.0
   resolution: "pkg-dir@npm:3.0.0"
@@ -21573,13 +21548,6 @@ __metadata:
     webgl-context: ^2.2.0
     world-calendars: ^1.0.3
   checksum: 455a6f05b1ed595d712cac08032655b6cfedba647577b39b5db99eb39fd950a427e4de06996205bb61ac14da6792fd9ac504b7a5054a34704b49d21abe40e7a9
-  languageName: node
-  linkType: hard
-
-"pngjs@npm:^6.0.0":
-  version: 6.0.0
-  resolution: "pngjs@npm:6.0.0"
-  checksum: ab6c285086060087097eab9fe6b5a528a24f9e79c03dea2b4fd6264ed4fdb5beff4a3257eeeaf2a9dc18249b539609c2a4e4013c567164a1f6b5ba2c974d5ecb
   languageName: node
   linkType: hard
 
