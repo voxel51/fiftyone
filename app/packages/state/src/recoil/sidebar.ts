@@ -33,7 +33,7 @@ import {
 import { State } from "./types";
 import * as viewAtoms from "./view";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
-import { isLargeVideo, resolvedSidebarMode } from "./options";
+import { isLargeVideo } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import { getCurrentEnvironment } from "../hooks/useRouter";
@@ -195,7 +195,6 @@ const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
   { name: "tags", paths: [] },
-  { name: "label tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
@@ -204,7 +203,6 @@ const DEFAULT_IMAGE_GROUPS = [
 
 const DEFAULT_VIDEO_GROUPS = [
   { name: "tags", paths: [] },
-  { name: "label tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
@@ -230,6 +228,7 @@ export const resolveGroups = (
         return map;
       }, {})
     : {};
+
   if (!groups) {
     groups = JSON.parse(
       JSON.stringify(
@@ -247,7 +246,6 @@ export const resolveGroups = (
   const present = new Set(groups.map(({ paths }) => paths).flat());
 
   const updater = groupUpdater(groups, buildSchema(dataset));
-
   const primitives = dataset.sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
     .filter((path) => path !== "tags" && !present.has(path));
@@ -362,8 +360,14 @@ export const sidebarGroups = selectorFamily<
 
       const groupNames = groups.map(({ name }) => name);
 
-      const tagsIndex = groupNames.indexOf("tags");
-      const labelTagsIndex = groupNames.indexOf("label tags");
+      // if the data migration did not happen, we want to make sure the frontend still renders in the new format
+      if (groupNames.includes("_label_tags")) {
+        groups = groups.filter(({ name }) => name !== "_label_tags");
+      }
+
+      const tagGroupIndex = groupNames.indexOf("tags");
+      groups[tagGroupIndex].paths = ["_label_tags", "tags"];
+
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
 
@@ -377,36 +381,12 @@ export const sidebarGroups = selectorFamily<
           groups[framesIndex].expanded = !largeVideo;
         }
 
-        if (NONE.includes(groups[tagsIndex].expanded)) {
-          groups[tagsIndex].expanded =
-            get(resolvedSidebarMode(false)) === "all";
+        if (NONE.includes(groups[tagGroupIndex].expanded)) {
+          groups[tagGroupIndex].expanded = true;
         }
-        if (NONE.includes(groups[labelTagsIndex].expanded)) {
-          groups[labelTagsIndex].expanded =
-            get(resolvedSidebarMode(false)) === "all" ? !largeVideo : false;
-        }
-        groups[tagsIndex].expanded &&
-          (groups[tagsIndex].paths = get(
-            aggregationAtoms.values({ extended: false, modal, path: "tags" })
-          )
-            .filter((tag) => !filtered || tag.includes(f))
-            .map((tag) => `tags.${tag}`));
-
-        groups[labelTagsIndex].expanded &&
-          (groups[labelTagsIndex].paths = get(
-            aggregationAtoms.cumulativeValues({
-              extended: false,
-              modal: false,
-              path: "tags",
-              ftype: EMBEDDED_DOCUMENT_FIELD,
-              embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-            })
-          )
-            .filter((tag) => !filtered || tag.includes(f))
-            .map((tag) => `_label_tags.${tag}`));
       } else {
-        if (NONE.includes(groups[labelTagsIndex].expanded)) {
-          groups[labelTagsIndex].expanded = false;
+        if (NONE.includes(groups[tagGroupIndex].expanded)) {
+          groups[tagGroupIndex].expanded = true;
         }
 
         if (
@@ -415,10 +395,6 @@ export const sidebarGroups = selectorFamily<
           NONE.includes(groups[framesIndex].expanded)
         ) {
           groups[framesIndex].expanded = false;
-        }
-
-        if (NONE.includes(groups[tagsIndex].expanded)) {
-          groups[tagsIndex].expanded = false;
         }
       }
 
@@ -432,7 +408,7 @@ export const sidebarGroups = selectorFamily<
       const allPaths = new Set(groups.map(({ paths }) => paths).flat());
 
       groups = groups.map(({ name, paths, expanded }) => {
-        if (["tags", "label tags"].includes(name)) {
+        if (["tags"].includes(name)) {
           return { name, paths: [], expanded };
         }
 
@@ -521,6 +497,7 @@ export const sidebarEntries = selectorFamily<
               name: name,
               kind: EntryKind.GROUP,
             };
+
             const shown = get(
               groupShown({
                 group: name,
@@ -544,6 +521,16 @@ export const sidebarEntries = selectorFamily<
             ];
           })
           .flat(),
+      ];
+
+      // switch position of labelTag and sampleTag
+      const labelTagId = entries.findIndex(
+        (entry) => entry?.path === "_label_tags"
+      );
+      const sampleTagId = entries.findIndex((entry) => entry?.path === "tags");
+      [entries[labelTagId], entries[sampleTagId]] = [
+        entries[sampleTagId],
+        entries[labelTagId],
       ];
 
       if (params.modal) {
@@ -752,7 +739,7 @@ export const groupShown = selectorFamily<
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
       if ([null, undefined].includes(data.expanded)) {
-        if (["tags", "label tags"].includes(group)) {
+        if (["tags"].includes(group)) {
           return null;
         }
         return (
@@ -767,19 +754,11 @@ export const groupShown = selectorFamily<
     ({ modal, group }) =>
     ({ get, set }, expanded) => {
       const current = get(sidebarGroups({ modal, loading: false }));
-
-      const def = get(sidebarGroupsDefinition(modal));
-      const tags = def.filter((e) => e.name === "tags")[0];
-      const labelTags = def.filter((e) => e.name === "label tags")[0];
       set(
         sidebarGroups({ modal, loading: true, persist: false }),
         current.map(({ name, ...data }) =>
           name === group
             ? { name, ...data, expanded: Boolean(expanded) }
-            : name === "tags"
-            ? { name, ...data, expanded: tags.expanded }
-            : name === "label tags"
-            ? { name, ...data, expanded: labelTags.expanded }
             : { name, ...data }
         )
       );

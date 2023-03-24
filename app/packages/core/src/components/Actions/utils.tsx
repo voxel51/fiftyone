@@ -178,6 +178,9 @@ export const tagParameters = ({
 
   const getSampleIds = () => {
     if (shouldShowCurrentSample && !groups) {
+      if (groupData?.slice) {
+        return null;
+      }
       return [sampleId];
     } else if (selectedSamples.size) {
       return [...selectedSamples];
@@ -189,8 +192,8 @@ export const tagParameters = ({
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    slice: !params.modal && !groups ? groupData?.slice : null,
-    group_id: groups && params.modal ? groupData?.id : null,
+    slice: !groups ? groupData?.slice : null,
+    group_id: params.modal ? groupData?.id : null,
     sample_ids: getSampleIds(),
     labels:
       params.modal && targetLabels && selectedLabels && selectedLabels.length

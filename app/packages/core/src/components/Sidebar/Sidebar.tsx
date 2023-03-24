@@ -14,16 +14,15 @@ import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
-
 const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
   currentOrder: string[],
   newOrder: string[],
-  activeKey: string = null,
+  activeKey: string | null = null,
   delta = 0,
-  lastTouched: string = null
+  lastTouched: string | null = null
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -436,7 +435,6 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-  const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
 
   if (entries instanceof Error) {
     throw entries;
@@ -653,6 +651,10 @@ const InteractiveSidebar = ({
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
     if (!down.current) return;
 
+    // do not allow dragging sample tags and label tags
+    const entry = items.current[down.current].entry;
+    if (["_label_tags", "tags"].includes(entry.path)) return;
+
     requestAnimationFrame(() => {
       animate(clientY);
       scrollWith(lastDirection.current, clientY);
@@ -756,14 +758,18 @@ const InteractiveSidebar = ({
               if (entry.kind === fos.EntryKind.GROUP) {
                 group = entry.name;
               }
+
               const { shadow, cursor, ...springs } =
                 items.current[key].controller.springs;
+              const keyTrigger = ["tags", "_label_tags"].includes(key[1])
+                ? null
+                : trigger;
               const { children } = render(
                 key,
                 group,
                 entry,
                 items.current[key].controller,
-                trigger
+                keyTrigger
               );
               const style = {};
               if (entry.kind === fos.EntryKind.INPUT) {

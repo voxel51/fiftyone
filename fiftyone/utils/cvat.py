@@ -399,6 +399,7 @@ def _download_annotations(
     results = CVATAnnotationResults(
         dataset,
         config,
+        anno_key,
         id_map,
         server_id_map,
         project_ids,
@@ -408,6 +409,7 @@ def _download_annotations(
         labels_task_map,
         backend=anno_backend,
     )
+
     anno_backend.save_run_results(dataset, anno_key, results)
 
     if label_types is None:
@@ -3071,6 +3073,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
             or when using ``task_size`` and generating multiple tasks
+        organization (None): the name of the organization to use when sending
+            requests to CVAT
     """
 
     def __init__(
@@ -3097,6 +3101,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr=None,
         group_id_attr=None,
         issue_tracker=None,
+        organization=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3116,6 +3121,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.occluded_attr = occluded_attr
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
+        self.organization = organization
 
         # store privately so these aren't serialized
         self._username = username
@@ -3145,6 +3151,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     @headers.setter
     def headers(self, value):
         self._headers = value
+
+    def load_credentials(
+        self, url=None, username=None, password=None, headers=None
+    ):
+        self._load_parameters(
+            url=url, username=username, password=password, headers=headers
+        )
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -3228,11 +3241,12 @@ class CVATBackend(foua.AnnotationBackend):
             username=self.config.username,
             password=self.config.password,
             headers=self.config.headers,
+            organization=self.config.organization,
         )
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         api = self.connect_to_api()
-        results = api.upload_samples(samples, self)
+        results = api.upload_samples(samples, anno_key, self)
 
         if launch_editor:
             results.launch_editor()
@@ -3258,6 +3272,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self,
         samples,
         config,
+        anno_key,
         id_map,
         server_id_map,
         project_ids,
@@ -3267,7 +3282,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         labels_task_map,
         backend=None,
     ):
-        super().__init__(samples, config, id_map, backend=backend)
+        super().__init__(samples, config, anno_key, id_map, backend=backend)
 
         self.server_id_map = server_id_map
         self.project_ids = project_ids
@@ -3275,23 +3290,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
-
-    def load_credentials(
-        self, url=None, username=None, password=None, headers=None
-    ):
-        """Load the CVAT credentials from the given keyword arguments or the
-        FiftyOne annotation config.
-
-        Args:
-            url (None): the url of the CVAT server
-            username (None): the CVAT username
-            password (None): the CVAT password
-            headers (None): an optional dict of headers to add to all CVAT API
-                requests
-        """
-        self._load_config_parameters(
-            url=url, username=username, password=password, headers=headers
-        )
 
     def launch_editor(self):
         """Launches the CVAT editor and loads the first task for this
@@ -3447,7 +3445,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return status
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         # int keys were serialized as strings...
         job_ids = {int(task_id): ids for task_id, ids in d["job_ids"].items()}
         frame_id_map = {
@@ -3461,6 +3459,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return cls(
             samples,
             config,
+            anno_key,
             d["id_map"],
             d.get("server_id_map", {}),
             d.get("project_ids", []),
@@ -3489,14 +3488,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         username (None): the CVAT username
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all requests
+        organization (None): the name of the organization to use when sending
+            requests to CVAT
     """
 
-    def __init__(self, name, url, username=None, password=None, headers=None):
+    def __init__(
+        self,
+        name,
+        url,
+        username=None,
+        password=None,
+        headers=None,
+        organization=None,
+    ):
         self._name = name
         self._url = url.rstrip("/")
         self._username = username
         self._password = password
         self._headers = headers
+        self._organization = organization
 
         self._server_version = None
         self._session = None
@@ -3657,10 +3667,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._login(username, password)
 
         self._add_referer()
+        self._add_organization()
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:
             self._session.headers["Referer"] = self.login_url
+
+    def _add_organization(self):
+        if (
+            "X-Organization" not in self._session.headers
+            and self._organization
+        ):
+            self._session.headers["X-Organization"] = self._organization
 
     def close(self):
         self._session.close()
@@ -4169,13 +4187,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return job_ids
 
-    def upload_samples(self, samples, backend):
+    def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
         annotation and server configuration.
 
         Args:
-            samples: a :class:`fiftyone.core.collections.SampleCollection` to
-                upload to CVAT
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            anno_key: the annotation key
             backend: a :class:`CVATBackend` to use to perform the upload
 
         Returns:
@@ -4191,6 +4209,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             config.project_name, config.project_id
         )
         has_ignored_attributes = False
+        save_config = False
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
@@ -4235,7 +4254,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "with existing projects, provide the 'occluded_attr' "
                     "and 'group_id_attr' arguments."
                 )
+
             config.label_schema = label_schema
+            save_config = True
 
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
@@ -4346,9 +4367,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 pb.update(batch_size)
 
-        return CVATAnnotationResults(
+        results = CVATAnnotationResults(
             samples,
             config,
+            anno_key,
             id_map,
             server_id_map,
             project_ids,
@@ -4358,6 +4380,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             labels_task_map,
             backend=backend,
         )
+
+        if save_config:
+            results.save_config()
+
+        return results
 
     def download_annotations(self, results):
         """Download the annotations from the CVAT server for the given results

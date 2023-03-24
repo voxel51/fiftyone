@@ -4,16 +4,17 @@ import { VariablesOf } from "react-relay";
 import { GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
-import * as filterAtoms from "./filters";
 import { ResponseFrom } from "../utils";
-import { groupStatistics, groupId, currentSlice } from "./groups";
-import { RelayEnvironmentKey } from "./relay";
-import * as selectors from "./selectors";
-import * as schemaAtoms from "./schema";
-import * as viewAtoms from "./view";
-import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
+import * as filterAtoms from "./filters";
+import { currentSlice, groupId, groupStatistics } from "./groups";
+import { sidebarSampleId } from "./modal";
+import { RelayEnvironmentKey } from "./relay";
+import * as schemaAtoms from "./schema";
 import { field } from "./schema";
+import * as selectors from "./selectors";
+import { MATCH_LABEL_TAGS } from "./sidebar";
+import * as viewAtoms from "./view";
 
 /**
  * GraphQL Selector Family for Aggregations.
@@ -26,6 +27,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     modal: boolean;
     paths: string[];
     root?: boolean;
+    mixed?: boolean;
   },
   ResponseFrom<foq.aggregationsQuery>
 >({
@@ -34,23 +36,25 @@ export const aggregationQuery = graphQLSelectorFamily<
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, paths, root = false }) =>
+    ({ extended, modal, paths, root = false, mixed = false }) =>
     ({ get }) => {
-      const mixed = get(groupStatistics(modal)) === "group";
+      mixed = mixed || get(groupStatistics(modal)) === "group";
+      const group = get(groupId) || null;
       const aggForm = {
         index: get(refresher),
         dataset: get(selectors.datasetName),
-        extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+        extendedStages: root ? [] : get(selectors.extendedStages),
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal && mixed ? get(groupId) : null,
+        groupId: !root && modal ? group : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
-        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-        slice: get(currentSlice(modal)),
+        sampleIds:
+          !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
+        slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
         view: !root ? get(viewAtoms.view) : [],
       };
 
@@ -87,6 +91,7 @@ export const aggregation = selectorFamily({
       extended: boolean;
       modal: boolean;
       path: string;
+      mixed?: boolean;
     }) =>
     ({ get }) => {
       return get(
@@ -105,11 +110,11 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-
+      const isLabelTag = params.path.startsWith("_label_tags");
       // for ListField, set noneCount to zero (so that it is the none option is omitted in display)
       const schema = get(field(params.path));
-      const isListField = schema.ftype.includes("ListField");
-      return isListField
+      const isListField = schema?.ftype?.includes("ListField");
+      return isListField || isLabelTag
         ? 0
         : (get(count({ ...params, path: parent })) as number) - data.count;
     },
@@ -124,7 +129,7 @@ export const labelTagCounts = selectorFamily<
     ({ modal, extended }) =>
     ({ get }) => {
       const data = get(schemaAtoms.labelPaths({})).map((path) =>
-        get(aggregation({ extended, modal, path: `${path}.tags` }))
+        get(aggregation({ extended, modal, path: `${path}.tags`, mixed: true }))
       );
       const result = {};
 
@@ -295,10 +300,22 @@ export const count = selectorFamily({
 
       if (!exists) {
         const split = params.path.split(".");
+        const [first] = split;
 
-        if (split[0] === "tags") {
+        if (first === "tags") {
           return get(counts({ ...params, path: "tags" }))[
             split.slice(1).join(".")
+          ];
+        }
+
+        if (first === "_label_tags" && !value) {
+          const r = get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
+          return Object.values(r).reduce((a, b) => a + b, 0);
+        }
+
+        if (first === "_label_tags" && value) {
+          return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
+            value
           ];
         }
 
@@ -340,7 +357,7 @@ export const counts = selectorFamily({
 
         if (
           VALID_KEYPOINTS.includes(
-            get(schemaAtoms.field(parent)).embeddedDocType
+            get(schemaAtoms.field(parent))?.embeddedDocType
           )
         ) {
           const skeleton = get(selectors.skeleton(parent));
@@ -437,6 +454,34 @@ export const cumulativeValues = selectorFamily<
             (result, path) => [
               ...result,
               ...get(values({ extended, modal, path: `${path}.${key}` })),
+            ],
+            []
+          )
+        )
+      ).sort();
+    },
+});
+
+export const cumulativePaths = selectorFamily<
+  string[],
+  {
+    extended: boolean;
+    path: string;
+    modal: boolean;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "cumulativeValues",
+  get:
+    ({ extended, path: key, modal, ftype, embeddedDocType }) =>
+    ({ get }) => {
+      return Array.from(
+        new Set<string>(
+          gatherPaths(get, ftype, embeddedDocType).reduce(
+            (result) => [
+              ...result,
+              ...get(values({ extended, modal, path: `${key}` })),
             ],
             []
           )

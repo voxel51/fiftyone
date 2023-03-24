@@ -3,7 +3,6 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import HorizontalNav from "../components/HorizontalNav";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
 

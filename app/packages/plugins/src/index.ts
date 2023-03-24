@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { Component, createElement } from "react";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
@@ -6,6 +7,8 @@ import ReactDOM from "react-dom";
 import * as recoil from "recoil";
 import * as foc from "@fiftyone/components";
 import * as fou from "@fiftyone/utilities";
+import { PluginWrapper, wrapCustomComponent } from "./components";
+
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -80,8 +83,6 @@ type PluginFetchResult = {
 };
 async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
   return getFetchFunction()("GET", "/plugins");
-  const res = await fetch("/plugins", { method: "GET" });
-  return res.json();
 }
 
 let _settings = null;
@@ -91,20 +92,32 @@ export async function loadPlugins() {
   for (const { scriptPath, name } of plugins) {
     const pluginSetting = settings && settings[name];
     if (!pluginSetting || pluginSetting.enabled !== false) {
-      await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
+      if (usingRegistry().hasScript(name)) {
+        console.log(`Plugin "${name}": already loaded`);
+        continue;
+      }
+      try {
+        await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
+      } catch (e) {
+        console.error(`Plugin "${name}": failed to load!`);
+        console.error(e);
+      }
     }
   }
 }
 async function loadScript(name, url) {
+  console.log(`Plugin "${name}": loading script...`);
   return new Promise<void>((resolve, reject) => {
     const onDone = (e) => {
       script.removeEventListener("load", onDone);
       script.removeEventListener("error", onDone);
-      if (e.type === "load") {
+      console.log(`Plugin "${name}": loaded!`);
+      if (e?.type === "load") {
         resolve();
       } else {
-        reject(new Error(`Plugin "${name}": Failed to script ${url}`));
+        reject(new Error(`Plugin "${name}": Failed to load script ${url}`));
       }
+      usingRegistry().registerScript(name);
     };
     const script = document.createElement("script");
     script.type = "application/javascript";
@@ -227,6 +240,13 @@ function warn(ok, msg) {
 const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
+  private scripts = new Set<string>();
+  registerScript(name: string) {
+    this.scripts.add(name);
+  }
+  hasScript(name: string) {
+    return this.scripts.has(name);
+  }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
 
@@ -248,7 +268,13 @@ class PluginComponentRegistry {
       registration.type === PluginComponentType.Plot,
       `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
     );
-    this.data.set(name, registration);
+
+    const wrappedRegistration = {
+      ...registration,
+      component: wrapCustomComponent(registration.component),
+    };
+
+    this.data.set(name, wrappedRegistration);
   }
   unregister(name: string): boolean {
     return this.data.delete(name);

@@ -55,9 +55,12 @@ const fitBounds = (
 const createSourceData = (samples: {
   [key: string]: [number, number];
 }): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
+  const entries = Object.entries(samples);
+  if (entries.length === 0) return null;
+
   return {
     type: "FeatureCollection",
-    features: Object.entries(samples).map(([id, coordinates]) => ({
+    features: entries.map(([id, coordinates]) => ({
       type: "Feature",
       properties: { id },
       geometry: { type: "Point", coordinates },
@@ -110,15 +113,17 @@ const Plot: React.FC<{}> = () => {
     let source = samples;
 
     if (selection) {
-      source = selection.reduce((acc, cur) => {
-        acc[cur] = samples[cur];
-        return acc;
-      }, {});
+      source = {};
+      for (const id of selection) {
+        if (samples[id]) {
+          source[id] = samples[id];
+        }
+      }
     }
     return createSourceData(source);
   }, [samples, selection]);
 
-  const bounds = React.useMemo(() => computeBounds(data), [samples]);
+  const bounds = React.useMemo(() => data && computeBounds(data), [samples]);
 
   const [draw] = React.useState(
     () =>
@@ -166,7 +171,7 @@ const Plot: React.FC<{}> = () => {
   const length = React.useMemo(() => Object.keys(samples).length, [samples]);
 
   React.useEffect(() => {
-    mapRef.current && fitBounds(mapRef.current, data);
+    mapRef.current && data && fitBounds(mapRef.current, data);
   }, [data]);
 
   useBeforeScreenshot(() => {
@@ -197,7 +202,9 @@ const Plot: React.FC<{}> = () => {
     );
   }
 
-  if (!Object.keys(samples).length && !loading) {
+  const noData = !Object.keys(samples).length || !data;
+
+  if (noData && !loading) {
     return <foc.Loading>No data</foc.Loading>;
   }
 

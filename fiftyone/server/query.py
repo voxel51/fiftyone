@@ -17,6 +17,7 @@ import strawberry as gql
 from bson import ObjectId, json_util
 
 import fiftyone as fo
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
@@ -83,12 +84,52 @@ class Run:
     view_stages: t.Optional[t.List[str]]
 
 
+@gql.enum
+class BrainRunType(Enum):
+    similarity = "similarity"
+    visualization = "visualization"
+
+
 @gql.type
 class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
     method: t.Optional[str]
     patches_field: t.Optional[str]
     supports_prompts: t.Optional[bool]
+
+    @gql.field
+    def type(self) -> t.Optional[BrainRunType]:
+        try:
+            if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
+                return BrainRunType.similarity
+
+            if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
+                return BrainRunType.visualization
+        except:
+            pass
+
+        return None
+
+    @gql.field
+    def max_k(self) -> t.Optional[int]:
+        config = self._create_config()
+        return getattr(config, "max_k", None)
+
+    @gql.field
+    def supports_least_similarity(self) -> t.Optional[bool]:
+        config = self._create_config()
+        return getattr(config, "supports_least_similarity", None)
+
+    def _create_config(self):
+        try:
+            cls = etau.get_class(self.cls)
+            return cls(
+                embeddings_field=self.embeddings_field,
+                patches_field=self.patches_field,
+                supports_prompts=self.supports_prompts,
+            )
+        except:
+            return None
 
 
 @gql.type
@@ -110,8 +151,8 @@ class EvaluationRun(Run):
 
 @gql.type
 class SavedView:
-    _id: gql.Private[t.Optional[ObjectId]]
-    _dataset_id: gql.Private[t.Optional[ObjectId]]
+    id: t.Optional[str]
+    dataset_id: t.Optional[str]
     name: t.Optional[str]
     description: t.Optional[str]
     color: t.Optional[str]
@@ -120,18 +161,6 @@ class SavedView:
     created_at: t.Optional[datetime]
     last_modified_at: t.Optional[datetime]
     last_loaded_at: t.Optional[datetime]
-
-    @gql.field
-    def id(self) -> t.Optional[str]:
-        if isinstance(self, ObjectId):
-            return str(self)
-        return str(self._id)
-
-    @gql.field
-    def dataset_id(self) -> t.Optional[str]:
-        if isinstance(self, ObjectId):
-            return None
-        return str(self._dataset_id)
 
     @gql.field
     def view_name(self) -> t.Optional[str]:
@@ -146,7 +175,10 @@ class SavedView:
     @classmethod
     def from_doc(cls, doc: SavedViewDocument):
         stage_dicts = [json_util.loads(x) for x in doc.view_stages]
-        saved_view = from_dict(data_class=cls, data=doc.to_dict())
+        data = doc.to_dict()
+        data["id"] = str(data.pop("_id"))
+        data["dataset_id"] = str(data.pop("_dataset_id"))
+        saved_view = from_dict(data_class=cls, data=data)
         saved_view.stage_dicts = stage_dicts
         return saved_view
 
@@ -441,19 +473,16 @@ async def serialize_dataset(
         data = from_dict(Dataset, doc)
         data.view_cls = None
         data.view_name = view_name
+        data.saved_view_slug = saved_view_slug
 
         collection = dataset.view()
         if view is not None:
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]
-
-                data.id = view._dataset._doc.id
-
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
-                data.id = ObjectId()
                 data.media_type = view.media_type
 
             collection = view
@@ -467,6 +496,32 @@ async def serialize_dataset(
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
+        for brain_method in data.brain_methods:
+            try:
+                type = brain_method.config.type().value
+            except:
+                type = None
+
+            try:
+                max_k = brain_method.config.max_k()
+            except:
+                max_k = None
+
+            try:
+                supports_least_similarity = (
+                    brain_method.config.supports_least_similarity()
+                )
+            except:
+                supports_least_similarity = None
+
+            setattr(brain_method.config, "type", type)
+            setattr(brain_method.config, "max_k", max_k)
+            setattr(
+                brain_method.config,
+                "supports_least_similarity",
+                supports_least_similarity,
+            )
 
         return data
 

@@ -108,6 +108,10 @@ export const DatasetNodeQuery = graphql`
           embeddingsField
           method
           patchesField
+          supportsPrompts
+          type
+          maxK
+          supportsLeastSimilarity
         }
       }
       savedViews {

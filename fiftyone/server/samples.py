@@ -78,7 +78,6 @@ async def paginate_samples(
         filters=filters,
         count_label_tags=True,
         extended_stages=extended_stages,
-        sort=True,
         sample_filter=sample_filter,
     )
 

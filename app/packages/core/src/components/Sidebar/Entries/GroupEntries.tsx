@@ -35,26 +35,6 @@ const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
       get(fos.sidebarGroup({ ...params, loading: true })).length,
 });
 
-const TAGS = {
-  [fos.State.TagKey.SAMPLE]: "tags",
-  [fos.State.TagKey.LABEL]: "label tags",
-};
-
-const numMatchedTags = selectorFamily<
-  number,
-  { key: fos.State.TagKey; modal: boolean }
->({
-  key: "numMatchedTags",
-  get:
-    (params) =>
-    ({ get }) => {
-      const active = new Set(get(fos.matchedTags(params)));
-      const f = get(fos.textFilter(params.modal));
-
-      return [...active].filter((t) => t.includes(f)).length;
-    },
-});
-
 const numGroupFieldsFiltered = selectorFamily<
   number,
   { modal: boolean; group: string }
@@ -221,34 +201,6 @@ const useClearActive = (modal: boolean, group: string) => {
       },
     [modal, group]
   );
-};
-
-const useClearMatched = ({
-  modal,
-  tagKey,
-}: {
-  modal: boolean;
-  tagKey: fos.State.TagKey;
-}) => {
-  const [matched, setMatched] = useRecoilState(
-    fos.matchedTags({ key: tagKey, modal })
-  );
-  const group = tagKey === State.TagKey.LABEL ? "label tags" : "tags";
-
-  const current = useRecoilValueLoadable(readableTags({ modal, group }));
-
-  useLayoutEffect(() => {
-    if (current.state === "loading") return;
-
-    const newMatches = new Set<string>();
-    matched.forEach((tag) => {
-      current.contents.includes(tag) && newMatches.add(tag);
-    });
-
-    newMatches.size !== matched.size && setMatched(newMatches);
-  }, [matched]);
-
-  return () => setMatched(new Set());
 };
 
 const useClearFiltered = (modal: boolean, group: string) => {
@@ -498,66 +450,6 @@ const useShown = (
   }
   return [expandedLoading.contents, setExpanded];
 };
-
-export const TagGroupEntry = React.memo(
-  ({
-    entryKey,
-    modal,
-    tagKey,
-    trigger,
-  }: {
-    entryKey: string;
-    modal: boolean;
-    tagKey: fos.State.TagKey;
-    trigger: (
-      event: React.MouseEvent<HTMLDivElement>,
-      key: string,
-      cb: () => void
-    ) => void;
-  }) => {
-    const [expanded, setExpanded] = useShown(TAGS[tagKey], modal);
-    const { singular } = useRecoilValue(fos.elementNames);
-    const name = `${
-      tagKey === fos.State.TagKey.SAMPLE ? singular : "label"
-    } tags`;
-
-    return (
-      <GroupEntry
-        before={<LocalOffer style={{ marginRight: "0.5rem" }} />}
-        entryKey={entryKey}
-        expanded={expanded}
-        title={name.toUpperCase()}
-        onClick={() => setExpanded(!expanded)}
-        pills={
-          <Pills
-            entries={[
-              {
-                count: useRecoilValue(numMatchedTags({ modal, key: tagKey })),
-                onClick: useClearMatched({ modal, tagKey }),
-                icon: <Visibility />,
-                title: `Clear matched ${name}`,
-              },
-              {
-                count: useRecoilValue(
-                  numGroupFieldsActive({ modal, group: TAGS[tagKey] })
-                ),
-                onClick: useClearActive(modal, TAGS[tagKey]),
-                icon: <Check />,
-                title: `Clear shown ${name}`,
-              },
-            ]
-              .filter(({ count }) => count > 0)
-              .map(({ count, ...rest }) => ({
-                ...rest,
-                text: count.toLocaleString(),
-              }))}
-          />
-        }
-        trigger={trigger}
-      />
-    );
-  }
-);
 
 interface PathGroupProps {
   entryKey: string;

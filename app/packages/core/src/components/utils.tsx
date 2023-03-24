@@ -210,11 +210,19 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
-export const Button = ({
+export const Button: React.FC<
+  React.PropsWithChildren<{
+    color?: string;
+    onClick?: React.MouseEventHandler<HTMLDivElement>;
+    style?: React.CSSProperties;
+    text?: string;
+    title?: string;
+  }>
+> = ({
   onClick,
   text,
   children = null,
-  style,
+  style = {},
   color = null,
   title = null,
 }) => {

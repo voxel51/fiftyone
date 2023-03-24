@@ -1,4 +1,13 @@
+import {
+  ErrorBoundary,
+  HelpPanel,
+  JSONPanel,
+  LookerArrowLeftIcon,
+  LookerArrowRightIcon,
+} from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
+import { modalNavigation, useEventHandler } from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
   Fragment,
@@ -10,19 +19,11 @@ import React, {
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import {
-  ErrorBoundary,
-  HelpPanel,
-  JSONPanel,
-  LookerArrowLeftIcon,
-  LookerArrowRightIcon,
-} from "@fiftyone/components";
-import { modalNavigation } from "@fiftyone/state";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
 import Sample3d from "./Sample3d";
+import { TooltipInfo } from "./TooltipInfo";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -89,6 +90,8 @@ const SampleModal = () => {
   const override = useRecoilValue(fos.sidebarOverride);
   const disabled = useRecoilValue(fos.disabledPaths);
 
+  const lookerRef = useRef<AbstractLooker>();
+
   const navigation = useRecoilValue(modalNavigation);
 
   const renderEntry = useCallback(
@@ -104,37 +107,17 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case fos.EntryKind.PATH: {
-          const isTag = entry.path.startsWith("tags.");
-          const isLabelTag = entry.path.startsWith("_label_tags.");
+        case fos.EntryKind.PATH:
+          const isTag = entry.path.startsWith("tags");
+          const isLabelTag = entry.path.startsWith("_label_tags");
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
-          const isFieldPrimitive =
-            !isTag && !isLabelTag && !isLabel && !isOther;
+          const isFieldPrimitive = !isLabelTag && !isLabel && !isOther;
 
           return {
             children: (
               <>
-                {isLabelTag && (
-                  <Entries.FilterableTag
-                    key={key}
-                    modal={true}
-                    tag={entry.path.split(".").slice(1).join(".")}
-                    tagKey={
-                      isLabelTag
-                        ? fos.State.TagKey.LABEL
-                        : fos.State.TagKey.SAMPLE
-                    }
-                  />
-                )}
-                {isTag && (
-                  <Entries.TagValue
-                    key={key}
-                    path={entry.path}
-                    tag={entry.path.slice("tags.".length)}
-                  />
-                )}
-                {(isLabel || isOther) && (
+                {(isLabel || isOther || isLabelTag) && (
                   <Entries.FilterablePath
                     entryKey={key}
                     modal={true}
@@ -163,34 +146,18 @@ const SampleModal = () => {
             ),
             disabled: isTag || isLabelTag || isOther,
           };
-        }
-        case fos.EntryKind.GROUP: {
-          const isTags = entry.name === "tags";
-          const isLabelTags = entry.name === "label tags";
 
+        case fos.EntryKind.GROUP: {
           return {
-            children:
-              isTags || isLabelTags ? (
-                <Entries.TagGroup
-                  entryKey={key}
-                  tagKey={
-                    isLabelTags
-                      ? fos.State.TagKey.LABEL
-                      : fos.State.TagKey.SAMPLE
-                  }
-                  modal={true}
-                  key={key}
-                  trigger={trigger}
-                />
-              ) : (
-                <Entries.PathGroup
-                  entryKey={key}
-                  name={entry.name}
-                  modal={true}
-                  key={key}
-                  trigger={trigger}
-                />
-              ),
+            children: (
+              <Entries.PathGroup
+                entryKey={key}
+                name={entry.name}
+                modal={true}
+                key={key}
+                trigger={trigger}
+              />
+            ),
             disabled: false,
           };
         }
@@ -250,14 +217,17 @@ const SampleModal = () => {
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
+          return;
+        }
+      }
       if (e.key === "ArrowLeft") {
-        e.preventDefault();
         navigatePrevious();
       } else if (e.key === "ArrowRight") {
-        e.preventDefault();
         navigateNext();
       } else if (e.key === "c") {
-        e.preventDefault();
         setIsNavigationHidden((prev) => !prev);
       }
       // note: don't stop event propagation here
@@ -265,10 +235,36 @@ const SampleModal = () => {
     [navigateNext, navigatePrevious]
   );
 
+  useEventHandler(document, "keydown", keyboardHandler);
+
+  const tooltip = fos.useTooltip();
+
+  const eventHandler = useCallback(
+    (e) => {
+      tooltip.setDetail(e.detail ? e.detail : null);
+      e.detail && tooltip.setCoords(e.detail.coordinates);
+    },
+    [tooltip]
+  );
+
+  /**
+   * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
+   * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
+   */
+  const lookerRefCallback = useCallback(
+    (looker: AbstractLooker) => {
+      lookerRef.current = looker;
+      looker.addEventListener("tooltip", eventHandler);
+    },
+    [eventHandler]
+  );
+
   useEffect(() => {
-    document.addEventListener("keydown", keyboardHandler);
-    return () => document.removeEventListener("keydown", keyboardHandler);
-  }, [keyboardHandler]);
+    return () => {
+      lookerRef.current &&
+        lookerRef.current.removeEventListener("tooltip", eventHandler);
+    };
+  }, [eventHandler]);
 
   return ReactDOM.createPortal(
     <Fragment>
@@ -277,6 +273,7 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
+          <TooltipInfo coordinates={tooltip.coordinates} />
           <ContentColumn>
             {!isNavigationHidden && navigation.index > 0 && (
               <Arrow>
@@ -289,7 +286,13 @@ const SampleModal = () => {
               </Arrow>
             )}
             <ErrorBoundary onReset={() => {}}>
-              {isGroup ? <Group /> : isPcd ? <Sample3d /> : <Sample />}
+              {isGroup ? (
+                <Group lookerRefCallback={lookerRefCallback} />
+              ) : isPcd ? (
+                <Sample3d />
+              ) : (
+                <Sample lookerRefCallback={lookerRefCallback} />
+              )}
               {jsonPanel.isOpen && (
                 <JSONPanel
                   containerRef={jsonPanel.containerRef}

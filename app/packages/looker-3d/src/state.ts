@@ -50,11 +50,29 @@ export const currentActionAtom = atom<Actions>({
 
 export const currentPointSizeAtom = atom<string>({
   key: "pointSize",
-  default: "1",
+  default: "2",
   effects: [getBrowserStorageEffectForKey("pointSize")],
 });
 
 export const pointSizeRangeAtom = atom<Range>({
   key: "pointSizeRange",
-  default: [0.01, 0.2],
+  default: [0.1, 2],
+});
+
+export const isPointSizeAttenuatedAtom = atom<boolean>({
+  key: "isPointSizeAttenuated",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("isPointSizeAttenuated", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const isGridOnAtom = atom<boolean>({
+  key: "isGridOn",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("isGridOn", { valueClass: "boolean" }),
+  ],
 });

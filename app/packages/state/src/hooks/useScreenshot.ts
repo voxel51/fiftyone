@@ -55,13 +55,16 @@ export const useScreenshot = (
     document.querySelectorAll("link").forEach((link) => {
       if (link.rel === "stylesheet") {
         styles.push(
-          fetch(link.href)
-            .then((response) => response.text())
-            .then((text) => {
-              const style = document.createElement("style");
-              style.appendChild(document.createTextNode(text));
-              document.head.appendChild(style);
-            })
+          getFetchFunction()(
+            "GET",
+            link.getAttribute("href"),
+            undefined,
+            "text"
+          ).then((text: string) => {
+            const style = document.createElement("style");
+            style.appendChild(document.createTextNode(text));
+            document.head.appendChild(style);
+          })
         );
       }
     });
@@ -135,11 +138,11 @@ export const useScreenshot = (
     if (!notebook) return;
 
     fitSVGs();
-    let chain = Promise.resolve(null);
+    const chain = Promise.resolve(null);
     if (context === "colab") {
       chain.then(inlineImages).then(applyStyles).then(capture);
     } else {
-      chain.then(capture);
+      chain.then(applyStyles).then(capture);
     }
   };
 
