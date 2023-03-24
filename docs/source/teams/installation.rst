@@ -167,12 +167,14 @@ of environment variables shown below:
 
     # Option 1
     export AZURE_STORAGE_CONNECTION_STRING=...
+    export AZURE_ALIAS=...  # optional
 
 .. code-block:: shell
 
     # Option 2
     export AZURE_STORAGE_ACCOUNT=...
     export AZURE_STORAGE_KEY=...
+    export AZURE_ALIAS=...  # optional
 
 .. code-block:: shell
 
@@ -181,6 +183,7 @@ of environment variables shown below:
     export AZURE_CLIENT_ID=...
     export AZURE_CLIENT_SECRET=...
     export AZURE_TENANT_ID=...
+    export AZURE_ALIAS=...  # optional
 
 4. Provide your Azure credentials in any manner recognized by
 `azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
