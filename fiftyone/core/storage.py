@@ -89,9 +89,10 @@ def init_storage():
             azure_endpoint_prefix = (
                 credentials["account_url"].rstrip("/") + "/"
             )
-        elif "account_name" in credentials:
+        elif "conn_str" in credentials or "account_name" in credentials:
             account_url = AzureStorageClient._to_account_url(
-                credentials["account_name"]
+                conn_str=credentials.get("conn_str", None),
+                account_name=credentials.get("account_name", None),
             )
             azure_endpoint_prefix = account_url.rstrip("/") + "/"
 
