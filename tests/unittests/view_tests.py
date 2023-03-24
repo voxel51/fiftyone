@@ -1183,15 +1183,19 @@ class SetValuesTests(unittest.TestCase):
             ["e", "d", "c", "b", "a"],
         )
 
-        dataset.set_values("predictions.int", [1, 2, 3, 4, 5], dynamic=True)
+        dataset.set_values(
+            "predictions.also_int",
+            [1, 2, 3, 4, 5],
+            dynamic=True,
+        )
 
         self.assertListEqual(
-            dataset.values("predictions.int"),
+            dataset.values("predictions.also_int"),
             [1, 2, 3, 4, 5],
         )
 
         schema = dataset.get_field_schema(flat=True)
-        self.assertIsInstance(schema["predictions.int"], fo.IntField)
+        self.assertIsInstance(schema["predictions.also_int"], fo.IntField)
 
         dataset.set_values(
             "predictions.labels",
@@ -1243,19 +1247,19 @@ class SetValuesTests(unittest.TestCase):
         )
 
         dataset.set_values(
-            "labels.classifications.int",
+            "labels.classifications.also_int",
             [[1], [2], [3], [4], [5]],
             dynamic=True,
         )
 
         self.assertListEqual(
-            dataset.values("labels.classifications.int"),
+            dataset.values("labels.classifications.also_int"),
             [[1], [2], [3], [4], [5]],
         )
 
         schema = dataset.get_field_schema(flat=True)
         self.assertIsInstance(
-            schema["labels.classifications.int"],
+            schema["labels.classifications.also_int"],
             fo.IntField,
         )
 
