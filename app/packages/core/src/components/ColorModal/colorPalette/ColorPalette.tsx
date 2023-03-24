@@ -58,7 +58,19 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ maxColors = 20 }) => {
           onMouseLeave={() => setDeleteIndex(null)}
         >
           {color && deleteIndex === index && (
-            <DeleteIcon onClick={() => handleColorDelete(index)} />
+            <div
+              style={{
+                color: "#fff",
+                position: "absolute",
+                right: "-2px",
+                top: "-2px",
+              }}
+            >
+              <DeleteIcon
+                onClick={() => handleColorDelete(index)}
+                fontSize={"small"}
+              />
+            </div>
           )}
           {showPicker && activeIndex === index && (
             <ChromePickerWrapper>
@@ -89,11 +101,11 @@ const ColorPaletteContainer = styled.div`
 
 const ColorSquare = styled.div<{ color: string }>`
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   margin: 5px;
   cursor: pointer;
-  background-color: ${(props) => props.color || "#fff"};
+  background-color: ${(props) => props.color || "#ddd"};
 `;
 
 const ChromePickerWrapper = styled.div`
@@ -107,8 +119,8 @@ const AddSquare = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   margin: 5px;
   cursor: pointer;
   background-color: #eee;
