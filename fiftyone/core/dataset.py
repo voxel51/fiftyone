@@ -45,6 +45,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
+from fiftyone.core.utils import no_recursion
 import fiftyone.core.view as fov
 
 fot = fou.lazy_import("fiftyone.core.stages")
@@ -6732,11 +6733,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._has_frame_fields():
             self._reload_frame_docs(sample_ids=sample_ids, hard=hard)
 
+    @no_recursion
     def _reload_sample_docs(self, sample_ids=None, hard=False):
         fos.Sample._reload_docs(
             self._sample_collection_name, sample_ids=sample_ids, hard=hard
         )
 
+    @no_recursion
     def _reload_frame_docs(self, sample_ids=None, hard=False):
         fofr.Frame._reload_docs(
             self._frame_collection_name, sample_ids=sample_ids, hard=hard
