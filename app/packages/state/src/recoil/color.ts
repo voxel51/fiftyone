@@ -12,7 +12,6 @@ import * as atoms from "./atoms";
 import { colorPool, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-import { State } from "./types";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",

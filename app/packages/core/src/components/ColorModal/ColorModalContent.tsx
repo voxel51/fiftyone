@@ -1,47 +1,187 @@
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import CloseIcon from "@mui/icons-material/Close";
+import {
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Checkbox,
+  FormControlLabel,
+} from "@material-ui/core";
+
 import * as fos from "@fiftyone/state";
+import {
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
+import ColorPalette from "./colorPalette/ColorPalette";
 
-const ModalWrapper = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10000;
-  align-items: center;
-  display: flex;
-  justify-content: center;
-  background-color: ${({ theme }) => theme.neutral.softBg};
-`;
+const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
-const Container = styled.div`
-  background-color: ${({ theme }) => theme.background.level2};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  position: relative;
-  display: flex;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 20px 25px -20px #000;
-`;
-
-const DraggableModalTitle = styled.div`
-  flex-direction: row;
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  height: 2.5rem;
-  background-color: ${({ theme }) => theme.background.level1};
-  padding: 2px;
-  cursor: pointer;
-  fontstyle: bold;
-`;
-
-const ColorModalContent: React.FunctionComponent = () => {
-  const activeColorModalField = useRecoilValue(fos.colorModal);
-
+const FieldColorSettings = () => {
   return <div></div>;
 };
+
+const AttributeValueSettings = () => {
+  const [dropdownValue, setDropdownValue] = useState(null);
+  const [opacityDropdownValue, setOpacityDropdownValue] = useState(null);
+
+  const [checkbox1, setCheckbox1] = useState(false);
+  const [checkbox2, setCheckbox2] = useState(false);
+  const [checkbox3, setCheckbox3] = useState(false);
+
+  const handleDropdownChange = (event) => {
+    setDropdownValue(event.target.value);
+  };
+  const handleOpacityDropdownChange = (event) => {
+    setOpacityDropdownValue(event.target.value);
+  };
+
+  const handleCheckboxChange = (event) => {
+    switch (event.target.name) {
+      case "opacity":
+        setCheckbox1(event.target.checked);
+        break;
+      case "colorPool":
+        setCheckbox2(event.target.checked);
+        break;
+      case "valueColor":
+        setCheckbox3(event.target.checked);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const field = useRecoilValue(fos.colorModal);
+  if (!field) return <div></div>;
+
+  const expandedPath = useRecoilValue(fos.expandPath(field!.path!));
+  const colorAttributeOptions = useRecoilValue(
+    fos.fields({
+      path: expandedPath,
+      ftype: VALID_COLOR_ATTRIBUTE_TYPES,
+    })
+  )
+    .filter((field) => field.dbField !== "tags")
+    .map((field) => ({ value: field.path, label: field.name }));
+
+  const opacityAttributeOptions = useRecoilValue(
+    fos.fields({
+      path: expandedPath,
+      ftype: FLOAT_FIELD,
+    })
+  ).map((field) => ({ value: field.path, label: field.name }));
+
+  return (
+    <div>
+      <form
+        style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
+      >
+        {/* set the attribute used for color */}
+        <FormControl>
+          <InputLabel id="dropdown-attribute">
+            Select attribute for color
+          </InputLabel>
+          <Select
+            labelId="dropdown-attribute"
+            id="select-attribute-dropdown"
+            value={dropdownValue}
+            onChange={handleDropdownChange}
+            MenuProps={{ style: { zIndex: 9999999 } }}
+            required
+          >
+            {colorAttributeOptions.map((option) => {
+              return (
+                <MenuItem value={option.value ?? ""}>{option.label}</MenuItem>
+              );
+            })}
+          </Select>
+        </FormControl>
+        {/* set the attribute used for opacity */}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checkbox1}
+              onChange={handleCheckboxChange}
+              name="opacity"
+              disabled={opacityAttributeOptions.length === 0}
+            />
+          }
+          label="Set up Object boxes opacity"
+        />
+        {checkbox1 && (
+          <FormControl>
+            <InputLabel id="dropdown-opacity-attribute">
+              Select attribute for opacity
+            </InputLabel>
+            <Select
+              labelId="dropdown-opacity-attribute"
+              id="select-opacity-attribute-dropdown"
+              value={opacityDropdownValue}
+              onChange={handleOpacityDropdownChange}
+              MenuProps={{ style: { zIndex: 9999999 } }}
+            >
+              {opacityAttributeOptions.map((option, idx) => {
+                return (
+                  <MenuItem
+                    value={option.value ?? ""}
+                    key={`opacity-option-${idx}`}
+                  >
+                    {option.label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+        )}
+        {/* set colors to use to replace the color pool*/}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checkbox2}
+              onChange={handleCheckboxChange}
+              name="colorPool"
+            />
+          }
+          label="Overwrite Color Pool"
+        />
+        {checkbox2 && <ColorPalette />}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checkbox3}
+              onChange={handleCheckboxChange}
+              name="valueColor"
+            />
+          }
+          label="Assign specfic color to attribute value"
+        />
+      </form>
+    </div>
+  );
+};
+
+const ColorModalContent: React.FunctionComponent = () => {
+  const field = useRecoilValue(fos.colorModal);
+  const colorBy = useRecoilValue(fos.coloring(false)).by;
+
+  if (!field) {
+    return null;
+  }
+
+  const shouldSetAttributeValueColor =
+    field.embeddedDocType && colorBy === "value";
+
+  return (
+    <div>
+      {shouldSetAttributeValueColor && <AttributeValueSettings />}
+      {!shouldSetAttributeValueColor && <FieldColorSettings />}
+    </div>
+  );
+};
+
 export default ColorModalContent;

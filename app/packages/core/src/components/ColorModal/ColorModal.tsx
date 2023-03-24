@@ -27,7 +27,8 @@ const Container = styled.div`
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: start;
   overflow: hidden;
   box-shadow: 0 20px 25px -20px #000;
 `;
@@ -44,8 +45,36 @@ const DraggableModalTitle = styled.div`
   fontstyle: bold;
 `;
 
+const ModalActionButtonContainer = styled.div`
+  align-self: flex-end;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  padding: 0.5rem;
+`;
+
+const SubmitControls = () => {
+  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
+    fos.colorModal
+  );
+  const onCancel = () => {
+    // TODO: clear the temporary color settings
+    setActiveColorModalField(null);
+  };
+  return (
+    <ModalActionButtonContainer>
+      {/* <Button variant="contained" >
+        Save
+      </Button>
+      <Button variant="outlined" onClick={onCancel}>
+        Cancel
+      </Button> */}
+    </ModalActionButtonContainer>
+  );
+};
+
 const ColorModal = () => {
-  const screen = { width: "30%", height: "30%" };
+  const screen = { minWidth: "500px", width: "50vw", height: "500px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
@@ -61,12 +90,17 @@ const ColorModal = () => {
           aria-labelledby="draggable-color-modal"
         >
           <Draggable bounds="parent" handle=".draggable-colorModal-handle">
-            <Container style={{ ...screen, zIndex: 10001 }}>
+            <Container style={{ ...screen, zIndex: 2 }}>
               <DraggableModalTitle className="draggable-colorModal-handle">
-                <div>{activeColorModalField?.name?.toUpperCase() ?? ""}</div>
+                <div>
+                  {activeColorModalField?.name?.toUpperCase() ?? ""} (
+                  {activeColorModalField?.embeddedDocType?.split(".").slice(-1)}
+                  )
+                </div>
                 <CloseIcon onClick={() => setActiveColorModalField(null)} />
               </DraggableModalTitle>
               <ColorModalContent />
+              <SubmitControls />
             </Container>
           </Draggable>
         </ModalWrapper>
