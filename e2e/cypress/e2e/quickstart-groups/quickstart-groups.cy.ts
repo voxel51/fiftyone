@@ -8,6 +8,8 @@ const FIRST_SAMPLE_ID = "003037";
 const SECOND_SAMPLE_ID = "007195";
 const THIRD_SAMPLE_ID = "004416";
 
+const SLICES = ["left", "pcd", "right"] as const;
+
 describe("quickstart-groups dataset", () => {
   let pId: number;
 
@@ -64,9 +66,7 @@ describe("quickstart-groups dataset", () => {
     });
 
     context("navigation", () => {
-      const slices = ["left", "pcd", "right"] as const;
-
-      slices.forEach((slice) => {
+      SLICES.forEach((slice) => {
         context(`with slice ${slice}`, () => {
           beforeEach(() => {
             // for images / videos, need to click on carousel and then looker 2d to set pinned slice
@@ -95,8 +95,6 @@ describe("quickstart-groups dataset", () => {
                 break;
             }
           });
-
-          it("should show correct filename in sidebar", () => {});
 
           it("should navigate to next and previous sample and carry over active slice selected from slice selector", () => {
             // first sample
