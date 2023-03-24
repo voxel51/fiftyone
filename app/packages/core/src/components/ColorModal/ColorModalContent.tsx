@@ -18,6 +18,7 @@ import {
   STRING_FIELD,
 } from "@fiftyone/utilities";
 import ColorPalette from "./colorPalette/ColorPalette";
+import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
@@ -160,6 +161,7 @@ const AttributeValueSettings = () => {
           }
           label="Assign specfic color to attribute value"
         />
+        {checkbox3 && <AttributeColorSetting />}
       </form>
     </div>
   );
