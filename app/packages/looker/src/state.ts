@@ -10,7 +10,7 @@ import { AppError, Schema, Stage } from "@fiftyone/utilities";
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
-  by: "field" | "instance" | "label";
+  by: "field" | "instance" | "value";
   pool: readonly string[];
   scale: RGB[];
   seed: number;
