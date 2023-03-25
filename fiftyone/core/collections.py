@@ -4430,6 +4430,7 @@ class SampleCollection(object):
     def group_by(
         self,
         field_or_expr,
+        order_by=None,
         match_expr=None,
         sort_expr=None,
         reverse=False,
@@ -4485,6 +4486,8 @@ class SampleCollection(object):
                 a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
+            order_by (None): an optional field by which to order the samples in
+                each group
             match_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -4508,6 +4511,7 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.GroupBy(
                 field_or_expr,
+                order_by=order_by,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
                 reverse=reverse,

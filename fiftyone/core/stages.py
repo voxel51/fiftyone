@@ -3007,6 +3007,8 @@ class GroupBy(ViewStage):
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the value to group by
+        order_by (None): an optional field by which to order the samples in
+            each group
         match_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -3028,21 +3030,29 @@ class GroupBy(ViewStage):
     def __init__(
         self,
         field_or_expr,
+        order_by=None,
         match_expr=None,
         sort_expr=None,
         reverse=False,
         flat=True,
     ):
         self._field_or_expr = field_or_expr
+        self._order_by = order_by
         self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
         self._flat = flat
+        self._sort_stage = None
 
     @property
     def field_or_expr(self):
         """The field or expression to group by."""
         return self._field_or_expr
+
+    @property
+    def order_by(self):
+        """The field by which to order the samples in each group."""
+        return self._order_by
 
     @property
     def match_expr(self):
@@ -3064,20 +3074,31 @@ class GroupBy(ViewStage):
         """Whether to generate a flattened collection."""
         return self._flat
 
-    def to_mongo(self, _):
+    def to_mongo(self, sample_collection):
+        if self._order_by is not None and self._sort_stage is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
         if self._flat:
-            return self._make_flat_pipeline()
+            return self._make_flat_pipeline(sample_collection)
 
-        return self._make_grouped_pipeline()
+        return self._make_grouped_pipeline(sample_collection)
 
-    def _make_flat_pipeline(self):
-        group_expr = self._group_expr()
+    def _make_flat_pipeline(self, sample_collection):
+        group_expr = self._group_expr(sample_collection)
         match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
-        pipeline = [
+        pipeline = []
+
+        if self._sort_stage is not None:
+            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
+
+        pipeline.append(
             {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
-        ]
+        )
 
         if match_expr is not None:
             pipeline.append({"$match": match_expr})
@@ -3098,21 +3119,34 @@ class GroupBy(ViewStage):
 
         return pipeline
 
-    def _make_grouped_pipeline(self):
-        group_expr = self._group_expr()
+    def _make_grouped_pipeline(self, sample_collection):
+        order_by = self._order_by
+        group_expr = self._group_expr(sample_collection)
 
-        return [
-            {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
-            {"$replaceRoot": {"newRoot": "$doc"}},
-        ]
+        pipeline = []
 
-    def _group_expr(self):
+        if self._sort_stage is not None:
+            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
+
+        pipeline.extend(
+            [
+                {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
+                {"$replaceRoot": {"newRoot": "$doc"}},
+            ]
+        )
+
+        return pipeline
+
+    def _group_expr(self, sample_collection):
         if self._flat:
             return None
 
         field_or_expr = self._get_mongo_field_or_expr()
 
         if etau.is_str(field_or_expr):
+            field_or_expr, _, _ = sample_collection._handle_id_fields(
+                field_or_expr
+            )
             group_expr = "$" + field_or_expr
         else:
             group_expr = field_or_expr
@@ -3171,6 +3205,7 @@ class GroupBy(ViewStage):
     def _kwargs(self):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["order_by", self._order_by],
             ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
@@ -3184,6 +3219,12 @@ class GroupBy(ViewStage):
                 "name": "field_or_expr",
                 "type": "field|str|json",
                 "placeholder": "field or expression",
+            },
+            {
+                "name": "order_by",
+                "type": "NoneType|field|str",
+                "placeholder": "order by",
+                "default": "None",
             },
             {
                 "name": "match_expr",
@@ -3212,10 +3253,16 @@ class GroupBy(ViewStage):
         ]
 
     def validate(self, sample_collection):
+        order_by = self._order_by
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if etau.is_str(field_or_expr):
-            sample_collection.validate_fields_exist(field_or_expr)
+        if order_by is not None:
+            order = -1 if self._reverse else 1
+            stage = SortBy([(self._field_or_expr, order), (order_by, order)])
+            stage.validate(sample_collection)
+
+            self._sort_stage = stage
+        elif etau.is_str(field_or_expr):
             sample_collection.create_index(field_or_expr)
 
 
@@ -6190,10 +6237,10 @@ class SortBy(ViewStage):
         """Whether to return the results in descending order."""
         return self._reverse
 
-    def to_mongo(self, _):
+    def to_mongo(self, sample_collection):
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if not isinstance(field_or_expr, list):
+        if not isinstance(field_or_expr, (list, tuple)):
             field_or_expr = [(field_or_expr, 1)]
 
         if self._reverse:
@@ -6203,6 +6250,7 @@ class SortBy(ViewStage):
         sort_dict = OrderedDict()
         for idx, (expr, order) in enumerate(field_or_expr, 1):
             if etau.is_str(expr):
+                expr, _, _ = sample_collection._handle_id_fields(expr)
                 field = expr
             else:
                 field = "_sort_field%d" % idx
@@ -6228,7 +6276,7 @@ class SortBy(ViewStage):
 
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if not isinstance(field_or_expr, list):
+        if not isinstance(field_or_expr, (list, tuple)):
             field_or_expr = [(field_or_expr, None)]
 
         needs_frames = False
@@ -6246,7 +6294,7 @@ class SortBy(ViewStage):
 
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if not isinstance(field_or_expr, list):
+        if not isinstance(field_or_expr, (list, tuple)):
             field_or_expr = [(field_or_expr, None)]
 
         group_slices = set()
@@ -6286,8 +6334,10 @@ class SortBy(ViewStage):
     def validate(self, sample_collection):
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if etau.is_str(field_or_expr):
-            sample_collection.validate_fields_exist(field_or_expr)
+        if etau.is_str(field_or_expr) or (
+            isinstance(field_or_expr, (list, tuple))
+            and all(etau.is_str(i[0]) for i in field_or_expr)
+        ):
             sample_collection.create_index(field_or_expr)
 
 
