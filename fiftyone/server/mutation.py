@@ -22,17 +22,10 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
+from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
 from fiftyone.server.scalars import BSON, BSONArray, JSON
-from fiftyone.server.view import get_view, extend_view
-
-
-@gql.input
-class SelectedLabel:
-    field: str
-    label_id: str
-    sample_id: str
-    frame_number: t.Optional[int] = None
+from fiftyone.server.view import get_view
 
 
 @gql.type
