@@ -158,11 +158,6 @@ including the following commands in your notebook before creating any plots:
     import plotly.offline as po
     po.init_notebook_mode(connected=True)
 
-Note that FiftyOne currently requires `plotly>=4.14,<5`, which should have been
-automatically installed when you installed FiftyOne. If your Plotly package was
-upgraded after installing FiftyOne, some interactive plotting features may
-not work as expected.
-
 .. _faq-remote-server-data:
 
 Can I access data stored on a remote server?
@@ -307,8 +302,8 @@ Why didn't changes to my dataset save?
 Although **adding** samples to datasets immediately writes them to the
 database, remember that any **edits** that you make to a
 :ref:`sample <adding-sample-fields>` or its
-:ref:`frame labels <video-frame-labels>` will not be written to the database
-until you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`.
+:ref:`frame labels <video-datasets>` will not be written to the database until
+you call :meth:`sample.save() <fiftyone.core.sample.Sample.save>`.
 
 Similarly, **setting** the properties of a |Dataset| object will be immediately
 saved, but you must call

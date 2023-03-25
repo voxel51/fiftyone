@@ -3,8 +3,8 @@ name: Publish
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+rc[0-9]+
 
 jobs:
   build:
@@ -18,15 +18,11 @@ jobs:
     if: github.ref != 'refs/tags/docker-build'
     needs: [build, test]
     steps:
-      - name: Download artifact
-        id: download-artifact
-        uses: dawidd6/action-download-artifact@v2
+      - name: Download dist
+        uses: actions/download-artifact@v3
         with:
-          workflow: build.yml
-          workflow_conclusion: success
-          commit: ${{github.sha}}
           name: dist
-          path: dist
+          path: dist/
       - name: Install dependencies
         run: |
           pip3 install twine

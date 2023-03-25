@@ -17,7 +17,7 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob" | "arrayBuffer",
+    result?: "json" | "blob" | "text" | "arrayBuffer",
     retries?: number,
     retryCodes?: number[] | "arrayBuffer"
   ): Promise<R>;
@@ -33,19 +33,23 @@ export const getFetchHeaders = () => {
 
 export const getFetchOrigin = () => {
   // window is not defined in the web worker
-  if (typeof window !== "undefined" && window.FIFTYONE_SERVER_ADDRESS) {
+  if (hasWindow && window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
+
   return fetchOrigin;
 };
 export function getFetchPathPrefix(): string {
   // window is not defined in the web worker
-  if (
-    typeof window !== "undefined" &&
-    typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string"
-  ) {
+  if (hasWindow && typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
     return window.FIFTYONE_SERVER_PATH_PREFIX;
   }
+
+  if (hasWindow) {
+    const proxy = new URL(window.location.toString()).searchParams.get("proxy");
+    return proxy ?? "";
+  }
+
   return "";
 }
 
@@ -83,7 +87,9 @@ export const setFetchFunction = (
       new URL(path);
       url = path;
     } catch {
-      url = `${origin}${path}`;
+      url = `${origin}${
+        !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
+      }${path}`;
     }
 
     headers = {
@@ -115,41 +121,37 @@ export const setFetchFunction = (
     });
 
     if (response.status >= 400) {
+      const errorMetadata = {
+        code: response.status,
+        statusText: response.statusText,
+        bodyResponse: "",
+        route: response.url,
+        payload: body as object,
+        stack: null,
+        requestHeaders: headers,
+        responseHeaders: response.headers,
+        message: "",
+      };
+      let ErrorClass = NetworkError;
+
       try {
         const error = await response.json();
 
-        throw new ServerError(
-          {
-            code: response.status,
-            statusText: response.statusText,
-            bodyResponse: error,
-            route: response.url,
-            payload: body as object,
-            stack: (error as unknown as { stack: string }).stack,
-            requestHeaders: headers,
-            responseHeaders: response.headers,
-          },
-          error.message
-        );
+        errorMetadata.bodyResponse = error;
+        if (error.stack) errorMetadata.stack = error?.stack;
+        errorMetadata.message = error?.message;
+        ErrorClass = ServerError;
       } catch {
-        let bodyResponse = "";
-
+        // if response body is not JSON
         try {
-          bodyResponse = await response.text();
-        } catch {}
-        throw new NetworkError(
-          {
-            code: response.status,
-            statusText: response.statusText,
-            bodyResponse,
-            route: response.url,
-            payload: body as object,
-            requestHeaders: headers,
-            responseHeaders: response.headers,
-          },
-          response.statusText
-        );
+          errorMetadata.bodyResponse = await response.text();
+        } catch {
+          // skip response body if it cannot be read as text
+        }
+        errorMetadata.message = response.statusText;
       }
+
+      throw new ErrorClass(errorMetadata, errorMetadata.message);
     }
 
     return await response[result]();
@@ -273,7 +275,7 @@ export const getEventSource = (
 };
 
 export const sendEvent = async (data: {}) => {
-  return await getFetchFunction()("POST", "/event", data);
+  return await getFetchFunction()("POST", "event", data);
 };
 
 interface PollingEventResponse {
@@ -293,7 +295,7 @@ const pollingEventSource = (
   },
   signal: AbortSignal,
   body = {},
-  opened: boolean = false
+  opened = false
 ): void => {
   if (signal.aborted) {
     return;

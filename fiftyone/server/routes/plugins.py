@@ -1,7 +1,7 @@
 """
 FiftyOne Server ``/plugins`` route.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -36,6 +36,9 @@ class Plugins(HTTPEndpoint):
 
         for filepath in pkgs:
             pkg = etas.read_json(filepath)
+
+            if "fiftyone" not in pkg:
+                continue
 
             plugin_definition = {
                 "name": pkg["name"],

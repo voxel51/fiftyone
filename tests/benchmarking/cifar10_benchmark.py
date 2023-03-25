@@ -3,7 +3,7 @@ Benchmarking CRUD operations on CIFAR10.
 
 Results are appended to `cifar10_benchmark.log`.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

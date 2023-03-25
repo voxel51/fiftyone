@@ -1,7 +1,7 @@
 """
 FiftyOne Zoo Datasets provided by :mod:`torchvision:torchvision.datasets`.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -25,7 +25,7 @@ backend, but you do not have the necessary packages installed.
 Ensure that you have `torch` and `torchvision` installed on your machine, and
 then try running this command again.
 
-See https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/index.html
+See https://docs.voxel51.com/user_guide/dataset_zoo/index.html
 for more information about working with the Dataset Zoo.
 """
 

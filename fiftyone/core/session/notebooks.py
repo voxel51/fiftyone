@@ -1,12 +1,13 @@
 """
 Session notebook handling.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from dataclasses import dataclass
 import os
+import typing as t
 
 from jinja2 import Template
 
@@ -52,21 +53,26 @@ def display(
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
-        # focx._DATABRICKS: display_databricks,
+        focx._DATABRICKS: display_databricks,
     }
     fn = funcs[focx._get_context()]
     fn(client, cell, reactivate)
 
 
 def display_ipython(
-    client: Client, cell: NotebookCell, reactivate: bool = False
+    client: Client,
+    cell: NotebookCell,
+    reactivate: bool = False,
+    **kwargs: t.Dict[str, t.Union[str, bool]],
 ) -> None:
     iframe = IPython.display.IFrame(
-        f"""{focx.get_url(
+        focx.get_url(
             cell.address,
             os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
+            notebook=True,
             subscription=cell.subscription,
-        )}""",
+            **kwargs,
+        ),
         height=cell.height,
         width="100%",
     )
@@ -124,4 +130,20 @@ def display_colab(
     output.register_callback(
         f"fiftyone.deactivate.{cell.subscription.replace('-', '_')}",
         lambda: client.send_event(fose.DeactivateNotebookCell()),
+    )
+
+
+def display_databricks(
+    client: Client, cell: NotebookCell, reactivate: bool = False
+):
+    """Display a FiftyOne instance in a Databricks output frame.
+
+    The Databricks driver port is accessible via a proxy url and can be
+    displayed inside an IFrame.
+    """
+    display_ipython(
+        client,
+        cell,
+        reactivate=reactivate,
+        polling=True,
     )

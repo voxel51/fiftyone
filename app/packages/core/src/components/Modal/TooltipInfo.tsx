@@ -6,6 +6,7 @@ import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { ContentDiv, ContentHeader } from "../utils";
+import { joinStringArray } from '../Filters/utils';
 
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
@@ -19,14 +20,16 @@ const TooltipDiv = animated(styled(ContentDiv)`
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 10rem;
-  word-wrap: break-word;
+  max-width: 12rem;
 `;
 
 const ContentValue = styled.div`
   font-size: 0.8rem;
   font-weight: bold;
   color: ${({ theme }) => theme.text.primary};
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 `;
 
 const ContentName = styled.div`
@@ -42,13 +45,13 @@ const ContentItem = ({
   style,
 }: {
   name: string;
-  value?: number | string;
+  value?: number | string | string[];
   style?: object;
 }) => {
-  if (typeof value === "object") {
+  if (typeof value === "object" && !value?.length) {
     return null;
   }
-
+  
   return (
     <ContentItemDiv style={style}>
       <ContentValue>
@@ -60,6 +63,8 @@ const ContentItem = ({
               return value.length ? value : '""';
             case "boolean":
               return value ? "True" : "False";
+            case "object":
+              return joinStringArray(value);
             default:
               return "None";
           }
@@ -157,20 +162,20 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const AttrInfo = ({ label, children = null }) => {
+const AttrInfo = ({ label, labelType, children = null }) => {
   let entries = Object.entries(label).filter(
     ([k, v]) => "tags" !== k && !k.startsWith("_")
   );
   if (!entries || !entries.length) {
     return null;
   }
-
+  const defaultLabels = labelType === "Keypoint" ? ["label"] : ["label", "confidence"]
   const defaults = entries.filter(([name]) =>
-    ["label", "confidence"].includes(name)
+    defaultLabels.includes(name)
   );
 
   const other = entries.filter(
-    ([name]) => !["label", "confidence"].includes(name)
+    ([name]) => !([...defaultLabels, ...HIDDEN_LABELS[labelType], "attributes"].includes(name))
   );
   const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} value={value} />
@@ -199,7 +204,7 @@ const AttrInfo = ({ label, children = null }) => {
 const ClassificationInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
     </AttrBlock>
   );
 };
@@ -207,7 +212,7 @@ const ClassificationInfo = ({ detail }) => {
 const DetectionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
     </AttrBlock>
   );
 };
@@ -216,7 +221,7 @@ const HeatmapInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
       <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
     </AttrBlock>
   );
 };
@@ -224,15 +229,16 @@ const HeatmapInfo = ({ detail }) => {
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
       {detail.point && (
         <AttrInfo
           label={Object.fromEntries(
-            detail.point.attributes.map(([k, v]) => [
-              `points[${detail.point.index}].${k}`,
+            detail.point.attributes.filter(([x, y]) => x !== "points").map(([k, v]) => [
+              `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
               v,
             ])
           )}
+          labelType={detail.type} 
         />
       )}
     </AttrBlock>
@@ -242,7 +248,7 @@ const KeypointInfo = ({ detail }) => {
 const RegressionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
     </AttrBlock>
   );
 };
@@ -267,7 +273,7 @@ const SegmentationInfo = ({ detail }) => {
             value={detail.target}
           />
         ))}
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
     </AttrBlock>
   );
 };
@@ -275,7 +281,7 @@ const SegmentationInfo = ({ detail }) => {
 const PolylineInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} />
+      <AttrInfo label={detail.label} labelType={detail.type} />
     </AttrBlock>
   );
 };
@@ -288,4 +294,14 @@ const OVERLAY_INFO = {
   Polyline: PolylineInfo,
   Regression: RegressionInfo,
   Segmentation: SegmentationInfo,
+};
+
+const HIDDEN_LABELS = {
+  Classification: ["logtis"],
+  Detection: ["bounding_box", "mask"],
+  Heatmap: ["map"],
+  Keypoint: ["points", "occluded", "confidence"],
+  Polyline: ["points"],
+  Regression: [],
+  Segmentation: ["mask"],
 };

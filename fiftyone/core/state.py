@@ -1,7 +1,7 @@
 """
 Defines the shared state between the FiftyOne App and backend.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,10 +17,12 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.clips as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.spaces import Space
 from fiftyone.server.scalars import JSON
 
 
@@ -36,9 +38,10 @@ class StateDescription(etas.Serializable):
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
+        spaces (None): spaces config
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
-        saved view
+            saved view
     """
 
     def __init__(
@@ -47,21 +50,22 @@ class StateDescription(etas.Serializable):
         dataset=None,
         selected=None,
         selected_labels=None,
+        spaces=None,
         view=None,
         view_name=None,
-        saved_view_slug=None,
-        changing_saved_view=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.view = view
-        self.view_name = view_name
-        self.saved_view_slug = saved_view_slug
-        self.changing_saved_view = changing_saved_view or False
+        self.view = (
+            dataset.load_saved_view(dataset)
+            if dataset is not None and view_name
+            else view
+        )
+        self.spaces = spaces
 
-    def serialize(self, reflective=False):
+    def serialize(self, reflective=True):
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
 
@@ -70,14 +74,21 @@ class StateDescription(etas.Serializable):
                 collection = self.dataset
                 if self.view is not None:
                     collection = self.view
+
+                    # @todo update App so this isn't needed?
+                    if isinstance(self.view, foc.TrajectoriesView):
+                        _view_cls = etau.get_class_name(foc.ClipsView)
+                    else:
+                        _view_cls = etau.get_class_name(self.view)
+
                     d["view"] = json.loads(
                         json_util.dumps(self.view._serialize())
                     )
-                    d["view_cls"] = etau.get_class_name(self.view)
+                    d["view_cls"] = _view_cls
 
                     d["view_name"] = self.view.name  # None for unsaved views
-
-                    d["changing_saved_view"] = False
+                    if d.get("view_name") is not None:
+                        d["saved_view_slug"] = fou.to_slug(self.view.name)
 
                 d["sample_fields"] = serialize_fields(
                     collection.get_field_schema(flat=True), dicts=True
@@ -94,6 +105,9 @@ class StateDescription(etas.Serializable):
 
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
+
+            if isinstance(self.spaces, Space):
+                d["spaces"] = self.spaces.to_json()
 
             return d
 
@@ -122,12 +136,17 @@ class StateDescription(etas.Serializable):
             dataset = fod.load_dataset(dataset)
 
         stages = d.get("view", None)
-        if dataset is not None and stages:
-            view = fov.DatasetView._build(dataset, stages)
-        else:
-            view = None
-
+        view = None
         view_name = d.get("view_name", None)
+        if dataset is not None:
+            if view_name:
+                view = dataset.load_saved_view(view_name)
+            elif stages:
+                try:
+                    view = fov.DatasetView._build(dataset, stages)
+                except:
+                    dataset.reload()
+                    view = fov.DatasetView._build(dataset, stages)
 
         group_slice = d.get("group_slice", None)
         if group_slice:
@@ -143,14 +162,18 @@ class StateDescription(etas.Serializable):
 
         fo.config.timezone = d.get("config", {}).get("timezone", None)
 
+        spaces = d.get("spaces", None)
+
+        if spaces is not None:
+            spaces = Space.from_dict(json_util.loads(spaces))
+
         return cls(
             config=config,
             dataset=dataset,
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,
-            view_name=view_name,
-            changing_saved_view=d.get("changing_saved_view", False),
+            spaces=spaces,
         )
 
 

@@ -39,6 +39,9 @@ import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
 
+/**
+ * A generic type that extracts the response type from a GraphQL query.
+ */
 export type AggregationResponseFrom<
   TAggregate extends { response: { aggregate: readonly unknown[] } }
 > = TAggregate["response"]["aggregate"][0];
@@ -47,7 +50,7 @@ const extendedViewForm = selector({
   key: "extendedViewForm",
   get: ({ get }) => {
     return {
-      sampleIds: get(extendedSelection),
+      sampleIds: get(extendedSelection)?.selection,
       filters: get(filters),
       slice: get(groupSlice(false)),
       mixed: get(groupStatistics(false)) === "group",
@@ -73,7 +76,7 @@ const countValuesData = graphQLSelectorFamily<
         form: get(extendedViewForm),
       };
     },
-  mapResponse: (data) => data.aggregate[0],
+  mapResponse: (data: countValuesQuery["response"]) => data.aggregate[0],
 });
 
 const histogramValuesData = graphQLSelectorFamily<

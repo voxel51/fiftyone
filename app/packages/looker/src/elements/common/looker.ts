@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SELECTION_TEXT } from "../../constants";
@@ -46,8 +46,11 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         update(({ SHORTCUTS, error, shouldHandleKeyEvents }) => {
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
+
             const enabled =
               shouldHandleKeyEvents || matchedControl.alwaysHandle;
+
+            console.log(matchedControl, { enabled, shouldHandleKeyEvents });
             if (
               enabled &&
               matchedControl.eventKeyType === ControlEventKeyType.HOLD

@@ -26,7 +26,12 @@ import {
   Settings,
 } from "./state";
 import Options from "./Options";
-import { useBeforeScreenshot } from "@fiftyone/state";
+import {
+  useBeforeScreenshot,
+  useResetExtendedSelection,
+} from "@fiftyone/state";
+import { SELECTION_SCOPE } from "./constants";
+import { useSetPanelCloseEffect } from "@fiftyone/spaces";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -50,9 +55,12 @@ const fitBounds = (
 const createSourceData = (samples: {
   [key: string]: [number, number];
 }): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
+  const entries = Object.entries(samples);
+  if (entries.length === 0) return null;
+
   return {
     type: "FeatureCollection",
-    features: Object.entries(samples).map(([id, coordinates]) => ({
+    features: entries.map(([id, coordinates]) => ({
       type: "Feature",
       properties: { id },
       geometry: { type: "Point", coordinates },
@@ -78,7 +86,10 @@ const Plot: React.FC<{}> = () => {
   );
 
   const style = useRecoilValue(mapStyle);
-  const [selection, setSelection] = useRecoilState(fos.extendedSelection);
+  const [{ selection }, setExtendedSelection] = useRecoilState(
+    fos.extendedSelection
+  );
+  const resetExtendedSelection = useResetExtendedSelection();
 
   const mapRef = React.useRef<MapRef>(null);
   const onResize = React.useMemo(
@@ -102,15 +113,17 @@ const Plot: React.FC<{}> = () => {
     let source = samples;
 
     if (selection) {
-      source = selection.reduce((acc, cur) => {
-        acc[cur] = samples[cur];
-        return acc;
-      }, {});
+      source = {};
+      for (const id of selection) {
+        if (samples[id]) {
+          source[id] = samples[id];
+        }
+      }
     }
     return createSourceData(source);
   }, [samples, selection]);
 
-  const bounds = React.useMemo(() => computeBounds(data), [samples]);
+  const bounds = React.useMemo(() => data && computeBounds(data), [samples]);
 
   const [draw] = React.useState(
     () =>
@@ -158,7 +171,7 @@ const Plot: React.FC<{}> = () => {
   const length = React.useMemo(() => Object.keys(samples).length, [samples]);
 
   React.useEffect(() => {
-    mapRef.current && fitBounds(mapRef.current, data);
+    mapRef.current && data && fitBounds(mapRef.current, data);
   }, [data]);
 
   useBeforeScreenshot(() => {
@@ -170,13 +183,18 @@ const Plot: React.FC<{}> = () => {
     });
   });
 
+  const setPanelCloseEffect = useSetPanelCloseEffect();
+  React.useEffect(() => {
+    setPanelCloseEffect(resetExtendedSelection);
+  }, []);
+
   if (!settings.mapboxAccessToken) {
     return (
       <foc.Loading>
         No Mapbox token provided.&nbsp;
         <ExternalLink
           style={{ color: theme.text.primary }}
-          href={"https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"}
+          href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
         >
           Learn more
         </ExternalLink>
@@ -184,7 +202,9 @@ const Plot: React.FC<{}> = () => {
     );
   }
 
-  if (!Object.keys(samples).length && !loading) {
+  const noData = !Object.keys(samples).length || !data;
+
+  if (noData && !loading) {
     return <foc.Loading>No data</foc.Loading>;
   }
 
@@ -197,9 +217,7 @@ const Plot: React.FC<{}> = () => {
           Something went wrong... is your&nbsp;
           <ExternalLink
             style={{ color: theme.text.primary }}
-            href={
-              "https://voxel51.com/docs/fiftyone/user_guide/app.html#map-tab"
-            }
+            href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
           >
             Mapbox token
           </ExternalLink>
@@ -302,7 +320,10 @@ const Plot: React.FC<{}> = () => {
                 return;
               }
 
-              setSelection([...selected]);
+              setExtendedSelection({
+                selection: Array.from(selected),
+                scope: SELECTION_SCOPE,
+              });
             }}
           />
         </Map>
@@ -313,7 +334,7 @@ const Plot: React.FC<{}> = () => {
         fitSelectionData={() =>
           mapRef.current && fitBounds(mapRef.current, data)
         }
-        clearSelectionData={() => setSelection(null)}
+        clearSelectionData={resetExtendedSelection}
       />
     </div>
   );

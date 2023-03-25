@@ -232,6 +232,8 @@ _____________
 The FiftyOne tool has three components: the Python library, the App, and the
 Brain.
 
+.. _fiftyone-library:
+
 :doc:`FiftyOne Library <user_guide/basics>`
 -------------------------------------------
 
@@ -317,6 +319,8 @@ Where should you go from here? You could...
   capabilities of FiftyOne
 * Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
   your current ML workflows
+* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
+  want to master quickly
 * Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne
 
@@ -337,9 +341,12 @@ or reach out to us at support@voxel51.com.
    Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
+   Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
+   FiftyOne Teams <teams/index>
    Integrations <integrations/index>
    Release Notes <release-notes>
-   CLI Documentation <cli/index>
    API Reference <api/fiftyone>
+   CLI Documentation <cli/index>
+   Plugin Documentation <plugins/index>
    FAQ <faq/index>

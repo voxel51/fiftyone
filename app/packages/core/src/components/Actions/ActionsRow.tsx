@@ -8,46 +8,42 @@ import {
   Settings,
   VisibilityOff,
   Wallpaper,
+  Search,
 } from "@mui/icons-material";
-import React, {
-  MutableRefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import {
   selector,
-  selectorFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
 
-import { useTheme } from "@fiftyone/components";
+import { PillButton, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
-import { PillButton } from "../utils";
+import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Similar from "./Similar";
 import Tagger from "./Tagger";
+import SortBySimilarity from "./similar/Similar";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
     const hasFiltersValue = get(fos.hasFilters(false));
-    const extendedSelectionList = get(fos.extendedSelection);
+    const { selection } = get(fos.extendedSelection);
     const selectedSampleSet = get(fos.selectedSamples);
+    const isSimilarityOn = get(fos.similarityParameters);
 
     const isExtendedSelectionOn =
-      extendedSelectionList && extendedSelectionList.length > 0;
+      (selection && selection.length > 0) || isSimilarityOn;
 
-    return (
+    return Boolean(
       isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
     );
   },
@@ -85,47 +81,48 @@ const Patches = () => {
   );
 };
 
-const hasSimilarityKeys = selectorFamily<boolean, boolean>({
-  key: "hasSimilarityKeys",
-  get:
-    (modal) =>
-    ({ get }) => {
-      if (modal) {
-        return true;
-      }
-      return Boolean(get(fos.selectedSamples).size);
-    },
-});
-
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef();
-  useOutsideClick(ref, () => open && setOpen(false));
-  const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
-  const hasSorting = useRecoilValue(fos.similarityParameters);
+  const [isImageSearch, setIsImageSearch] = useState(false);
+  const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
+  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
+  const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const [mRef, bounds] = useMeasure();
-  const close = false;
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, () => open && setOpen(false));
 
-  useLayoutEffect(() => {
-    close && setOpen(false);
-  }, [close]);
+  const showImageSimilarityIcon =
+    hasSelectedSamples ||
+    (isImageSearch && hasSorting) ||
+    (modal && hasSelectedLabels);
 
-  if (!hasSimilarity && !hasSorting) {
-    return null;
-  }
+  const toggleSimilarity = useCallback(() => {
+    setOpen((open) => !open);
+    setIsImageSearch(showImageSimilarityIcon);
+  }, [showImageSimilarityIcon]);
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={<Wallpaper />}
+        key={"button"}
+        icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
         open={open}
-        onClick={() => setOpen(!open)}
+        onClick={toggleSimilarity}
         highlight={true}
         ref={mRef}
-        title={"Sort by similarity"}
+        title={`Sort by ${
+          showImageSimilarityIcon ? "image" : "text"
+        } similarity`}
         style={{ cursor: "pointer" }}
       />
       {open && (
-        <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
+        <SortBySimilarity
+          key={`similary-${isImageSearch}`}
+          modal={modal}
+          close={() => setOpen(false)}
+          bounds={bounds}
+          isImageSearch={isImageSearch}
+        />
       )}
     </ActionDiv>
   );
@@ -303,11 +300,29 @@ const SaveFilters = () => {
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
+
         if (loading) {
           return;
         }
+
         set(fos.savingFilters, true);
-        setView((v) => v);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
       },
     []
   );
@@ -389,8 +404,10 @@ export const GridActionsRow = () => {
 
 export const ModalActionsRow = ({
   lookerRef,
+  isGroup,
 }: {
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
+  isGroup?: boolean;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
@@ -407,6 +424,7 @@ export const ModalActionsRow = ({
       {!isVideo && <Similarity modal={true} />}
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
+      {isGroup && <GroupMediaVisibilityContainer modal={true} />}
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

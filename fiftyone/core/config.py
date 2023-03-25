@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -356,7 +356,7 @@ class AppConfig(EnvConfig):
             d,
             "sidebar_mode",
             env_var="FIFTYONE_APP_SIDEBAR_MODE",
-            default="best",
+            default="fast",
         )
         self.theme = self.parse_string(
             d,

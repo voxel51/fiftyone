@@ -4,20 +4,31 @@ import { VariablesOf } from "react-relay";
 import { GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
-import * as filterAtoms from "./filters";
 import { ResponseFrom } from "../utils";
-import { groupStatistics, groupId, currentSlice } from "./groups";
-import { RelayEnvironmentKey } from "./relay";
-import * as selectors from "./selectors";
-import * as schemaAtoms from "./schema";
-import * as viewAtoms from "./view";
-import { sidebarSampleId } from "./modal";
 import { refresher } from "./atoms";
+import * as filterAtoms from "./filters";
+import { currentSlice, groupId, groupStatistics } from "./groups";
+import { sidebarSampleId } from "./modal";
+import { RelayEnvironmentKey } from "./relay";
+import * as schemaAtoms from "./schema";
 import { field } from "./schema";
+import * as selectors from "./selectors";
+import { MATCH_LABEL_TAGS } from "./sidebar";
+import * as viewAtoms from "./view";
 
+/**
+ * GraphQL Selector Family for Aggregations.
+ * @param extended - Whether to use extended aggregations.
+ */
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
-  { extended: boolean; modal: boolean; paths: string[]; root?: boolean },
+  {
+    extended: boolean;
+    modal: boolean;
+    paths: string[];
+    root?: boolean;
+    mixed?: boolean;
+  },
   ResponseFrom<foq.aggregationsQuery>
 >({
   key: "aggregationQuery",
@@ -25,24 +36,25 @@ export const aggregationQuery = graphQLSelectorFamily<
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, paths, root = false }) =>
+    ({ extended, modal, paths, root = false, mixed = false }) =>
     ({ get }) => {
-      const mixed = get(groupStatistics(modal)) === "group";
-      //TODO: refactor to reuse viewStateForm here?
+      mixed = mixed || get(groupStatistics(modal)) === "group";
+      const group = get(groupId) || null;
       const aggForm = {
         index: get(refresher),
         dataset: get(selectors.datasetName),
-        extendedStages: root ? [] : get(selectors.extendedStagesUnsorted),
+        extendedStages: root ? [] : get(selectors.extendedStages),
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal && mixed ? get(groupId) : null,
+        groupId: !root && modal ? group : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
-        sampleIds: !root && modal && !mixed ? [get(sidebarSampleId)] : [],
-        slice: get(currentSlice(modal)),
+        sampleIds:
+          !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
+        slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
         view: !root ? get(viewAtoms.view) : [],
       };
 
@@ -79,21 +91,12 @@ export const aggregation = selectorFamily({
       extended: boolean;
       modal: boolean;
       path: string;
+      mixed?: boolean;
     }) =>
     ({ get }) => {
-      const result = get(
+      return get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
-      ).filter((data) => data.path === path);
-      // Avoid downstream errors due to undefined.map by returning an
-      // object for failed graphQL aggregations
-      return result?.length
-        ? result[0]
-        : {
-            path: path,
-            count: 0,
-            exists: 0,
-            values: [],
-          };
+      ).filter((data) => data.path === path)[0];
     },
 });
 
@@ -107,11 +110,11 @@ export const noneCount = selectorFamily<
     ({ get }) => {
       const data = get(aggregation(params));
       const parent = params.path.split(".").slice(0, -1).join(".");
-
+      const isLabelTag = params.path.startsWith("_label_tags");
       // for ListField, set noneCount to zero (so that it is the none option is omitted in display)
       const schema = get(field(params.path));
-      const isListField = schema.ftype.includes("ListField");
-      return isListField
+      const isListField = schema?.ftype?.includes("ListField");
+      return isListField || isLabelTag
         ? 0
         : (get(count({ ...params, path: parent })) as number) - data.count;
     },
@@ -126,7 +129,7 @@ export const labelTagCounts = selectorFamily<
     ({ modal, extended }) =>
     ({ get }) => {
       const data = get(schemaAtoms.labelPaths({})).map((path) =>
-        get(aggregation({ extended, modal, path: `${path}.tags` }))
+        get(aggregation({ extended, modal, path: `${path}.tags`, mixed: true }))
       );
       const result = {};
 
@@ -168,20 +171,28 @@ export const stringCountResults = selectorFamily({
     ({ get }): { count: number; results: [string | null, number][] } => {
       const keys = params.path.split(".");
       let parent = keys[0];
-      let field = get(schemaAtoms.field(parent));
+      const field = get(schemaAtoms.field(parent));
+
       if (!field && parent === "frames") {
         parent = `frames.${keys[1]}`;
       }
 
-      if (
-        VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
-      ) {
-        const skeleton = get(selectors.skeleton(parent));
+      const isSkeletonPoints =
+        VALID_KEYPOINTS.includes(
+          get(schemaAtoms.field(parent)).embeddedDocType
+        ) && keys[2] === "points";
 
-        return {
-          count: skeleton.labels.length,
-          results: skeleton.labels.map((label) => [label as string | null, -1]),
-        };
+      if (isSkeletonPoints) {
+        const skeleton = get(selectors.skeleton(parent));
+        if (skeleton && skeleton.labels) {
+          return {
+            count: skeleton.labels.length,
+            results: skeleton.labels.map((label) => [
+              label as string | null,
+              -1,
+            ]),
+          };
+        }
       }
 
       let { values, count } = get(aggregation(params));
@@ -212,14 +223,19 @@ export const booleanCountResults = selectorFamily<
     (params) =>
     ({ get }) => {
       const data = get(aggregation(params));
-      return {
+      const none = get(noneCount(params));
+
+      const result = {
         count: data.false + data.true,
         results: [
           [false, data.false],
           [true, data.true],
-          [null, get(noneCount(params))],
-        ],
+        ] as [boolean, number][],
       };
+      if (none) {
+        result.results.push([null, none]);
+      }
+      return result;
     },
 });
 
@@ -284,10 +300,22 @@ export const count = selectorFamily({
 
       if (!exists) {
         const split = params.path.split(".");
+        const [first] = split;
 
-        if (split[0] === "tags") {
+        if (first === "tags") {
           return get(counts({ ...params, path: "tags" }))[
             split.slice(1).join(".")
+          ];
+        }
+
+        if (first === "_label_tags" && !value) {
+          const r = get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
+          return Object.values(r).reduce((a, b) => a + b, 0);
+        }
+
+        if (first === "_label_tags" && value) {
+          return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
+            value
           ];
         }
 
@@ -295,7 +323,7 @@ export const count = selectorFamily({
           // this will never resolve, which allows for incoming schema changes
           // this shouldn't be necessary, but there is a mismatch between
           // aggs and schema when there is a field change
-          throw new Promise(() => {});
+          throw new Promise(() => undefined);
         }
 
         const parent = split.slice(0, split.length - 1).join(".");
@@ -329,7 +357,7 @@ export const counts = selectorFamily({
 
         if (
           VALID_KEYPOINTS.includes(
-            get(schemaAtoms.field(parent)).embeddedDocType
+            get(schemaAtoms.field(parent))?.embeddedDocType
           )
         ) {
           const skeleton = get(selectors.skeleton(parent));
@@ -434,6 +462,34 @@ export const cumulativeValues = selectorFamily<
     },
 });
 
+export const cumulativePaths = selectorFamily<
+  string[],
+  {
+    extended: boolean;
+    path: string;
+    modal: boolean;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "cumulativeValues",
+  get:
+    ({ extended, path: key, modal, ftype, embeddedDocType }) =>
+    ({ get }) => {
+      return Array.from(
+        new Set<string>(
+          gatherPaths(get, ftype, embeddedDocType).reduce(
+            (result) => [
+              ...result,
+              ...get(values({ extended, modal, path: `${key}` })),
+            ],
+            []
+          )
+        )
+      ).sort();
+    },
+});
+
 export const bounds = selectorFamily({
   key: "bounds",
   get:
@@ -467,6 +523,9 @@ export const nonfiniteCounts = selectorFamily({
     },
 });
 
+/**
+ * @hidden
+ */
 export type Nonfinite = "nan" | "ninf" | "inf" | "none";
 
 export const nonfiniteCount = selectorFamily<

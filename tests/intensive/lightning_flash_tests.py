@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     python tests/intensive/lightning_flash_tests.py
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,7 +24,7 @@ from flash import Trainer
 from flash.video import VideoClassificationData, VideoClassifier
 
 import fiftyone as fo
-import fiftyone.brain as fob
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.utils.random as four
 import fiftyone.zoo as foz
 

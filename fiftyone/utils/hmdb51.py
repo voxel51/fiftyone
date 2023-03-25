@@ -2,7 +2,7 @@
 Utilities for working with the
 `HMDB51 dataset <https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

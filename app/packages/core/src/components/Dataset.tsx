@@ -3,7 +3,6 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import HorizontalNav from "../components/HorizontalNav";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
 
@@ -29,7 +28,6 @@ function Dataset() {
     <>
       {isModalActive && <Modal />}
       <Container>
-        <HorizontalNav key={"nav"} />
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />
         </Body>

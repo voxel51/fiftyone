@@ -1,7 +1,7 @@
 """
 Video frame views.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -193,6 +193,7 @@ class FramesView(fov.DatasetView):
 
         field = field_name.split(".", 1)[0]
         self._sync_source(fields=[field], ids=ids)
+        self._sync_source_field_schema(field_name)
 
     def set_label_values(self, field_name, *args, **kwargs):
         super().set_label_values(field_name, *args, **kwargs)
@@ -373,6 +374,17 @@ class FramesView(fov.DatasetView):
         if delete:
             frame_ids = self._frames_dataset.exclude(self).values("id")
             dst_dataset._clear_frames(frame_ids=frame_ids)
+
+    def _sync_source_field_schema(self, path):
+        field = self.get_field(path)
+        if field is None:
+            return
+
+        dst_dataset = self._source_collection._dataset
+        dst_dataset._merge_frame_field_schema({path: field})
+
+        if self._source_collection._is_generated:
+            self._source_collection._sync_source_field_schema(path)
 
     def _sync_source_schema(self, fields=None, delete=False):
         if delete:
@@ -654,15 +666,18 @@ def make_frames_dataset(
     if sample_frames == "dynamic":
         pipeline.append({"$unset": "filepath"})
 
-    pipeline.append(
-        {
-            "$merge": {
-                "into": dataset._sample_collection_name,
-                "on": ["_sample_id", "frame_number"],
-                "whenMatched": "merge",
-                "whenNotMatched": "discard",
-            }
-        }
+    pipeline.extend(
+        [
+            {"$set": {"_dataset_id": dataset._doc.id}},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            },
+        ]
     )
 
     sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
@@ -673,7 +688,7 @@ def make_frames_dataset(
             "pre-populate the `filepath` field on the frames of your video "
             "collection or pass `sample_frames=True` to this method to "
             "perform the sampling. See "
-            "https://voxel51.com/docs/fiftyone/user_guide/using_views.html#frame-views "
+            "https://docs.voxel51.com/user_guide/using_views.html#frame-views "
             "for more information."
         )
 
@@ -844,6 +859,7 @@ def _init_frames(
             _id = frame_ids_map.get(fn, None)
             _filepath = images_patt % fn
             _rand = foos._generate_rand(_filepath)
+            _dataset_id = dataset._doc.id
 
             if missing_fps is not None and fn in missing_fps:
                 missing_filepaths.append((_sample_id, fn, _filepath))
@@ -863,6 +879,7 @@ def _init_frames(
                 "_media_type": "image",
                 "_rand": _rand,
                 "_sample_id": _sample_id,
+                "_dataset_id": _dataset_id,
             }
 
             if _id is not None:

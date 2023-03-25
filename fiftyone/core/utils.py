@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 _REQUIREMENT_ERROR_SUFFIX = (
     "If you think this error is inaccurate, you can set "
     "`fiftyone.config.requirement_error_level` to 1 (warning) or 2 (ignore).\n"
-    "See https://voxel51.com/docs/fiftyone/user_guide/config.html for details."
+    "See https://docs.voxel51.com/user_guide/config.html for details."
 )
 
 

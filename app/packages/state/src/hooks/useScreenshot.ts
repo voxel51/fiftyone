@@ -55,13 +55,16 @@ export const useScreenshot = (
     document.querySelectorAll("link").forEach((link) => {
       if (link.rel === "stylesheet") {
         styles.push(
-          fetch(link.href)
-            .then((response) => response.text())
-            .then((text) => {
-              const style = document.createElement("style");
-              style.appendChild(document.createTextNode(text));
-              document.head.appendChild(style);
-            })
+          getFetchFunction()(
+            "GET",
+            link.getAttribute("href"),
+            undefined,
+            "text"
+          ).then((text: string) => {
+            const style = document.createElement("style");
+            style.appendChild(document.createTextNode(text));
+            document.head.appendChild(style);
+          })
         );
       }
     });
@@ -115,19 +118,31 @@ export const useScreenshot = (
           event: "capture_notebook_cell",
           subscription,
           data: { src: imgData, width: canvas.width, subscription },
+        }).then(() => {
+          if (context === "databricks") {
+            const params = new URLSearchParams(window.location.search);
+            const proxy = params.get("proxy");
+
+            window.location.assign(
+              `${proxy || "/"}screenshot/${subscription}.html?proxy=${proxy}`
+            );
+          }
         });
       });
   }, [captureCallbacks, context, subscription]);
 
   const run = () => {
-    if (!context) return;
+    const notebook = new URLSearchParams(window.location.search).get(
+      "notebook"
+    );
+    if (!notebook) return;
 
     fitSVGs();
-    let chain = Promise.resolve(null);
+    const chain = Promise.resolve(null);
     if (context === "colab") {
       chain.then(inlineImages).then(applyStyles).then(capture);
     } else {
-      chain.then(capture);
+      chain.then(applyStyles).then(capture);
     }
   };
 

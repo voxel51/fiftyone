@@ -1,35 +1,19 @@
-import React, { Suspense, useEffect, useMemo } from "react";
-import { filter, map } from "lodash";
+import { Selection } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import React, { Suspense, useContext, useEffect, useMemo } from "react";
+import { useRefetchableFragment } from "react-relay";
 import {
   atom,
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { usePreloadedQuery, useRefetchableFragment } from "react-relay";
-
-import qs from "qs";
-import * as fos from "@fiftyone/state";
-import { Selection } from "@fiftyone/components";
-
-import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import {
-  DatasetSavedViewsQuery,
-  DatasetSavedViewsFragment,
-} from "../../../Root/Root";
-import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
-import { isElectron } from "@fiftyone/utilities";
+import { DatasetSavedViewsFragmentQuery } from "../../../__generated__/DatasetSavedViewsFragmentQuery.graphql";
+import { DatasetSavedViewsFragment$key } from "../../../__generated__/DatasetSavedViewsFragment.graphql";
+import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { useTranslation } from "react-i18next";
-
-const DEFAULT_SELECTED: DatasetViewOption = {
-  id: "1",
-  label: "Unsaved view",
-  color: "#9e9e9e",
-  description: "Unsaved view",
-  slug: "unsaved-view",
-  viewStages: [],
-};
+import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
+import ViewDialog, { viewDialogContent } from "./ViewDialog";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -39,99 +23,81 @@ export const viewDialogOpen = atom<boolean>({
   key: "viewDialogOpen",
   default: false,
 });
-export const selectedSavedViewState = atom<DatasetViewOption | null>({
-  key: "selectedSavedViewState",
-  default: DEFAULT_SELECTED,
-});
-
-export type DatasetViewOption = Pick<
-  fos.State.SavedView,
-  "id" | "description" | "color" | "viewStages"
-> & { label: string; slug: string };
 
 export interface DatasetView {
   id: string;
   name: string;
-  datasetId: string;
   slug: string;
+  datasetId: string;
   color: string | null;
   description: string | null;
   viewStages: readonly string[];
 }
 
-interface Props {
-  datasetName: string;
-  queryRef: any;
-}
-
-export default function ViewSelection(props: Props) {
-  const { t } = useTranslation();
-  const [selected, setSelected] = useRecoilState<DatasetViewOption | null>(
-    selectedSavedViewState
+export default function ViewSelection() {
+  const [selected, setSelected] = useRecoilState<fos.DatasetViewOption | null>(
+    fos.selectedSavedViewState
   );
+  const datasetName = useRecoilValue(fos.datasetName);
   const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
-  const existingQueries = qs.parse(location.search, {
-    ignoreQueryPrefix: true,
-  });
-  const isIPython = existingQueries?.["context"] === "ipython";
-
-  const { datasetName, queryRef } = props;
   const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const [savedViewParam, setSavedViewParam] = fos.useQueryState("view");
+  const savedViewParam = useRecoilValue(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
 
   const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
 
-  const fragments = usePreloadedQuery(DatasetSavedViewsQuery, queryRef);
-  const [data, refetch] = useRefetchableFragment(
-    DatasetSavedViewsFragment,
-    fragments
-  );
+  const fragmentRef = useContext(DatasetQueryRef);
 
-  const items =
-    (data as { savedViews: fos.State.SavedView[] })?.savedViews || [];
+  if (!fragmentRef) throw new Error("ref not defined");
 
-  const viewOptions: DatasetViewOption[] = useMemo(
+  const [data, refetch] = useRefetchableFragment<
+    DatasetSavedViewsFragmentQuery,
+    DatasetSavedViewsFragment$key
+  >(DatasetSavedViewsFragment, fragmentRef);
+
+  const items = useMemo(() => data.savedViews || [], [data]);
+
+  const viewOptions = useMemo(
     () => [
-      DEFAULT_SELECTED,
-      ...map(items, ({ name, color, description, slug, viewStages }) => ({
-        id: slug,
+      fos.DEFAULT_SELECTED,
+      ...items.map(({ id, name, color, description, slug, viewStages }) => ({
+        id,
+        name,
         label: name,
         color,
+        slug,
         description,
-        slug: slug,
         viewStages,
       })),
     ],
     [items]
   );
 
-  const searchData: DatasetViewOption[] = useMemo(
+  const searchData = useMemo(
     () =>
-      filter(
-        viewOptions,
-        ({ id, label, description, slug }: DatasetViewOption) =>
-          id === DEFAULT_SELECTED.id ||
-          label.toLowerCase().includes(viewSearch) ||
+      viewOptions.filter(
+        ({ id, label, description, slug }) =>
+          id === fos.DEFAULT_SELECTED.id ||
+          label?.toLowerCase().includes(viewSearch) ||
           description?.toLowerCase().includes(viewSearch) ||
           slug?.toLowerCase().includes(viewSearch)
-      ) as DatasetViewOption[],
+      ),
     [viewOptions, viewSearch]
   );
 
   useEffect(() => {
     if (
       selected &&
-      selected?.id !== DEFAULT_SELECTED.id &&
+      selected?.id !== fos.DEFAULT_SELECTED.id &&
       searchData?.length
     ) {
       const potentialView = searchData.filter(
         (v) => v.slug === selected.slug
       )?.[0];
       if (potentialView) {
-        setSelected(potentialView);
+        setSelected(potentialView as fos.DatasetViewOption);
       }
     }
   }, [searchData, selected]);
@@ -139,36 +105,20 @@ export default function ViewSelection(props: Props) {
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
   const isEmptyView = !bookmarkIconOn && !loadedView?.length;
-  // special case for electron app to clear the selection
-  // when there is no loaded view
-  const isDesktop = isElectron();
-  useEffect(() => {
-    if ((isDesktop || isIPython) && !loadedView.length) {
-      setSelected(DEFAULT_SELECTED);
-    }
-  }, [isDesktop, loadedView, isIPython]);
 
   useEffect(() => {
     if (savedViewParam) {
       const potentialView = viewOptions.filter(
-        (v) => v.slug === savedViewParam
+        (v) => v.label === savedViewParam
       )?.[0];
       if (potentialView) {
-        // no unnecessary setView call if selected has not changed
         if (selected && selected.id === potentialView.id) {
           return;
         }
-        setSelected(potentialView);
-        setView(
-          potentialView.viewStages,
-          [],
-          potentialView.label,
-          true,
-          potentialView.slug
-        );
+        setSelected(potentialView as fos.DatasetViewOption);
       } else {
         const potentialUpdatedView = savedViewsV2.filter(
-          (v) => v.slug === savedViewParam
+          (v) => v.name === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {
           refetch(
@@ -181,26 +131,18 @@ export default function ViewSelection(props: Props) {
                   label: potentialUpdatedView.name,
                   slug: potentialUpdatedView.slug,
                 });
-                setView(
-                  [],
-                  [],
-                  potentialUpdatedView.name,
-                  true,
-                  potentialUpdatedView.slug
-                );
               },
             }
           );
         } else {
           // bad/old view param
-          setSelected(DEFAULT_SELECTED);
-          setView(loadedView, [], "", false, "");
+          setSelected(fos.DEFAULT_SELECTED);
         }
       }
     } else {
       // no view param
-      if (!isIPython && selected && selected.slug !== DEFAULT_SELECTED.slug) {
-        setSelected(DEFAULT_SELECTED);
+      if (selected && selected.slug !== fos.DEFAULT_SELECTED.slug) {
+        setSelected(fos.DEFAULT_SELECTED);
         // do not reset view to [] again. The viewbar sets it once.
       }
     }
@@ -241,7 +183,7 @@ export default function ViewSelection(props: Props) {
                 fetchPolicy: "network-only",
                 onComplete: (newOptions) => {
                   if (createSavedView && reload) {
-                    setSavedViewParam(createSavedView.slug);
+                    setView([], undefined, createSavedView.slug);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -258,12 +200,7 @@ export default function ViewSelection(props: Props) {
                 fetchPolicy: "network-only",
                 onComplete: () => {
                   if (selected?.label === deletedSavedViewName) {
-                    setSavedViewParam(null);
-                    setView([], [], "", false, "");
-
-                    if (isDesktop) {
-                      setSelected(DEFAULT_SELECTED);
-                    }
+                    setView([], []);
                   }
                 },
               }
@@ -273,9 +210,13 @@ export default function ViewSelection(props: Props) {
         <Selection
           readonly={!canEditSavedViews}
           selected={selected}
-          setSelected={(item: DatasetViewOption) => {
+          setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.label, true, item.slug);
+            setView(item.viewStages, [], item.slug);
+          }}
+          onClear={() => {
+            setSelected(fos.DEFAULT_SELECTED);
+            setView([], []);
           }}
           items={searchData}
           onEdit={(item) => {
@@ -289,7 +230,7 @@ export default function ViewSelection(props: Props) {
           }}
           search={{
             value: viewSearch,
-            placeholder: t("Search views..."),
+            placeholder: "Search views...",
             onSearch: (term: string) => {
               setViewSearch(term);
             },
@@ -305,7 +246,7 @@ export default function ViewSelection(props: Props) {
                 <AddIcon fontSize="small" disabled={isEmptyView} />
               </Box>
               <TextContainer disabled={isEmptyView}>
-                {t("Save current filters as view")}
+                Save current filters as view
               </TextContainer>
             </LastOption>
           }

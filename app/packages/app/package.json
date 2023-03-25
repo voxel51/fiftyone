@@ -8,8 +8,8 @@
         "compile": "yarn workspace @fiftyone/core compile && yarn workspace @fiftyone/relay compile",
         "dev": "vite",
         "build": "yarn compile && yarn build-bare && yarn copy-to-python",
-        "build-bare": "tsc && vite build",
-        "build-desktop": "tsc && vite build --mode desktop",
+        "build-bare": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build",
+        "build-desktop": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build --mode desktop",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
         "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist"
     },
@@ -19,6 +19,7 @@
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
+        "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@material-ui/core": "4.11.4",
@@ -50,6 +51,7 @@
         "recoil": "0.7.6",
         "recoil-relay": "^0.1.0",
         "resize-observer-polyfill": "^1.5.1",
+        "searchable-react-json-view": "^0.0.8",
         "styled-components": "^5.3.3",
         "uuid": "^8.3.2",
         "xstate": "^4.14.0"

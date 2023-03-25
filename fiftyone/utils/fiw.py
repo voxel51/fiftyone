@@ -2,7 +2,7 @@
 Utilities for working with the
 `Families in the Wild dataset <https://web.northeastern.edu/smilelab/fiw/>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

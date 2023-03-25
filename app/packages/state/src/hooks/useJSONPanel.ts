@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import copyToClipboard from "copy-to-clipboard";
-import highlightJSON from "json-format-highlight";
 import * as fos from "../../";
 import usePanel from "./usePanel";
 
@@ -13,6 +12,23 @@ export const JSON_COLORS = {
   falseColor: "rgb(225, 100, 40)",
 };
 
+/**
+ * Manage the JSON panel state and events.
+ *
+ * @example
+ * ```ts
+ * function MyComponent() {
+ *   const jsonPanel = useJSONPanel();
+ *
+ *   return jsonPanel.isOpen && (
+ *      <JSONPanel
+ *        containerRef={jsonPanel.containerRef}
+ *        onClose={() => jsonPanel.close()}
+ *        onCopy={() => jsonPanel.copy()}
+ *      />
+ *    )
+ * }
+ */
 export default function useJSONPanel() {
   const { containerRef, open, close, toggle, state } = usePanel(
     "json",
@@ -23,10 +39,6 @@ export default function useJSONPanel() {
   const json = useMemo(
     () => (sample ? JSON.stringify(sample, null, 2) : null),
     [sample]
-  );
-  const jsonHTML = useMemo(
-    () => ({ __html: highlightJSON(json, JSON_COLORS) }),
-    [json]
   );
 
   const updateSample = (sample) => (s) => ({ ...s, sample });
@@ -46,7 +58,6 @@ export default function useJSONPanel() {
     isOpen,
     sample,
     json,
-    jsonHTML,
     stateAtom: fos.lookerPanels,
   };
 }

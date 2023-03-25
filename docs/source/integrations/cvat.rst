@@ -360,7 +360,8 @@ The `anno_key` argument defines a unique identifier for the annotation run, and
 you will provide it to methods like
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
 :meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
-:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`, and
+:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`,
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`, and
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
@@ -502,6 +503,8 @@ provided:
 -   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
     created task(s). This argument can be a list of URLs when annotating videos
     or when using `task_size` and generating multiple tasks
+-   **organization** (*None*): the name of the organization to use when sending
+    requests to CVAT
 
 .. _cvat-label-schema:
 
@@ -1076,6 +1079,15 @@ In addition, the
 :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
 subclasses for each backend may provide additional utilities such as support
 for programmatically monitoring the status of the annotation tasks in the run.
+
+You can use
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`
+to rename the annotation key associated with an existing annotation run:
+
+.. code:: python
+    :linenos:
+
+    dataset.rename_annotation_run(anno_key, new_anno_key)
 
 Finally, you can use
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
@@ -1716,10 +1728,10 @@ uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are working on
+    The CVAT maintainers made
     `an update <https://github.com/opencv/cvat/pull/3692>`_
-    to resolve this issue natively. In the meantime, the following workflow is
-    our recommended approach to circumvent this issue.
+    to resolve this issue natively, but if you still encounter issues, try
+    the following workflow to circumvent the issue.
 
 You can use the `task_size` parameter to break image annotation runs into
 multiple CVAT tasks, each with a specified maximum number of images. Note that
@@ -2368,8 +2380,9 @@ Using the CVAT API
 
 You can use the
 :func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
+to retrieve a
+:class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` instance,
+which is a wrapper around the
 `CVAT REST API <https://opencv.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
 that provides convenient methods for performing common actions on your CVAT
 tasks:

@@ -1,7 +1,7 @@
 """
 FiftyOne group-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,6 +14,7 @@ import unittest
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
 from fiftyone import ViewField as F
@@ -71,6 +72,66 @@ class GroupTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_group_dataset_frames_init(self):
+        conn = foo.get_db_conn()
+
+        dataset = fo.Dataset()
+        dataset.media_type = "group"
+
+        self.assertIsNone(dataset._frame_collection)
+        self.assertIsNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) == 0)
+
+        dataset.add_group_slice("pcd", "point-cloud")
+
+        self.assertIsNone(dataset._frame_collection)
+        self.assertIsNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) == 0)
+
+        dataset.add_group_slice("camera", "video")
+
+        self.assertIsNotNone(dataset._frame_collection)
+        self.assertIsNotNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) > 0)
+
+        collections = conn.list_collection_names()
+        self.assertIn(dataset._frame_collection_name, collections)
+
+        dataset = fo.Dataset()
+        group = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="left-image.jpg",
+                    group_field=group.element("left"),
+                ),
+                fo.Sample(
+                    filepath="right-image.jpg",
+                    group_field=group.element("right"),
+                ),
+            ]
+        )
+
+        self.assertIsNone(dataset._frame_collection)
+        self.assertIsNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) == 0)
+
+        dataset.add_sample(
+            fo.Sample(
+                filepath="ego-video.mp4",
+                group_field=group.element("ego"),
+            )
+        )
+
+        self.assertIsNotNone(dataset._frame_collection)
+        self.assertIsNotNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) > 0)
+
+        collections = conn.list_collection_names()
+        self.assertIn(dataset._frame_collection_name, collections)
+
+    @drop_datasets
     def test_basics(self):
         dataset = _make_group_dataset()
 
@@ -96,6 +157,18 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(num_groups, 2)
 
+        for group in dataset.iter_groups(group_slices="right"):
+            self.assertIsInstance(group, dict)
+            self.assertNotIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
+        for group in dataset.iter_groups(group_slices=["left", "right"]):
+            self.assertIsInstance(group, dict)
+            self.assertIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
         for group in dataset.iter_groups(autosave=True):
             for sample in group.values():
                 sample["new_field"] = 1
@@ -116,11 +189,26 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(sample.new_field, 1)
 
         group_id = sample.group_field.id
+
         group = dataset.get_group(group_id)
 
         self.assertIsInstance(group, dict)
         self.assertIn("left", group)
         self.assertIn("ego", group)
+        self.assertIn("right", group)
+
+        group = dataset.get_group(group_id, group_slices="right")
+
+        self.assertIsInstance(group, dict)
+        self.assertNotIn("left", group)
+        self.assertNotIn("ego", group)
+        self.assertIn("right", group)
+
+        group = dataset.get_group(group_id, group_slices=["left", "right"])
+
+        self.assertIsInstance(group, dict)
+        self.assertIn("left", group)
+        self.assertNotIn("ego", group)
         self.assertIn("right", group)
 
     @drop_datasets
@@ -286,6 +374,18 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(num_groups, 2)
 
+        for group in view.iter_groups(group_slices="right"):
+            self.assertIsInstance(group, dict)
+            self.assertNotIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
+        for group in view.iter_groups(group_slices=["left", "right"]):
+            self.assertIsInstance(group, dict)
+            self.assertIn("left", group)
+            self.assertNotIn("ego", group)
+            self.assertIn("right", group)
+
         for group in view.iter_groups(autosave=True):
             for sample in group.values():
                 sample["new_field"] = 1
@@ -313,11 +413,26 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(exclude_view), len(dataset) - 2)
 
         group_id = sample.group_field.id
+
         group = view.get_group(group_id)
 
         self.assertIsInstance(group, dict)
         self.assertIn("left", group)
         self.assertIn("ego", group)
+        self.assertIn("right", group)
+
+        group = view.get_group(group_id, group_slices="right")
+
+        self.assertIsInstance(group, dict)
+        self.assertNotIn("left", group)
+        self.assertNotIn("ego", group)
+        self.assertIn("right", group)
+
+        group = view.get_group(group_id, group_slices=["left", "right"])
+
+        self.assertIsInstance(group, dict)
+        self.assertIn("left", group)
+        self.assertNotIn("ego", group)
         self.assertIn("right", group)
 
         view = dataset.match(F("field") == 2)

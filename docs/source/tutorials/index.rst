@@ -5,8 +5,6 @@ FiftyOne Tutorials
 
 .. default-role:: code
 
-Welcome to FiftyOne tutorials!
-
 Each tutorial below is a curated demonstration of how FiftyOne can help refine
 your datasets and turn your good models into *great models*.
 
@@ -119,6 +117,20 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/qdrant.png
     :tags: Dataset-Evaluation,Model-Evaluation,Embeddings
 
+.. customcarditem::
+    :header: Fine-tuning YOLOv8 model predictions
+    :description: Visualize and evaluate YOLOv8 model predictions before fine-tuning for your custom use case.
+    :link: yolov8.html
+    :image: ../_static/images/tutorials/yolov8.png
+    :tags: Model-Evaluation
+
+.. customcarditem::
+    :header: Build 3D point cloud datasets with Point-E
+    :description: Lidar is expensive. This tutorial shows how FiftyOne can help you construct high quality 3D point cloud datasets using Point-E point cloud models.
+    :link: pointe.html
+    :image: ../_static/images/tutorials/pointe.png
+    :tags: Dataset-Curation,Filtering,Visualization
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -155,3 +167,5 @@ your datasets and turn your good models into *great models*.
    Finding class mistakes <classification_mistakes.ipynb>
    Finding detection mistakes <detection_mistakes.ipynb>
    Embeddings with Qdrant <qdrant.ipynb>
+   Fine-tuning YOLOv8 models <yolov8.ipynb>
+   3D point clouds with Point-E <pointe.ipynb>

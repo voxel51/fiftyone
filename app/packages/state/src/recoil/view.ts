@@ -1,7 +1,6 @@
 import { atom, selector } from "recoil";
 
 import { State } from "./types";
-import * as atoms from "./atoms";
 
 export const view = atom<State.Stage[]>({
   key: "view",
@@ -130,17 +129,29 @@ export const isFramesView = selector<boolean>({
   },
 });
 
-export const selectedViewName = selector<string>({
-  key: "currentViewName",
-  get: ({ get }) => {
-    return get(viewName);
-  },
-});
-
 export const currentViewSlug = selector<string>({
   key: "currentViewSlug",
   get: () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("view") || null;
   },
+});
+
+export const DEFAULT_SELECTED: DatasetViewOption = {
+  id: "1",
+  label: "Unsaved view",
+  color: "#9e9e9e",
+  description: "Unsaved view",
+  slug: "unsaved-view",
+  viewStages: [],
+};
+
+export type DatasetViewOption = Pick<
+  State.SavedView,
+  "id" | "description" | "color" | "viewStages"
+> & { label: string; slug: string };
+
+export const selectedSavedViewState = atom<DatasetViewOption | null>({
+  key: "selectedSavedViewState",
+  default: DEFAULT_SELECTED,
 });

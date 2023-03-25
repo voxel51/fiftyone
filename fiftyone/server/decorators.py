@@ -1,12 +1,13 @@
 """
 FiftyOne Server decorators
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import traceback
 import typing as t
+import logging
 
 from fiftyone.core.json import FiftyOneJSONEncoder, stringify
 
@@ -36,6 +37,7 @@ def route(func):
 
             return FiftyOneResponse(response)
         except Exception as e:
+            logging.exception(e)
             return FiftyOneResponse(
                 {
                     "kind": "Server Error",

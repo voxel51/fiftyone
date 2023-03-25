@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SCALE_FACTOR } from "../../constants";
@@ -21,7 +21,7 @@ const readActions = <State extends BaseState>(
   return Object.fromEntries(
     Object.entries(actions).reduce((acc, [_, v]) => {
       if (Array.isArray(v.eventKeys)) {
-        return [...acc, [v.eventKeys[0], v]];
+        return [...acc, ...v.eventKeys.map((key) => [key, v])];
       }
 
       return [...acc, [v.eventKeys || v.shortcut, v]];
@@ -34,6 +34,7 @@ const escape: Control = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
+  alwaysHandle: true,
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
@@ -110,28 +111,6 @@ export const wheel: Control = {
   eventKeys: null,
   detail: "Zoom in and out",
   action: () => null,
-};
-
-export const next: Control = {
-  title: "Next sample",
-  shortcut: "&#8594;",
-  eventKeys: "ArrowRight",
-  detail: "Go to the next sample",
-  alwaysHandle: true,
-  action: (_, dispatchEvent) => {
-    dispatchEvent("next");
-  },
-};
-
-export const previous: Control = {
-  title: "Previous sample",
-  shortcut: "&#8592;",
-  eventKeys: "ArrowLeft",
-  detail: "Go to the previous sample",
-  alwaysHandle: true,
-  action: (_, dispatchEvent) => {
-    dispatchEvent("previous");
-  },
 };
 
 export const toggleOverlays: Control = {
@@ -391,8 +370,6 @@ export const json: Control = {
 
 export const COMMON = {
   escape,
-  next,
-  previous,
   rotateNext,
   rotatePrevious,
   help,
@@ -594,19 +571,25 @@ const videoEscape: Control<VideoState> = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
+  alwaysHandle: true,
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
         hasDefaultZoom,
-        showHelp,
         showOptions,
         frameNumber,
         config: { support },
-        options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
+        options: {
+          fullscreen: fullscreenSetting,
+          showHelp,
+          showJSON,
+          selectedLabels,
+        },
         lockedToSupport,
       }) => {
         if (showHelp) {
-          return { showHelp: false };
+          dispatchEvent("panels", { showHelp: "close" });
+          return { showHelp: "close" };
         }
 
         if (showOptions) {
@@ -614,6 +597,7 @@ const videoEscape: Control<VideoState> = {
         }
 
         if (showJSON) {
+          dispatchEvent("panels", { showJSON: "close" });
           dispatchEvent("options", { showJSON: false });
           return { options: { showJSON: false } };
         }

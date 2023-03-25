@@ -1,7 +1,7 @@
 """
 Saved view documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -27,8 +27,8 @@ class SavedViewDocument(Document):
 
     dataset_id = ObjectIdField(db_field="_dataset_id")
     name = StringField()
-    slug = StringField()
     description = StringField()
+    slug = StringField()
     color = ColorField()
     view_stages = ListField(StringField())
     created_at = DateTimeField()

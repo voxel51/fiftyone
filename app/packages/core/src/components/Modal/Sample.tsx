@@ -1,11 +1,13 @@
-import { useRecoilValue } from "recoil";
-import React, { MutableRefObject, useCallback, useRef, useState } from "react";
-import { SampleBar } from "./Bars";
+import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
 import { modal, useClearModal, useHoveredSample } from "@fiftyone/state";
+import React, { MutableRefObject, useCallback, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { SampleBar } from "./Bars";
 import Looker from "./Looker";
-import { VideoLooker } from "@fiftyone/looker";
 
-const Sample: React.FC = () => {
+const Sample: React.FC<{
+  lookerRefCallback: (looker: AbstractLooker) => void;
+}> = ({ lookerRefCallback }) => {
   const data = useRecoilValue(modal);
 
   if (!data) {
@@ -16,7 +18,6 @@ const Sample: React.FC = () => {
 
   const {
     sample: { _id },
-    navigation,
   } = data;
   const clearModal = useClearModal();
 
@@ -54,13 +55,8 @@ const Sample: React.FC = () => {
       <Looker
         key={_id}
         lookerRef={lookerRef}
-        onNext={() => navigation.getIndex(navigation.index + 1)}
+        lookerRefCallback={lookerRefCallback}
         onClose={clearModal}
-        onPrevious={
-          navigation.index > 0
-            ? () => navigation.getIndex(navigation.index - 1)
-            : undefined
-        }
       />
     </div>
   );

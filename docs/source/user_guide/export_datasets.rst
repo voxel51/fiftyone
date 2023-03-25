@@ -424,6 +424,8 @@ refer to the corresponding dataset format when writing the dataset to disk.
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VideoDirectory <VideoDirectory-export>`                      | A directory of videos.                                                             |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`MediaDirectory <MediaDirectory-export>`                      | A directory of media files.                                                        |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageClassificationDataset                           | A labeled dataset consisting of images and their associated classification labels  |
     | <FiftyOneImageClassificationDataset-export>`                       | in a simple JSON format.                                                           |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -609,6 +611,64 @@ disk as follows:
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.VideoDirectory
+
+.. _MediaDirectory-export:
+
+MediaDirectory
+--------------
+
+The :class:`fiftyone.types.MediaDirectory` type represents a directory of
+media files.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <filename1>.<ext>
+        <filename2>.<ext>
+        ...
+
+.. note::
+
+    See :class:`MediaDirectoryExporter <fiftyone.utils.data.exporters.MediaDirectoryExporter>`
+    for parameters that can be passed to methods like
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export the media in a FiftyOne dataset as a directory of media files on
+disk as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/media-dir"
+
+        # The dataset or view to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir, dataset_type=fo.types.MediaDirectory
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/to/media-dir
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.MediaDirectory
 
 .. _FiftyOneImageClassificationDataset-export:
 
@@ -3465,8 +3525,9 @@ follows:
             --type fiftyone.types.CSVDataset \
             --kwargs fields=list,of,fields
 
-You can also directly export a CSV of field values with no media by providing
-the `labels_path` parameter instead of `export_dir`:
+You can also directly export a CSV file of field values and absolute media
+paths without exporting the actual media files by providing the `labels_path`
+parameter instead of `export_dir`:
 
 .. tabs::
 
@@ -3482,11 +3543,12 @@ the `labels_path` parameter instead of `export_dir`:
         # The dataset or view to export
         dataset_or_view = fo.Dataset(...)
 
-        # Export labels
+        # Export labels with absolute media paths
         dataset_or_view.export(
             dataset_type=fo.types.CSVDataset,
             labels_path=labels_path,
             fields=["list", "of", "fields"],
+            abs_paths=True,
         )
 
   .. group-tab:: CLI
@@ -3496,12 +3558,13 @@ the `labels_path` parameter instead of `export_dir`:
         NAME=my-dataset
         LABELS_PATH=/path/for/labels.csv
 
-        # Export labels
+        # Export labels with absolute media paths
         fiftyone datasets export $NAME \
             --type fiftyone.types.CSVDataset \
             --kwargs \
                 labels_path=$LABELS_PATH \
-                fields=list,of,fields
+                fields=list,of,fields \
+                abs_paths=True
 
 .. _GeoJSONDataset-export:
 

@@ -20,8 +20,9 @@ interface CheckboxProps<T> {
   count?: number;
   subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
+  muted?: boolean;
   forceColor?: boolean;
-  formatter?: (value: T) => string;
+  formatter?: (value: T | undefined) => string | null | undefined;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -45,6 +46,7 @@ const Checkbox = <T extends unknown>({
   count,
   disabled,
   forceColor,
+  muted,
   formatter,
 }: CheckboxProps<T>) => {
   const theme = useTheme();
@@ -52,33 +54,44 @@ const Checkbox = <T extends unknown>({
   const props = useHighlightHover(disabled);
   const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 
-  const countAtom =
-    typeof count === "number"
-      ? useMemo(() => constSelector(count), [count])
-      : null;
+  const countAtom = useMemo(
+    () => (typeof count === "number" ? constSelector(count) : null),
+    [count]
+  );
 
   return (
     <StyledCheckboxContainer title={text}>
       <StyledCheckbox
         {...props}
+        style={{ ...props.style, cursor: muted ? "not-allowed" : "pointer" }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
 
-          !disabled && setValue(!value);
+          !disabled && !muted && setValue(!value);
         }}
       >
         {!disabled && (
           <MaterialCheckbox
             checked={value}
             title={text}
-            style={{ color, padding: "0 0.5rem 0 0" }}
+            style={{
+              padding: "0 0.5rem 0 0",
+              color: muted ? "inherit" : color,
+              opacity: muted ? 0.7 : 1,
+            }}
+            disabled={muted}
             disableRipple={true}
           />
         )}
 
         <NameAndCountContainer>
-          <span style={{ color: coloring || forceColor ? color : "unset" }}>
+          <span
+            style={{
+              color: coloring || forceColor ? color : "unset",
+              opacity: muted ? 0.7 : 1,
+            }}
+          >
             {prettify(text)}
           </span>
           {countAtom && (

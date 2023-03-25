@@ -178,7 +178,7 @@ const ViewBar = React.memo(() => {
           }}
         />
         <ExternalLink
-          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
+          href="https://docs.voxel51.com/user_guide/app.html#using-the-view-bar"
           style={{ display: "flex" }}
         >
           <Help style={{ color: theme.text.secondary }} />

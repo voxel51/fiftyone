@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import copy from "copy-to-clipboard";
 
@@ -74,7 +74,7 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
               .querySelector("a")
               .addEventListener("click", () =>
                 onClick(
-                  "https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos"
+                  "https://docs.voxel51.com/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos"
                 )
               );
             textDiv.appendChild(videoText);

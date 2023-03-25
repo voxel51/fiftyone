@@ -18,11 +18,7 @@ const EntryCounts = ({
     return <LoadingDots text="" />;
   }
 
-  if (count === subcount || count === 0) {
-    return <span>{count.toLocaleString()}</span>;
-  }
-
-  if (typeof subcount !== "number") {
+  if (!["number", "undefined"].includes(typeof subcount)) {
     return (
       <span style={{ whiteSpace: "nowrap" }}>
         <LoadingDots text="" /> {count.toLocaleString()}
@@ -30,9 +26,13 @@ const EntryCounts = ({
     );
   }
 
+  if (count === subcount || count === 0) {
+    return <span>{count!.toLocaleString()}</span>;
+  }
+
   return (
     <span style={{ whiteSpace: "nowrap" }}>
-      {subcount.toLocaleString()} of {count.toLocaleString()}
+      {subcount?.toLocaleString() ?? "0"} of {count.toLocaleString()}
     </span>
   );
 };

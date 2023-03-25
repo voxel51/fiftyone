@@ -11,6 +11,8 @@ This page provides a brief overview of FiftyOne's basic concepts.
    :alt: datasets-hero
    :align: center
 
+.. _basics-datasets:
+
 Datasets
 --------
 
@@ -84,6 +86,8 @@ obtain a desired subset of the samples.
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
+.. _basics-samples:
+
 Samples
 -------
 
@@ -108,6 +112,8 @@ store additional custom information about the sample.
 
    # A video sample
    sample = fo.Sample(filepath="/path/to/video.mp4")
+
+.. _basics-fields:
 
 Fields
 ------
@@ -214,6 +220,8 @@ the source media and exposed via the `media_type` attribute of the sample.
     :button_text: Learn more about media types
     :button_link: using_datasets.html#using-media-type
 
+.. _basics-tags:
+
 Tags
 ----
 
@@ -238,6 +246,8 @@ like.
 
     print(sample.tags)
     # ["train", "my_favorite_samples"]
+
+.. _basics-metadata:
 
 Metadata
 --------
@@ -280,13 +290,15 @@ metadata about the source media of the sample.
         }>,
     }>
 
+.. _basics-labels:
+
 Labels
 ------
 
 Labels store semantic information about the sample, such as ground annotations
 or model predictions.
 
-FiftyOne provides a |Label| subclass for many common tasks:
+FiftyOne provides label classes for many common tasks:
 
 - :ref:`Regression <regression>`: a regression value
 - :ref:`Classification <classification>`: a classification label
@@ -295,12 +307,18 @@ FiftyOne provides a |Label| subclass for many common tasks:
 - :ref:`Detections <object-detection>`: a list of object detections (with
   optional instance masks)
 - :ref:`Polylines <polylines>`: a list of polylines or polygons in an image
+- :ref:`Cuboids <cuboids>`: a list of 2D cuboids in an image
+- :ref:`Rotated bounding boxes <rotated-bounding-boxes>`: a list of rotated
+  boxes in an image
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
 - :ref:`Heatmap <heatmaps>`: an intensity heatmap for an image
 - :ref:`Temporal detection <temporal-detection>`: events with a temporal frame
   support in a video
+- :ref:`3D detections <3d-detections>`: a list of 3D detections in a scene
+- :ref:`3D polylines <3d-polylines>`: a list of 3D polylines or polygons in a
+  scene
 - :ref:`GeoLocation <geolocation>`: geolocation point(s), line(s), or
   polygon(s)
 
@@ -386,6 +404,8 @@ datasets to perform the analysis that you need.
 .. image:: /images/cats-similar.png
    :alt: cats-similar
    :align: center
+
+.. _basics-aggregations:
 
 Aggregations
 ------------

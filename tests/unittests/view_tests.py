@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,8 +15,10 @@ import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
+import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
+import fiftyone.core.view as fov
 
 from decorators import drop_datasets, skip_windows
 
@@ -1135,6 +1137,128 @@ class SetValuesTests(unittest.TestCase):
             [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
         )
 
+    def test_set_values_validation(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Classification(label="bar"),
+            labels=fo.Classifications(
+                classifications=[fo.Classification(label="foo")]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample, sample, sample, sample, sample])
+
+        # Test emebedd field validation
+
+        with self.assertRaises(ValueError):
+            dataset.set_values("predictions", [1, 2, 3, 4, 5])
+
+        for value in dataset.values("predictions"):
+            self.assertIsInstance(value, fo.Classification)
+
+        dataset.set_values("predictions.int", [1, 2, 3, 4, 5])
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            [1, 2, 3, 4, 5],
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_values("predictions.int", [5, 4, "c", 2, 1])
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            [1, 2, 3, 4, 5],
+        )
+
+        dataset.set_values(
+            "predictions.int",
+            ["e", "d", "c", "b", "a"],
+            validate=False,
+        )
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            ["e", "d", "c", "b", "a"],
+        )
+
+        dataset.set_values("predictions.int", [1, 2, 3, 4, 5], dynamic=True)
+
+        self.assertListEqual(
+            dataset.values("predictions.int"),
+            [1, 2, 3, 4, 5],
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIsInstance(schema["predictions.int"], fo.IntField)
+
+        dataset.set_values(
+            "predictions.labels",
+            [fo.Classification() for _ in range(len(dataset))],
+            dynamic=True,
+        )
+
+        for value in dataset.values("predictions.labels"):
+            self.assertIsInstance(value, fo.Classification)
+
+        # Test embedded list field validation
+
+        with self.assertRaises(ValueError):
+            dataset.set_values("labels", [1, 2, 3, 4, 5])
+
+        for value in dataset.values("labels"):
+            self.assertIsInstance(value, fo.Classifications)
+
+        dataset.set_values(
+            "labels.classifications.int",
+            [[1], [2], [3], [4], [5]],
+        )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [[1], [2], [3], [4], [5]],
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.set_values(
+                "labels.classifications.int",
+                [[5], [4], ["c"], [2], [1]],
+            )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [[1], [2], [3], [4], [5]],
+        )
+
+        dataset.set_values(
+            "labels.classifications.int",
+            [["e"], ["d"], ["c"], ["b"], ["a"]],
+            validate=False,
+        )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [["e"], ["d"], ["c"], ["b"], ["a"]],
+        )
+
+        dataset.set_values(
+            "labels.classifications.int",
+            [[1], [2], [3], [4], [5]],
+            dynamic=True,
+        )
+
+        self.assertListEqual(
+            dataset.values("labels.classifications.int"),
+            [[1], [2], [3], [4], [5]],
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIsInstance(
+            schema["labels.classifications.int"],
+            fo.IntField,
+        )
+
     def test_set_values_dynamic1(self):
         dataset = _make_labels_dataset()
 
@@ -1958,10 +2082,23 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample2.id)
 
-    def test_exclude_fields(self):
+    def _exclude_fields_setup(self):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+        self.dataset.set_values(
+            "exclude_fields_field1", [1] * len(self.dataset)
+        )
+        self.dataset.set_values(
+            "exclude_fields_field2", [1] * len(self.dataset)
+        )
 
+    def _exclude_fields_teardown(self):
+        self.dataset.delete_sample_fields(
+            ["exclude_fields_field1", "exclude_fields_field2"]
+        )
+
+    def test_exclude_fields(self):
+        self._exclude_fields_setup()
         for default_field in ("id", "filepath", "tags", "metadata"):
             with self.assertRaises(ValueError):
                 self.dataset.exclude_fields(default_field)
@@ -1974,7 +2111,21 @@ class ViewStageTests(unittest.TestCase):
             with self.assertRaises(AttributeError):
                 sample.exclude_fields_field1
 
-            self.assertIsNone(sample.exclude_fields_field2)
+            self.assertEqual(sample.exclude_fields_field2, 1)
+        self._exclude_fields_teardown()
+
+    def test_exclude_fields_stats(self):
+        self._exclude_fields_setup()
+        base_size = self.dataset.exclude_fields(
+            ["exclude_fields_field1", "exclude_fields_field2"]
+        ).stats()["samples_bytes"]
+        excl1_size = self.dataset.exclude_fields(
+            ["exclude_fields_field1"]
+        ).stats()["samples_bytes"]
+        total_size = self.dataset.stats()["samples_bytes"]
+        self.assertLess(base_size, excl1_size)
+        self.assertLess(excl1_size, total_size)
+        self._exclude_fields_teardown()
 
     def test_exclude_frame_fields(self):
         sample = fo.Sample(filepath="video.mp4")
@@ -1991,6 +2142,19 @@ class ViewStageTests(unittest.TestCase):
             for frame in sample.frames.values():
                 with self.assertRaises(AttributeError):
                     frame.int_field
+
+    def test_exclude_frame_fields_stats(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(int_field=1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        excl_size = dataset.exclude_fields(["frames.int_field"]).stats()[
+            "frames_bytes"
+        ]
+        total_size = dataset.stats()["frames_bytes"]
+        self.assertLess(excl_size, total_size)
 
     def test_exists(self):
         sample1 = fo.Sample(filepath="video1.mp4", index=1)
@@ -2948,9 +3112,15 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result.values("id"), values)
 
-    def test_select_fields(self):
+    def _select_field_setup(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)
+        self.dataset.set_values("select_fields_field", [1] * len(self.dataset))
 
+    def _select_field_teardown(self):
+        self.dataset.delete_sample_field("select_fields_field")
+
+    def test_select_fields(self):
+        self._select_field_setup()
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
                 sample.selected_field_names,
@@ -2962,6 +3132,15 @@ class ViewStageTests(unittest.TestCase):
             sample.tags
             with self.assertRaises(AttributeError):
                 sample.select_fields_field
+        self._select_field_teardown()
+
+    def test_select_fields_stats(self):
+        self._select_field_setup()
+
+        base_size = self.dataset.select_fields().stats()["samples_bytes"]
+        total_size = self.dataset.stats()["samples_bytes"]
+        self.assertLess(base_size, total_size)
+        self._select_field_teardown()
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
@@ -3000,6 +3179,57 @@ class ViewStageTests(unittest.TestCase):
 
         field = F("$ground_truth")
         self.assertEqual(str(field), str(deepcopy(field)))
+
+    def test_make_optimized_select_view_group_media_type_select_samples(self):
+        samples = self._create_group_samples()
+        dataset = self._create_group_dataset()
+        sample_ids = dataset.add_samples(samples)
+        self.assertEqual(len(sample_ids), len(samples))
+
+        # Default call should have select_groups = False
+        optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
+
+        expected_stages = [fosg.Select(sample_ids[0])]
+        self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def test_make_optimized_select_view_group_media_type_select_groups(self):
+        samples = self._create_group_samples()
+        dataset = self._create_group_dataset()
+        sample_ids = dataset.add_samples(samples)
+        self.assertEqual(len(sample_ids), len(samples))
+
+        optimized_view = fov.make_optimized_select_view(
+            dataset, sample_ids[0], select_groups=True
+        )
+        expected_stages = [
+            fosg.Select(sample_ids[0]),
+            fosg.SelectGroupSlices(),
+        ]
+        self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def _create_group_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="center")
+        self.assertEqual(dataset.media_type, fom.GROUP)
+        self.assertEqual(dataset.default_group_slice, "center")
+        return dataset
+
+    def _create_group_samples(self):
+        groups = ["left", "center", "right"]
+        filepaths = [
+            [str(i) + str(j) + ".jpg" for i in groups] for j in range(3)
+        ]
+        filepaths = [dict(zip(groups, fps)) for fps in zip(*filepaths)]
+        group = fo.Group()
+        samples = []
+        for fps in filepaths:
+            for name, filepath in fps.items():
+                sample = fo.Sample(
+                    filepath=filepath, group=group.element(name)
+                )
+                samples.append(sample)
+        assert all([s.group is not None for s in samples])
+        return samples
 
 
 if __name__ == "__main__":

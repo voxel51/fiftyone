@@ -120,6 +120,7 @@ export const PARSER = {
         array = stripped.split(",");
       }
       return (
+        typeof value !== "string" &&
         Array.isArray(array) &&
         array.every((e) => PARSER.field.validate(e, fields))
       );
@@ -137,13 +138,24 @@ export const PARSER = {
       } catch {
         array = stripped.split(",");
       }
-      return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
+      return (
+        typeof value !== "string" &&
+        Array.isArray(array) &&
+        array.every((e) => PARSER.id.validate(e))
+      );
     },
   },
   "list<str>": {
     castFrom: (value) => value.join(","),
     castTo: (value) => value.split(","),
-    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    parse: (value) =>
+      value
+        // replace spaces with a single space (to allow search by words with spaces)
+        .replace(/[\s\'\"\[\]]+/g, " ")
+        // replace comma followed by trailing spaces with a single comma
+        .replace(/,\s*/g, ",")
+        // remove trailing spaces
+        .replace(/[ \t]+$/, ""),
     validate: (value) => {
       const stripped = value.replace(/[\s]/g, "");
       let array = null;
@@ -152,7 +164,11 @@ export const PARSER = {
       } catch {
         array = stripped.split(",");
       }
-      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
+      return (
+        typeof value !== "string" &&
+        Array.isArray(array) &&
+        array.every((e) => PARSER.str.validate(e))
+      );
     },
   },
   NoneType: {

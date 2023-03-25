@@ -1,7 +1,7 @@
 """
 Annotation utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -239,21 +239,14 @@ def annotate(
     )
     config.label_schema = label_schema
 
-    #
     # Don't allow overwriting an existing run with same `anno_key`, since we
     # need the existing run in order to perform workflows like automatically
     # cleaning up the backend's tasks
-    #
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
     results = anno_backend.upload_annotations(
-        samples, launch_editor=launch_editor
+        samples, anno_key, launch_editor=launch_editor
     )
-
-    # It is possible that the annotation backend may update the run's config
-    # (e.g., when uploading to an existing project, its label schema may be
-    # inherited), so we update the config now
-    anno_backend.update_run_config(samples, anno_key, config)
 
     anno_backend.save_run_results(samples, anno_key, results)
 
@@ -1021,8 +1014,9 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        **kwargs: optional keyword arguments for
-            :meth:`AnnotationResults.load_credentials`
+        **kwargs: keyword arguments for the run's
+            :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
+            method
 
     Returns:
         ``None``, unless ``unexpected=="return"`` and unexpected labels are
@@ -1765,6 +1759,20 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
         """The name of the annotation backend."""
         return self.name
 
+    def load_credentials(self, **kwargs):
+        self._load_parameters(**kwargs)
+
+    def _load_parameters(self, **kwargs):
+        name = self.method
+        parameters = fo.annotation_config.backends.get(name, {})
+
+        for name, value in kwargs.items():
+            if value is None:
+                value = parameters.get(name, None)
+
+            if value is not None:
+                setattr(self, name, value)
+
     def _sanitize_label_schema(self, label_schema):
         if not label_schema:
             return
@@ -1980,12 +1988,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         """
         self._api = api
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label
         schema to the annotation backend.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            anno_key: the annotation key
             launch_editor (False): whether to launch the annotation backend's
                 editor after uploading the samples
 
@@ -2042,9 +2051,6 @@ class AnnotationBackend(foa.AnnotationMethod):
     def get_fields(self, samples, anno_key):
         return list(self.config.label_schema.keys())
 
-    def cleanup(self, samples, anno_key):
-        pass
-
 
 class AnnotationResults(foa.AnnotationResults):
     """Base class for storing the intermediate results of an annotation run
@@ -2096,19 +2102,15 @@ class AnnotationResults(foa.AnnotationResults):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         config: an :class:`AnnotationBackendConfig`
+        anno_key: the annotation key
         id_map: a dictionary recording the existing label IDs, in the format
             described above
         backend (None): an :class:`AnnotationBackend`
     """
 
-    def __init__(self, samples, config, id_map, backend=None):
-        if backend is None:
-            backend = config.build()
-            backend.ensure_requirements()
-
-        self._samples = samples
+    def __init__(self, samples, config, anno_key, id_map, backend=None):
+        super().__init__(samples, config, anno_key, backend=backend)
         self.id_map = id_map
-        self._backend = backend
 
     def __enter__(self):
         self._backend.__enter__()
@@ -2116,25 +2118,6 @@ class AnnotationResults(foa.AnnotationResults):
 
     def __exit__(self, *args):
         self._backend.__exit__(*args)
-
-    @property
-    def config(self):
-        """The :class:`AnnotationBackendConfig` for these results."""
-        return self._backend.config
-
-    @property
-    def backend(self):
-        """The :class:`AnnotationBackend` for these results."""
-        return self._backend
-
-    def load_credentials(self, **kwargs):
-        """Loads any credentials from the given keyword arguments or the
-        FiftyOne annotation config.
-
-        Args:
-            **kwargs: subclass-specific credentials
-        """
-        raise NotImplementedError("subclass must implement load_credentials()")
 
     def connect_to_api(self):
         """Returns an API instance connected to the annotation backend.
@@ -2164,17 +2147,6 @@ class AnnotationResults(foa.AnnotationResults):
     def cleanup(self):
         """Deletes all information for this run from the annotation backend."""
         raise NotImplementedError("subclass must implement cleanup()")
-
-    def _load_config_parameters(self, **kwargs):
-        config = self.config
-        parameters = fo.annotation_config.backends.get(config.name, {})
-
-        for name, value in kwargs.items():
-            if value is None:
-                value = parameters.get(name, None)
-
-            if value is not None:
-                setattr(config, name, value)
 
     def _update_id_map(self, label_field, new_id_map):
         """Adds the given label IDs into this object's :attr:`id_map`.
@@ -2227,7 +2199,7 @@ class AnnotationResults(foa.AnnotationResults):
         return _unwrap(_to_list(ids1) + _to_list(ids2))
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         """Builds an :class:`AnnotationResults` from a JSON dict representation
         of it.
 
@@ -2236,6 +2208,7 @@ class AnnotationResults(foa.AnnotationResults):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`AnnotationBackendConfig` for the run
+            anno_key: the annotation key
 
         Returns:
             an :class:`AnnotationResults`

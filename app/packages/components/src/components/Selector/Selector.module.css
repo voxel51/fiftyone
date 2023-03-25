@@ -46,6 +46,7 @@
   position: absolute;
   overflow: auto;
   max-width: 480px;
+  z-index: 1000;
 }
 
 .loadingFooter {

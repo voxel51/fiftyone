@@ -7,9 +7,7 @@ export default r(graphql`
     $subscription: String!
     $session: String
     $view: BSONArray!
-    $viewName: String
     $savedViewSlug: String
-    $changingSavedView: Boolean
     $datasetName: String!
     $form: StateForm!
   ) {
@@ -17,9 +15,7 @@ export default r(graphql`
       subscription: $subscription
       session: $session
       view: $view
-      viewName: $viewName
       savedViewSlug: $savedViewSlug
-      changingSavedView: $changingSavedView
       datasetName: $datasetName
       form: $form
     ) {
@@ -34,6 +30,7 @@ export default r(graphql`
           name
           mediaType
         }
+        stages(slug: $savedViewSlug)
         sampleFields {
           ftype
           subfield
@@ -66,10 +63,10 @@ export default r(graphql`
         savedViews {
           id
           name
-          slug
           description
           color
           viewStages
+          slug
           createdAt
           lastModifiedAt
           lastLoadedAt
@@ -95,12 +92,15 @@ export default r(graphql`
             embeddingsField
             method
             patchesField
+            supportsPrompts
+            type
           }
         }
         lastLoadedAt
         createdAt
         version
         viewCls
+        viewName
         skeletons {
           name
           labels
@@ -124,9 +124,6 @@ export default r(graphql`
         }
       }
       view
-      viewName
-      savedViewSlug
-      changingSavedView
     }
   }
 `);

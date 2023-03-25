@@ -1,3 +1,4 @@
+import { Sample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
@@ -92,6 +93,7 @@ interface BaseField {
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
+  path: string | null;
 }
 
 export interface StrictField extends BaseField {
@@ -481,14 +483,50 @@ type Mutable<T> = {
   -readonly [K in keyof T]: Mutable<T[K]>;
 };
 
-export const clone = <T extends unknown>(data: T): Mutable<T> => {
+export const clone = <T>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
 };
 
-export const getMimeType = (sample: any) => {
-  return (
-    (sample.metadata && sample.metadata.mime_type) ||
-    mime.getType(sample.filepath) ||
-    "image/jpg"
-  );
+export const getMimeType = (sample: Sample) => {
+  if (sample.metadata && sample.metadata.mime_type) {
+    return sample.metadata.mime_type;
+  }
+
+  const mimeFromFilePath = mime.getType(sample.filepath);
+
+  // mime type is null for certain file types like point-clouds
+  return mimeFromFilePath ?? null;
+};
+
+export const toSlug = (name: string) => {
+  /**  Returns the URL-friendly slug for the given string.
+   *
+   * The following strategy is used to generate slugs:
+   *   (based on fiftyone.core.utils `to_slug` function)
+   *   -   The characters ``A-Za-z0-9`` are converted to lowercase
+   *   -   Whitespace and ``+_.-`` are converted to ``-``
+   *   -   All other characters are omitted
+   *   -   All consecutive ``-`` characters are reduced to a single ``-``
+   *   -   All leading and trailing ``-`` are stripped
+   */
+  if (name.length < 1) {
+    return "";
+  }
+  const valid_chars = new RegExp("[a-z0-9._+ -]", "g");
+  const replace_symbols = new RegExp("[-._+ ]+", "g");
+  const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
+
+  let slug = name.toLowerCase();
+  let matches = [];
+  let match;
+  while ((match = valid_chars.exec(slug)) !== null) {
+    matches.push(match);
+  }
+  if (matches.length) {
+    slug = matches.join("")?.replace(replace_symbols, "-");
+    if (slug.length && slug !== "-") {
+      return slug.length ? trim.exec(slug)?.groups?.slug : "";
+    }
+  }
+  return "";
 };

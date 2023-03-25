@@ -1,7 +1,7 @@
 """
 Utilities for documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -368,7 +368,7 @@ def get_implied_field_kwargs(value, dynamic=False):
     if isinstance(value, (list, tuple)):
         kwargs = {"ftype": fof.ListField}
 
-        value_types = set(_get_list_value_type(v) for v in value)
+        value_types = set(_get_field_type(v) for v in value)
         value_types.discard(None)
 
         if value_types == {fof.IntField, fof.FloatField}:
@@ -379,10 +379,10 @@ def get_implied_field_kwargs(value, dynamic=False):
             kwargs["subfield"] = value_type
 
             if value_type == fof.EmbeddedDocumentField:
-                kwargs["embedded_doc_type"] = value_type.document_type
-                kwargs["fields"] = _parse_embedded_doc_list_fields(
-                    value, dynamic
-                )
+                document_type = _get_list_subfield_type(value)
+                fields = _parse_embedded_doc_list_fields(value, dynamic)
+                kwargs["embedded_doc_type"] = document_type
+                kwargs["fields"] = fields
 
         return kwargs
 
@@ -413,10 +413,9 @@ def _get_field_kwargs(value, field, dynamic):
         if field is not None:
             kwargs["subfield"] = type(field)
             if isinstance(field, fof.EmbeddedDocumentField):
+                fields = _parse_embedded_doc_list_fields(value, dynamic)
                 kwargs["embedded_doc_type"] = field.document_type
-                kwargs["fields"] = _parse_embedded_doc_list_fields(
-                    value, dynamic
-                )
+                kwargs["fields"] = fields
     elif isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
         kwargs["fields"] = _parse_embedded_doc_fields(value, dynamic)
@@ -556,7 +555,7 @@ def validate_fields_match(name, field, existing_field):
             )
 
 
-def _get_list_value_type(value):
+def _get_field_type(value):
     if isinstance(value, (bool, np.bool_)):
         return fof.BooleanField
 
@@ -580,6 +579,14 @@ def _get_list_value_type(value):
 
     if isinstance(value, date):
         return fof.DateField
+
+    return None
+
+
+def _get_list_subfield_type(values):
+    for v in values:
+        if v is not None:
+            return type(v)
 
     return None
 
@@ -623,7 +630,7 @@ class DocumentRegistry(object):
             "Could not locate document class '%s'.\n\nIf you are working with "
             "a dataset that uses custom embedded documents, you must add them "
             "to FiftyOne's module path. See "
-            "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#custom-embedded-documents "
+            "https://docs.voxel51.com/user_guide/using_datasets.html#custom-embedded-documents "
             "for more information" % name
         )
 

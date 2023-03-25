@@ -1,6 +1,7 @@
 import Flashlight from "@fiftyone/flashlight";
+import { Sample } from "@fiftyone/looker/src/state";
 import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { selectedSamples } from "../recoil/atoms";
+import { selectedSamples, selectedSampleObjects } from "../recoil/atoms";
 import useSetSelected from "./useSetSelected";
 
 const argFact = (compareFn) => (array) =>
@@ -65,6 +66,7 @@ const removeRange = (
 export interface SelectThumbnailData {
   shiftKey: boolean;
   sampleId: string;
+  sample: Sample;
 }
 
 export default () => {
@@ -74,9 +76,10 @@ export default () => {
     ({ set, get }) =>
       async (
         flashlight: Flashlight<number>,
-        { shiftKey, sampleId }: SelectThumbnailData
+        { shiftKey, sampleId, sample }: SelectThumbnailData
       ) => {
         let selected = new Set(get(selectedSamples));
+        const selectedObjects = new Map(get(selectedSampleObjects));
         const items = [...selected];
         const map = flashlight.itemIndexes;
         const index = map[sampleId];
@@ -91,7 +94,14 @@ export default () => {
             : selected.add(sampleId);
         }
 
+        if (selectedObjects.has(sampleId)) {
+          selectedObjects.delete(sampleId);
+        } else {
+          selectedObjects.set(sampleId, sample);
+        }
+
         set(selectedSamples, selected);
+        set(selectedSampleObjects, selectedObjects);
         setSelected([...selected]);
       },
     [setSelected]

@@ -1,7 +1,7 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -127,6 +127,8 @@ from .core.models import (
 )
 from .core.odm import (
     DatasetAppConfig,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
     KeypointSkeleton,
     SidebarGroupDocument,
 )
@@ -147,6 +149,10 @@ from .core.plots import (
     NumericalHistogram,
 )
 from .core.sample import Sample
+from .core.spaces import (
+    Space,
+    Panel,
+)
 from .core.stages import (
     Concat,
     Exclude,
@@ -186,6 +192,7 @@ from .core.stages import (
     ToPatches,
     ToEvaluationPatches,
     ToClips,
+    ToTrajectories,
     ToFrames,
 )
 from .core.session import (

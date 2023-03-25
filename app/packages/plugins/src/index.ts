@@ -1,10 +1,14 @@
+import * as fos from "@fiftyone/state";
+import { Component, createElement } from "react";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as recoil from "recoil";
-import * as fos from "@fiftyone/state";
-import * as _ from "lodash";
-import { State } from "@fiftyone/state";
+import * as foc from "@fiftyone/components";
+import * as fou from "@fiftyone/utilities";
+import { PluginWrapper, wrapCustomComponent } from "./components";
+
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -12,6 +16,8 @@ declare global {
     ReactDOM: any;
     recoil: any;
     __fos__: any;
+    __foc__: any;
+    __fou__: any;
   }
 }
 
@@ -21,6 +27,8 @@ if (typeof window !== "undefined") {
   window.ReactDOM = ReactDOM;
   window.recoil = recoil;
   window.__fos__ = fos;
+  window.__foc__ = foc;
+  window.__fou__ = fou;
 }
 
 function usingRegistry() {
@@ -30,6 +38,10 @@ function usingRegistry() {
   return window.__fo_plugin_registry__;
 }
 
+/**
+ * Adds a plugin to the registry. This is called by the plugin itself.
+ * @param registration The plugin registration
+ */
 export function registerComponent<T>(
   registration: PluginComponentRegistration<T>
 ) {
@@ -38,9 +50,20 @@ export function registerComponent<T>(
   }
   usingRegistry().register(registration);
 }
+
+/**
+ * Remove a plugin from the registry.
+ * @param name The name of the plugin
+ */
 export function unregisterComponent(name: string) {
   usingRegistry().unregister(name);
 }
+
+/**
+ * Get a list of plugins match the given `type`.
+ * @param type The type of plugin to list
+ * @returns A list of plugins
+ */
 export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
 }
@@ -60,8 +83,6 @@ type PluginFetchResult = {
 };
 async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
   return getFetchFunction()("GET", "/plugins");
-  const res = await fetch("/plugins", { method: "GET" });
-  return res.json();
 }
 
 let _settings = null;
@@ -71,20 +92,32 @@ export async function loadPlugins() {
   for (const { scriptPath, name } of plugins) {
     const pluginSetting = settings && settings[name];
     if (!pluginSetting || pluginSetting.enabled !== false) {
-      await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
+      if (usingRegistry().hasScript(name)) {
+        console.log(`Plugin "${name}": already loaded`);
+        continue;
+      }
+      try {
+        await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
+      } catch (e) {
+        console.error(`Plugin "${name}": failed to load!`);
+        console.error(e);
+      }
     }
   }
 }
 async function loadScript(name, url) {
+  console.log(`Plugin "${name}": loading script...`);
   return new Promise<void>((resolve, reject) => {
     const onDone = (e) => {
       script.removeEventListener("load", onDone);
       script.removeEventListener("error", onDone);
-      if (e.type === "load") {
+      console.log(`Plugin "${name}": loaded!`);
+      if (e?.type === "load") {
         resolve();
       } else {
-        reject(new Error(`Plugin "${name}": Failed to script ${url}`));
+        reject(new Error(`Plugin "${name}": Failed to load script ${url}`));
       }
+      usingRegistry().registerScript(name);
     };
     const script = document.createElement("script");
     script.type = "application/javascript";
@@ -96,6 +129,9 @@ async function loadScript(name, url) {
   });
 }
 
+/**
+ * A react hook for loading the plugin system.
+ */
 export function usePlugins() {
   const [state, setState] = useState("loading");
   useEffect(() => {
@@ -121,6 +157,13 @@ export function usePlugin(
   return usingRegistry().getByType(type);
 }
 
+/**
+ * A react hook that returns a list of active plugins.
+ *
+ * @param type The type of plugin to list
+ * @param ctx Argument passed to the plugin's activator function
+ * @returns A list of active plugins
+ */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
   return useMemo(
     () =>
@@ -134,18 +177,54 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
   );
 }
 
+/**
+ * The type of plugin component.
+ *
+ * - `Panel` - A panel that can be added to `@fiftyone/spaces`
+ * - `Plot` - **deprecated** - A plot that can be added as a panel
+ * - `Visualizer` - Visualizes sample data
+ */
 export enum PluginComponentType {
   Visualizer,
   Plot,
+  Panel,
 }
 
 type PluginActivator = (props: any) => boolean;
-interface PluginComponentRegistration<T extends {} = {}> {
+
+type PanelOptions = {
+  allowDuplicates?: boolean;
+  TabIndicator?: React.ComponentType;
+};
+
+type PluginComponentProps<T> = T & {
+  panelNode?: unknown;
+};
+
+/**
+ * A plugin registration.
+ */
+export interface PluginComponentRegistration<T extends {} = {}> {
+  /**
+   * The name of the plugin
+   */
   name: string;
-  label?: string;
-  component: FunctionComponent<T>;
+  /**
+   * The optional label of the plugin to display to the user
+   */
+  label: string;
+  Icon?: React.ComponentType;
+  /**
+   * The React component to render
+   */
+  component: FunctionComponent<PluginComponentProps<T>>;
+  /** The plugin type */
   type: PluginComponentType;
+  /**
+   * A function that returns true if the plugin should be active
+   */
   activator: PluginActivator;
+  panelOptions?: PanelOptions;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
@@ -161,6 +240,13 @@ function warn(ok, msg) {
 const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
+  private scripts = new Set<string>();
+  registerScript(name: string) {
+    this.scripts.add(name);
+  }
+  hasScript(name: string) {
+    return this.scripts.has(name);
+  }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
 
@@ -178,7 +264,17 @@ class PluginComponentRegistry {
       !this.data.has(name),
       `${name} is already a registered Plugin Component`
     );
-    this.data.set(name, registration);
+    warn(
+      registration.type === PluginComponentType.Plot,
+      `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
+    );
+
+    const wrappedRegistration = {
+      ...registration,
+      component: wrapCustomComponent(registration.component),
+    };
+
+    this.data.set(name, wrappedRegistration);
   }
   unregister(name: string): boolean {
     return this.data.delete(name);
@@ -204,14 +300,17 @@ export function usePluginSettings<T>(
 ): T {
   const dataset = recoil.useRecoilValue(fos.dataset);
   const appConfig = recoil.useRecoilValue(fos.config);
-  const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
-  const appConfigPlugins = _.get(appConfig, "plugins", {});
 
-  const settings = _.merge<T | {}, Partial<T>, Partial<T>>(
-    { ...defaults },
-    _.get(appConfigPlugins, pluginName, {}),
-    _.get(datasetPlugins, pluginName, {})
-  );
+  const settings = useMemo(() => {
+    const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+    const appConfigPlugins = _.get(appConfig, "plugins", {});
+
+    return _.merge<T | {}, Partial<T>, Partial<T>>(
+      { ...defaults },
+      _.get(appConfigPlugins, pluginName, {}),
+      _.get(datasetPlugins, pluginName, {})
+    );
+  }, [dataset, appConfig, pluginName, defaults]);
 
   return settings as T;
 }

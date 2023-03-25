@@ -1,10 +1,4 @@
-import React, {
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useCallback, useRef, useState } from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -13,23 +7,22 @@ import { move } from "@fiftyone/utilities";
 import { useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
-import { DatasetSavedViewsQuery } from "../../Root/Root";
-import { useQueryLoader } from "react-relay";
+import { resizeHandle } from "./Sidebar.module.css";
 const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
   currentOrder: string[],
   newOrder: string[],
-  activeKey: string = null,
+  activeKey: string | null = null,
   delta = 0,
-  lastTouched: string = null
+  lastTouched: string | null = null
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -379,8 +372,8 @@ enum Direction {
 const SidebarColumn = styled.div`
   position: relative;
   max-height: 100%;
-  height: 92%;
   width: 100%;
+  flex: 1;
 
   overflow-y: scroll;
   overflow-x: hidden;
@@ -434,6 +427,7 @@ const InteractiveSidebar = ({
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
   const [width, setWidth] = useRecoilState(fos.sidebarWidth(modal));
+  const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
   const shown = useRecoilValue(fos.sidebarVisible(modal));
   const [entries, setEntries] = fos.useEntries(modal);
   const disabled = useRecoilValue(fos.disabledPaths);
@@ -441,7 +435,6 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-  const loadedDatasetName = useRecoilValue<string>(fos.datasetName);
 
   if (entries instanceof Error) {
     throw entries;
@@ -658,6 +651,10 @@ const InteractiveSidebar = ({
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
     if (!down.current) return;
 
+    // do not allow dragging sample tags and label tags
+    const entry = items.current[down.current].entry;
+    if (["_label_tags", "tags"].includes(entry.path)) return;
+
     requestAnimationFrame(() => {
       animate(clientY);
       scrollWith(lastDirection.current, clientY);
@@ -688,14 +685,7 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
-
-  const [savedViewsQueryRef, loadSavedViewsQuery] = useQueryLoader(
-    DatasetSavedViewsQuery
-  );
-
-  useEffect(() => {
-    loadSavedViewsQuery({ name: loadedDatasetName });
-  }, [loadSavedViewsQuery]);
+  const resizableSide = modal ? "left" : "right";
 
   return shown ? (
     <Resizable
@@ -714,6 +704,8 @@ const InteractiveSidebar = ({
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
+        // reset sidebar to default width on double click
+        if (e.detail === 2) resetWidth();
       }}
       style={{
         borderLeft: modal
@@ -722,17 +714,29 @@ const InteractiveSidebar = ({
         borderRight: !modal
           ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
+        borderTopRightRadius: 8,
+        display: "flex",
+        flexDirection: "column",
+      }}
+      handleStyles={{
+        [resizableSide]: { right: 0, width: 4 },
+      }}
+      handleClasses={{
+        [resizableSide]: resizeHandle,
       }}
     >
       {!modal && (
         <Suspense>
-          <Box style={{ padding: 8, paddingLeft: 16, paddingRight: 16 }}>
-            {savedViewsQueryRef !== null && (
-              <ViewSelection
-                datasetName={loadedDatasetName}
-                queryRef={savedViewsQueryRef}
-              />
-            )}
+          <Box
+            style={{
+              padding: 8,
+              paddingLeft: 16,
+              paddingRight: 16,
+              background: theme.background.mediaSpace,
+              borderTopRightRadius: 8,
+            }}
+          >
+            <ViewSelection />
           </Box>
         </Suspense>
       )}
@@ -754,14 +758,18 @@ const InteractiveSidebar = ({
               if (entry.kind === fos.EntryKind.GROUP) {
                 group = entry.name;
               }
+
               const { shadow, cursor, ...springs } =
                 items.current[key].controller.springs;
+              const keyTrigger = ["tags", "_label_tags"].includes(key[1])
+                ? null
+                : trigger;
               const { children } = render(
                 key,
                 group,
                 entry,
                 items.current[key].controller,
-                trigger
+                keyTrigger
               );
               const style = {};
               if (entry.kind === fos.EntryKind.INPUT) {

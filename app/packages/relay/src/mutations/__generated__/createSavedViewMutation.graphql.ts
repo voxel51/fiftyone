@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ddbf8320a2e6be8f09ffc221d9b6f236>>
+ * @generated SignedSource<<b42852c8bf7979bf954d5bfef201053c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -166,14 +166,14 @@ v8 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "slug",
+        "name": "description",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "description",
+        "name": "slug",
         "storageKey": null
       },
       {
@@ -237,16 +237,16 @@ return {
     "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "ac0df955b866bfb0ec6e814082e4ed76",
+    "cacheID": "394266ec53b6d4eeb1710d03f7cb9dbb",
     "id": null,
     "metadata": {},
     "name": "createSavedViewMutation",
     "operationKind": "mutation",
-    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n  $form: StateForm = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color, form: $form) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n  }\n}\n"
+    "text": "mutation createSavedViewMutation(\n  $subscription: String!\n  $session: String\n  $viewName: String!\n  $viewStages: BSONArray\n  $datasetName: String = null\n  $description: String = null\n  $color: String = null\n  $form: StateForm = null\n) {\n  createSavedView(subscription: $subscription, session: $session, viewName: $viewName, viewStages: $viewStages, datasetName: $datasetName, description: $description, color: $color, form: $form) {\n    id\n    datasetId\n    name\n    description\n    slug\n    color\n    viewStages\n    createdAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "665d79fe1684bdc20f7610f6594d29b9";
+(node as any).hash = "edca4fb3baa506df972aa14983e64a98";
 
 export default node;

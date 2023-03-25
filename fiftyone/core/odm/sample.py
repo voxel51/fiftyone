@@ -42,7 +42,7 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
     dataset.add_sample(sample)
     sample._doc  # my_dataset(DatasetSampleDocument)
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -88,6 +88,7 @@ class DatasetSampleDocument(DatasetMixin, Document):
 
     _media_type = fof.StringField()
     _rand = fof.FloatField(default=_generate_rand)
+    _dataset_id = fof.ObjectIdField()
 
     @property
     def media_type(self):
@@ -116,13 +117,14 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         kwargs["filepath"] = filepath
         kwargs["_rand"] = _generate_rand(filepath=filepath)
         kwargs["_media_type"] = fomm.get_media_type(filepath)
+        kwargs["_dataset_id"] = None
 
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if value is None and field_name != "id":
+            if value is None and field_name not in ("id", "_dataset_id"):
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value

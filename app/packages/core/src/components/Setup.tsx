@@ -101,7 +101,7 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         session and connecting to it from your local machine. See{" "}
         <a
           target="_blank"
-          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions"
+          href="https://docs.voxel51.com/user_guide/app.html#remote-sessions"
         >
           this page
         </a>{" "}

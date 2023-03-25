@@ -13,6 +13,9 @@ import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
+import _ from "lodash";
+import { isPatchesView } from "./view";
+import { pathFilter } from "./pathFilters";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -39,7 +42,7 @@ export const stateSubscription = selector<string>({
   },
 });
 
-export const mediaType = selector({
+export const mediaTypeSelector = selector({
   key: "mediaType",
   get: ({ get }) => get(atoms.dataset)?.mediaType,
   cachePolicy_UNSTABLE: {
@@ -57,7 +60,15 @@ export const savedViewsSelector = selector<State.SavedView[]>({
 
 export const isVideoDataset = selector({
   key: "isVideoDataset",
-  get: ({ get }) => get(mediaType) === "video",
+  get: ({ get }) => get(mediaTypeSelector) === "video",
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const isPointcloudDataset = selector({
+  key: "isPointcloudDataset",
+  get: ({ get }) => get(mediaTypeSelector) === "point_cloud",
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -315,25 +326,52 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-export const similarityKeys = selector<{
-  patches: [string, string][];
-  samples: string[];
+export type Method = {
+  key: string;
+  supportsPrompts: boolean;
+  maxK: number;
+  supportsLeastSimilarity: boolean;
+};
+
+export const similarityMethods = selector<{
+  patches: [Method, string][];
+  samples: Method[];
 }>({
-  key: "similarityKeys",
+  key: "similarityMethods",
   get: ({ get }) => {
     const methods = get(atoms.dataset).brainMethods;
+
     return methods
-      .filter(({ config: { method } }) => method === "similarity")
+      .filter(
+        ({ config: { type, cls } }) =>
+          type == "similarity" || cls.toLowerCase().includes("similarity")
+      )
       .reduce(
         (
           { patches, samples },
 
-          { config: { patchesField }, key }
+          {
+            config: {
+              patchesField,
+              supportsPrompts,
+              supportsLeastSimilarity,
+              maxK,
+            },
+            key,
+          }
         ) => {
           if (patchesField) {
-            patches.push([key, patchesField]);
+            patches.push([
+              { key, supportsPrompts, supportsLeastSimilarity, maxK },
+              patchesField,
+            ]);
           } else {
-            samples.push(key);
+            samples.push({
+              key,
+              supportsPrompts,
+              supportsLeastSimilarity,
+              maxK,
+            });
           }
           return { patches, samples };
         },
@@ -348,7 +386,13 @@ export const similarityKeys = selector<{
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
-    const sampleIds = get(atoms.extendedSelection);
+    const sampleIds = get(atoms.extendedSelection)?.selection;
+    const extendedSelectionOverrideStage = get(
+      atoms.extendedSelectionOverrideStage
+    );
+    if (extendedSelectionOverrideStage) {
+      return extendedSelectionOverrideStage;
+    }
     return {
       "fiftyone.core.stages.Select":
         sampleIds && sampleIds.length
@@ -391,19 +435,111 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
 
 export const viewStateForm = selectorFamily<
   StateForm,
-  { addStages?: string; modal?: boolean; selectSlice?: boolean }
+  {
+    addStages?: string;
+    modal?: boolean;
+    selectSlice?: boolean;
+    omitSelected?: boolean;
+  }
 >({
   key: "viewStateForm",
   get:
-    ({ addStages, modal, selectSlice }) =>
+    ({ addStages, modal, selectSlice, omitSelected }) =>
     ({ get }) => {
       return {
         filters: get(modal ? modalFilters : filters),
-        sampleIds: [...get(selectedSamples)],
+        sampleIds: omitSelected ? [] : [...get(selectedSamples)],
         labels: get(selectedLabelList),
         extended: get(extendedStages),
         slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
         addStages: addStages ? JSON.parse(addStages) : [],
       };
     },
+});
+export const selectedPatchIds = selectorFamily({
+  key: "selectedPatchIds",
+  get:
+    (patchesField) =>
+    ({ get }) => {
+      const modal = get(atoms.modal);
+      const isPatches = get(isPatchesView);
+      const selectedSamples = get(atoms.selectedSamples);
+      const selectedSampleObjects = get(atoms.selectedSampleObjects);
+
+      if (isPatches || modal) {
+        return selectedSamples;
+      }
+      let patchIds = [];
+      for (const sampleId of selectedSamples) {
+        if (selectedSampleObjects.has(sampleId)) {
+          const sample = selectedSampleObjects.get(sampleId);
+          patchIds = [
+            ...patchIds,
+            ...getLabelIdsFromSample(
+              sample,
+              patchesField,
+              get(pathFilter(false))
+            ),
+          ];
+        }
+      }
+      return new Set(patchIds);
+    },
+});
+
+export const selectedPatchSamples = selector({
+  key: "selectedPatchSamples",
+  get: ({ get }) => {
+    const isPatches = get(isPatchesView);
+    const selectedPatches = get(atoms.selectedSamples);
+    const selectedSampleObjects = get(atoms.selectedSampleObjects);
+
+    if (isPatches) {
+      let sampleIds = [];
+      for (const patchId of selectedPatches) {
+        if (selectedSampleObjects.has(patchId)) {
+          const sample = selectedSampleObjects.get(patchId);
+          sampleIds = [...sampleIds, sample._sample_id];
+        }
+      }
+      return new Set(sampleIds);
+    } else {
+      return new Set();
+    }
+  },
+});
+
+function getLabelIdsFromSample(sample, path, matchesFilter) {
+  const labelIds = [];
+  const labelContainer = sample[path] || {};
+  const containerKeys = Object.keys(labelContainer);
+  const targetKey = Array.isArray(containerKeys)
+    ? containerKeys[0]
+    : "detections";
+  const fullPath = [path, targetKey];
+  const labels = Array.isArray(labelContainer[targetKey])
+    ? labelContainer[targetKey]
+    : [];
+
+  for (const label of labels) {
+    if (matchesFilter(fullPath.join("."), label)) labelIds.push(label.id);
+  }
+
+  return labelIds;
+}
+
+export const hasSelectedLabels = selector<boolean>({
+  key: "hasSelectedLabels",
+  get: ({ get }) => {
+    const selected = get(selectedLabelIds);
+    return selected.size > 0;
+  },
+});
+
+export const hasSelectedSamples = selector<boolean>({
+  key: "hasSelectedSamples",
+  get: ({ get }) => {
+    const selected = get(atoms.selectedSamples);
+    return selected.size > 0;
+  },
 });

@@ -1,7 +1,7 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -199,7 +199,7 @@ def flatten_schema(
     include_private=False,
 ):
     """Returns a flattened copy of the given schema where all embedded document
-    fields are included as top-level keys of the
+    fields are included as top-level keys of the dictionary
 
     Args:
         schema: a dict mapping keys to :class:`Field` instances
@@ -1153,10 +1153,14 @@ def is_integer_mask_targets(mask_targets):
     return all(
         map(
             lambda k: isinstance(k, numbers.Integral)
-            or (isinstance(k, str) and k.isdigit()),
+            or (isinstance(k, str) and _is_valid_int_string(k)),
             mask_targets.keys(),
         )
     )
+
+
+def _is_valid_int_string(s):
+    return s.replace("-", "", 1).isdigit()
 
 
 def is_rgb_mask_targets(mask_targets):

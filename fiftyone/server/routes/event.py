@@ -1,7 +1,7 @@
 """
 FiftyOne Server /event route
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -21,7 +21,7 @@ class Event(HTTPEndpoint):
     async def post(self, request: Request, data: t.Dict) -> t.Dict:
         await dispatch_event(
             data["subscription"],
-            fose.Event.from_data(data["event"], data["data"]),
+            await fose.Event.from_data_async(data["event"], data["data"]),
         )
 
         return {}

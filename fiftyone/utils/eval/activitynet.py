@@ -1,7 +1,7 @@
 """
 ActivityNet-style temporal detection evaluation.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -150,19 +150,19 @@ class ActivityNetEvaluation(DetectionEvaluation):
         Returns:
             a :class:`DetectionResults`
         """
-        gt_field = self.config.gt_field
-        pred_field = self.config.pred_field
-
         if not self.config.compute_mAP:
             return DetectionResults(
+                samples,
+                self.config,
+                eval_key,
                 matches,
-                eval_key=eval_key,
-                gt_field=gt_field,
-                pred_field=pred_field,
                 classes=classes,
                 missing=missing,
-                samples=samples,
+                backend=self,
             )
+
+        gt_field = self.config.gt_field
+        pred_field = self.config.pred_field
 
         _samples = samples.select_fields([gt_field, pred_field])
 
@@ -277,6 +277,9 @@ class ActivityNetEvaluation(DetectionEvaluation):
                 classwise_AP[iou_threshs.index(t)][classes.index(c)] = ap
 
         return ActivityNetDetectionResults(
+            samples,
+            self.config,
+            eval_key,
             matches,
             precision,
             recall,
@@ -284,11 +287,8 @@ class ActivityNetEvaluation(DetectionEvaluation):
             iou_threshs,
             classes,
             thresholds=thresholds,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
 
@@ -296,6 +296,9 @@ class ActivityNetDetectionResults(DetectionResults):
     """Class that stores the results of a ActivityNet detection evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`ActivityNetEvaluationConfig` used
+        eval_key: the evaluation key
         matches: a list of
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
@@ -309,17 +312,16 @@ class ActivityNetDetectionResults(DetectionResults):
         classes: the list of possible classes
         thresholds (None): an optional array of decision thresholds of shape
             ``num_iou_threshs x num_classes x num_recall``
-        eval_key (None): the evaluation key for this evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched segments are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`ActivityNetEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
+        eval_key,
         matches,
         precision,
         recall,
@@ -327,20 +329,17 @@ class ActivityNetDetectionResults(DetectionResults):
         iou_threshs,
         classes,
         thresholds=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         super().__init__(
+            samples,
+            config,
+            eval_key,
             matches,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
 
         self.precision = np.asarray(precision)
@@ -465,7 +464,7 @@ class ActivityNetDetectionResults(DetectionResults):
         return inds[0]
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         precision = d["precision"]
         recall = d["recall"]
         iou_threshs = d["iou_threshs"]
@@ -474,6 +473,7 @@ class ActivityNetDetectionResults(DetectionResults):
             d,
             samples,
             config,
+            eval_key,
             precision=precision,
             recall=recall,
             iou_threshs=iou_threshs,

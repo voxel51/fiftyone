@@ -1,6 +1,11 @@
 import React, { useContext, useState } from "react";
 import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "@react-spring/web";
+import {
+  useToClips,
+  useToPatches,
+  useToEvaluationPatches,
+} from "@fiftyone/state";
 
 import {
   CLIPS_FRAME_FIELDS,
@@ -79,106 +84,17 @@ const evaluationKeys = selector<string[]>({
         })
       )
     );
-    
-    const evals = get(fos.dataset).evaluations.filter(
-      e => valid.includes(e.config.predField) || valid.includes(e.config.gtField)
-    )
 
-    const keys = evals.map(({key}) => key);
+    const evals = get(fos.dataset).evaluations.filter(
+      (e) =>
+        valid.includes(e.config.predField) || valid.includes(e.config.gtField)
+    );
+
+    const keys = evals.map(({ key }) => key);
 
     return keys;
   },
 });
-
-const useToPatches = () => {
-  const onComplete = useRecoilCallback(
-    ({ set }) =>
-      () => {
-        set(fos.patching, false);
-      },
-    []
-  );
-  const setView = useSetView(true, true, onComplete);
-  return useRecoilCallback(
-    ({ set }) =>
-      async (field) => {
-        set(fos.patching, true);
-        setView(
-          (v) => v,
-          [
-            {
-              _cls: "fiftyone.core.stages.ToPatches",
-              kwargs: [
-                ["field", field],
-                ["_state", null],
-              ],
-            },
-          ]
-        );
-      },
-    []
-  );
-};
-
-const useToClips = () => {
-  const onComplete = useRecoilCallback(
-    ({ set }) =>
-      () => {
-        set(fos.patching, false);
-      },
-    []
-  );
-  const setView = useSetView(true, true, onComplete);
-  return useRecoilCallback(
-    ({ set }) =>
-      async (field) => {
-        set(fos.patching, true);
-        setView(
-          (v) => v,
-          [
-            {
-              _cls: "fiftyone.core.stages.ToClips",
-              kwargs: [
-                ["field_or_expr", field],
-                ["_state", null],
-              ],
-            },
-          ]
-        );
-      },
-    []
-  );
-};
-
-const useToEvaluationPatches = () => {
-  const onComplete = useRecoilCallback(
-    ({ set }) =>
-      () => {
-        set(fos.patching, false);
-      },
-    []
-  );
-  const setView = useSetView(true, true, onComplete);
-  return useRecoilCallback(
-    ({ set }) =>
-      async (evaluation) => {
-        set(fos.patching, true);
-        setView(
-          (v) => v,
-          [
-            {
-              _cls: "fiftyone.core.stages.ToEvaluationPatches",
-              kwargs: [
-                ["eval_key", evaluation],
-                ["_state", null],
-              ],
-            },
-          ]
-        );
-      },
-    []
-  );
-};
 
 const LabelsClips = ({ close }) => {
   const fields = useRecoilValue(clipsFields);
