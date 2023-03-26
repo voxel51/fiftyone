@@ -111,7 +111,8 @@ ARG ROOT_DIR=/fiftyone
 ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
     FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
     FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
-    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models
+    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models \
+    FIFTYONE_DATABASE_URI=mongodb://localhost
 
 #
 # Default behavior
