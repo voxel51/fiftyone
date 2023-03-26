@@ -3087,7 +3087,7 @@ class GroupBy(ViewStage):
         return self._make_grouped_pipeline(sample_collection)
 
     def _make_flat_pipeline(self, sample_collection):
-        group_expr = self._group_expr(sample_collection)
+        group_expr, _ = self._group_expr(sample_collection)
         match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
@@ -3121,7 +3121,7 @@ class GroupBy(ViewStage):
 
     def _make_grouped_pipeline(self, sample_collection):
         order_by = self._order_by
-        group_expr = self._group_expr(sample_collection)
+        group_expr, _ = self._group_expr(sample_collection)
 
         pipeline = []
 
@@ -3139,19 +3139,22 @@ class GroupBy(ViewStage):
 
     def _group_expr(self, sample_collection):
         if self._flat:
-            return None
+            return None, None
 
         field_or_expr = self._get_mongo_field_or_expr()
+        is_id_field = False
 
         if etau.is_str(field_or_expr):
-            field_or_expr, _, _ = sample_collection._handle_id_fields(
-                field_or_expr
-            )
+            (
+                field_or_expr,
+                is_id_field,
+                _,
+            ) = sample_collection._handle_id_fields(field_or_expr)
             group_expr = "$" + field_or_expr
         else:
             group_expr = field_or_expr
 
-        return group_expr
+        return group_expr, is_id_field
 
     def get_media_type(self, sample_collection):
         if self._flat:
@@ -3258,7 +3261,7 @@ class GroupBy(ViewStage):
 
         if order_by is not None:
             order = -1 if self._reverse else 1
-            stage = SortBy([(self._field_or_expr, order), (order_by, order)])
+            stage = SortBy([(self._field_or_expr, 1), (order_by, order)])
             stage.validate(sample_collection)
 
             self._sort_stage = stage

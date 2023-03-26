@@ -705,8 +705,11 @@ class DatasetView(foc.SampleCollection):
             )
 
     def _get_dynamic_group(self, group_value):
-        match_expr = {"$expr": {"$eq": [self._group_expr(), group_value]}}
-        view = self.match(match_expr)
+        group_expr, is_id_field = self._group_expr()
+        if is_id_field and not isinstance(group_value, ObjectId):
+            group_value = ObjectId(group_value)
+
+        view = self.match({"$expr": {"$eq": [group_expr, group_value]}})
 
         try:
             return next(iter(view._iter_dynamic_groups()))
@@ -1227,21 +1230,27 @@ class DatasetView(foc.SampleCollection):
 
     def _group_expr(self):
         group_expr = None
+        is_id_field = None
 
         for stage in self._stages:
             if isinstance(stage, fost.GroupBy):
-                group_expr = stage._group_expr()
+                group_expr, is_id_field = stage._group_expr(self)
                 if group_expr is not None:
                     break
 
-        return group_expr
+        return group_expr, is_id_field
 
     def _groups_only_pipeline(self, expr_field):
         group_expr = None
+        order_by = None
+        reverse = False
+
         _view = self._base_view
         for stage in self._stages:
             if isinstance(stage, fost.GroupBy):
-                group_expr = stage._group_expr()
+                group_expr, _ = stage._group_expr(_view)
+                order_by = stage.order_by
+                reverse = stage.reverse
                 if group_expr is not None:
                     break
 
@@ -1256,6 +1265,16 @@ class DatasetView(foc.SampleCollection):
         pipeline.append(
             {"$match": {"$expr": {"$eq": ["$$group_expr", group_expr]}}}
         )
+
+        if order_by is not None:
+            order = -1 if reverse else 1
+            if etau.is_str(group_expr):
+                group_field = group_expr[1:]  # remove "$"
+                sort = OrderedDict([(group_field, 1), (order_by, order)])
+            else:
+                sort = {order_by: order}
+
+            pipeline.append({"$sort": sort})
 
         return [
             {"$project": {expr_field: group_expr}},

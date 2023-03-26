@@ -8196,12 +8196,24 @@ class SampleCollection(object):
         Frame-level fields can be indexed by prepending ``"frames."`` to the
         field name.
 
-        If you are indexing a single field and it already has a unique
-        constraint, it will be retained regardless of the ``unique`` value you
-        specify. Conversely, if the given field already has a non-unique index
-        but you requested a unique index, the existing index will be replaced
-        with a unique index. Use :meth:`drop_index` to drop an existing index
-        first if you wish to modify an existing index in other ways.
+        .. note::
+
+            If an index with the same field(s) but different order(s) already
+            exists, no new index will be created.
+
+            Use :meth:`drop_index` to drop an existing index first if you wish
+            to replace an existing index with new properties.
+
+        .. note::
+
+            If you are indexing a single field and it already has a unique
+            constraint, it will be retained regardless of the ``unique`` value
+            you specify. Conversely, if the given field already has a
+            non-unique index but you requested a unique index, the existing
+            index will be replaced with a unique index.
+
+            Use :meth:`drop_index` to drop an existing index first if you wish
+            to replace an existing index with new properties.
 
         Args:
             field_or_spec: the field name, ``embedded.field.name``, or index
@@ -8221,13 +8233,13 @@ class SampleCollection(object):
             input_spec = list(field_or_spec)
 
         single_field_index = len(input_spec) == 1
+        index_info = self.get_index_information()
 
         # For single field indexes, provide special handling based on `unique`
         # constraint
         if single_field_index:
             field = input_spec[0][0]
 
-            index_info = self.get_index_information()
             if field in index_info:
                 _unique = index_info[field].get("unique", False)
                 if _unique or (unique == _unique):
@@ -8267,6 +8279,20 @@ class SampleCollection(object):
             )
 
         is_frame_index = all(is_frame_fields)
+
+        if single_field_index:
+            index_name = input_spec[0][0]
+        else:
+            index_name = "_".join("%s_%s" % (f, o) for f, o in index_spec)
+
+        if is_frame_index:
+            index_name = self._FRAMES_PREFIX + index_name
+
+        normalize = lambda name: name.replace("-1", "1")
+        _index_name = normalize(index_name)
+        if any(_index_name == normalize(name) for name in index_info.keys()):
+            # Satisfactory index already exists
+            return index_name
 
         if is_frame_index:
             coll = self._dataset._frame_collection
