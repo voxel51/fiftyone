@@ -22,7 +22,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 import fiftyone.server.utils as fosu
-from fiftyone.core.utils import pprint
 
 
 _LABEL_TAGS = "_label_tags"
@@ -404,7 +403,7 @@ def _make_filter_stages(
 
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[1 if frames else 0]
+                    new_field = "___%s" % path.split(".")[1 if frames else 0]
                     if frames:
                         new_field = "%s%s" % (
                             view._FRAMES_PREFIX,
@@ -434,7 +433,6 @@ def _make_filter_stages(
                 elif is_matching:
                     _field = prefix + parent.name
                     _field = cache.get(_field, _field)
-
                     stage = fosg.MatchLabels(
                         fields=_field,
                         filter=expr,
@@ -453,8 +451,7 @@ def _make_filter_stages(
 
                 stages.append(stage)
                 filtered_labels.add(path)
-
-                if new_field:
+                if new_field and (not is_matching or is_keypoints):
                     cache[prefix + parent.name] = new_field
                     cleanup.add(new_field)
         else:
@@ -699,9 +696,9 @@ def _get_filtered_path(view, path, filtered_fields, label_tags):
         return path
 
     if path.startswith(view._FRAMES_PREFIX):
-        return "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
+        return "%s___%s" % (view._FRAMES_PREFIX, path.split(".")[1])
 
-    return "__%s" % path
+    return "___%s" % path
 
 
 def _add_frame_labels_tags(path, field, view):
