@@ -4489,6 +4489,130 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertFalse(frame.has_field("field"))
         self.assertFalse(frame.predictions.detections[0].has_field("field"))
 
+    @drop_datasets
+    def test_filter_fields(self):
+        dataset = fo.Dataset()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg", ground_truth=fo.Classification()
+                ),
+                fo.Sample(
+                    filepath="image3.jpg",
+                    field_1=1,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_1=1)]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_2=2,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        dataset.add_sample_field("field_3", ftype=fo.StringField)
+
+        field_1 = dataset.get_field("field_1")
+        field_2 = dataset.get_field("field_2")
+        field_3 = dataset.get_field("field_3")
+
+        field_1.description = "this is a unique description by joe"
+        field_2.description = "hello world test123"
+
+        field_1.info = {
+            "a": 12,
+            "b": 24,
+            "c": 36,
+            "owner": "jill",
+            "test": True,
+        }
+        field_2.info = {"list": [1, 2, 3], "owner": "joe", "test": True}
+        field_3.info = {"one": {"two": {"three": "test123"}}}
+
+        view = dataset.select_fields(meta_filter="unique")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(meta_filter="test123")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" in fields
+        assert (
+            "field_3" in fields
+        )  # @todo this should be true with a recursive dict match
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(
+            ["ground_truth", "field_2"],
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" in fields
+        assert "field_3" in fields
+        assert "ground_truth" in fields
+
+        view = dataset.select_fields(
+            meta_filter=dict(one=dict(two=dict(three="test123")))
+        )
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" not in fields
+        assert "field_3" in fields
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(meta_filter=dict(three="test123"))
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" not in fields
+        assert "field_3" in fields
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(
+            "ground_truth",
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" not in fields
+        assert "field_3" in fields
+        assert "ground_truth" in fields
+
+        view = dataset.select_fields(meta_filter="joe")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(meta_filter=dict(owner="joe"))
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(meta_filter=dict(test=True))
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        view = dataset.select_fields(meta_filter=dict(description="joe"))
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets
