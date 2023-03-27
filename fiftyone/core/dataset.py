@@ -7081,7 +7081,8 @@ def _cleanup_index(dataset, db_field, new_index, dropped_index):
         index_map = _get_single_index_map(coll)
 
         name = index_map[db_field][0]
-        coll.drop_index(name)
+        if name in coll.index_information():
+            coll.drop_index(name)
 
     if dropped_index:
         coll.create_index(db_field)
@@ -7090,7 +7091,7 @@ def _cleanup_index(dataset, db_field, new_index, dropped_index):
 def _cleanup_frame_index(dataset, index):
     coll = dataset._frame_collection
 
-    if index:
+    if index in coll.index_information():
         coll.drop_index(index)
 
 
