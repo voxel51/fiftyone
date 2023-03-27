@@ -41,45 +41,20 @@ export const stateSubscription = selector<string>({
   },
 });
 
-export const mediaTypeSelector = selector({
-  key: "mediaType",
-  get: ({ get }) => get(atoms.dataset)?.mediaType,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const savedViewsSelector = selector<State.SavedView[]>({
-  key: "datasetViews",
-  get: ({ get }) => get(atoms.dataset)?.savedViews || [],
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const isVideoDataset = selector({
   key: "isVideoDataset",
-  get: ({ get }) => get(mediaTypeSelector) === "video",
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  get: ({ get }) => get(atoms.mediaType) === "video",
 });
 
 export const isPointcloudDataset = selector({
   key: "isPointcloudDataset",
-  get: ({ get }) => get(mediaTypeSelector) === "point_cloud",
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  get: ({ get }) => get(atoms.mediaType) === "point_cloud",
 });
 
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
     return get(config)?.timezone || "UTC";
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -97,9 +72,6 @@ export const appConfigDefault = selectorFamily<
 
       return get(config)[key];
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {

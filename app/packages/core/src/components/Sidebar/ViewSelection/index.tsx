@@ -1,4 +1,9 @@
 import { Selection } from "@fiftyone/components";
+import {
+  savedViewsFragment,
+  savedViewsFragment$key,
+  savedViewsFragmentQuery,
+} from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import { useRefetchableFragment } from "react-relay";
@@ -10,13 +15,8 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
+import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import {
-  savedViewsFragment,
-  savedViewsFragment$key,
-  savedViewsFragmentQuery,
-} from "@fiftyone/relay";
 
 export const datasetQueryContext = React.createContext<
   savedViewsFragment$key | undefined
@@ -52,9 +52,6 @@ export default function ViewSelection() {
   const setEditView = useSetRecoilState(viewDialogContent);
   const resetView = useResetRecoilState(fos.view);
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-
-  const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
-
   const fragmentRef = useContext(datasetQueryContext);
 
   if (!fragmentRef) throw new Error("ref not defined");
@@ -109,7 +106,7 @@ export default function ViewSelection() {
     }
   }, [searchData, selected]);
 
-  const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
+  const loadedView = useRecoilValue(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
   const isEmptyView = !bookmarkIconOn && !loadedView?.length;
 
@@ -124,7 +121,7 @@ export default function ViewSelection() {
         }
         setSelected(potentialView as fos.DatasetViewOption);
       } else {
-        const potentialUpdatedView = savedViewsV2.filter(
+        const potentialUpdatedView = items.filter(
           (v) => v.name === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {

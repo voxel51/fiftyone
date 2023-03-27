@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f2febc26e8fa01c03223944639f28f9e>>
+ * @generated SignedSource<<da4ab75c9bf586bfc9e08d10597db848>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -62,6 +62,7 @@ export type datasetFragment$data = {
     readonly mediaType: MediaType;
     readonly name: string;
   }> | null;
+  readonly groupSlice: string | null;
   readonly id: string;
   readonly info: any | null;
   readonly lastLoadedAt: any | null;
@@ -80,7 +81,7 @@ export type datasetFragment$data = {
     readonly name: string;
   }>;
   readonly version: string | null;
-  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
 export type datasetFragment$key = {
@@ -93,6 +94,6 @@ const node: ReaderInlineDataFragment = {
   "name": "datasetFragment"
 };
 
-(node as any).hash = "786e6e058e643d943dc7b1a5c12b61c2";
+(node as any).hash = "17467433f5be74f8a8b9482ab3893c18";
 
 export default node;

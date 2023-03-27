@@ -16,7 +16,7 @@ import { groupSample, selectedMediaField } from "../recoil";
 
 import { SampleData, selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName, mediaTypeSelector } from "../recoil/selectors";
+import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -37,7 +37,6 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
-  const mediaType = useRecoilValue(mediaTypeSelector);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -138,7 +137,6 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       highlight,
       selected,
       view,
-      mediaType,
     ]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);

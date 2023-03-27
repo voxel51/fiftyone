@@ -222,7 +222,7 @@ const DEFAULT_VIDEO_GROUPS = [
 
 const NONE = [null, undefined];
 
-export const resolveGroups = (
+const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
   current: State.SidebarGroup[],
@@ -340,41 +340,50 @@ const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
   };
 };
 
-export const sidebarGroupsDefinition = (() => {
+export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
+  let config: sidebarGroupsFragment$data["appConfig"]["sidebarGroups"] = [];
   let current: State.SidebarGroup[] = [];
-  return graphQLSyncFragmentAtomFamily<
-    sidebarGroupsFragment$key,
-    State.SidebarGroup[],
-    boolean
-  >(
-    {
-      fragments: [datasetFragment, sidebarGroupsFragment],
-      keys: ["dataset"],
-      storeKey: "router",
-      sync: (modal) => !modal,
-      read: (data) => {
-        current = resolveGroups(
-          collapseFields(
-            readInlineData(
-              sampleFieldsFragment,
-              data as sampleFieldsFragment$key
-            ).sampleFields
-          ),
-          collapseFields(
-            readInlineData(frameFieldsFragment, data as frameFieldsFragment$key)
-              .frameFields
-          ),
-          current,
-          data.appConfig?.sidebarGroups
-        );
-        return current;
-      },
+  return [
+    (sampleFields: StrictField[], frameFields: StrictField[]) => {
+      return resolveGroups(sampleFields, frameFields, current, config);
     },
-    {
-      key: "sidebarGroupsDefinition",
-      default: [],
-    }
-  );
+    graphQLSyncFragmentAtomFamily<
+      sidebarGroupsFragment$key,
+      State.SidebarGroup[],
+      boolean
+    >(
+      {
+        fragments: [datasetFragment, sidebarGroupsFragment],
+        keys: ["dataset"],
+        storeKey: "router",
+        sync: (modal) => !modal,
+        read: (data) => {
+          config = data.appConfig?.sidebarGroups;
+          current = resolveGroups(
+            collapseFields(
+              readInlineData(
+                sampleFieldsFragment,
+                data as sampleFieldsFragment$key
+              ).sampleFields
+            ),
+            collapseFields(
+              readInlineData(
+                frameFieldsFragment,
+                data as frameFieldsFragment$key
+              ).frameFields
+            ),
+            current,
+            config
+          );
+          return current;
+        },
+      },
+      {
+        key: "sidebarGroupsDefinition",
+        default: [],
+      }
+    ),
+  ];
 })();
 
 export const sidebarGroups = selectorFamily<

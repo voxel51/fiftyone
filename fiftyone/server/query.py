@@ -487,6 +487,7 @@ async def serialize_dataset(
 
         collection = dataset.view()
         if view is not None:
+            data.id = ObjectId()
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]

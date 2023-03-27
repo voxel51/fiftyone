@@ -30,7 +30,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = KeyTypeData<T>>(
   store.set(options.key, {
     fragments: fragmentOptions.fragments,
     keys: fragmentOptions.keys,
-    reader: fragmentOptions.read,
+    reader: fragmentOptions.read || ((value) => value),
   });
 
   return atom({

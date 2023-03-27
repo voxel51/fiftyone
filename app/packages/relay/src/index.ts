@@ -5,4 +5,5 @@ export * from "./graphQLSyncFragmentAtomFamily";
 export * from "./mutations";
 export * from "./PageQuery";
 export * from "./queries";
+export * from "./RelayEnvironmentContext";
 export * from "./Writer";

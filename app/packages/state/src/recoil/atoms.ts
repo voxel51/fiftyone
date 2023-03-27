@@ -5,6 +5,8 @@ import {
   frameFieldsFragment,
   frameFieldsFragment$key,
   graphQLSyncFragmentAtom,
+  mediaTypeFragment,
+  mediaTypeFragment$key,
   sampleFieldsFragment,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
@@ -163,6 +165,18 @@ export const dataset = graphQLSyncFragmentAtom<
   {
     key: "dataset",
     default: null,
+  }
+);
+
+export const mediaType = graphQLSyncFragmentAtom<mediaTypeFragment$key, string>(
+  {
+    storeKey: "router",
+    fragments: [datasetFragment, mediaTypeFragment],
+    keys: ["dataset"],
+    read: (data) => data.mediaType,
+  },
+  {
+    key: "mediaType",
   }
 );
 

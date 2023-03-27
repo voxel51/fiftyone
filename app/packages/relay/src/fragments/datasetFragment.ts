@@ -2,47 +2,22 @@ import { graphql } from "relay-runtime";
 
 export default graphql`
   fragment datasetFragment on Dataset @inline {
-    ...frameFieldsFragment
-    ...groupSliceFragment
-    ...sampleFieldsFragment
-    ...sidebarGroupsFragment
-    ...viewFragment
-    id
-    name
-    mediaType
+    createdAt
     groupField
-    groupMediaTypes {
-      name
-      mediaType
-    }
+    groupSlice
+    id
+    info
+    lastLoadedAt
+    mediaType
+    name
+    version
+
     appConfig {
       gridMediaField
       mediaFields
       modalMediaField
       plugins
       sidebarMode
-    }
-    maskTargets {
-      name
-      targets {
-        target
-        value
-      }
-    }
-    defaultMaskTargets {
-      target
-      value
-    }
-    evaluations {
-      key
-      version
-      timestamp
-      viewStages
-      config {
-        cls
-        predField
-        gtField
-      }
     }
     brainMethods {
       key
@@ -60,18 +35,47 @@ export default graphql`
         supportsLeastSimilarity
       }
     }
-    lastLoadedAt
-    createdAt
-    skeletons {
-      name
-      labels
-      edges
+    defaultMaskTargets {
+      target
+      value
     }
     defaultSkeleton {
       labels
       edges
     }
-    version
-    info
+    evaluations {
+      key
+      version
+      timestamp
+      viewStages
+      config {
+        cls
+        predField
+        gtField
+      }
+    }
+    groupMediaTypes {
+      name
+      mediaType
+    }
+    maskTargets {
+      name
+      targets {
+        target
+        value
+      }
+    }
+    skeletons {
+      name
+      labels
+      edges
+    }
+
+    ...frameFieldsFragment
+    ...groupSliceFragment
+    ...mediaTypeFragment
+    ...sampleFieldsFragment
+    ...sidebarGroupsFragment
+    ...viewFragment
   }
 `;

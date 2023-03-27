@@ -1,3 +1,4 @@
+import { RelayEnvironmentContext } from "@fiftyone/relay";
 import { RelayEnvironmentKey } from "@fiftyone/state";
 import React from "react";
 import { RelayEnvironmentProvider } from "react-relay";
@@ -17,9 +18,11 @@ const Network: React.FC<{
         environmentKey={RelayEnvironmentKey}
       >
         <RouterContext.Provider value={context}>
-          <Sync>
-            <Renderer router={context} />
-          </Sync>
+          <RelayEnvironmentContext.Provider value={environment}>
+            <Sync>
+              <Renderer router={context} />
+            </Sync>
+          </RelayEnvironmentContext.Provider>
         </RouterContext.Provider>
       </RecoilRelayEnvironment>
     </RelayEnvironmentProvider>

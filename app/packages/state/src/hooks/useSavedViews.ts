@@ -1,20 +1,13 @@
-import { useCallback } from "react";
-import {
-  useRecoilCallback,
-  useRecoilRefresher_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import { useMutation } from "react-relay";
-import { useErrorHandler } from "react-error-boundary";
-
-import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 import { viewStateForm } from "@fiftyone/state";
+import { useCallback } from "react";
+import { useErrorHandler } from "react-error-boundary";
+import { useMutation } from "react-relay";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 export default function useSavedViews() {
-  const savedViews = useRecoilValue(fos.savedViewsSelector);
   const datasetNameValue = useRecoilValue(fos.datasetName);
-  const refresh = useRecoilRefresher_UNSTABLE(fos.savedViewsSelector);
   const send = fos.useSendEvent();
   const onError = useErrorHandler();
   const subscription = useRecoilValue(fos.stateSubscription);
@@ -123,8 +116,6 @@ export default function useSavedViews() {
   );
 
   return {
-    savedViews,
-    refresh,
     isDeletingSavedView,
     handleDeleteView,
     isCreatingSavedView,

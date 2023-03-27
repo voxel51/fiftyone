@@ -65,17 +65,14 @@ const Route = ({ route }: { route: Entry<Queries> }) => {
   const Component = route.component;
   const subscriptions = useRef(new Set<PageSubscription<Queries>>());
   useEffect(() => {
-    return router?.subscribe(
-      ({ concreteRequest, preloadedQuery }) => {
-        subscriptions.current.forEach((cb) => {
-          cb({
-            concreteRequest,
-            preloadedQuery,
-          });
+    return router?.subscribe(({ concreteRequest, preloadedQuery }) => {
+      subscriptions.current.forEach((cb) => {
+        cb({
+          concreteRequest,
+          preloadedQuery,
         });
-      },
-      () => null
-    );
+      });
+    });
   }, [router]);
 
   return (

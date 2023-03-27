@@ -1,12 +1,21 @@
-import { setView, setViewMutation } from "@fiftyone/relay";
+import {
+  frameFieldsFragment,
+  frameFieldsFragment$key,
+  groupSliceFragment,
+  groupSliceFragment$key,
+  sampleFieldsFragment,
+  sampleFieldsFragment$key,
+  setView,
+  setViewMutation,
+} from "@fiftyone/relay";
 import { useErrorHandler } from "react-error-boundary";
-import { useMutation } from "react-relay";
+import { readInlineData, useMutation } from "react-relay";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import { collapseFields } from "../";
 import * as atoms from "../recoil";
 import {
   datasetName,
-  groupSlice,
+  resolveSidebarGroups,
   State,
   stateSubscription,
   view,
@@ -25,12 +34,16 @@ const useSetView = (
 
   const setter = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      ({ view, sampleFields, frameFields, viewCls }) => {
+      ({ view, sampleFields, frameFields, viewCls, groupSlice }) => {
         set(atoms.viewCls, viewCls);
         set(atoms.sampleFields, sampleFields);
         set(atoms.frameFields, frameFields);
         set(atoms.view, view);
-        set(groupSlice(false));
+        set(atoms.groupSlice(false), groupSlice);
+        set(
+          atoms.sidebarGroupsDefinition(false),
+          resolveSidebarGroups(sampleFields, frameFields)
+        );
       },
     []
   );
@@ -74,17 +87,26 @@ const useSetView = (
               savedViewSlug,
             },
             onError,
-            onCompleted: ({
-              setView: {
-                view,
-                dataset: { viewCls, frameFields, sampleFields },
-              },
-            }) => {
+            onCompleted: ({ setView: { view, dataset } }) => {
               setter({
-                viewCls,
+                viewCls: dataset.viewCls,
                 view,
-                frameFields: collapseFields(frameFields),
-                sampleFields: collapseFields(sampleFields),
+                frameFields: collapseFields(
+                  readInlineData<frameFieldsFragment$key>(
+                    frameFieldsFragment,
+                    dataset
+                  ).frameFields
+                ),
+                sampleFields: collapseFields(
+                  readInlineData<sampleFieldsFragment$key>(
+                    sampleFieldsFragment,
+                    dataset
+                  ).sampleFields
+                ),
+                groupSlice: readInlineData<groupSliceFragment$key>(
+                  groupSliceFragment,
+                  dataset
+                ).groupSlice,
               });
               onComplete && onComplete();
             },

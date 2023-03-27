@@ -20,108 +20,11 @@ export default r(graphql`
       form: $form
     ) {
       dataset {
-        id
-        name
-        mediaType
-        groupSlice
-        defaultGroupSlice
-        groupField
-        groupMediaTypes {
-          name
-          mediaType
-        }
-        stages(slug: $savedViewSlug)
-        sampleFields {
-          ftype
-          subfield
-          embeddedDocType
-          path
-          dbField
-          description
-          info
-        }
-        frameFields {
-          ftype
-          subfield
-          embeddedDocType
-          path
-          dbField
-          description
-          info
-        }
-        maskTargets {
-          name
-          targets {
-            target
-            value
-          }
-        }
-        defaultMaskTargets {
-          target
-          value
-        }
-        savedViews {
-          id
-          name
-          description
-          color
-          viewStages
-          slug
-          createdAt
-          lastModifiedAt
-          lastLoadedAt
-        }
-        evaluations {
-          key
-          version
-          timestamp
-          viewStages
-          config {
-            cls
-            predField
-            gtField
-          }
-        }
-        brainMethods {
-          key
-          version
-          timestamp
-          viewStages
-          config {
-            cls
-            embeddingsField
-            method
-            patchesField
-            supportsPrompts
-            type
-          }
-        }
-        lastLoadedAt
-        createdAt
-        version
+        ...sampleFieldsFragment
+        ...frameFieldsFragment
+        ...groupSliceFragment
+        ...sidebarGroupsFragment
         viewCls
-        viewName
-        skeletons {
-          name
-          labels
-          edges
-        }
-        defaultSkeleton {
-          labels
-          edges
-        }
-        appConfig {
-          gridMediaField
-          mediaFields
-          modalMediaField
-          plugins
-          sidebarGroups {
-            expanded
-            name
-            paths
-          }
-          sidebarMode
-        }
       }
       view
     }

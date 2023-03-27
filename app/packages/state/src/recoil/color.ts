@@ -12,7 +12,6 @@ import * as atoms from "./atoms";
 import { colorPool, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-import { State } from "./types";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -77,7 +76,7 @@ export const pathColor = selectorFamily<
     ({ modal, path }) =>
     ({ get }) => {
       const map = get(colorMap(modal));
-      const video = get(selectors.mediaTypeSelector) !== "image";
+      const video = get(atoms.mediaType) !== "image";
 
       const parentPath =
         video && path.startsWith("frames.")

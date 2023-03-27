@@ -115,7 +115,6 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     brainMethods: [...dataset.brainMethods],
     evaluations: [...dataset.evaluations],
     maskTargets: targets,
-    mediaType: dataset.mediaType,
   };
 };
 

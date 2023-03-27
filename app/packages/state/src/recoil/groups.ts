@@ -21,6 +21,7 @@ import {
   AppSample,
   dataset,
   getBrowserStorageEffectForKey,
+  mediaType,
   modal,
   modal as modalAtom,
   SampleData,
@@ -34,7 +35,7 @@ type SliceName = string | undefined | null;
 export const isGroup = selector<boolean>({
   key: "isGroup",
   get: ({ get }) => {
-    return get(dataset)?.mediaType === "group";
+    return get(mediaType) === "group";
   },
 });
 

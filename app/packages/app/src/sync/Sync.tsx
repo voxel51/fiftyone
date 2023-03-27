@@ -1,7 +1,5 @@
 import { Loading } from "@fiftyone/components";
 import {
-  setGroupSlice,
-  setGroupSliceMutation,
   setSelected,
   setSelectedLabels,
   setSelectedLabelsMutation,
@@ -259,22 +257,6 @@ const WRITE_HANDLERS: {
     subscription: string
   ) => void;
 } = {
-  groupSlice_false: (router, slice: string, subscription) => {
-    if (typeof slice !== "string") {
-      throw new Error("slice must be defined");
-    }
-
-    commitMutation<setGroupSliceMutation>(
-      router.get().preloadedQuery.environment,
-      {
-        mutation: setGroupSlice,
-        variables: {
-          slice,
-          subscription,
-        },
-      }
-    );
-  },
   selectedSamples: (
     router: RoutingContext<Queries>,
     selected: Set<string> | DefaultValue,

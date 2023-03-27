@@ -127,8 +127,6 @@ export namespace State {
     maskTargets: {
       [key: string]: Targets;
     };
-    groupSlice?: string;
-    mediaType: MediaType;
     name: string;
     version: string;
     skeletons: StrictKeypointSkeleton[];
