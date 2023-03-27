@@ -667,7 +667,7 @@ Images are of variable sizes, with typical edge lengths of 80-800 pixels.
 -   Tags: ``image, classification``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
-    :class:`Caltech101Dataset <fiftyone.zoo.datasets.base.Caltech256Dataset>`
+    :class:`Caltech256Dataset <fiftyone.zoo.datasets.base.Caltech256Dataset>`
 
 **Example usage**
 
