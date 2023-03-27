@@ -383,19 +383,6 @@ export const readOnly = atom({
 
 export const sessionSpaces = atom<SpaceNodeJSON>({
   key: "sessionSpaces",
-  default: {
-    id: "root",
-    children: [
-      {
-        id: "default-samples-node",
-        children: [],
-        type: "Samples",
-        pinned: true,
-      },
-    ],
-    type: "panel-container",
-    activeChild: "default-samples-node",
-  },
   effects: [
     syncEffect({
       storeKey: "router",

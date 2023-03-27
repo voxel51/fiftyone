@@ -6,6 +6,8 @@ import {
   setSelectedLabels,
   setSelectedLabelsMutation,
   setSelectedMutation,
+  setSpaces,
+  setSpacesMutation,
   setView,
   setViewMutation,
   Writer,
@@ -36,6 +38,7 @@ enum Events {
   SELECT_LABELS = "select_labels",
   SELECT_SAMPLES = "select_samples",
   SET_SPACES = "set_spaces",
+  SET_GROUP_SLICE = "set_group_slice",
   STATE_UPDATE = "state_update",
   INIT = "init",
 }
@@ -49,7 +52,7 @@ enum AppReadyState {
 interface SessionData {
   selectedSamples: string[];
   selectedLabels: State.SelectedLabel[];
-  spaces: SpaceNodeJSON;
+  spaces?: SpaceNodeJSON;
 }
 
 const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
@@ -77,10 +80,6 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const sessionRef = useRef<SessionData>({
     selectedSamples: [],
     selectedLabels: [],
-    spaces: {
-      id: "",
-      children: [],
-    },
   });
   const updateExternals = useRef<(items: ItemSnapshot) => void>();
   React.useEffect(() => {
@@ -310,6 +309,19 @@ const WRITE_HANDLERS: {
         },
       }
     );
+  },
+  sessionSpaces: (
+    router: RoutingContext<Queries>,
+    spaces: SpaceNodeJSON | DefaultValue,
+    subscription: string
+  ) => {
+    commitMutation<setSpacesMutation>(router.get().preloadedQuery.environment, {
+      mutation: setSpaces,
+      variables: {
+        spaces,
+        subscription,
+      },
+    });
   },
   view: (
     router: RoutingContext<Queries>,

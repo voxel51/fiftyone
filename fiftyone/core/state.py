@@ -22,7 +22,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.core.spaces import Space
+from fiftyone.core.spaces import default_spaces, Space
 from fiftyone.server.scalars import JSON
 
 
@@ -63,7 +63,7 @@ class StateDescription(etas.Serializable):
             if dataset is not None and view_name
             else view
         )
-        self.spaces = spaces
+        self.spaces = spaces or default_spaces.copy()
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
