@@ -45,7 +45,7 @@ export function Writer<T extends OperationType>({
         /* fragment not present, use default atom value */
       }
 
-      return value || undefined;
+      return value;
     },
     [read, store]
   );

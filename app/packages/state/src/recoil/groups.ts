@@ -11,6 +11,7 @@ import {
   pinnedSample,
   pinnedSampleQuery,
 } from "@fiftyone/relay";
+import { nullable, string } from "@recoiljs/refine";
 
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
@@ -50,9 +51,11 @@ export const groupSlice = graphQLSyncFragmentAtomFamily<
     keys: ["dataset"],
     read: (data) => data.groupSlice,
     sync: (modal) => !modal,
+    refine: nullable(string()),
   },
   {
     key: "groupSlice",
+    default: null,
   }
 );
 
