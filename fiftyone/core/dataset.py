@@ -6888,6 +6888,7 @@ def _merge_dataset_doc(
             for media_type in src_group_media_types.values()
         ):
             dataset._init_frames()
+            dataset.save()
 
         if curr_doc.default_group_slice is None:
             curr_doc.default_group_slice = src_default_group_slice
