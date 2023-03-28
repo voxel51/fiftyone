@@ -5,9 +5,10 @@ import * as fos from "@fiftyone/state";
 import Draggable from "react-draggable";
 
 import ReactDOM from "react-dom";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import ColorModalContent from "./ColorModalContent";
+import { Button } from "../utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -53,6 +54,14 @@ const ModalActionButtonContainer = styled.div`
   padding: 0.5rem;
 `;
 
+const BUTTON_STYLE: React.CSSProperties = {
+  margin: "0.5rem 0",
+  height: "2rem",
+  width: "6rem",
+  flex: 1,
+  textAlign: "center",
+};
+
 const SubmitControls = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.colorModal
@@ -61,20 +70,31 @@ const SubmitControls = () => {
     // TODO: clear the temporary color settings
     setActiveColorModalField(null);
   };
+  const onSave = () => {
+    setActiveColorModalField(null);
+  };
   return (
     <ModalActionButtonContainer>
-      {/* <Button variant="contained" >
-        Save
-      </Button>
-      <Button variant="outlined" onClick={onCancel}>
-        Cancel
-      </Button> */}
+      <Button
+        text={"Save"}
+        title={`Save`}
+        onClick={onSave}
+        style={BUTTON_STYLE}
+      />
     </ModalActionButtonContainer>
   );
 };
 
 const ColorModal = () => {
-  const screen = { minWidth: "500px", width: "50vw", height: "500px" };
+  const field = useRecoilValue(fos.colorModal);
+  const colorBy = useRecoilValue(fos.coloring(false)).by;
+  const longSetting = Boolean(field?.embeddedDocType && colorBy === "value");
+
+  const screen = {
+    minWidth: longSetting ? "500px" : "350px",
+    width: longSetting ? "50vw" : "30vw",
+    height: longSetting ? "80vh" : "350px",
+  };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
