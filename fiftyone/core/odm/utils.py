@@ -459,32 +459,31 @@ def _parse_embedded_doc_list_fields(values, dynamic):
         return []
 
     fields_dict = {}
-    fields = [_parse_embedded_doc_fields(v, dynamic) for v in values]
-    _merge_embedded_doc_fields(fields_dict, fields)
+    for value in values:
+        fields = _parse_embedded_doc_fields(value, dynamic)
+        _merge_embedded_doc_fields(fields_dict, fields)
+
     return _finalize_embedded_doc_fields(fields_dict)
 
 
-def _merge_embedded_doc_fields(fields_dict, fields_list):
-    for fields in fields_list:
-        for field in fields:
-            ftype = field["ftype"]
-            name = field["name"]
+def _merge_embedded_doc_fields(fields_dict, fields):
+    for field in fields:
+        ftype = field["ftype"]
+        name = field["name"]
 
-            if name not in fields_dict:
-                fields_dict[name] = field
-                if ftype == fof.EmbeddedDocumentField:
-                    field["fields"] = {f["name"]: f for f in field["fields"]}
-            else:
-                efield = fields_dict[name]
-                etype = efield["ftype"]
-                if etype != ftype:
-                    # @todo could provide an `add_mixed=True` option to declare
-                    # mixed fields like this as a generic `Field`
-                    fields_dict[name] = None
-                elif ftype == fof.EmbeddedDocumentField:
-                    _merge_embedded_doc_fields(
-                        efield["fields"], field["fields"]
-                    )
+        if name not in fields_dict:
+            fields_dict[name] = field
+            if ftype == fof.EmbeddedDocumentField:
+                field["fields"] = {f["name"]: f for f in field["fields"]}
+        else:
+            efield = fields_dict[name]
+            etype = efield["ftype"]
+            if etype != ftype:
+                # @todo could provide an `add_mixed=True` option to declare
+                # mixed fields like this as a generic `Field`
+                fields_dict[name] = None
+            elif ftype == fof.EmbeddedDocumentField:
+                _merge_embedded_doc_fields(efield["fields"], field["fields"])
 
 
 def _finalize_embedded_doc_fields(fields_dict):
