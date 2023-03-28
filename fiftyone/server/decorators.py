@@ -7,6 +7,7 @@ FiftyOne Server decorators
 """
 import traceback
 import typing as t
+import logging
 
 from fiftyone.core.json import FiftyOneJSONEncoder, stringify
 
@@ -36,6 +37,7 @@ def route(func):
 
             return FiftyOneResponse(response)
         except Exception as e:
+            logging.exception(e)
             return FiftyOneResponse(
                 {
                     "kind": "Server Error",

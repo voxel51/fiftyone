@@ -1873,6 +1873,91 @@ to retrieve the 15 most similar objects to a chosen object:
     :ref:`App guide <app-object-similarity>` to see how to sort objects by
     similarity via point-and-click in the App!
 
+.. _text-similarity-views:
+
+Text similarity
+---------------
+
+When you create a :ref:`similarity index <brain-similarity>` powered by the
+:ref:`CLIP model <model-zoo-clip-vit-base32-torch>`, you can pass arbitrary
+natural language queries to
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+along with the `brain_key` of a compatible similarity index:
+
+.. tabs::
+
+  .. group-tab:: Image similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index images by similarity
+        image_index = fob.compute_similarity(
+            dataset,
+            model="clip-vit-base32-torch",
+            brain_key="img_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Perform a text query
+        query = "kites high in the air"
+        view = dataset.sort_by_similarity(query, k=15, brain_key="img_sim")
+
+        session.view = view
+
+  .. group-tab:: Object similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index ground truth objects by similarity
+        object_index = fob.compute_similarity(
+            dataset,
+            patches_field="ground_truth",
+            model="clip-vit-base32-torch",
+            brain_key="gt_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Convert to patches view
+        patches = dataset.to_patches("ground_truth")
+
+        # Perform a text query
+        query = "cute puppies"
+        view = patches.sort_by_similarity(query, k=15, brain_key="gt_sim")
+
+        session.view = view
+
+You can verify that a similarity index supports text queries by checking that
+it `supports_prompts`:
+
+.. code-block:: python
+    :linenos:
+
+    info = dataset.get_brain_info(brain_key)
+    print(info.config.supports_prompts)  # True
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about generating similarity indexes, and check out the
+    :ref:`App guide <app-text-similarity>` to see how to sort objects by text
+    similarity via point-and-click in the App!
+
 .. _geolocation-views:
 
 Geolocation

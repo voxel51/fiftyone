@@ -610,7 +610,7 @@ pixels. This version contains image-level labels only.
 **Details**
 
 -   Dataset name: ``caltech101``
--   Dataset source: http://www.vision.caltech.edu/Image_Datasets/Caltech101
+-   Dataset source: https://data.caltech.edu/records/mzrjq-6wc02
 -   Dataset size: 138.60 MB
 -   Tags: ``image, classification``
 -   Supported splits: ``N/A``
@@ -662,12 +662,12 @@ Images are of variable sizes, with typical edge lengths of 80-800 pixels.
 **Details**
 
 -   Dataset name: ``caltech256``
--   Dataset source: http://www.vision.caltech.edu/Image_Datasets/Caltech256
+-   Dataset source: https://data.caltech.edu/records/nyy15-4j048
 -   Dataset size: 1.16 GB
 -   Tags: ``image, classification``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
-    :class:`Caltech101Dataset <fiftyone.zoo.datasets.base.Caltech256Dataset>`
+    :class:`Caltech256Dataset <fiftyone.zoo.datasets.base.Caltech256Dataset>`
 
 **Example usage**
 
@@ -1465,7 +1465,7 @@ The relationships in FIW are:
 
 Within FiftyOne, each sample corresponds to a single face image and contains
 primitive labels of the Family ID, Member ID, etc. The relationship labels are
-stored as :ref:`multi-label Classifications <multilabel-classifications>`,
+stored as :ref:`multi-label classifications <multilabel-classification>`,
 where each classification represents one relationship that the member has with
 another member in the family. The number of relationships will differ from one
 person to the next, but all faces of one person will have the same relationship

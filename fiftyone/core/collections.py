@@ -594,13 +594,23 @@ class SampleCollection(object):
 
     def _get_samples_bytes(self):
         """Computes the total size of the sample documents in the collection."""
+
+        # Impl note: We *could* do group directly without projecting $bsonSize
+        #   first, however we found in Mongo 5.2 a new execution engine
+        #   (Slot Based Execution) optimizes this away and incorrectly sums
+        #   the full document size, thus ignoring selected fields. A ticket
+        #   has been opened to resolve this bug.
+        #   https://jira.mongodb.org/browse/SERVER-75267
+        #   But until then we must do this in 2 stages (project-size, group-sum)
+        #   rather than 1 (group-sum-size)
         pipeline = [
+            {"$project": {"size": {"$bsonSize": "$$ROOT"}}},
             {
                 "$group": {
                     "_id": None,
-                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                    "size_bytes": {"$sum": "$size"},
                 }
-            }
+            },
         ]
 
         results = self._aggregate(pipeline=pipeline)
@@ -615,13 +625,20 @@ class SampleCollection(object):
         if not self._contains_videos():
             return None
 
+        # Impl note: this pipeline does not suffer the same fate as
+        #   _get_samples_bytes, likely because the Slot Based Execution engine
+        #   is not used due to additional stage complexity. However, until the
+        #   underlying issue is addressed, it is more future-proof to use the
+        #   same workaround here rather than rely on the SBE engine not
+        #   being used in this case.
         pipeline = [
             {"$unwind": "$frames"},
             {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$project": {"size": {"$bsonSize": "$$ROOT"}}},
             {
                 "$group": {
                     "_id": None,
-                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                    "size_bytes": {"$sum": "$size"},
                 }
             },
         ]
@@ -3127,18 +3144,19 @@ class SampleCollection(object):
         """
         return eval_key in self.list_evaluations()
 
-    def list_evaluations(self, type=None):
+    def list_evaluations(self, type=None, **kwargs):
         """Returns a list of all evaluation keys on this collection.
 
         Args:
             type (None): an :class:`fiftyone.core.evaluations.EvaluationMethod`
                 type. If provided, only runs that are a subclass of this type
                 are included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of evaluation keys
         """
-        return foev.EvaluationMethod.list_runs(self, type=type)
+        return foev.EvaluationMethod.list_runs(self, type=type, **kwargs)
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -3170,20 +3188,16 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
             cache (True): whether to cache the results on the collection
-            **kwargs: optional keyword arguments for the run's
-                :meth:`fiftyone.core.evaluation.EvaluationResults.load_credentials`
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.evaluation.EvaluationMethodConfig.load_credentials`
                 method
 
         Returns:
             a :class:`fiftyone.core.evaluation.EvaluationResults`
         """
-        results = foev.EvaluationMethod.load_run_results(
-            self, eval_key, cache=cache
+        return foev.EvaluationMethod.load_run_results(
+            self, eval_key, cache=cache, **kwargs
         )
-        if results is not None:
-            results.load_credentials(**kwargs)
-
-        return results
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -3230,18 +3244,19 @@ class SampleCollection(object):
         """
         return brain_key in self.list_brain_runs()
 
-    def list_brain_runs(self, type=None):
+    def list_brain_runs(self, type=None, **kwargs):
         """Returns a list of all brain keys on this collection.
 
         Args:
             type (None): a :class:`fiftyone.core.brain.BrainMethod` type. If
                 provided, only runs that are a subclass of this type are
                 included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of brain keys
         """
-        return fob.BrainMethod.list_runs(self, type=type)
+        return fob.BrainMethod.list_runs(self, type=type, **kwargs)
 
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
@@ -3275,19 +3290,16 @@ class SampleCollection(object):
             cache (True): whether to cache the results on the collection
             load_view (True): whether to load the view on which the results
                 were computed (True) or the full dataset (False)
-            **kwargs: optional keyword arguments for the run's
-                :meth:`fiftyone.core.brain.BrainResults.load_credentials` method
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.brain.BrainMethodConfig.load_credentials`
+                method
 
         Returns:
             a :class:`fiftyone.core.brain.BrainResults`
         """
-        results = fob.BrainMethod.load_run_results(
-            self, brain_key, cache=cache, load_view=load_view
+        return fob.BrainMethod.load_run_results(
+            self, brain_key, cache=cache, load_view=load_view, **kwargs
         )
-        if results is not None:
-            results.load_credentials(**kwargs)
-
-        return results
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -3317,41 +3329,6 @@ class SampleCollection(object):
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
-
-    def _get_similarity_keys(self, **kwargs):
-        from fiftyone.brain import SimilarityConfig
-
-        return self._get_brain_runs_with_type(SimilarityConfig, **kwargs)
-
-    def _get_visualization_keys(self, **kwargs):
-        from fiftyone.brain import VisualizationConfig
-
-        return self._get_brain_runs_with_type(VisualizationConfig, **kwargs)
-
-    def _get_brain_runs_with_type(self, run_type, **kwargs):
-        brain_keys = []
-        for brain_key in self.list_brain_runs():
-            try:
-                brain_info = self.get_brain_info(brain_key)
-            except:
-                logger.warning(
-                    "Failed to load info for brain method run '%s'", brain_key
-                )
-                continue
-
-            run_cls = etau.get_class(brain_info.config.cls)
-            if not issubclass(run_cls, run_type):
-                continue
-
-            if any(
-                getattr(brain_info.config, key, None) != value
-                for key, value in kwargs.items()
-            ):
-                continue
-
-            brain_keys.append(brain_key)
-
-        return brain_keys
 
     @classmethod
     def list_view_stages(cls):
@@ -7980,18 +7957,19 @@ class SampleCollection(object):
         """
         return anno_key in self.list_annotation_runs()
 
-    def list_annotation_runs(self, type=None):
+    def list_annotation_runs(self, type=None, **kwargs):
         """Returns a list of all annotation keys on this collection.
 
         Args:
             type (None): a :class:`fiftyone.core.annotations.AnnotationMethod`
                 type. If provided, only runs that are a subclass of this type
                 are included
+            **kwargs: optional config paramters to match
 
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationMethod.list_runs(self, type=type)
+        return foan.AnnotationMethod.list_runs(self, type=type, **kwargs)
 
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
@@ -8031,20 +8009,16 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
             cache (True): whether to cache the results on the collection
-            **kwargs: optional keyword arguments for run's
-                :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+            **kwargs: keyword arguments for run's
+                :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
 
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationMethod.load_run_results(
-            self, anno_key, cache=cache, load_view=False
+        return foan.AnnotationMethod.load_run_results(
+            self, anno_key, cache=cache, load_view=False, **kwargs
         )
-        if results is not None:
-            results.load_credentials(**kwargs)
-
-        return results
 
     def load_annotation_view(self, anno_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -8093,8 +8067,8 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
-            **kwargs: optional keyword arguments for the run's
-                :meth:`fiftyone.core.annotation.AnnotationResults.load_credentials`
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
 
         Returns:
@@ -9231,7 +9205,7 @@ class SampleCollection(object):
             elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
                 field.document_type, fol._HasMedia
             ):
-                media_fields[field_name] = field.document_type
+                media_fields[field_name] = field.document_type._MEDIA_FIELD
 
         if whitelist is not None:
             if etau.is_container(whitelist):
@@ -9317,7 +9291,14 @@ class SampleCollection(object):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
-        if field_name.startswith("__"):
+        if field_name.startswith(
+            "___"
+        ):  # for fiftyone.server.view hidden results
+            field_name = field_name[3:]
+
+        if field_name.startswith(
+            "__"
+        ):  # for fiftyone.core.stages hidden results
             field_name = field_name[2:]
 
         if is_frame_field:

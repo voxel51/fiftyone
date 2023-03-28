@@ -19,6 +19,7 @@ import {
   getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
+  SampleData,
   sidebarOverride,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
@@ -153,6 +154,23 @@ export const groupQuery = graphQLSelector<
   },
 });
 
+const mapSampleResponse = (response) => {
+  const actualRawSample = response?.sample?.sample;
+
+  // This value may be a string that needs to be deserialized
+  // Only occurs after calling useUpdateSample for pinned sample
+  // - https://github.com/voxel51/fiftyone/pull/2622
+  // - https://github.com/facebook/relay/issues/91
+  if (actualRawSample && typeof actualRawSample === "string") {
+    return {
+      ...response.sample,
+      sample: JSON.parse(actualRawSample),
+    };
+  }
+
+  return response.sample;
+};
+
 export const pinnedSliceSample = graphQLSelector<
   VariablesOf<pinnedSampleQuery>,
   ResponseFrom<pinnedSampleQuery>["sample"]
@@ -174,21 +192,7 @@ export const pinnedSliceSample = graphQLSelector<
       },
     };
   },
-  mapResponse: (response) => {
-    const actualRawSample = response?.sample?.sample;
-
-    // This value may be a string that needs to be deserialized
-    // Only occurs after calling useUpdateSample for pinned sample
-    // - https://github.com/voxel51/fiftyone/pull/2622
-    // - https://github.com/facebook/relay/issues/91
-    if (actualRawSample && typeof actualRawSample === "string") {
-      return {
-        ...response.sample,
-        sample: JSON.parse(actualRawSample),
-      };
-    }
-    return response.sample;
-  },
+  mapResponse: mapSampleResponse,
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
@@ -212,7 +216,7 @@ export const activeModalSample = selectorFamily<
         return get(pinnedSliceSample).sample;
       }
 
-      return get(groupSample(sliceName));
+      return get(groupSample(sliceName)).sample;
     },
 });
 
@@ -223,7 +227,7 @@ const groupSampleQuery = graphQLSelectorFamily<
 >({
   environment: RelayEnvironmentKey,
   key: "mainSampleQuery",
-  mapResponse: (response) => response,
+  mapResponse: mapSampleResponse,
   query: mainSample,
   variables:
     (slice) =>
@@ -241,27 +245,27 @@ const groupSampleQuery = graphQLSelectorFamily<
     },
 });
 
-export const groupSample = selectorFamily<AppSample, SliceName>({
+export const groupSample = selectorFamily<SampleData, SliceName>({
   key: "mainGroupSample",
   get:
     (sliceName) =>
     ({ get }) => {
       if (sliceName) {
-        return get(groupSampleQuery(sliceName)).sample.sample as AppSample;
+        return get(groupSampleQuery(sliceName));
       }
 
       const field = get(groupField);
       const group = get(isGroup);
 
-      const sample = get(modal).sample;
+      const sample = get(modal);
 
       if (!field || !group) return sample;
 
-      if (sample[field].name === get(groupSlice(true))) {
+      if (sample.sample[field].name === get(groupSlice(true))) {
         return sample;
       }
 
-      return get(groupSampleQuery(sliceName)).sample.sample as AppSample;
+      return get(groupSampleQuery(sliceName));
     },
 });
 

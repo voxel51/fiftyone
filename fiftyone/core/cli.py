@@ -36,6 +36,10 @@ import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 
+# pylint: disable=import-error,no-name-in-module
+import fiftyone.brain as fob
+import fiftyone.brain.config as fobc
+
 
 _TABLE_FORMAT = "simple"
 _MAX_CONSTANT_VALUE_COL_WIDTH = 79
@@ -78,6 +82,7 @@ class FiftyOneCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "annotation", AnnotationCommand)
+        _register_command(subparsers, "brain", BrainCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
@@ -1512,6 +1517,70 @@ class AppConnectCommand(Command):
         webbrowser.open(url, new=2)
 
         _wait()
+
+
+class BrainCommand(Command):
+    """Tools for working with the FiftyOne Brain."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", BrainConfigCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class BrainConfigCommand(Command):
+    """Tools for working with your FiftyOne Brain config.
+
+    Examples::
+
+        # Print your entire brain config
+        fiftyone brain config
+
+        # Print a specific brain config field
+        fiftyone brain config <field>
+
+        # Print the location of your brain config on disk (if one exists)
+        fiftyone brain config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="a brain config field to print",
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your brain config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            brain_config_path = fobc.locate_brain_config()
+            if os.path.isfile(brain_config_path):
+                print(brain_config_path)
+            else:
+                print("No brain config file found at '%s'" % brain_config_path)
+
+            return
+
+        if args.field:
+            field = getattr(fob.brain_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fob.brain_config)
 
 
 class ZooCommand(Command):

@@ -85,13 +85,16 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const [isImageSearch, setIsImageSearch] = useState(false);
   const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
+  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
   const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const [mRef, bounds] = useMeasure();
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
   const showImageSimilarityIcon =
-    hasSelectedSamples || (isImageSearch && hasSorting);
+    hasSelectedSamples ||
+    (isImageSearch && hasSorting) ||
+    (modal && hasSelectedLabels);
 
   const toggleSimilarity = useCallback(() => {
     setOpen((open) => !open);

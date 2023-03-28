@@ -1,4 +1,9 @@
-import React, { MutableRefObject, useCallback, useLayoutEffect } from "react";
+import React, {
+  MutableRefObject,
+  RefObject,
+  useCallback,
+  useLayoutEffect,
+} from "react";
 import {
   RecoilValueReadOnly,
   useRecoilCallback,
@@ -6,9 +11,14 @@ import {
   useRecoilValue,
 } from "recoil";
 
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  AbstractLooker,
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 
-import { useEventHandler } from "@fiftyone/state";
+import { useEventHandler, useSetSelected } from "@fiftyone/state";
 
 import * as fos from "@fiftyone/state";
 import { State } from "@fiftyone/state";
@@ -16,10 +26,13 @@ import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
 const useClearSampleSelection = (close) => {
+  const setSelected = useSetSelected();
+
   return useRecoilTransaction_UNSTABLE(
     ({ set }) =>
       () => {
         set(fos.selectedSamples, new Set());
+        setSelected([]);
         close();
       },
     [close]
@@ -145,18 +158,21 @@ const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const toIds = (labels: State.SelectedLabel[]) =>
   new Set([...labels].map(({ labelId }) => labelId));
 
-const useVisibleSampleLabels = (lookerRef) => {
+const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const activeSlice = useRecoilValue(fos.currentSlice(true));
   const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
   const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
-  const r = lookerRef.current ? lookerRef.current.getCurrentSampleLabels() : [];
+
+  const currentSampleLabels = lookerRef.current
+    ? lookerRef.current.getCurrentSampleLabels()
+    : [];
 
   if (isGroup) {
     return labelValues;
-  } else {
-    return r;
   }
+
+  return currentSampleLabels;
 };
 
 const useModalActions = (
