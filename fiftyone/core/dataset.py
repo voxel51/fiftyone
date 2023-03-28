@@ -124,7 +124,7 @@ def load_dataset(name):
     Returns:
         a :class:`Dataset`
     """
-    if not name:
+    if not (name and isinstance(name, str)):
         raise ValueError("Cannot load a dataset with no name")
     return Dataset(name, _create=False)
 
