@@ -73,8 +73,6 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     setOpen(selectedField === instanceId);
   }, [selectedField]);
 
-  console.info("field", field);
-
   return {
     open,
     hoverTarget,
@@ -509,8 +507,9 @@ function keyValueIsRenderable([key, value]) {
     case "number":
     case "boolean":
       return true;
+    case "object":
+      if (value._cls === "DateTime") return true;
     default:
-      console.info(typeof value);
       return false;
   }
 }
@@ -518,6 +517,12 @@ function toRenderValue([key, value]): [string, string] {
   switch (typeof value) {
     case "boolean":
       return [key, value ? "True" : "False"];
+    case "object":
+      if (value._cls === "DateTime" && value.datetime) {
+        return [key, new Date(value.datetime).toUTCString()];
+      } else {
+        return [key, ""];
+      }
     default:
       return [key, value];
   }
