@@ -9,9 +9,13 @@ import { ChromePicker } from "react-color";
 
 interface ColorPaletteProps {
   maxColors?: number;
+  style?: React.CSSProperties;
 }
 
-const ColorPalette: React.FC<ColorPaletteProps> = ({ maxColors = 20 }) => {
+const ColorPalette: React.FC<ColorPaletteProps> = ({
+  maxColors = 20,
+  style,
+}) => {
   const currentColorPool = useRecoilValue(fos.colorPool);
   const [colors, setColors] = useState<string[]>(
     currentColorPool.slice(0, maxColors) as string[]
@@ -44,52 +48,55 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({ maxColors = 20 }) => {
   };
 
   return (
-    <ColorPaletteContainer>
-      {colors.map((color, index) => (
-        <ColorSquare
-          key={index}
-          color={color}
-          onClick={() => {
-            setActiveIndex(index);
-            setShowPicker(true);
-            setDeleteIndex(null);
-          }}
-          onMouseEnter={() => setDeleteIndex(index)}
-          onMouseLeave={() => setDeleteIndex(null)}
-        >
-          {color && deleteIndex === index && (
-            <div
-              style={{
-                color: "#fff",
-                position: "absolute",
-                right: "-2px",
-                top: "-2px",
-              }}
-            >
-              <DeleteIcon
-                onClick={() => handleColorDelete(index)}
-                fontSize={"small"}
-              />
-            </div>
-          )}
-          {showPicker && activeIndex === index && (
-            <ChromePickerWrapper>
-              <ChromePicker
-                color={color}
-                onChangeComplete={handleColorChange}
-                popperProps={{ positionFixed: true }}
-                ref={pickerRef}
-              />
-            </ChromePickerWrapper>
-          )}
-        </ColorSquare>
-      ))}
-      {colors.length < maxColors && (
-        <AddSquare onClick={handleColorAdd}>
-          <AddIcon>+</AddIcon>
-        </AddSquare>
-      )}
-    </ColorPaletteContainer>
+    <div style={style}>
+      <ColorPaletteContainer>
+        {colors.map((color, index) => (
+          <ColorSquare
+            key={index}
+            color={color}
+            onClick={() => {
+              setActiveIndex(index);
+              setShowPicker(true);
+              setDeleteIndex(null);
+            }}
+            onMouseEnter={() => setDeleteIndex(index)}
+            onMouseLeave={() => setDeleteIndex(null)}
+          >
+            {color && deleteIndex === index && (
+              <div
+                style={{
+                  color: "#fff",
+                  position: "absolute",
+                  right: "-2px",
+                  top: "-2px",
+                }}
+              >
+                <DeleteIcon
+                  onClick={() => handleColorDelete(index)}
+                  fontSize={"small"}
+                />
+              </div>
+            )}
+            {showPicker && activeIndex === index && (
+              <ChromePickerWrapper>
+                <ChromePicker
+                  color={color}
+                  onChangeComplete={handleColorChange}
+                  popperProps={{ positionFixed: true }}
+                  ref={pickerRef}
+                  disableAlpha={true}
+                />
+              </ChromePickerWrapper>
+            )}
+          </ColorSquare>
+        ))}
+        {colors.length < maxColors && (
+          <AddSquare onClick={handleColorAdd}>
+            <AddIcon>+</AddIcon>
+          </AddSquare>
+        )}
+      </ColorPaletteContainer>
+    </div>
   );
 };
 

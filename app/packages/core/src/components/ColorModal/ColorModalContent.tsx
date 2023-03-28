@@ -1,6 +1,7 @@
 import React, { Fragment, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { TwitterPicker } from "react-color";
 import {
   FormControl,
   InputLabel,
@@ -14,21 +15,114 @@ import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
   FLOAT_FIELD,
+  getColor,
   INT_FIELD,
   STRING_FIELD,
 } from "@fiftyone/utilities";
 import ColorPalette from "./colorPalette/ColorPalette";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
+import Input from "../Common/Input";
 
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
 const FieldColorSettings = () => {
-  return <div></div>;
+  const [showPicker, setShowPicker] = useState(false);
+  const field = useRecoilValue(fos.colorModal);
+  const coloring = useRecoilValue(fos.coloring(false));
+  const color = getColor(coloring.pool, coloring.seed, field!.path);
+  const [fieldColor, setFieldColor] = useState(color);
+  const onChangeColor = (color) => {
+    setFieldColor(color.hex);
+  };
+  const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
+  const toggleColorPicker = (e) => {
+    if (e.target.id == "color-square") {
+      setShowPicker(!showPicker);
+    }
+  };
+  const hideColorPicker = (e) => {
+    if (
+      e.target.id != "twitter-color-container" &&
+      !e.target.id.includes("input")
+    ) {
+      setShowPicker(false);
+    }
+  };
+
+  return (
+    <div style={{ height: "calc( 350px - 6rem )", overflow: "auto" }}>
+      <Text>Customize field color:</Text>
+      <div
+        style={{
+          margin: "1rem",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "end",
+        }}
+      >
+        <ColorSquare
+          color={fieldColor}
+          onClick={toggleColorPicker}
+          id="color-square"
+        >
+          {showPicker && (
+            <PickerWrapper
+              id="twitter-color-container"
+              onBlur={hideColorPicker}
+              visible={showPicker}
+              tabIndex={0}
+              ref={colorContainer}
+            >
+              <TwitterPicker
+                color={fieldColor}
+                colors={coloring.pool}
+                onChange={onChangeColor}
+                id={"twitter-color-picker"}
+              />
+            </PickerWrapper>
+          )}
+        </ColorSquare>
+        <Input
+          value={fieldColor}
+          setter={(v) => setFieldColor(v)}
+          style={{
+            width: 100,
+            display: "inline-block",
+            margin: 3,
+          }}
+        />
+      </div>
+    </div>
+  );
 };
 
 const AttributeValueSettings = () => {
-  const [dropdownValue, setDropdownValue] = useState(null);
-  const [opacityDropdownValue, setOpacityDropdownValue] = useState(null);
+  const field = useRecoilValue(fos.colorModal);
+  if (!field) return <div></div>;
+
+  const expandedPath = useRecoilValue(fos.expandPath(field!.path!));
+  const colorAttributeOptions = useRecoilValue(
+    fos.fields({
+      path: expandedPath,
+      ftype: VALID_COLOR_ATTRIBUTE_TYPES,
+    })
+  )
+    .filter((field) => field.dbField !== "tags")
+    .map((field) => ({ value: field.path, label: field.name }));
+
+  const opacityAttributeOptions = useRecoilValue(
+    fos.fields({
+      path: expandedPath,
+      ftype: FLOAT_FIELD,
+    })
+  ).map((field) => ({ value: field.path, label: field.name }));
+
+  const [dropdownValue, setDropdownValue] = useState(
+    colorAttributeOptions.find((x) => x.label === "label")?.value ?? null
+  );
+  const [opacityDropdownValue, setOpacityDropdownValue] = useState(
+    opacityAttributeOptions.find((x) => x.label === "confidence")?.value ?? null
+  );
 
   const [checkbox1, setCheckbox1] = useState(false);
   const [checkbox2, setCheckbox2] = useState(false);
@@ -57,53 +151,37 @@ const AttributeValueSettings = () => {
     }
   };
 
-  const field = useRecoilValue(fos.colorModal);
-  if (!field) return <div></div>;
-
-  const expandedPath = useRecoilValue(fos.expandPath(field!.path!));
-  const colorAttributeOptions = useRecoilValue(
-    fos.fields({
-      path: expandedPath,
-      ftype: VALID_COLOR_ATTRIBUTE_TYPES,
-    })
-  )
-    .filter((field) => field.dbField !== "tags")
-    .map((field) => ({ value: field.path, label: field.name }));
-
-  const opacityAttributeOptions = useRecoilValue(
-    fos.fields({
-      path: expandedPath,
-      ftype: FLOAT_FIELD,
-    })
-  ).map((field) => ({ value: field.path, label: field.name }));
-
   return (
-    <div>
+    <div style={{ height: "calc( 80vh - 6rem)", overflow: "scroll" }}>
       <form
         style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
       >
         {/* set the attribute used for color */}
-        <FormControl>
-          <InputLabel id="dropdown-attribute">
-            Select attribute for color
+        <FormControl key="color">
+          <InputLabel key="dropdown-attribute">
+            Select attribute for annotation color
           </InputLabel>
           <Select
             labelId="dropdown-attribute"
-            id="select-attribute-dropdown"
-            value={dropdownValue}
+            key="select-attribute-dropdown"
+            value={dropdownValue ?? ""}
             onChange={handleDropdownChange}
             MenuProps={{ style: { zIndex: 9999999 } }}
+            autoWidth
             required
           >
-            {colorAttributeOptions.map((option) => {
+            {colorAttributeOptions.map((option, i) => {
               return (
-                <MenuItem value={option.value ?? ""}>{option.label}</MenuItem>
+                <MenuItem value={option.value ?? ""} key={`color-${i}`}>
+                  {option.label}
+                </MenuItem>
               );
             })}
           </Select>
         </FormControl>
         {/* set the attribute used for opacity */}
         <FormControlLabel
+          key="opacity"
           control={
             <Checkbox
               checked={checkbox1}
@@ -112,17 +190,17 @@ const AttributeValueSettings = () => {
               disabled={opacityAttributeOptions.length === 0}
             />
           }
-          label="Set up Object boxes opacity"
+          label="Set up object boxes opacity"
         />
         {checkbox1 && (
-          <FormControl>
-            <InputLabel id="dropdown-opacity-attribute">
+          <FormControl style={CHILD_STYLE} key="dropdown-opacity">
+            <InputLabel key="dropdown-opacity-attribute">
               Select attribute for opacity
             </InputLabel>
             <Select
               labelId="dropdown-opacity-attribute"
-              id="select-opacity-attribute-dropdown"
-              value={opacityDropdownValue}
+              key="select-opacity-attribute-dropdown"
+              value={opacityDropdownValue ?? ""}
               onChange={handleOpacityDropdownChange}
               MenuProps={{ style: { zIndex: 9999999 } }}
             >
@@ -148,9 +226,10 @@ const AttributeValueSettings = () => {
               name="colorPool"
             />
           }
-          label="Overwrite Color Pool"
+          label="Overwrite color pool"
+          key="color-pool"
         />
-        {checkbox2 && <ColorPalette />}
+        {checkbox2 && <ColorPalette style={CHILD_STYLE} />}
         <FormControlLabel
           control={
             <Checkbox
@@ -160,8 +239,9 @@ const AttributeValueSettings = () => {
             />
           }
           label="Assign specfic color to attribute value"
+          key="value-color"
         />
-        {checkbox3 && <AttributeColorSetting />}
+        {checkbox3 && <AttributeColorSetting style={CHILD_STYLE} />}
       </form>
     </div>
   );
@@ -187,3 +267,30 @@ const ColorModalContent: React.FunctionComponent = () => {
 };
 
 export default ColorModalContent;
+
+const Text = styled.div`
+  margin: 1rem;
+`;
+
+const ColorSquare = styled.div<{ color: string }>`
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin: 5px;
+  cursor: pointer;
+  background-color: ${(props) => props.color || "#ddd"};
+  display: "inline-block";
+`;
+
+const PickerWrapper = styled.div<{ visible: boolean }>`
+  position: absolute;
+  top: 60px;
+  left: 0;
+  z-index: 10001;
+  visibility: ${(props) => (props.visible ? "visible" : "hidden")};
+`;
+
+const CHILD_STYLE = {
+  marginLeft: "2rem",
+  marginTop: "-0.25rem",
+};

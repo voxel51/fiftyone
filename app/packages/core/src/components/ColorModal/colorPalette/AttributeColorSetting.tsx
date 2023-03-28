@@ -3,29 +3,32 @@ import styled from "styled-components";
 import AddIcon from "@material-ui/icons/Add";
 import DeleteIcon from "@material-ui/icons/Delete";
 import { ChromePicker } from "react-color";
+import Input from "../../Common/Input";
+import * as fos from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 
 const RowContainer = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 10px;
+  column-count: 2;
 `;
 
-const Input = styled.input`
-  height: 30px;
-  width: 200px;
-  margin-right: 10px;
-  padding: 0 10px;
-  border-radius: 5px;
-  border: 1px solid ${({ theme }) => theme.gray};
+const AddContainer = styled.div`
+  display: flex;
+  justify-content: end;
+  alight-items: center;
+  margin: 0.25rem;
 `;
 
-const ColorPicker = styled.div<{ color: string }>`
-  height: 30px;
-  width: 30px;
-  margin-right: 10px;
+const Control = styled.div`
+  display: flex;
+  flex-direction: row;
   cursor: pointer;
-  background-color: ${({ color }) => color || "#fff"};
-  border-radius: 5px;
+`;
+
+const Text = styled.div`
+  margin: auto 5px;
 `;
 
 const DeleteButton = styled(DeleteIcon)`
@@ -33,15 +36,15 @@ const DeleteButton = styled(DeleteIcon)`
 `;
 
 const AddButton = styled(AddIcon)`
-  cursor: pointer;
-  margin-right: 10px;
+  margin: auto 0;
 `;
 
 const ColorSquare = styled.div<{ color: string }>`
   position: relative;
-  width: 40px;
-  height: 40px;
-  margin: 5px;
+  width: 30px;
+  height: 30px;
+  margin-left: 1rem;
+  margin-right: 0.5rem;
   cursor: pointer;
   background-color: ${(props) => props.color || "#ddd"};
 `;
@@ -54,21 +57,29 @@ const ChromePickerWrapper = styled.div`
 `;
 
 type ColorPickerRowProps = {
-  defaultValues?: {
-    name: string;
-    color: string;
-  }[];
+  style?: React.CSSProperties;
 };
 
-const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
-  defaultValues = [{ name: "", color: "" }],
-}) => {
-  const [values, setValues] = useState(defaultValues);
-  const [showPicker, setShowPicker] = useState(false);
+const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
+  const coloring = useRecoilValue(fos.coloring(false));
+  const defaultValue = {
+    name: "",
+    color: coloring.pool[Math.floor(Math.random() * coloring.pool.length)],
+  };
+  const [values, setValues] = useState([
+    {
+      name: "",
+      color: coloring.pool[Math.floor(Math.random() * coloring.pool.length)],
+    },
+  ]);
+  const [showPicker, setShowPicker] = useState(
+    Array(values.length).fill(false)
+  );
 
   const handleAdd = () => {
-    setValues([...values, { name: "", color: "" }]);
+    setValues([...values, defaultValue]);
+    setShowPicker([...showPicker, false]);
   };
 
   const handleDelete = (index: number) => {
@@ -89,52 +100,69 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 
   const hanldeColorChange = (color: any, index: number) => {
     const newColor = color?.hex;
+    setShowPicker((prev) => prev.map((_, i) => (i === index ? false : _)));
     setValues((v) => {
       v[index].color = newColor;
       return v;
     });
-    setShowPicker(false);
   };
 
   return (
-    <>
+    <div style={style}>
+      <AddContainer>
+        <Control onClick={handleAdd}>
+          <AddButton />
+          <Text>Add new color pair</Text>
+        </Control>
+      </AddContainer>
       {values.map((value, index) => (
         <RowContainer key={index}>
           <Input
-            type="text"
-            placeholder="Value"
-            value={value.name}
-            onChange={(e) => handleChange(index, "name", e.target.value)}
+            placeholder="Value (e.g. 'car')"
+            value={value.name ?? ""}
+            setter={(v) => handleChange(index, "name", v)}
+            style={{ width: "8rem" }}
           />
+          :
           <ColorSquare
             key={index}
             color={value.color}
             onClick={() => {
-              setShowPicker(true);
+              setShowPicker((prev) =>
+                prev.map((_, i) => (i === index ? !prev[index] : _))
+              );
             }}
           >
-            {showPicker && (
+            {showPicker[index] && (
               <ChromePickerWrapper>
                 <ChromePicker
                   color={value.color}
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   popperProps={{ positionFixed: true }}
                   ref={pickerRef}
+                  disableAlpha={true}
+                  onBlur={() =>
+                    setShowPicker((prev) =>
+                      prev.map((_, i) => (i === index ? false : _))
+                    )
+                  }
                 />
               </ChromePickerWrapper>
             )}
           </ColorSquare>
-          {index !== 0 && (
-            <DeleteButton
-              onClick={() => {
-                handleDelete(index);
-              }}
-            />
-          )}
+          <Input
+            value={value.color ?? ""}
+            setter={(v) => handleChange(index, "color", v)}
+            style={{ width: "5rem" }}
+          />
+          <DeleteButton
+            onClick={() => {
+              handleDelete(index);
+            }}
+          />
         </RowContainer>
       ))}
-      <AddButton onClick={handleAdd} />
-    </>
+    </div>
   );
 };
 
