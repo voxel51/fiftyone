@@ -4597,6 +4597,10 @@ __metadata:
   dependencies:
     "@babel/preset-typescript": ^7.17.12
     "@fiftyone/utilities": "workspace:^"
+    "@rjsf/core": ^5.3.1
+    "@rjsf/mui": ^5.3.1
+    "@rjsf/utils": ^5.3.1
+    "@rjsf/validator-ajv8": ^5.3.1
     "@types/react": ^18.0.12
     jest: ^28.1.1
     prettier: 2.2.1
@@ -6404,6 +6408,66 @@ __metadata:
     react-native:
       optional: true
   checksum: 8f02b2d76139f9ada963e61a11dbf1ec3ea133b4ed68848dbe1e1c1e7f0ae029e1a6ed6ec11710cb3702417acda99abaef130e02f99133e6c084274696fb3264
+  languageName: node
+  linkType: hard
+
+"@rjsf/core@npm:^5.3.1":
+  version: 5.4.0
+  resolution: "@rjsf/core@npm:5.4.0"
+  dependencies:
+    lodash: ^4.17.15
+    lodash-es: ^4.17.15
+    markdown-to-jsx: ^7.2.0
+    nanoid: ^3.3.4
+    prop-types: ^15.7.2
+  peerDependencies:
+    "@rjsf/utils": ^5.0.0
+    react: ^16.14.0 || >=17
+  checksum: 3d0a2bd0814c8aae3ffb524a0d53ba9141475bcf63975b9a5409602ab9d3ce60f0bdc49c86cff7e30b0d1468562e74a8d5ec2a61b9e5329cf9ef57dcdf227167
+  languageName: node
+  linkType: hard
+
+"@rjsf/mui@npm:^5.3.1":
+  version: 5.4.0
+  resolution: "@rjsf/mui@npm:5.4.0"
+  peerDependencies:
+    "@emotion/react": ^11.7.0
+    "@emotion/styled": ^11.6.0
+    "@mui/icons-material": ^5.2.0
+    "@mui/material": ^5.2.2
+    "@rjsf/core": ^5.0.0
+    "@rjsf/utils": ^5.0.0
+    react: ">=17"
+  checksum: 9ff7ad4ea6a5685739dac881d3b120d7649a182662fa38753f17d3b72f8497ce0f1db814b2740516a3205c2accfb8fbe3fc709ad53e4b37358d6c10e41f01416
+  languageName: node
+  linkType: hard
+
+"@rjsf/utils@npm:^5.3.1":
+  version: 5.4.0
+  resolution: "@rjsf/utils@npm:5.4.0"
+  dependencies:
+    json-schema-merge-allof: ^0.8.1
+    jsonpointer: ^5.0.1
+    lodash: ^4.17.15
+    lodash-es: ^4.17.15
+    react-is: ^18.2.0
+  peerDependencies:
+    react: ^16.14.0 || >=17
+  checksum: 096283446b100dec731d06abc0a758588138321c930194cc6bb5c4d2def7be28e058eba3ab2741b30421d1c095c3f700a349d3f6d69d2c0b903f2695b855afe6
+  languageName: node
+  linkType: hard
+
+"@rjsf/validator-ajv8@npm:^5.3.1":
+  version: 5.4.0
+  resolution: "@rjsf/validator-ajv8@npm:5.4.0"
+  dependencies:
+    ajv: ^8.12.0
+    ajv-formats: ^2.1.1
+    lodash: ^4.17.15
+    lodash-es: ^4.17.15
+  peerDependencies:
+    "@rjsf/utils": ^5.0.0
+  checksum: 4525cbff8ae11bb43bc1ebb4f64fb19e858973265eab17913299ad06f0874847be9658e087450f2e3d3f114944d20d5dabd5d40be97a0596a646fa1cc245eb6e
   languageName: node
   linkType: hard
 
@@ -9600,6 +9664,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ajv-formats@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "ajv-formats@npm:2.1.1"
+  dependencies:
+    ajv: ^8.0.0
+  peerDependencies:
+    ajv: ^8.0.0
+  peerDependenciesMeta:
+    ajv:
+      optional: true
+  checksum: 4a287d937f1ebaad4683249a4c40c0fa3beed30d9ddc0adba04859026a622da0d317851316ea64b3680dc60f5c3c708105ddd5d5db8fe595d9d0207fd19f90b7
+  languageName: node
+  linkType: hard
+
 "ajv-keywords@npm:^3.1.0, ajv-keywords@npm:^3.4.1, ajv-keywords@npm:^3.5.2":
   version: 3.5.2
   resolution: "ajv-keywords@npm:3.5.2"
@@ -9618,6 +9696,18 @@ __metadata:
     json-schema-traverse: ^0.4.1
     uri-js: ^4.2.2
   checksum: 874972efe5c4202ab0a68379481fbd3d1b5d0a7bd6d3cc21d40d3536ebff3352a2a1fabb632d4fd2cc7fe4cbdcd5ed6782084c9bbf7f32a1536d18f9da5007d4
+  languageName: node
+  linkType: hard
+
+"ajv@npm:^8.0.0, ajv@npm:^8.12.0":
+  version: 8.12.0
+  resolution: "ajv@npm:8.12.0"
+  dependencies:
+    fast-deep-equal: ^3.1.1
+    json-schema-traverse: ^1.0.0
+    require-from-string: ^2.0.2
+    uri-js: ^4.2.2
+  checksum: 4dc13714e316e67537c8b31bc063f99a1d9d9a497eb4bbd55191ac0dcd5e4985bbb71570352ad6f1e76684fb6d790928f96ba3b2d4fd6e10024be9612fe3f001
   languageName: node
   linkType: hard
 
@@ -11988,6 +12078,29 @@ __metadata:
     validate.io-ndarray-like: ^1.0.0
     validate.io-positive-integer: ^1.0.0
   checksum: c0141eceba885c64f351fe22a6ba7ebb5e3a0ca0294dd34f426183f8747d25fa597e55d063fe40bfb62814b6f25aa549866ce84b357460b73743dcefe6b720a4
+  languageName: node
+  linkType: hard
+
+"compute-gcd@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "compute-gcd@npm:1.2.1"
+  dependencies:
+    validate.io-array: ^1.0.3
+    validate.io-function: ^1.0.2
+    validate.io-integer-array: ^1.0.0
+  checksum: 51cf33b75f7c8db5142fcb99a9d84a40260993fed8e02a7ab443834186c3ab99b3fd20b30ad9075a6a9d959d69df6da74dd3be8a59c78d9f2fe780ebda8242e1
+  languageName: node
+  linkType: hard
+
+"compute-lcm@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "compute-lcm@npm:1.1.2"
+  dependencies:
+    compute-gcd: ^1.2.1
+    validate.io-array: ^1.0.3
+    validate.io-function: ^1.0.2
+    validate.io-integer-array: ^1.0.0
+  checksum: d499ab57dcb48e8d0fd233b99844a06d1cc56115602c920c586e998ebba60293731f5b6976e8a1e83ae6cbfe86716f62d9432e8d94913fed8bd8352f447dc917
   languageName: node
   linkType: hard
 
@@ -18852,10 +18965,37 @@ __metadata:
   languageName: node
   linkType: hard
 
+"json-schema-compare@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "json-schema-compare@npm:0.2.2"
+  dependencies:
+    lodash: ^4.17.4
+  checksum: dd6f2173857c8e3b77d6ebdfa05bd505bba5b08709ab46b532722f5d1c33b5fee1fc8f3c97d0c0d011db25f9f3b0baf7ab783bb5f55c32abd9f1201760e43c2c
+  languageName: node
+  linkType: hard
+
+"json-schema-merge-allof@npm:^0.8.1":
+  version: 0.8.1
+  resolution: "json-schema-merge-allof@npm:0.8.1"
+  dependencies:
+    compute-lcm: ^1.1.2
+    json-schema-compare: ^0.2.2
+    lodash: ^4.17.20
+  checksum: 82700f6ac77351959138d6b153d77375a8c29cf48d907241b85c8292dd77aabd8cb816400f2b0d17062c4ccc8893832ec4f664ab9c814927ef502e7a595ea873
+  languageName: node
+  linkType: hard
+
 "json-schema-traverse@npm:^0.4.1":
   version: 0.4.1
   resolution: "json-schema-traverse@npm:0.4.1"
   checksum: 7486074d3ba247769fda17d5181b345c9fb7d12e0da98b22d1d71a5db9698d8b4bd900a3ec1a4ffdd60846fc2556274a5c894d0c48795f14cb03aeae7b55260b
+  languageName: node
+  linkType: hard
+
+"json-schema-traverse@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "json-schema-traverse@npm:1.0.0"
+  checksum: 02f2f466cdb0362558b2f1fd5e15cce82ef55d60cd7f8fa828cf35ba74330f8d767fcae5c5c2adb7851fa811766c694b9405810879bc4e1ddd78a7c0e03658ad
   languageName: node
   linkType: hard
 
@@ -18940,6 +19080,13 @@ __metadata:
     graceful-fs:
       optional: true
   checksum: 7af3b8e1ac8fe7f1eccc6263c6ca14e1966fcbc74b618d3c78a0a2075579487547b94f72b7a1114e844a1e15bb00d440e5d1720bfc4612d790a6f285d5ea8354
+  languageName: node
+  linkType: hard
+
+"jsonpointer@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "jsonpointer@npm:5.0.1"
+  checksum: 0b40f712900ad0c846681ea2db23b6684b9d5eedf55807b4708c656f5894b63507d0e28ae10aa1bddbea551241035afe62b6df0800fc94c2e2806a7f3adecd7c
   languageName: node
   linkType: hard
 
@@ -19715,6 +19862,15 @@ __metadata:
   version: 1.0.4
   resolution: "markdown-escapes@npm:1.0.4"
   checksum: 6833a93d72d3f70a500658872312c6fa8015c20cc835a85ae6901fa232683fbc6ed7118ebe920fea7c80039a560f339c026597d96eee0e9de602a36921804997
+  languageName: node
+  linkType: hard
+
+"markdown-to-jsx@npm:^7.2.0":
+  version: 7.2.0
+  resolution: "markdown-to-jsx@npm:7.2.0"
+  peerDependencies:
+    react: ">= 0.14.0"
+  checksum: ea417e684d7eec9f1beebc9423aba377116ef77c3cd83a2d622df1b9030ffef99aa9b3f431192b94f3237943a33560e6dda9be8a4c1d25187518d09986dad22f
   languageName: node
   linkType: hard
 
@@ -27162,6 +27318,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"validate.io-function@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "validate.io-function@npm:1.0.2"
+  checksum: e4cce2479a20cb7c42e8630c777fb107059c27bc32925f769e3a73ca5fd62b4892d897b3c80227e14d5fcd1c5b7d05544e0579d63e59f14034c0052cda7f7c44
+  languageName: node
+  linkType: hard
+
+"validate.io-integer-array@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "validate.io-integer-array@npm:1.0.0"
+  dependencies:
+    validate.io-array: ^1.0.3
+    validate.io-integer: ^1.0.4
+  checksum: 5f6d7fab8df7d2bf546a05e830201768464605539c75a2c2417b632b4411a00df84b462f81eac75e1be95303e7e0ac92f244c137424739f4e15cd21c2eb52c7f
+  languageName: node
+  linkType: hard
+
 "validate.io-integer-primitive@npm:^1.0.0":
   version: 1.0.0
   resolution: "validate.io-integer-primitive@npm:1.0.0"
@@ -27171,7 +27344,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"validate.io-integer@npm:^1.0.5":
+"validate.io-integer@npm:^1.0.4, validate.io-integer@npm:^1.0.5":
   version: 1.0.5
   resolution: "validate.io-integer@npm:1.0.5"
   dependencies:

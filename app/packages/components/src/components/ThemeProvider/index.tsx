@@ -12,6 +12,10 @@ let theme = extendJoyTheme({
   colorSchemes: {
     light: createTheme({
       palette: {
+        action: {
+          active: "hsl(200, 0%, 30%)",
+          disabled: "hsl(200, 0%, 50%)",
+        },
         background: {
           body: "hsl(200, 0%, 85%)",
           button: "hsl(200, 0%, 90%)",
@@ -70,6 +74,10 @@ let theme = extendJoyTheme({
     }),
     dark: createTheme({
       palette: {
+        action: {
+          active: "hsl(200, 0%, 70%)",
+          disabled: "hsl(200, 0%, 50%)",
+        },
         background: {
           button: "hsl(200, 0%, 20%)",
           header: "hsl(200, 0%, 15%)",
