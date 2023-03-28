@@ -1,5 +1,4 @@
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
 import { useOperatorBrowser } from "./state";
 
@@ -7,7 +6,7 @@ const BrowserContainer = styled.form`
   position: absolute;
   top: 5rem;
   left: 0;
-  // height: 100%;
+  max-height: 80vh;
   width: 100%;
   display: flex;
   justify-content: center;
@@ -24,6 +23,8 @@ const BrowserModal = styled.div`
 
 const ResultsContainer = styled.div`
   margin-top: 1rem;
+  max-height: calc(100% - 48px);
+  overflow: auto;
 `;
 
 const QueryInput = styled.input`
@@ -45,10 +46,19 @@ const ChoiceContainer = styled.div`
   background: ${({ selected, theme }) => selected && theme.primary.plainColor};
 `;
 
-const ChoiceDescription = styled.div``;
+const ChoiceDescription = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+`;
 
 const ChoiceLabel = styled.div`
   margin-left: auto;
+  max-width: 38%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 `;
 
 const Choice = ({ onClick, choice, selected }) => {
