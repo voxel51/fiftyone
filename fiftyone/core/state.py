@@ -216,7 +216,7 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
 
             if field.info is not None:
                 # Converts mongoengine types to primitives
-                info = json.loads(json.dumps(field.info))
+                info = json.loads(json_util.dumps(field.info))
             else:
                 info = None
 
