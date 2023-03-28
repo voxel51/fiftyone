@@ -442,23 +442,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.sample_fields[idx] = field_doc
 
     def _init_frames(self):
-        if not self._is_clips:
-            frame_collection_name = _make_frame_collection_name(
-                self._sample_collection_name
-            )
-            frame_doc_cls = _create_frame_document_cls(
-                self, frame_collection_name, field_docs=self._doc.frame_fields
-            )
+        if self._frame_doc_cls is not None:
+            # Legacy datasets may not have frame fields declared yet
+            if not self._doc.frame_fields:
+                self._doc.frame_fields = [
+                    foo.SampleFieldDocument.from_field(field)
+                    for field in self._frame_doc_cls._fields.values()
+                ]
 
-            _create_indexes(None, frame_collection_name)
+            return
 
-            self._doc.frame_collection_name = frame_collection_name
-            self._frame_doc_cls = frame_doc_cls
+        frame_collection_name = _make_frame_collection_name(
+            self._sample_collection_name
+        )
+        frame_doc_cls = _create_frame_document_cls(
+            self, frame_collection_name, field_docs=self._doc.frame_fields
+        )
 
+        _create_indexes(None, frame_collection_name)
+
+        self._doc.frame_collection_name = frame_collection_name
         self._doc.frame_fields = [
             foo.SampleFieldDocument.from_field(field)
-            for field in self._frame_doc_cls._fields.values()
+            for field in frame_doc_cls._fields.values()
         ]
+        self._frame_doc_cls = frame_doc_cls
 
     @property
     def group_field(self):
@@ -7023,13 +7031,14 @@ def _clone_view_doc(view_doc):
 def _clone_run(run_doc):
     _run_doc = run_doc.copy()
     _run_doc.id = ObjectId()
+    _run_doc.results = None
 
     # Unfortunately the only way to copy GridFS files is to read-write them...
     # https://jira.mongodb.org/browse/TOOLS-2208
-    run_doc.results.seek(0)
-    results_bytes = run_doc.results.read()
-    _run_doc.results = None
-    _run_doc.results.put(results_bytes, content_type="application/json")
+    if run_doc.results:
+        run_doc.results.seek(0)
+        results_bytes = run_doc.results.read()
+        _run_doc.results.put(results_bytes, content_type="application/json")
 
     return _run_doc
 

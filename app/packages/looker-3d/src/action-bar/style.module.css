@@ -7,7 +7,20 @@
 }
 
 .pointSizeTextField {
-  border-bottom: 1px solid;
+  border: none;
+  font: inherit;
+  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  background: transparent;
+  outline-width: 0;
+  width: 2.5em;
+  color: var(--joy-palette-text-primary);
+}
+
+.pointSizeTextField:focus {
+  border: none;
+  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  background: transparent;
+  outline-width: 0;
 }
 
 .pointSizeSlider {
@@ -26,6 +39,7 @@
   margin: 1em;
 }
 
-.pointSizeAttenuationCheckbox {
-  font: unset;
+.pointSizeAttenuationLabel {
+  /* mui should override label styles with these, but doesn't */
+  font-family: inherit !important;
 }

@@ -25,7 +25,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
-  highlight: boolean = false
+  highlight = false
 ) => {
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -100,6 +100,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
             dbField: null,
           },
         },
+        sources: urls,
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,

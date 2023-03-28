@@ -1,7 +1,6 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import PointSizeIcon from "@mui/icons-material/ScatterPlot";
 import { Checkbox, FormControlLabel } from "@mui/material";
-import Input from "@mui/material/Input";
 import Slider from "@mui/material/Slider";
 import { useCallback, useMemo, useState } from "react";
 import * as recoil from "recoil";
@@ -88,8 +87,8 @@ export const PointSizeSlider = () => {
               onChange={handlePointSizeAttenuationChange}
             />
           }
+          classes={{ label: style.pointSizeAttenuationLabel }}
           label="Point Size Attenuation"
-          className="pointSizeAttenuationCheckbox"
         />
 
         <div className={style.pointSizeContainer}>
@@ -110,20 +109,10 @@ export const PointSizeSlider = () => {
             valueLabelDisplay="auto"
             valueLabelFormat={(value) => `${value.toFixed(2)}`}
           />
-          <Input
+          <input
             className={style.pointSizeTextField}
-            sx={{
-              color: theme.primary.main,
-            }}
-            classes={{
-              root: style.pointSizeTextField,
-            }}
-            disableUnderline
-            id="outlined-basic"
             value={isTextBoxEmpty ? "" : pointSize}
             onChange={handleTextBoxChange}
-            size="small"
-            margin="none"
           />
         </div>
       </div>

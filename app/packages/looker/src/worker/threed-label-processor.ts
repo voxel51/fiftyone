@@ -158,8 +158,8 @@ const PainterFactory3D = (
       ymax
     );
 
-    const tlx = (xScale * (x - lx / 2 + (xmax - xmin) / 2)) / canvasWidth; // top left x, normalized to [0, 1]
-    const tly = (yScale * (-y - ly / 2 + (ymax - ymin) / 2)) / canvasHeight; // top left y, normalized to [0, 1]
+    const tlx = (xScale * (x - lx / 2 - xmin)) / canvasWidth; // top left x, normalized to [0, 1]
+    const tly = (yScale * (-y - ly / 2 + ymax)) / canvasHeight; // top left y, normalized to [0, 1]
 
     const boxWidth = (lx * xScale) / canvasWidth; // width of projected bounding box, normalized to [0, 1]
     const boxHeight = (ly * yScale) / canvasHeight; // height of projected bounding box, normalized to [0, 1]

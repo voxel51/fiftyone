@@ -17,8 +17,7 @@ import strawberry as gql
 from bson import ObjectId, json_util
 
 import fiftyone as fo
-import fiftyone.brain.internal.core.similarity as fobs
-import fiftyone.brain.internal.core.visualization as fobv
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
@@ -100,13 +99,37 @@ class BrainRunConfig(RunConfig):
 
     @gql.field
     def type(self) -> t.Optional[BrainRunType]:
-        if issubclass(fobs.SimilarityConfig, etau.get_class(self.cls)):
-            return BrainRunType.similarity
-        if issubclass(
-            fobv.ManualVisualizationConfig, etau.get_class(self.cls)
-        ):
-            return BrainRunType.visualization
+        try:
+            if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
+                return BrainRunType.similarity
+
+            if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
+                return BrainRunType.visualization
+        except:
+            pass
+
         return None
+
+    @gql.field
+    def max_k(self) -> t.Optional[int]:
+        config = self._create_config()
+        return getattr(config, "max_k", None)
+
+    @gql.field
+    def supports_least_similarity(self) -> t.Optional[bool]:
+        config = self._create_config()
+        return getattr(config, "supports_least_similarity", None)
+
+    def _create_config(self):
+        try:
+            cls = etau.get_class(self.cls)
+            return cls(
+                embeddings_field=self.embeddings_field,
+                patches_field=self.patches_field,
+                supports_prompts=self.supports_prompts,
+            )
+        except:
+            return None
 
 
 @gql.type
@@ -457,13 +480,9 @@ async def serialize_dataset(
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]
-
-                data.id = view._dataset._doc.id
-
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
-                data.id = ObjectId()
                 data.media_type = view.media_type
 
             collection = view
@@ -479,12 +498,30 @@ async def serialize_dataset(
             data.group_slice = collection.group_slice
 
         for brain_method in data.brain_methods:
-            value = (
-                brain_method.config.type().value
-                if brain_method.config.type() is not None
-                else None
+            try:
+                type = brain_method.config.type().value
+            except:
+                type = None
+
+            try:
+                max_k = brain_method.config.max_k()
+            except:
+                max_k = None
+
+            try:
+                supports_least_similarity = (
+                    brain_method.config.supports_least_similarity()
+                )
+            except:
+                supports_least_similarity = None
+
+            setattr(brain_method.config, "type", type)
+            setattr(brain_method.config, "max_k", max_k)
+            setattr(
+                brain_method.config,
+                "supports_least_similarity",
+                supports_least_similarity,
             )
-            setattr(brain_method.config, "type", value)
 
         return data
 
