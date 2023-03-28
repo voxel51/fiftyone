@@ -33,7 +33,8 @@ export class Property {
     description: string,
     required: boolean,
     defaultValue?: any,
-    public _hasResolver: boolean = false
+    public _hasResolver: boolean = false,
+    public view?: object
   ) {
     this.type = type;
     this.description = description;
@@ -59,7 +60,8 @@ export class Property {
       json.description,
       json.required,
       json.default,
-      json.hasResolver
+      json.hasResolver,
+      json.view
     );
   }
   toProps() {
@@ -68,6 +70,7 @@ export class Property {
       label: this.name,
       type: this.type,
       default: this.defaultValue,
+      view: this.view,
     };
   }
 }
@@ -112,9 +115,7 @@ export class Enum extends BaseType {
   }
 }
 
-export class SampleID extends String {
-
-}
+export class SampleID extends String {}
 
 // NOTE: this should always match fiftyone/operators/types.py
 export const TYPES = [ObjectType, String, Boolean, Number, List, Enum];

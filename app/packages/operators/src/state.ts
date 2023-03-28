@@ -190,7 +190,6 @@ export const useOperatorPrompt = () => {
 
   useEffect(() => {
     if (operator && !operator.needsUserInput() && !operator.needsResolution()) {
-      debugger;
       execute();
     }
   }, [operator]);
@@ -210,6 +209,7 @@ export const useOperatorPrompt = () => {
   return {
     inputFields,
     outputFields,
+    promptingOperator,
     setFieldValue,
     operator,
     execute,

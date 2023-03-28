@@ -40,6 +40,7 @@ class Property:
         self.default = kwargs.get("default", None)
         self.required = kwargs.get("required", False)
         self.choices = kwargs.get("choices", None)
+        self.view = kwargs.get("view", None)
 
     def to_json(self):
         return {
@@ -48,6 +49,7 @@ class Property:
             "default": self.default,
             "required": self.required,
             "choices": self.choices,
+            "view": self.view.to_json() if self.view else None,
         }
 
 
@@ -66,6 +68,7 @@ class Number(BaseType):
         self.min = min
         self.max = max
         self.int = int
+
     def to_json(self):
         return {
             "name": self.__class__.__name__,
@@ -85,9 +88,11 @@ class List(BaseType):
             "element_type": self.element_type.to_json(),
         }
 
+
 class SampleID(String):
     def __init__(self):
         pass
+
 
 class Enum(BaseType):
     def __init__(self, values):
@@ -96,6 +101,17 @@ class Enum(BaseType):
     def to_json(self):
         return {"name": self.__class__.__name__, "values": self.values}
 
+
 class Plot(BaseType):
     def __init__(self):
         pass
+
+
+class View:
+    def __init__(self, **kwargs):
+        self.label = kwargs.get("label", None)
+
+    def to_json(self):
+        return {
+            "label": self.label,
+        }
