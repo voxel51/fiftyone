@@ -1,6 +1,6 @@
 import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import * as types from "./types";
-import { CallbackInterface, useREcoilVa } from "recoil";
+import { CallbackInterface, useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import {
   SpaceNode,
@@ -10,6 +10,7 @@ import {
 } from "@fiftyone/spaces";
 
 import copyToClipboard from "copy-to-clipboard";
+import { useOperatorExecutor } from ".";
 
 export class ExecutionContext {
   public state: CallbackInterface;
@@ -348,15 +349,34 @@ class ViewFromJSON extends Operator {
   }
 }
 
-class OpenAllPanels extends Operator {
+class OpenPanel extends Operator {
   constructor() {
-    super("open_all_panel", "Open all panels");
+    super("open_panel", "Open a panel");
+    // todo: dynamically generate the list
+    this.definition.inputs.addProperty(
+      new types.Property(
+        "name",
+        new types.Enum(["Histograms", "Embeddings"]),
+        "Name of the panel",
+        true,
+        ""
+      )
+    );
+    this.definition.inputs.addProperty(
+      new types.Property(
+        "isActive",
+        new types.Boolean(),
+        "Auto-select on open",
+        true,
+        false
+      )
+    );
   }
   useHooks(): object {
-    const defaultSpaceId = "main";
+    const { FIFTYONE_SPACE_ID } = fos.constants;
     const availablePanels = usePanels();
-    const { spaces } = useSpaces(defaultSpaceId);
-    const openedPanels = useSpaceNodes(defaultSpaceId);
+    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
     return { availablePanels, openedPanels, spaces };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode {
@@ -368,21 +388,100 @@ class OpenAllPanels extends Operator {
       return this.findFirstPanelContainer(node.firstChild());
     }
   }
-  async execute({ hooks }: ExecutionContext) {
-    const { availablePanels, openedPanels, spaces } = hooks;
-    const openedPanelsTypes = openedPanels.map(({ type }) => type);
+  async execute({ hooks, params }: ExecutionContext) {
+    console.log(hooks, params);
+    const { spaces } = hooks;
+    const { name, isActive } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
-      return;
+      return console.error("No panel container found");
     }
+    const newNode = new SpaceNode();
+    newNode.type = name;
+    // add panel to the default space as an inactive panels
+    spaces.addNodeAfter(targetSpace, newNode, isActive);
+  }
+}
+
+class OpenAllPanels extends Operator {
+  constructor() {
+    super("open_all_panel", "Open all panels");
+  }
+  useHooks(): object {
+    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const availablePanels = usePanels();
+    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const openPanelOperator = useOperatorExecutor("open_panel");
+    return { availablePanels, openedPanels, openPanelOperator };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    const { availablePanels, openedPanels, openPanelOperator } = hooks;
+    const openedPanelsTypes = openedPanels.map(({ type }) => type);
     for (const panel of availablePanels) {
       const { name } = panel;
       if (openedPanelsTypes.includes(name)) continue;
-      const newNode = new SpaceNode();
-      newNode.type = name;
-      // add panel to the default space as inactive panels
-      spaces.addNodeAfter(targetSpace, newNode, false);
+      openPanelOperator.execute({ name, isActive: false });
     }
+  }
+}
+
+// class FindSpace extends Operator {
+//   constructor() {
+//     super("find_space", "Find space");
+//   }
+//   findFirstPanelContainer(node: SpaceNode): SpaceNode {
+//     if (node.isPanelContainer()) {
+//       return node;
+//     }
+//     if (node.hasChildren()) {
+//       return this.findFirstPanelContainer(node.firstChild());
+//     }
+//   }
+//   useHooks(): object {
+//     const { FIFTYONE_SPACE_ID } = fos.constants;
+//     const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
+//     return { spaces };
+//   }
+//   async execute({ hooks }: ExecutionContext) {
+//     console.log("Find space invoked");
+//     const { spaces } = hooks;
+//     return this.findFirstPanelContainer(spaces.root);
+//   }
+// }
+
+class ClosePanel extends Operator {
+  constructor() {
+    super("close_panel", "Close a panel");
+    // todo: dynamically generate the list
+    this.definition.inputs.addProperty(
+      new types.Property(
+        "name",
+        new types.Enum(["Histograms", "Embeddings"]),
+        "Name of the panel",
+        true,
+        ""
+      )
+    );
+  }
+  useHooks(): object {
+    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    return { openedPanels, spaces };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    const { openedPanels, spaces } = hooks;
+    const { name, id } = params;
+    const targetPanel = openedPanels.find(
+      (panel) => id === panel.id || name === panel.type
+    );
+    if (!targetPanel)
+      return console.error(
+        `Opened panel with ${id ? "id" : "name"} "${
+          id || name
+        }" cannot be found`
+      );
+    spaces.removeNode(targetPanel);
   }
 }
 
@@ -391,17 +490,17 @@ class CloseAllPanels extends Operator {
     super("close_all_panel", "Close all panels");
   }
   useHooks(): object {
-    const defaultSpaceId = "main";
-    const { spaces } = useSpaces(defaultSpaceId);
-    const openedPanels = useSpaceNodes(defaultSpaceId);
-    return { openedPanels, spaces };
+    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const closePanel = useOperatorExecutor("close_panel");
+    return { openedPanels, closePanel };
   }
   async execute({ hooks }: ExecutionContext) {
-    const { openedPanels, spaces } = hooks;
+    const { openedPanels, closePanel } = hooks;
     for (const panel of openedPanels) {
       // do not close pinned, root or space panel
       if (panel.pinned || panel.isRoot() || panel.isSpace()) continue;
-      spaces.removeNode(panel);
+      closePanel.execute(panel);
     }
   }
 }
@@ -625,6 +724,11 @@ export function registerBuiltInOperators() {
   registerOperator(new ShowSelectedSamples());
   registerOperator(new ConvertExtendedSelectionToSelectedSamples());
   registerOperator(new DynamicFormExample());
+  registerOperator(new OpenPanel());
+  registerOperator(new OpenAllPanels());
+  registerOperator(new ClosePanel());
+  registerOperator(new CloseAllPanels());
+  // registerOperator(new FindSpace());
 }
 
 export async function loadOperators() {

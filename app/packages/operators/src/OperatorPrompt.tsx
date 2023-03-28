@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import styled from "styled-components";
 import { Button } from "@fiftyone/components";
 import { showOperatorPromptSelector, useOperatorPrompt } from "./state";
@@ -15,6 +15,8 @@ import {
   Select,
 } from "@mui/material";
 import { useRecoilValue } from "recoil";
+import OperatorInput from "./OperatorInput";
+import { toJSONSchema } from "./utils";
 
 const PromptContainer = styled.div`
   position: absolute;
@@ -79,7 +81,17 @@ function Prompting({ operatorPrompt }) {
   return (
     <>
       <h3>Input</h3>
-      <Form>
+      <OperatorInput
+        schema={toJSONSchema(operatorPrompt.inputFields)}
+        onChange={(data, id) => {
+          const { formData } = data;
+          for (const field in formData) {
+            operatorPrompt.setFieldValue(field, formData[field]);
+          }
+        }}
+        formData={operatorPrompt.promptingOperator.params}
+      />
+      {/* <Form>
         {operatorPrompt.inputFields.map((field) => (
           <Field
             key={field.name}
@@ -90,7 +102,7 @@ function Prompting({ operatorPrompt }) {
             }}
           />
         ))}
-      </Form>
+      </Form> */}
       <ButtonsContainer>
         <Button
           onClick={(e) => {
