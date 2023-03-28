@@ -1,6 +1,6 @@
 import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import * as types from "./types";
-import { CallbackInterface, useREcoilVa } from "recoil";
+import { CallbackInterface, useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import {
   SpaceNode,
@@ -359,8 +359,7 @@ class OpenPanel extends Operator {
         new types.Enum(["Histograms", "Embeddings"]),
         "Name of the panel",
         true,
-        "",
-        ["Histograms", "Embeddings"]
+        ""
       )
     );
     this.definition.inputs.addProperty(
@@ -369,8 +368,7 @@ class OpenPanel extends Operator {
         new types.Boolean(),
         "Auto-select on open",
         true,
-        false,
-        []
+        false
       )
     );
   }
@@ -461,8 +459,7 @@ class ClosePanel extends Operator {
         new types.Enum(["Histograms", "Embeddings"]),
         "Name of the panel",
         true,
-        "",
-        ["Histograms", "Embeddings"]
+        ""
       )
     );
   }
