@@ -1,0 +1,25 @@
+{
+    "ts-node": {
+        "require": ["tsconfig-paths/register"]
+    },
+    "compilerOptions": {
+        "target": "ES6",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "module": "CommonJS",
+        "lib": ["ES6", "dom", "dom.iterable"],
+        "types": ["cypress", "cypress-visual-regression", "node"],
+        "sourceMap": true,
+        "noEmit": true,
+        "allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": [
+        "lib/**/*",
+        "cypress/**/*",
+        "cypress.config.ts",
+        "index.ts",
+        "types/**/*"
+    ],
+    "exclude": ["node_modules"]
+}
