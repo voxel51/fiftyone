@@ -383,6 +383,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_collection_name.startswith("clips.")
 
     @property
+    def _is_dynamic_groups(self):
+        return False
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type

@@ -2955,8 +2955,8 @@ class GeoWithin(_GeoStage):
 
 
 class GroupBy(ViewStage):
-    """Creates a view that reorganizes the samples in a collection so that they
-    are grouped by a specified field or expression.
+    """Creates a view that groups the samples in a collection by a specified
+    field or expression.
 
     Examples::
 

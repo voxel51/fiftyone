@@ -162,6 +162,11 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._is_clips
 
     @property
+    def _is_dynamic_groups(self):
+        group_expr, _ = self._group_expr()
+        return group_expr is not None
+
+    @property
     def _sample_cls(self):
         return fos.SampleView
 
@@ -206,6 +211,9 @@ class DatasetView(foc.SampleCollection):
     def group_slice(self, slice_name):
         if self.media_type != fom.GROUP:
             raise ValueError("DatasetView has no groups")
+
+        if self._is_dynamic_groups:
+            raise ValueError("Dynamic grouped collections don't have slices")
 
         if slice_name is not None and slice_name not in self.group_media_types:
             raise ValueError(
@@ -1416,7 +1424,7 @@ class DatasetView(foc.SampleCollection):
 
         _pipeline = list(itertools.chain.from_iterable(_pipelines))
 
-        if media_type is None:
+        if media_type is None and not self._is_dynamic_groups:
             media_type = self.media_type
 
         if group_slice is None:

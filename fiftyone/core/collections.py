@@ -241,6 +241,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _is_clips")
 
     @property
+    def _is_dynamic_groups(self):
+        """Whether this collection contains dynamic groups."""
+        raise NotImplementedError("Subclass must implement _is_dynamic_groups")
+
+    @property
     def _element_str(self):
         if self.media_type == fom.GROUP:
             return "group"
@@ -4436,8 +4441,8 @@ class SampleCollection(object):
         reverse=False,
         flat=True,
     ):
-        """Creates a view that reorganizes the samples in the collection so
-        that they are grouped by a specified field or expression.
+        """Creates a view that groups the samples in the collection by a
+        specified field or expression.
 
         Examples::
 
