@@ -73,6 +73,8 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
     setOpen(selectedField === instanceId);
   }, [selectedField]);
 
+  console.info("field", field);
+
   return {
     open,
     hoverTarget,
@@ -458,6 +460,7 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
   if (collapsed) {
     items = items.slice(0, 2);
   }
+  console.info("info", info);
   return (
     <FieldInfoTableContainer>
       <tbody>
@@ -500,13 +503,14 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
 
 function keyValueIsRenderable([key, value]) {
   if (value === undefined || value === null) return true;
-
+  console.log("abc", value, key);
   switch (typeof value) {
     case "string":
     case "number":
     case "boolean":
       return true;
     default:
+      console.info(typeof value);
       return false;
   }
 }
