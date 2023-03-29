@@ -458,7 +458,7 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
   if (collapsed) {
     items = items.slice(0, 2);
   }
-  console.info("info", info);
+
   return (
     <FieldInfoTableContainer>
       <tbody>
@@ -501,14 +501,13 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
 
 function keyValueIsRenderable([key, value]) {
   if (value === undefined || value === null) return true;
-  console.log("abc", value, key);
   switch (typeof value) {
     case "string":
     case "number":
     case "boolean":
       return true;
     case "object":
-      if (value._cls === "DateTime") return true;
+      if (value.$date) return true;
     default:
       return false;
   }
@@ -518,8 +517,8 @@ function toRenderValue([key, value]): [string, string] {
     case "boolean":
       return [key, value ? "True" : "False"];
     case "object":
-      if (value._cls === "DateTime" && value.datetime) {
-        return [key, new Date(value.datetime).toUTCString()];
+      if (value.$date) {
+        return [key, new Date(value.$date).toUTCString()];
       } else {
         return [key, ""];
       }
