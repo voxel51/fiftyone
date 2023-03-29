@@ -28,6 +28,10 @@ export function getPageQuery<T extends OperationType>(): [
   ];
 }
 
+/**
+ * A context component containing a relay concrete request and preloaded query
+ * for use by `graphQLFragmentEffect` atom effects
+ */
 export function PageQueryContext<T extends OperationType>({
   concreteRequest,
   preloadedQuery,

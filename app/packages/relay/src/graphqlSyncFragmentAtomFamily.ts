@@ -23,6 +23,11 @@ export type GraphQLSyncFragmentSyncAtomFamilyOptions<
   sync?: (params: P) => boolean;
 };
 
+/**
+ * Creates a recoil atom family synced with a recoil sync store. If the
+ * fragment path cannot be read from given the parent fragment keys and the
+ * optional final read function, the atom's default value will be used
+ */
 export function graphQLSyncFragmentAtomFamily<
   T extends KeyType,
   K,

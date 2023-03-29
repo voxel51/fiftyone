@@ -27,7 +27,7 @@ export const entry = atom<Entry<Queries>>({
   effects: [
     syncEffect({
       refine: custom<Entry<Queries>>((v) => v as Entry<Queries>),
-      storeKey: "router",
+      storeKey: "session",
     }),
   ],
   dangerouslyAllowMutability: true,

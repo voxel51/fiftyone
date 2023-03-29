@@ -17,7 +17,7 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
   stageDefinitionsFragment$data["stageDefinitions"]
 >(
   {
-    storeKey: "router",
+    storeKey: "session",
     fragments: [stageDefinitionsFragment],
     read: (data) => {
       return data.stageDefinitions;
@@ -30,7 +30,7 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
   {
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
-    storeKey: "router",
+    storeKey: "session",
     read: (data) => data.stages,
     refine: rfn.writableArray(
       rfn.writableObject({
@@ -62,7 +62,7 @@ export const viewCls = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
     read: (data) => data.viewCls,
-    storeKey: "router",
+    storeKey: "session",
     refine: rfn.nullable(rfn.string()),
   },
   {
@@ -78,7 +78,7 @@ export const viewName = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
     read: (data) => data.viewName,
-    storeKey: "router",
+    storeKey: "session",
     refine: rfn.nullable(rfn.string()),
   },
   {

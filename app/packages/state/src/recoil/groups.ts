@@ -46,7 +46,7 @@ export const groupSlice = graphQLSyncFragmentAtomFamily<
   boolean
 >(
   {
-    storeKey: "router",
+    storeKey: "session",
     fragments: [datasetFragment, groupSliceFragment],
     keys: ["dataset"],
     read: (data) => data.groupSlice,

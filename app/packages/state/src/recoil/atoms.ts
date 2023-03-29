@@ -157,7 +157,7 @@ export const dataset = graphQLSyncFragmentAtom<
   {
     fragments: [datasetFragment],
     keys: ["dataset"],
-    storeKey: "router",
+    storeKey: "session",
     read: (dataset) => {
       return { ...transformDataset(dataset) };
     },
@@ -170,7 +170,7 @@ export const dataset = graphQLSyncFragmentAtom<
 
 export const mediaType = graphQLSyncFragmentAtom<mediaTypeFragment$key, string>(
   {
-    storeKey: "router",
+    storeKey: "session",
     fragments: [datasetFragment, mediaTypeFragment],
     keys: ["dataset"],
     read: (data) => data.mediaType,
@@ -185,7 +185,7 @@ export const sampleFields = graphQLSyncFragmentAtom<
   StrictField[]
 >(
   {
-    storeKey: "router",
+    storeKey: "session",
     fragments: [datasetFragment, sampleFieldsFragment],
     keys: ["dataset"],
     read: (dataset) => collapseFields(dataset.sampleFields || []),
@@ -201,7 +201,7 @@ export const frameFields = graphQLSyncFragmentAtom<
   StrictField[]
 >(
   {
-    storeKey: "router",
+    storeKey: "session",
     fragments: [datasetFragment, frameFieldsFragment],
     keys: ["dataset"],
     read: (data) => collapseFields(data.frameFields || []),
@@ -222,7 +222,7 @@ export const selectedLabels = atom({
   default: [],
   effects: [
     syncEffect({
-      storeKey: "router",
+      storeKey: "session",
       refine: rfn.writableArray(
         rfn.object({
           field: rfn.string(),
@@ -240,7 +240,7 @@ export const selectedSamples = atom({
   default: new Set<string>(),
   effects: [
     syncEffect({
-      storeKey: "router",
+      storeKey: "session",
       refine: rfn.set(rfn.string()),
     }),
   ],
@@ -399,7 +399,7 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
   key: "sessionSpaces",
   effects: [
     syncEffect({
-      storeKey: "router",
+      storeKey: "session",
       refine: rfn.custom<SpaceNodeJSON>((v) => v as SpaceNodeJSON),
     }),
   ],

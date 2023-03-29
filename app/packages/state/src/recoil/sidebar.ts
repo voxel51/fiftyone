@@ -355,7 +355,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
       {
         fragments: [datasetFragment, sidebarGroupsFragment],
         keys: ["dataset"],
-        storeKey: "router",
+        storeKey: "session",
         sync: (modal) => !modal,
         read: (data) => {
           config = data.appConfig?.sidebarGroups;

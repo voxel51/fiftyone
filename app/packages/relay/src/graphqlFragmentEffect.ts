@@ -8,6 +8,10 @@ import {
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
 import { getPageQuery } from "./PageQuery";
 
+/**
+ * An atom effect for automatic syncing between a global fragment used across
+ * page queries
+ */
 export function graphQLFragmentEffect<T extends KeyType>(
   fragment: GraphQLTaggedNode
 ): AtomEffect<KeyTypeData<T>> {

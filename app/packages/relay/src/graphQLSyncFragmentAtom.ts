@@ -18,6 +18,11 @@ export type GraphQLSyncFragmentSyncAtomOptions<
   refine?: rfn.Checker<K>;
 };
 
+/**
+ * Creates a recoil atom synced with a recoil sync store. If the fragment path
+ * cannot be read from given the parent fragment keys and the optional final
+ * read function, the atom's default value will be used
+ */
 export function graphQLSyncFragmentAtom<T extends KeyType, K = KeyTypeData<T>>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>

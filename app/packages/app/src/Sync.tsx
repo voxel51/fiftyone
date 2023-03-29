@@ -222,7 +222,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       )}
       {readyState === AppReadyState.OPEN && (
         <Writer<Queries>
-          storeKey="router"
+          storeKey="session"
           read={() => router.get().data}
           subscription={(update) => {
             return router.subscribe((entry, action) => {
@@ -251,7 +251,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
 const dispatchSideEffect = (
   entry: Entry<Queries>,
-  action: Action,
+  action: Action | undefined,
   subscription: string
 ) => {
   if (action !== "POP") {

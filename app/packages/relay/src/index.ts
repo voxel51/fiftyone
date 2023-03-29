@@ -1,5 +1,5 @@
 export * from "./fragments";
-export * from "./graphqlFragmentEffect";
+export * from "./graphQLFragmentEffect";
 export * from "./graphQLSyncFragmentAtom";
 export * from "./graphQLSyncFragmentAtomFamily";
 export * from "./mutations";
