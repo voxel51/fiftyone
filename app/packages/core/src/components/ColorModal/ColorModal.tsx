@@ -1,14 +1,15 @@
 import React, { Fragment, useRef } from "react";
-import CloseIcon from "@mui/icons-material/Close";
-import * as fos from "@fiftyone/state";
-
 import Draggable from "react-draggable";
-
 import ReactDOM from "react-dom";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
+import CloseIcon from "@mui/icons-material/Close";
+
+import * as fos from "@fiftyone/state";
 import ColorModalContent from "./ColorModalContent";
 import { Button } from "../utils";
+import { tempColorSetting, useSetCustomizeColor } from "./utils";
+import { customizeColorSelector } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -55,7 +56,7 @@ const ModalActionButtonContainer = styled.div`
 `;
 
 const BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.5rem 0",
+  margin: "0.5rem 1rem",
   height: "2rem",
   width: "6rem",
   flex: 1,
@@ -66,19 +67,34 @@ const SubmitControls = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.colorModal
   );
+  if (!activeColorModalField) return null;
+  const path = activeColorModalField.path;
+  const setTempColor = useSetRecoilState(tempColorSetting);
+  const setCustomizeColor = useSetRecoilState(customizeColorSelector(path!));
+
   const onCancel = () => {
-    // TODO: clear the temporary color settings
     setActiveColorModalField(null);
+    setTempColor(null);
+    setCustomizeColor(null);
   };
+
   const onSave = () => {
     setActiveColorModalField(null);
+    useSetCustomizeColor();
   };
+
   return (
     <ModalActionButtonContainer>
       <Button
         text={"Save"}
         title={`Save`}
         onClick={onSave}
+        style={BUTTON_STYLE}
+      />
+      <Button
+        text={"Cancel"}
+        title={`Cancel`}
+        onClick={onCancel}
         style={BUTTON_STYLE}
       />
     </ModalActionButtonContainer>

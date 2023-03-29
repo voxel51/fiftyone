@@ -1,11 +1,11 @@
-import React, { Fragment, useEffect, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import React, { useRef, useState } from "react";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
 import DeleteIcon from "@material-ui/icons/Delete";
 import AddIcon from "@material-ui/icons/Add";
-import * as fos from "@fiftyone/state";
 
 import { ChromePicker } from "react-color";
+import { tempColorSetting } from "../utils";
 
 interface ColorPaletteProps {
   maxColors?: number;
@@ -16,34 +16,34 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const currentColorPool = useRecoilValue(fos.colorPool);
-  const [colors, setColors] = useState<string[]>(
-    currentColorPool.slice(0, maxColors) as string[]
-  );
+  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
+  const colors = tempColor.colors;
+
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
+  if (!colors) return null;
   const handleColorChange = (color: any) => {
     if (activeIndex !== null && color) {
-      const newColors = [...colors];
+      const newColors = colors ? [...colors] : [];
       newColors[activeIndex] = color.hex;
-      setColors(newColors);
+      setTempColor((prev) => ({ ...prev, colors: newColors }));
       setActiveIndex(null);
       setShowPicker(false);
     }
   };
 
   const handleColorDelete = (index: number) => {
-    const newColors = [...colors];
+    const newColors = colors ? [...colors] : [];
     newColors.splice(index, 1);
-    setColors(newColors);
+    setTempColor((prev) => ({ ...prev, colors: newColors }));
   };
 
   const handleColorAdd = () => {
-    if (colors.length < maxColors) {
-      setColors([...colors, ""]);
+    if (colors?.length < maxColors) {
+      setTempColor((prev) => ({ ...prev, colors: [...colors, ""] }));
     }
   };
 
