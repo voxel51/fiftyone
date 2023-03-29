@@ -1198,6 +1198,9 @@ class SampleCollection(object):
         aggs = []
         paths = []
         for name, field in schema.items():
+            if isinstance(field, fof.ListField):
+                field = field.field
+
             if isinstance(field, fof.EmbeddedDocumentField):
                 path = name
                 aggs.append(foa.Schema(prefix + path, dynamic_only=True))

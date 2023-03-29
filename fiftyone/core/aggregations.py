@@ -9,10 +9,12 @@ from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
 import inspect
+import logging
 import reprlib
 import uuid
 
 import numpy as np
+from mongoengine.base import get_document
 
 import eta.core.utils as etau
 
@@ -24,6 +26,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 class Aggregation(object):
@@ -1890,6 +1895,16 @@ class Schema(Aggregation):
 
             if name in doc_fields:
                 field = doc_fields[name]
+            elif "." in _type:
+                _type, _cls = _type.split(".", 1)
+                try:
+                    document_type = get_document(_cls)
+                    field = fof.EmbeddedDocumentField(document_type)
+                except Exception as e:
+                    field = None
+                    logger.warning(
+                        "Unable to load document class '%s': %s", _cls, e
+                    )
             else:
                 field = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
 
@@ -1922,6 +1937,40 @@ class Schema(Aggregation):
             context=context,
         )
 
+        field_type_expr = {
+            "$let": {
+                "vars": {"ftype": {"$type": "$fields.v"}},
+                "in": {
+                    "$cond": {
+                        "if": {
+                            "$and": [
+                                {
+                                    "$eq": [
+                                        "$$ftype",
+                                        "object",
+                                    ]
+                                },
+                                {
+                                    "$gt": [
+                                        "$fields.v._cls",
+                                        None,
+                                    ]
+                                },
+                            ],
+                        },
+                        "then": {
+                            "$concat": [
+                                "$$ftype",
+                                ".",
+                                "$fields.v._cls",
+                            ]
+                        },
+                        "else": "$$ftype",
+                    }
+                },
+            }
+        }
+
         pipeline.extend(
             [
                 {"$project": {"fields": {"$objectToArray": "$" + path}}},
@@ -1931,11 +1980,7 @@ class Schema(Aggregation):
                         "_id": None,
                         "schema": {
                             "$addToSet": {
-                                "$concat": [
-                                    "$fields.k",
-                                    ".",
-                                    {"$type": "$fields.v"},
-                                ]
+                                "$concat": ["$fields.k", ".", field_type_expr]
                             }
                         },
                     }
