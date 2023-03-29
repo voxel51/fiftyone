@@ -17,7 +17,7 @@ export function graphQLFragmentEffect<T extends KeyType>(
 ): AtomEffect<KeyTypeData<T>> {
   return ({ setSelf, trigger }) => {
     if (trigger == "set") {
-      throw new Error("fragement not writeable");
+      throw new Error("fragement not writable");
     }
 
     const setter = (snapshot: Snapshot) => {
