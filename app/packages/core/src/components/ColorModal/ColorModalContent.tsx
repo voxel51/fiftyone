@@ -1,4 +1,4 @@
-import React, { Fragment, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { TwitterPicker } from "react-color";
@@ -22,18 +22,30 @@ import {
 import ColorPalette from "./colorPalette/ColorPalette";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
+import { tempColorSetting } from "./utils";
 
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
 const FieldColorSettings = () => {
+  const path = useRecoilValue(fos.colorModal)?.path!;
+  const customizeColor = useRecoilValue(fos.customizeColors(path!));
+  const [tempFieldColor, setTempFieldColor] = useRecoilState(tempColorSetting);
+
   const [showPicker, setShowPicker] = useState(false);
-  const field = useRecoilValue(fos.colorModal);
+
   const coloring = useRecoilValue(fos.coloring(false));
-  const color = getColor(coloring.pool, coloring.seed, field!.path);
-  const [fieldColor, setFieldColor] = useState(color);
+  const color = getColor(coloring.pool, coloring.seed, path);
+
+  const initialColor =
+    customizeColor?.fieldColor ?? tempFieldColor?.fieldColor ?? color;
+
+  const [fieldColor, setFieldColor] = useState(initialColor);
+
   const onChangeColor = (color) => {
     setFieldColor(color.hex);
+    setTempFieldColor((prev) => ({ ...prev, fieldColor: color.hex }));
   };
+
   const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
   const toggleColorPicker = (e) => {
     if (e.target.id == "color-square") {
@@ -98,9 +110,13 @@ const FieldColorSettings = () => {
 
 const AttributeValueSettings = () => {
   const field = useRecoilValue(fos.colorModal);
-  if (!field) return <div></div>;
+  const path = field?.path;
 
-  const expandedPath = useRecoilValue(fos.expandPath(field!.path!));
+  const customizeColor = useRecoilValue(fos.customizeColors(path!));
+  const [tempAttributeSetting, setTempAttributeSetting] =
+    useRecoilState(tempColorSetting);
+
+  const expandedPath = useRecoilValue(fos.expandPath(path!));
   const colorAttributeOptions = useRecoilValue(
     fos.fields({
       path: expandedPath,
@@ -117,39 +133,85 @@ const AttributeValueSettings = () => {
     })
   ).map((field) => ({ value: field.path, label: field.name }));
 
-  const [dropdownValue, setDropdownValue] = useState(
-    colorAttributeOptions.find((x) => x.label === "label")?.value ?? null
-  );
-  const [opacityDropdownValue, setOpacityDropdownValue] = useState(
-    opacityAttributeOptions.find((x) => x.label === "confidence")?.value ?? null
-  );
+  const coloring = useRecoilValue(fos.coloring(false));
 
   const [checkbox1, setCheckbox1] = useState(false);
   const [checkbox2, setCheckbox2] = useState(false);
   const [checkbox3, setCheckbox3] = useState(false);
 
   const handleDropdownChange = (event) => {
-    setDropdownValue(event.target.value);
+    setTempAttributeSetting((prev) => ({
+      ...prev,
+      attributeForColor: event.target.value,
+    }));
   };
   const handleOpacityDropdownChange = (event) => {
-    setOpacityDropdownValue(event.target.value);
+    setTempAttributeSetting((prev) => ({
+      ...prev,
+      attributeForOpacity: event.target.value,
+    }));
   };
 
   const handleCheckboxChange = (event) => {
     switch (event.target.name) {
       case "opacity":
         setCheckbox1(event.target.checked);
+        if (!event.target.checked) {
+          setTempAttributeSetting((prev) => ({
+            ...prev,
+            attributeForOpacity: undefined,
+          }));
+        }
         break;
       case "colorPool":
         setCheckbox2(event.target.checked);
+        if (!event.target.checked) {
+          setTempAttributeSetting((prev) => ({
+            ...prev,
+            colors: coloring.pool as string[],
+          }));
+        }
         break;
       case "valueColor":
         setCheckbox3(event.target.checked);
+        if (!event.target.checked) {
+          setTempAttributeSetting((prev) => ({
+            ...prev,
+            valueColors: undefined,
+          }));
+        }
         break;
       default:
         break;
     }
   };
+
+  // if customizeColor has settings about attribute for color field, tempFieldColor should copy the settings, otherwise, initialize the settings
+  useEffect(() => {
+    if (customizeColor?.attributeForColor) {
+      setTempAttributeSetting(customizeColor);
+    } else {
+      setTempAttributeSetting({
+        field: path!,
+        attributeForColor:
+          colorAttributeOptions.find((x) => x.label === "label")?.value ??
+          undefined,
+        attributeForOpacity:
+          opacityAttributeOptions.find((x) => x.label === "confidence")
+            ?.value ?? undefined,
+        colors: coloring.pool as string[],
+        labelColors: [
+          {
+            name: "",
+            color:
+              coloring.pool[Math.floor(Math.random() * coloring.pool.length)],
+          },
+        ],
+      });
+    }
+  }, []);
+
+  if (!field || !path) return <div></div>;
 
   return (
     <div style={{ height: "calc( 80vh - 6rem)", overflow: "scroll" }}>
@@ -164,7 +226,7 @@ const AttributeValueSettings = () => {
           <Select
             labelId="dropdown-attribute"
             key="select-attribute-dropdown"
-            value={dropdownValue ?? ""}
+            value={tempAttributeSetting.attributeForColor ?? ""}
             onChange={handleDropdownChange}
             MenuProps={{ style: { zIndex: 9999999 } }}
             autoWidth
@@ -200,7 +262,7 @@ const AttributeValueSettings = () => {
             <Select
               labelId="dropdown-opacity-attribute"
               key="select-opacity-attribute-dropdown"
-              value={opacityDropdownValue ?? ""}
+              value={tempAttributeSetting.attributeForOpacity ?? ""}
               onChange={handleOpacityDropdownChange}
               MenuProps={{ style: { zIndex: 9999999 } }}
             >

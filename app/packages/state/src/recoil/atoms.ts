@@ -96,12 +96,14 @@ export const colorModal = atom<Field | null>({
 
 export interface CustomizeColor {
   field: string;
-  colorField: string; // must be string field, int field, or boolean field
-  opacityField?: string; // must be float field
-  colors: string[]; // hex colors, overwrite the default color palette
-  labelColors: {
-    [label: string]: string;
-  };
+  fieldColor?: string;
+  attributeForColor?: string; // must be string field, int field, or boolean field
+  attributeForOpacity?: string; // must be float field
+  colors?: string[]; // hex colors, overwrite the default color palette
+  labelColors?: {
+    name: string;
+    color: string;
+  }[];
 }
 
 export const customizeColors = atomFamily<CustomizeColor, string>({

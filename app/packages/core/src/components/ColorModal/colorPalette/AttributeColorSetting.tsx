@@ -5,7 +5,8 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import { ChromePicker } from "react-color";
 import Input from "../../Common/Input";
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { tempColorSetting } from "../utils";
 
 const RowContainer = styled.div`
   display: flex;
@@ -67,44 +68,47 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     name: "",
     color: coloring.pool[Math.floor(Math.random() * coloring.pool.length)],
   };
-  const [values, setValues] = useState([
-    {
-      name: "",
-      color: coloring.pool[Math.floor(Math.random() * coloring.pool.length)],
-    },
-  ]);
+  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
+  const values = tempColor.labelColors;
+
   const [showPicker, setShowPicker] = useState(
-    Array(values.length).fill(false)
+    Array(values?.length ?? 0).fill(false)
   );
 
   const handleAdd = () => {
-    setValues([...values, defaultValue]);
+    setTempColor((prev) => ({
+      ...prev,
+      labelColors: values ? [...values, defaultValue] : [defaultValue],
+    }));
     setShowPicker([...showPicker, false]);
   };
 
   const handleDelete = (index: number) => {
-    const newValues = [...values];
+    const newValues = values ? [...values] : [];
     newValues.splice(index, 1);
-    setValues(newValues);
+    setTempColor((prev) => ({ ...prev, labelColors: newValues }));
   };
+
+  const hanldeColorChange = (color: any, index: number) => {
+    const newColor = color?.hex;
+    setShowPicker((prev) => prev.map((_, i) => (i === index ? false : _)));
+    setTempColor((prev) => {
+      const newValues = prev.labelColors ? [...prev.labelColors] : [];
+      newValues[index].color = newColor;
+      return { ...prev, labelColors: newValues };
+    });
+  };
+
+  if (!values) return null;
 
   const handleChange = (
     index: number,
     key: keyof typeof values[number],
     value: string
   ) => {
-    const newValues = [...values];
+    const newValues = values ? [...values] : [];
     newValues[index][key] = value;
-    setValues(newValues);
-  };
-
-  const hanldeColorChange = (color: any, index: number) => {
-    const newColor = color?.hex;
-    setShowPicker((prev) => prev.map((_, i) => (i === index ? false : _)));
-    setValues((v) => {
-      v[index].color = newColor;
-      return v;
-    });
+    setTempColor((prev) => ({ ...prev, labelColors: newValues }));
   };
 
   return (
