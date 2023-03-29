@@ -110,7 +110,7 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
         Returns:
             a ``num_prompts x num_dims`` array of prompt embeddings
         """
-        return self._embed_prompts(prompts).detach().numpy()
+        return self._embed_prompts(prompts).detach().cpu().numpy()
 
     def _download_model(self, config):
         config.download_model_if_necessary()

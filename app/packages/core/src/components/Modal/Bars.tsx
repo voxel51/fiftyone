@@ -81,6 +81,7 @@ export const GroupBar: React.FC<{
       >
         {hasPinned && (
           <div
+            data-cy="pinned-slice-bar-description"
             style={{
               color: "var(--joy-palette-text-primary)",
               display: "flex",

@@ -23,10 +23,12 @@ nature, and resolvers should not be implemented.
 
 ## Contributing
 
-This package has code owners from the Teams API engineering and OSS API
-engineering. Each contribution must be approved by a code owner from each
-engineering team. Additions to the schema should be informed by the existing
-shape of the Python SDK.
+This package has code owners from the @voxel51/backend-devs and
+@voxel51/frontend-devs teams. Although it cannot be explicitly enforced, every
+pull request should be approved by at least one code owner from each team.
+Concretely, approvals should occur only after considerations have been given
+for both Teams and OSS software. Additions to the schema should be informed by
+the existing shape of the Python SDK.
 
 ## [TODO] Testing
 

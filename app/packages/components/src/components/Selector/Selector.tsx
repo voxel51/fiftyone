@@ -157,6 +157,7 @@ const Selector = <T extends unknown>({
         className={style.input}
         value={editing ? search : local.current}
         placeholder={placeholder}
+        data-cy={`selector-${placeholder}`}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {
           if (!editing) return;

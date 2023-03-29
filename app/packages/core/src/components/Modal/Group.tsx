@@ -296,7 +296,7 @@ const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
   }, [shouldSplitVertically, setWidth]);
 
   return (
-    <div className={groupContainer}>
+    <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
         {(isCarouselVisible || isImageVisible) && (
