@@ -1079,7 +1079,7 @@ def _attach_listeners(session: "Session"):
     on_set_spaces: t.Callable[[SetGroupSlice], None] = lambda event: setattr(
         session._state,
         "spaces",
-        Space.from_dict(json_util.loads(event.spaces)),
+        Space.from_dict(event.spaces),
     )
     session._client.add_event_listener("set_spaces", on_set_spaces)
 

@@ -1,11 +1,12 @@
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
+import { filterView } from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import * as fos from "@fiftyone/state";
-import { usePanelStatePartial } from "@fiftyone/spaces";
+import { fetchPlot } from "./fetch";
 import { useBrainResult } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
-import { fetchPlot } from "./fetch";
 
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed(false));
@@ -72,5 +73,5 @@ export function useViewChangeEffect() {
         setLoadedPlot(res);
       })
       .finally(() => setLoadingPlot(false));
-  }, [datasetName, brainKey, labelField, view, colorSeed]);
+  }, [datasetName, brainKey, labelField, filterView(view), colorSeed]);
 }

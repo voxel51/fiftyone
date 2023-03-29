@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<43a54d67a1fbc83eb7ba5a68c9d976c2>>
+ * @generated SignedSource<<49dde11b97f26148747cff756b1bbc0f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -36,7 +36,7 @@ export type setViewMutation$data = {
   readonly setView: {
     readonly dataset: {
       readonly viewCls: string | null;
-      readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment">;
+      readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment">;
     };
     readonly view: any;
   };
@@ -109,7 +109,14 @@ v6 = [
     "variableName": "view"
   }
 ],
-v7 = [
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "viewCls",
+  "storageKey": null
+},
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -160,43 +167,31 @@ v7 = [
     "storageKey": null
   }
 ],
-v8 = {
-  "alias": null,
-  "args": null,
-  "concreteType": "SampleField",
-  "kind": "LinkedField",
-  "name": "sampleFields",
-  "plural": true,
-  "selections": (v7/*: any*/),
-  "storageKey": null
-},
 v9 = {
-  "kind": "InlineDataFragmentSpread",
-  "name": "sampleFieldsFragment",
-  "selections": [
-    (v8/*: any*/)
-  ],
-  "args": null,
-  "argumentDefinitions": ([]/*: any*/)
-},
-v10 = {
   "alias": null,
   "args": null,
   "concreteType": "SampleField",
   "kind": "LinkedField",
   "name": "frameFields",
   "plural": true,
-  "selections": (v7/*: any*/),
+  "selections": (v8/*: any*/),
   "storageKey": null
 },
-v11 = {
+v10 = {
   "kind": "InlineDataFragmentSpread",
   "name": "frameFieldsFragment",
   "selections": [
-    (v10/*: any*/)
+    (v9/*: any*/)
   ],
   "args": null,
   "argumentDefinitions": ([]/*: any*/)
+},
+v11 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "mediaType",
+  "storageKey": null
 },
 v12 = {
   "alias": null,
@@ -206,6 +201,25 @@ v12 = {
   "storageKey": null
 },
 v13 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "SampleField",
+  "kind": "LinkedField",
+  "name": "sampleFields",
+  "plural": true,
+  "selections": (v8/*: any*/),
+  "storageKey": null
+},
+v14 = {
+  "kind": "InlineDataFragmentSpread",
+  "name": "sampleFieldsFragment",
+  "selections": [
+    (v13/*: any*/)
+  ],
+  "args": null,
+  "argumentDefinitions": ([]/*: any*/)
+},
+v15 = {
   "alias": null,
   "args": null,
   "concreteType": "DatasetAppConfig",
@@ -248,14 +262,7 @@ v13 = {
   ],
   "storageKey": null
 },
-v14 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "viewCls",
-  "storageKey": null
-},
-v15 = {
+v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -292,8 +299,17 @@ return {
             "name": "dataset",
             "plural": false,
             "selections": [
-              (v9/*: any*/),
-              (v11/*: any*/),
+              (v7/*: any*/),
+              (v10/*: any*/),
+              {
+                "kind": "InlineDataFragmentSpread",
+                "name": "mediaTypeFragment",
+                "selections": [
+                  (v11/*: any*/)
+                ],
+                "args": null,
+                "argumentDefinitions": []
+              },
               {
                 "kind": "InlineDataFragmentSpread",
                 "name": "groupSliceFragment",
@@ -303,22 +319,22 @@ return {
                 "args": null,
                 "argumentDefinitions": []
               },
+              (v14/*: any*/),
               {
                 "kind": "InlineDataFragmentSpread",
                 "name": "sidebarGroupsFragment",
                 "selections": [
-                  (v13/*: any*/),
-                  (v11/*: any*/),
-                  (v9/*: any*/)
+                  (v15/*: any*/),
+                  (v10/*: any*/),
+                  (v14/*: any*/)
                 ],
                 "args": null,
                 "argumentDefinitions": []
-              },
-              (v14/*: any*/)
+              }
             ],
             "storageKey": null
           },
-          (v15/*: any*/)
+          (v16/*: any*/)
         ],
         "storageKey": null
       }
@@ -355,11 +371,12 @@ return {
             "name": "dataset",
             "plural": false,
             "selections": [
-              (v8/*: any*/),
-              (v10/*: any*/),
+              (v7/*: any*/),
+              (v9/*: any*/),
+              (v11/*: any*/),
               (v12/*: any*/),
               (v13/*: any*/),
-              (v14/*: any*/),
+              (v15/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -370,23 +387,23 @@ return {
             ],
             "storageKey": null
           },
-          (v15/*: any*/)
+          (v16/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "277b427368e9aef3f677f214f5ff2677",
+    "cacheID": "83af1c5a15dd0cf847ce2d1e089ae4ca",
     "id": null,
     "metadata": {},
     "name": "setViewMutation",
     "operationKind": "mutation",
-    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      ...sampleFieldsFragment\n      ...frameFieldsFragment\n      ...groupSliceFragment\n      ...sidebarGroupsFragment\n      viewCls\n      id\n    }\n    view\n  }\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  groupSlice\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n"
+    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      viewCls\n      ...frameFieldsFragment\n      ...mediaTypeFragment\n      ...groupSliceFragment\n      ...sampleFieldsFragment\n      ...sidebarGroupsFragment\n      id\n    }\n    view\n  }\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  groupSlice\n}\n\nfragment mediaTypeFragment on Dataset {\n  mediaType\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b8326737ad006859f0f73265143a863d";
+(node as any).hash = "90a879cdc2f90d5f544358f35162405d";
 
 export default node;

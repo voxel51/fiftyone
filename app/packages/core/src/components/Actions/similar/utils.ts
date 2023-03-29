@@ -1,18 +1,24 @@
 import * as fos from "@fiftyone/state";
 import {
+  collapseFields,
   Method,
   ModalSample,
   selectedLabels,
+  transformDataset,
   useBrowserStorage,
 } from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import {
+  getFetchFunction,
+  toCamelCase,
+  toSnakeCase,
+} from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useErrorHandler } from "react-error-boundary";
 import {
   selectorFamily,
   Snapshot,
   useRecoilCallback,
-  useRecoilValue,
+  useRecoilTransaction_UNSTABLE,
+  useSetRecoilState,
 } from "recoil";
 
 export const getQueryIds = async (
@@ -60,19 +66,42 @@ export const getQueryIds = async (
 };
 
 export const useSortBySimilarity = (close) => {
-  const update = useUnprocessedStateUpdate(true);
-  const handleError = useErrorHandler();
-  const datasetId = useRecoilValue(fos.dataset).id;
   const [lastUsedBrainkeys, setLastUsedBrainKeys] =
     useBrowserStorage("lastUsedBrainKeys");
+  const setSorting = useSetRecoilState(fos.similaritySorting);
   const current = useMemo(() => {
     return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
   }, [lastUsedBrainkeys]);
+  const setSortingState = useRecoilTransaction_UNSTABLE(
+    ({ set, reset }) =>
+      (
+        combinedParameters: fos.State.SortBySimilarityParameters,
+        sampleFields,
+        frameFields
+      ) => {
+        set(fos.similarityParameters, combinedParameters);
+        set(fos.modal, null);
+        set(fos.similaritySorting, false);
+        set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
+        set(fos.hiddenLabels, {});
+        set(fos.modal, null);
+        reset(fos.selectedLabels);
+        reset(fos.selectedSamples);
+        set(fos.sampleFields, sampleFields);
+        set(fos.frameFields, frameFields);
+        close();
+      },
+    [close]
+  );
 
   return useRecoilCallback(
-    ({ reset, snapshot, set }) =>
+    ({ snapshot }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
-        set(fos.similaritySorting, true);
+        setSorting(true);
+        const dataset = await snapshot.getPromise(fos.dataset);
+        if (!dataset) {
+          throw new Error("dataset is not defined");
+        }
 
         const queryIds = parameters.query
           ? null
@@ -87,46 +116,31 @@ export const useSortBySimilarity = (close) => {
         };
 
         combinedParameters["query"] = query ?? queryIds;
+        const filters = await snapshot.getPromise(fos.filters);
 
         // save the brainkey into local storage
         setLastUsedBrainKeys(
           JSON.stringify({
             ...current,
-            [datasetId]: combinedParameters.brainKey,
+            [dataset.id]: combinedParameters.brainKey,
           })
         );
+        let { dataset: data } = await getFetchFunction()("POST", "/sort", {
+          dataset: dataset.name,
+          view,
+          subscription,
+          filters,
+          extended: toSnakeCase(combinedParameters),
+        });
+        data = transformDataset(toCamelCase(data));
 
-        try {
-          const data: fos.StateUpdate = await getFetchFunction()(
-            "POST",
-            "/sort",
-            {
-              dataset: await snapshot.getPromise(fos.datasetName),
-              view,
-              subscription,
-              filters: await snapshot.getPromise(fos.filters),
-              extended: toSnakeCase(combinedParameters),
-            }
-          );
-
-          update(({ reset, set }) => {
-            set(fos.similarityParameters, combinedParameters);
-            set(fos.modal, null);
-            set(fos.similaritySorting, false);
-            set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
-            set(fos.hiddenLabels, {});
-            set(fos.modal, null);
-            reset(fos.selectedLabels);
-            reset(fos.selectedSamples);
-            close();
-
-            return data;
-          });
-        } catch (error) {
-          handleError(error);
-        }
+        setSortingState(
+          combinedParameters,
+          collapseFields(data.sampleFields),
+          collapseFields(data.frameFields)
+        );
       },
-    []
+    [setSorting, setSortingState]
   );
 };
 

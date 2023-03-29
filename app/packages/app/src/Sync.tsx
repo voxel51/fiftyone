@@ -1,5 +1,7 @@
 import { Loading } from "@fiftyone/components";
 import {
+  setDataset,
+  setDatasetMutation,
   setSelected,
   setSelectedLabels,
   setSelectedLabelsMutation,
@@ -20,15 +22,21 @@ import {
   viewsAreEqual,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { Action } from "history";
 import React, { useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
 import { ItemSnapshot } from "recoil-sync";
-import { commitMutation, VariablesOf } from "relay-runtime";
-import Setup from "../components/Setup";
-import { Queries, RoutingContext, useRouterContext } from "../routing";
-import useRefresh from "../useRefresh";
-import { getDatasetName, getSavedViewName } from "./utils";
+import { commitMutation } from "relay-runtime";
+import Setup from "./components/Setup";
+import {
+  Entry,
+  matchPath,
+  Queries,
+  RoutingContext,
+  useRouterContext,
+} from "./routing";
+import useRefresh from "./useRefresh";
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
@@ -180,8 +188,8 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       controller.signal,
       {
         initializer: {
-          dataset: getDatasetName(router.history.location),
-          view: getSavedViewName(router.history.location),
+          dataset: getDatasetName(router.history.location.pathname),
+          view: getSavedViewName(router.history.location.search),
         },
         subscription,
         events: [
@@ -218,27 +226,18 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           read={() => router.get().data}
           subscription={(update) => {
             return router.subscribe((entry, action) => {
-              if (action === "POP") {
-                commitMutation<setViewMutation>(
-                  entry.preloadedQuery.environment,
-                  {
-                    mutation: setView,
-                    variables: {
-                      view: entry.state.view,
-                      savedViewSlug: entry.state.savedViewSlug,
-                      form: {},
-                      datasetName: getDatasetName(entry),
-                      subscription,
-                    },
-                  }
-                );
-              }
+              dispatchSideEffect(entry, action, subscription);
               update(entry.data);
             });
           }}
           writer={(itemKey, value) => {
             WRITE_HANDLERS[itemKey] &&
-              WRITE_HANDLERS[itemKey](router, value, subscription);
+              WRITE_HANDLERS[itemKey](
+                router,
+                value,
+                subscription,
+                sessionRef.current
+              );
           }}
           external={external}
           updateExternals={updateExternals}
@@ -250,24 +249,58 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   );
 };
 
+const dispatchSideEffect = (
+  entry: Entry<Queries>,
+  action: Action,
+  subscription: string
+) => {
+  if (action !== "POP") {
+    return;
+  }
+  if (entry.pathname === "/") {
+    commitMutation<setDatasetMutation>(entry.preloadedQuery.environment, {
+      mutation: setDataset,
+      variables: {
+        subscription,
+      },
+    });
+    return;
+  }
+
+  commitMutation<setViewMutation>(entry.preloadedQuery.environment, {
+    mutation: setView,
+    variables: {
+      view: entry.state.view,
+      savedViewSlug: entry.state.savedViewSlug,
+      form: {},
+      datasetName: getDatasetName(entry.pathname),
+      subscription,
+    },
+  });
+};
+
 const WRITE_HANDLERS: {
   [key: string]: (
     router: RoutingContext<Queries>,
     value: any,
-    subscription: string
+    subscription: string,
+    session: SessionData
   ) => void;
 } = {
   selectedSamples: (
     router: RoutingContext<Queries>,
     selected: Set<string> | DefaultValue,
-    subscription: string
+    subscription: string,
+    session: SessionData
   ) => {
+    session.selectedSamples =
+      selected instanceof DefaultValue ? [] : [...selected];
     commitMutation<setSelectedMutation>(
       router.get().preloadedQuery.environment,
       {
         mutation: setSelected,
         variables: {
-          selected: selected instanceof DefaultValue ? [] : [...selected],
+          selected: session.selectedSamples,
           subscription,
         },
       }
@@ -275,18 +308,18 @@ const WRITE_HANDLERS: {
   },
   selectedLabels: (
     router: RoutingContext<Queries>,
-    selectedLabels:
-      | VariablesOf<setSelectedLabelsMutation>["selectedLabels"]
-      | DefaultValue,
-    subscription: string
+    selectedLabels: State.SelectedLabel[] | DefaultValue,
+    subscription: string,
+    session: SessionData
   ) => {
+    session.selectedLabels =
+      selectedLabels instanceof DefaultValue ? [] : selectedLabels;
     commitMutation<setSelectedLabelsMutation>(
       router.get().preloadedQuery.environment,
       {
         mutation: setSelectedLabels,
         variables: {
-          selectedLabels:
-            selectedLabels instanceof DefaultValue ? [] : selectedLabels,
+          selectedLabels: session.selectedLabels,
           subscription,
         },
       }
@@ -294,9 +327,11 @@ const WRITE_HANDLERS: {
   },
   sessionSpaces: (
     router: RoutingContext<Queries>,
-    spaces: SpaceNodeJSON | DefaultValue,
-    subscription: string
+    spaces: SpaceNodeJSON,
+    subscription: string,
+    session: SessionData
   ) => {
+    session.spaces = spaces;
     commitMutation<setSpacesMutation>(router.get().preloadedQuery.environment, {
       mutation: setSpaces,
       variables: {
@@ -349,3 +384,30 @@ const WRITE_HANDLERS: {
 };
 
 export default Sync;
+
+const getDatasetName = (pathname: string) => {
+  const result = matchPath(
+    pathname,
+    {
+      path: "/datasets/:name",
+    },
+    "",
+    {}
+  );
+
+  if (result) {
+    return decodeURIComponent(result.variables.name);
+  }
+
+  return null;
+};
+
+const getSavedViewName = (search: string) => {
+  const params = new URLSearchParams(search);
+  const viewName = params.get("view");
+  if (viewName) {
+    return decodeURIComponent(viewName);
+  }
+
+  return null;
+};

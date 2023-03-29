@@ -20,11 +20,13 @@ export default r(graphql`
       form: $form
     ) {
       dataset {
-        ...sampleFieldsFragment
-        ...frameFieldsFragment
-        ...groupSliceFragment
-        ...sidebarGroupsFragment
         viewCls
+
+        ...frameFieldsFragment
+        ...mediaTypeFragment
+        ...groupSliceFragment
+        ...sampleFieldsFragment
+        ...sidebarGroupsFragment
       }
       view
     }

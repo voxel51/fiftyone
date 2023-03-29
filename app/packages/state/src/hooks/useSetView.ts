@@ -3,6 +3,8 @@ import {
   frameFieldsFragment$key,
   groupSliceFragment,
   groupSliceFragment$key,
+  mediaTypeFragment,
+  mediaTypeFragment$key,
   sampleFieldsFragment,
   sampleFieldsFragment$key,
   setView,
@@ -34,12 +36,13 @@ const useSetView = (
 
   const setter = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      ({ view, sampleFields, frameFields, viewCls, groupSlice }) => {
+      ({ view, sampleFields, frameFields, viewCls, groupSlice, mediaType }) => {
         set(atoms.viewCls, viewCls);
         set(atoms.sampleFields, sampleFields);
         set(atoms.frameFields, frameFields);
         set(atoms.view, view);
         set(atoms.groupSlice(false), groupSlice);
+        set(atoms.mediaType, mediaType);
         set(
           atoms.sidebarGroupsDefinition(false),
           resolveSidebarGroups(sampleFields, frameFields)
@@ -107,6 +110,10 @@ const useSetView = (
                   groupSliceFragment,
                   dataset
                 ).groupSlice,
+                mediaType: readInlineData<mediaTypeFragment$key>(
+                  mediaTypeFragment,
+                  dataset
+                ).mediaType,
               });
               onComplete && onComplete();
             },
