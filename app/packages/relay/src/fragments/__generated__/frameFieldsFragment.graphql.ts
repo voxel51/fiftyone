@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<af74b01ffced0e97291230c30c8eff4b>>
+ * @generated SignedSource<<0f39250b4a70f0b9d9ddf74e062cf0f7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type frameFieldsFragment$data = {
     readonly description: string | null;
     readonly embeddedDocType: string | null;
     readonly ftype: string;
-    readonly info: any | null;
+    readonly info: object | null;
     readonly path: string;
     readonly subfield: string | null;
   }> | null;

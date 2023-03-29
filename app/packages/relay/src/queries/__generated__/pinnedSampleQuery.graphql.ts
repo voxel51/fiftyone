@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<afb12be38c19139adc4a1c80bd6c7279>>
+ * @generated SignedSource<<50e2ce74043e9cd5468b056a7ac1c49e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,12 +20,12 @@ export type GroupElementFilter = {
 export type pinnedSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
-  view: any;
+  view: Array;
 };
 export type pinnedSampleQuery$data = {
   readonly sample: {
     readonly id?: string;
-    readonly sample?: any;
+    readonly sample?: object;
     readonly urls?: ReadonlyArray<{
       readonly field: string;
       readonly url: string | null;

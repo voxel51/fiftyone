@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dde2856234b4d98c6c84f7d95025b131>>
+ * @generated SignedSource<<c60124e12bb25e7c04330cb562ae1db4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +22,7 @@ export type configFragment$data = {
     readonly gridZoom: number;
     readonly loopVideos: boolean;
     readonly notebookHeight: number;
-    readonly plugins: any | null;
+    readonly plugins: object | null;
     readonly showConfidence: boolean;
     readonly showIndex: boolean;
     readonly showLabel: boolean;

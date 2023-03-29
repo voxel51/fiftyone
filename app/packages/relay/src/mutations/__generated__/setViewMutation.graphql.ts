@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<49dde11b97f26148747cff756b1bbc0f>>
+ * @generated SignedSource<<19f24b3030b4f7b3046c1ab329f3830f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,9 +11,9 @@
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type StateForm = {
-  addStages?: any | null;
-  extended?: any | null;
-  filters?: any | null;
+  addStages?: Array | null;
+  extended?: object | null;
+  filters?: object | null;
   labels?: ReadonlyArray<SelectedLabel> | null;
   sampleIds?: ReadonlyArray<string> | null;
   slice?: string | null;
@@ -30,7 +30,7 @@ export type setViewMutation$variables = {
   savedViewSlug?: string | null;
   session?: string | null;
   subscription: string;
-  view: any;
+  view: Array;
 };
 export type setViewMutation$data = {
   readonly setView: {
@@ -38,7 +38,7 @@ export type setViewMutation$data = {
       readonly viewCls: string | null;
       readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment">;
     };
-    readonly view: any;
+    readonly view: Array;
   };
 };
 export type setViewMutation = {

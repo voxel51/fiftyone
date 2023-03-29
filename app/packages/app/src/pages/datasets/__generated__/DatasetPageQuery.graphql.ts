@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4e461f72680249acbc0be6a4e2c279d4>>
+ * @generated SignedSource<<98958592e556f99897f80203d76f1395>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type DatasetPageQuery$variables = {
   name: string;
   savedViewSlug?: string | null;
   search?: string | null;
-  view?: any | null;
+  view?: Array | null;
 };
 export type DatasetPageQuery$data = {
   readonly dataset: {

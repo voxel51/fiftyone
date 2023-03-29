@@ -3,5 +3,12 @@
     "schema": "./schema.graphql",
     "eagerEsModules": true,
     "language": "typescript",
-    "customScalars": { "Date": "string", "DateTime": "string" }
+    "customScalars": {
+        "BSON": "object",
+        "BSONArray": "Array",
+        "Date": "number",
+        "DateTime": "number",
+        "JSON": "object",
+        "JSONArray": "Array"
+    }
 }

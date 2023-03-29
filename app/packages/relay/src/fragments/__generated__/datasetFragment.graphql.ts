@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<da4ab75c9bf586bfc9e08d10597db848>>
+ * @generated SignedSource<<b5d02854fa5a5f29220b7bceb49ceac0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type datasetFragment$data = {
     readonly gridMediaField: string | null;
     readonly mediaFields: ReadonlyArray<string> | null;
     readonly modalMediaField: string | null;
-    readonly plugins: any | null;
+    readonly plugins: object | null;
     readonly sidebarMode: SidebarMode | null;
   } | null;
   readonly brainMethods: ReadonlyArray<{
@@ -64,7 +64,7 @@ export type datasetFragment$data = {
   }> | null;
   readonly groupSlice: string | null;
   readonly id: string;
-  readonly info: any | null;
+  readonly info: object | null;
   readonly lastLoadedAt: any | null;
   readonly maskTargets: ReadonlyArray<{
     readonly name: string;

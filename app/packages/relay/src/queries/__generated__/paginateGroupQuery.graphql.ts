@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6823a1eb21ca1f0750d4af7f296ca350>>
+ * @generated SignedSource<<feefeddeff13f06c30ffb004c35ae8f4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,7 +23,7 @@ export type paginateGroupQuery$variables = {
   cursor?: string | null;
   dataset: string;
   filter: SampleFilter;
-  view: any;
+  view: Array;
 };
 export type paginateGroupQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"paginateGroup_query">;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3210c3aed30ffbde03ab84905e22025e>>
+ * @generated SignedSource<<450e432e6169a85c4f242815d30e7284>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type setSidebarGroupsMutation$variables = {
   dataset: string;
   session?: string | null;
   sidebarGroups: ReadonlyArray<SidebarGroupInput>;
-  stages: any;
+  stages: Array;
   subscription: string;
 };
 export type setSidebarGroupsMutation$data = {

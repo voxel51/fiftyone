@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2d477a1cbd2054108d7f23ed4e9783a5>>
+ * @generated SignedSource<<3474b22b5f44ae9aa6fe05843a2aeb46>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type viewFragment$data = {
-  readonly stages: any | null;
+  readonly stages: Array | null;
   readonly viewCls: string | null;
   readonly viewName: string | null;
   readonly " $fragmentType": "viewFragment";

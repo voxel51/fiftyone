@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<446e36cfa18e11beb17ed0ae3a0305eb>>
+ * @generated SignedSource<<de447b5fc11c0999c31cc968c0841b92>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type paginateGroup_query$data = {
         readonly __typename: "ImageSample";
         readonly aspectRatio: number;
         readonly id: string;
-        readonly sample: any;
+        readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
           readonly url: string | null;
@@ -26,7 +26,7 @@ export type paginateGroup_query$data = {
       } | {
         readonly __typename: "PointCloudSample";
         readonly id: string;
-        readonly sample: any;
+        readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
           readonly url: string | null;
@@ -36,7 +36,7 @@ export type paginateGroup_query$data = {
         readonly aspectRatio: number;
         readonly frameRate: number;
         readonly id: string;
-        readonly sample: any;
+        readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
           readonly url: string | null;
