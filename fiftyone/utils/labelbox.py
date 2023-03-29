@@ -14,7 +14,6 @@ from uuid import uuid4
 import warnings
 import webbrowser
 
-# import jsonlines
 import numpy as np
 
 import eta.core.image as etai
