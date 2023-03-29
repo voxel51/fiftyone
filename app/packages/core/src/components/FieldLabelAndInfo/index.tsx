@@ -507,7 +507,7 @@ function keyValueIsRenderable([key, value]) {
     case "boolean":
       return true;
     case "object":
-      if (value.$date) return true;
+      if (value.$date || value.$numberDouble) return true;
     default:
       return false;
   }
@@ -519,6 +519,8 @@ function toRenderValue([key, value]): [string, string] {
     case "object":
       if (value.$date) {
         return [key, new Date(value.$date).toUTCString()];
+      } else if (value.$numberDouble) {
+        return [key, value.$numberDouble];
       } else {
         return [key, ""];
       }
