@@ -1,10 +1,8 @@
 # Relay
 
-FiftyOne App Relay GraphQL queries, mutations, and subscriptions. This package
-also defines interfaces for syncing Relay data with Recoil data flow that are
-outlined below.
-
-## Interfaces
+This package contains shared FiftyOne Relay GraphQL queries, mutations, and
+subscriptions along with some core interfaces for syncing Relay data with
+Recoil data flow. These interfaces are outlined below/
 
 ### Recoil clients
 
@@ -25,7 +23,7 @@ fragment in the list, after recursing the previous fragment keys. On optional
 
 #### [`graphQLSyncFragmentAtom`](./src/graphQLSyncFragmentAtom.ts)
 
-A parametrized version of `graphQLSyncFragmentAtom`. Includes the optionl
+A parameterized version of `graphQLSyncFragmentAtom`. Includes the optional
 `sync` parameter to conditionally opt-in to fragment syncing given an atom
 instance's parameters `P`.
 
