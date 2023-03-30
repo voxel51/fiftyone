@@ -24,12 +24,25 @@ class Operator:
         self,
         name=None,
         description=None,
+        input_view=None,
+        output_view=None,
     ):
         if name is None:
             raise ValueError("Operator name cannot be None")
 
         self.name = name
-        self.definition = OperatorDefinition(description)
+        defintion = types.Object()
+
+        self.definition.define_property("inputs", types.Object(), view=input_view)
+        self.definition.define_property("outputs", types.Object(), view=output_view)
+
+    @property
+    def inputs(self):
+        return self.definition.get_property("inputs")
+
+    @property
+    def outputs(self):
+        return self.definition.get_property("outputs")
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -53,10 +66,10 @@ class Operator:
             raise ValueError("Invalid type '%s'" % type)
 
     def resolve_input(self, ctx):
-        return self.definition._inputs
+        return self.definition.get_property("inputs")
 
     def resolve_output(self, ctx):
-        return self.definition._outputs
+        return self.definition.get_property("outputs")
 
     def to_json(self):
         """Returns a JSON representation of the operator."""
@@ -72,10 +85,4 @@ class DynamicOperator(Operator):
         description=None,
     ):
         super().__init__(name, description)
-        self.definition._inputs.dynamic()
-
-    def resolve_input(self, ctx):
-        return self.definition._inputs
-
-    def resolve_output(self, ctx):
-        return self.definition._outputs
+        self.definition.get_property('inputs').dynamic()
