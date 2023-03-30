@@ -1,45 +1,46 @@
-export function toJSONSchema(fields: []) {
-  const typeMap = {
-    Boolean: "boolean",
-    String: "string",
-    Number: "number",
-    Enum: "string",
-    List: "array",
-    ObjectType: "object",
+const typeMap = {
+  Boolean: "boolean",
+  String: "string",
+  Number: "number",
+  Enum: "string",
+  List: "array",
+  ObjectType: "object",
+};
+
+export function toJSONSchema(schema) {
+  const { label, default: defaultValue, name, type, view } = schema;
+  const typeId = type.constructor.name;
+  let jsonSchema = {
+    type: typeMap[typeId],
+    title: view?.label || label,
+    default: defaultValue,
   };
+
+  if (typeId === "Enum") {
+    jsonSchema.enum = type.values;
+  }
+
+  if (typeId === "List") {
+    jsonSchema.items = toJSONSchema({ type: type.elementType });
+  }
+
+  if (typeId === "ObjectType") {
+    jsonSchema.properties = type.properties.reduce((prev, current) => {
+      prev[current.name] = toJSONSchema(current);
+      return prev;
+    }, {});
+  }
+
+  return jsonSchema;
+}
+
+export function fieldsToJSONSchema(fields: []) {
   return {
     type: "object",
-    required: [], // todo: compute
-    properties: fields.reduce((prev, current) => {
-      const { label, default: defaultValue, name, type, view } = current;
-      const typeId = type.constructor.name;
-
-      let fieldSchema = {
-        type: typeMap[typeId],
-        title: view?.label || label,
-        default: defaultValue,
-      };
-
-      if (typeId === "Enum") {
-        fieldSchema.enum = type.values;
-      }
-
-      if (typeId === "List") {
-        const elementTypeId = type.elementType.constructor.name;
-        const elementType = typeMap[elementTypeId];
-        fieldSchema.items = {
-          type: elementType,
-        };
-      }
-
-      if (typeId === "ObjectType") {
-        fieldSchema = toJSONSchema(type.properties);
-      }
-
-      return {
-        ...prev,
-        [name]: fieldSchema,
-      };
+    required: [],
+    properties: fields.reduce((fieldsObject, field) => {
+      fieldsObject[field.name] = toJSONSchema(field);
+      return fieldsObject;
     }, {}),
   };
 }
