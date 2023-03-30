@@ -16,7 +16,8 @@ import {
 } from "@mui/material";
 import { useRecoilValue } from "recoil";
 import OperatorInput from "./OperatorInput";
-import { toJSONSchema } from "./utils";
+import { fieldsToJSONSchema, toJSONSchema } from "./utils";
+import { Box } from "@mui/material";
 
 const PromptContainer = styled.div`
   position: absolute;
@@ -36,7 +37,7 @@ const PromptModal = styled.div`
   width: 50%;
   padding: 1rem;
   max-height: calc(80vh);
-  overflow: scroll;
+  overflow: auto;
 `;
 
 const Form = styled.div``;
@@ -79,47 +80,27 @@ function ActualOperatorPrompt() {
 function Prompting({ operatorPrompt }) {
   console.log(operatorPrompt.inputFields);
   return (
-    <>
+    <Box>
       <h3>Input</h3>
-      <OperatorInput
-        schema={toJSONSchema(operatorPrompt.inputFields)}
-        onChange={(data, id) => {
-          const { formData } = data;
-          for (const field in formData) {
-            operatorPrompt.setFieldValue(field, formData[field]);
-          }
-        }}
-        formData={operatorPrompt.promptingOperator.params}
-      />
-      {/* <Form>
-        {operatorPrompt.inputFields.map((field) => (
-          <Field
-            key={field.name}
-            field={field}
-            onChange={(e) => {
-              const value = getChangeResolverForType(field.type)(e);
-              operatorPrompt.setFieldValue(field.name, value);
-            }}
-          />
-        ))}
-      </Form> */}
-      <ButtonsContainer>
-        <Button
-          onClick={(e) => {
-            operatorPrompt.cancel();
+      <Box sx={{ pb: 2 }}>
+        <OperatorInput
+          schema={fieldsToJSONSchema(operatorPrompt.inputFields)}
+          onChange={(data, id) => {
+            const { formData } = data;
+            for (const field in formData) {
+              operatorPrompt.setFieldValue(field, formData[field]);
+            }
           }}
-        >
+          formData={operatorPrompt.promptingOperator.params}
+        />
+      </Box>
+      <ButtonsContainer>
+        <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
           Cancel
         </Button>
-        <Button
-          onClick={() => {
-            operatorPrompt.execute();
-          }}
-        >
-          Execute
-        </Button>
+        <Button onClick={operatorPrompt.execute}>Execute</Button>
       </ButtonsContainer>
-    </>
+    </Box>
   );
 }
 
