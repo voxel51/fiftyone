@@ -13,7 +13,8 @@
         "noImplicitReturns": true,
         "noImplicitAny": false,
         "plugins": [],
-        "types": ["vite/client"]
+        "types": ["vite/client"],
+        "jsx": "react-jsx"
     },
     "include": ["./src"],
     "references": [
