@@ -9351,7 +9351,14 @@ class SampleCollection(object):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
-        if field_name.startswith("__"):
+        if field_name.startswith(
+            "___"
+        ):  # for fiftyone.server.view hidden results
+            field_name = field_name[3:]
+
+        if field_name.startswith(
+            "__"
+        ):  # for fiftyone.core.stages hidden results
             field_name = field_name[2:]
 
         if is_frame_field:

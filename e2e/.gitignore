@@ -1,0 +1,7 @@
+node_modules
+cypress/videos
+cypress/downloads
+cypress/screenshots
+cypress/snapshots/diff
+cypress/snapshots/actual
+.env.cypress
