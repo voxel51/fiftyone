@@ -14,6 +14,7 @@ import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
+import { tempColorSetting } from "../ColorModal/utils";
 const MARGIN = 3;
 
 const fn = (
@@ -435,6 +436,13 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+
+  const customizeColor = useRecoilValue(fos.customizeColorSettings);
+  const colorFields = useRecoilValue(fos.customizeColorFields);
+  const tempColor = useRecoilValue(tempColorSetting);
+  console.info(customizeColor);
+  console.info(colorFields);
+  console.info("tempColor", tempColor);
 
   if (entries instanceof Error) {
     throw entries;

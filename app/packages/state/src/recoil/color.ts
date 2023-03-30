@@ -1,4 +1,10 @@
-import { atom, atomFamily, DefaultValue, selectorFamily } from "recoil";
+import {
+  atom,
+  atomFamily,
+  DefaultValue,
+  selector,
+  selectorFamily,
+} from "recoil";
 
 import { Coloring } from "@fiftyone/looker";
 import {
@@ -113,6 +119,7 @@ export const customizeColorSelector = selectorFamily<
   set:
     (fieldPath) =>
     ({ set, reset }, newFieldSetting) => {
+      debugger;
       // if newFieldSetting is DefaultValue, the set method will delete the atom from the atomFamily and update customizeColorFields
       if (newFieldSetting instanceof DefaultValue) {
         reset(atoms.customizeColors(fieldPath));
@@ -122,7 +129,17 @@ export const customizeColorSelector = selectorFamily<
       } else {
         // create the atom and update the customizeColorFields list
         set(atoms.customizeColors(fieldPath), newFieldSetting);
-        set(atoms.customizeColorFields, (preValue) => [...preValue, fieldPath]);
+        set(atoms.customizeColorFields, (preValue) => [
+          ...new Set([...preValue, fieldPath]),
+        ]);
       }
     },
+});
+
+export const customizeColorSettings = selector<atoms.CustomizeColor[]>({
+  key: "customizeColorSettings",
+  get: ({ get }) => {
+    const fields = get(atoms.customizeColorFields);
+    return fields.map((field) => get(customizeColorSelector(field)));
+  },
 });

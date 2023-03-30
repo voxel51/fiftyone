@@ -7,6 +7,7 @@ import Input from "../../Common/Input";
 import * as fos from "@fiftyone/state";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { tempColorSetting } from "../utils";
+import { cloneDeep } from "lodash";
 
 const RowContainer = styled.div`
   display: flex;
@@ -103,10 +104,10 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
 
   const handleChange = (
     index: number,
-    key: keyof typeof values[number],
+    key: "name" | "color",
     value: string
   ) => {
-    const newValues = values ? [...values] : [];
+    const newValues = cloneDeep(values);
     newValues[index][key] = value;
     setTempColor((prev) => ({ ...prev, labelColors: newValues }));
   };

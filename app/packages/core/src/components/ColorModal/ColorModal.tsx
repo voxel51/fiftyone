@@ -8,8 +8,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import * as fos from "@fiftyone/state";
 import ColorModalContent from "./ColorModalContent";
 import { Button } from "../utils";
-import { tempColorSetting, useSetCustomizeColor } from "./utils";
-import { customizeColorSelector } from "@fiftyone/state";
+import { tempColorSetting } from "./utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -69,18 +68,24 @@ const SubmitControls = () => {
   );
   if (!activeColorModalField) return null;
   const path = activeColorModalField.path;
-  const setTempColor = useSetRecoilState(tempColorSetting);
-  const setCustomizeColor = useSetRecoilState(customizeColorSelector(path!));
-
+  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
+  const setCustomizeColor = useSetRecoilState(
+    fos.customizeColorSelector(path!)
+  );
+  const [customizeColorFields, setCustomizeColorFields] = useRecoilState(
+    fos.customizeColorFields
+  );
+  console.info(customizeColorFields);
   const onCancel = () => {
     setActiveColorModalField(null);
     setTempColor(null);
-    setCustomizeColor(null);
   };
 
   const onSave = () => {
+    console.log("onSave");
     setActiveColorModalField(null);
-    useSetCustomizeColor();
+    setCustomizeColor(tempColor);
+    setTempColor(null);
   };
 
   return (
