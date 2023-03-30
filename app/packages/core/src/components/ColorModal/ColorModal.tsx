@@ -112,9 +112,9 @@ const ColorModal = () => {
   const longSetting = Boolean(field?.embeddedDocType && colorBy === "value");
 
   const screen = {
-    minWidth: longSetting ? "500px" : "350px",
-    width: longSetting ? "50vw" : "30vw",
-    height: longSetting ? "80vh" : "350px",
+    minWidth: "500px",
+    width: "50vw",
+    height: "80vh",
   };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
