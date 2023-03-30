@@ -370,6 +370,7 @@ class Classifications(_HasLabelList, Label):
 
     Args:
         classifications (None): a list of :class:`Classification` instances
+        logits (None): logits associated with the labels
     """
 
     _LABEL_LIST_FIELD = "classifications"
