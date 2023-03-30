@@ -18,6 +18,7 @@ import * as atoms from "./atoms";
 import { colorPool, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -55,7 +56,11 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
       let pool = get(colorPool);
       pool = pool.length ? pool : ["#000000"];
       const seed = get(atoms.colorSeed(modal));
-
+      // update Pool to remove customize field colors
+      const customizeColors = get(customizeColorSettings).map(
+        (s) => s.fieldColor
+      );
+      pool = pool.filter((color) => !customizeColors.includes(color));
       return createColorGenerator(pool, seed);
     },
   cachePolicy_UNSTABLE: {
@@ -81,6 +86,14 @@ export const pathColor = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
+      // if path exists in customizeColorFields, return the color
+      const customizeColor = get(customizeColorSettings).find(
+        (x) => x.field === path
+      );
+      if (isValidColor(customizeColor?.fieldColor)) {
+        return customizeColor.fieldColor;
+      }
+
       const map = get(colorMap(modal));
       const video = get(selectors.mediaTypeSelector) !== "image";
 
@@ -119,7 +132,6 @@ export const customizeColorSelector = selectorFamily<
   set:
     (fieldPath) =>
     ({ set, reset }, newFieldSetting) => {
-      debugger;
       // if newFieldSetting is DefaultValue, the set method will delete the atom from the atomFamily and update customizeColorFields
       if (newFieldSetting instanceof DefaultValue) {
         reset(atoms.customizeColors(fieldPath));

@@ -65,7 +65,7 @@ const ColorBy = ({ modal }) => {
 
       <TabOption
         active={colorBy}
-        options={["field", "instance", "value"].map((value) => {
+        options={["field", "value"].map((value) => {
           return {
             text: value,
             title: `Color by ${value}`,
