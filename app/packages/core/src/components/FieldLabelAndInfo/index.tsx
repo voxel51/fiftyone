@@ -1,3 +1,6 @@
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
 import React, {
   MutableRefObject,
   useEffect,
@@ -5,11 +8,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { atom, useRecoilState } from "recoil";
+import { atom, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import { Field } from "@fiftyone/utilities";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -260,6 +261,7 @@ function FieldInfoExpanded({
   };
 
   useEffect(updatePosition, [field, isCollapsed]);
+  const timeZone = useRecoilValue(fos.timeZone);
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget
@@ -284,6 +286,7 @@ function FieldInfoExpanded({
           collapsed={tooManyInfoKeys && isCollapsed}
           type={field.embeddedDocType || field.ftype}
           expandedPath={expandedPath}
+          timeZone={timeZone}
         />
         {isCollapsed && (
           <ShowMoreLink
@@ -448,12 +451,19 @@ function entryKeyToLabel(key) {
 // a react componont that renders a table
 // given an object where the keys are the first column
 // and the values are the second column
-function FieldInfoTable({ info, type, collapsed, subfield, description }) {
+function FieldInfoTable({
+  info,
+  type,
+  collapsed,
+  subfield,
+  description,
+  timeZone,
+}) {
   info = info || {};
   const tableData = info;
   let items = Object.entries<any>(tableData)
     .filter(keyValueIsRenderable)
-    .map(toRenderValue);
+    .map((v) => toRenderValue(v, timeZone));
 
   if (collapsed) {
     items = items.slice(0, 2);
@@ -507,20 +517,20 @@ function keyValueIsRenderable([key, value]) {
     case "boolean":
       return true;
     case "object":
-      if (value.$date || value.$numberDouble) return true;
+      return ["Date", "DateTime"].includes(value._cls);
     default:
       return false;
   }
 }
-function toRenderValue([key, value]): [string, string] {
+function toRenderValue([key, value], timeZone: string): [string, string] {
   switch (typeof value) {
     case "boolean":
       return [key, value ? "True" : "False"];
     case "object":
-      if (value.$date) {
-        return [key, new Date(value.$date).toUTCString()];
-      } else if (value.$numberDouble) {
-        return [key, value.$numberDouble];
+      if (value._cls === "Date") {
+        return [key, formatDate(value._timestamp)];
+      } else if (value._cls === "DateTime") {
+        return [key, formatDateTime(value._timestamp, timeZone)];
       } else {
         return [key, ""];
       }
