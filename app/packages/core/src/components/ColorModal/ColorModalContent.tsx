@@ -43,7 +43,11 @@ const FieldColorSettings = () => {
 
   const onChangeColor = (color) => {
     setFieldColor(color.hex);
-    setTempFieldColor((prev) => ({ ...prev, fieldColor: color.hex }));
+    setTempFieldColor((prev) => ({
+      ...prev,
+      field: path,
+      fieldColor: color.hex,
+    }));
   };
 
   const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
@@ -186,10 +190,28 @@ const AttributeValueSettings = () => {
     }
   };
 
+  const hasDefaultColorPool = (colors: string[] | undefined) => {
+    if (!colors || colors.length == 0) return true;
+    if (colors.join("") === coloring.pool.join("")) return true;
+    return false;
+  };
+
+  const hasDefaultLabelColor = (
+    labelColors: { name: string; color: string }[] | undefined
+  ) => {
+    if (!labelColors || labelColors.length == 0) return true;
+    if (labelColors.length == 1 && labelColors[0].name == "") return true;
+    return false;
+  };
+
   // if customizeColor has settings about attribute for color field, tempFieldColor should copy the settings, otherwise, initialize the settings
   useEffect(() => {
     if (customizeColor?.attributeForColor) {
       setTempAttributeSetting(customizeColor);
+      // update checkbox status based on exisiting settings
+      setCheckbox1(!!customizeColor.attributeForOpacity);
+      setCheckbox2(!hasDefaultColorPool(customizeColor.colors));
+      setCheckbox3(!hasDefaultLabelColor(customizeColor.labelColors));
     } else {
       setTempAttributeSetting({
         field: path!,
@@ -226,7 +248,7 @@ const AttributeValueSettings = () => {
           <Select
             labelId="dropdown-attribute"
             key="select-attribute-dropdown"
-            value={tempAttributeSetting.attributeForColor ?? ""}
+            value={tempAttributeSetting?.attributeForColor ?? ""}
             onChange={handleDropdownChange}
             MenuProps={{ style: { zIndex: 9999999 } }}
             autoWidth
@@ -262,7 +284,7 @@ const AttributeValueSettings = () => {
             <Select
               labelId="dropdown-opacity-attribute"
               key="select-opacity-attribute-dropdown"
-              value={tempAttributeSetting.attributeForOpacity ?? ""}
+              value={tempAttributeSetting?.attributeForOpacity ?? ""}
               onChange={handleOpacityDropdownChange}
               MenuProps={{ style: { zIndex: 9999999 } }}
             >
