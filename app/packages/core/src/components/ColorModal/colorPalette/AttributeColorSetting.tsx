@@ -78,25 +78,28 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
 
   const handleAdd = () => {
     setTempColor((prev) => ({
-      ...prev,
-      labelColors: values ? [...values, defaultValue] : [defaultValue],
+      ...cloneDeep(prev),
+      labelColors: values
+        ? [...cloneDeep(values), defaultValue]
+        : [defaultValue],
     }));
     setShowPicker([...showPicker, false]);
   };
 
   const handleDelete = (index: number) => {
-    const newValues = values ? [...values] : [];
+    const newValues = values ? [...cloneDeep(values)] : [];
     newValues.splice(index, 1);
-    setTempColor((prev) => ({ ...prev, labelColors: newValues }));
+    setTempColor((prev) => ({ ...cloneDeep(prev), labelColors: newValues }));
   };
 
   const hanldeColorChange = (color: any, index: number) => {
     const newColor = color?.hex;
     setShowPicker((prev) => prev.map((_, i) => (i === index ? false : _)));
-    setTempColor((prev) => {
+    setTempColor((p) => {
+      const prev = cloneDeep(p);
       const newValues = prev.labelColors ? [...prev.labelColors] : [];
       newValues[index].color = newColor;
-      return { ...prev, labelColors: newValues };
+      return { ...cloneDeep(prev), labelColors: newValues };
     });
   };
 
@@ -109,7 +112,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   ) => {
     const newValues = cloneDeep(values);
     newValues[index][key] = value;
-    setTempColor((prev) => ({ ...prev, labelColors: newValues }));
+    setTempColor((prev) => ({ ...cloneDeep(prev), labelColors: newValues }));
   };
 
   return (
