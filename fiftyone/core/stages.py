@@ -3269,6 +3269,71 @@ class GroupBy(ViewStage):
             sample_collection.create_index(field_or_expr)
 
 
+class Flatten(ViewStage):
+    """Returns a flattened view that contains all samples in a dynamically
+    grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+        grouped_view = dataset.take(1000).group_by("ground_truth.label", flat=False)
+
+        stage = fo.Flatten(limit=10)
+        flat_view = grouped_view.add_stage(stage)
+
+        print(len(grouped_view))  # 10
+        print(len(flat_view))  # 100
+
+    Args:
+        limit (None): a maximum number of samples to include in each group
+    """
+
+    def __init__(self, limit=None):
+        self._limit = limit
+
+    @property
+    def limit(self):
+        """A maximum number of samples to include in each group."""
+        return self._limit
+
+    def to_mongo(self, sample_collection):
+        if self._limit is not None:
+            group_pipeline = [{"$limit": self._limit}]
+        else:
+            group_pipeline = None
+
+        return sample_collection._groups_only_pipeline(
+            group_pipeline=group_pipeline
+        )
+
+    def get_media_type(self, sample_collection):
+        return sample_collection._dataset.media_type
+
+    def validate(self, sample_collection):
+        if not sample_collection._is_dynamic_groups:
+            raise ValueError(
+                "%s is not a dynamic grouped collection" % sample_collection
+            )
+
+    def _kwargs(self):
+        return [["limit", self._limit]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "limit",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "limit (default=None)",
+                "default": "None",
+            },
+        ]
+
+
 class Limit(ViewStage):
     """Creates a view with at most the given number of samples.
 
@@ -7797,6 +7862,7 @@ _STAGES = [
     FilterField,
     FilterLabels,
     FilterKeypoints,
+    Flatten,
     GeoNear,
     GeoWithin,
     GroupBy,

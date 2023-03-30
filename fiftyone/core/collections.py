@@ -4271,6 +4271,30 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def flatten(self, limit=None):
+        """Returns a flattened view that contains all samples in the
+        dynamically grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+            grouped_view = dataset.take(1000).group_by("ground_truth.label", flat=False)
+
+            flat_view = grouped_view.flatten(limit=10)
+
+            print(len(grouped_view))  # 10
+            print(len(flat_view))  # 100
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Flatten(limit=limit))
+
+    @view_stage
     def geo_near(
         self,
         point,

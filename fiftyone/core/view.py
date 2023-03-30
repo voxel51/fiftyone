@@ -639,7 +639,9 @@ class DatasetView(foc.SampleCollection):
         make_sample = self._make_sample_fcn()
         index = 0
 
-        post_pipeline = self._groups_only_pipeline("_group_expr")
+        expr_field = "_group_expr"
+        post_pipeline = self._groups_only_pipeline(expr_field=expr_field)
+
         curr_expr = None
         group = []
 
@@ -647,7 +649,7 @@ class DatasetView(foc.SampleCollection):
             for d in self._aggregate(
                 detach_frames=True, post_pipeline=post_pipeline
             ):
-                group_expr = d.pop("_group_expr", None)
+                group_expr = d.pop(expr_field, None)
                 sample = make_sample(d)
 
                 if curr_expr is None:
@@ -1248,7 +1250,8 @@ class DatasetView(foc.SampleCollection):
 
         return group_expr, is_id_field
 
-    def _groups_only_pipeline(self, expr_field):
+    def _groups_only_pipeline(self, expr_field=None, group_pipeline=None):
+        set_group_expr = expr_field is not None
         group_expr = None
         order_by = None
         reverse = False
@@ -1269,8 +1272,8 @@ class DatasetView(foc.SampleCollection):
 
         # Extracts samples for the current group as emitted just *before* the
         # `group_by()` stage in the view
-        pipeline = _view._pipeline(detach_frames=True)
-        pipeline.append(
+        lookup_pipeline = _view._pipeline(detach_frames=True)
+        lookup_pipeline.append(
             {"$match": {"$expr": {"$eq": ["$$group_expr", group_expr]}}}
         )
 
@@ -1282,22 +1285,35 @@ class DatasetView(foc.SampleCollection):
             else:
                 sort = {order_by: order}
 
-            pipeline.append({"$sort": sort})
+            lookup_pipeline.append({"$sort": sort})
 
-        return [
+        if group_pipeline is not None:
+            lookup_pipeline.extend(group_pipeline)
+
+        if expr_field is None:
+            expr_field = "_group_expr"
+
+        pipeline = [
             {"$project": {expr_field: group_expr}},
             {
                 "$lookup": {
                     "from": self._dataset._sample_collection_name,
                     "let": {"group_expr": "$" + expr_field},
-                    "pipeline": pipeline,
+                    "pipeline": lookup_pipeline,
                     "as": "groups",
                 }
             },
             {"$unwind": "$groups"},
-            {"$set": {"groups." + expr_field: "$" + expr_field}},
-            {"$replaceRoot": {"newRoot": "$groups"}},
         ]
+
+        if set_group_expr:
+            pipeline.append(
+                {"$set": {"groups." + expr_field: "$" + expr_field}}
+            )
+
+        pipeline.append({"$replaceRoot": {"newRoot": "$groups"}})
+
+        return pipeline
 
     def _pipeline(
         self,
