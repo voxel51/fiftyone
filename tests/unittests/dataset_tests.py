@@ -4205,6 +4205,72 @@ class DynamicFieldTests(unittest.TestCase):
         dataset.add_dynamic_sample_fields()
 
     @drop_datasets
+    def test_dynamic_frame_fields_nested(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", mood="surly"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel", age=51),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "tasks.annotator",
+                "tasks.labels",
+                "tasks.labels.classifications.age",
+                "tasks.labels.classifications.mood",
+            },
+        )
+
+        dataset.add_dynamic_frame_fields()
+
+        new_paths = [
+            "tasks",
+            "tasks.labels",
+            "tasks.labels.classifications",
+            "tasks.labels.classifications.id",
+            "tasks.labels.classifications.tags",
+            "tasks.labels.classifications.label",
+            "tasks.labels.classifications.logits",
+            "tasks.labels.classifications.confidence",
+            "tasks.labels.classifications.age",
+            "tasks.labels.classifications.mood",
+            "tasks.labels.logits",
+            "tasks.annotator",
+        ]
+        schema = dataset.get_frame_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
+
+        dataset.add_dynamic_frame_fields()
+
+    @drop_datasets
     def test_rename_dynamic_embedded_fields(self):
         sample = fo.Sample(
             filepath="image.jpg",
