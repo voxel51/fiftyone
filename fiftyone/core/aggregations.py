@@ -1841,12 +1841,13 @@ class Schema(Aggregation):
         field_or_expr,
         expr=None,
         dynamic_only=False,
+        _doc_type=None,
         _include_private=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._dynamic_only = dynamic_only
         self._include_private = _include_private
-        self._doc_type = None
+        self._doc_type = _doc_type
 
     def _kwargs(self):
         return [
@@ -1919,16 +1920,17 @@ class Schema(Aggregation):
 
     def to_mongo(self, sample_collection, context=None):
         field_name = self._field_name
-        doc_type = None
 
-        if self._expr is None:
-            field_type = _get_field_type(
-                sample_collection, field_name, unwind=True
-            )
-            if isinstance(field_type, fof.EmbeddedDocumentField):
-                doc_type = field_type
+        if self._doc_type is None:
+            doc_type = None
+            if self._expr is None:
+                field_type = _get_field_type(
+                    sample_collection, field_name, unwind=True
+                )
+                if isinstance(field_type, fof.EmbeddedDocumentField):
+                    doc_type = field_type
 
-        self._doc_type = doc_type
+            self._doc_type = doc_type
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
             sample_collection,

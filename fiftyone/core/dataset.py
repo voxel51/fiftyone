@@ -1372,7 +1372,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        self._merge_sample_field_schema(schema)
+        for _schema in _handle_nested_fields(schema):
+            self._merge_sample_field_schema(_schema)
 
     def add_frame_field(
         self,
@@ -1498,7 +1499,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elif field is not None:
                 schema[path] = field
 
-        self._merge_frame_field_schema(schema)
+        for _schema in _handle_nested_fields(schema):
+            self._merge_frame_field_schema(_schema)
 
     def add_group_field(
         self, field_name, default=None, description=None, info=None
@@ -8090,6 +8092,28 @@ def _parse_field_mapping(field_mapping):
             new_fields.append(new_field)
 
     return fields, new_fields, embedded_fields, embedded_new_fields
+
+
+def _handle_nested_fields(schema):
+    safe_schemas = []
+
+    while True:
+        _now = {}
+        _later = {}
+        for path, field in schema.items():
+            if any(path.startswith(p + ".") for p in schema.keys()):
+                _later[path] = field
+            else:
+                _now[path] = field
+
+        safe_schemas.append(_now)
+
+        if _later:
+            schema = _later
+        else:
+            break
+
+    return safe_schemas
 
 
 def _extract_archive_if_necessary(archive_path, cleanup):

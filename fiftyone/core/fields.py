@@ -242,7 +242,7 @@ def _flatten(
     ):
         schema[prefix] = field
 
-    if isinstance(field, (ListField, DictField)):
+    while isinstance(field, (ListField, DictField)):
         field = field.field
 
     if isinstance(field, EmbeddedDocumentField):
@@ -1361,7 +1361,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                     foo.validate_fields_match(_path, _field, _existing_field)
 
                 if recursive:
-                    if isinstance(_existing_field, ListField):
+                    while isinstance(_existing_field, ListField):
                         _existing_field = _existing_field.field
                         if isinstance(_field, ListField):
                             _field = _field.field
