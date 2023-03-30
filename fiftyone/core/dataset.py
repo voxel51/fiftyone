@@ -119,16 +119,11 @@ def load_dataset(name):
         return the same object.
 
     Args:
-        name (str): the name of the dataset
+        name: the name of the dataset
 
     Returns:
         a :class:`Dataset`
     """
-    if not (name and isinstance(name, str)):
-        raise ValueError(
-            f"Cannot load dataset with name {name}. "
-            f"Dataset `name` must be a non-empty string."
-        )
     return Dataset(name, _create=False)
 
 
