@@ -33,8 +33,12 @@ class Operator:
         self.name = name
         defintion = types.Object()
 
-        self.definition.define_property("inputs", types.Object(), view=input_view)
-        self.definition.define_property("outputs", types.Object(), view=output_view)
+        self.definition.define_property(
+            "inputs", types.Object(), view=input_view
+        )
+        self.definition.define_property(
+            "outputs", types.Object(), view=output_view
+        )
 
     @property
     def inputs(self):
@@ -78,6 +82,7 @@ class Operator:
             "definition": self.definition.to_json(),
         }
 
+
 class DynamicOperator(Operator):
     def __init__(
         self,
@@ -85,4 +90,4 @@ class DynamicOperator(Operator):
         description=None,
     ):
         super().__init__(name, description)
-        self.definition.get_property('inputs').dynamic()
+        self.definition.get_property("inputs").dynamic()
