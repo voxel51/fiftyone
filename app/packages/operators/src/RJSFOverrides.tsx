@@ -67,9 +67,9 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
         <Typography variant="h6">{title}</Typography>
         {description && <Typography variant="body1">{description}</Typography>}
       </Box>
-      <Grid container spacing={2}>
+      <Grid container spacing={1}>
         {props.properties.map((element, i) => (
-          <Grid item xs={spaces[i] || 12} sx={{ pb: 1.5 }}>
+          <Grid item xs={spaces[i] || 12}>
             {element.content}
           </Grid>
         ))}
@@ -135,6 +135,7 @@ function BaseInputTemplate(props: BaseInputTemplateProps) {
         onBlur={onTextBlur}
         onFocus={onTextFocus}
         InputProps={{ readOnly: readonly }}
+        size="small"
         {...inputProps}
       />
     </Box>
