@@ -1184,7 +1184,6 @@ class SampleCollection(object):
 
         schema = self.get_frame_field_schema()
         prefix = self._FRAMES_PREFIX
-
         return self._get_dynamic_field_schema(
             schema, prefix=prefix, fields=fields
         )
