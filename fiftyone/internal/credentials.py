@@ -108,7 +108,7 @@ def _parse_credentials(creds_list, creds_dir, fernet, provider):
     elif provider == "GCP":
         filename = "gcp_creds.json"
     elif provider == "AZURE":
-        filename = "azure_creds.json"
+        filename = "azure_creds.ini"
     elif provider == "MINIO":
         filename = "minio_creds.ini"
     else:
