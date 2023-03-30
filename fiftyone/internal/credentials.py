@@ -78,7 +78,7 @@ class CloudCredentialsManager(object):
         creds_dir = str(pathlib.Path(foc.locate_config()).parent.absolute())
         fernet = Fernet(self._encryption_key)
 
-        for provider in ("AWS", "GCP", "MINIO"):
+        for provider in ("AWS", "GCP", "AZURE", "MINIO"):
             try:
                 creds = _parse_credentials(
                     creds_list, creds_dir, fernet, provider
@@ -107,6 +107,8 @@ def _parse_credentials(creds_list, creds_dir, fernet, provider):
         filename = "aws_creds.ini"
     elif provider == "GCP":
         filename = "gcp_creds.json"
+    elif provider == "AZURE":
+        filename = "azure_creds.json"
     elif provider == "MINIO":
         filename = "minio_creds.ini"
     else:
@@ -126,6 +128,12 @@ def _parse_credentials(creds_list, creds_dir, fernet, provider):
         raw_creds_dict = json.loads(raw_creds)
         creds_path = os.path.join(creds_dir, filename)
         _write_default_aws_ini_file(raw_creds_dict, creds_path)
+        return creds_path
+
+    if provider == "AZURE":
+        raw_creds_dict = json.loads(raw_creds)
+        creds_path = os.path.join(creds_dir, filename)
+        _write_default_azure_ini_file(raw_creds_dict, creds_path)
         return creds_path
 
     if provider == "MINIO":
@@ -156,6 +164,30 @@ def _write_default_aws_ini_file(creds_dict, creds_path):
     region = creds_dict.get("default-region", None)
     if region is not None:
         config["default"]["region"] = region
+
+    with open(creds_path, "w") as f:
+        config.write(f)
+
+
+def _write_default_azure_ini_file(creds_dict, creds_path):
+    config = configparser.ConfigParser()
+    config["default"] = {}
+
+    account_name = creds_dict.get("account_name", None)
+    if account_name is not None:
+        config["default"]["account_name"] = account_name
+
+    account_key = creds_dict.get("account_key", None)
+    if account_key is not None:
+        config["default"]["account_key"] = account_key
+
+    conn_str = creds_dict.get("conn_str", None)
+    if conn_str is not None:
+        config["default"]["conn_str"] = conn_str
+
+    alias = creds_dict.get("alias", None)
+    if alias is not None:
+        config["default"]["alias"] = alias
 
     with open(creds_path, "w") as f:
         config.write(f)
