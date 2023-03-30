@@ -21,6 +21,17 @@ export interface Coloring {
   points: boolean;
   targets: string[];
 }
+export interface CustomizeColor {
+  field: string;
+  fieldColor?: string;
+  attributeForColor?: string;
+  attributeForOpacity?: string;
+  colors?: string[];
+  labelColors?: {
+    name: string;
+    color: string;
+  }[];
+}
 
 export type OrthogrpahicProjectionMetadata = {
   _id: string;
@@ -120,6 +131,7 @@ interface BaseOptions {
   activePaths: string[];
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   selectedLabels: string[];
   showConfidence: boolean;
   showControls: boolean;

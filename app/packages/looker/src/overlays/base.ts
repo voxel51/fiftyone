@@ -4,7 +4,7 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { sizeBytes } from "./util";
+import { isValidColor, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -93,20 +93,47 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label.id);
   }
 
-  getColor({ options: { coloring } }: Readonly<State>): string {
+  getColor({
+    options: { coloring, customizeColorSetting },
+  }: Readonly<State>): string {
     let key;
+    let pool;
 
     switch (coloring.by) {
       case "field":
+        // check if the field has a customized color, use it if it is a valid color
+        const fieldColor = customizeColorSetting.find(
+          (s) => s.field === this.field
+        )?.fieldColor;
+        if (fieldColor && isValidColor(fieldColor)) {
+          return fieldColor;
+        }
+        // use default settings
         return getColor(coloring.pool, coloring.seed, this.field);
-      case "instance":
-        key = this.label.index !== undefined ? "index" : "id";
-        break;
-      default:
-        key = "label";
-    }
 
-    return getColor(coloring.pool, coloring.seed, this.label[key]);
+      default:
+        // check if the field has customized setting
+        const setting = customizeColorSetting.find(
+          (s) => s.field === this.field
+        );
+        if (setting) {
+          key = setting.attributeForColor.split(".").slice(-1) ?? "label";
+          pool = setting.colors?.every((c) => isValidColor(c))
+            ? setting.colors
+            : coloring.pool;
+          // check if this label has a assigned color, use it if it is a valid color
+          const labelColor = setting.labelColors?.find(
+            (l) => l.name === this.label[key]
+          )?.color;
+          if (isValidColor(labelColor)) {
+            return labelColor;
+          }
+        } else {
+          key = "label";
+          pool = coloring.pool;
+        }
+        return getColor(pool, coloring.seed, this.label[key]);
+    }
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

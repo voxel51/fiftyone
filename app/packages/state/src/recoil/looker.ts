@@ -65,6 +65,7 @@ export const lookerOptions = selectorFamily<
         ...video,
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring(modal)),
+        customizeColorSetting: get(colorAtoms.customizeColorSettings),
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
         fullscreen: get(atoms.fullscreen),
