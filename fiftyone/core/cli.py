@@ -415,7 +415,7 @@ class DatasetsListCommand(Command):
         fiftyone datasets list
 
         # List datasets matching a given pattern
-        fiftyone datasets list --glob-patt quick*
+        fiftyone datasets list --glob-patt quickstart-*
     """
 
     @staticmethod
@@ -424,7 +424,7 @@ class DatasetsListCommand(Command):
             "-p",
             "--glob-patt",
             metavar="PATT",
-            help="an optional glob pattern of names to return",
+            help="an optional glob pattern of dataset names to include",
         )
 
     @staticmethod
@@ -443,9 +443,9 @@ class DatasetsInfoCommand(Command):
 
     Examples::
 
-        # Print basic information about all datasets
+        # Print basic information about multiple datasets
         fiftyone datasets info
-        fiftyone datasets info --glob-patt quick*
+        fiftyone datasets info --glob-patt quickstart-*
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
@@ -465,7 +465,7 @@ class DatasetsInfoCommand(Command):
             "-p",
             "--glob-patt",
             metavar="PATT",
-            help="an optional glob pattern of names to return",
+            help="an optional glob pattern of dataset names to include",
         )
         parser.add_argument(
             "-s",
