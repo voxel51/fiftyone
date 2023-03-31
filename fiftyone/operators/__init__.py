@@ -5,5 +5,5 @@
 """
 
 from .operator import Operator, DynamicOperator
-from .registry import register_operator
+from .registry import register_operator, unregister_operator
 from .executor import execute_operator

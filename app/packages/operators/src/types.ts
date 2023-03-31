@@ -3,15 +3,25 @@ import { ExecutionContext } from "./operators";
 export class BaseType {}
 
 export class ObjectType extends BaseType {
-  constructor(public properties: Property[] = []) {
+  constructor(public properties: Map<string, Property> = null) {
     super();
+    if (properties === null) {
+      this.properties = new Map();
+    }
   }
-  addProperty(property: Property) {
-    this.properties.push(property);
+  getPropertyList() {
+    return Array.from(this.properties.values());
+  }
+  addProperty(name: string, property: Property) {
+    this.properties[name] = property;
     return property;
   }
   static fromJSON(json: any) {
-    const type = new ObjectType(json.properties.map(Property.fromJSON));
+    const entries = Object.entries(json.properties).map(([k, v]) => [
+      k,
+      Property.fromJSON(v),
+    ]);
+    const type = new ObjectType(new Map(Object.fromEntries(entries)));
     type._needsResolution = json.needsResolution;
     return type;
   }
@@ -19,7 +29,7 @@ export class ObjectType extends BaseType {
     return this.properties.map((p) => p.toProps());
   }
   getResolverableProperties() {
-    return this.properties.filter((p) => p.hasResolver);
+    return this.properties.values().filter((p) => p.hasResolver);
   }
   public _needsResolution: boolean = false;
   needsResolution() {
@@ -28,13 +38,12 @@ export class ObjectType extends BaseType {
 }
 export class Property {
   constructor(
-    public name: string,
     type: ANY_TYPE,
     description: string,
     required: boolean,
     defaultValue?: any,
     public _hasResolver: boolean = false,
-    public view?: object
+    public view?: View
   ) {
     this.type = type;
     this.description = description;
@@ -55,7 +64,6 @@ export class Property {
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: any) {
     return new Property(
-      json.name,
       typeFromJSON(json.type),
       json.description,
       json.required,
@@ -66,8 +74,7 @@ export class Property {
   }
   toProps() {
     return {
-      name: this.name,
-      label: this.name,
+      label: this.view?.label,
       type: this.type,
       default: this.defaultValue,
       view: this.view,
@@ -112,6 +119,16 @@ export class Enum extends BaseType {
 
   static fromJSON(json: { values: any[] }) {
     return new Enum(json.values);
+  }
+}
+
+export class View extends BaseType {
+  constructor(public label: string, public description: string) {
+    super();
+  }
+
+  static fromJSON(json: any) {
+    return new View(json.label, json.description);
   }
 }
 

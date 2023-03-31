@@ -34,9 +34,13 @@ class Object(BaseType):
         return property
 
     def to_json(self):
+        # convert properties to json
+        properties = {}
+        for name, property in self.properties.items():
+            properties[name] = property.to_json()
         return {
             "name": self.__class__.__name__,
-            "properties": [p.to_json() for p in self.properties],
+            "properties": properties,
             "needsResolution": self._needsResolution,
         }
 
