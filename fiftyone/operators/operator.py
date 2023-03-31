@@ -43,6 +43,12 @@ class Operator:
     def outputs(self):
         return self.definition.get_property("outputs")
 
+    def define_input_property(self, name, type, **kwargs):
+        return self.inputs.type.define_property(name, type, **kwargs)
+
+    def define_output_property(self, name, type, **kwargs):
+        return self.outputs.type.define_property(name, type, **kwargs)
+
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
 
@@ -85,4 +91,4 @@ class DynamicOperator(Operator):
         description=None,
     ):
         super().__init__(name, description)
-        self.definition.get_property("inputs").dynamic()
+        self.definition.get_property("inputs").type.dynamic()
