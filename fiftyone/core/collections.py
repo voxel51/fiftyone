@@ -4272,8 +4272,8 @@ class SampleCollection(object):
 
     @view_stage
     def flatten(self, limit=None):
-        """Returns a flattened view that contains all samples in the
-        dynamically grouped collection.
+        """Returns a flattened view that contains all samples in the dynamic
+        grouped collection.
 
         Examples::
 
@@ -4288,6 +4288,9 @@ class SampleCollection(object):
 
             print(len(grouped_view))  # 10
             print(len(flat_view))  # 100
+
+        Args:
+            limit (None): a maximum number of samples to include in each group
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

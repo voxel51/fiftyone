@@ -3270,8 +3270,8 @@ class GroupBy(ViewStage):
 
 
 class Flatten(ViewStage):
-    """Returns a flattened view that contains all samples in a dynamically
-    grouped collection.
+    """Returns a flattened view that contains all samples in a dynamic grouped
+    collection.
 
     Examples::
 
