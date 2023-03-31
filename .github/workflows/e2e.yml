@@ -1,7 +1,10 @@
 name: Test e2e
 
 # on: workflow_call
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - e2e-ci
 
 jobs:
   test-e2e:
