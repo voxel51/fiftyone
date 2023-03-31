@@ -14,7 +14,7 @@ class Object(BaseType):
         self._needsResolution = False
 
     def add_property(self, name, property):
-        self.properties.set(name, property)
+        self.properties[name] = property
         return property
 
     def get_property(self, name):
@@ -23,12 +23,13 @@ class Object(BaseType):
     def define_property(self, name, type, **kwargs):
         label = kwargs.get("label", None)
         description = kwargs.get("description", None)
-        view = kwargs.get("view", types.View())
+        view = kwargs.get("view", View())
         if label is not None:
             view.label = label
         if description is not None:
             view.description = description
-        property = Property(type, **kwargs, view=view)
+        args = {**kwargs, "view": view}
+        property = Property(type, **args)
         self.add_property(name, property)
         return property
 
@@ -105,6 +106,7 @@ class SampleID(String):
     def __init__(self):
         pass
 
+
 class Enum(BaseType):
     def __init__(self, values):
         self.values = values
@@ -128,11 +130,12 @@ class Plot(BaseType):
 # Trigger
 #
 
+
 class Trigger(BaseType):
     def __init__(self, operator, params=None):
         self.operator = operator
         self.params = params
-    
+
     def to_json(self):
         return {
             "name": self.__class__.__name__,
@@ -140,17 +143,21 @@ class Trigger(BaseType):
             "params": self.params,
         }
 
+
 #
 # Fiftyone
 #
+
 
 class SampleField(Enum):
     def __init__(self, dataset):
         super().__init__(dataset.get_field_schema().keys())
 
+
 #
 # Views
 #
+
 
 class View:
     def __init__(self, **kwargs):
@@ -164,11 +171,12 @@ class View:
             "label": self.label,
         }
 
-class Choice(View) {
+
+class Choice(View):
     def __init__(self, value, **kwargs):
         super().__init__(**kwargs)
         self.value = value
-}
+
 
 class Choices(View):
     def __init__(self, **kwargs):
@@ -185,25 +193,31 @@ class Choices(View):
             "choices": self.choices,
         }
 
+
 class RadioGroup(Choices):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
 
 class Dropdown(Choices):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+
 class Notice(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
 
 class Header(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+
 class Warning(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
 
 class Button(View):
     def __init__(self, **kwargs):
