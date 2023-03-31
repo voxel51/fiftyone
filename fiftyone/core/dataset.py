@@ -52,10 +52,11 @@ foud = fou.lazy_import("fiftyone.utils.data")
 logger = logging.getLogger(__name__)
 
 
-def list_datasets(info=False):
+def list_datasets(glob_patt=None, info=False):
     """Lists the available FiftyOne datasets.
 
     Args:
+        glob_patt (None): an optional glob pattern of names to return
         info (False): whether to return info dicts describing each dataset
             rather than just their names
 
@@ -63,9 +64,9 @@ def list_datasets(info=False):
         a list of dataset names or info dicts
     """
     if info:
-        return _list_dataset_info()
+        return _list_dataset_info(glob_patt=glob_patt)
 
-    return _list_datasets()
+    return _list_datasets(glob_patt=glob_patt)
 
 
 def dataset_exists(name):
@@ -198,8 +199,7 @@ def delete_datasets(glob_patt, verbose=False):
         glob_patt: a glob pattern of datasets to delete
         verbose (False): whether to log the names of deleted datasets
     """
-    all_datasets = _list_datasets()
-    for name in fnmatch.filter(all_datasets, glob_patt):
+    for name in _list_datasets(glob_patt=glob_patt):
         delete_dataset(name, verbose=verbose)
 
 
@@ -6280,7 +6280,7 @@ def _get_random_characters(n):
     )
 
 
-def _list_datasets(include_private=False):
+def _list_datasets(include_private=False, glob_patt=None):
     conn = foo.get_db_conn()
 
     if include_private:
@@ -6290,15 +6290,20 @@ def _list_datasets(include_private=False):
         # private e.g., patches or frames datasets
         query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
+    if glob_patt is not None:
+        query["name"] = {"$regex": fnmatch.translate(glob_patt)}
+
     # We don't want an error here if `name == None`
     _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
 
     return _sort(conn.datasets.find(query).distinct("name"))
 
 
-def _list_dataset_info():
+def _list_dataset_info(include_private=False, glob_patt=None):
     info = []
-    for name in _list_datasets():
+    for name in _list_datasets(
+        include_private=include_private, glob_patt=glob_patt
+    ):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
             num_samples = dataset._sample_collection.estimated_document_count()
