@@ -185,6 +185,18 @@ def _write_default_azure_ini_file(creds_dict, creds_path):
     if conn_str is not None:
         config["default"]["conn_str"] = conn_str
 
+    client_id = creds_dict.get("client_id", None)
+    if client_id is not None:
+        config["default"]["client_id"] = client_id
+
+    secret = creds_dict.get("secret", None)
+    if secret is not None:
+        config["default"]["secret"] = secret
+
+    tenant = creds_dict.get("tenant", None)
+    if tenant is not None:
+        config["default"]["tenant"] = tenant
+
     alias = creds_dict.get("alias", None)
     if alias is not None:
         config["default"]["alias"] = alias
