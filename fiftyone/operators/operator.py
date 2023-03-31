@@ -5,8 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from .definition import OperatorDefinition
+from .types import Object
 
 
 class Operator:
@@ -31,14 +30,10 @@ class Operator:
             raise ValueError("Operator name cannot be None")
 
         self.name = name
-        defintion = types.Object()
+        self.definition = Object()
 
-        self.definition.define_property(
-            "inputs", types.Object(), view=input_view
-        )
-        self.definition.define_property(
-            "outputs", types.Object(), view=output_view
-        )
+        self.definition.define_property("inputs", Object(), view=input_view)
+        self.definition.define_property("outputs", Object(), view=output_view)
 
     @property
     def inputs(self):
