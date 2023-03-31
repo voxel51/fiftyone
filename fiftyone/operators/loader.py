@@ -20,7 +20,7 @@ FAILED_MODULES = {}
 
 def register_module(filepath, mod):
     """Registers all operators in the given module."""
-    if filepath in REGISTERED_MODULES:
+    if REGISTERED_MODULES.get(filepath, None) is not None:
         unregister_module(filepath)
     try:
         mod.register()
@@ -38,22 +38,20 @@ def register_module(filepath, mod):
 
 
 def unregister_module(filepath):
-    """Registers all operators in the given module."""
-    try:
-        mod.register()
-        REGISTERED_MODULES.append(mod)
-    except:
+    """Unegisters all operators in the given module."""
+    mod = REGISTERED_MODULES.get(filepath, None)
+    if mod is not None:
         try:
             mod.unregister()
-        except:
+        except Exception as e:
             pass
+        del REGISTERED_MODULES[filepath]
 
 
 def unregister_all():
     """Unregisters all operators."""
-    for mod in REGISTERED_MODULES:
-        mod.unregister()
-    REGISTERED_MODULES = []
+    for filepath, mod in REGISTERED_MODULES:
+        unregister_module(filepath)
 
 
 def list_module_errors():
