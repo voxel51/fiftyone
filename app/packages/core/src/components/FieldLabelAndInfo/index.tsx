@@ -528,9 +528,9 @@ function toRenderValue([key, value], timeZone: string): [string, string] {
       return [key, value ? "True" : "False"];
     case "object":
       if (value._cls === "Date") {
-        return [key, formatDate(value._timestamp)];
+        return [key, formatDate(value.datetime)];
       } else if (value._cls === "DateTime") {
-        return [key, formatDateTime(value._timestamp, timeZone)];
+        return [key, formatDateTime(value.datetime, timeZone)];
       } else {
         return [key, ""];
       }
