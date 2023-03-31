@@ -10,7 +10,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@material-ui/core";
-
+import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
@@ -23,8 +23,7 @@ import ColorPalette from "./colorPalette/ColorPalette";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
 import { colorBlindFriendlyPalette, tempColorSetting } from "./utils";
-import { Divider } from "@mui/material";
-import { cloneDeep } from "lodash";
+import Divider from "@mui/material/Divider";
 
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
@@ -34,6 +33,7 @@ const ColorModalContent: React.FunctionComponent = () => {
   const customizeColor = useRecoilValue(fos.customizeColors(path!));
   const [tempAttributeSetting, setTempAttributeSetting] =
     useRecoilState(tempColorSetting);
+  const fullSetting = useRecoilValue(fos.customizeColorSettings);
   const expandedPath = useRecoilValue(fos.expandPath(path!));
   const colorAttributeOptions = useRecoilValue(
     fos.fields({
@@ -51,24 +51,23 @@ const ColorModalContent: React.FunctionComponent = () => {
   ).map((field) => ({ value: field.path, label: field.name }));
 
   const coloring = useRecoilValue(fos.coloring(false));
-  const color = getColor(coloring.pool, coloring.seed, path ?? "");
+  const pool = coloring.pool.filter(
+    (c) => !fullSetting?.map((x) => x.fieldColor).includes(c)
+  );
+  const color = getColor(pool, coloring.seed, path ?? "");
 
   const [checkbox1, setCheckbox1] = useState(false);
   const [checkbox2, setCheckbox2] = useState(false);
   const [checkbox3, setCheckbox3] = useState(false);
   const [showFieldPicker, setShowFieldPicker] = useState(false);
 
-  const handleDropdownChange = (
-    event: React.ChangeEvent<{ name?: string; value: string }>
-  ) => {
+  const handleDropdownChange = (event) => {
     setTempAttributeSetting((prev) => ({
       ...prev,
       attributeForColor: event.target.value,
     }));
   };
-  const handleOpacityDropdownChange = (
-    event: React.ChangeEvent<{ name?: string; value: string }>
-  ) => {
+  const handleOpacityDropdownChange = (event) => {
     setTempAttributeSetting((prev) => ({
       ...prev,
       attributeForOpacity: event.target.value,
@@ -230,7 +229,7 @@ const ColorModalContent: React.FunctionComponent = () => {
           />
         </div>
         <Divider></Divider>
-        Color by value mode
+        Color by value settings
         <form
           style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
         >
