@@ -10,6 +10,7 @@ from .operator import Operator
 from .loader import load_from_dir
 
 OPERATOR_DICT = {}
+FAILED_OPERATORS = {}
 
 
 def list_operators():
@@ -39,6 +40,13 @@ def register_operator(operator):
     OPERATOR_DICT[operator.name] = operator
 
 
+def unregister_operator(operator):
+    name = operator.name if operator is not None else None
+    if name:
+        remove_from_dict(OPERATOR_DICT, operator.name)
+        remove_from_dict(FAILED_OPERATORS, name)
+
+
 def register_failed_operator(name, errors):
     FAILED_OPERATORS[name] = errors
 
@@ -46,3 +54,8 @@ def register_failed_operator(name, errors):
 def get_operator(name):
     load_from_dir()
     return OPERATOR_DICT[name]
+
+
+def remove_from_dict(d, key):
+    if d is not None and key in d:
+        del d[key]
