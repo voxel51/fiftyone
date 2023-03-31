@@ -21,7 +21,7 @@ class Event(HTTPEndpoint):
     async def post(self, request: Request, data: t.Dict) -> t.Dict:
         await dispatch_event(
             data["subscription"],
-            fose.Event.from_data(data["event"], data["data"]),
+            await fose.Event.from_data_async(data["event"], data["data"]),
         )
 
         return {}

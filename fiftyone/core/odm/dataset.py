@@ -203,7 +203,7 @@ class DatasetAppConfig(EmbeddedDocument):
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
         sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("all", "best", "fast")``
+            Supported values are ``("fast", "all", "best")``
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
@@ -213,8 +213,8 @@ class DatasetAppConfig(EmbeddedDocument):
             -   ``"map"``: See the :ref:`map plugin docs <app-map-panel>` for
                 supported options
             -   ``"point-cloud"``: See the
-                :ref:`3D visualizer docs <3d-visualizer-config>` for supported
-                options
+                :ref:`3D visualizer docs <app-3d-visualizer-config>` for
+                supported options
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -336,8 +336,7 @@ def _make_default_sidebar_groups(sample_collection):
         )
 
     sidebar_groups = [
-        SidebarGroupDocument(name="tags"),
-        SidebarGroupDocument(name="label tags"),
+        SidebarGroupDocument(name="tags", paths=["tags", "_label_tags"]),
         SidebarGroupDocument(name="metadata", paths=metadata),
         SidebarGroupDocument(name="labels", paths=labels),
     ]

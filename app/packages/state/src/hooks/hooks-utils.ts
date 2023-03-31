@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import ResizeObserver from "resize-observer-polyfill";
 import { toCamelCase } from "@fiftyone/utilities";
+import ResizeObserver from "resize-observer-polyfill";
 
 import { State, StateResolver, transformDataset, useStateUpdate } from "../";
 
@@ -118,8 +118,8 @@ export const useWindowSize = () => {
   return windowSize;
 };
 
-export const useUnprocessedStateUpdate = () => {
-  const update = useStateUpdate();
+export const useUnprocessedStateUpdate = (ignoreSpaces = false) => {
+  const update = useStateUpdate(ignoreSpaces);
   return (resolve: StateResolver) => {
     update((t) => {
       const { colorscale, config, dataset, state } =
@@ -131,10 +131,12 @@ export const useUnprocessedStateUpdate = () => {
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
         config: config ? (toCamelCase(config) as State.Config) : undefined,
-        state: {
-          ...toCamelCase(state),
-          view: state.view,
-        } as State.Description,
+        state: state
+          ? ({
+              ...toCamelCase(state),
+              view: state.view,
+            } as State.Description)
+          : null,
       };
     });
   };

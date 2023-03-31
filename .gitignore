@@ -31,3 +31,4 @@ pyvenv.cfg
 .python-version
 
 *.whl
+/deployment/docker/__models__

@@ -22,7 +22,27 @@ export interface Coloring {
   targets: string[];
 }
 
-export interface Sample {
+export type OrthogrpahicProjectionMetadata = {
+  _id: string;
+  _cls: "OrthographicProjectionMetadata";
+  filepath: string;
+  height: number;
+  width: number;
+  min_bound: [number, number];
+  max_bound: [number, number];
+};
+
+export type GenericLabel = {
+  [labelKey: string]:
+    | {
+        _cls: string;
+        [field: string]: unknown;
+      }
+    | OrthogrpahicProjectionMetadata;
+  // todo: add other label types
+};
+
+export type Sample = {
   metadata: {
     width: number;
     height: number;
@@ -33,7 +53,7 @@ export interface Sample {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud";
-}
+} & GenericLabel;
 
 export interface LabelData {
   labelId: string;
@@ -111,8 +131,6 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
-  hasNext: boolean;
-  hasPrevious: boolean;
   fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
@@ -123,6 +141,7 @@ interface BaseOptions {
   defaultSkeleton?: KeypointSkeleton;
   skeletons: { [key: string]: KeypointSkeleton };
   showSkeletons: boolean;
+  isPointcloudDataset: boolean;
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
 }
@@ -136,6 +155,7 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
+  sources: { [path: string]: string };
   sampleId: string;
   fieldSchema: Schema;
   view: Stage[];
@@ -147,12 +167,14 @@ export interface FrameConfig extends BaseConfig {
   frameNumber: number;
 }
 
-export interface ImageConfig extends BaseConfig {}
+export type ImageConfig = BaseConfig;
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
   support?: [number, number];
 }
+
+export type PcdConfig = BaseConfig;
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
@@ -170,6 +192,8 @@ export interface VideoOptions extends BaseOptions {
   useFrameNumber: boolean;
   volume: number;
 }
+
+export type PcdOptions = BaseOptions;
 
 export interface TooltipOverlay {
   color: string;
@@ -255,6 +279,12 @@ export interface VideoState extends BaseState {
   lockedToSupport: boolean;
 }
 
+export interface PcdState extends BaseState {
+  config: PcdConfig;
+  options: PcdOptions;
+  SHORTCUTS: Readonly<ControlMap<PcdState>>;
+}
+
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
@@ -301,8 +331,6 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     targets: ["#000000"],
   },
   smoothMasks: true,
-  hasNext: false,
-  hasPrevious: false,
   fullscreen: false,
   zoomPad: 0.2,
   selected: false,
@@ -335,6 +363,10 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
+};
+
+export const DEFAULT_PCD_OPTIONS: PcdOptions = {
+  ...DEFAULT_BASE_OPTIONS,
 };
 
 export interface FrameSample {

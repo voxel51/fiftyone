@@ -29,7 +29,7 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
                 throw new Error("unable to paginate to next sample");
               }
 
-              setSample(store.samples.get(id), { index, getIndex });
+              setSample(store.samples.get(id), { index, setIndex: getIndex });
             })
           : clear();
       };
@@ -40,7 +40,7 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
         throw new Error("sample not found");
       }
 
-      expandSample(sample, { index: clickedIndex, getIndex });
+      expandSample(sample, { index: clickedIndex, setIndex: getIndex });
     },
     [store]
   );

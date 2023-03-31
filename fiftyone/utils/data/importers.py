@@ -11,8 +11,8 @@ import logging
 import os
 import random
 
-from bson import json_util, ObjectId
-import cv2
+from bson import json_util
+from mongoengine.base import get_document
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -1487,6 +1487,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         rel_dir (None): a relative directory to prepend to each filepath if it
             is not absolute. This path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        import_saved_views (True): whether to include saved views in the
+            import. Only applicable when importing full datasets
+        import_runs (True): whether to include annotation/brain/evaluation
+            runs in the import. Only applicable when importing full datasets
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1498,6 +1502,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        import_saved_views=True,
+        import_runs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1510,6 +1516,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.import_saved_views = import_saved_views
+        self.import_runs = import_runs
 
         self._metadata = None
         self._rel_dir = None
@@ -1536,9 +1544,6 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         if not fos.isabs(sd["filepath"]):
             sd["filepath"] = fos.join(self._rel_dir, sd["filepath"])
-
-        if self._media_fields:
-            _parse_media_fields(sd, self._media_fields, self._rel_dir)
 
         if self._media_fields:
             _parse_media_fields(sd, self._media_fields, self._rel_dir)
@@ -1594,7 +1599,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._frame_labels_dir = fos.join(self.dataset_dir, "frames")
 
         if fos.isdir(self._fields_dir):
-            self._media_fields = fos.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in fos.list_subdirs(self._fields_dir)
+            }
 
         samples_path = fos.join(self.dataset_dir, "samples.json")
         samples = fos.read_json(samples_path).get("samples", [])
@@ -1613,12 +1620,16 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         # Import saved views
         saved_views = self._metadata.get("saved_views", None)
-        if saved_views:
+        if (
+            saved_views
+            and self.import_saved_views
+            and self.max_samples is None
+        ):
             _import_saved_views(dataset, saved_views)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
-        if annotation_runs:
+        if annotation_runs and self.import_runs and self.max_samples is None:
             for anno_key in annotation_runs.keys():
                 if dataset.has_annotation_run(anno_key):
                     logger.warning(
@@ -1635,7 +1646,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         # Import brain method runs
         brain_methods = self._metadata.get("brain_methods", None)
-        if brain_methods:
+        if brain_methods and self.import_runs and self.max_samples is None:
             for brain_key in brain_methods.keys():
                 if dataset.has_brain_run(brain_key):
                     logger.warning(
@@ -1652,7 +1663,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         # Import evaluation runs
         evaluations = self._metadata.get("evaluations", None)
-        if evaluations:
+        if evaluations and self.import_runs and self.max_samples is None:
             for eval_key in evaluations.keys():
                 if dataset.has_evaluation(eval_key):
                     logger.warning(
@@ -1709,6 +1720,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             each sample if the filepath is not absolute. This path is converted
             to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
+        import_saved_views (True): whether to include saved views in the
+            import. Only applicable when importing full datasets
+        import_runs (True): whether to include annotation/brain/evaluation
+            runs in the import. Only applicable when importing full datasets
         ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1721,6 +1736,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        import_saved_views=True,
+        import_runs=True,
         ordered=True,
         shuffle=False,
         seed=None,
@@ -1734,6 +1751,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.import_saved_views = import_saved_views
+        self.import_runs = import_runs
         self.ordered = ordered
 
         self._data_dir = None
@@ -1756,7 +1775,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = fos.join(self.dataset_dir, "metadata.json")
 
         if fos.isdir(self._fields_dir):
-            self._media_fields = fos.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in fos.list_subdirs(self._fields_dir)
+            }
 
         self._samples_path = fos.join(self.dataset_dir, "samples.json")
         if not fos.isfile(self._samples_path):
@@ -1871,6 +1892,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             rel_dir = self.dataset_dir
 
         media_fields = self._media_fields
+        dataset_id = dataset._doc.id
 
         def _parse_sample(sd):
             if not fos.isabs(sd["filepath"]):
@@ -1882,6 +1904,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             if media_fields:
                 _parse_media_fields(sd, media_fields, rel_dir)
 
+            sd["_dataset_id"] = dataset_id
             return sd
 
         sample_ids = foo.insert_documents(
@@ -1908,8 +1931,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 frames = [f for f in frames if f["_sample_id"] in _sample_ids]
                 num_frames = len(frames)
 
+            def _parse_frame(fd):
+                fd["_dataset_id"] = dataset_id
+                return fd
+
             foo.insert_documents(
-                frames,
+                map(_parse_frame, frames),
                 dataset._frame_collection,
                 ordered=self.ordered,
                 progress=True,
@@ -1920,14 +1947,18 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         # Import saved views
         #
 
-        if empty_import:
+        if (
+            empty_import
+            and self.import_saved_views
+            and self.max_samples is None
+        ):
             _import_saved_views(dataset, views)
 
         #
         # Import runs
         #
 
-        if empty_import:
+        if empty_import and self.import_runs and self.max_samples is None:
             _import_runs(
                 dataset,
                 annotations,
@@ -2002,29 +2033,36 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
 
 def _parse_media_fields(sd, media_fields, rel_dir):
-    for field_name in media_fields:
+    for field_name, key in media_fields.items():
         value = sd.get(field_name, None)
         if value is None:
             continue
 
         if isinstance(value, dict):
-            label_type = value.get("_cls", None)
-            if label_type == "Segmentation":
-                mask_path = value.get("mask_path", None)
-                if mask_path is not None and not fos.isabs(mask_path):
-                    value["mask_path"] = fos.join(rel_dir, mask_path)
-            elif label_type == "Heatmap":
-                map_path = value.get("map_path", None)
-                if map_path is not None and not fos.isabs(map_path):
-                    value["map_path"] = fos.join(rel_dir, map_path)
+            if key is False:
+                try:
+                    _cls = value.get("_cls", None)
+                    key = get_document(_cls)._MEDIA_FIELD
+                except Exception as e:
+                    logger.warning(
+                        "Failed to infer media field for '%s'. Reason: %s",
+                        field_name,
+                        e,
+                    )
+                    key = None
+
+                media_fields[field_name] = key
+
+            if key is not None:
+                path = value.get(key, None)
+                if path is not None and not fos.isabs(path):
+                    value[key] = fos.join(rel_dir, path)
         elif etau.is_str(value):
             if not fos.isabs(value):
                 sd[field_name] = fos.join(rel_dir, value)
 
 
 def _import_saved_views(dataset, views):
-    dataset_doc = dataset._doc
-
     for d in views:
         if etau.is_str(d):
             d = json_util.loads(d)
@@ -2036,17 +2074,15 @@ def _import_saved_views(dataset, views):
 
         d.pop("_id", None)
         view_doc = foo.SavedViewDocument.from_dict(d)
-        view_doc.dataset_id = str(dataset_doc.id)
-        view_doc.save()
+        view_doc.dataset_id = str(dataset._doc.id)
+        view_doc.save(upsert=True)
 
-        dataset_doc.saved_views.append(view_doc)
+        dataset._doc.saved_views.append(view_doc)
 
-    dataset_doc.save()
+    dataset.save()
 
 
 def _import_runs(dataset, runs, results_dir, run_cls):
-    dataset_doc = dataset._doc
-
     # Import run documents
     for key, d in runs.items():
         if etau.is_str(d):
@@ -2054,14 +2090,14 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
         d.pop("_id", None)
         run_doc = foo.RunDocument.from_dict(d)
-        run_doc.dataset_id = str(dataset_doc.id)
+        run_doc.dataset_id = str(dataset._doc.id)
         run_doc.results = None
-        run_doc.save()
+        run_doc.save(upsert=True)
 
-        runs = getattr(dataset_doc, run_cls._runs_field())
+        runs = getattr(dataset._doc, run_cls._runs_field())
         runs[key] = run_doc
 
-    dataset_doc.save()
+    dataset.save()
 
     # Import run results
     for key in runs.keys():
@@ -2070,7 +2106,7 @@ def _import_runs(dataset, runs, results_dir, run_cls):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
             d = fos.read_json(json_path)
-            results = fors.RunResults.from_dict(d, view, run_info.config)
+            results = fors.RunResults.from_dict(d, view, run_info.config, key)
             run_cls.save_run_results(dataset, key, results, cache=False)
 
 

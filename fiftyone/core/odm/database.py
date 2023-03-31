@@ -31,6 +31,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+import fiftyone.internal as foi
 
 from .document import Document
 
@@ -213,8 +214,9 @@ def establish_db_conn(config):
     )
     _validate_db_version(config, _client)
 
-    # Register cleanup method
-    atexit.register(_delete_non_persistent_datasets_if_allowed)
+    # Only register cleanup method when running as internal service
+    if foi.is_internal_service():
+        atexit.register(_delete_non_persistent_datasets_if_allowed)
 
     connect(config.database_name, **_connection_kwargs)
 

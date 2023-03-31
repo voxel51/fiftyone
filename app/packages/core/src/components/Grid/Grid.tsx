@@ -1,23 +1,29 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 
+import { useEventHandler } from "@fiftyone/state";
 import { flashlightLooker } from "./Grid.module.css";
 import { rowAspectRatioThreshold } from "./recoil";
-import useResize from "./useResize";
-import usePage from "./usePage";
 import useExpandSample from "./useExpandSample";
-import { useEventHandler } from "@fiftyone/state";
+import usePage from "./usePage";
+import useResize from "./useResize";
 
 import * as fos from "@fiftyone/state";
-import { stringifyObj } from "@fiftyone/state";
-import { deferrer } from "@fiftyone/state";
+import { deferrer, stringifyObj } from "@fiftyone/state";
+import EmptySamples from "../EmptySamples";
 
 const Grid: React.FC<{}> = () => {
-  const [id] = useState(() => uuid());
+  const [id] = React.useState(() => uuid());
   const store = fos.useLookerStore();
   const expandSample = useExpandSample(store);
   const initialized = useRef(false);
@@ -34,7 +40,8 @@ const Grid: React.FC<{}> = () => {
 
   const isModalOpen = Boolean(useRecoilValue(fos.modal));
 
-  const [flashlight] = useState(() => {
+  // create flashlight only one time
+  const [flashlight] = React.useState(() => {
     const flashlight = new Flashlight<number>({
       horizontal: false,
       initialRequestKey: 1,
@@ -108,6 +115,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.similarityParameters),
       useRecoilValue(fos.selectedMediaField(false)),
       useRecoilValue(fos.extendedStagesUnsorted),
+      useRecoilValue(fos.extendedStages),
     ]
   );
 

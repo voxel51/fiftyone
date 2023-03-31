@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.11.2"
+VERSION = "0.12.0"
 
 
 def get_version():
@@ -37,6 +37,7 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "eventlet",
+    "ftfy",
     "future",
     "hypercorn>=0.13.2,<14",
     "Jinja2>=3",
@@ -55,6 +56,7 @@ INSTALL_REQUIRES = [
     "pymongo>=3.12",
     "pytz",
     "PyYAML",
+    "regex",
     "retrying",
     "scikit-learn",
     "scikit-image",
@@ -77,9 +79,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.10,<0.11",
+    "fiftyone-brain>=0.11,<0.12",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.8.3,<0.9",
+    "voxel51-eta>=0.8.4,<0.9",
 ]
 
 
@@ -116,7 +118,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.16.0,<0.17"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.17.0,<0.18"]}
 
 
 with open("README.md", "r") as fh:

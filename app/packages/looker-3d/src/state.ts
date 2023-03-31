@@ -1,45 +1,46 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
+import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom } from "recoil";
 
-export const ACTION_COLOR_BY = "colorBy";
+export const ACTION_SHADE_BY = "colorBy";
 export const ACTION_SET_POINT_SIZE = "setPointSize";
 export const ACTION_VIEW_JSON = "json";
 export const ACTION_VIEW_HELP = "help";
 
 export type Actions =
-  | typeof ACTION_COLOR_BY
+  | typeof ACTION_SHADE_BY
   | typeof ACTION_SET_POINT_SIZE
   | typeof ACTION_VIEW_JSON
   | typeof ACTION_VIEW_HELP;
 
-export const COLOR_BY_INTENSITY = "intensity";
-export const COLOR_BY_HEIGHT = "height";
-export const COLOR_BY_NONE = "none";
+export const SHADE_BY_INTENSITY = "intensity";
+export const SHADE_BY_HEIGHT = "height";
+export const SHADE_BY_RGB = "rgb";
+export const SHADE_BY_NONE = "none";
 
-export type ColorBy =
-  | typeof COLOR_BY_INTENSITY
-  | typeof COLOR_BY_HEIGHT
-  | typeof COLOR_BY_NONE;
+export type ShadeBy =
+  | typeof SHADE_BY_INTENSITY
+  | typeof SHADE_BY_HEIGHT
+  | typeof SHADE_BY_RGB
+  | typeof SHADE_BY_NONE;
 
 export const ACTIONS = [
-  { label: "Color By", value: ACTION_COLOR_BY },
+  { label: "Color By", value: ACTION_SHADE_BY },
   { label: "Set Point Size", value: ACTION_SET_POINT_SIZE },
   { label: "View Json", value: ACTION_VIEW_JSON },
 ];
 
-export const COLOR_BY_CHOICES: { label: string; value: ColorBy }[] = [
-  { label: "By Intensity", value: COLOR_BY_INTENSITY },
-  { label: "By Height", value: COLOR_BY_HEIGHT },
-  { label: "None", value: COLOR_BY_NONE },
+export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
+  { label: "Height", value: SHADE_BY_HEIGHT },
+  { label: "Intensity", value: SHADE_BY_INTENSITY },
+  { label: "RGB", value: SHADE_BY_RGB },
+  { label: "None", value: SHADE_BY_NONE },
 ];
 
-/**
- * Atoms
- */
-
-export const colorByAtom = atom<ColorBy>({
-  key: "colorBy",
-  default: COLOR_BY_NONE,
+export const shadeByAtom = atom<ShadeBy>({
+  key: "shadeBy",
+  default: SHADE_BY_HEIGHT,
+  effects: [getBrowserStorageEffectForKey("shadeBy")],
 });
 
 export const currentActionAtom = atom<Actions>({
@@ -47,23 +48,31 @@ export const currentActionAtom = atom<Actions>({
   default: null,
 });
 
-export const currentPointSizeAtom = atom<number>({
+export const currentPointSizeAtom = atom<string>({
   key: "pointSize",
-  default: 0.1,
-  effects: [
-    ({ setSelf, onSet }) => {
-      const pointSizeKey = "pointSize";
-      const pointSize = localStorage.getItem(pointSizeKey);
-      if (pointSize != null) setSelf(Number(pointSize));
-      onSet((newValue, _oldValue, isReset) => {
-        if (isReset) localStorage.removeItem(pointSizeKey);
-        else localStorage.setItem(pointSizeKey, String(newValue));
-      });
-    },
-  ],
+  default: "2",
+  effects: [getBrowserStorageEffectForKey("pointSize")],
 });
 
 export const pointSizeRangeAtom = atom<Range>({
   key: "pointSizeRange",
-  default: [0.01, 0.2],
+  default: [0.1, 2],
+});
+
+export const isPointSizeAttenuatedAtom = atom<boolean>({
+  key: "isPointSizeAttenuated",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("isPointSizeAttenuated", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const isGridOnAtom = atom<boolean>({
+  key: "isGridOn",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("isGridOn", { valueClass: "boolean" }),
+  ],
 });

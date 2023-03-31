@@ -94,6 +94,10 @@ type BrainRunConfig implements RunConfig {
   embeddingsField: String
   method: String
   patchesField: String
+  supportsPrompts: Boolean
+  type: String
+  maxK: Int
+  supportsLeastSimilarity: Boolean
 }
 
 enum ColorBy {
@@ -358,6 +362,7 @@ type PointCloudSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type Query {

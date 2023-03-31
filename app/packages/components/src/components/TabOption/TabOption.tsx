@@ -1,7 +1,7 @@
-import { useTheme } from "../ThemeProvider";
+import { animated, useSpring, useSprings } from "@react-spring/web";
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring, useSprings } from "@react-spring/web";
+import { useTheme } from "../ThemeProvider";
 
 const Tab = animated(styled.div``);
 
@@ -31,9 +31,9 @@ const TabOptionDiv = animated(styled.div`
 `);
 
 type TabOption = {
+  title: string;
   text: string;
   onClick: () => void;
-  title: string;
 };
 
 export type TabOptionProps = {
@@ -42,7 +42,7 @@ export type TabOptionProps = {
   color?: string;
 };
 
-export default ({ active, options, color }: TabOptionProps) => {
+const TabOption = ({ active, options, color }: TabOptionProps) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(options.map((o) => false));
   const styles = useSprings(
@@ -91,3 +91,5 @@ export default ({ active, options, color }: TabOptionProps) => {
     </TabOptionDiv>
   );
 };
+
+export default TabOption;

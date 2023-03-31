@@ -298,7 +298,7 @@ Labels
 Labels store semantic information about the sample, such as ground annotations
 or model predictions.
 
-FiftyOne provides a |Label| subclass for many common tasks:
+FiftyOne provides label classes for many common tasks:
 
 - :ref:`Regression <regression>`: a regression value
 - :ref:`Classification <classification>`: a classification label
@@ -307,12 +307,18 @@ FiftyOne provides a |Label| subclass for many common tasks:
 - :ref:`Detections <object-detection>`: a list of object detections (with
   optional instance masks)
 - :ref:`Polylines <polylines>`: a list of polylines or polygons in an image
+- :ref:`Cuboids <cuboids>`: a list of 2D cuboids in an image
+- :ref:`Rotated bounding boxes <rotated-bounding-boxes>`: a list of rotated
+  boxes in an image
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
 - :ref:`Heatmap <heatmaps>`: an intensity heatmap for an image
 - :ref:`Temporal detection <temporal-detection>`: events with a temporal frame
   support in a video
+- :ref:`3D detections <3d-detections>`: a list of 3D detections in a scene
+- :ref:`3D polylines <3d-polylines>`: a list of 3D polylines or polygons in a
+  scene
 - :ref:`GeoLocation <geolocation>`: geolocation point(s), line(s), or
   polygon(s)
 
