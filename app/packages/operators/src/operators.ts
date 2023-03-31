@@ -710,25 +710,30 @@ class DynamicFormExample extends Operator {
 }
 
 export function registerBuiltInOperators() {
-  registerOperator(new CopyViewAsJSON());
-  registerOperator(new ViewFromJSON());
-  registerOperator(new ReloadSamples());
-  registerOperator(new ClearSelectedSamples());
-  registerOperator(new OpenAllPanels());
-  registerOperator(new CloseAllPanels());
-  registerOperator(new OpenDataset());
-  registerOperator(new ClearView());
-  registerOperator(new ClearSidebarFilters());
-  registerOperator(new ClearAllStages());
-  registerOperator(new RefreshColors());
-  registerOperator(new ShowSelectedSamples());
-  registerOperator(new ConvertExtendedSelectionToSelectedSamples());
-  registerOperator(new DynamicFormExample());
-  registerOperator(new OpenPanel());
-  registerOperator(new OpenAllPanels());
-  registerOperator(new ClosePanel());
-  registerOperator(new CloseAllPanels());
-  // registerOperator(new FindSpace());
+  try {
+    registerOperator(new CopyViewAsJSON());
+    registerOperator(new ViewFromJSON());
+    registerOperator(new ReloadSamples());
+    registerOperator(new ClearSelectedSamples());
+    registerOperator(new OpenAllPanels());
+    registerOperator(new CloseAllPanels());
+    registerOperator(new OpenDataset());
+    registerOperator(new ClearView());
+    registerOperator(new ClearSidebarFilters());
+    registerOperator(new ClearAllStages());
+    registerOperator(new RefreshColors());
+    registerOperator(new ShowSelectedSamples());
+    registerOperator(new ConvertExtendedSelectionToSelectedSamples());
+    registerOperator(new DynamicFormExample());
+    registerOperator(new OpenPanel());
+    registerOperator(new OpenAllPanels());
+    registerOperator(new ClosePanel());
+    registerOperator(new CloseAllPanels());
+    // registerOperator(new FindSpace());
+  } catch (e) {
+    console.error("Error registering built-in operators");
+    console.error(e);
+  }
 }
 
 export async function loadOperators() {
