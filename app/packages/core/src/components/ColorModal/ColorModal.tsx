@@ -9,6 +9,8 @@ import * as fos from "@fiftyone/state";
 import ColorModalContent from "./ColorModalContent";
 import { Button } from "../utils";
 import { tempColorSetting } from "./utils";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -121,30 +123,52 @@ const ColorModal = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.colorModal
   );
+  const theme = createTheme({
+    typography: {
+      fontFamily: "Palanquin,sans-serif",
+    },
+    components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          html: {
+            fontFamily: "Palanquin,sans-serif",
+          },
+          body: {
+            fontFamily: "Palanquin,sans-serif",
+          },
+        },
+      },
+    },
+  });
 
   if (targetContainer) {
     return ReactDOM.createPortal(
       <Fragment>
-        <ModalWrapper
-          ref={wrapperRef}
-          onClick={(event) => event.target === wrapperRef.current}
-          aria-labelledby="draggable-color-modal"
-        >
-          <Draggable bounds="parent" handle=".draggable-colorModal-handle">
-            <Container style={{ ...screen, zIndex: 2 }}>
-              <DraggableModalTitle className="draggable-colorModal-handle">
-                <div>
-                  {activeColorModalField?.name?.toUpperCase() ?? ""} (
-                  {activeColorModalField?.embeddedDocType?.split(".").slice(-1)}
-                  )
-                </div>
-                <CloseIcon onClick={() => setActiveColorModalField(null)} />
-              </DraggableModalTitle>
-              <ColorModalContent />
-              <SubmitControls />
-            </Container>
-          </Draggable>
-        </ModalWrapper>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <ModalWrapper
+            ref={wrapperRef}
+            onClick={(event) => event.target === wrapperRef.current}
+            aria-labelledby="draggable-color-modal"
+          >
+            <Draggable bounds="parent" handle=".draggable-colorModal-handle">
+              <Container style={{ ...screen, zIndex: 2 }}>
+                <DraggableModalTitle className="draggable-colorModal-handle">
+                  <div>
+                    {activeColorModalField?.name?.toUpperCase() ?? ""} (
+                    {activeColorModalField?.embeddedDocType
+                      ?.split(".")
+                      .slice(-1)}
+                    )
+                  </div>
+                  <CloseIcon onClick={() => setActiveColorModalField(null)} />
+                </DraggableModalTitle>
+                <ColorModalContent />
+                <SubmitControls />
+              </Container>
+            </Draggable>
+          </ModalWrapper>
+        </ThemeProvider>
       </Fragment>,
       targetContainer
     );
