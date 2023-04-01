@@ -11,6 +11,8 @@ import random
 import string
 import unittest
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -1299,6 +1301,269 @@ def _make_group_dataset():
     sample.save()
 
     return dataset
+
+
+class DynamicGroupTests(unittest.TestCase):
+    def _make_dataset(self):
+        sample_id1 = ObjectId()
+        sample_id2 = ObjectId()
+
+        samples = [
+            fo.Sample(
+                filepath="frame11.jpg",
+                sample_id=sample_id1,
+                frame_number=1,
+            ),
+            fo.Sample(
+                filepath="frame22.jpg",
+                sample_id=sample_id2,
+                frame_number=2,
+            ),
+            fo.Sample(
+                filepath="frame13.jpg",
+                sample_id=sample_id1,
+                frame_number=3,
+            ),
+            fo.Sample(
+                filepath="frame21.jpg",
+                sample_id=sample_id2,
+                frame_number=1,
+            ),
+            fo.Sample(
+                filepath="frame12.jpg",
+                sample_id=sample_id1,
+                frame_number=2,
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_sample_field("sample_id", fo.ObjectIdField)
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_group_by(self):
+        dataset = self._make_dataset()
+        sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
+
+        view1 = dataset.group_by("sample_id")
+
+        self.assertEqual(view1.media_type, "group")
+        self.assertTrue(view1._is_dynamic_groups)
+        self.assertEqual(len(view1), 2)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            {"id", "filepath", "sample_id"},
+        )
+
+        sample = view1.first()
+        group_id = sample.sample_id
+        group = view1.get_group(group_id)
+        also_group = next(view1.iter_groups())
+        sample_ids = view1.values("sample_id")
+        frame_numbers = [s.frame_number for s in group]
+        also_frame_numbers = [s.frame_number for s in also_group]
+
+        self.assertEqual(sample.sample_id, sample_id1)
+        self.assertEqual(sample.frame_number, 1)
+        self.assertIsInstance(group, list)
+        self.assertIsInstance(also_group, list)
+        self.assertListEqual(sample_ids, [sample_id1, sample_id2])
+        self.assertListEqual(frame_numbers, [1, 3, 2])
+        self.assertListEqual(also_frame_numbers, [1, 3, 2])
+
+        view2 = view1.sort_by("filepath", reverse=True).limit(1)
+
+        self.assertEqual(view2.media_type, "group")
+        self.assertTrue(view2._is_dynamic_groups)
+        self.assertEqual(len(view2), 1)
+
+        sample = view2.first()
+        group_id = sample.sample_id
+        group = view2.get_group(group_id)
+        also_group = next(view2.iter_groups())
+        sample_ids = view2.values("sample_id")
+        frame_numbers = [s.frame_number for s in group]
+        also_frame_numbers = [s.frame_number for s in also_group]
+
+        self.assertEqual(sample.sample_id, sample_id2)
+        self.assertEqual(sample.frame_number, 2)
+        self.assertIsInstance(group, list)
+        self.assertIsInstance(also_group, list)
+        self.assertListEqual(sample_ids, [sample_id2])
+        self.assertListEqual(frame_numbers, [2, 1])
+        self.assertListEqual(also_frame_numbers, [2, 1])
+
+    @drop_datasets
+    def test_group_by_ordered(self):
+        dataset = self._make_dataset()
+        sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
+
+        view3 = dataset.group_by(
+            "sample_id", order_by="frame_number", reverse=True
+        )
+
+        self.assertEqual(view3.media_type, "group")
+        self.assertTrue(view3._is_dynamic_groups)
+        self.assertEqual(len(view3), 2)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            {"id", "filepath", "_sample_id_1_frame_number_-1"},
+        )
+
+        sample = view3.first()
+        group_id = sample.sample_id
+        group = view3.get_group(group_id)
+        also_group = next(view3.iter_groups())
+        sample_ids = view3.values("sample_id")
+        frame_numbers = [s.frame_number for s in group]
+        also_frame_numbers = [s.frame_number for s in also_group]
+
+        self.assertEqual(sample.sample_id, sample_id1)
+        self.assertEqual(sample.frame_number, 3)
+        self.assertIsInstance(group, list)
+        self.assertIsInstance(also_group, list)
+        self.assertListEqual(sample_ids, [sample_id1, sample_id2])
+        self.assertListEqual(frame_numbers, [3, 2, 1])
+        self.assertListEqual(also_frame_numbers, [3, 2, 1])
+
+        view4 = view3.sort_by("filepath", reverse=True).limit(1)
+
+        self.assertEqual(view4.media_type, "group")
+        self.assertTrue(view4._is_dynamic_groups)
+        self.assertEqual(len(view4), 1)
+
+        sample = view4.first()
+        group_id = sample.sample_id
+        group = view4.get_group(group_id)
+        also_group = next(view4.iter_groups())
+        sample_ids = view4.values("sample_id")
+        frame_numbers = [s.frame_number for s in group]
+        also_frame_numbers = [s.frame_number for s in also_group]
+
+        self.assertEqual(sample.sample_id, sample_id2)
+        self.assertEqual(sample.frame_number, 2)
+        self.assertIsInstance(group, list)
+        self.assertIsInstance(also_group, list)
+        self.assertListEqual(sample_ids, [sample_id2])
+        self.assertListEqual(frame_numbers, [2, 1])
+        self.assertListEqual(also_frame_numbers, [2, 1])
+
+    @drop_datasets
+    def test_group_by_complex(self):
+        dataset = self._make_dataset()
+        sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
+
+        view = (
+            dataset.match(F("frame_number") <= 2)
+            .group_by("sample_id", order_by="frame_number", reverse=True)
+            .sort_by("filepath")
+        )
+
+        self.assertEqual(view.media_type, "group")
+        self.assertTrue(view._is_dynamic_groups)
+        self.assertEqual(len(view), 2)
+
+        sample = view.first()
+        group_id = sample.sample_id
+        group = view.get_group(group_id)
+        also_group = next(view.iter_groups())
+        sample_ids = view.values("sample_id")
+        frame_numbers = [s.frame_number for s in group]
+        also_frame_numbers = [s.frame_number for s in also_group]
+
+        self.assertEqual(sample.sample_id, sample_id1)
+        self.assertEqual(sample.frame_number, 2)
+        self.assertIsInstance(group, list)
+        self.assertIsInstance(also_group, list)
+        self.assertListEqual(sample_ids, [sample_id1, sample_id2])
+        self.assertListEqual(frame_numbers, [2, 1])
+        self.assertListEqual(also_frame_numbers, [2, 1])
+
+        flat_view = view.flatten(fo.Limit(1))
+
+        self.assertEqual(flat_view.media_type, "image")
+        self.assertEqual(len(flat_view), 2)
+        self.assertListEqual(
+            flat_view.values("sample_id"),
+            [sample_id1, sample_id2],
+        )
+        self.assertListEqual(flat_view.values("frame_number"), [2, 2])
+
+    @drop_datasets
+    def test_group_by_flat(self):
+        dataset = self._make_dataset()
+        sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
+
+        view = dataset.group_by("sample_id", flat=True)
+
+        self.assertEqual(view.media_type, "image")
+        self.assertEqual(len(view), 5)
+        self.assertListEqual(
+            view.values("sample_id"),
+            [sample_id1] * 3 + [sample_id2] * 2,
+        )
+
+        view = dataset.match(F("frame_number") <= 2).group_by(
+            "sample_id", flat=True
+        )
+
+        self.assertEqual(view.media_type, "image")
+        self.assertEqual(len(view), 4)
+
+    @drop_datasets
+    def test_flatten(self):
+        dataset = self._make_dataset()
+        sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
+
+        view = dataset.group_by("sample_id").flatten()
+
+        self.assertEqual(view.media_type, "image")
+        self.assertEqual(len(view), 5)
+        self.assertListEqual(
+            view.values("sample_id"),
+            [sample_id1] * 3 + [sample_id2] * 2,
+        )
+        self.assertListEqual(
+            view.values("frame_number"),
+            [1, 3, 2, 2, 1],
+        )
+
+        view = dataset.group_by("sample_id").flatten(fo.Limit(1))
+
+        self.assertEqual(view.media_type, "image")
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(
+            view.values("sample_id"),
+            [sample_id1, sample_id2],
+        )
+        self.assertListEqual(view.values("frame_number"), [1, 2])
+
+        view = dataset.group_by("sample_id", order_by="frame_number").flatten()
+
+        self.assertEqual(view.media_type, "image")
+        self.assertEqual(len(view), 5)
+        self.assertListEqual(
+            view.values("sample_id"),
+            [sample_id1] * 3 + [sample_id2] * 2,
+        )
+        self.assertListEqual(
+            view.values("frame_number"),
+            [1, 2, 3, 1, 2],
+        )
+
+        view = dataset.group_by("sample_id", order_by="frame_number").flatten(
+            fo.Limit(1)
+        )
+
+        self.assertEqual(view.media_type, "image")
+        self.assertEqual(len(view), 2)
+        self.assertListEqual(
+            view.values("sample_id"),
+            [sample_id1, sample_id2],
+        )
+        self.assertListEqual(view.values("frame_number"), [1, 1])
 
 
 if __name__ == "__main__":
