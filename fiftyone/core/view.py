@@ -1242,13 +1242,7 @@ class DatasetView(foc.SampleCollection):
 
         return value
 
-    def _groups_only_pipeline(
-        self,
-        expr_field=None,
-        group_value=None,
-        group_pipeline=None,
-        full=False,
-    ):
+    def _base_groups_view(self):
         if not self._is_dynamic_groups:
             raise ValueError("%s does not contain dynamic groups" % type(self))
 
@@ -1256,11 +1250,22 @@ class DatasetView(foc.SampleCollection):
         odgs = [stage.outputs_dynamic_groups for stage in self._stages]
         idx = next(i for i in reversed(range(len(odgs))) if odgs[i] is True)
 
-        _stage = self._stages[idx]
         _view = self._base_view
         for stage in self._stages[:idx]:
             _view = _view._add_view_stage(stage, validate=False)
 
+        _stage = self._stages[idx]
+
+        return _view, _stage
+
+    def _groups_only_pipeline(
+        self,
+        expr_field=None,
+        group_value=None,
+        group_pipeline=None,
+        full=False,
+    ):
+        _view, _stage = self._base_groups_view()
         group_expr, is_id_field = _stage.get_group_expr(_view)
         order_by = _stage.order_by
         reverse = _stage.reverse

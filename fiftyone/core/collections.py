@@ -4271,7 +4271,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def flatten(self, limit=None, _pipeline=None):
+    def flatten(self, stages=None):
         """Returns a flattened view that contains all samples in the dynamic
         grouped collection.
 
@@ -4288,18 +4288,18 @@ class SampleCollection(object):
             print(len(grouped_view))  # 10
 
             # Return a flat view that contains 10 samples from each class
-            flat_view = grouped_view.flatten(limit=10)
+            flat_view = grouped_view.flatten(fo.Limit(10))
             print(len(flat_view))  # 100
 
         Args:
-            limit (None): a maximum number of samples to include in each group
+            stages (None): a :class:`fiftyone.core.stages.ViewStage` or list of
+                :class:`fiftyone.core.stages.ViewStage` instances to apply to
+                each group's samples while flattening
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(
-            fos.Flatten(limit=limit, _pipeline=_pipeline)
-        )
+        return self._add_view_stage(fos.Flatten(stages=stages))
 
     @view_stage
     def geo_near(
@@ -4467,10 +4467,10 @@ class SampleCollection(object):
         self,
         field_or_expr,
         order_by=None,
+        reverse=False,
         flat=False,
         match_expr=None,
         sort_expr=None,
-        reverse=False,
     ):
         """Creates a view that groups the samples in the collection by a
         specified field or expression.
@@ -4518,6 +4518,8 @@ class SampleCollection(object):
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
                 each group
+            reverse (False): whether to return the results in descending order.
+                Applies both to ``order_by`` and ``sort_expr``
             flat (False): whether to return a grouped collection (False) or a
                 flattened collection (True)
             match_expr (None): an optional
@@ -4532,8 +4534,6 @@ class SampleCollection(object):
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
-            reverse (False): whether to return the results in descending order.
-                Applies both to ``order_by`` and ``sort_expr``
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4542,10 +4542,10 @@ class SampleCollection(object):
             fos.GroupBy(
                 field_or_expr,
                 order_by=order_by,
+                reverse=reverse,
                 flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
-                reverse=reverse,
             )
         )
 

@@ -3034,6 +3034,8 @@ class GroupBy(ViewStage):
             that defines the value to group by
         order_by (None): an optional field by which to order the samples in
             each group
+        reverse (False): whether to return the results in descending order.
+            Applies to both ``order_by`` and ``sort_expr``
         flat (False): whether to return a grouped collection (False) or a
             flattened collection (True)
         match_expr (None): an optional
@@ -3048,25 +3050,23 @@ class GroupBy(ViewStage):
             that defines how to sort the groups in the output view. If
             provided, this expression will be evaluated on the list of samples
             in each group. Only applicable when ``flat=True``
-        reverse (False): whether to return the results in descending order.
-            Applies to both ``order_by`` and ``sort_expr``
     """
 
     def __init__(
         self,
         field_or_expr,
         order_by=None,
+        reverse=False,
         flat=False,
         match_expr=None,
         sort_expr=None,
-        reverse=False,
     ):
         self._field_or_expr = field_or_expr
         self._order_by = order_by
+        self._reverse = reverse
         self._flat = flat
         self._match_expr = match_expr
         self._sort_expr = sort_expr
-        self._reverse = reverse
         self._sort_stage = None
 
     @property
@@ -3321,37 +3321,33 @@ class Flatten(ViewStage):
         print(len(grouped_view))  # 10
 
         # Return a flat view that contains 10 samples from each class
-        stage = fo.Flatten(limit=10)
+        stage = fo.Flatten(fo.Limit(10))
         flat_view = grouped_view.add_stage(stage)
         print(len(flat_view))  # 100
 
     Args:
-        limit (None): a maximum number of samples to include in each group
+        stages (None): a :class:`ViewStage` or list of :class:`ViewStage`
+            instances to apply to each group's samples while flattening
     """
 
-    def __init__(self, limit=None, _pipeline=None):
-        self._limit = limit
-        self._pipeline = _pipeline
+    def __init__(self, stages=None):
+        stages, stages_kwargs = _parse_stages(stages)
+        self._stages = stages
+        self._stages_kwargs = stages_kwargs
+        self._pipeline = None
 
     @property
     def outputs_dynamic_groups(self):
         return False
 
     @property
-    def limit(self):
-        """A maximum number of samples to include in each group."""
-        return self._limit
+    def stages(self):
+        """Stage(s) to apply to each group's samples while flattening."""
+        return self._stages
 
     def to_mongo(self, sample_collection):
-        if self._pipeline is not None:
-            group_pipeline = self._pipeline
-        elif self._limit is not None:
-            group_pipeline = [{"$limit": self._limit}]
-        else:
-            group_pipeline = None
-
         return sample_collection._groups_only_pipeline(
-            group_pipeline=group_pipeline
+            group_pipeline=self._pipeline
         )
 
     def get_media_type(self, sample_collection):
@@ -3363,23 +3359,66 @@ class Flatten(ViewStage):
                 "%s is not a dynamic grouped collection" % sample_collection
             )
 
+        pipeline = None
+
+        if self._stages:
+            if etau.is_container(self._stages):
+                stages = list(self._stages)
+            else:
+                stages = [self._stages]
+
+            view, _ = sample_collection._base_groups_view()
+
+            pipeline = []
+            for stage in stages:
+                pipeline.extend(stage.to_mongo(view))
+                view = view.add_stage(stage)
+
+        self._pipeline = pipeline
+
     def _kwargs(self):
-        return [
-            ["limit", self._limit],
-            ["_pipeline", self._pipeline],
-        ]
+        return [["stages", self._stages_kwargs]]
 
     @classmethod
     def _params(cls):
         return [
             {
-                "name": "limit",
-                "type": "NoneType|int",
-                "placeholder": "limit (default=None)",
+                "name": "stages",
+                "type": "NoneType|json",
+                "placeholder": "stages (default=None)",
                 "default": "None",
-            },
-            {"name": "_pipeline", "type": "NoneType|json", "default": "None"},
+            }
         ]
+
+
+def _parse_stages(stages):
+    if stages is None:
+        return None, None
+
+    single_stage = isinstance(stages, (ViewStage, dict))
+    if single_stage:
+        stages = [stages]
+    else:
+        stages = list(stages)
+
+    _stages = []
+    _stages_kwargs = []
+    for stage in stages:
+        if isinstance(stage, ViewStage):
+            _stage = stage
+            _stage_kwargs = stage._serialize(include_uuid=False)
+        else:
+            _stage = ViewStage._from_dict(stage)
+            _stage_kwargs = stage
+
+        _stages.append(_stage)
+        _stages_kwargs.append(_stage_kwargs)
+
+    if single_stage:
+        _stages = _stages[0]
+        _stages_kwargs = _stages_kwargs[0]
+
+    return _stages, _stages_kwargs
 
 
 class Limit(ViewStage):
