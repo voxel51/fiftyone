@@ -163,7 +163,7 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def _is_dynamic_groups(self):
-        return self._group_expr() is not None
+        return self._outputs_dynamic_groups()
 
     @property
     def _sample_cls(self):
@@ -640,7 +640,7 @@ class DatasetView(foc.SampleCollection):
 
         expr_field = "_group_expr"
         pipeline = self._groups_only_pipeline(
-            expr_field=expr_field, group_value=group_value
+            expr_field=expr_field, group_value=group_value, full=True
         )
         curr_expr = None
         group = []
@@ -1232,38 +1232,38 @@ class DatasetView(foc.SampleCollection):
 
         return False
 
-    def _group_expr(self):
-        group_expr = None
+    def _outputs_dynamic_groups(self):
+        value = False
 
         for stage in self._stages:
-            if isinstance(stage, fost.GroupBy):
-                group_expr, _ = stage._group_expr(self)
-                if group_expr is not None:
-                    break
+            _value = stage.outputs_dynamic_groups
+            if _value is not None:
+                value = _value
 
-        return group_expr
+        return value
 
     def _groups_only_pipeline(
-        self, expr_field=None, group_value=None, group_pipeline=None
+        self,
+        expr_field=None,
+        group_value=None,
+        group_pipeline=None,
+        full=False,
     ):
-        group_expr = None
-        order_by = None
-        reverse = False
-        is_id_field = None
+        if not self._is_dynamic_groups:
+            raise ValueError("%s does not contain dynamic groups" % type(self))
 
+        # Find last dynamic group stage
+        odgs = [stage.outputs_dynamic_groups for stage in self._stages]
+        idx = next(i for i in reversed(range(len(odgs))) if odgs[i] is True)
+
+        _stage = self._stages[idx]
         _view = self._base_view
-        for stage in self._stages:
-            if isinstance(stage, fost.GroupBy):
-                group_expr, is_id_field = stage._group_expr(_view)
-                order_by = stage.order_by
-                reverse = stage.reverse
-                if group_expr is not None:
-                    break
-
+        for stage in self._stages[:idx]:
             _view = _view._add_view_stage(stage, validate=False)
 
-        if group_expr is None:
-            return None
+        group_expr, is_id_field = _stage.get_group_expr(_view)
+        order_by = _stage.order_by
+        reverse = _stage.reverse
 
         if order_by is not None:
             order = -1 if reverse else 1
@@ -1285,7 +1285,7 @@ class DatasetView(foc.SampleCollection):
 
         # If this view contains no other stages, we can optimize the pipeline
         # to avoid a `$lookup`
-        if len(self._stages) == 1:
+        if full and len(self._stages) == 1:
             pipeline = []
 
             if group_value is not None:
@@ -1311,10 +1311,10 @@ class DatasetView(foc.SampleCollection):
             if expr_field is not None:
                 pipeline.append({"$set": {expr_field: group_expr}})
 
-            return self._dataset._pipeline(pipeline=pipeline)
+            return pipeline
 
         # Extracts samples for the current group as emitted just *before* the
-        # `group_by()` stage in the view
+        # dynamic grouping stage in the view
         lookup_pipeline = _view._pipeline(detach_frames=True)
         lookup_pipeline.append(
             {"$match": {"$expr": {"$eq": ["$$group_expr", group_expr]}}}
@@ -1357,7 +1357,10 @@ class DatasetView(foc.SampleCollection):
 
         pipeline.append({"$replaceRoot": {"newRoot": "$groups"}})
 
-        return self._pipeline(detach_frames=True, post_pipeline=pipeline)
+        if full:
+            return self._pipeline(detach_frames=True, post_pipeline=pipeline)
+
+        return pipeline
 
     def _pipeline(
         self,

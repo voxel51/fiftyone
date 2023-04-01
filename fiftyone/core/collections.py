@@ -4271,7 +4271,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def flatten(self, limit=None):
+    def flatten(self, limit=None, _pipeline=None):
         """Returns a flattened view that contains all samples in the dynamic
         grouped collection.
 
@@ -4282,11 +4282,13 @@ class SampleCollection(object):
             from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("cifar10", split="test")
-            grouped_view = dataset.take(1000).group_by("ground_truth.label", flat=False)
 
-            flat_view = grouped_view.flatten(limit=10)
-
+            # Group samples by ground truth label
+            grouped_view = dataset.take(1000).group_by("ground_truth.label")
             print(len(grouped_view))  # 10
+
+            # Return a flat view that contains 10 samples from each class
+            flat_view = grouped_view.flatten(limit=10)
             print(len(flat_view))  # 100
 
         Args:
@@ -4295,7 +4297,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Flatten(limit=limit))
+        return self._add_view_stage(
+            fos.Flatten(limit=limit, _pipeline=_pipeline)
+        )
 
     @view_stage
     def geo_near(
@@ -4463,10 +4467,10 @@ class SampleCollection(object):
         self,
         field_or_expr,
         order_by=None,
+        flat=False,
         match_expr=None,
         sort_expr=None,
         reverse=False,
-        flat=True,
     ):
         """Creates a view that groups the samples in the collection by a
         specified field or expression.
@@ -4480,38 +4484,32 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("cifar10", split="test")
 
             #
-            # Take a random sample of 1000 samples and organize them by ground
-            # truth label with groups arranged in decreasing order of size
+            # Take 1000 samples at random and group them by ground truth label
             #
+
+            view = dataset.take(1000).group_by("ground_truth.label")
+
+            print(len(view))
+            for group in view.iter_groups():
+                print("%s: %d" % (group[0].ground_truth.label, len(group)))
+
+            #
+            # Variation of above operation that arranges the groups in
+            # decreasing order of size and immediately flattens them
+            #
+
+            from itertools import groupby
 
             view = dataset.take(1000).group_by(
                 "ground_truth.label",
                 sort_expr=F().length(),
                 reverse=True,
+                flat=True,
             )
 
-            print(view.values("ground_truth.label"))
-            print(
-                sorted(
-                    view.count_values("ground_truth.label").items(),
-                    key=lambda kv: kv[1],
-                    reverse=True,
-                )
-            )
-
-            #
-            # Variation of above operation that creates a grouped collection
-            # rather than a flattened one
-            #
-
-            view = dataset.take(1000).group_by("ground_truth.label", flat=False)
-
-            print(len(view))
-
-            label = view.take(1).first().ground_truth.label
-            group = view.get_group(label)
-
-            print("%s: %d" % (label, len(group)))
+            rle = lambda v: [(k, len(list(g))) for k, g in groupby(v)]
+            for label, count in rle(view.values("ground_truth.label")):
+                print("%s: %d" % (label, count))
 
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
@@ -4520,6 +4518,8 @@ class SampleCollection(object):
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
                 each group
+            flat (False): whether to return a grouped collection (False) or a
+                flattened collection (True)
             match_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -4533,9 +4533,7 @@ class SampleCollection(object):
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
             reverse (False): whether to return the results in descending order.
-                Only applicable when ``flat=True``
-            flat (True): whether to return a flattened collection (True) or a
-                grouped collection (False)
+                Applies both to ``order_by`` and ``sort_expr``
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4544,10 +4542,10 @@ class SampleCollection(object):
             fos.GroupBy(
                 field_or_expr,
                 order_by=order_by,
+                flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
                 reverse=reverse,
-                flat=flat,
             )
         )
 

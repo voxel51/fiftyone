@@ -83,6 +83,18 @@ class ViewStage(object):
         """
         return False
 
+    @property
+    def outputs_dynamic_groups(self):
+        """Whether this stage outputs or flattens dynamic groups.
+
+        The possible return values are:
+
+        -   ``True``: this stage *dynamically groups* the input collection
+        -   ``False``: this stage *flattens* dynamic groups
+        -   ``None``: this stage does not change group status
+        """
+        return None
+
     def get_filtered_fields(self, sample_collection, frames=False):
         """Returns a list of names of fields or embedded fields that contain
         **arrays** have been filtered by the stage, if any.
@@ -157,6 +169,25 @@ class ViewStage(object):
             the media type, or ``None`` if the stage does not change the type
         """
         return None
+
+    def get_group_expr(self, sample_collection):
+        """Returns the dynamic group expression for the given stage, if any.
+
+        Only usable if :meth:`outputs_dynamic_groups` is ``True``.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            a tuple of
+
+            -   the group expression, or ``None`` if the stage does not
+                generate dynamic groups
+            -   whether the group expression is an ObjectId field, or ``None``
+        """
+        return None, None
 
     def load_view(self, sample_collection):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
@@ -2967,40 +2998,34 @@ class GroupBy(ViewStage):
         dataset = foz.load_zoo_dataset("cifar10", split="test")
 
         #
-        # Take a random sample of 1000 samples and organize them by ground
-        # truth label with groups arranged in decreasing order of size
+        # Take 1000 samples at random and group them by ground truth label
         #
+
+        stage = fo.GroupBy("ground_truth.label")
+        view = dataset.take(1000).add_stage(stage)
+
+        print(len(view))
+        for group in view.iter_groups():
+            print("%s: %d" % (group[0].ground_truth.label, len(group)))
+
+        #
+        # Variation of above operation that arranges the groups in decreasing
+        # order of size and immediately flattens them
+        #
+
+        from itertools import groupby
 
         stage = fo.GroupBy(
             "ground_truth.label",
             sort_expr=F().length(),
             reverse=True,
+            flat=True,
         )
         view = dataset.take(1000).add_stage(stage)
 
-        print(view.values("ground_truth.label"))
-        print(
-            sorted(
-                view.count_values("ground_truth.label").items(),
-                key=lambda kv: kv[1],
-                reverse=True,
-            )
-        )
-
-        #
-        # Variation of above operation that creates a grouped collection rather
-        # than a flattened one
-        #
-
-        stage = fo.GroupBy("ground_truth.label", flat=False)
-        view = dataset.take(1000).add_stage(stage)
-
-        print(len(view))
-
-        label = view.take(1).first().ground_truth.label
-        group = view.get_group(label)
-
-        print("%s: %d" % (label, len(group)))
+        rle = lambda v: [(k, len(list(g))) for k, g in groupby(v)]
+        for label, count in rle(view.values("ground_truth.label")):
+            print("%s: %d" % (label, count))
 
     Args:
         field_or_expr: the field or ``embedded.field.name`` to group by, or a
@@ -3009,6 +3034,8 @@ class GroupBy(ViewStage):
             that defines the value to group by
         order_by (None): an optional field by which to order the samples in
             each group
+        flat (False): whether to return a grouped collection (False) or a
+            flattened collection (True)
         match_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -3022,27 +3049,32 @@ class GroupBy(ViewStage):
             provided, this expression will be evaluated on the list of samples
             in each group. Only applicable when ``flat=True``
         reverse (False): whether to return the results in descending order.
-            Only applicable when ``flat=True``
-        flat (True): whether to return a flattened collection (True) or a
-            grouped collection (False)
+            Applies to both ``order_by`` and ``sort_expr``
     """
 
     def __init__(
         self,
         field_or_expr,
         order_by=None,
+        flat=False,
         match_expr=None,
         sort_expr=None,
         reverse=False,
-        flat=True,
     ):
         self._field_or_expr = field_or_expr
         self._order_by = order_by
+        self._flat = flat
         self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
-        self._flat = flat
         self._sort_stage = None
+
+    @property
+    def outputs_dynamic_groups(self):
+        if self._flat:
+            return None
+
+        return True
 
     @property
     def field_or_expr(self):
@@ -3053,6 +3085,11 @@ class GroupBy(ViewStage):
     def order_by(self):
         """The field by which to order the samples in each group."""
         return self._order_by
+
+    @property
+    def flat(self):
+        """Whether to generate a flattened collection."""
+        return self._flat
 
     @property
     def match_expr(self):
@@ -3069,11 +3106,6 @@ class GroupBy(ViewStage):
         """Whether to sort the groups in descending order."""
         return self._reverse
 
-    @property
-    def flat(self):
-        """Whether to generate a flattened collection."""
-        return self._flat
-
     def to_mongo(self, sample_collection):
         if self._order_by is not None and self._sort_stage is None:
             raise ValueError(
@@ -3087,7 +3119,7 @@ class GroupBy(ViewStage):
         return self._make_grouped_pipeline(sample_collection)
 
     def _make_flat_pipeline(self, sample_collection):
-        group_expr, _ = self._group_expr(sample_collection)
+        group_expr, _ = self._get_group_expr(sample_collection)
         match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
@@ -3121,7 +3153,7 @@ class GroupBy(ViewStage):
 
     def _make_grouped_pipeline(self, sample_collection):
         order_by = self._order_by
-        group_expr, _ = self._group_expr(sample_collection)
+        group_expr, _ = self._get_group_expr(sample_collection)
 
         pipeline = []
 
@@ -3137,10 +3169,13 @@ class GroupBy(ViewStage):
 
         return pipeline
 
-    def _group_expr(self, sample_collection):
+    def get_group_expr(self, sample_collection):
         if self._flat:
             return None, None
 
+        return self._get_group_expr(sample_collection)
+
+    def _get_group_expr(self, sample_collection):
         field_or_expr = self._get_mongo_field_or_expr()
         is_id_field = False
 
@@ -3209,10 +3244,10 @@ class GroupBy(ViewStage):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
             ["order_by", self._order_by],
+            ["flat", self._flat],
             ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
-            ["flat", self._flat],
         ]
 
     @classmethod
@@ -3228,6 +3263,12 @@ class GroupBy(ViewStage):
                 "type": "NoneType|field|str",
                 "placeholder": "order by",
                 "default": "None",
+            },
+            {
+                "name": "flat",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "flat (default=False)",
             },
             {
                 "name": "match_expr",
@@ -3246,12 +3287,6 @@ class GroupBy(ViewStage):
                 "type": "bool",
                 "default": "False",
                 "placeholder": "reverse (default=False)",
-            },
-            {
-                "name": "flat",
-                "type": "bool",
-                "default": "True",
-                "placeholder": "flat (default=True)",
             },
         ]
 
@@ -3280,20 +3315,27 @@ class Flatten(ViewStage):
         from fiftyone import ViewField as F
 
         dataset = foz.load_zoo_dataset("cifar10", split="test")
-        grouped_view = dataset.take(1000).group_by("ground_truth.label", flat=False)
 
+        # Group samples by ground truth label
+        grouped_view = dataset.take(1000).group_by("ground_truth.label")
+        print(len(grouped_view))  # 10
+
+        # Return a flat view that contains 10 samples from each class
         stage = fo.Flatten(limit=10)
         flat_view = grouped_view.add_stage(stage)
-
-        print(len(grouped_view))  # 10
         print(len(flat_view))  # 100
 
     Args:
         limit (None): a maximum number of samples to include in each group
     """
 
-    def __init__(self, limit=None):
+    def __init__(self, limit=None, _pipeline=None):
         self._limit = limit
+        self._pipeline = _pipeline
+
+    @property
+    def outputs_dynamic_groups(self):
+        return False
 
     @property
     def limit(self):
@@ -3301,7 +3343,9 @@ class Flatten(ViewStage):
         return self._limit
 
     def to_mongo(self, sample_collection):
-        if self._limit is not None:
+        if self._pipeline is not None:
+            group_pipeline = self._pipeline
+        elif self._limit is not None:
             group_pipeline = [{"$limit": self._limit}]
         else:
             group_pipeline = None
@@ -3320,17 +3364,21 @@ class Flatten(ViewStage):
             )
 
     def _kwargs(self):
-        return [["limit", self._limit]]
+        return [
+            ["limit", self._limit],
+            ["_pipeline", self._pipeline],
+        ]
 
     @classmethod
     def _params(cls):
         return [
             {
                 "name": "limit",
-                "type": "NoneType|list<str>|str",
+                "type": "NoneType|int",
                 "placeholder": "limit (default=None)",
                 "default": "None",
             },
+            {"name": "_pipeline", "type": "NoneType|json", "default": "None"},
         ]
 
 
