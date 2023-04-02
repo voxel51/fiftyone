@@ -1350,8 +1350,12 @@ class DynamicGroupTests(unittest.TestCase):
         counts = dataset.count_values("sample_id")
 
         view1 = dataset.group_by("sample_id")
-
         self.assertEqual(view1.media_type, "group")
+        self.assertIsNone(view1.group_field)
+        self.assertIsNone(view1.group_slice)
+        self.assertIsNone(view1.group_slices)
+        self.assertIsNone(view1.default_group_slice)
+        self.assertIsNone(view1.group_media_types)
         self.assertTrue(view1._is_dynamic_groups)
         self.assertEqual(len(view1), 2)
         self.assertSetEqual(
@@ -1409,6 +1413,11 @@ class DynamicGroupTests(unittest.TestCase):
         )
 
         self.assertEqual(view1.media_type, "group")
+        self.assertIsNone(view1.group_field)
+        self.assertIsNone(view1.group_slice)
+        self.assertIsNone(view1.group_slices)
+        self.assertIsNone(view1.default_group_slice)
+        self.assertIsNone(view1.group_media_types)
         self.assertTrue(view1._is_dynamic_groups)
         self.assertEqual(len(view1), 2)
         self.assertSetEqual(

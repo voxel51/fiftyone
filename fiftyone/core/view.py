@@ -1243,12 +1243,12 @@ class DatasetView(foc.SampleCollection):
         return value
 
     def _base_groups_view(self):
-        if not self._is_dynamic_groups:
+        try:
+            # Find last dynamic group stage
+            bb = [stage.outputs_dynamic_groups for stage in self._stages]
+            idx = next(i for i in reversed(range(len(bb))) if bb[i] is True)
+        except StopIteration:
             raise ValueError("%s does not contain dynamic groups" % type(self))
-
-        # Find last dynamic group stage
-        odgs = [stage.outputs_dynamic_groups for stage in self._stages]
-        idx = next(i for i in reversed(range(len(odgs))) if odgs[i] is True)
 
         _view = self._base_view
         for stage in self._stages[:idx]:

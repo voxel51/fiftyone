@@ -3017,9 +3017,9 @@ class GroupBy(ViewStage):
 
         stage = fo.GroupBy(
             "ground_truth.label",
+            flat=True,
             sort_expr=F().length(),
             reverse=True,
-            flat=True,
         )
         view = dataset.take(1000).add_stage(stage)
 

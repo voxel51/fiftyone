@@ -4502,9 +4502,9 @@ class SampleCollection(object):
 
             view = dataset.take(1000).group_by(
                 "ground_truth.label",
+                flat=True,
                 sort_expr=F().length(),
                 reverse=True,
-                flat=True,
             )
 
             rle = lambda v: [(k, len(list(g))) for k, g in groupby(v)]
