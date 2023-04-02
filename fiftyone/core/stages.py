@@ -3291,6 +3291,11 @@ class GroupBy(ViewStage):
         ]
 
     def validate(self, sample_collection):
+        if sample_collection.media_type == fom.GROUP:
+            raise ValueError(
+                "Cannot group a collection that is already grouped"
+            )
+
         order_by = self._order_by
         field_or_expr = self._get_mongo_field_or_expr()
 
