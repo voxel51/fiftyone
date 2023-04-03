@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.20.0"
+VERSION = "0.20.1"
 
 
 def get_version():
@@ -71,7 +71,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.11,<0.12",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.8.4,<0.9",
+    "voxel51-eta>=0.8.5,<0.9",
 ]
 
 
@@ -108,7 +108,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.26.0,<0.27"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.26.1,<0.27"]}
 
 
 with open("README.md", "r") as fh:
