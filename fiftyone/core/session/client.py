@@ -20,7 +20,7 @@ from uuid import uuid4
 import fiftyone.constants as foc
 import fiftyone.core.state as fos
 
-from fiftyone.core.json import stringify
+from fiftyone.core.json import FiftyOneJSONEncoder, stringify
 from fiftyone.core.session.events import (
     Event,
     EventType,
@@ -157,11 +157,15 @@ class Client:
         response = requests.post(
             f"{self.origin}/event",
             headers={"Content-type": "application/json"},
-            json={
-                "event": event.get_event_name(),
-                "data": stringify(asdict(event, dict_factory=dict_factory)),
-                "subscription": self._subscription,
-            },
+            data=FiftyOneJSONEncoder.dumps(
+                {
+                    "event": event.get_event_name(),
+                    "data": stringify(
+                        asdict(event, dict_factory=dict_factory)
+                    ),
+                    "subscription": self._subscription,
+                }
+            ),
         )
 
         if response.status_code != 200:

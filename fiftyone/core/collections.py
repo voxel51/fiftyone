@@ -668,13 +668,23 @@ class SampleCollection(object):
 
     def _get_samples_bytes(self):
         """Computes the total size of the sample documents in the collection."""
+
+        # Impl note: We *could* do group directly without projecting $bsonSize
+        #   first, however we found in Mongo 5.2 a new execution engine
+        #   (Slot Based Execution) optimizes this away and incorrectly sums
+        #   the full document size, thus ignoring selected fields. A ticket
+        #   has been opened to resolve this bug.
+        #   https://jira.mongodb.org/browse/SERVER-75267
+        #   But until then we must do this in 2 stages (project-size, group-sum)
+        #   rather than 1 (group-sum-size)
         pipeline = [
+            {"$project": {"size": {"$bsonSize": "$$ROOT"}}},
             {
                 "$group": {
                     "_id": None,
-                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                    "size_bytes": {"$sum": "$size"},
                 }
-            }
+            },
         ]
 
         results = self._aggregate(pipeline=pipeline)
@@ -689,13 +699,20 @@ class SampleCollection(object):
         if not self._contains_videos():
             return None
 
+        # Impl note: this pipeline does not suffer the same fate as
+        #   _get_samples_bytes, likely because the Slot Based Execution engine
+        #   is not used due to additional stage complexity. However, until the
+        #   underlying issue is addressed, it is more future-proof to use the
+        #   same workaround here rather than rely on the SBE engine not
+        #   being used in this case.
         pipeline = [
             {"$unwind": "$frames"},
             {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$project": {"size": {"$bsonSize": "$$ROOT"}}},
             {
                 "$group": {
                     "_id": None,
-                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                    "size_bytes": {"$sum": "$size"},
                 }
             },
         ]
@@ -9508,7 +9525,14 @@ class SampleCollection(object):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
-        if field_name.startswith("__"):
+        if field_name.startswith(
+            "___"
+        ):  # for fiftyone.server.view hidden results
+            field_name = field_name[3:]
+
+        if field_name.startswith(
+            "__"
+        ):  # for fiftyone.core.stages hidden results
             field_name = field_name[2:]
 
         if is_frame_field:

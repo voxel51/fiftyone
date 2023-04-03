@@ -3941,6 +3941,38 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIn("test3.int_field", schema)
         self.assertIn("test3.float_field", schema)
 
+        sample4 = fo.Sample(
+            filepath="image.jpg",
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel"),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset4 = fo.Dataset()
+        dataset4.add_sample(sample4, dynamic=True)
+
+        schema = dataset4.get_field_schema(flat=True)
+        self.assertIn("tasks.annotator", schema)
+        self.assertIn("tasks.labels", schema)
+        self.assertIn("tasks.labels.classifications.label", schema)
+
     @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):
         dataset1 = fo.Dataset()

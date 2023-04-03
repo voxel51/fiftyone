@@ -16,7 +16,6 @@ kaleido==0.2.1
 matplotlib==3.5.2
 mongoengine==0.24.2
 motor>=2.5
-ndjson==0.3.1
 packaging==20.3
 pandas>=1.3
 plotly==5.9.0
@@ -33,7 +32,7 @@ setuptools>=45.2.0
 sseclient-py>=1.7.2
 sse-starlette>=0.10.3
 starlette==0.20.4
-strawberry-graphql==0.138.1
+strawberry-graphql==0.159.1
 tabulate==0.8.10
 universal-analytics-python3==1.0.1
 wcmatch==8.3

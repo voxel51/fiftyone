@@ -148,6 +148,7 @@ const Selector = <T extends unknown>({
         className={style.input}
         value={editing ? search : value || ""}
         placeholder={placeholder}
+        data-cy={`selector-${placeholder}`}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {
           if (!editing) return;
