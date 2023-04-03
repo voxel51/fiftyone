@@ -9,6 +9,8 @@ from copy import deepcopy, copy
 from datetime import date, datetime
 import gc
 import os
+import random
+import string
 import unittest
 
 from bson import ObjectId
@@ -30,7 +32,20 @@ from decorators import drop_datasets, skip_windows
 class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_list_datasets(self):
-        self.assertIsInstance(fo.list_datasets(), list)
+        names = fo.list_datasets()
+        self.assertIsInstance(names, list)
+
+        root = "".join(random.choice(string.ascii_letters) for _ in range(64))
+
+        fo.Dataset(root[:-1])
+        fo.Dataset(root)
+        fo.Dataset(root + "-foo")
+
+        names = fo.list_datasets(root + "-*")
+        self.assertEqual(len(names), 1)
+
+        names = fo.list_datasets(root + "*")
+        self.assertEqual(len(names), 2)
 
     @drop_datasets
     def test_dataset_names(self):
