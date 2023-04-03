@@ -73,14 +73,7 @@ export class Property {
   }
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: any) {
-    return new Property(
-      typeFromJSON(json.type),
-      json.description,
-      json.required,
-      json.default,
-      json.hasResolver,
-      json.view
-    );
+    return new Property(typeFromJSON(json.type), json);
   }
   toProps() {
     return {
