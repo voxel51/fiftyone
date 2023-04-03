@@ -69,17 +69,22 @@ class Client:
                         "Accept": "text/event-stream",
                         "Content-type": "application/json",
                     },
-                    json=asdict(
-                        ListenPayload(
-                            events=[
-                                "capture_notebook_cell",
-                                "close_session",
-                                "reactivate_notebook_cell",
-                                "reload_session",
-                                "state_update",
-                            ],
-                            initializer=state.serialize(),
-                            subscription=self._subscription,
+                    data=FiftyOneJSONEncoder.dumps(
+                        stringify(
+                            asdict(
+                                ListenPayload(
+                                    events=[
+                                        "capture_notebook_cell",
+                                        "close_session",
+                                        "reactivate_notebook_cell",
+                                        "reload_session",
+                                        "state_update",
+                                    ],
+                                    initializer=state.serialize(),
+                                    subscription=self._subscription,
+                                ),
+                                dict_factory=dict_factory,
+                            )
                         )
                     ),
                 )
