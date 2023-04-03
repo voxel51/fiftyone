@@ -12,6 +12,37 @@ import fiftyone.server.view as fosv
 import fiftyone as fo
 
 
+class InvocationRequest:
+    def __init__(self, operator_name, params={}):
+        self.operator_name = operator_name
+        self.params = params
+
+    def to_json(self):
+        return {
+            "operator_name": self.operator_name,
+            "params": self.params,
+        }
+
+
+class Executor:
+    def __init__(self, requests=[], logs=[]):
+        self._requests = requests
+        self._logs = []
+
+    def trigger(self, operator_name, params={}):
+        self._requests.append(InvocationRequest(operator_name, params))
+
+    def log(self, message):
+        self._logs.append(message)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "requests": [t.to_json() for t in self._requests],
+            "logs": self._logs,
+        }
+
+
 def execute_operator(operator_name, request_params):
     """Executes the operator with the given name.
     Args:
@@ -24,12 +55,13 @@ def execute_operator(operator_name, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_name)
 
     operator = get_operator(operator_name)
-    ctx = ExecutionContext(request_params)
+    executor = Executor()
+    ctx = ExecutionContext(request_params, executor)
     try:
-        raw_result = operator.execute(ctx)
+        raw_result = operator.execute(ctx, executor)
     except Exception as e:
-        return ExecutionResult(ctx, None, str(e))
-    return ExecutionResult(ctx, raw_result, None)
+        return ExecutionResult(None, executor, str(e))
+    return ExecutionResult(raw_result, executor, None)
 
 
 def resolve_type(operator_name, request_params):
@@ -41,14 +73,14 @@ def resolve_type(operator_name, request_params):
     try:
         return operator.resolve_type(ctx, request_params.get("type", "inputs"))
     except Exception as e:
-        return ExecutionResult(ctx, None, str(e))
+        return ExecutionResult(None, None, str(e))
 
 
 class ExecutionContext:
-    def __init__(self, execution_request_params):
+    def __init__(self, execution_request_params, executor=None):
         self.request_params = execution_request_params
         self.params = execution_request_params.get("params", {})
-        self._triggers = []
+        self.executor = executor
 
     @property
     def view(self):
@@ -78,32 +110,28 @@ class ExecutionContext:
     def dataset_name(self):
         return self.request_params.get("dataset_name", None)
 
-    def trigger(self, operator_name, operator_params = {}):
-        self._triggers.append(
-            Trigger(operator_name, operator_params)
-        )
+    def trigger(self, operator_name, params={}):
+        if self.executor is None:
+            raise ValueError("No executor available")
+        self.executor.trigger(operator_name, params)
 
-class Trigger:
-    def __init__(self, operator_name, operator_params):
-        self.operator_name = operator_name
-        self.operator_params = operator_params
-    def to_json(self):
-        return {
-            "operator_name": self.operator_name,
-            "operator_params": self.operator_params,
-        }
+    def log(self, message):
+        if self.executor is None:
+            raise ValueError("No executor available")
+        self.executor.log(message)
+
 
 class ExecutionResult:
-    def __init__(self, ctx, result, error):
-        self.ctx = ctx
+    def __init__(self, result, executor, error):
         self.result = result
+        self.schedule = schedule
         self.error = error
         self.loading_errors = list_module_errors()
 
     def to_json(self):
         return {
             "result": self.result,
+            "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
             "loading_errors": self.loading_errors,
-            "triggers": [t.to_json() for t in self.ctx._triggers]
         }
