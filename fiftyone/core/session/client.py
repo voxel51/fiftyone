@@ -80,7 +80,7 @@ class Client:
                                         "reload_session",
                                         "state_update",
                                     ],
-                                    initializer=state.serialize(),
+                                    initializer=state,
                                     subscription=self._subscription,
                                 ),
                                 dict_factory=dict_factory,
