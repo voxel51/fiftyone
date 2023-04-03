@@ -1,4 +1,4 @@
-import React, { ChangeEvent, FocusEvent } from "react";
+import { ChangeEvent, FocusEvent } from "react";
 import {
   Box,
   Button,
@@ -60,7 +60,6 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
 function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   const { title, description, uiSchema } = props;
   const { spaces = [] } = uiSchema;
-  console.log({ spaces });
   return (
     <Box>
       <Box sx={{ pb: 2 }}>
@@ -117,7 +116,6 @@ function BaseInputTemplate(props: BaseInputTemplateProps) {
 
   const inputProps = { ...rest, ...getInputProps(schema, type, options) };
   const hasError = rawErrors?.length > 0 && !hideError;
-  console.log({ rawErrors });
 
   return (
     <Box>
@@ -144,7 +142,6 @@ function BaseInputTemplate(props: BaseInputTemplateProps) {
 
 export function Slider(props) {
   const { onChange } = props;
-  console.log({ props });
   return (
     <MUISlider
       valueLabelDisplay="auto"
@@ -157,7 +154,6 @@ export function Slider(props) {
 
 export function Switch(props) {
   const { onChange } = props;
-  console.log({ props });
   return (
     <MUISwitch
       onChange={(e, value) => {
@@ -168,7 +164,6 @@ export function Switch(props) {
 }
 
 export default function RadioButtonsGroup(props) {
-  console.log(props);
   return (
     <FormControl>
       <FormLabel id={props.id}>Gender</FormLabel>

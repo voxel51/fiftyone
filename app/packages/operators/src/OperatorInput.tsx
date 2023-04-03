@@ -1,4 +1,3 @@
-import React from "react";
 import validator from "@rjsf/validator-ajv8";
 import Form from "@rjsf/mui";
 import { templates, widgets } from "./RJSFOverrides";
