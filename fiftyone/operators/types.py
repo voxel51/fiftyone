@@ -149,16 +149,6 @@ class Trigger(BaseType):
 
 
 #
-# Fiftyone
-#
-
-
-class SampleField(Enum):
-    def __init__(self, dataset):
-        super().__init__(dataset.get_field_schema().keys())
-
-
-#
 # Views
 #
 
