@@ -14,6 +14,7 @@ import {
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
+import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
 import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
@@ -114,18 +115,24 @@ const imputeOverlayFromPath = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayPngImageUrl = getSampleSrc(
+  const overlayImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
 
-  const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
+  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",
-    overlayPngImageUrl,
+    overlayImageUrl,
     null,
     "arrayBuffer"
   );
 
-  const overlayData = decodePng(pngArrayBuffer);
+  let overlayData;
+
+  if (overlayImageUrl.endsWith(".png")) {
+    overlayData = decodePng(overlayImageBuffer);
+  } else {
+    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
+  }
 
   const width = overlayData.width;
   const height = overlayData.height;
