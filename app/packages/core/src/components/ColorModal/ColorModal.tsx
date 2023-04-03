@@ -45,7 +45,7 @@ const DraggableModalTitle = styled.div`
   background-color: ${({ theme }) => theme.background.level1};
   padding: 2px;
   cursor: pointer;
-  fontstyle: bold;
+  fontweight: 600;
 `;
 
 const ModalActionButtonContainer = styled.div`
@@ -111,11 +111,10 @@ const SubmitControls = () => {
 const ColorModal = () => {
   const field = useRecoilValue(fos.colorModal);
   const colorBy = useRecoilValue(fos.coloring(false)).by;
-  const longSetting = Boolean(field?.embeddedDocType && colorBy === "value");
 
   const screen = {
     minWidth: "500px",
-    width: "50vw",
+    width: "40vw",
     height: "80vh",
   };
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -125,16 +124,16 @@ const ColorModal = () => {
   );
   const theme = createTheme({
     typography: {
-      fontFamily: "Palanquin,sans-serif",
+      fontFamily: "Palanquin, sans-serif",
     },
     components: {
       MuiCssBaseline: {
         styleOverrides: {
           html: {
-            fontFamily: "Palanquin,sans-serif",
+            fontFamily: "Palanquin, sans-serif",
           },
           body: {
-            fontFamily: "Palanquin,sans-serif",
+            fontFamily: "Palanquin, sans-serif",
           },
         },
       },
