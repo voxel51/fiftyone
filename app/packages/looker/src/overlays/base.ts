@@ -122,14 +122,16 @@ export abstract class CoordinateOverlay<
           (s) => s.field === this.field
         );
         if (setting) {
-          key = setting.attributeForColor?.split(".").slice(-1) ?? "label";
+          key = setting.attributeForColor?.split(".").slice(-1)[0] ?? "label";
           pool = setting.colors?.every((c) => isValidColor(c))
             ? setting.colors
             : coloring.pool;
           // check if this label has a assigned color, use it if it is a valid color
+          console.info(setting.labelColors, this.label, key);
           const labelColor = setting.labelColors?.find(
-            (l) => l.name === this.label[key]
+            (l) => l.name == this.label[key].toString()
           )?.color;
+
           if (isValidColor(labelColor)) {
             return labelColor;
           }

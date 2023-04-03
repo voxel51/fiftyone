@@ -74,6 +74,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                 <DeleteIcon
                   onClick={() => handleColorDelete(index)}
                   fontSize={"small"}
+                  id={`delete-${index}`}
                 />
               </div>
             )}

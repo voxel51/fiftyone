@@ -229,13 +229,13 @@ const ColorModalContent: React.FunctionComponent = () => {
           />
         </div>
         <Divider></Divider>
-        Color by value settings
+        <Text>Color by value settings</Text>
         <form
           style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
         >
           {/* set the attribute used for color */}
-          <FormControl key="color">
-            <InputLabel key="dropdown-attribute">
+          <FormControl>
+            <InputLabel key="dropdown-attribute" style={FONT_STYLE}>
               Select attribute for annotation color
             </InputLabel>
             <Select
@@ -244,6 +244,7 @@ const ColorModalContent: React.FunctionComponent = () => {
               value={tempAttributeSetting?.attributeForColor ?? ""}
               onChange={handleDropdownChange}
               MenuProps={{ style: { zIndex: 9999999 } }}
+              style={FONT_STYLE}
               autoWidth
               required
             >
@@ -259,19 +260,21 @@ const ColorModalContent: React.FunctionComponent = () => {
           {/* set the attribute used for opacity */}
           <FormControlLabel
             key="attributeForOpacity"
+            style={FONT_STYLE}
             control={
               <Checkbox
                 checked={checkbox1}
                 onChange={handleCheckboxChange}
                 name="attributeForOpacity"
                 disabled={opacityAttributeOptions.length === 0}
+                disableRipple
               />
             }
-            label="Set up object boxes opacity"
+            label={<CheckboxText>Set up object boxes opacity</CheckboxText>}
           />
           {checkbox1 && (
             <FormControl style={CHILD_STYLE} key="dropdown-opacity">
-              <InputLabel key="dropdown-opacity-attribute">
+              <InputLabel key="dropdown-opacity-attribute" style={FONT_STYLE}>
                 Select attribute for opacity
               </InputLabel>
               <Select
@@ -280,6 +283,7 @@ const ColorModalContent: React.FunctionComponent = () => {
                 value={tempAttributeSetting?.attributeForOpacity ?? ""}
                 onChange={handleOpacityDropdownChange}
                 MenuProps={{ style: { zIndex: 9999999 } }}
+                style={FONT_STYLE}
               >
                 {opacityAttributeOptions.map((option, idx) => {
                   return (
@@ -301,9 +305,10 @@ const ColorModalContent: React.FunctionComponent = () => {
                 checked={checkbox2}
                 onChange={handleCheckboxChange}
                 name="colors"
+                disableRipple
               />
             }
-            label="Overwrite color pool"
+            label={<CheckboxText>Overwrite color pool</CheckboxText>}
             key="colors"
           />
           {checkbox2 && <ColorPalette style={CHILD_STYLE} />}
@@ -313,9 +318,14 @@ const ColorModalContent: React.FunctionComponent = () => {
                 checked={checkbox3}
                 onChange={handleCheckboxChange}
                 name="labelColors"
+                disableRipple
               />
             }
-            label="Assign specfic color to attribute value"
+            label={
+              <CheckboxText>
+                Assign specfic color to attribute value
+              </CheckboxText>
+            }
             key="labelColors"
           />
           {checkbox3 && <AttributeColorSetting style={CHILD_STYLE} />}
@@ -328,7 +338,15 @@ const ColorModalContent: React.FunctionComponent = () => {
 export default ColorModalContent;
 
 const Text = styled.div`
-  margin: 1rem;
+  margin-top: 2rem;
+  font-family: "Palanquin", sans-serif;
+  font-weight: "500";
+`;
+
+const CheckboxText = styled.div`
+  font-family: "Palanquin", sans-serif;
+  font-weight: "500" !important;
+  fontstyle: bold;
 `;
 
 const ColorSquare = styled.div<{ color: string }>`
@@ -352,4 +370,9 @@ const PickerWrapper = styled.div<{ visible: boolean }>`
 const CHILD_STYLE = {
   marginLeft: "2rem",
   marginTop: "-0.25rem",
+};
+
+const FONT_STYLE = {
+  fontFamily: "Palanquin, sans-serif",
+  fontWeight: "500",
 };
