@@ -16,14 +16,13 @@ import {
 } from "@mui/material";
 import { useRecoilValue } from "recoil";
 import OperatorInput from "./OperatorInput";
-import { fieldsToJSONSchema, toJSONSchema } from "./utils";
+import { toJSONSchema } from "./utils";
 import { Box } from "@mui/material";
 
 const PromptContainer = styled.div`
   position: absolute;
   top: 5rem;
   left: 0;
-  // height: 100%;
   width: 100%;
   display: flex;
   justify-content: center;
@@ -78,13 +77,12 @@ function ActualOperatorPrompt() {
 }
 
 function Prompting({ operatorPrompt }) {
-  console.log(operatorPrompt.inputFields);
   return (
     <Box>
       <h3>Input</h3>
       <Box sx={{ pb: 2 }}>
         <OperatorInput
-          schema={fieldsToJSONSchema(operatorPrompt.inputFields)}
+          schema={toJSONSchema(operatorPrompt.inputFields)}
           onChange={(data, id) => {
             const { formData } = data;
             for (const field in formData) {
@@ -105,18 +103,20 @@ function Prompting({ operatorPrompt }) {
 }
 
 function Results({ operatorPrompt }) {
+  const fields = Array.from(operatorPrompt.outputFields.type.properties);
   return (
     <>
       <h3>Result</h3>
-      {operatorPrompt?.executor?.result &&
-        operatorPrompt.outputFields.map((field) => (
+      {fields.map(([name, property]) => {
+        return (
           <Field
-            key={field.name}
-            field={field}
+            key={name}
+            field={property}
             readOnly={true}
-            defaultValue={operatorPrompt.executor.result[field.name]}
+            defaultValue={operatorPrompt.executor.result[name]}
           />
-        ))}
+        );
+      })}
       <ButtonsContainer>
         <Button onClick={() => operatorPrompt.close()}>Close</Button>
       </ButtonsContainer>
@@ -242,7 +242,6 @@ const CheckboxContainer = styled.div`
 `;
 
 function Checkbox({ field, onChange, defaultValue, readOnly }) {
-  console.log("checkbox", field);
   return (
     <CheckboxContainer>
       <StyledInput
@@ -282,7 +281,6 @@ function Emum({ field, onChange, defaultValue, readOnly }) {
       </FormControl>
     );
   } else {
-    console.log(field);
     return (
       <FormControl fullWidth style={{ marginBottom: "1rem" }}>
         <InputLabel>{field.label}</InputLabel>
@@ -316,7 +314,6 @@ function List({ field, onChange, defaultValue, readOnly }) {
     if (onChange) onChange({ target: { value } });
   }, [value]);
 
-  console.log(field.type.elementType);
   return (
     <FormControl component="fieldset" style={{ marginBottom: "1rem" }}>
       <FormLabel component="legend">{field.label}</FormLabel>
