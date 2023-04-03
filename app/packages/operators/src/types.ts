@@ -3,57 +3,64 @@ import { ExecutionContext } from "./operators";
 export class BaseType {}
 
 export class ObjectType extends BaseType {
-  constructor(public properties: Map<string, Property> = null) {
+  constructor(public properties: Map<string, Property> = new Map()) {
     super();
-    if (properties === null) {
-      this.properties = new Map();
+  }
+  addProperty(name: string, property: Property) {
+    this.properties.set(name, property);
+    return property;
+  }
+  getProperty(name: string) {
+    return this.properties.get(name);
+  }
+  defineProperty(name: string, type: ANY_TYPE, options?: any) {
+    const label = options?.label;
+    const description = options?.description;
+    const view = options?.view || new View();
+    if (label) {
+      view.label = label;
     }
+    if (description) {
+      view.description = description;
+    }
+    const property = new Property(type, { ...(options || {}), view });
+    this.addProperty(name, property);
+    return property;
   }
   getPropertyList() {
     return Array.from(this.properties.values());
-  }
-  addProperty(name: string, property: Property) {
-    this.properties[name] = property;
-    return property;
   }
   static fromJSON(json: any) {
     const entries = Object.entries(json.properties).map(([k, v]) => [
       k,
       Property.fromJSON(v),
     ]);
-    const type = new ObjectType(new Map(Object.fromEntries(entries)));
+    const type = new ObjectType(new Map(entries));
     type._needsResolution = json.needsResolution;
     return type;
   }
-  toProps() {
-    return this.properties.map((p) => p.toProps());
-  }
-  getResolverableProperties() {
-    return this.properties.values().filter((p) => p.hasResolver);
-  }
-  public _needsResolution: boolean = false;
+  public _needsResolution = false;
   needsResolution() {
-    return this._needsResolution || this.properties.some((p) => p.hasResolver);
+    const propertiesValues = Array.from(this.properties.values());
+    return this._needsResolution || propertiesValues.some((p) => p.hasResolver);
   }
 }
 export class Property {
-  constructor(
-    type: ANY_TYPE,
-    description: string,
-    required: boolean,
-    defaultValue?: any,
-    public _hasResolver: boolean = false,
-    public view?: View
-  ) {
+  constructor(type: ANY_TYPE, options?) {
     this.type = type;
-    this.description = description;
-    this.required = required;
-    this.defaultValue = defaultValue;
+    this.defaultValue = options?.defaultValue;
+    this.required = options?.required;
+    this.choices = options?.choices;
+    this.view = options?.view;
+    this._hasResolver = options?.hasResolver;
   }
   type: ANY_TYPE;
   description: string;
   required: boolean;
   defaultValue: any;
+  choices: any;
+  view: any;
+
   get hasResolver() {
     return (
       this._hasResolver ||
@@ -74,9 +81,10 @@ export class Property {
   }
   toProps() {
     return {
-      label: this.view?.label,
       type: this.type,
       default: this.defaultValue,
+      required: this.required,
+      choices: this.choices,
       view: this.view,
     };
   }
@@ -123,7 +131,7 @@ export class Enum extends BaseType {
 }
 
 export class View extends BaseType {
-  constructor(public label: string, public description: string) {
+  constructor(public options?) {
     super();
   }
 
