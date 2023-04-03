@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
     defaults:
       run:
         shell: bash
