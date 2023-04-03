@@ -415,7 +415,7 @@ class DatasetsListCommand(Command):
         fiftyone datasets list
 
         # List datasets matching a given pattern
-        fiftyone datasets list --glob-patt quickstart-*
+        fiftyone datasets list --glob-patt 'quickstart-*'
     """
 
     @staticmethod
@@ -445,7 +445,7 @@ class DatasetsInfoCommand(Command):
 
         # Print basic information about multiple datasets
         fiftyone datasets info
-        fiftyone datasets info --glob-patt quickstart-*
+        fiftyone datasets info --glob-patt 'quickstart-*'
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
