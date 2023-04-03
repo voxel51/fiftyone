@@ -3291,9 +3291,9 @@ class GroupBy(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        if sample_collection.media_type == fom.GROUP:
+        if sample_collection._is_dynamic_groups:
             raise ValueError(
-                "Cannot group a collection that is already grouped"
+                "Cannot group a collection that is already dynamically grouped"
             )
 
         order_by = self._order_by
