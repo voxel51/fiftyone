@@ -78,7 +78,6 @@ export default function OperatorBrowser() {
   if (!browser.isVisible) {
     return null;
   }
-
   return createPortal(
     <BrowserContainer onSubmit={browser.onSubmit} onKeyDown={browser.onKeyDown}>
       <BrowserModal>
