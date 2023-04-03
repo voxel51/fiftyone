@@ -177,7 +177,7 @@ const Grid: React.FC<{}> = () => {
     initialized.current = true;
   }, []);
 
-  return <div id={id} className={flashlightLooker}></div>;
+  return <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>;
 };
 
 export default Grid;

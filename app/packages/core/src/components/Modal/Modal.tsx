@@ -277,12 +277,18 @@ const SampleModal = () => {
           <ContentColumn>
             {!isNavigationHidden && navigation.index > 0 && (
               <Arrow>
-                <LookerArrowLeftIcon onClick={navigatePrevious} />
+                <LookerArrowLeftIcon
+                  data-cy="nav-left-button"
+                  onClick={navigatePrevious}
+                />
               </Arrow>
             )}
             {!isNavigationHidden && (
               <Arrow isRight>
-                <LookerArrowRightIcon onClick={navigateNext} />
+                <LookerArrowRightIcon
+                  data-cy="nav-right-button"
+                  onClick={navigateNext}
+                />
               </Arrow>
             )}
             <ErrorBoundary onReset={() => {}}>
