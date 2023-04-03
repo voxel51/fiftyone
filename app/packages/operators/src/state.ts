@@ -33,9 +33,9 @@ export const operatorPromptState = selector({
     const { operatorName, params } = promptingOperator;
     const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
 
-    const inputFields = operator.definition.inputs.toProps();
-    const outputFields = operator.definition.outputs.toProps();
-    return { outputFields, operatorName };
+    const inputFields = operator.inputs.toProps();
+    const outputFields = operator.outputs.toProps();
+    return { inputFields, outputFields, operatorName };
   },
 });
 
@@ -116,7 +116,6 @@ const useExecutionContext = (operatorName, hooks = {}) => {
 };
 
 export const useOperatorPrompt = () => {
-  console.log("useOperatorPrompt");
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
@@ -126,18 +125,14 @@ export const useOperatorPrompt = () => {
   const ctx = useExecutionContext(operatorName);
   const operator = getLocalOrRemoteOperator(operatorName).operator;
   const hooks = operator.useHooks(ctx);
-  console.log("hooks", hooks);
-  const [inputFields, setInputFields] = useState([]);
+  const [inputFields, setInputFields] = useState();
   const resolveInputFields = useCallback(async () => {
-    console.log("resolveInputFields");
     ctx.hooks = hooks;
     const resolved = await operator.resolveInput(ctx);
-    console.log("resolved", resolved.toProps());
     setInputFields(resolved.toProps());
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
 
   useEffect(() => {
-    console.log("useEffect resolveInputFields");
     resolveInputFields();
   }, [ctx.params]);
 
@@ -236,12 +231,12 @@ export function filterChoicesByQuery(query, all) {
 
 export const availableOperators = selector({
   key: "availableOperators",
-  get: ({ get }) => {
+  get: () => {
     return listLocalAndRemoteOperators().allOperators.map((operator) => {
       return {
         label: operator.name,
         value: operator.name,
-        description: operator.definition.description,
+        description: operator.description,
       };
     });
   },
@@ -280,7 +275,6 @@ export function useOperatorBrowser() {
   const promptForInput = usePromptOperatorInput();
 
   const onChangeQuery = (query) => {
-    console.log("query", query);
     setQuery(query);
   };
 
@@ -292,7 +286,6 @@ export function useOperatorBrowser() {
   };
 
   const onSubmit = () => {
-    console.log("onSubmit", selectedValue);
     close();
     const acceptedValue = selectedValue || choices[0]?.value;
     if (acceptedValue) {
@@ -322,12 +315,10 @@ export function useOperatorBrowser() {
   }, [choices, selectedValue]);
 
   const selectNext = useCallback(() => {
-    console.log("select next");
     setSelected(getSelectedPrevAndNext().selectedNext);
   }, [choices, selectedValue]);
 
   const selectPrevious = useCallback(() => {
-    console.log("select prev");
     setSelected(getSelectedPrevAndNext().selectedPrev);
   }, [choices, selectedValue]);
 
@@ -419,7 +410,6 @@ export function useOperatorExecutor(name) {
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const ctx = useExecutionContext(name);
   const hooks = operator.useHooks(ctx);
-  console.log({ ctx });
 
   const clear = () => {
     setError(null);
@@ -439,7 +429,6 @@ export function useOperatorExecutor(name) {
         hooks
       );
       ctx.state = state;
-      console.log("execute", { ctx });
       try {
         ctx.hooks = hooks;
         ctx.state = state;

@@ -30,6 +30,7 @@ class Operator:
             raise ValueError("Operator name cannot be None")
 
         self.name = name
+        self.description = description
         self.definition = Object()
 
         self.definition.define_property("inputs", Object(), view=input_view)
@@ -80,6 +81,7 @@ class Operator:
         """Returns a JSON representation of the operator."""
         return {
             "name": self.name,
+            "description": self.description,
             "definition": self.definition.to_json(),
         }
 
