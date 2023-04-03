@@ -25,22 +25,11 @@ export function toJSONSchema(schema) {
   }
 
   if (typeId === "ObjectType") {
-    jsonSchema.properties = type.properties.reduce((prev, current) => {
-      prev[current.name] = toJSONSchema(current);
-      return prev;
-    }, {});
+    jsonSchema.properties = {};
+    type.properties.forEach((property, name) => {
+      jsonSchema.properties[name] = toJSONSchema(property);
+    });
   }
 
   return jsonSchema;
-}
-
-export function fieldsToJSONSchema(fields: []) {
-  return {
-    type: "object",
-    required: [],
-    properties: fields.reduce((fieldsObject, field) => {
-      fieldsObject[field.name] = toJSONSchema(field);
-      return fieldsObject;
-    }, {}),
-  };
 }
