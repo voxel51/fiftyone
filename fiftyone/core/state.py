@@ -21,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.spaces import Space
 from fiftyone.server.scalars import JSON
 
@@ -221,7 +222,9 @@ def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=field.info,
+                    info=json.loads(
+                        FiftyOneJSONEncoder.dumps(field.info or {})
+                    ),
                 )
             )
 

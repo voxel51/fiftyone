@@ -527,6 +527,7 @@ function toRenderValue([key, value], timeZone: string): [string, string] {
     case "boolean":
       return [key, value ? "True" : "False"];
     case "object":
+      console.log("here", key, ":", value);
       if (value._cls === "Date") {
         return [key, formatDate(value.datetime)];
       } else if (value._cls === "DateTime") {
