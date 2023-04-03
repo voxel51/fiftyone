@@ -651,6 +651,15 @@ class OutputProcessor(object):
         raise NotImplementedError("subclass must implement __call__")
 
 
+class NullOutputProcessor(OutputProcessor):
+    """A dummy output processor for models that don't use the output processor
+    interface.
+    """
+
+    def __init__(self, classes=None, *args, **kwargs):
+        pass
+
+
 class ClassifierOutputProcessor(OutputProcessor):
     """Output processor for single label classifiers.
 
