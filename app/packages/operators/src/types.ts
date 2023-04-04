@@ -44,6 +44,9 @@ export class ObjectType extends BaseType {
     const propertiesValues = Array.from(this.properties.values());
     return this._needsResolution || propertiesValues.some((p) => p.hasResolver);
   }
+  dynamic() {
+    this._needsResolution = true;
+  }
 }
 export class Property {
   constructor(type: ANY_TYPE, options?) {
