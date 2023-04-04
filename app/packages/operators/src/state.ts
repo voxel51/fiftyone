@@ -17,6 +17,7 @@ import {
   Executor,
   getInvocationRequestQueue,
   InvocationRequestQueue,
+  OperatorResult,
 } from "./operators";
 import * as fos from "@fiftyone/state";
 import { BROWSER_CONTROL_KEYS } from "./constants";
@@ -122,12 +123,12 @@ export const useOperatorPrompt = () => {
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
-  const { outputFields } = useRecoilValue(operatorPromptState);
 
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
   const operator = getLocalOrRemoteOperator(operatorName).operator;
   const hooks = operator.useHooks(ctx);
+  const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
@@ -138,6 +139,20 @@ export const useOperatorPrompt = () => {
   useEffect(() => {
     resolveInputFields();
   }, [ctx.params]);
+
+  const [outputFields, setOutputFields] = useState();
+  const resolveOutputFields = useCallback(async () => {
+    ctx.hooks = hooks;
+    const result = new OperatorResult(operator, executor.result, null, null);
+    const resolved = await operator.resolveOutput(ctx, result);
+    setOutputFields(resolved.toProps());
+  }, [ctx, operatorName, hooks, JSON.stringify(executor.result)]);
+
+  useEffect(() => {
+    if (executor.result) {
+      resolveOutputFields();
+    }
+  }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
@@ -152,8 +167,6 @@ export const useOperatorPrompt = () => {
         });
       }
   );
-
-  const executor = useOperatorExecutor(promptingOperator.operatorName);
   const execute = useCallback(() => {
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
@@ -403,7 +416,8 @@ export function useOperatorExecutor(name, handlers: any = {}) {
   const { operator } = getLocalOrRemoteOperator(name);
   const [isExecuting, setIsExecuting] = useRecoilState(
     operatorIsExecutingState
-  );``
+  );
+  ``;
   const [error, setError] = useRecoilState(operatorExecutionErrorState);
   const [result, setResult] = useRecoilState(operatorExecutionResultState);
 
@@ -462,9 +476,7 @@ export function useOperatorExecutor(name, handlers: any = {}) {
   };
 }
 
-export function useExecutorQueue() {
-
-}
+export function useExecutorQueue() {}
 
 export function useInvocationRequestQueue() {
   const ref = useRef<InvocationRequestQueue>();
@@ -472,16 +484,16 @@ export function useInvocationRequestQueue() {
   const [itemToExecute, setItemToExecute] = useState(null);
 
   useEffect(() => {
-    const queue = ref.current = getInvocationRequestQueue();
+    const queue = (ref.current = getInvocationRequestQueue());
     const subscriber = (updatedQueue) => {
       const queue = ref.current;
-      setRequests(updatedQueue.toJSON())
-    }
-    queue.subscribe(subscriber)
+      setRequests(updatedQueue.toJSON());
+    };
+    queue.subscribe(subscriber);
     return () => {
-      queue.unsubscribe(subscriber)
-    }
-  }, [])
+      queue.unsubscribe(subscriber);
+    };
+  }, []);
 
   const onSuccess = useCallback((id) => {
     const queue = ref.current;
@@ -500,19 +512,23 @@ export function useInvocationRequestQueue() {
   return {
     requests,
     onSuccess,
-    onError
-  }
+    onError,
+  };
 }
 
-export function useInvocationRequestExecutor({queueItem, onSuccess, onError}) {
-  console.log({queueItem})
+export function useInvocationRequestExecutor({
+  queueItem,
+  onSuccess,
+  onError,
+}) {
+  console.log({ queueItem });
   const executor = useOperatorExecutor(queueItem.request.operatorName, {
     onSuccess: () => {
       onSuccess(queueItem.id);
     },
     onError: () => {
       onError(queueItem.id);
-    }
+    },
   });
 
   return executor;

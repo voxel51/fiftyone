@@ -3,10 +3,7 @@ import { CallbackInterface } from "recoil";
 import * as types from "./types";
 
 class InvocationRequest {
-  constructor(
-    public operatorName: string,
-    public params: any = {},
-  ) {}
+  constructor(public operatorName: string, public params: any = {}) {}
   static fromJSON(json: any) {
     return new InvocationRequest(json.operator_name, json.params);
   }
@@ -67,9 +64,7 @@ export class ExecutionContext {
   }
   log(message: string) {
     if (!this.executor) {
-      throw new Error(
-        "Cannot log from outside of an execution context"
-      );
+      throw new Error("Cannot log from outside of an execution context");
     }
     this.executor.log(message);
   }
@@ -80,7 +75,7 @@ function isObjWithContent(obj: any) {
   return typeof obj === "object" && Object.keys(obj).length > 0;
 }
 
-class OperatorResult {
+export class OperatorResult {
   constructor(
     public operator: Operator,
     public result: any = {},
@@ -94,10 +89,9 @@ class OperatorResult {
     return {
       result: this.result,
       error: this.error,
-      executor: this.executor
+      executor: this.executor,
     };
   }
-
 }
 
 export class Operator {
@@ -138,6 +132,10 @@ export class Operator {
     const inputsType = this.inputs.type as types.ObjectType;
     return inputsType.needsResolution();
   }
+  needsOutputResolution() {
+    const outputsType = this.outputs.type as types.ObjectType;
+    return outputsType.needsResolution();
+  }
   needsOutput(result: OperatorResult) {
     const outputType = this.outputs.type as types.ObjectType;
     if (outputType.properties.size > 0 && result.hasOutputContent()) {
@@ -175,6 +173,9 @@ export class Operator {
     }
     return this.inputs;
   }
+  async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
+    return this.outputs;
+  }
   async execute(ctx: ExecutionContext) {
     throw new Error(`Operator ${this.name} does not implement execute`);
   }
@@ -193,6 +194,18 @@ export class Operator {
       types.Property.fromJSON(outputs)
     );
     return operator;
+  }
+}
+
+export class DynamicOperator extends Operator {
+  constructor(
+    public name: string,
+    public description: string,
+    public inputView?,
+    public outputView?
+  ) {
+    super(name, description, inputView, outputView);
+    (this.definition.getProperty("inputs").type as types.ObjectType).dynamic();
   }
 }
 
@@ -365,10 +378,7 @@ enum QueueItemStatus {
 }
 
 class QueueItem {
-  constructor(
-    public id: string,
-    public request: InvocationRequest,
-  ) {}
+  constructor(public id: string, public request: InvocationRequest) {}
   status: QueueItemStatus = QueueItemStatus.Pending;
   result: OperatorResult;
   toJSON() {
@@ -446,7 +456,9 @@ export class InvocationRequestQueue {
     return this._queue.some((d) => d.status === QueueItemStatus.Failed);
   }
   clean() {
-    this._queue = this._queue.filter((d) => d.status !== QueueItemStatus.Completed);
+    this._queue = this._queue.filter(
+      (d) => d.status !== QueueItemStatus.Completed
+    );
     this._notifySubscribers();
   }
   getNextPendingRequest() {
