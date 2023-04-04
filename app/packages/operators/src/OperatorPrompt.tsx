@@ -103,6 +103,7 @@ function Prompting({ operatorPrompt }) {
 }
 
 function Results({ operatorPrompt }) {
+  if (!operatorPrompt.outputFields) return null;
   const fields = Array.from(operatorPrompt.outputFields.type.properties);
   return (
     <>
@@ -113,7 +114,9 @@ function Results({ operatorPrompt }) {
             key={name}
             field={property}
             readOnly={true}
-            defaultValue={operatorPrompt.executor.result[name]}
+            defaultValue={
+              operatorPrompt.executor.result[name] || property.view.default
+            }
           />
         );
       })}
