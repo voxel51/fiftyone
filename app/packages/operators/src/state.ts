@@ -14,6 +14,9 @@ import {
   listLocalAndRemoteOperators,
   executeOperator,
   ExecutionContext,
+  Executor,
+  getInvocationRequestQueue,
+  InvocationRequestQueue,
 } from "./operators";
 import * as fos from "@fiftyone/state";
 import { BROWSER_CONTROL_KEYS } from "./constants";
@@ -396,11 +399,11 @@ const operatorExecutionNeedsOutputState = atom({
   default: null,
 });
 
-export function useOperatorExecutor(name) {
+export function useOperatorExecutor(name, handlers: any = {}) {
   const { operator } = getLocalOrRemoteOperator(name);
   const [isExecuting, setIsExecuting] = useRecoilState(
     operatorIsExecutingState
-  );
+  );``
   const [error, setError] = useRecoilState(operatorExecutionErrorState);
   const [result, setResult] = useRecoilState(operatorExecutionResultState);
 
@@ -423,6 +426,7 @@ export function useOperatorExecutor(name) {
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(name)
       );
+
       const ctx = new ExecutionContext(
         paramOverrides || params,
         currentContext,
@@ -436,11 +440,13 @@ export function useOperatorExecutor(name) {
         setResult(result.result);
         setError(result.error);
         setNeedsOutput(result.hasOutputContent());
+        handlers.onSuccess?.(result);
       } catch (e) {
         console.error("Error executing operator");
         console.error(e);
         setError(e);
         setResult(null);
+        handlers.onError?.(e);
       }
       setIsExecuting(false);
     },
@@ -454,4 +460,60 @@ export function useOperatorExecutor(name) {
     result,
     clear,
   };
+}
+
+export function useExecutorQueue() {
+
+}
+
+export function useInvocationRequestQueue() {
+  const ref = useRef<InvocationRequestQueue>();
+  const [requests, setRequests] = useState([]);
+  const [itemToExecute, setItemToExecute] = useState(null);
+
+  useEffect(() => {
+    const queue = ref.current = getInvocationRequestQueue();
+    const subscriber = (updatedQueue) => {
+      const queue = ref.current;
+      setRequests(updatedQueue.toJSON())
+    }
+    queue.subscribe(subscriber)
+    return () => {
+      queue.unsubscribe(subscriber)
+    }
+  }, [])
+
+  const onSuccess = useCallback((id) => {
+    const queue = ref.current;
+    if (queue) {
+      queue.markAsCompleted(id);
+    }
+  }, []);
+
+  const onError = useCallback((id) => {
+    const queue = ref.current;
+    if (queue) {
+      queue.markAsFailed(id);
+    }
+  }, []);
+
+  return {
+    requests,
+    onSuccess,
+    onError
+  }
+}
+
+export function useInvocationRequestExecutor({queueItem, onSuccess, onError}) {
+  console.log({queueItem})
+  const executor = useOperatorExecutor(queueItem.request.operatorName, {
+    onSuccess: () => {
+      onSuccess(queueItem.id);
+    },
+    onError: () => {
+      onError(queueItem.id);
+    }
+  });
+
+  return executor;
 }
