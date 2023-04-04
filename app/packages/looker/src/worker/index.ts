@@ -137,9 +137,12 @@ const imputeOverlayFromPath = async (
   const width = overlayData.width;
   const height = overlayData.height;
 
+  const numChannels =
+    overlayData.channels ?? overlayData.data.length / (width * height);
+
   const overlayMask: OverlayMask = {
     buffer: overlayData.data.buffer,
-    channels: overlayData.channels,
+    channels: numChannels,
     arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
     shape: [height, width],
   };
