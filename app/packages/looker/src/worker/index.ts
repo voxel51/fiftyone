@@ -191,7 +191,11 @@ const processLabels = async (
 
     if (painterFactory[label._cls]) {
       promises.push(
-        painterFactory[label._cls](prefix + field, label, coloring)
+        painterFactory[label._cls](
+          prefix ? prefix + field : field,
+          label,
+          coloring
+        )
       );
     }
   }
