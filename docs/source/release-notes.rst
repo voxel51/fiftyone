@@ -53,6 +53,12 @@ App
 - Fixed a bug that prevented the sample grid from refreshing when composing
   multiple sidebar filters
   `#2849 <https://github.com/voxel51/fiftyone/pull/2849>`_
+- Fixed a bug that prevented field-specific mask targets from being recognized
+  when rendering segmentations in the App
+  `#2879 <https://github.com/voxel51/fiftyone/pull/2879>`_
+- Fixed a bug when rendering heatmaps stored as images on disk
+  `#2872 <https://github.com/voxel51/fiftyone/pull/2872>`_,
+  `#2880 <https://github.com/voxel51/fiftyone/pull/2880>`_
 
 Core
 
