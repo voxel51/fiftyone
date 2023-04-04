@@ -941,7 +941,7 @@ class DatasetMixin(object):
 
             doc = schema[chunk]
 
-            if isinstance(doc, fof.ListField):
+            while isinstance(doc, fof.ListField):
                 doc = doc.field
 
             if not isinstance(doc, fof.EmbeddedDocumentField):
@@ -967,7 +967,7 @@ class DatasetMixin(object):
             existing_field = doc._fields[field_name]
 
             if recursive:
-                if isinstance(existing_field, fof.ListField) and isinstance(
+                while isinstance(existing_field, fof.ListField) and isinstance(
                     field, fof.ListField
                 ):
                     existing_field = existing_field.field
@@ -1012,19 +1012,19 @@ class DatasetMixin(object):
 
     @classmethod
     def _add_field_schema(cls, path, field):
-        field_name, doc, field_docs = cls._parse_path(path)
+        field_name, doc, field_docs, root_doc = cls._parse_path(path)
 
         field = field.copy()
         field.db_field = _get_db_field(field, field_name)
         field.name = field_name
 
         doc._declare_field(cls._dataset, path, field)
-        _add_field_doc(field_docs, field)
+        _add_field_doc(field_docs, root_doc, field)
 
     @classmethod
     def _rename_field_schema(cls, path, new_path):
         same_root, new_field_name = _parse_paths(path, new_path)
-        field_name, doc, field_docs = cls._parse_path(path)
+        field_name, doc, field_docs, _ = cls._parse_path(path)
 
         field = doc._fields[field_name]
         new_db_field = _get_db_field(field, new_field_name)
@@ -1039,20 +1039,22 @@ class DatasetMixin(object):
             doc._undeclare_field(field_name)
             _delete_field_doc(field_docs, field_name)
 
-            _, new_doc, new_field_docs = cls._parse_path(new_path)
+            _, new_doc, new_field_docs, new_root_doc = cls._parse_path(
+                new_path
+            )
             new_doc._declare_field(cls._dataset, new_path, field)
-            _add_field_doc(new_field_docs, field)
+            _add_field_doc(new_field_docs, new_root_doc, field)
 
     @classmethod
     def _clone_field_schema(cls, path, new_path):
-        field_name, doc, _ = cls._parse_path(path)
+        field_name, doc, _, _ = cls._parse_path(path)
         field = doc._fields[field_name]
 
         cls._add_field_schema(new_path, field)
 
     @classmethod
     def _delete_field_schema(cls, path):
-        field_name, doc, field_docs = cls._parse_path(path)
+        field_name, doc, field_docs, _ = cls._parse_path(path)
 
         doc._undeclare_field(field_name)
         _delete_field_doc(field_docs, field_name)
@@ -1066,7 +1068,7 @@ class DatasetMixin(object):
         try:
             for chunk in chunks[:-1]:
                 doc = doc._fields[chunk]
-                if isinstance(doc, fof.ListField):
+                while isinstance(doc, fof.ListField):
                     doc = doc.field
 
             field = doc._fields[field_name]
@@ -1117,6 +1119,7 @@ class DatasetMixin(object):
         field_name = chunks[-1]
         doc = cls
         field_docs = cls._dataset._doc[cls._fields_attr()]
+        root_field_doc = None
 
         root = None
         for chunk in chunks[:-1]:
@@ -1128,13 +1131,14 @@ class DatasetMixin(object):
             found = False
             for field_doc in field_docs:
                 if field_doc.name == chunk:
+                    root_field_doc = field_doc
                     field_docs = field_doc.fields
                     found = True
                     break
 
             if not found:
                 if allow_missing:
-                    return None, None, None
+                    return None, None, None, None
 
                 raise ValueError(
                     "Invalid %s field '%s'; field '%s' does not exist"
@@ -1143,12 +1147,12 @@ class DatasetMixin(object):
 
             doc = doc._fields[chunk]
 
-            if isinstance(doc, fof.ListField):
+            while isinstance(doc, fof.ListField):
                 doc = doc.field
 
             if not isinstance(doc, fof.EmbeddedDocumentField):
                 if allow_missing:
-                    return None, None, None
+                    return None, None, None, None
 
                 raise ValueError(
                     "Invalid %s field '%s'; field '%s' is a %s, not an %s"
@@ -1161,7 +1165,7 @@ class DatasetMixin(object):
                     )
                 )
 
-        return field_name, doc, field_docs
+        return field_name, doc, field_docs, root_field_doc
 
     @classmethod
     def _declare_field(cls, dataset, path, field_or_doc):
@@ -1576,8 +1580,7 @@ def _split_path(path):
     return chunks[0], chunks[1]
 
 
-def _add_field_doc(field_docs, field_or_doc):
-    # This is intentionally implemented to modify ``field_docs`` in place
+def _add_field_doc(field_docs, root_doc, field_or_doc):
     if isinstance(field_or_doc, fof.Field):
         new_field_doc = SampleFieldDocument.from_field(field_or_doc)
     else:
@@ -1588,11 +1591,10 @@ def _add_field_doc(field_docs, field_or_doc):
             field_docs[i] = new_field_doc
             return
 
-    try:
+    if root_doc is not None:
+        root_doc.fields = root_doc.fields + [new_field_doc]
+    else:
         field_docs.append(new_field_doc)
-    except ReferenceError:
-        # mongoengine seems to lose references to things... it's okay
-        pass
 
 
 def _update_field_doc(field_docs, field_name, field):
@@ -1603,7 +1605,6 @@ def _update_field_doc(field_docs, field_name, field):
 
 
 def _delete_field_doc(field_docs, field_name):
-    # This is intentionally implemented to modify ``field_docs`` in place
     for i, field_doc in enumerate(field_docs):
         if field_doc.name == field_name:
             del field_docs[i]
