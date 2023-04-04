@@ -74,22 +74,17 @@ export const PainterFactory = (requestColor) => ({
             return get32BitColor(coloring.scale[index]);
           }
         : (value) => {
-            if (value === 0) {
-              return 0;
+            // render in field’s color with opacity proportional to the magnitude of the heatmap’s value
+            const absMax = Math.max(Math.abs(start), Math.abs(stop));
+
+            // clip value
+            if (value < start) {
+              value = start;
+            } else if (value > stop) {
+              value = stop;
             }
 
-            const rangeMidPoint = (start + stop) / 2;
-            const maxDeviationFromMidpoint = Math.max(
-              stop - rangeMidPoint,
-              rangeMidPoint - start
-            );
-            // alpha is 1 when value is at midpoint, 0 when value is at start or stop
-            const alpha =
-              1 -
-              Math.min(
-                Math.abs(value - rangeMidPoint) / maxDeviationFromMidpoint,
-                1
-              );
+            const alpha = 1 - Math.abs(value) / absMax;
 
             return get32BitColor(color, alpha);
           };
