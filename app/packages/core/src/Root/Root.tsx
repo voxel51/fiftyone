@@ -12,7 +12,7 @@ import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
-import { OperatorBrowser, OperatorPrompt } from "@fiftyone/operators";
+import { OperatorBrowser, OperatorPrompt, OperatorInvocationRequestExecutor } from "@fiftyone/operators";
 
 import {
   Button,
@@ -192,6 +192,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         </div>
         <OperatorBrowser />
         <OperatorPrompt />
+        <OperatorInvocationRequestExecutor />
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>

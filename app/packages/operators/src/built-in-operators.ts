@@ -400,6 +400,71 @@ class DynamicFormExample extends Operator {
   }
 }
 
+class SetView extends Operator {
+  constructor() {
+    super("set_view", "Set view");
+    this.defineInputProperty("view", new types.ObjectType(), {
+      label: "View",
+      required: true,
+    });
+  }
+  async execute({ state, params }: ExecutionContext) {
+    state.set(fos.view, params.view);
+  }
+}
+
+const SHOW_SAMPLES_STAGE_ID = "show_samples_stage_id";
+
+class ShowSamples extends Operator {
+  constructor() {
+    super("show_samples", "Show samples");
+    this.defineInputProperty("samples", new types.List(new types.String()), {
+      label: "Samples",
+      required: true,
+    });
+    this.defineInputProperty("use_extended_selection", new types.Boolean(), {
+      label: "Use extended selection",
+      required: true,
+    })
+  }
+  async execute({ state, params }: ExecutionContext) {
+    if (params.use_extended_selection) {
+      state.set(fos.extendedSelection, {
+        selection: params.samples,
+        scope: "global",
+      });
+    }
+    const currentView = await state.snapshot.getPromise(fos.view);
+    state.set(fos.view, [
+      ...currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID),
+      {
+        "_cls": "fiftyone.core.stages.Select",
+        "kwargs": [
+          [
+            "sample_ids",
+            params.samples
+          ],
+          [
+            "ordered",
+            false
+          ]
+        ],
+        "_uuid": SHOW_SAMPLES_STAGE_ID
+      }
+    ])
+  }
+}
+
+class ClearShowSamples extends Operator {
+  constructor() {
+    super("clear_show_samples", "Clear show samples");
+  }
+  async execute({ state }: ExecutionContext) {
+    const currentView = await state.snapshot.getPromise(fos.view);
+    state.set(fos.view, currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID));
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     registerOperator(new CopyViewAsJSON());
@@ -421,6 +486,9 @@ export function registerBuiltInOperators() {
     registerOperator(new OpenAllPanels());
     registerOperator(new ClosePanel());
     registerOperator(new CloseAllPanels());
+    registerOperator(new SetView());
+    registerOperator(new ShowSamples());
+    registerOperator(new ClearShowSamples());
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");
