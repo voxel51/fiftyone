@@ -33,6 +33,24 @@ class Object(BaseType):
         self.add_property(name, property)
         return property
 
+    def str(self, name, **kwargs):
+        return self.define_property(name, String(), **kwargs)
+
+    def bool(self, name, **kwargs):
+        return self.define_property(name, Boolean(), **kwargs)
+
+    def int(self, name, **kwargs):
+        return self.define_property(name, Number(int=True), **kwargs)
+
+    def float(self, name, **kwargs):
+        return self.define_property(name, Number(), **kwargs)
+
+    def enum(self, name, choices, **kwargs):
+        return self.define_property(name, Enum(choices), **kwargs)
+
+    def list(self, name, element_type, **kwargs):
+        return self.define_property(name, List(element_type), **kwargs)
+
     def to_json(self):
         # convert properties to json
         properties = {}
