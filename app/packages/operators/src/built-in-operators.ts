@@ -12,9 +12,11 @@ import copyToClipboard from "copy-to-clipboard";
 import { useOperatorExecutor } from ".";
 import {
   Operator,
+  DynamicOperator,
   ExecutionContext,
   registerOperator,
   loadOperatorsFromServer,
+  OperatorResult,
 } from "./operators";
 
 //
@@ -425,7 +427,7 @@ class ShowSamples extends Operator {
     this.defineInputProperty("use_extended_selection", new types.Boolean(), {
       label: "Use extended selection",
       required: true,
-    })
+    });
   }
   async execute({ state, params }: ExecutionContext) {
     if (params.use_extended_selection) {
@@ -438,20 +440,14 @@ class ShowSamples extends Operator {
     state.set(fos.view, [
       ...currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID),
       {
-        "_cls": "fiftyone.core.stages.Select",
-        "kwargs": [
-          [
-            "sample_ids",
-            params.samples
-          ],
-          [
-            "ordered",
-            false
-          ]
+        _cls: "fiftyone.core.stages.Select",
+        kwargs: [
+          ["sample_ids", params.samples],
+          ["ordered", false],
         ],
-        "_uuid": SHOW_SAMPLES_STAGE_ID
-      }
-    ])
+        _uuid: SHOW_SAMPLES_STAGE_ID,
+      },
+    ]);
   }
 }
 
@@ -461,7 +457,83 @@ class ClearShowSamples extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     const currentView = await state.snapshot.getPromise(fos.view);
-    state.set(fos.view, currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID));
+    state.set(
+      fos.view,
+      currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID)
+    );
+  }
+}
+
+function isAtomOrSelector(v: any): boolean {
+  return (
+    v &&
+    v.constructor &&
+    v.constructor.name &&
+    (v.constructor.name === "RecoilState" ||
+      v.constructor.name === "RecoilValueReadOnly")
+  );
+}
+
+function getTypeForValue(value: any) {
+  switch (typeof value) {
+    case "string":
+      return new types.String();
+      break;
+    case "number":
+      return new types.Number();
+      break;
+    case "boolean":
+      return new types.Boolean();
+      break;
+    case "object":
+      if (value === null) {
+        return new types.String();
+      }
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          return new types.List(getTypeForValue(value[0]));
+        } else {
+          return new types.List(new types.String());
+        }
+      }
+      const type = new types.ObjectType();
+      Object.entries(value).forEach(([k, v]) => {
+        type.defineProperty(k, getTypeForValue(v));
+      });
+      return type;
+  }
+}
+class GetAppValue extends DynamicOperator {
+  constructor() {
+    super("get_app_value", "Get App Value");
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    const values = Object.entries(fos)
+      .filter(([k, v]) => {
+        return isAtomOrSelector(v);
+      })
+      .map(([k, v]) => k);
+    inputs.defineProperty("target", new types.Enum(values));
+
+    return new types.Property(inputs);
+  }
+  async resolveOutput(
+    ctx: ExecutionContext,
+    { result }: OperatorResult
+  ): Promise<types.Property> {
+    const outputs = new types.ObjectType();
+
+    outputs.defineProperty("target", new types.String(), { default: "test" });
+    outputs.defineProperty("value", getTypeForValue(result.value));
+
+    return new types.Property(outputs);
+  }
+  async execute({ params, state }: ExecutionContext) {
+    const target = params.target;
+    return {
+      value: await state.snapshot.getPromise(fos[target]),
+    };
   }
 }
 
@@ -489,6 +561,7 @@ export function registerBuiltInOperators() {
     registerOperator(new SetView());
     registerOperator(new ShowSamples());
     registerOperator(new ClearShowSamples());
+    registerOperator(new GetAppValue());
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");
