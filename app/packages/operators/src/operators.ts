@@ -2,25 +2,76 @@ import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import * as types from "./types";
 
+class InvocationRequest {
+  constructor(
+    public operatorName: string,
+    public params: any = {},
+  ) {}
+  static fromJSON(json: any) {
+    return new InvocationRequest(json.operator_name, json.params);
+  }
+  toJSON() {
+    return {
+      operatorName: this.operatorName,
+      params: this.params,
+    };
+  }
+}
+
+export class Executor {
+  constructor(public requests: InvocationRequest[], public logs: string[]) {
+    this.requests = requests || [];
+    this.logs = logs || [];
+  }
+  queueRequests() {
+    const requests = this.requests;
+    if (requests.length === 0) {
+      return;
+    }
+    const queue = getInvocationRequestQueue();
+    for (const request of requests) {
+      queue.add(request);
+    }
+  }
+  static fromJSON(json: any) {
+    return new Executor(
+      json.requests.map((r: any) => InvocationRequest.fromJSON(r)),
+      json.logs
+    );
+  }
+  trigger(operatorName: string, params: any = {}) {
+    this.requests.push(new InvocationRequest(operatorName, params));
+  }
+  log(message: string) {
+    this.logs.push(message);
+  }
+}
+
 export class ExecutionContext {
   public state: CallbackInterface;
   constructor(
     public params: any = {},
     public _currentContext: any,
-    public hooks: any = {}
+    public hooks: any = {},
+    public executor: Executor = null
   ) {
     this.state = _currentContext.state;
   }
-  private _triggers: Array<Trigger> = [];
   trigger(operatorName: string, params: any = {}) {
-    this._triggers.push(new Trigger(operatorName, params));
+    if (!this.executor) {
+      throw new Error(
+        "Cannot trigger operator from outside of an execution context"
+      );
+    }
+    this.executor.requests.push(new InvocationRequest(operatorName, params));
   }
-}
-
-class Trigger {
-  constructor(public operatorName: string, public params: any = {}) {}
-  static fromJSON(json: any) {
-    return new Trigger(json.operatorName, json.params);
+  log(message: string) {
+    if (!this.executor) {
+      throw new Error(
+        "Cannot log from outside of an execution context"
+      );
+    }
+    this.executor.log(message);
   }
 }
 
@@ -33,8 +84,8 @@ class OperatorResult {
   constructor(
     public operator: Operator,
     public result: any = {},
-    public error: any,
-    public triggers: Trigger[] = []
+    public executor: Executor = null,
+    public error: any
   ) {}
   hasOutputContent() {
     return isObjWithContent(this.result) || isObjWithContent(this.error);
@@ -43,8 +94,10 @@ class OperatorResult {
     return {
       result: this.result,
       error: this.error,
+      executor: this.executor
     };
   }
+
 }
 
 export class Operator {
@@ -228,7 +281,7 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
 
   let result;
   let error;
-  let triggers;
+  let executor;
   if (isRemote) {
     const serverResult = await getFetchFunction()(
       "POST",
@@ -247,11 +300,11 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
     );
     result = serverResult.result;
     error = serverResult.error;
-    triggers = serverResult.triggers;
+    executor = serverResult.executor;
   } else {
     try {
       result = await operator.execute(ctx);
-      triggers = ctx.triggers;
+      executor = ctx.executor;
     } catch (e) {
       error = e;
       console.error(`Error executing operator ${operatorName}:`);
@@ -259,7 +312,13 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
     }
   }
 
-  return new OperatorResult(operator, result, error, triggers);
+  if (executor && !(executor instanceof Executor)) {
+    executor = Executor.fromJSON(executor);
+  }
+
+  if (executor) executor.queueRequests();
+
+  return new OperatorResult(operator, result, executor, error);
 }
 
 export async function resolveRemoteType(
@@ -290,4 +349,123 @@ export async function resolveRemoteType(
   }
 
   return types.Property.fromJSON(typeAsJSON);
+}
+
+// a queue that stores the invocation requests for all operator results
+// and allows for the execution of the requests in order of arrival
+// and removing the requests that have been completed
+// or marking the requests as failed
+// the queue should allow changes to observed via a simple subscription mechanism
+
+enum QueueItemStatus {
+  Pending,
+  Executing,
+  Completed,
+  Failed,
+}
+
+class QueueItem {
+  constructor(
+    public id: string,
+    public request: InvocationRequest,
+  ) {}
+  status: QueueItemStatus = QueueItemStatus.Pending;
+  result: OperatorResult;
+  toJSON() {
+    return {
+      id: this.id,
+      request: this.request.toJSON(),
+      status: this.status,
+      result: this.result && this.result.toJSON(),
+    };
+  }
+}
+
+export class InvocationRequestQueue {
+  constructor() {
+    this._queue = [];
+  }
+  private _queue: QueueItem[];
+  private _subscribers: ((queue: InvocationRequestQueue) => void)[] = [];
+  private _notifySubscribers() {
+    for (const subscriber of this._subscribers) {
+      subscriber(this);
+    }
+  }
+  subscribe(subscriber: (queue: InvocationRequestQueue) => void) {
+    this._subscribers.push(subscriber);
+  }
+  unsubscribe(subscriber: (queue: InvocationRequestQueue) => void) {
+    const index = this._subscribers.indexOf(subscriber);
+    if (index !== -1) {
+      this._subscribers.splice(index, 1);
+    }
+  }
+  get queue() {
+    return this._queue;
+  }
+  generateId() {
+    return Math.random().toString(36).substr(2, 9);
+  }
+  add(request: InvocationRequest) {
+    const item = new QueueItem(this.generateId(), request);
+    this._queue.push(item);
+    this._notifySubscribers();
+  }
+  markAsExecuting(id: string) {
+    const item = this._queue.find((d) => d.id === id);
+    if (item) {
+      item.status = QueueItemStatus.Executing;
+      this._notifySubscribers();
+    }
+  }
+  markAsCompleted(id: string) {
+    const item = this._queue.find((d) => d.id === id);
+    if (item) {
+      item.status = QueueItemStatus.Completed;
+      this._notifySubscribers();
+    }
+  }
+  markAsFailed(id: string) {
+    const item = this._queue.find((d) => d.id === id);
+    if (item) {
+      item.status = QueueItemStatus.Failed;
+      this._notifySubscribers();
+    }
+  }
+  hasPendingRequests() {
+    return this._queue.some((d) => d.status === QueueItemStatus.Pending);
+  }
+  hasExecutingRequests() {
+    return this._queue.some((d) => d.status === QueueItemStatus.Executing);
+  }
+  hasCompletedRequests() {
+    return this._queue.some((d) => d.status === QueueItemStatus.Completed);
+  }
+  hasFailedRequests() {
+    return this._queue.some((d) => d.status === QueueItemStatus.Failed);
+  }
+  clean() {
+    this._queue = this._queue.filter((d) => d.status !== QueueItemStatus.Completed);
+    this._notifySubscribers();
+  }
+  getNextPendingRequest() {
+    const item = this._queue.find((d) => d.status === QueueItemStatus.Pending);
+    return item ? item.request : null;
+  }
+  toJSON() {
+    return this._queue.map((d) => ({
+      id: d.id,
+      status: d.status,
+      request: d.request.toJSON(),
+    }));
+  }
+}
+
+let invocationRequestQueue: InvocationRequestQueue;
+export function getInvocationRequestQueue() {
+  if (!invocationRequestQueue) {
+    invocationRequestQueue = new InvocationRequestQueue();
+  }
+  return invocationRequestQueue;
 }
