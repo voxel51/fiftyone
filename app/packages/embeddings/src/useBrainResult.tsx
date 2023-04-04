@@ -18,12 +18,8 @@ export function useBrainResultsSelector() {
     value: selected,
     toKey: (item) => item.key,
     useSearch: (search) => ({
-      values: dataset.brainMethods
-        .filter(isVisualizationConfig)
-        .filter((item) => item.key.toLowerCase().includes(search.toLowerCase()))
-        .map((item) => {
-          return item.key;
-        }),
+      values: getBrainKeysFromDataset(dataset)
+        .filter((item) => item.toLowerCase().includes(search.toLowerCase())),
     }),
   };
 
@@ -34,6 +30,14 @@ export function useBrainResultsSelector() {
     hasSelection: selected !== null,
   };
 }
+
+export function getBrainKeysFromDataset(dataset) {
+  return dataset.brainMethods
+    .filter(isVisualizationConfig)
+    .map((item) => {
+      return item.key;
+    })
+  }
 
 function countValidBrainMethods(dataset) {
   const methods = dataset?.brainMethods || [];
