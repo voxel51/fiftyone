@@ -18,7 +18,6 @@ General
   being presented with a cryptic server error
 - Improved the accuracy of size estimates when exporting filepaths and/or tags
   from the Teams UI
-  running MongoDB 4.4
 
 Admin
 
@@ -35,6 +34,7 @@ Deployment
 
 - Added support for deploying into Microsoft Azure environments
 - Fixed a bug that prevented the dataset page from loading for deployments
+  running MongoDB 4.4
 
 .. _release-notes-v0.20.1:
 
