@@ -20,7 +20,7 @@ import threading
 import urllib.parse as urlparse
 
 import bson
-import ndjson
+import jsonlines
 from wcmatch import glob
 import yaml
 
@@ -1396,7 +1396,7 @@ def load_json(path_or_str):
     """Loads JSON from the input argument.
 
     Args:
-        path_or_str: the JSON path or string any of the above supported formats
+        path_or_str: the filepath or JSON string
 
     Returns:
         the loaded JSON
@@ -1441,6 +1441,26 @@ def write_json(d, path, pretty_print=False):
     write_file(s, path)
 
 
+def load_ndjson(path_or_str):
+    """Loads NDJSON from the input argument.
+
+    Args:
+        path_or_str: the filepath or NDJSON string
+
+    Returns:
+        a list of JSON dicts
+    """
+    try:
+        return etase.load_ndjson(path_or_str)
+    except ValueError:
+        pass
+
+    if isfile(path_or_str):
+        return read_ndjson(path_or_str)
+
+    raise ValueError("Unable to load NDJSON from '%s'" % path_or_str)
+
+
 def read_ndjson(path):
     """Reads an NDJSON file.
 
@@ -1451,7 +1471,8 @@ def read_ndjson(path):
         a list of JSON dicts
     """
     with open_file(path, "r") as f:
-        return ndjson.load(f)
+        with jsonlines.Reader(f) as r:
+            return list(r.iter(skip_empty=True))
 
 
 def write_ndjson(obj, path):
@@ -1461,8 +1482,9 @@ def write_ndjson(obj, path):
         obj: a list of JSON dicts
         path: the filepath
     """
-    s = ndjson.dumps(obj)
-    write_file(s, path)
+    with open_file(path, "w") as f:
+        with jsonlines.Writer(f) as w:
+            w.write_all(obj)
 
 
 def read_yaml(path):

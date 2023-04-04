@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     "future",
     "hypercorn>=0.13.2,<14",
     "Jinja2>=3",
+    "jsonlines",
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",

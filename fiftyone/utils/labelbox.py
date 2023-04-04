@@ -17,7 +17,6 @@ import webbrowser
 import numpy as np
 
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.cache as foc
@@ -934,7 +933,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
-        return etas.load_ndjson(response.text)
+        return fos.load_ndjson(response.text)
 
     def _download_project_labels(self, project_id=None, project=None):
         if project is None:
