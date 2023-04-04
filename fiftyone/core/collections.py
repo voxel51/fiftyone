@@ -1184,7 +1184,7 @@ class SampleCollection(object):
             if last_key and not leaf:
                 continue
 
-            if isinstance(field, fof.ListField):
+            while isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
@@ -1271,7 +1271,7 @@ class SampleCollection(object):
             types
         """
         schema = self.get_field_schema()
-        return self._get_dynamic_field_schema(schema, "", fields=fields)
+        return self._get_dynamic_field_schema(schema, fields=fields)
 
     def get_dynamic_frame_field_schema(self, fields=None):
         """Returns a schema dictionary describing the dynamic fields of the
@@ -1293,29 +1293,68 @@ class SampleCollection(object):
 
         schema = self.get_frame_field_schema()
         prefix = self._FRAMES_PREFIX
-        return self._get_dynamic_field_schema(schema, prefix, fields=fields)
+        return self._get_dynamic_field_schema(
+            schema, prefix=prefix, fields=fields
+        )
 
-    def _get_dynamic_field_schema(self, schema, prefix, fields=None):
+    def _get_dynamic_field_schema(self, schema, prefix=None, fields=None):
+        if prefix is None:
+            prefix = ""
+
         if fields is not None:
             if etau.is_str(fields):
-                fields = {fields}
+                fields = [fields]
             else:
-                fields = set(fields)
+                fields = list(fields)
 
-            schema = {k: v for k, v in schema.items() if k in fields}
+            schema = {
+                k: v
+                for k, v in schema.items()
+                if any(f == k or f.startswith(k + ".") for f in fields)
+            }
+
+        dynamic_schema = self._do_get_dynamic_field_schema(schema, prefix)
+
+        # Recursively add dynamic fields for any new embedded documents
+        if dynamic_schema:
+            s = dynamic_schema
+            while True:
+                s = self._do_get_dynamic_field_schema(s, prefix, new=True)
+                if s:
+                    dynamic_schema.update(s)
+                else:
+                    break
+
+        return dynamic_schema
+
+    def _do_get_dynamic_field_schema(self, schema, prefix, new=False):
+        schema = fof.flatten_schema(schema)
 
         aggs = []
         paths = []
-        for name, field in schema.items():
-            if isinstance(field, fof.EmbeddedDocumentField):
-                path = name
-                aggs.append(foa.Schema(prefix + path, dynamic_only=True))
-                paths.append(path)
+        for path, field in schema.items():
+            is_list_field = False
+            while isinstance(field, fof.ListField):
+                field = field.field
+                is_list_field = True
 
-                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
-                    path = name + "." + field.document_type._LABEL_LIST_FIELD
-                    aggs.append(foa.Schema(prefix + path, dynamic_only=True))
-                    paths.append(path)
+            if isinstance(field, fof.EmbeddedDocumentField):
+                _path = prefix + path
+                if is_list_field:
+                    _path += "[]"
+
+                if new:
+                    # This field hasn't been declared yet, so we must provide
+                    # it's document type so that `Schema()` can distinguish
+                    # dynamic fields from builtin fields
+                    _doc_type = field.document_type
+                else:
+                    _doc_type = None
+
+                agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
+
+                aggs.append(agg)
+                paths.append(path)
 
         fields = {}
 
@@ -7323,6 +7362,7 @@ class SampleCollection(object):
         field_or_expr,
         expr=None,
         dynamic_only=False,
+        _doc_type=None,
         _include_private=False,
     ):
         """Extracts the names and types of the attributes of a specified
@@ -7406,6 +7446,7 @@ class SampleCollection(object):
             field_or_expr,
             expr=expr,
             dynamic_only=dynamic_only,
+            _doc_type=_doc_type,
             _include_private=_include_private,
         )
         return self._make_and_aggregate(make, field_or_expr)
