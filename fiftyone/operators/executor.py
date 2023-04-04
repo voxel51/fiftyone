@@ -25,9 +25,9 @@ class InvocationRequest:
 
 
 class Executor:
-    def __init__(self, requests=[], logs=[]):
-        self._requests = requests
-        self._logs = []
+    def __init__(self, requests=None, logs=None):
+        self._requests = requests or []
+        self._logs = logs or []
 
     def trigger(self, operator_name, params={}):
         self._requests.append(InvocationRequest(operator_name, params))
@@ -37,7 +37,6 @@ class Executor:
 
     def to_json(self):
         return {
-            **super().to_json(),
             "requests": [t.to_json() for t in self._requests],
             "logs": self._logs,
         }
@@ -58,7 +57,7 @@ def execute_operator(operator_name, request_params):
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     try:
-        raw_result = operator.execute(ctx, executor)
+        raw_result = operator.execute(ctx)
     except Exception as e:
         return ExecutionResult(None, executor, str(e))
     return ExecutionResult(raw_result, executor, None)
@@ -124,7 +123,7 @@ class ExecutionContext:
 class ExecutionResult:
     def __init__(self, result, executor, error):
         self.result = result
-        self.schedule = schedule
+        self.executor = executor
         self.error = error
         self.loading_errors = list_module_errors()
 
