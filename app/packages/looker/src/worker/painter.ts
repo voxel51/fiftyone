@@ -52,47 +52,51 @@ export const PainterFactory = (requestColor) => ({
       label.map.data.buffer
     );
 
-    if (mapData.channels > 2) {
-      // rgb map
-      for (let i = 0; i < overlay.length; i++) {
-        overlay[i] = get32BitColor(
-          getRgbFromMaskData(targets, mapData.channels, i)
-        );
-      }
-    } else {
-      const [start, stop] = label.range
-        ? label.range
-        : isFloatArray(targets)
-        ? [0, 1]
-        : [0, 255];
-      const max = Math.max(Math.abs(start), Math.abs(stop));
+    const [start, stop] = label.range
+      ? label.range
+      : isFloatArray(targets)
+      ? [0, 1]
+      : [0, 255];
+    const color = await requestColor(coloring.pool, coloring.seed, field);
 
-      const color = await requestColor(coloring.pool, coloring.seed, field);
-
-      const getColor =
-        coloring.by === "label"
-          ? (value) => {
-              if (value === 0) {
-                return 0;
-              }
-
-              const index = Math.round(
-                (Math.max(value - start, 0) / (stop - start)) *
-                  (coloring.scale.length - 1)
-              );
-
-              return get32BitColor(coloring.scale[index]);
+    const getColor =
+      coloring.by === "label"
+        ? (value) => {
+            if (value === 0) {
+              return 0;
             }
-          : (value) => {
-              if (value === 0) {
-                return 0;
-              }
 
-              return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
-            };
-      // these for loops must be fast. no "in" or "of" syntax
-      for (let i = 0; i < overlay.length; i++) {
-        if (targets[i] !== 0) {
+            const index = Math.round(
+              (Math.max(value - start, 0) / (stop - start)) *
+                (coloring.scale.length - 1)
+            );
+
+            return get32BitColor(coloring.scale[index]);
+          }
+        : (value) => {
+            // render in field’s color with opacity proportional to the magnitude of the heatmap’s value
+            const absMax = Math.max(Math.abs(start), Math.abs(stop));
+
+            // clip value
+            if (value < start) {
+              value = start;
+            } else if (value > stop) {
+              value = stop;
+            }
+
+            const alpha = 1 - Math.abs(value) / absMax;
+
+            return get32BitColor(color, alpha);
+          };
+
+    // these for loops must be fast. no "in" or "of" syntax
+    for (let i = 0; i < overlay.length; i++) {
+      if (targets[i] !== 0) {
+        if (mapData.channels > 2) {
+          overlay[i] = getColor(
+            getRgbFromMaskData(targets, mapData.channels, i)[0]
+          );
+        } else {
           overlay[i] = getColor(targets[i]);
         }
       }

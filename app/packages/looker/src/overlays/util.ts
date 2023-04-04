@@ -85,3 +85,15 @@ export function isRgbMaskTargets(
 
   return Object.keys(maskTargets)[0]?.startsWith("#") === true;
 }
+
+export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
+  if (!maskTargets || !isRgbMaskTargets(maskTargets)) {
+    return maskTargets;
+  }
+
+  const normalizedMaskTargets: RgbMaskTargets = {};
+  Object.entries(maskTargets).forEach(([key, value]) => {
+    normalizedMaskTargets[key.toLocaleUpperCase()] = value;
+  });
+  return normalizedMaskTargets;
+}
