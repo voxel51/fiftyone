@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Typography } from "@mui/material";
 import ObjectView from "./ObjectView";
 import RadioView from "./RadioView";
@@ -10,6 +10,12 @@ import ListView from "./ListView";
 export default function DynamicIO(props) {
   const { schema, onChange, path } = props;
   const Component = getComponent(schema);
+
+  // todo: need to improve initializing default value in state
+  useEffect(() => {
+    if (schema.default) onChange(path, schema.default);
+  }, []);
+
   return <Component schema={schema} onChange={onChange} path={path} />;
 }
 
