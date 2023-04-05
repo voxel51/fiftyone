@@ -1146,7 +1146,7 @@ class SampleCollection(object):
             "Subclass must implement get_frame_field_schema()"
         )
 
-    def get_dynamic_field_schema(self, fields=None):
+    def get_dynamic_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
         samples in the collection.
 
@@ -1156,15 +1156,19 @@ class SampleCollection(object):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 return dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents
 
         Returns:
             a dictionary mapping field paths to field types or lists of field
             types
         """
         schema = self.get_field_schema()
-        return self._get_dynamic_field_schema(schema, fields=fields)
+        return self._get_dynamic_field_schema(
+            schema, fields=fields, recursive=recursive
+        )
 
-    def get_dynamic_frame_field_schema(self, fields=None):
+    def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
         frames of the samples in the collection.
 
@@ -1174,10 +1178,12 @@ class SampleCollection(object):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 return dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents
 
         Returns:
             a dictionary mapping field paths to field types or lists of field
-            types
+            types, or ``None`` if the collection does not contain videos
         """
         if not self._has_frame_fields():
             return None
@@ -1185,10 +1191,12 @@ class SampleCollection(object):
         schema = self.get_frame_field_schema()
         prefix = self._FRAMES_PREFIX
         return self._get_dynamic_field_schema(
-            schema, prefix=prefix, fields=fields
+            schema, prefix=prefix, fields=fields, recursive=recursive
         )
 
-    def _get_dynamic_field_schema(self, schema, prefix=None, fields=None):
+    def _get_dynamic_field_schema(
+        self, schema, prefix=None, fields=None, recursive=True
+    ):
         if prefix is None:
             prefix = ""
 
@@ -1206,8 +1214,8 @@ class SampleCollection(object):
 
         dynamic_schema = self._do_get_dynamic_field_schema(schema, prefix)
 
-        # Recursively add dynamic fields for any new embedded documents
-        if dynamic_schema:
+        # Recursive into new dynamic fields
+        if recursive:
             s = dynamic_schema
             while True:
                 s = self._do_get_dynamic_field_schema(s, prefix, new=True)
@@ -1215,6 +1223,30 @@ class SampleCollection(object):
                     dynamic_schema.update(s)
                 else:
                     break
+
+        # Merge list fields and their subfields
+        while True:
+            edits = {}
+
+            for path, field in dynamic_schema.items():
+                subpath = path + "[]"
+                subfield = dynamic_schema.get(subpath, None)
+                if subfield is not None:
+                    field.field = subfield
+                    edits[subpath] = None
+                    for _path in dynamic_schema.keys():
+                        if _path.startswith(subpath + "."):
+                            edits[_path] = path + _path[len(subpath) :]
+
+                    break
+
+            for path, new_path in edits.items():
+                field = dynamic_schema.pop(path)
+                if new_path:
+                    dynamic_schema[new_path] = field
+
+            if not edits:
+                break
 
         return dynamic_schema
 
@@ -1231,7 +1263,7 @@ class SampleCollection(object):
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 _path = prefix + path
-                if is_list_field:
+                if is_list_field and not _path.endswith("[]"):
                     _path += "[]"
 
                 if new:
@@ -1243,7 +1275,12 @@ class SampleCollection(object):
                     _doc_type = None
 
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
+            elif field is None and is_list_field:
+                agg = foa.ListSchema(prefix + path)
+            else:
+                agg = None
 
+            if agg is not None:
                 aggs.append(agg)
                 paths.append(path)
 
@@ -1251,9 +1288,12 @@ class SampleCollection(object):
 
         if aggs:
             results = self.aggregate(aggs)
-            for path, schema in zip(paths, results):
-                for name, field in schema.items():
-                    fields[path + "." + name] = field
+            for path, agg, schema in zip(paths, aggs, results):
+                if isinstance(agg, foa.Schema):
+                    for name, field in schema.items():
+                        fields[path + "." + name] = field
+                elif isinstance(agg, foa.ListSchema):
+                    fields[path + "[]"] = schema
 
         return fields
 

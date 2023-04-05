@@ -1343,7 +1343,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def add_dynamic_sample_fields(self, fields=None, add_mixed=False):
+    def add_dynamic_sample_fields(
+        self, fields=None, recursive=True, add_mixed=False
+    ):
         """Adds all dynamic sample fields to the dataset's schema.
 
         Dynamic fields are embedded document fields with at least one non-None
@@ -1352,24 +1354,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 add dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents for dynamic fields
             add_mixed (False): whether to declare fields that contain values
                 of mixed types as generic :class:`fiftyone.core.fields.Field`
                 instances (True) or to skip such fields (False)
         """
-        dynamic_schema = self.get_dynamic_field_schema(fields=fields)
+        dynamic_schema = self.get_dynamic_field_schema(
+            fields=fields, recursive=recursive
+        )
 
         schema = {}
         for path, field in dynamic_schema.items():
-            if etau.is_container(field):
+            if isinstance(field, fof.ListField) and etau.is_container(
+                field.field
+            ):
                 if add_mixed:
-                    schema[path] = fof.Field()
+                    field.field = None
+                else:
+                    logger.warning(
+                        "Skipping dynamic list field '%s' with mixed types %s",
+                        path,
+                        field.field,
+                    )
+                    field = None
+            elif etau.is_container(field):
+                if add_mixed:
+                    field = fof.Field()
                 else:
                     logger.warning(
                         "Skipping dynamic field '%s' with mixed types %s",
                         path,
                         field,
                     )
-            elif field is not None:
+                    field = None
+
+            if field is not None:
                 schema[path] = field
 
         for _schema in _handle_nested_fields(schema):
@@ -1465,7 +1485,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def add_dynamic_frame_fields(self, fields=None, add_mixed=False):
+    def add_dynamic_frame_fields(
+        self, fields=None, recursive=True, add_mixed=False
+    ):
         """Adds all dynamic frame fields to the dataset's schema.
 
         Dynamic fields are embedded document fields with at least one non-None
@@ -1474,6 +1496,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 add dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents for dynamic fields
             add_mixed (False): whether to declare fields that contain values
                 of mixed types as generic :class:`fiftyone.core.fields.Field`
                 instances (True) or to skip such fields (False)
@@ -1483,20 +1507,37 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Only datasets that contain videos may have frame fields"
             )
 
-        dynamic_schema = self.get_dynamic_frame_field_schema(fields=fields)
+        dynamic_schema = self.get_dynamic_frame_field_schema(
+            fields=fields, recursive=recursive
+        )
 
         schema = {}
         for path, field in dynamic_schema.items():
-            if etau.is_container(field):
+            if isinstance(field, fof.ListField) and etau.is_container(
+                field.field
+            ):
                 if add_mixed:
-                    schema[path] = fof.Field()
+                    field.field = None
                 else:
                     logger.warning(
-                        "Skipping dynamic frame field '%s' with mixed types %s",
+                        "Skipping dynamic list frame field '%s' with mixed "
+                        "types %s",
+                        path,
+                        field.field,
+                    )
+                    field = None
+            elif etau.is_container(field):
+                if add_mixed:
+                    field = fof.Field()
+                else:
+                    logger.warning(
+                        "Skipping dynamic fra,e field '%s' with mixed types %s",
                         path,
                         field,
                     )
-            elif field is not None:
+                    field = None
+
+            if field is not None:
                 schema[path] = field
 
         for _schema in _handle_nested_fields(schema):
