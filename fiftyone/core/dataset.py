@@ -1375,7 +1375,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     logger.warning(
                         "Skipping dynamic list field '%s' with mixed types %s",
                         path,
-                        field.field,
+                        [type(f) for f in field.field],
                     )
                     field = None
             elif etau.is_container(field):
@@ -1385,7 +1385,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     logger.warning(
                         "Skipping dynamic field '%s' with mixed types %s",
                         path,
-                        field,
+                        [type(f) for f in field],
                     )
                     field = None
 
@@ -1523,7 +1523,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "Skipping dynamic list frame field '%s' with mixed "
                         "types %s",
                         path,
-                        field.field,
+                        [type(f) for f in field.field],
                     )
                     field = None
             elif etau.is_container(field):
@@ -1533,7 +1533,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     logger.warning(
                         "Skipping dynamic fra,e field '%s' with mixed types %s",
                         path,
-                        field,
+                        [type(f) for f in field],
                     )
                     field = None
 
