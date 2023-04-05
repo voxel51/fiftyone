@@ -4,6 +4,7 @@ import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
 import {
   createTheme,
   Experimental_CssVarsProvider as CssVarsProvider,
+  experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
@@ -167,3 +168,13 @@ const ThemeProvider: React.FC<
 };
 
 export default ThemeProvider;
+
+export const muiTheme = extendMuiTheme({
+  typography: {
+    fontFamily: "Palanquin, sans-serif",
+  },
+  colorSchemes: {
+    dark: theme.colorSchemes.dark,
+    light: theme.colorSchemes.light,
+  },
+});
