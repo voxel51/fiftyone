@@ -1159,6 +1159,10 @@ on all samples in the dataset with the value `None`:
 .. code-block:: python
     :linenos:
 
+    print(sample)
+
+.. code-block:: text
+
     <Sample: {
         'id': '642d8848f291652133df8d3a',
         'media_type': 'image',
@@ -1213,7 +1217,7 @@ to recursively inspect its nested fields:
     # Directly retrieve a nested field
     field = dataset.get_field("predictions.breed")
     print(type(field))
-    # fiftyone.core.fields.StringField
+    # <class 'fiftyone.core.fields.StringField'>
 
 If your dataset contains a |ListField| with no value type declared, you can add
 the type later by appending `[]` to the field path:
@@ -1237,7 +1241,7 @@ the type later by appending `[]` to the field path:
         embedded_doc_type=fo.DynamicEmbeddedDocument,
     )
 
-    field = dataset.get_field("more_tags")
+    field = dataset.get_field("info")
     print(field.field)  # EmbeddedDocumentField
     print(field.field.document_type)  # DynamicEmbeddedDocument
 
