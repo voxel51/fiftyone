@@ -18,6 +18,14 @@ registerComponent({
   activator: () => true,
 });
 
+registerComponent({
+  name: "OperatorIOComponent",
+  label: "OperatorIOComponent",
+  component: OperatorIOComponent,
+  type: PluginComponentType.Component,
+  activator: () => true,
+});
+
 function OperatorIO() {
   const input = types.Property.fromJSON(annotation);
   const ioSchema = operatorToIOSchema(input);
@@ -27,4 +35,11 @@ function OperatorIO() {
       <SchemaIOComponent schema={ioSchema} onChange={log} />
     </Box>
   );
+}
+
+function OperatorIOComponent(props) {
+  const { schema, onChange } = props;
+  const ioSchema = operatorToIOSchema(schema);
+
+  return <SchemaIOComponent schema={ioSchema} onChange={onChange} />;
 }
