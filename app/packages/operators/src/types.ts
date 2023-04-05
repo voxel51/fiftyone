@@ -30,6 +30,24 @@ export class ObjectType extends BaseType {
   getPropertyList() {
     return Array.from(this.properties.values());
   }
+  str(name, options: any = {}) {
+    return this.defineProperty(name, new String(), options);
+  }
+  bool(name, options: any = {}) {
+    return this.defineProperty(name, new Boolean(), options);
+  }
+  int(name, options: any = {}) {
+    return this.defineProperty(name, new Number(), options);
+  }
+  float(name, options: any = {}) {
+    return this.defineProperty(name, new Number(), options);
+  }
+  list(name, elementType: ANY_TYPE, options: any = {}) {
+    return this.defineProperty(name, new List(elementType), options);
+  }
+  enum(name, values: any[], options: any = {}) {
+    return this.defineProperty(name, new Enum(values), options);
+  }
   static fromJSON(json: any) {
     const entries = Object.entries(json.properties).map(([k, v]) => [
       k,
@@ -101,10 +119,21 @@ export class Boolean extends BaseType {
   }
 }
 export class Number extends BaseType {
+  constructor(
+    options: { min?: number; max?: number; int?: boolean; float?: boolean } = {}
+  ) {
+    super();
+    this.min = options.min;
+    this.max = options.max;
+    this.int = options.int;
+    this.float = options.float;
+  }
+  min: number;
+  max: number;
+  int: boolean;
+  float: boolean;
   static fromJSON(json: any) {
-    const Type = this;
-    const type = new Type();
-    return type;
+    return new Number(json);
   }
 }
 export class List extends BaseType {
@@ -126,13 +155,113 @@ export class Enum extends BaseType {
   }
 }
 
+type BasicView = {
+  label?: string;
+  description?: string;
+  caption?: string;
+  spaces?: number;
+};
 export class View extends BaseType {
-  constructor(public options?) {
+  constructor(public options: BasicView = {}) {
     super();
   }
+  label?: string;
+  description?: string;
+  caption?: string;
+  spaces?: number;
+  static fromJSON(json: BasicView) {
+    return new View(json);
+  }
+}
 
-  static fromJSON(json: any) {
-    return new View(json.label, json.description);
+class Choice extends View {
+  constructor(value: any, options: BasicView = {}) {
+    super(options);
+    this.value = value;
+  }
+  value: any;
+  static fromJSON(json) {
+    return new Choice(json.value, json);
+  }
+}
+
+type ChoicesOptions = BasicView & {
+  choices: Choice[];
+};
+class Choices extends View {
+  constructor(options: ChoicesOptions) {
+    super(options);
+    this.choices = options.choices;
+  }
+  public choices: Choice[] = [];
+  values() {
+    return this.choices.map((c) => c.value);
+  }
+  static fromJSON(json) {
+    return new Choices({
+      ...json,
+      choices: json.choices?.map((c) => Choice.fromJSON(c)),
+    });
+  }
+}
+
+class RadioGroup extends Choices {
+  constructor(options: ChoicesOptions) {
+    super(options);
+  }
+  static fromJSON(json) {
+    return new RadioGroup({
+      ...json,
+      choices: json.choices?.map((c) => Choice.fromJSON(c)),
+    });
+  }
+}
+
+class Dropdown extends Choices {
+  constructor(options: ChoicesOptions) {
+    super(options);
+  }
+  static fromJSON(json) {
+    return new Dropdown({
+      ...json,
+      choices: json.choices?.map((c) => Choice.fromJSON(c)),
+    });
+  }
+}
+
+class Notice extends View {
+  constructor(options: BasicView = {}) {
+    super(options);
+  }
+  static fromJSON(json) {
+    return new Notice(json);
+  }
+}
+
+class Header extends View {
+  constructor(options: BasicView = {}) {
+    super(options);
+  }
+  static fromJSON(json) {
+    return new Header(json);
+  }
+}
+
+class Warning extends View {
+  constructor(options: BasicView = {}) {
+    super(options);
+  }
+  static fromJSON(json) {
+    return new Warning(json);
+  }
+}
+
+class Button extends View {
+  constructor(options: BasicView = {}) {
+    super(options);
+  }
+  static fromJSON(json) {
+    return new Button(json);
   }
 }
 
