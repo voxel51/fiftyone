@@ -9,6 +9,7 @@ export default function TextFieldView(props) {
   return (
     <FieldWrapper {...props}>
       <TextField
+        defaultValue={schema.default}
         size="small"
         fullWidth
         placeholder={view.placeholder}
