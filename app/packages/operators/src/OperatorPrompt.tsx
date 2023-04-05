@@ -82,9 +82,11 @@ function Prompting({ operatorPrompt }) {
       <h3>Input</h3>
       <Box sx={{ pb: 2 }}>
         <OperatorInput
+          inputFields={operatorPrompt.inputFields}
           schema={toJSONSchema(operatorPrompt.inputFields)}
           onChange={(data, id) => {
-            const { formData } = data;
+            const formData = data;
+            // const { formData } = data;
             for (const field in formData) {
               operatorPrompt.setFieldValue(field, formData[field]);
             }
