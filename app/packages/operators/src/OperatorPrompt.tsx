@@ -79,7 +79,6 @@ function ActualOperatorPrompt() {
 function Prompting({ operatorPrompt }) {
   return (
     <Box>
-      <h3>Input</h3>
       <Box sx={{ pb: 2 }}>
         <OperatorInput
           inputFields={operatorPrompt.inputFields}
