@@ -7,8 +7,8 @@ import EmptyState from "./EmptyState";
 import DynamicIO from "./DynamicIO";
 
 export default function ListView(props) {
-  const [state, setState] = useState<string[]>([]);
   const { schema, onChange, path } = props;
+  const [state, setState] = useState<string[]>(schema.default || []);
   const { items, view } = schema;
 
   const label = view.label;
