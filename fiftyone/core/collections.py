@@ -1214,7 +1214,7 @@ class SampleCollection(object):
 
         dynamic_schema = self._do_get_dynamic_field_schema(schema, prefix)
 
-        # Recursive into new dynamic fields
+        # Recurse into new dynamic fields
         if recursive:
             s = dynamic_schema
             while True:

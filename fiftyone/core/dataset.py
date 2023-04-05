@@ -1531,7 +1531,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     field = fof.Field()
                 else:
                     logger.warning(
-                        "Skipping dynamic fra,e field '%s' with mixed types %s",
+                        "Skipping dynamic frame field '%s' with mixed types %s",
                         path,
                         [type(f) for f in field],
                     )
