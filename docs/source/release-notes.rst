@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.2.1
 --------------------
-*Released April 4, 2023*
+*Released April 5, 2023*
 
 Includes all features from :ref:`FiftyOne 0.20.1 <release-notes-v0.20.1>`,
 plus:
@@ -40,7 +40,7 @@ Deployment
 
 FiftyOne 0.20.1
 ---------------
-*Released April 4, 2023*
+*Released April 5, 2023*
 
 App
 
@@ -63,7 +63,9 @@ App
 Core
 
 - Added support for dynamically inferring fields on embedded lists and
-  documents `#2863 <https://github.com/voxel51/fiftyone/pull/2863>`_
+  documents
+  `#2863 <https://github.com/voxel51/fiftyone/pull/2863>`_,
+  `#2882 <https://github.com/voxel51/fiftyone/pull/2882>`_
 - Added support for listing datasets matching a glob pattern
   `#2868 <https://github.com/voxel51/fiftyone/pull/2868>`_
 - Improved the robustness of
