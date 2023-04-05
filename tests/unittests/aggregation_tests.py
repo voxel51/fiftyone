@@ -330,6 +330,92 @@ class DatasetTests(unittest.TestCase):
                 self.assertEqual(type(schema[key]), ftype)
 
     @drop_datasets
+    def test_list_schema(self):
+        d = fo.Dataset()
+        d.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.png",
+                    ground_truth=fo.Classification(
+                        label="cat",
+                        info=[
+                            fo.DynamicEmbeddedDocument(
+                                task="initial_annotation",
+                                author="Alice",
+                                timestamp=datetime(1970, 1, 1),
+                                notes=["foo", "bar"],
+                                ints=[1],
+                                floats=[1.0],
+                                mixed=[1, "foo"],
+                            ),
+                            fo.DynamicEmbeddedDocument(
+                                task="editing_pass",
+                                author="Bob",
+                                timestamp=datetime.utcnow(),
+                            ),
+                        ],
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.png",
+                    ground_truth=fo.Classification(
+                        label="dog",
+                        info=[
+                            fo.DynamicEmbeddedDocument(
+                                task="initial_annotation",
+                                author="Bob",
+                                timestamp=datetime(2018, 10, 18),
+                                notes=["spam", "eggs"],
+                                ints=[2],
+                                floats=[2],
+                                mixed=[2.0],
+                            ),
+                        ],
+                    ),
+                ),
+            ]
+        )
+
+        field = d.list_schema("ground_truth.info")
+        self.assertIsInstance(field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.document_type, fo.DynamicEmbeddedDocument)
+
+        schema = d.schema("ground_truth.info[]")
+        self.assertIsInstance(schema["task"], fo.StringField)
+        self.assertIsInstance(schema["author"], fo.StringField)
+        self.assertIsInstance(schema["timestamp"], fo.DateTimeField)
+        self.assertIsInstance(schema["notes"], fo.ListField)
+        self.assertIsInstance(schema["ints"], fo.ListField)
+        self.assertIsInstance(schema["floats"], fo.ListField)
+        self.assertIsInstance(schema["mixed"], fo.ListField)
+
+        field = d.list_schema("ground_truth.info[].notes")
+        self.assertIsInstance(field, fo.StringField)
+
+        field = d.list_schema("ground_truth.info[].ints")
+        self.assertIsInstance(field, fo.IntField)
+
+        field = d.list_schema("ground_truth.info[].floats")
+        self.assertIsInstance(field, fo.FloatField)
+
+        fields = d.list_schema("ground_truth.info[].mixed")
+        self.assertIsInstance(fields, list)
+        self.assertEqual(len(fields), 3)
+
+        d.add_sample_field(
+            "ground_truth.info",
+            fo.ListField,
+            subfield=fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        field = d.list_schema("ground_truth.info.notes")
+        self.assertIsInstance(field, fo.StringField)
+
+        schema = d.schema("ground_truth.info")
+        self.assertEqual(len(schema), 7)
+
+    @drop_datasets
     def test_quantiles(self):
         d = fo.Dataset()
         d.add_sample_field("numeric_field", fo.IntField)
@@ -1045,6 +1131,7 @@ class DatasetTests(unittest.TestCase):
             ),
             fo.Mean("predictions.detections[]", expr=bbox_area),
             fo.Schema("predictions.detections"),
+            fo.ListSchema("predictions.detections[]"),
             fo.Std("predictions.detections[]", expr=bbox_area),
             fo.Sum("predictions.detections", expr=F().length()),
             fo.Values("id"),
