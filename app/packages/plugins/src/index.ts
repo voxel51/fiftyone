@@ -192,6 +192,7 @@ export enum PluginComponentType {
   Visualizer,
   Plot,
   Panel,
+  Component,
 }
 
 type PluginActivator = (props: any) => boolean;
