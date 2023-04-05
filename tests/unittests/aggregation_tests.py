@@ -1131,6 +1131,7 @@ class DatasetTests(unittest.TestCase):
             ),
             fo.Mean("predictions.detections[]", expr=bbox_area),
             fo.Schema("predictions.detections"),
+            fo.ListSchema("predictions.detections[]"),
             fo.Std("predictions.detections[]", expr=bbox_area),
             fo.Sum("predictions.detections", expr=F().length()),
             fo.Values("id"),

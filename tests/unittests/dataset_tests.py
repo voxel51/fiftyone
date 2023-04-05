@@ -4382,7 +4382,7 @@ class DynamicFieldTests(unittest.TestCase):
 
         field = schema["ground_truth.info.mixed"]
         self.assertIsInstance(field, fo.ListField)
-        self.assertIsNone(field.field)
+        self.assertIsInstance(field.field, fo.Field)
 
     @drop_datasets
     def test_dynamic_frame_fields_nested(self):
