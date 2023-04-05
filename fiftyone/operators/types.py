@@ -43,7 +43,7 @@ class Object(BaseType):
         return self.define_property(name, Number(int=True), **kwargs)
 
     def float(self, name, **kwargs):
-        return self.define_property(name, Number(), **kwargs)
+        return self.define_property(name, Number(float=True), **kwargs)
 
     def enum(self, name, choices, **kwargs):
         return self.define_property(name, Enum(choices), **kwargs)
@@ -95,7 +95,7 @@ class Boolean(BaseType):
 
 
 class Number(BaseType):
-    def __init__(self, min=None, max=None, int=False):
+    def __init__(self, min=None, max=None, int=False, float=False):
         self.min = min
         self.max = max
         self.int = int
@@ -180,7 +180,11 @@ class View:
 
     def to_json(self):
         return {
+            "name": self.__class__.__name__,
             "label": self.label,
+            "description": self.description,
+            "caption": self.caption,
+            "spaces": self.spaces,
         }
 
 
@@ -190,10 +194,7 @@ class Choice(View):
         self.value = value
 
     def to_json(self):
-        return {
-            "value": self.value,
-            "label": self.label,
-        }
+        return {**super().to_json(), "value": self.value}
 
 
 class Choices(View):
@@ -203,6 +204,11 @@ class Choices(View):
 
     def values(self):
         return [choice.value for choice in self.choices]
+
+    def add_choice(self, value, **kwargs):
+        choice = Choice(value, **kwargs)
+        self.choices.append(choice)
+        return choice
 
     def to_json(self):
         return {
