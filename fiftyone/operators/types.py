@@ -189,6 +189,12 @@ class Choice(View):
         super().__init__(**kwargs)
         self.value = value
 
+    def to_json(self):
+        return {
+            "value": self.value,
+            "label": self.label,
+        }
+
 
 class Choices(View):
     def __init__(self, **kwargs):
@@ -202,7 +208,8 @@ class Choices(View):
         return {
             **super().to_json(),
             "name": self.__class__.__name__,
-            "choices": self.choices,
+            "choices": [choice.to_json() for choice in self.choices]
+            # "choices": self.choices,
         }
 
 
