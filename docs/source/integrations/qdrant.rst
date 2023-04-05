@@ -456,7 +456,7 @@ possibilities:
     dataset.compute_embeddings(model, embeddings_field="embeddings")
     fob.compute_similarity(
         dataset,
-        embeddings_field="embeddings",
+        embeddings="embeddings",
         backend="qdrant",
         brain_key=brain_key,
     )
