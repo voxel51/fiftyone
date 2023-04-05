@@ -67,10 +67,12 @@ RUN apt -y update \
         python${PYTHON_VERSION}-dev \
         python${PYTHON_VERSION}-distutils \
         ffmpeg \
+        vim \
     && ln -s /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
     && ln -s /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python \
     && curl https://bootstrap.pypa.io/get-pip.py | python \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ls
 
 #
 # Install Python dependencies
@@ -93,7 +95,6 @@ RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 #
 # Install FiftyOne from source
 #
-
 COPY dist dist
 RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
 
@@ -112,13 +113,13 @@ ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
     FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
     FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
     FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models \
-    FIFTYONE_DATABASE_URI=mongodb://localhost
-
+    FIFTYONE_DATABASE_URI=mongodb://host.docker.internal:27017
 #
 # Default behavior
 #
 
-CMD ipython
+# CMD ipython
+COPY start.py .
 
 # Use this if you want the default behavior to instead be to launch the App
-# CMD python /usr/local/lib/python/dist-packages/fiftyone/server/main.py --port 5151
+CMD [ "python", "./start.py" ]
