@@ -18,6 +18,7 @@ import {
   loadOperatorsFromServer,
   OperatorResult,
 } from "./operators";
+import { CustomColors } from "./CustomColors";
 
 //
 // BUILT-IN OPERATORS
@@ -562,6 +563,7 @@ export function registerBuiltInOperators() {
     registerOperator(new ShowSamples());
     registerOperator(new ClearShowSamples());
     registerOperator(new GetAppValue());
+    registerOperator(new CustomColors());
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");
