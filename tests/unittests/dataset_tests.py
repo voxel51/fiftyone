@@ -1085,6 +1085,41 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_add_list_subfield(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Classification(
+                label="cat",
+                info=[
+                    fo.DynamicEmbeddedDocument(
+                        author="Alice",
+                        notes=["foo", "bar"],
+                    ),
+                    fo.DynamicEmbeddedDocument(author="Bob"),
+                ],
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field("ground_truth.info", fo.ListField)
+
+        field = dataset.get_field("ground_truth.info")
+        self.assertIsNone(field.field)
+
+        # Syntax for declaring the subfield type of an existing list field
+        dataset.add_sample_field(
+            "ground_truth.info[]",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        field = dataset.get_field("ground_truth.info")
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
