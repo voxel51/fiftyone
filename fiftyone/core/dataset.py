@@ -1370,7 +1370,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field.field
             ):
                 if add_mixed:
-                    field.field = None
+                    field.field = fof.Field()
                 else:
                     logger.warning(
                         "Skipping dynamic list field '%s' with mixed types %s",
@@ -1517,7 +1517,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field.field
             ):
                 if add_mixed:
-                    field.field = None
+                    field.field = fof.Field()
                 else:
                     logger.warning(
                         "Skipping dynamic list frame field '%s' with mixed "
