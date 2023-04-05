@@ -40,9 +40,15 @@ function getComponentByView(property) {
 }
 
 function getSchema(property) {
+  const { defaultValue, required } = property;
   const typeName = getTypeName(property);
   const type = typeMap[typeName];
-  const schema = { type, view: getViewSchema(property) };
+  const schema = {
+    type,
+    view: getViewSchema(property),
+    default: defaultValue,
+    required,
+  };
   const component = getComponent(property);
   schema.view.component = component;
 

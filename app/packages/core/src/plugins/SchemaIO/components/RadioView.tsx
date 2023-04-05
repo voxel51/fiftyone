@@ -24,6 +24,7 @@ export default function RadioView(props: RadioGroupProps) {
         </FormLabel>
       )}
       <MUIRadioGroup
+        value={schema.default}
         onChange={(e, value) => {
           onChange(path, value);
         }}
