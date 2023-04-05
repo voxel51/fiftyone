@@ -23,7 +23,11 @@ class Object(BaseType):
     def define_property(self, name, type, **kwargs):
         label = kwargs.get("label", None)
         description = kwargs.get("description", None)
-        view = kwargs.get("view", View())
+        view = kwargs.get("view", None)
+        if view is None:
+            view = View()
+        else:
+            view = view.clone()
         if label is not None:
             view.label = label
         if description is not None:
@@ -177,6 +181,10 @@ class View:
         self.description = kwargs.get("description", None)
         self.caption = kwargs.get("caption", None)
         self.spaces = kwargs.get("spaces", None)
+        self._kwargs = kwargs
+    
+    def clone(self):
+        return self.__class__(**self._kwargs)
 
     def to_json(self):
         return {
