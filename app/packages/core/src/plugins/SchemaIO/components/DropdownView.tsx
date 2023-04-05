@@ -9,6 +9,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
+        value={schema.default}
         size="small"
         fullWidth
         renderValue={(value) => value as string} // todo: render label
