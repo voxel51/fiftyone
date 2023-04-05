@@ -1085,6 +1085,41 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_add_list_subfield(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Classification(
+                label="cat",
+                info=[
+                    fo.DynamicEmbeddedDocument(
+                        author="Alice",
+                        notes=["foo", "bar"],
+                    ),
+                    fo.DynamicEmbeddedDocument(author="Bob"),
+                ],
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field("ground_truth.info", fo.ListField)
+
+        field = dataset.get_field("ground_truth.info")
+        self.assertIsNone(field.field)
+
+        # Syntax for declaring the subfield type of an existing list field
+        dataset.add_sample_field(
+            "ground_truth.info[]",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        field = dataset.get_field("ground_truth.info")
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
@@ -4218,6 +4253,136 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertDictEqual(dynamic_schema, {})
 
         dataset.add_dynamic_sample_fields()
+
+    @drop_datasets
+    def test_add_dynamic_fields_nested(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.png",
+                    ground_truth=fo.Classification(
+                        label="cat",
+                        info=[
+                            fo.DynamicEmbeddedDocument(
+                                task="initial_annotation",
+                                author="Alice",
+                                timestamp=datetime(1970, 1, 1),
+                                notes=["foo", "bar"],
+                                ints=[1],
+                                floats=[1.0],
+                                mixed=[1, "foo"],
+                            ),
+                            fo.DynamicEmbeddedDocument(
+                                task="editing_pass",
+                                author="Bob",
+                                timestamp=datetime.utcnow(),
+                            ),
+                        ],
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.png",
+                    ground_truth=fo.Classification(
+                        label="dog",
+                        info=[
+                            fo.DynamicEmbeddedDocument(
+                                task="initial_annotation",
+                                author="Bob",
+                                timestamp=datetime(2018, 10, 18),
+                                notes=["spam", "eggs"],
+                                ints=[2],
+                                floats=[2],
+                                mixed=[2.0],
+                            ),
+                        ],
+                    ),
+                ),
+            ]
+        )
+
+        schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "ground_truth.info",
+                "ground_truth.info.task",
+                "ground_truth.info.author",
+                "ground_truth.info.timestamp",
+                "ground_truth.info.notes",
+                "ground_truth.info.ints",
+                "ground_truth.info.floats",
+                "ground_truth.info.mixed",
+            },
+        )
+
+        field = schema["ground_truth.info"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
+
+        field = schema["ground_truth.info.author"]
+        self.assertIsInstance(field, fo.StringField)
+
+        field = schema["ground_truth.info.timestamp"]
+        self.assertIsInstance(field, fo.DateTimeField)
+
+        field = schema["ground_truth.info.notes"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.StringField)
+
+        field = schema["ground_truth.info.ints"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.IntField)
+
+        field = schema["ground_truth.info.floats"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.FloatField)
+
+        field = schema["ground_truth.info.mixed"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, list)
+        self.assertEqual(len(field.field), 3)
+
+        dataset.add_dynamic_sample_fields()
+
+        schema = dataset.get_field_schema(flat=True)
+
+        field = schema["ground_truth.info"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
+
+        field = schema["ground_truth.info.author"]
+        self.assertIsInstance(field, fo.StringField)
+
+        field = schema["ground_truth.info.timestamp"]
+        self.assertIsInstance(field, fo.DateTimeField)
+
+        field = schema["ground_truth.info.notes"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.StringField)
+
+        field = schema["ground_truth.info.ints"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.IntField)
+
+        field = schema["ground_truth.info.floats"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.FloatField)
+
+        self.assertNotIn("ground_truth.info.mixed", schema)
+
+        schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(set(schema.keys()), {"ground_truth.info.mixed"})
+
+        dataset.add_dynamic_sample_fields(add_mixed=True)
+
+        schema = dataset.get_field_schema(flat=True)
+
+        field = schema["ground_truth.info.mixed"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.Field)
 
     @drop_datasets
     def test_dynamic_frame_fields_nested(self):
