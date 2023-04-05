@@ -258,6 +258,11 @@ class DatasetMixin(object):
             return False
 
         for path, field in new_schema.items():
+            # Special syntax for declaring the subfield of a ListField
+            if path.endswith("[]"):
+                path = path[:-2]
+                field = fof.ListField(field=field)
+
             cls._add_field_schema(path, field)
 
         cls._dataset.save()
@@ -967,16 +972,28 @@ class DatasetMixin(object):
             existing_field = doc._fields[field_name]
 
             if recursive:
+                is_list_field = False
+
                 while isinstance(existing_field, fof.ListField) and isinstance(
                     field, fof.ListField
                 ):
                     existing_field = existing_field.field
                     field = field.field
+                    is_list_field = True
 
                 if isinstance(existing_field, fof.EmbeddedDocumentField):
                     return existing_field._merge_fields(
                         path, field, validate=validate, recursive=recursive
                     )
+
+                # Special syntax for declaring the subfield of a ListField
+                if (
+                    is_list_field
+                    and field is not None
+                    and existing_field is None
+                    and path.endswith("[]")
+                ):
+                    return {path: field}
 
             if validate:
                 validate_fields_match(path, field, existing_field)
