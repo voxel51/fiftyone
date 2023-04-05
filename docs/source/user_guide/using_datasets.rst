@@ -1094,6 +1094,162 @@ Setting a field to an inappropriate type raises an error:
     order to persist changes to the database when editing samples that are in
     datasets.
 
+.. _adding-dataset-fields:
+
+Adding fields to a dataset
+--------------------------
+
+You can also use
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
+declare new sample fields directly on datasets without explicitly populating
+any values on its samples:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(
+        filepath="image.jpg",
+        ground_truth=fo.Classification(label="cat"),
+    )
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    # Declare new primitive fields
+    dataset.add_sample_field("scene_id", fo.StringField)
+    dataset.add_sample_field("quality", fo.FloatField)
+
+    # Declare untyped list fields
+    dataset.add_sample_field("more_tags", fo.ListField)
+    dataset.add_sample_field("info", fo.ListField)
+
+    # Declare a typed list field
+    dataset.add_sample_field("also_tags", fo.ListField, subfield=fo.StringField)
+
+    # Declare a new Label field
+    dataset.add_sample_field(
+        "predictions",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.Classification,
+    )
+
+    print(dataset.get_field_schema())
+
+.. code-block:: text
+
+    {
+        'id': <fiftyone.core.fields.ObjectIdField object at 0x7f9280803910>,
+        'filepath': <fiftyone.core.fields.StringField object at 0x7f92d273e0d0>,
+        'tags': <fiftyone.core.fields.ListField object at 0x7f92d2654f70>,
+        'metadata': <fiftyone.core.fields.EmbeddedDocumentField object at 0x7f9280803d90>,
+        'ground_truth': <fiftyone.core.fields.EmbeddedDocumentField object at 0x7f92d2605190>,
+        'scene_id': <fiftyone.core.fields.StringField object at 0x7f9280803490>,
+        'quality': <fiftyone.core.fields.FloatField object at 0x7f92d2605bb0>,
+        'more_tags': <fiftyone.core.fields.ListField object at 0x7f92d08e4550>,
+        'info': <fiftyone.core.fields.ListField object at 0x7f92d264f9a0>,
+        'also_tags': <fiftyone.core.fields.ListField object at 0x7f92d264ff70>,
+        'predictions': <fiftyone.core.fields.EmbeddedDocumentField object at 0x7f92d2605640>,
+    }
+
+Whenever a new field is added to a dataset, the field is immediately available
+on all samples in the dataset with the value `None`:
+
+.. code-block:: python
+    :linenos:
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '642d8848f291652133df8d3a',
+        'media_type': 'image',
+        'filepath': '/Users/Brian/dev/fiftyone/image.jpg',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Classification: {
+            'id': '642d8848f291652133df8d38',
+            'tags': [],
+            'label': 'cat',
+            'confidence': None,
+            'logits': None,
+        }>,
+        'scene_id': None,
+        'quality': None,
+        'more_tags': None,
+        'info': None,
+        'also_tags': None,
+        'predictions': None,
+    }>
+
+You can also declare nested fields on existing embedded documents using dot
+notation:
+
+.. code-block:: python
+    :linenos:
+
+    # Declare a new attribute on a `Classification` field
+    dataset.add_sample_field("predictions.breed", fo.StringField)
+
+.. note::
+
+    See :ref:`this section <dynamic-attributes>` for more options for
+    dynamically expanding the schema of nested lists and embedded documents.
+
+You can use :meth:`get_field() <fiftyone.core.dataset.Dataset.get_field>` to
+retrieve a |Field| instance by its name or ``embedded.field.name``. And, if the
+field contains an embedded document, you can call
+:meth:`get_field_schema() <fiftyone.core.fields.EmbeddedDocumentField.get_field_schema>`
+to recursively inspect its nested fields:
+
+.. code-block:: python
+    :linenos:
+
+    field = dataset.get_field("predictions")
+    print(field.document_type)
+    # <class 'fiftyone.core.labels.Classification'>
+
+    print(set(field.get_field_schema().keys()))
+    # {'logits', 'confidence', 'breed', 'tags', 'label', 'id'}
+
+    # Directly retrieve a nested field
+    field = dataset.get_field("predictions.breed")
+    print(type(field))
+    # <class 'fiftyone.core.fields.StringField'>
+
+If your dataset contains a |ListField| with no value type declared, you can add
+the type later by appending `[]` to the field path:
+
+.. code-block:: python
+    :linenos:
+
+    field = dataset.get_field("more_tags")
+    print(field.field)  # None
+
+    # Declare the subfield types of an existing untyped list field
+    dataset.add_sample_field("more_tags[]", fo.StringField)
+
+    field = dataset.get_field("more_tags")
+    print(field.field)  # StringField
+
+    # List fields can also contain embedded documents
+    dataset.add_sample_field(
+        "info[]",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.DynamicEmbeddedDocument,
+    )
+
+    field = dataset.get_field("info")
+    print(field.field)  # EmbeddedDocumentField
+    print(field.field.document_type)  # DynamicEmbeddedDocument
+
+.. note::
+
+    Declaring the value type of list fields is required if you want to filter
+    by the list's values :ref:`in the App <app-filtering>`.
+
 .. _editing-sample-fields:
 
 Editing sample fields

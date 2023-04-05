@@ -6,7 +6,6 @@ Defines the shared state between the FiftyOne App and backend.
 |
 """
 from bson import json_util
-from dataclasses import asdict
 import json
 import logging
 import typing as t
@@ -59,7 +58,7 @@ class StateDescription(etas.Serializable):
         self.selected = selected or []
         self.selected_labels = selected_labels or []
         self.view = (
-            dataset.load_saved_view(dataset)
+            dataset.load_saved_view(view_name)
             if dataset is not None and view_name
             else view
         )
@@ -91,10 +90,10 @@ class StateDescription(etas.Serializable):
                         d["saved_view_slug"] = fou.to_slug(self.view.name)
 
                 d["sample_fields"] = serialize_fields(
-                    collection.get_field_schema(flat=True), dicts=True
+                    collection.get_field_schema(flat=True)
                 )
                 d["frame_fields"] = serialize_fields(
-                    collection.get_frame_field_schema(flat=True), dicts=True
+                    collection.get_frame_field_schema(flat=True)
                 )
 
                 view = self.view if self.view is not None else self.dataset
@@ -188,7 +187,7 @@ class SampleField:
     info: t.Optional[JSON]
 
 
-def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
+def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
     data = []
 
     if schema:
@@ -214,12 +213,6 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
             else:
                 subfield = None
 
-            if field.info is not None:
-                # Converts mongoengine types to primitives
-                info = json.loads(json.dumps(field.info))
-            else:
-                info = None
-
             data.append(
                 SampleField(
                     path=path,
@@ -228,11 +221,8 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=info,
+                    info=field.info,
                 )
             )
-
-    if dicts:
-        return [asdict(f) for f in data]
 
     return data

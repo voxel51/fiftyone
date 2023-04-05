@@ -109,7 +109,7 @@ fi
 
 if [ ${VOXEL51_INSTALL} = false ]; then
     echo "***** INSTALLING FIFTYONE-BRAIN *****"
-    pip install fiftyone-brain
+    pip install --upgrade fiftyone-brain
 fi
 
 echo "***** INSTALLING FIFTYONE *****"
