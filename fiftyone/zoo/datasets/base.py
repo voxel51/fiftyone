@@ -527,12 +527,12 @@ class Caltech101Dataset(FiftyOneDataset):
         138.60 MB
 
     Source
-        http://www.vision.caltech.edu/Image_Datasets/Caltech101
+        https://data.caltech.edu/records/mzrjq-6wc02
     """
 
     #
     # The source URL for the data is
-    # http://www.vision.caltech.edu/Image_Datasets/Caltech101/101_ObjectCategories.tar.gz
+    # https://data.caltech.edu/records/mzrjq-6wc02/files/caltech-101.zip?download=1
     # but this now redirects to the Google Drive file below
     #
     _GDRIVE_ID = "137RyRjvTBkBiIfeYBNZBtViDHQ6_Ewsp"
@@ -597,12 +597,12 @@ class Caltech256Dataset(FiftyOneDataset):
         1.16 GB
 
     Source
-        http://www.vision.caltech.edu/Image_Datasets/Caltech256
+        https://data.caltech.edu/records/nyy15-4j048
     """
 
     #
     # The source URL for the data is
-    # http://www.vision.caltech.edu/Image_Datasets/Caltech256/256_ObjectCategories.tar
+    # https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar?download=1
     # but this now redirects to the Google Drive file below
     #
     _GDRIVE_ID = "1r6o0pSROcV1_VwT4oSjA2FBUSCWGuxLK"

@@ -9,6 +9,8 @@ from copy import deepcopy, copy
 from datetime import date, datetime
 import gc
 import os
+import random
+import string
 import unittest
 
 from bson import ObjectId
@@ -30,7 +32,20 @@ from decorators import drop_datasets, skip_windows
 class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_list_datasets(self):
-        self.assertIsInstance(fo.list_datasets(), list)
+        names = fo.list_datasets()
+        self.assertIsInstance(names, list)
+
+        root = "".join(random.choice(string.ascii_letters) for _ in range(64))
+
+        fo.Dataset(root[:-1])
+        fo.Dataset(root)
+        fo.Dataset(root + "-foo")
+
+        names = fo.list_datasets(root + "-*")
+        self.assertEqual(len(names), 1)
+
+        names = fo.list_datasets(root + "*")
+        self.assertEqual(len(names), 2)
 
     @drop_datasets
     def test_dataset_names(self):
@@ -3941,6 +3956,38 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIn("test3.int_field", schema)
         self.assertIn("test3.float_field", schema)
 
+        sample4 = fo.Sample(
+            filepath="image.jpg",
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel"),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset4 = fo.Dataset()
+        dataset4.add_sample(sample4, dynamic=True)
+
+        schema = dataset4.get_field_schema(flat=True)
+        self.assertIn("tasks.annotator", schema)
+        self.assertIn("tasks.labels", schema)
+        self.assertIn("tasks.labels.classifications.label", schema)
+
     @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):
         dataset1 = fo.Dataset()
@@ -4105,6 +4152,138 @@ class DynamicFieldTests(unittest.TestCase):
 
         self.assertEqual(detection.float, 2)
         self.assertEqual(detection.mixed, [1, 2, 3])
+
+    @drop_datasets
+    def test_dynamic_fields_nested(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", mood="surly"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel", age=51),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "tasks.annotator",
+                "tasks.labels",
+                "tasks.labels.classifications.age",
+                "tasks.labels.classifications.mood",
+            },
+        )
+
+        dataset.add_dynamic_sample_fields()
+
+        new_paths = [
+            "tasks",
+            "tasks.labels",
+            "tasks.labels.classifications",
+            "tasks.labels.classifications.id",
+            "tasks.labels.classifications.tags",
+            "tasks.labels.classifications.label",
+            "tasks.labels.classifications.logits",
+            "tasks.labels.classifications.confidence",
+            "tasks.labels.classifications.age",
+            "tasks.labels.classifications.mood",
+            "tasks.labels.logits",
+            "tasks.annotator",
+        ]
+        schema = dataset.get_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
+
+        dataset.add_dynamic_sample_fields()
+
+    @drop_datasets
+    def test_dynamic_frame_fields_nested(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", mood="surly"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel", age=51),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "tasks.annotator",
+                "tasks.labels",
+                "tasks.labels.classifications.age",
+                "tasks.labels.classifications.mood",
+            },
+        )
+
+        dataset.add_dynamic_frame_fields()
+
+        new_paths = [
+            "tasks",
+            "tasks.labels",
+            "tasks.labels.classifications",
+            "tasks.labels.classifications.id",
+            "tasks.labels.classifications.tags",
+            "tasks.labels.classifications.label",
+            "tasks.labels.classifications.logits",
+            "tasks.labels.classifications.confidence",
+            "tasks.labels.classifications.age",
+            "tasks.labels.classifications.mood",
+            "tasks.labels.logits",
+            "tasks.annotator",
+        ]
+        schema = dataset.get_frame_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
+
+        dataset.add_dynamic_frame_fields()
 
     @drop_datasets
     def test_rename_dynamic_embedded_fields(self):

@@ -27,7 +27,7 @@ describe("pointcloud only datasets", () => {
     );
   });
 
-  it("should show have one looker in one flashlight section", () => {
+  it("should have one looker in one flashlight section", () => {
     cy.get("[data-cy=flashlight-section]")
       .should("be.visible")
       .and("have.length", 1);

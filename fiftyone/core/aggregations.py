@@ -9,10 +9,12 @@ from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
 import inspect
+import logging
 import reprlib
 import uuid
 
 import numpy as np
+from mongoengine.base import get_document
 
 import eta.core.utils as etau
 
@@ -24,6 +26,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 class Aggregation(object):
@@ -1836,12 +1841,13 @@ class Schema(Aggregation):
         field_or_expr,
         expr=None,
         dynamic_only=False,
+        _doc_type=None,
         _include_private=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._dynamic_only = dynamic_only
         self._include_private = _include_private
-        self._doc_type = None
+        self._doc_type = _doc_type
 
     def _kwargs(self):
         return [
@@ -1890,6 +1896,16 @@ class Schema(Aggregation):
 
             if name in doc_fields:
                 field = doc_fields[name]
+            elif "." in _type:
+                _type, _cls = _type.split(".", 1)
+                try:
+                    document_type = get_document(_cls)
+                    field = fof.EmbeddedDocumentField(document_type)
+                except Exception as e:
+                    field = None
+                    logger.warning(
+                        "Unable to load document class '%s': %s", _cls, e
+                    )
             else:
                 field = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
 
@@ -1904,16 +1920,13 @@ class Schema(Aggregation):
 
     def to_mongo(self, sample_collection, context=None):
         field_name = self._field_name
-        doc_type = None
 
-        if self._expr is None:
+        if self._doc_type is None and self._expr is None:
             field_type = _get_field_type(
                 sample_collection, field_name, unwind=True
             )
             if isinstance(field_type, fof.EmbeddedDocumentField):
-                doc_type = field_type
-
-        self._doc_type = doc_type
+                self._doc_type = field_type
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
             sample_collection,
@@ -1921,6 +1934,40 @@ class Schema(Aggregation):
             expr=self._expr,
             context=context,
         )
+
+        field_type_expr = {
+            "$let": {
+                "vars": {"ftype": {"$type": "$fields.v"}},
+                "in": {
+                    "$cond": {
+                        "if": {
+                            "$and": [
+                                {
+                                    "$eq": [
+                                        "$$ftype",
+                                        "object",
+                                    ]
+                                },
+                                {
+                                    "$gt": [
+                                        "$fields.v._cls",
+                                        None,
+                                    ]
+                                },
+                            ],
+                        },
+                        "then": {
+                            "$concat": [
+                                "$$ftype",
+                                ".",
+                                "$fields.v._cls",
+                            ]
+                        },
+                        "else": "$$ftype",
+                    }
+                },
+            }
+        }
 
         pipeline.extend(
             [
@@ -1931,11 +1978,7 @@ class Schema(Aggregation):
                         "_id": None,
                         "schema": {
                             "$addToSet": {
-                                "$concat": [
-                                    "$fields.k",
-                                    ".",
-                                    {"$type": "$fields.v"},
-                                ]
+                                "$concat": ["$fields.k", ".", field_type_expr]
                             }
                         },
                     }

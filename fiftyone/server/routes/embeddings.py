@@ -49,6 +49,7 @@ class OnPlotLoad(HTTPEndpoint):
             return {"error": msg}
 
         view = fosv.get_view(dataset_name, stages=stages)
+        is_patches_view = view._is_patches
 
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
@@ -78,7 +79,12 @@ class OnPlotLoad(HTTPEndpoint):
 
         # Color by data
         if label_field:
-            if view._is_patches:
+            if is_patches_view and not is_patches_plot:
+                # Must use the root dataset in order to retrieve colors for the
+                # plot, which is linked to samples, not patches
+                view = view._root_dataset
+
+            if is_patches_view and is_patches_plot:
                 # `label_field` is always provided with respect to root
                 # dataset, so we must translate for patches views
                 _, root = dataset._get_label_field_path(patches_field)

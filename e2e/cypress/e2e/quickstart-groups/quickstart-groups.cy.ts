@@ -23,7 +23,7 @@ describe("quickstart-groups dataset", () => {
     return cy.waitForFiftyOneApp();
   });
 
-  it("should show have four lookers in two flashlight sections", () => {
+  it("should have four lookers in two flashlight sections", () => {
     cy.get("[data-cy=flashlight-section]")
       .should("be.visible")
       .and("have.length", 2);

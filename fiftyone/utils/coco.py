@@ -877,7 +877,6 @@ class COCODetectionDatasetExporter(
         info = {
             "year": self.info.get("year", ""),
             "version": self.info.get("version", ""),
-            "description": self.info.get("year", "Exported from FiftyOne"),
             "contributor": self.info.get("contributor", ""),
             "url": self.info.get("url", "https://voxel51.com/fiftyone"),
             "date_created": self.info.get("date_created", date_created),
