@@ -1,16 +1,25 @@
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useMemo, useRef } from "react";
 import Draggable from "react-draggable";
 import ReactDOM from "react-dom";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import CloseIcon from "@mui/icons-material/Close";
+import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
+import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 
 import * as fos from "@fiftyone/state";
-import ColorModalContent from "./ColorModalContent";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  Field,
+  VALID_LABEL_TYPES,
+  withPath,
+} from "@fiftyone/utilities";
+import { Popout, Tooltip, useTheme } from "@fiftyone/components";
+import Item from "../Filters/categoricalFilter/filterOption/FilterItem";
+import GlobalSetting from "./GlobalSetting";
+import FieldSetting from "./FieldSetting";
 import { Button } from "../utils";
 import { tempColorSetting } from "./utils";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -64,12 +73,151 @@ const BUTTON_STYLE: React.CSSProperties = {
   textAlign: "center",
 };
 
+const ActionDiv = styled.div`
+  position: relative;
+`;
+
+const IconDiv = styled.div`
+  margin: auto 0.25rem;
+  align-items: center;
+`;
+
+type Option = {
+  value: string;
+  onClick: () => void;
+};
+
+const screen = {
+  minWidth: "500px",
+  width: "40vw",
+  height: "80vh",
+};
+
+const Text = styled.div`
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  cursor: pointer;
+`;
+
+const ColorModal = () => {
+  const ref = React.useRef<HTMLDivElement>();
+  const [open, setOpen] = React.useState(false);
+  const field = useRecoilValue(fos.activeColorField);
+
+  // get all the embeddedDocfields that can be customized:
+  const customizeColorFields = useRecoilValue(
+    fos.fields({
+      space: fos.State.SPACE.SAMPLE,
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+    })
+  )?.filter((f) =>
+    VALID_LABEL_TYPES.includes(
+      f?.embeddedDocType?.split(".")?.slice(-1)[0] ?? ""
+    )
+  );
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const targetContainer = document.getElementById("colorModal");
+  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
+    fos.activeColorField
+  );
+
+  const fieldOptions = customizeColorFields.map((field) => ({
+    value: field.path ?? "",
+    tooltip: `customize annotation for field ${field.name}`,
+    onClick: () => {
+      setActiveColorModalField(field as Field);
+      setOpen(false);
+    },
+  }));
+
+  const options = fieldOptions.concat([
+    {
+      value: "global",
+      onClick: () => {
+        setActiveColorModalField("global");
+        setOpen(false);
+      },
+      tooltip: "global annotation settings",
+    },
+  ]);
+
+  const selected = useMemo(() => {
+    if (activeColorModalField == "global") return "global";
+    return activeColorModalField?.path ?? "";
+  }, [activeColorModalField]);
+
+  if (targetContainer) {
+    return ReactDOM.createPortal(
+      <Fragment>
+        <ModalWrapper
+          ref={wrapperRef}
+          onClick={(event) => event.target === wrapperRef.current}
+          aria-labelledby="draggable-color-modal"
+        >
+          <Draggable bounds="parent" handle=".draggable-colorModal-handle">
+            <Container style={{ ...screen, zIndex: 2 }}>
+              <DraggableModalTitle className="draggable-colorModal-handle">
+                <div>
+                  <ActionDiv ref={ref}>
+                    <Tooltip
+                      text={"Click to change target field for setup"}
+                      placement={"top-center"}
+                    >
+                      <Text onClick={() => setOpen((o) => !o)}>
+                        <IconDiv>
+                          {open ? (
+                            <KeyboardArrowUpOutlinedIcon />
+                          ) : (
+                            <KeyboardArrowDownOutlinedIcon />
+                          )}
+                        </IconDiv>
+                        <div>{selected}</div>
+                      </Text>
+                    </Tooltip>
+                    {open && (
+                      <Popout style={{ padding: 0, position: "relative" }}>
+                        {options.map((option: Option) => (
+                          <Item key={option.value} {...option} />
+                        ))}
+                      </Popout>
+                    )}
+                  </ActionDiv>
+                </div>
+                <CloseIcon onClick={() => setActiveColorModalField(null)} />
+              </DraggableModalTitle>
+              <div style={{ height: "calc( 80vh - 6rem)", overflow: "auto" }}>
+                {typeof field === "string" ? (
+                  <GlobalSetting />
+                ) : (
+                  <FieldSetting />
+                )}
+              </div>
+              <SubmitControls />
+            </Container>
+          </Draggable>
+        </ModalWrapper>
+      </Fragment>,
+      targetContainer
+    );
+  } else {
+    console.error("target container not found");
+    return <></>;
+  }
+};
+
+export default React.memo(ColorModal);
+
 const SubmitControls = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.colorModal
+    fos.activeColorField
   );
   if (!activeColorModalField) return null;
-  const path = activeColorModalField.path;
+  const path =
+    activeColorModalField == "global" ? "global" : activeColorModalField.path;
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const setCustomizeColor = useSetRecoilState(
     fos.customizeColorSelector(path!)
@@ -77,7 +225,7 @@ const SubmitControls = () => {
   const [customizeColorFields, setCustomizeColorFields] = useRecoilState(
     fos.customizeColorFields
   );
-  console.info(customizeColorFields);
+
   const onCancel = () => {
     setActiveColorModalField(null);
     setTempColor(null);
@@ -107,74 +255,3 @@ const SubmitControls = () => {
     </ModalActionButtonContainer>
   );
 };
-
-const ColorModal = () => {
-  const field = useRecoilValue(fos.colorModal);
-  const colorBy = useRecoilValue(fos.coloring(false)).by;
-
-  const screen = {
-    minWidth: "500px",
-    width: "40vw",
-    height: "80vh",
-  };
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const targetContainer = document.getElementById("colorModal");
-  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.colorModal
-  );
-  const theme = createTheme({
-    typography: {
-      fontFamily: "Palanquin, sans-serif",
-    },
-    components: {
-      MuiCssBaseline: {
-        styleOverrides: {
-          html: {
-            fontFamily: "Palanquin, sans-serif",
-          },
-          body: {
-            fontFamily: "Palanquin, sans-serif",
-          },
-        },
-      },
-    },
-  });
-
-  if (targetContainer) {
-    return ReactDOM.createPortal(
-      <Fragment>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <ModalWrapper
-            ref={wrapperRef}
-            onClick={(event) => event.target === wrapperRef.current}
-            aria-labelledby="draggable-color-modal"
-          >
-            <Draggable bounds="parent" handle=".draggable-colorModal-handle">
-              <Container style={{ ...screen, zIndex: 2 }}>
-                <DraggableModalTitle className="draggable-colorModal-handle">
-                  <div>
-                    {activeColorModalField?.name?.toUpperCase() ?? ""} (
-                    {activeColorModalField?.embeddedDocType
-                      ?.split(".")
-                      .slice(-1)}
-                    )
-                  </div>
-                  <CloseIcon onClick={() => setActiveColorModalField(null)} />
-                </DraggableModalTitle>
-                <ColorModalContent />
-                <SubmitControls />
-              </Container>
-            </Draggable>
-          </ModalWrapper>
-        </ThemeProvider>
-      </Fragment>,
-      targetContainer
-    );
-  } else {
-    console.error("target container not found");
-    return <></>;
-  }
-};
-
-export default React.memo(ColorModal);

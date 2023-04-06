@@ -89,8 +89,8 @@ export const modal = atom<ModalSample | null>({
 });
 
 // the active field for customize color modal
-export const colorModal = atom<Field | null>({
-  key: "colorModal",
+export const activeColorField = atom<Field | "global" | null>({
+  key: "activeColorField",
   default: null,
 });
 

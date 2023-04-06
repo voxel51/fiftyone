@@ -10,9 +10,9 @@ import { Tooltip } from "@fiftyone/components";
 type ItemProp = {
   icon?: string;
   value: string;
-  tooltip: string;
-  color: string; // icon color
-  highlightedBGColor: string; // background color onHover
+  tooltip?: string;
+  color?: string; // icon color
+  highlightedBGColor?: string; // background color onHover
   onClick: () => void;
 };
 
@@ -32,7 +32,8 @@ const Item = React.memo(
         cursor: pointer;
         background-color: ${({ theme }) => theme.background.secondary};
         &:hover {
-          background-color: ${() => highlightedBGColor};
+          background-color: ${({ theme }) =>
+            highlightedBGColor ?? theme.background.secondary};
         }
       `;
 
@@ -61,7 +62,9 @@ const Item = React.memo(
           ref={ref}
           onClick={onClick}
         >
-          <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
+          {icon ? (
+            <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
+          ) : null}
 
           <Text>{value}</Text>
         </div>

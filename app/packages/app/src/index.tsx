@@ -15,7 +15,7 @@ import {
   useRouter,
   useRefresh,
   getSavedViewName,
-  colorModal,
+  activeColorField,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
@@ -59,7 +59,7 @@ const App: React.FC = ({}) => {
   );
 
   const isModalActive = Boolean(useRecoilValue(modal));
-  const isCustomizeColorModalActive = Boolean(useRecoilValue(colorModal));
+  const isCustomizeColorModalActive = Boolean(useRecoilValue(activeColorField));
   const handleError = useErrorHandler();
 
   useEffect(() => {

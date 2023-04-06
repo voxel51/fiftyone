@@ -1,4 +1,4 @@
-import { colorModal, modal } from "@fiftyone/state";
+import { activeColorField, modal } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -24,7 +24,7 @@ const Body = styled.div`
 
 function Dataset() {
   const isModalActive = Boolean(useRecoilValue(modal));
-  const isCustomizeColorModalActive = useRecoilValue(colorModal);
+  const isCustomizeColorModalActive = useRecoilValue(activeColorField);
 
   return (
     <>
