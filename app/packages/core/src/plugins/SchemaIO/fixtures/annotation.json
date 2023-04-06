@@ -2,6 +2,49 @@
     "type": {
         "name": "Object",
         "properties": {
+            "oneoffs": {
+                "type": {
+                    "name": "OneOf",
+                    "types": [
+                        {
+                            "name": "String"
+                        },
+                        {
+                            "name": "Number",
+                            "min": null,
+                            "max": null,
+                            "int": false,
+                            "float": false
+                        }
+                    ]
+                },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "OneOfView",
+                    "label": "Number or string",
+                    "description": null,
+                    "caption": null,
+                    "space": null,
+                    "oneof": [
+                        {
+                            "name": "View",
+                            "label": "String",
+                            "description": "Please provide a string value",
+                            "caption": null,
+                            "space": null
+                        },
+                        {
+                            "name": "View",
+                            "label": "Number",
+                            "description": "Please provide a number value",
+                            "caption": null,
+                            "space": null
+                        }
+                    ]
+                }
+            },
             "backend": {
                 "type": {
                     "name": "Enum",

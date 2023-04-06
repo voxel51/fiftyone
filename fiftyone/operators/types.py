@@ -164,6 +164,17 @@ class Plot(BaseType):
         }
 
 
+class OneOf(BaseType):
+    def __init__(self, types):
+        self.types = types
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
+            "types": [type.to_json() for type in self.types],
+        }
+
+
 #
 # Trigger
 #
@@ -193,6 +204,7 @@ class View:
         self.description = kwargs.get("description", None)
         self.caption = kwargs.get("caption", None)
         self.space = kwargs.get("space", None)
+        self.placeholder = kwargs.get("placeholder", None)
         self._kwargs = kwargs
 
     def clone(self):
@@ -205,6 +217,7 @@ class View:
             "description": self.description,
             "caption": self.caption,
             "space": self.space,
+            "placeholder": self.placeholder,
         }
 
 
@@ -282,3 +295,27 @@ class Warning(View):
 class Button(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class OneOfView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.oneof = kwargs.get("oneof", [])
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "oneof": [one.to_json() for one in self.oneof],
+        }
+
+
+class ListView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.items = kwargs.get("items", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "items": self.items.to_json() if self.items else None,
+        }
