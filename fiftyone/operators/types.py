@@ -201,6 +201,10 @@ class Choice(View):
         super().__init__(**kwargs)
         self.value = value
 
+    def clone(self):
+        clone = Choice(self.value, **self._kwargs)
+        return clone
+
     def to_json(self):
         return {**super().to_json(), "value": self.value}
 
@@ -217,6 +221,11 @@ class Choices(View):
         choice = Choice(value, **kwargs)
         self.choices.append(choice)
         return choice
+
+    def clone(self):
+        clone = super().clone()
+        clone.choices = [choice.clone() for choice in self.choices]
+        return clone
 
     def to_json(self):
         return {
