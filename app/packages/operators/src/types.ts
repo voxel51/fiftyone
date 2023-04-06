@@ -145,6 +145,15 @@ export class List extends BaseType {
     return new List(typeFromJSON(element_type));
   }
 }
+export class OneOf extends BaseType {
+  constructor(public types: [ANY_TYPE]) {
+    super();
+  }
+
+  static fromJSON({ types }) {
+    return new OneOf(types.map(typeFromJSON));
+  }
+}
 export class Enum extends BaseType {
   constructor(public values: any[]) {
     super();
@@ -271,7 +280,7 @@ class Button extends View {
 export class SampleID extends String {}
 
 // NOTE: this should always match fiftyone/operators/types.py
-export const TYPES = [ObjectType, String, Boolean, Number, List, Enum];
+export const TYPES = [ObjectType, String, Boolean, Number, List, Enum, OneOf];
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
   if (name === "Object") {
