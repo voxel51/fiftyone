@@ -1,11 +1,5 @@
 import React, { useEffect } from "react";
-import { Typography } from "@mui/material";
-import ObjectView from "./ObjectView";
-import RadioView from "./RadioView";
-import DropdownView from "./DropdownView";
-import CheckboxView from "./CheckboxView";
-import FieldView from "./FieldView";
-import ListView from "./ListView";
+import { getComponent } from "../utils";
 
 export default function DynamicIO(props) {
   const { schema, onChange, path } = props;
@@ -17,24 +11,4 @@ export default function DynamicIO(props) {
   }, []);
 
   return <Component schema={schema} onChange={onChange} path={path} />;
-}
-
-const componentsMap = {
-  ObjectView: ObjectView,
-  CheckboxView: CheckboxView,
-  FieldView: FieldView,
-  ListView: ListView,
-  RadioView: RadioView,
-  DropdownView: DropdownView,
-  UnsupportedView: UnsupportedView,
-};
-
-function getComponent(schema) {
-  const { component } = schema?.view || {};
-  return componentsMap[component] || UnsupportedView;
-}
-
-function UnsupportedView(props) {
-  console.error("UnsupportedView", { props });
-  return <Typography>Unsupported</Typography>;
 }
