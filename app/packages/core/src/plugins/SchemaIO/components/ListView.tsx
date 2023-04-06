@@ -5,11 +5,18 @@ import Header from "./Header";
 import Button from "./Button";
 import EmptyState from "./EmptyState";
 import DynamicIO from "./DynamicIO";
+import { log } from "../utils";
 
 export default function ListView(props) {
   const { schema, onChange, path } = props;
   const [state, setState] = useState<string[]>(schema.default || []);
   const { items, view } = schema;
+  const { items: itemsView = {} } = view;
+
+  const itemsSchema = {
+    ...items,
+    view: { ...(items?.view || {}), ...itemsView },
+  };
 
   const label = view.label;
   const lowerCaseLabel = label.toLowerCase();
@@ -52,7 +59,7 @@ export default function ListView(props) {
           >
             <Grid item xs>
               <DynamicIO
-                schema={items}
+                schema={itemsSchema}
                 onChange={(path, value) => {
                   setState((state) => {
                     const updatedState = [...state];
