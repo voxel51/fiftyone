@@ -17,6 +17,7 @@ import {
 import { useRecoilValue } from "recoil";
 import OperatorInput from "./OperatorInput";
 import { Box } from "@mui/material";
+import { scrollbarStyles } from "@fiftyone/utilities";
 
 const PromptContainer = styled.div`
   position: absolute;
@@ -36,6 +37,7 @@ const PromptModal = styled.div`
   padding: 1rem;
   max-height: calc(80vh);
   overflow: auto;
+  ${scrollbarStyles}
 `;
 
 const Form = styled.div``;

@@ -8,6 +8,7 @@ export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
 export * from "./Resource";
+export * from "./styles";
 
 interface O {
   [key: string]: O | any;
