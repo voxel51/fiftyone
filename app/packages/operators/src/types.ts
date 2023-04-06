@@ -174,7 +174,7 @@ export class View extends BaseType {
   }
 }
 
-class Choice extends View {
+export class Choice extends View {
   constructor(value: any, options: BasicView = {}) {
     super(options);
     this.value = value;
@@ -188,14 +188,18 @@ class Choice extends View {
 type ChoicesOptions = BasicView & {
   choices: Choice[];
 };
-class Choices extends View {
-  constructor(options: ChoicesOptions) {
+export class Choices extends View {
+  constructor(options: ChoicesOptions = {}) {
     super(options);
-    this.choices = options.choices;
+    if (options.choices)
+      this.choices = options.choices;
   }
   public choices: Choice[] = [];
   values() {
     return this.choices.map((c) => c.value);
+  }
+  addChoice(value: any, options: BasicView = {}) {
+    this.choices.push(new Choice(value, options));
   }
   static fromJSON(json) {
     return new Choices({

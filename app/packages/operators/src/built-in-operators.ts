@@ -17,6 +17,7 @@ import {
   registerOperator,
   loadOperatorsFromServer,
   OperatorResult,
+  listLocalAndRemoteOperators
 } from "./operators";
 import { CustomColors } from "./CustomColors";
 
