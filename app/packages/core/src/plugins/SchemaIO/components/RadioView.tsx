@@ -11,7 +11,7 @@ import Header from "./Header";
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path } = props;
   const { view = {} } = schema;
-  const { choices, label, description } = view;
+  const { choices, label, description, orientation } = view;
   return (
     <FormControl>
       {(label || description) && (
@@ -28,7 +28,8 @@ export default function RadioView(props: RadioGroupProps) {
         onChange={(e, value) => {
           onChange(path, value);
         }}
-        row
+        sx={{ alignItems: "flex-start" }}
+        row={orientation !== "vertical"}
       >
         {choices.map(({ value, label, description, caption }, i) => (
           <FormControlLabel
