@@ -6,13 +6,19 @@ export default function DropdownView(props) {
   const { onChange, schema, path } = props;
   const { view = {} } = schema;
   const { choices } = view;
+
+  const choiceLabels = choices.reduce((labels, choice) => {
+    labels[choice.value] = choice.label;
+    return labels;
+  }, {});
+
   return (
     <FieldWrapper {...props}>
       <Select
         value={schema.default}
         size="small"
         fullWidth
-        renderValue={(value) => value as string} // todo: render label
+        renderValue={(value) => choiceLabels[value]}
         onChange={(e) => onChange(path, e.target.value)}
       >
         {choices.map(({ value, label, description, caption }) => (

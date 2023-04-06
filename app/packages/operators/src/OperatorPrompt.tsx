@@ -16,7 +16,6 @@ import {
 } from "@mui/material";
 import { useRecoilValue } from "recoil";
 import OperatorInput from "./OperatorInput";
-import { toJSONSchema } from "./utils";
 import { Box } from "@mui/material";
 
 const PromptContainer = styled.div`
@@ -81,11 +80,9 @@ function Prompting({ operatorPrompt }) {
     <Box>
       <Box sx={{ pb: 2 }}>
         <OperatorInput
-          inputFields={operatorPrompt.inputFields}
-          schema={toJSONSchema(operatorPrompt.inputFields)}
-          onChange={(data, id) => {
+          schema={operatorPrompt.inputFields}
+          onChange={(data) => {
             const formData = data;
-            // const { formData } = data;
             for (const field in formData) {
               operatorPrompt.setFieldValue(field, formData[field]);
             }
@@ -151,20 +148,6 @@ function getComponentForType(type: types.ANY_TYPE) {
       return List;
     default:
       null;
-  }
-}
-
-function getChangeResolverForType(type: types.ANY_TYPE) {
-  const TYPE = types.TYPES.find((t) => type instanceof t);
-  switch (TYPE) {
-    case types.Boolean:
-      return (e) => e.target.checked;
-    case types.String:
-    case types.Number:
-    case types.Enum:
-    case types.List:
-    default:
-      return (e) => e.target.value;
   }
 }
 
