@@ -3,6 +3,102 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.2.1:
+
+FiftyOne Teams 1.2.1
+--------------------
+*Released April 5, 2023*
+
+Includes all features from :ref:`FiftyOne 0.20.1 <release-notes-v0.20.1>`,
+plus:
+
+General
+
+- When your session expires, you are now automatically logged out rather than
+  being presented with a cryptic server error
+- Improved the accuracy of size estimates when exporting filepaths and/or tags
+  from the Teams UI
+
+Admin
+
+- Added support for uploading Azure storage credentials for your deployment via
+  the `Settings > Cloud storage` page
+
+SDK
+
+- Added support for working with media in Azure cloud storage. Refer to
+  :ref:`this section <teams-azure>` to see how to provide your storage
+  credentials
+
+Deployment
+
+- Added support for deploying into Microsoft Azure environments
+- Fixed a bug that prevented the dataset page from loading for deployments
+  running MongoDB 4.4
+
+.. _release-notes-v0.20.1:
+
+FiftyOne 0.20.1
+---------------
+*Released April 5, 2023*
+
+App
+
+- Added support for storing datetimes as field metadata and viewing them in the
+  App's field tooltip
+  `#2861 <https://github.com/voxel51/fiftyone/pull/2861>`_
+- Fixed a bug when pulling color-by data for sample embeddings plots when
+  viewing patches in the sample grid
+  `#2846 <https://github.com/voxel51/fiftyone/pull/2846>`_
+- Fixed a bug that prevented the sample grid from refreshing when composing
+  multiple sidebar filters
+  `#2849 <https://github.com/voxel51/fiftyone/pull/2849>`_
+- Fixed a bug that prevented field-specific mask targets from being recognized
+  when rendering segmentations in the App
+  `#2879 <https://github.com/voxel51/fiftyone/pull/2879>`_
+- Fixed a bug when rendering heatmaps stored as images on disk
+  `#2872 <https://github.com/voxel51/fiftyone/pull/2872>`_,
+  `#2880 <https://github.com/voxel51/fiftyone/pull/2880>`_
+
+Core
+
+- Added support for dynamically inferring fields on embedded lists and
+  documents
+  `#2863 <https://github.com/voxel51/fiftyone/pull/2863>`_,
+  `#2882 <https://github.com/voxel51/fiftyone/pull/2882>`_
+- Added support for listing datasets matching a glob pattern
+  `#2868 <https://github.com/voxel51/fiftyone/pull/2868>`_
+- Improved the robustness of
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` when
+  cleaning up after a failed merge
+  `#2844 <https://github.com/voxel51/fiftyone/pull/2844>`_
+- Using new libraries for ndjson and archive extraction
+  `#2864 <https://github.com/voxel51/fiftyone/pull/2864>`_
+- Fixed a bug that prevented
+  :ref:`text similarity searches <brain-similarity-text>` searches from
+  succeeding when GPU is available
+  `#2853 <https://github.com/voxel51/fiftyone/pull/2853>`_
+- Fixed a bug where
+  :meth:`stats() <fiftyone.core.collections.SampleCollection.stats>` would
+  report the wrong size for dataset views that select/exclude fields on MongoDB
+  5.2 or later
+  `#2840 <https://github.com/voxel51/fiftyone/pull/2840>`_
+- Fixed a bug with dynamic schema expansion of list fields
+  `#2855 <https://github.com/voxel51/fiftyone/pull/2855>`_
+- Fixed a bug when merging video samples into a grouped dataset that did not
+  previously contain videos
+  `#2851 <https://github.com/voxel51/fiftyone/pull/2851>`_
+- Fixed a validation bug when importing COCO datasets whose description is not
+  a string `#2848 <https://github.com/voxel51/fiftyone/pull/2848>`_
+
+Documentation
+
+- Updated the source URLs for the :ref:`Caltech-101 <dataset-zoo-caltech101>`
+  and :ref:`Caltech-256 <dataset-zoo-caltech256>` datasets
+  `#2841 <https://github.com/voxel51/fiftyone/pull/2841>`_
+- Fixed a typo in the :ref:`Caltech-256 <dataset-zoo-caltech256>` dataset
+  documentation `#2842 <https://github.com/voxel51/fiftyone/pull/2842>`_
+
 .. _release-notes-teams-v1.2:
 
 FiftyOne Teams 1.2

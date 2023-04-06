@@ -633,6 +633,18 @@ class MediaCacheConfig(EnvConfig):
             env_var="GOOGLE_APPLICATION_CREDENTIALS",
             default=None,
         )
+        self.azure_credentials_file = self.parse_path(
+            d,
+            "azure_credentials_file",
+            env_var="AZURE_CREDENTIALS_FILE",
+            default=None,
+        )
+        self.azure_profile = self.parse_string(
+            d,
+            "azure_profile",
+            env_var="AZURE_PROFILE",
+            default=None,
+        )
         self.minio_config_file = self.parse_path(
             d,
             "minio_config_file",

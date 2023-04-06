@@ -229,7 +229,11 @@ const Loadable = ({ path }: { path: string }) => {
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
 
-  return <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>;
+  return (
+    <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
+      {none ? "None" : formatted}
+    </div>
+  );
 };
 
 const useData = <T extends unknown>(path: string): T => {

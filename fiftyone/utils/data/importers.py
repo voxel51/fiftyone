@@ -636,7 +636,7 @@ def parse_dataset_info(dataset, info, overwrite=True):
     description = info.pop("description", None)
     if description is not None:
         if overwrite or not dataset.description:
-            dataset.description = description
+            dataset.description = str(description)
 
     classes = info.pop("classes", None)
     if isinstance(classes, dict):
