@@ -28,13 +28,15 @@ export const useExternalLink = (
   };
 };
 
-const ExternalLink: React.FC<Omit<
-  DetailedHTMLProps<
-    React.AnchorHTMLAttributes<HTMLAnchorElement>,
-    HTMLAnchorElement
-  >,
-  "target"
->> = ({ href, ...props }) => {
+const ExternalLink: React.FC<
+  Omit<
+    DetailedHTMLProps<
+      React.AnchorHTMLAttributes<HTMLAnchorElement>,
+      HTMLAnchorElement
+    >,
+    "target"
+  >
+> = ({ href, ...props }) => {
   const onClick = useExternalLink(href);
   return <a {...props} href={href} target="_blank" onClick={onClick} />;
 };

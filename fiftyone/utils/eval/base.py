@@ -1,7 +1,7 @@
 """
 Base evaluation methods.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,13 +18,14 @@ class BaseEvaluationResults(foe.EvaluationResults):
     """Base class for evaluation results.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`fiftyone.core.evaluation.EvaluationMethodConfig`
+            used
+        eval_key: the evaluation key
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
         classes (None): the list of possible classes. If not provided, the
@@ -33,23 +34,27 @@ class BaseEvaluationResults(foe.EvaluationResults):
             given this label for evaluation purposes
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the results were computed
+        backend (None): a :class:`fiftyone.core.evaluation.EvaluationMethod`
+            backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
+        eval_key,
         ytrue,
         ypred,
         confs=None,
         weights=None,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         ytrue_ids=None,
         ypred_ids=None,
         classes=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
+        super().__init__(samples, config, eval_key, backend=backend)
+
         if missing is None:
             missing = "(none)"
 
@@ -59,9 +64,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
         self.weights = np.asarray(weights) if weights is not None else None
-        self.eval_key = eval_key
-        self.gt_field = gt_field
-        self.pred_field = pred_field
         self.ytrue_ids = (
             np.asarray(ytrue_ids) if ytrue_ids is not None else None
         )
@@ -70,8 +72,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
-
-        self._samples = samples
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -271,10 +271,10 @@ class BaseEvaluationResults(foe.EvaluationResults):
             confusion_matrix,
             labels,
             ids=ids,
-            samples=self._samples,
-            eval_key=self.eval_key,
-            gt_field=self.gt_field,
-            pred_field=self.pred_field,
+            samples=self.samples,
+            eval_key=self.key,
+            gt_field=self.config.gt_field,
+            pred_field=self.config.pred_field,
             backend=backend,
             **kwargs,
         )
@@ -363,31 +363,27 @@ class BaseEvaluationResults(foe.EvaluationResults):
         return cmat, labels, ids
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
-        eval_key = d.get("eval_key", None)
-        gt_field = d.get("gt_field", None)
-        pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
         return cls(
+            samples,
+            config,
+            eval_key,
             ytrue,
             ypred,
             confs=confs,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
-            samples=samples,
             **kwargs,
         )
 

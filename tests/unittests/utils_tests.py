@@ -1,7 +1,7 @@
 """
 FiftyOne utilities unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,10 +13,54 @@ import numpy as np
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.media as fom
-import fiftyone.core.uid as fou
+import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
+import fiftyone.core.uid as foui
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
+
+
+class CoreUtilsTests(unittest.TestCase):
+    def test_validate_hex_color(self):
+        # Valid colors
+        fou.validate_hex_color("#FF6D04")
+        fou.validate_hex_color("#ff6d04")
+        fou.validate_hex_color("#000")
+        fou.validate_hex_color("#eee")
+
+        # Invalid colors
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("aaaaaa")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#bcedfg")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#ggg")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#FFFF")
+
+    def test_to_slug(self):
+        self.assertEqual(fou.to_slug("coco_2017"), "coco-2017")
+        self.assertEqual(fou.to_slug("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")
+        self.assertEqual(fou.to_slug("cat.DOG"), "cat-dog")
+        self.assertEqual(fou.to_slug("---z----"), "z")
+        self.assertEqual(
+            fou.to_slug("Brian's #$&@ [awesome?] dataset!"),
+            "brians-awesome-dataset",
+        )
+        self.assertEqual(
+            fou.to_slug("     sPaM     aNd  EgGs    "),
+            "spam-and-eggs",
+        )
+
+        with self.assertRaises(ValueError):
+            fou.to_slug("------")  # too short
+
+        with self.assertRaises(ValueError):
+            fou.to_slug("a" * 101)  # too long
 
 
 class LabelsTests(unittest.TestCase):
@@ -240,9 +284,27 @@ class UIDTests(unittest.TestCase):
         fo.config.do_not_track = False
         foc.UA_ID = foc.UA_DEV
 
-        fou.log_import_if_allowed(test=True)
+        foui.log_import_if_allowed(test=True)
         time.sleep(2)
-        self.assertTrue(fou._import_logged)
+        self.assertTrue(foui._import_logged)
+
+
+class ConfigTests(unittest.TestCase):
+    def test_multiple_config_cleanup(self):
+        db = foo.get_db_conn()
+        orig_config = foo.get_db_config()
+
+        # Add some duplicate documents
+        d = dict(orig_config.to_dict())
+        for _ in range(2):
+            d.pop("_id", None)
+            db.config.insert_one(d)
+
+        # Ensure that duplicate documents are automatically cleaned up
+        config = foo.get_db_config()
+
+        self.assertEqual(len(list(db.config.aggregate([]))), 1)
+        self.assertEqual(config.id, orig_config.id)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { config, animated, useSpring } from "@react-spring/web";
-import styled, { ThemeContext } from "styled-components";
-import { useService } from "@xstate/react";
 import { ReportProblem } from "@mui/icons-material";
-
+import { animated, config, useSpring } from "@react-spring/web";
+import { useService } from "@xstate/react";
+import styled from "styled-components";
 import { useFollow, useOutsideClick } from "@fiftyone/state";
+import { useTheme } from "@fiftyone/components";
+import React, { useEffect, useRef, useState } from "react";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;
@@ -30,7 +30,7 @@ const ErrorHeader = styled.div`
 
 const ErrorMessage = React.memo(
   ({ barRef, followRef, serviceRef, style, machine }) => {
-    const theme = useContext(ThemeContext);
+    const theme = useTheme();
     let state, send;
     if (machine) {
       [state, send] = machine;

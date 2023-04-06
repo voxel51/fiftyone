@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -35,6 +35,10 @@ import fiftyone.utils.quickstart as fouq
 import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
+
+# pylint: disable=import-error,no-name-in-module
+import fiftyone.brain as fob
+import fiftyone.brain.config as fobc
 
 
 _TABLE_FORMAT = "simple"
@@ -78,6 +82,7 @@ class FiftyOneCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "annotation", AnnotationCommand)
+        _register_command(subparsers, "brain", BrainCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
@@ -408,15 +413,23 @@ class DatasetsListCommand(Command):
 
         # List available datasets
         fiftyone datasets list
+
+        # List datasets matching a given pattern
+        fiftyone datasets list --glob-patt 'quickstart-*'
     """
 
     @staticmethod
     def setup(parser):
-        pass
+        parser.add_argument(
+            "-p",
+            "--glob-patt",
+            metavar="PATT",
+            help="an optional glob pattern of dataset names to include",
+        )
 
     @staticmethod
     def execute(parser, args):
-        datasets = fod.list_datasets()
+        datasets = fod.list_datasets(glob_patt=args.glob_patt)
 
         if datasets:
             for dataset in datasets:
@@ -430,8 +443,9 @@ class DatasetsInfoCommand(Command):
 
     Examples::
 
-        # Print basic information about all datasets
+        # Print basic information about multiple datasets
         fiftyone datasets info
+        fiftyone datasets info --glob-patt 'quickstart-*'
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
@@ -446,6 +460,12 @@ class DatasetsInfoCommand(Command):
             nargs="?",
             metavar="NAME",
             help="the name of a dataset",
+        )
+        parser.add_argument(
+            "-p",
+            "--glob-patt",
+            metavar="PATT",
+            help="an optional glob pattern of dataset names to include",
         )
         parser.add_argument(
             "-s",
@@ -466,7 +486,7 @@ class DatasetsInfoCommand(Command):
         if args.name:
             _print_dataset_info(args.name)
         else:
-            _print_all_dataset_info(args.sort_by, args.reverse)
+            _print_all_dataset_info(args.glob_patt, args.sort_by, args.reverse)
 
 
 def _print_dataset_info(name):
@@ -474,8 +494,8 @@ def _print_dataset_info(name):
     print(dataset)
 
 
-def _print_all_dataset_info(sort_by, reverse):
-    info = fod.list_datasets(info=True)
+def _print_all_dataset_info(glob_patt, sort_by, reverse):
+    info = fod.list_datasets(glob_patt=glob_patt, info=True)
 
     headers = [
         "name",
@@ -1512,6 +1532,70 @@ class AppConnectCommand(Command):
         webbrowser.open(url, new=2)
 
         _wait()
+
+
+class BrainCommand(Command):
+    """Tools for working with the FiftyOne Brain."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", BrainConfigCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class BrainConfigCommand(Command):
+    """Tools for working with your FiftyOne Brain config.
+
+    Examples::
+
+        # Print your entire brain config
+        fiftyone brain config
+
+        # Print a specific brain config field
+        fiftyone brain config <field>
+
+        # Print the location of your brain config on disk (if one exists)
+        fiftyone brain config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="a brain config field to print",
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your brain config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            brain_config_path = fobc.locate_brain_config()
+            if os.path.isfile(brain_config_path):
+                print(brain_config_path)
+            else:
+                print("No brain config file found at '%s'" % brain_config_path)
+
+            return
+
+        if args.field:
+            field = getattr(fob.brain_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fob.brain_config)
 
 
 class ZooCommand(Command):

@@ -1,7 +1,7 @@
 """
 Tests for the :mod:`fiftyone.utils.labelstudio` module.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 =======

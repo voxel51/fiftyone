@@ -1,7 +1,7 @@
 """
 Notebook Session HTML templates
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,6 +10,12 @@ from jinja2 import Template
 
 SCREENSHOT_STYLE = """
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
 
 #focontainer-{{ subscription }} {
   position: relative;
@@ -137,3 +143,50 @@ SCREENSHOT_COLAB_SCRIPT = """
     });
 })()
 """
+
+
+SCREENSHOT_DATABRICKS_SCRIPT = """
+   (function() {
+     var container = document.getElementById("focontainer-{{ subscription }}");
+     var overlay = document.getElementById("fooverlay-{{ subscription }}");
+     var params = new URLSearchParams(window.location.search)
+     var proxy = params.get("proxy");
+     var url = new URL(window.location.toString());
+     params.set("context", "databricks");
+     params.set("polling", true);
+     params.set("subscription", "{{ subscription }}");
+     url.search = params.toString();
+     url.pathname = proxy;
+     fetch(`{{ proxy }}screenshot/{{ subscription }}`)
+     .then(() => {
+        overlay.addEventListener("click", () => {
+          window.location = url.toString();
+        });
+        container.addEventListener("mouseenter", () => overlay.style.display = "block");
+        container.addEventListener("mouseleave", () => overlay.style.display = "none");
+     });
+   })();
+"""
+
+SCREENSHOT_DATABRICKS = Template(
+    """
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Palanquin&display=swap" as="font" type="font/woff" crossorigin>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Explore, Analyze, Curate" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FiftyOne</title>
+    <style>
+      %s
+    </style>
+  </head>
+  <body>
+    %s
+    <script type="text/javascript">%s</script>
+  </body>
+</html>
+"""
+    % (SCREENSHOT_STYLE, SCREENSHOT_DIV, SCREENSHOT_DATABRICKS_SCRIPT)
+)

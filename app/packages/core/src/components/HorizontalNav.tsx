@@ -4,7 +4,7 @@ import { Assessment, Fullscreen, FullscreenExit } from "@mui/icons-material";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
-import { PillButton } from "./utils";
+import { PillButton } from "@fiftyone/components";
 import Distributions from "./Distributions";
 import { useWindowSize } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
@@ -108,6 +108,7 @@ const HorizontalNav = ({}: Props) => {
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
   const hasPlot = buttonLabels.includes(activePlot);
   const compactLayout = useRecoilValue(fos.compactLayout);
+  const containerHeight = maximized ? windowHeight - 73 : height;
 
   useEffect(() => {
     if (!hasPlot) {
@@ -168,7 +169,7 @@ const HorizontalNav = ({}: Props) => {
       {expanded && (
         <Container
           size={{
-            height: maximized ? windowHeight - 73 : height,
+            height: containerHeight,
             width: "100%",
           }}
           minHeight={closedHeight}
@@ -193,6 +194,7 @@ const HorizontalNav = ({}: Props) => {
             pluginPlotLabels={pluginPlotLabels}
             distributionPlots={DISTRIBUTION_PLOTS}
             pluginPlots={pluginPlots}
+            containerHeight={containerHeight}
           />
         </Container>
       )}
@@ -205,6 +207,7 @@ function ActivePlot({
   pluginPlots,
   pluginPlotLabels,
   distributionPlots,
+  containerHeight,
 }) {
   const isPluginPlot = pluginPlotLabels.includes(active);
   const isDistPlot = distributionPlots.includes(active);
@@ -214,7 +217,7 @@ function ActivePlot({
 
   if (isDistPlot) return <Distributions key={active} group={active} />;
   if (plugin) {
-    return <plugin.component key={active} />;
+    return <plugin.component key={active} containerHeight={containerHeight} />;
   }
 
   return null;

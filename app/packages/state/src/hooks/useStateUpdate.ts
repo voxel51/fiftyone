@@ -1,40 +1,37 @@
 import { RGB } from "@fiftyone/looker";
+import { useColorScheme } from "@mui/material";
 import {
   TransactionInterface_UNSTABLE,
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import {
-  aggregationsTick,
+  dataset as datasetAtom,
+  extendedSelection,
+  filters,
+  groupSlice,
+  groupStatistics,
   modal,
+  patching,
+  resolveGroups,
+  savingFilters,
+  selectedLabels,
+  selectedMediaField,
+  selectedSamples,
+  sessionSpaces,
   sidebarGroupsDefinition,
+  sidebarMode,
+  similarityParameters,
+  similaritySorting,
   State,
   tagging,
-  _activeFields,
-  dataset as datasetAtom,
-  resolveGroups,
-  filters,
-  colorPool as colorPoolAtom,
-  selectedLabels,
-  appConfig,
-  colorscale as colorscaleAtom,
-  selectedSamples,
-  patching,
-  similaritySorting,
-  savingFilters,
-  groupSlice,
-  similarityParameters,
-  extendedSelection,
-  selectedMediaField,
-  sidebarMode,
-  groupStatistics,
   theme,
+  _activeFields,
 } from "../recoil";
-import { useColorScheme } from "@mui/material";
 
 import * as viewAtoms from "../recoil/view";
 import { collapseFields, viewsAreEqual } from "../utils";
 
-interface StateUpdate {
+export interface StateUpdate {
   colorscale?: RGB[];
   config?: State.Config;
   dataset?: State.Dataset;
@@ -45,31 +42,33 @@ export type StateResolver =
   | StateUpdate
   | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
-const useStateUpdate = () => {
+const useStateUpdate = (ignoreSpaces = false) => {
   const { setMode } = useColorScheme();
 
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { colorscale, config, dataset, state } =
+      const { config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, reset, set } = t;
-
       if (state) {
         const view = get(viewAtoms.view);
+        if (dataset?.stages && !state.view) {
+          state.view = dataset.stages;
+        }
 
         if (!viewsAreEqual(view || [], state.view || [])) {
           set(viewAtoms.view, state.view || []);
+
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
         }
+        set(viewAtoms.viewName, state.viewName || null);
       }
 
-      colorscale !== undefined && set(colorscaleAtom, colorscale);
-
-      config !== undefined && set(appConfig, config);
-      state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
+      const viewCls = state?.viewCls || dataset?.viewCls;
+      viewCls !== undefined && set(viewAtoms.viewCls, viewCls);
 
       state?.selected && set(selectedSamples, new Set(state.selected));
       state?.selectedLabels &&
@@ -87,17 +86,17 @@ const useStateUpdate = () => {
         set(theme, config.theme);
         setMode(config.theme);
       }
-      const colorPool = get(colorPoolAtom);
-      if (
-        config &&
-        JSON.stringify(config.colorPool) !== JSON.stringify(colorPool)
-      ) {
-        set(colorPoolAtom, config.colorPool);
+
+      if (state?.spaces) {
+        set(sessionSpaces, state.spaces);
+      } else if (!ignoreSpaces) {
+        reset(sessionSpaces);
       }
 
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
+        dataset.savedViews = Object.values(dataset.savedViews || []);
         dataset.sampleFields = collapseFields(dataset.sampleFields);
         dataset.frameFields = collapseFields(dataset.frameFields);
         const previousDataset = get(datasetAtom);
@@ -108,7 +107,7 @@ const useStateUpdate = () => {
         if (
           !previousDataset ||
           previousDataset.id !== dataset.id ||
-          dataset.groupSlice !== previousDataset.groupSlice
+          dataset.groupSlice != previousDataset.groupSlice
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
@@ -125,13 +124,21 @@ const useStateUpdate = () => {
           reset(groupStatistics(false));
 
           reset(similarityParameters);
+
+          const getMediaPathWithOverride = (f: string) =>
+            dataset.sampleFields.map((field) => field.name).includes(f)
+              ? f
+              : "filepath";
+
           set(
             selectedMediaField(false),
-            dataset?.appConfig?.gridMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.gridMediaField) ||
+              "filepath"
           );
           set(
             selectedMediaField(true),
-            dataset?.appConfig?.modalMediaField || "filepath"
+            getMediaPathWithOverride(dataset?.appConfig?.modalMediaField) ||
+              "filepath"
           );
           reset(extendedSelection);
           reset(filters);
@@ -140,6 +147,7 @@ const useStateUpdate = () => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+
         set(datasetAtom, dataset);
       }
 

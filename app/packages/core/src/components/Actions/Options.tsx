@@ -1,5 +1,5 @@
-import React from "react";
 import { Autorenew, Check } from "@mui/icons-material";
+import React from "react";
 import {
   constSelector,
   useRecoilState,
@@ -7,12 +7,9 @@ import {
   useSetRecoilState,
 } from "recoil";
 
-import Checkbox from "../Common/Checkbox";
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
+import Checkbox from "../Common/Checkbox";
 
-import { Button } from "../utils";
-import Popout from "./Popout";
-import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
@@ -22,6 +19,9 @@ import {
   sidebarMode,
 } from "@fiftyone/state";
 import RadioGroup from "../Common/RadioGroup";
+import { Slider } from "../Common/RangeSlider";
+import { Button } from "../utils";
+import Popout from "./Popout";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -191,14 +191,13 @@ const MediaFields = ({ modal }) => {
   const [selectedMediaField, setSelectedMediaField] = useRecoilState(
     fos.selectedMediaField(modal)
   );
-
   const mediaFields = useRecoilValue(fos.mediaFields);
 
   if (mediaFields.length <= 1) return null;
 
   return (
     <>
-      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+      <PopoutSectionTitle>Media field</PopoutSectionTitle>
       <RadioGroup
         choices={mediaFields}
         value={selectedMediaField}
@@ -235,10 +234,10 @@ const SidebarMode = ({ modal }) => {
       <PopoutSectionTitle>Sidebar mode</PopoutSectionTitle>
       <TabOption
         active={mode}
-        options={["all", "best", "fast"].map((value) => ({
+        options={["fast", "best", "all"].map((value) => ({
           text: value,
           title: value,
-          onClick: () => setMode(value as "all" | "best" | "fast"),
+          onClick: () => setMode(value as "fast" | "best" | "all"),
         }))}
       />
     </>

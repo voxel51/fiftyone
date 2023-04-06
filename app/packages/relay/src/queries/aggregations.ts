@@ -1,6 +1,8 @@
 import { graphql } from "react-relay";
 
-export default graphql`
+import r from "../resolve";
+
+export default r(graphql`
   query aggregationsQuery($form: AggregationForm!) {
     aggregations(form: $form) {
       __typename
@@ -37,4 +39,4 @@ export default graphql`
       }
     }
   }
-`;
+`);

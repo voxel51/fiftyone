@@ -46,6 +46,7 @@
   position: absolute;
   overflow: auto;
   max-width: 480px;
+  z-index: 1000;
 }
 
 .loadingFooter {
@@ -60,4 +61,37 @@
   flex-direction: column;
   text-decoration: none;
   border-top: 1px solid var(--joy-palette-primary-plainBorder);
+}
+
+.loadingFooter:after {
+  text-align: right;
+  color: var(--joy-palette-text-primary);
+  padding: 0 0.25rem;
+  font-size: 1rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  text-decoration: none;
+  border-top: 1px solid var(--joy-palette-primary-plainBorder);
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: bottom;
+  -webkit-animation: ellipsis steps(4, end) 900ms infinite;
+  animation: ellipsis steps(4, end) 900ms infinite;
+  content: "\2026"; /* ascii code for the ellipsis character */
+  width: 0px;
+}
+
+@keyframes ellipsis {
+  to {
+    width: 1.25em;
+  }
+}
+
+@-webkit-keyframes ellipsis {
+  to {
+    width: 1.25em;
+  }
 }

@@ -9,5 +9,5 @@ export default <UserConfig>{
     },
     target: "es2015",
     minify: false,
-  }
+  },
 };

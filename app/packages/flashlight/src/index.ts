@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
@@ -27,7 +27,7 @@ import {
 import tile from "./tile";
 import { argMin, getDims } from "./util";
 
-export interface FlashlightOptions extends Optional<Options> {}
+export type FlashlightOptions = Optional<Options>;
 
 export interface FlashlightConfig<K> {
   get: Get<K>;
@@ -41,14 +41,14 @@ export interface FlashlightConfig<K> {
 }
 
 export default class Flashlight<K> {
-  private loading: boolean = false;
+  private loading = false;
   private container: HTMLDivElement;
   private element: HTMLDivElement;
   private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
   private pixelsSet: boolean;
-  private ctx: number = 0;
+  private ctx = 0;
   private resizeTimeout: ReturnType<typeof setTimeout>;
 
   constructor(config: FlashlightConfig<K>) {
@@ -146,13 +146,11 @@ export default class Flashlight<K> {
     return Boolean(this.element.parentElement);
   }
   private showPixels() {
-    !this.pixelsSet && this.container.classList.add(flashlightPixels);
-    this.pixelsSet = true;
+    this.container.classList.add(flashlightPixels);
   }
 
   private hidePixels() {
-    this.pixelsSet && this.container.classList.remove(flashlightPixels);
-    this.pixelsSet = false;
+    this.container.classList.remove(flashlightPixels);
   }
 
   attach(element: HTMLElement | string): void {
@@ -162,9 +160,6 @@ export default class Flashlight<K> {
 
     const { width, height } = getDims(this.config.horizontal, element);
 
-    if (width === 0) {
-      return;
-    }
     this.state.width = width - 16;
     this.state.containerHeight = height;
 
@@ -308,7 +303,7 @@ export default class Flashlight<K> {
     }
 
     this.loading = true;
-    let ctx = this.ctx;
+    const ctx = this.ctx;
     return this.state
       .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
       .then(({ items, nextRequestKey }) => {
@@ -438,7 +433,7 @@ export default class Flashlight<K> {
     });
   }
 
-  private render(zooming: boolean = false) {
+  private render(zooming = false) {
     if (
       this.state.sections.length === 0 &&
       this.state.currentRequestKey === null

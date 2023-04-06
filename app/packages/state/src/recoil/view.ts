@@ -12,6 +12,11 @@ export const viewCls = atom<string>({
   default: null,
 });
 
+export const viewName = atom<string>({
+  key: "viewName",
+  default: null,
+});
+
 export const isRootView = selector<boolean>({
   key: "isRootView",
   get: ({ get }) =>
@@ -122,4 +127,31 @@ export const isFramesView = selector<boolean>({
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+export const currentViewSlug = selector<string>({
+  key: "currentViewSlug",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("view") || null;
+  },
+});
+
+export const DEFAULT_SELECTED: DatasetViewOption = {
+  id: "1",
+  label: "Unsaved view",
+  color: "#9e9e9e",
+  description: "Unsaved view",
+  slug: "unsaved-view",
+  viewStages: [],
+};
+
+export type DatasetViewOption = Pick<
+  State.SavedView,
+  "id" | "description" | "color" | "viewStages"
+> & { label: string; slug: string };
+
+export const selectedSavedViewState = atom<DatasetViewOption | null>({
+  key: "selectedSavedViewState",
+  default: DEFAULT_SELECTED,
 });

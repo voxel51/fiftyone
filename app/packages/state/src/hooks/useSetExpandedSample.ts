@@ -19,7 +19,8 @@ export default (withGroup: boolean = true) => {
         group &&
           withGroup &&
           field &&
-          set(groupSlice(true), sample.sample[field].name);
+          sample.sample[field]?.name &&
+          set(groupSlice(true), sample.sample[field]?.name);
       },
     [group, field, withGroup]
   );

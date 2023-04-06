@@ -2,9 +2,10 @@ import {
   EventSourceMessage,
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
+import fetchRetry from "fetch-retry";
 import { isElectron } from "./electron";
 
-import { ServerError } from "./errors";
+import { NetworkError, ServerError } from "./errors";
 
 let fetchOrigin: string;
 let fetchFunctionSingleton: FetchFunction;
@@ -16,7 +17,9 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob"
+    result?: "json" | "blob" | "text" | "arrayBuffer",
+    retries?: number,
+    retryCodes?: number[] | "arrayBuffer"
   ): Promise<R>;
 }
 
@@ -29,15 +32,24 @@ export const getFetchHeaders = () => {
 };
 
 export const getFetchOrigin = () => {
-  if (window.FIFTYONE_SERVER_ADDRESS) {
+  // window is not defined in the web worker
+  if (hasWindow && window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
+
   return fetchOrigin;
 };
 export function getFetchPathPrefix(): string {
-  if (typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
+  // window is not defined in the web worker
+  if (hasWindow && typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
     return window.FIFTYONE_SERVER_PATH_PREFIX;
   }
+
+  if (hasWindow) {
+    const proxy = new URL(window.location.toString()).searchParams.get("proxy");
+    return proxy ?? "";
+  }
+
   return "";
 }
 
@@ -61,7 +73,9 @@ export const setFetchFunction = (
     method,
     path,
     body = null,
-    result = "json"
+    result = "json",
+    retries = 2,
+    retryCodes = [502, 503, 504]
   ) => {
     let url: string;
 
@@ -73,23 +87,71 @@ export const setFetchFunction = (
       new URL(path);
       url = path;
     } catch {
-      url = `${origin}${path}`;
+      url = `${origin}${
+        !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
+      }${path}`;
     }
 
-    const response = await fetch(url, {
+    headers = {
+      "Content-Type": "application/json",
+      ...headers,
+    };
+
+    const fetchCall = retries
+      ? fetchRetry(fetch, {
+          retries,
+          retryDelay: 0,
+          retryOn: (attempt, error, response) => {
+            if (
+              error !== null ||
+              (retryCodes.includes(response.status) && attempt < retries)
+            ) {
+              return true;
+            }
+          },
+        })
+      : fetch;
+
+    const response = await fetchCall(url, {
       method: method,
       cache: "no-cache",
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
     });
 
     if (response.status >= 400) {
-      const error = await response.json();
-      throw new ServerError((error as unknown as { stack: string }).stack);
+      const errorMetadata = {
+        code: response.status,
+        statusText: response.statusText,
+        bodyResponse: "",
+        route: response.url,
+        payload: body as object,
+        stack: null,
+        requestHeaders: headers,
+        responseHeaders: response.headers,
+        message: "",
+      };
+      let ErrorClass = NetworkError;
+
+      try {
+        const error = await response.json();
+
+        errorMetadata.bodyResponse = error;
+        if (error.stack) errorMetadata.stack = error?.stack;
+        errorMetadata.message = error?.message;
+        ErrorClass = ServerError;
+      } catch {
+        // if response body is not JSON
+        try {
+          errorMetadata.bodyResponse = await response.text();
+        } catch {
+          // skip response body if it cannot be read as text
+        }
+        errorMetadata.message = response.statusText;
+      }
+
+      throw new ErrorClass(errorMetadata, errorMetadata.message);
     }
 
     return await response[result]();
@@ -101,9 +163,10 @@ export const setFetchFunction = (
 const isWorker =
   // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+const hasWindow = typeof window !== "undefined" && !isWorker;
 
 export const getAPI = () => {
-  if (import.meta.env.VITE_API) {
+  if (import.meta.env?.VITE_API) {
     return import.meta.env.VITE_API;
   }
   if (window.FIFTYONE_SERVER_ADDRESS) {
@@ -116,7 +179,7 @@ export const getAPI = () => {
     : window.location.origin;
 };
 
-if (!isWorker) {
+if (hasWindow) {
   setFetchFunction(getAPI(), {}, getFetchPathPrefix());
 }
 
@@ -124,7 +187,7 @@ class RetriableError extends Error {}
 class FatalError extends Error {}
 
 const polling =
-  !isWorker &&
+  hasWindow &&
   typeof new URLSearchParams(window.location.search).get("polling") ===
     "string";
 
@@ -195,7 +258,10 @@ export const getEventSource = (
               throw new Error(`${response.status} ${response.url}`);
             }
 
-            throw new ServerError((err as unknown as { stack: string }).stack);
+            throw new ServerError(
+              {},
+              (err as unknown as { stack: string }).stack
+            );
           }
 
           return response;
@@ -209,7 +275,7 @@ export const getEventSource = (
 };
 
 export const sendEvent = async (data: {}) => {
-  return await getFetchFunction()("POST", "/event", data);
+  return await getFetchFunction()("POST", "event", data);
 };
 
 interface PollingEventResponse {
@@ -229,7 +295,7 @@ const pollingEventSource = (
   },
   signal: AbortSignal,
   body = {},
-  opened: boolean = false
+  opened = false
 ): void => {
   if (signal.aborted) {
     return;

@@ -1,13 +1,12 @@
 """
 Utilities for documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 from datetime import date, datetime
-import itertools
+import inspect
 import json
 import numbers
 import six
@@ -175,6 +174,123 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
         )
 
 
+def create_field(
+    name,
+    ftype,
+    embedded_doc_type=None,
+    subfield=None,
+    fields=None,
+    db_field=None,
+    description=None,
+    info=None,
+    **kwargs,
+):
+    """Creates the field defined by the given specification.
+
+    .. note::
+
+        This method is used exclusively to create user-defined (non-default)
+        fields. Any parameters accepted here must be stored on
+        :class:`fiftyone.core.odm.dataset.SampleFieldDocument` or else datasets
+        will "lose" any additional decorations when they are loaded from the
+        database.
+
+    Args:
+        name: the field name
+        ftype: the field type to create. Must be a subclass of
+            :class:`fiftyone.core.fields.Field`
+        embedded_doc_type (None): the
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the field.
+            Only applicable when ``ftype`` is
+            :class:`fiftyone.core.fields.EmbeddedDocumentField`
+        subfield (None): the :class:`fiftyone.core.fields.Field` type of the
+            contained field. Only applicable when ``ftype`` is
+            :class:`fiftyone.core.fields.ListField` or
+            :class:`fiftyone.core.fields.DictField`
+        fields (None): a list of :class:`fiftyone.core.fields.Field` instances
+            defining embedded document attributes. Only applicable when
+            ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
+        db_field (None): the database field to store this field in. By default,
+            ``name`` is used
+        description (None): an optional description
+        info (None): an optional info dict
+
+    Returns:
+        a :class:`fiftyone.core.fields.Field`
+    """
+    if db_field is None:
+        if issubclass(ftype, fof.ObjectIdField) and not name.startswith("_"):
+            db_field = "_" + name
+        else:
+            db_field = name
+
+    # All user-defined fields are nullable
+    field_kwargs = dict(
+        null=True, db_field=db_field, description=description, info=info
+    )
+    field_kwargs.update(kwargs)
+
+    if fields is not None:
+        fields = [
+            create_field(**f) if not isinstance(f, fof.Field) else f
+            for f in fields
+        ]
+
+    if issubclass(ftype, (fof.ListField, fof.DictField)):
+        if subfield is not None:
+            if inspect.isclass(subfield):
+                if issubclass(subfield, fof.EmbeddedDocumentField):
+                    subfield = subfield(embedded_doc_type)
+                else:
+                    subfield = subfield()
+
+            if not isinstance(subfield, fof.Field):
+                raise ValueError(
+                    "Invalid subfield type %s; must be a subclass of %s"
+                    % (type(subfield), fof.Field)
+                )
+
+            if (
+                isinstance(subfield, fof.EmbeddedDocumentField)
+                and fields is not None
+            ):
+                subfield.fields = fields
+
+            field_kwargs["field"] = subfield
+    elif issubclass(ftype, fof.EmbeddedDocumentField):
+        if embedded_doc_type is None or not issubclass(
+            embedded_doc_type, fooe.BaseEmbeddedDocument
+        ):
+            raise ValueError(
+                "Invalid embedded_doc_type %s; must be a subclass of %s"
+                % (embedded_doc_type, fooe.BaseEmbeddedDocument)
+            )
+
+        field_kwargs["document_type"] = embedded_doc_type
+        field_kwargs["fields"] = fields or []
+
+    field = ftype(**field_kwargs)
+    field.name = name
+
+    return field
+
+
+def create_implied_field(path, value, dynamic=False):
+    """Creates the field for the given value.
+
+    Args:
+        path: the field name or path
+        value: a value
+        dynamic (False): whether to declare dynamic embedded document fields
+
+    Returns:
+        a :class:`fiftyone.core.fields.Field`
+    """
+    field_name = path.rsplit(".", 1)[-1]
+    kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
+    return create_field(field_name, **kwargs)
+
+
 def get_field_kwargs(field):
     """Constructs the field keyword arguments dictionary for the given field.
 
@@ -252,7 +368,7 @@ def get_implied_field_kwargs(value, dynamic=False):
     if isinstance(value, (list, tuple)):
         kwargs = {"ftype": fof.ListField}
 
-        value_types = set(_get_list_value_type(v) for v in value)
+        value_types = set(_get_field_type(v) for v in value)
         value_types.discard(None)
 
         if value_types == {fof.IntField, fof.FloatField}:
@@ -263,10 +379,10 @@ def get_implied_field_kwargs(value, dynamic=False):
             kwargs["subfield"] = value_type
 
             if value_type == fof.EmbeddedDocumentField:
-                kwargs["embedded_doc_type"] = value_type.document_type
-                kwargs["fields"] = _parse_embedded_doc_list_fields(
-                    value, dynamic
-                )
+                document_type = _get_list_subfield_type(value)
+                fields = _parse_embedded_doc_list_fields(value, dynamic)
+                kwargs["embedded_doc_type"] = document_type
+                kwargs["fields"] = fields
 
         return kwargs
 
@@ -297,10 +413,9 @@ def _get_field_kwargs(value, field, dynamic):
         if field is not None:
             kwargs["subfield"] = type(field)
             if isinstance(field, fof.EmbeddedDocumentField):
+                fields = _parse_embedded_doc_list_fields(value, dynamic)
                 kwargs["embedded_doc_type"] = field.document_type
-                kwargs["fields"] = _parse_embedded_doc_list_fields(
-                    value, dynamic
-                )
+                kwargs["fields"] = fields
     elif isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
         kwargs["fields"] = _parse_embedded_doc_fields(value, dynamic)
@@ -344,32 +459,31 @@ def _parse_embedded_doc_list_fields(values, dynamic):
         return []
 
     fields_dict = {}
-    fields = [_parse_embedded_doc_fields(v, dynamic) for v in values]
-    _merge_embedded_doc_fields(fields_dict, fields)
+    for value in values:
+        fields = _parse_embedded_doc_fields(value, dynamic)
+        _merge_embedded_doc_fields(fields_dict, fields)
+
     return _finalize_embedded_doc_fields(fields_dict)
 
 
-def _merge_embedded_doc_fields(fields_dict, fields_list):
-    for fields in fields_list:
-        for field in fields:
-            ftype = field["ftype"]
-            name = field["name"]
+def _merge_embedded_doc_fields(fields_dict, fields):
+    for field in fields:
+        ftype = field["ftype"]
+        name = field["name"]
 
-            if name not in fields_dict:
-                fields_dict[name] = field
-                if ftype == fof.EmbeddedDocumentField:
-                    field["fields"] = {f["name"]: f for f in field["fields"]}
-            else:
-                efield = fields_dict[name]
-                etype = efield["ftype"]
-                if etype != ftype:
-                    # @todo could provide an `add_mixed=True` option to declare
-                    # mixed fields like this as a generic `Field`
-                    fields_dict[name] = None
-                elif ftype == fof.EmbeddedDocumentField:
-                    _merge_embedded_doc_fields(
-                        efield["fields"], field["fields"]
-                    )
+        if name not in fields_dict:
+            fields_dict[name] = field
+            if ftype == fof.EmbeddedDocumentField:
+                field["fields"] = {f["name"]: f for f in field["fields"]}
+        else:
+            efield = fields_dict[name]
+            etype = efield["ftype"]
+            if etype != ftype:
+                # @todo could provide an `add_mixed=True` option to declare
+                # mixed fields like this as a generic `Field`
+                fields_dict[name] = None
+            elif ftype == fof.EmbeddedDocumentField:
+                _merge_embedded_doc_fields(efield["fields"], field["fields"])
 
 
 def _finalize_embedded_doc_fields(fields_dict):
@@ -377,7 +491,7 @@ def _finalize_embedded_doc_fields(fields_dict):
     for field in fields_dict.values():
         if field is not None:
             fields.append(field)
-            if field.get("fype") == fof.EmbeddedDocumentField:
+            if field["ftype"] == fof.EmbeddedDocumentField:
                 field["fields"] = _finalize_embedded_doc_fields(
                     field["fields"]
                 )
@@ -440,7 +554,7 @@ def validate_fields_match(name, field, existing_field):
             )
 
 
-def _get_list_value_type(value):
+def _get_field_type(value):
     if isinstance(value, (bool, np.bool_)):
         return fof.BooleanField
 
@@ -464,6 +578,14 @@ def _get_list_value_type(value):
 
     if isinstance(value, date):
         return fof.DateField
+
+    return None
+
+
+def _get_list_subfield_type(values):
+    for v in values:
+        if v is not None:
+            return type(v)
 
     return None
 
@@ -507,7 +629,7 @@ class DocumentRegistry(object):
             "Could not locate document class '%s'.\n\nIf you are working with "
             "a dataset that uses custom embedded documents, you must add them "
             "to FiftyOne's module path. See "
-            "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#custom-embedded-documents "
+            "https://docs.voxel51.com/user_guide/using_datasets.html#custom-embedded-documents "
             "for more information" % name
         )
 

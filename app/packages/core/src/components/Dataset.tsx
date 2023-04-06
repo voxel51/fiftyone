@@ -1,11 +1,10 @@
 import { modal } from "@fiftyone/state";
-import React, { Suspense } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import SamplesContainer from "./SamplesContainer";
-import HorizontalNav from "../components/HorizontalNav";
 import Modal from "./Modal";
+import SamplesContainer from "./SamplesContainer";
 
 const Container = styled.div`
   height: 100%;
@@ -29,7 +28,6 @@ function Dataset() {
     <>
       {isModalActive && <Modal />}
       <Container>
-        <HorizontalNav key={"nav"} />
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />
         </Body>

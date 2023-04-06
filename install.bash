@@ -4,7 +4,7 @@
 # Usage:
 #   bash install.bash
 #
-# Copyright 2017-2022, Voxel51, Inc.
+# Copyright 2017-2023, Voxel51, Inc.
 # voxel51.com
 #
 
@@ -109,7 +109,7 @@ fi
 
 if [ ${VOXEL51_INSTALL} = false ]; then
     echo "***** INSTALLING FIFTYONE-BRAIN *****"
-    pip install fiftyone-brain
+    pip install --upgrade fiftyone-brain
 fi
 
 echo "***** INSTALLING FIFTYONE *****"

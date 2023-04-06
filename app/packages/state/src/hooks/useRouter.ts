@@ -8,10 +8,14 @@ import {
   getEnvironment,
 } from "../routing";
 
-let currentEnvironment: Environment = null;
+let currentEnvironment: Environment = getEnvironment();
 
 export const getCurrentEnvironment = () => {
   return currentEnvironment;
+};
+
+export const setCurrentEnvironment = (environment: Environment) => {
+  currentEnvironment = environment;
 };
 
 const useRouter = (

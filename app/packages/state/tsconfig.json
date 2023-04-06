@@ -15,6 +15,6 @@
         "plugins": [{ "name": "typescript-plugin-css-modules" }],
         "composite": true
     },
-    "include": ["./src"],
+    "include": ["./__mocks__", "./src", "tests/recoil/options.test.ts"],
     "exclude": ["node_modules"]
 }

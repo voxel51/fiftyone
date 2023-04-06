@@ -28,7 +28,25 @@ const makeRoutes = (environment: Environment): RouteDefinition<any>[] => {
           exact: true,
         },
         {
+          path: "/datasets/:name/samples",
+          queryParams: { view: "savedViewSlug" },
+          component: {
+            name: "./Root/Datasets",
+            loader: () =>
+              import("./Root/Datasets").then((result) => result.default),
+          },
+          query: {
+            name: "./__generated__/DatasetQuery.graphql",
+            loader: () =>
+              import("./__generated__/DatasetQuery.graphql").then(
+                (query) => query.default
+              ),
+          },
+          exact: true,
+        },
+        {
           path: "/datasets/:name",
+          queryParams: { view: "savedViewSlug" },
           component: {
             name: "./Root/Datasets",
             loader: () =>

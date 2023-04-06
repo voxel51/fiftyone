@@ -2,7 +2,7 @@
 Utilities for working with
 `Lightning Flash <https://github.com/PyTorchLightning/lightning-flash>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,6 @@ import itertools
 import numpy as np
 
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 fou.ensure_import("flash>=0.7dev")
@@ -41,6 +40,8 @@ def apply_flash_model(
     store_logits=False,
     batch_size=None,
     num_workers=None,
+    output_dir=None,
+    rel_dir=None,
     transform_kwargs=None,
     trainer_kwargs=None,
 ):
@@ -62,6 +63,17 @@ def apply_flash_model(
         batch_size (None): an optional batch size to use. If not provided, a
             default batch size is used
         num_workers (None): the number of workers for the data loader to use
+        output_dir (None): an optional output directory in which to write
+            segmentation images. Only applicable if the model generates
+            segmentations. If none is provided, the segmentations are stored in
+            the database
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each segmentation
+            image. This argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
         transform_kwargs (None): an optional dict of transform kwargs to pass
             into the created data module used by some models
         trainer_kwargs (None): an optional dict of kwargs used to initialize the
@@ -90,9 +102,37 @@ def apply_flash_model(
         model, datamodule=datamodule, output=output
     )
     predictions = list(itertools.chain.from_iterable(predictions))
-    predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
+    if output_dir is not None:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+        )
+        for p in predictions:
+            _export_arrays(p["predictions"], p["filepath"], filename_maker)
+
+    predictions = {p["filepath"]: p["predictions"] for p in predictions}
     samples.set_values(label_field, predictions, key_field="filepath")
+
+
+def _export_arrays(label, input_path, filename_maker):
+    if isinstance(label, dict):
+        for _label in label.values():
+            _do_export_array(_label, input_path, filename_maker)
+    else:
+        _do_export_array(label, input_path, filename_maker)
+
+
+def _do_export_array(label, input_path, filename_maker):
+    if isinstance(label, fol.Segmentation):
+        mask_path = filename_maker.get_output_path(
+            input_path, output_ext=".png"
+        )
+        label.export_mask(mask_path, update=True)
+    elif isinstance(label, fol.Heatmap):
+        map_path = filename_maker.get_output_path(
+            input_path, output_ext=".png"
+        )
+        label.export_map(map_path, update=True)
 
 
 def compute_flash_embeddings(
@@ -171,7 +211,7 @@ def _get_output(model, confidence_thresh, store_logits):
         prev_args = {}
         try:
             prev_args = dict(inspect.getmembers(model.output))
-        except AttributeError as e:
+        except AttributeError:
             pass
 
         kwargs = {

@@ -28,11 +28,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf"],
@@ -66,11 +68,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf"],
@@ -375,11 +379,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -411,11 +417,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -447,11 +455,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -483,11 +493,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -519,11 +531,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -555,11 +569,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -591,11 +607,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -627,11 +645,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -663,11 +683,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -787,11 +809,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["instances", "coco", "tf"],
@@ -823,11 +847,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["instances", "coco", "tf"],
@@ -859,11 +885,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["instances", "coco", "tf"],
@@ -895,11 +923,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["instances", "coco", "tf"],
@@ -1062,11 +1092,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -1098,11 +1130,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -1134,11 +1168,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -1170,11 +1206,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -1206,11 +1244,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow"]
+                    "packages": ["tensorflow|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf"],
@@ -1324,11 +1364,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1362,11 +1404,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1400,11 +1444,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1438,11 +1484,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1476,11 +1524,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1514,11 +1564,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1552,11 +1604,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1590,11 +1644,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1628,11 +1684,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1666,11 +1724,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1704,11 +1764,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1742,11 +1804,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1780,11 +1844,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1818,11 +1884,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1856,11 +1924,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],
@@ -1894,11 +1964,13 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "packages": ["tensorflow>=2|tensorflow-macos"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                    "packages": [
+                        "tensorflow-gpu>=2|tensorflow>=2|tensorflow-macos"
+                    ]
                 }
             },
             "tags": ["detection", "coco", "tf2"],

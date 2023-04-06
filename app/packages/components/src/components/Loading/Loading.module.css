@@ -20,6 +20,10 @@
   font-weight: bold;
 }
 
+.loading.ellipsis > div {
+  position: relative;
+}
+
 .loading.ellipsis > div:after {
   overflow: hidden;
   display: inline-block;
@@ -27,17 +31,19 @@
   -webkit-animation: ellipsis steps(4, end) 900ms infinite;
   animation: ellipsis steps(4, end) 900ms infinite;
   content: "\2026"; /* ascii code for the ellipsis character */
-  width: 0px;
+  width: 0;
+  position: absolute;
+  left: 100%;
 }
 
 @keyframes ellipsis {
   to {
-    width: 1.25em;
+    width: 1rem;
   }
 }
 
 @-webkit-keyframes ellipsis {
   to {
-    width: 1.25em;
+    width: 1rem;
   }
 }

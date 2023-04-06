@@ -1,0 +1,59 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+rc[0-9]+
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  test:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/tags/docker-build'
+    needs: [build, test]
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+      - name: Install dependencies
+        run: |
+          pip3 install twine
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+          echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+      - name: Upload to pypi
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python3 -m twine upload dist/*
+
+  build-image:
+    needs: [build, test]
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: dist
+      - name: docker
+        run: make docker-export -o python
+      - name: Upload image
+        uses: actions/upload-artifact@v2
+        with:
+          name: docker-image
+          path: fiftyone.tar.gz

@@ -1,91 +1,121 @@
 import { useClearModal, useTo } from "@fiftyone/state";
-import { GraphQLError, NotFoundError, ServerError } from "@fiftyone/utilities";
-import { Clear, FileCopy } from "@mui/icons-material";
+import {
+  GraphQLError,
+  NetworkError,
+  NotFoundError,
+  ServerError,
+} from "@fiftyone/utilities";
+import { Clear } from "@mui/icons-material";
 import classnames from "classnames";
 import React, { PropsWithChildren, useLayoutEffect } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
-import { useCopyToClipboard } from "react-use";
 
 import { scrollable } from "../../scrollable.module.css";
+import CodeBlock from "../CodeBlock";
 
 import Loading from "../Loading";
 
 import style from "./ErrorBoundary.module.css";
 
-interface Props extends FallbackProps {
-  error: GraphQLError | Error | ServerError;
+type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
+
+interface Props<T extends AppError> extends FallbackProps {
+  error: T;
 }
 
-const Errors: React.FC<Props> = ({ error, resetErrorBoundary }) => {
-  const { to } = useTo({ state: {} });
-  const clearModal = useClearModal();
-  useLayoutEffect(() => {
-    clearModal();
-  }, []);
+const Errors = (onReset?: () => void, disableReset?: boolean) => {
+  const FallbackComponent = <T extends AppError>({
+    error,
+    resetErrorBoundary,
+  }: Props<T>) => {
+    const { to } = useTo({ state: {} });
+    const clearModal = useClearModal();
+    useLayoutEffect(() => {
+      clearModal();
+    }, []);
 
-  const [_, copy] = useCopyToClipboard();
-  if (error instanceof NotFoundError) {
-    return <Loading>{error.message}</Loading>;
-  }
+    if (error instanceof NotFoundError) {
+      return <Loading>{error.message}</Loading>;
+    }
 
-  let stacks = [""];
+    let messages: { message: string; content: string }[] = [];
 
-  if ("errors" in error) {
-    stacks = error.errors.map(
-      (e) => e.message + "\n\n" + e.extensions.stack.join("\n")
-    );
-  } else if (error.stack) {
-    stacks = [error.stack];
-  }
+    if (error instanceof GraphQLError) {
+      messages = error.errors.map((e) => ({
+        message: e.message,
+        content: "\n\n" + e.extensions.stack.join("\n"),
+      }));
+    } else if (error instanceof NetworkError) {
+      messages = [];
+      if (error.code)
+        messages.push({ message: "Code", content: String(error.code) });
+      if (error.route)
+        messages.push({ message: "Route", content: error.route });
+      if (error.payload)
+        messages.push({
+          message: "Payload",
+          content: JSON.stringify(error.payload, null, 2),
+        });
+    }
 
-  return (
-    <div className={style.wrapper}>
-      {stacks.map((stack, i) => (
-        <div key={i} className={classnames(style.container, scrollable)}>
+    if (error.stack) {
+      messages = [...messages, { message: "Trace", content: error.stack }];
+    }
+
+    function handleReset() {
+      if (onReset) {
+        onReset();
+      } else {
+        to("/");
+      }
+      resetErrorBoundary();
+    }
+
+    return (
+      <div className={classnames(style.wrapper, scrollable)}>
+        <div className={classnames(style.container, scrollable)}>
           <div className={style.heading}>
-            <div>{error.name}</div>
             <div>
-              {i === 0 && (
-                <div>
-                  <span
-                    title={"Reset"}
-                    onClick={() => {
-                      to("/");
-                      resetErrorBoundary();
-                    }}
-                  >
-                    <Clear />
-                  </span>
-                </div>
-              )}
-              {stack && (
-                <div>
-                  <span title={"Copy stack"} onClick={() => copy(stack)}>
-                    <FileCopy />
-                  </span>
-                </div>
-              )}
+              {error.name}
+              {error.message ? ": " + error.message : null}
             </div>
+            {!disableReset && (
+              <div>
+                <span title={"Reset"} onClick={handleReset}>
+                  <Clear />
+                </span>
+              </div>
+            )}
           </div>
-          {stack && (
-            <div className={style.message}>
-              {stack && (
-                <div className={style.stack}>
-                  {stack.split("\n").map((line, i) => (
-                    <div key={i}>{line}</div>
-                  ))}
-                </div>
+          {messages.map(({ message, content }, i) => (
+            <div key={i} className={style.content}>
+              <div className={style.contentHeading}>
+                {message ? message : null}
+              </div>
+              {content && (
+                <CodeBlock
+                  text={content.trim().replace(/\n+/g, "\n")}
+                  language="javascript"
+                />
               )}
             </div>
-          )}
+          ))}
         </div>
-      ))}
-    </div>
-  );
+      </div>
+    );
+  };
+  return FallbackComponent;
 };
 
-const ErrorBoundary: React.FC<PropsWithChildren<{}>> = ({ children }) => {
-  return <Boundary FallbackComponent={Errors}>{children}</Boundary>;
+const ErrorBoundary: React.FC<
+  PropsWithChildren<{ onReset?: () => void; disableReset?: boolean }>
+> = ({ children, onReset, disableReset }) => {
+  // @ts-ignore
+  return (
+    <Boundary FallbackComponent={Errors(onReset, disableReset)}>
+      {children}
+    </Boundary>
+  );
 };
 
 export default ErrorBoundary;

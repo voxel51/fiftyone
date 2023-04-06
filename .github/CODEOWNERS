@@ -1,0 +1,3 @@
+# Shared GraphQL schema requires approval from both frontend and backend
+
+/package/graphql @voxel51/backend-devs @voxel51/frontend-devs

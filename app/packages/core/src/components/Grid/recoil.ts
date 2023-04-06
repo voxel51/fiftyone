@@ -5,7 +5,7 @@ import { groupSlice } from "@fiftyone/state";
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
-  get: ({ get }) => get(fos.appConfig)?.gridZoom,
+  get: ({ get }) => get(fos.config)?.gridZoom,
 });
 
 export const gridZoom = atom<number>({

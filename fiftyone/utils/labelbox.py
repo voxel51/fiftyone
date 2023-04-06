@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Labelbox format <https://labelbox.com/docs/exporting-data/export-format-detail>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,7 +14,6 @@ from uuid import uuid4
 import warnings
 import webbrowser
 
-import ndjson
 import numpy as np
 
 import eta.core.image as etai
@@ -85,7 +84,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.members = members
         self.classes_as_attrs = classes_as_attrs
 
-        # store privately so it isn't serialized
+        # store privately so these aren't serialized
         self._api_key = api_key
 
     @property
@@ -102,6 +101,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             return True
 
         return False
+
+    def load_credentials(self, url=None, api_key=None):
+        self._load_parameters(url=url, api_key=api_key)
 
 
 class LabelboxBackend(foua.AnnotationBackend):
@@ -172,11 +174,11 @@ class LabelboxBackend(foua.AnnotationBackend):
             _experimental=self.config._experimental,
         )
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         api = self.connect_to_api()
 
         logger.info("Uploading media to Labelbox...")
-        results = api.upload_samples(samples, self)
+        results = api.upload_samples(samples, anno_key, self)
         logger.info("Upload complete")
 
         if launch_editor:
@@ -497,12 +499,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         task = lb_dataset.create_data_rows(upload_info)
         task.wait_till_done()
 
-    def upload_samples(self, samples, backend):
+    def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to Labelbox according to the given
         backend's annotation and server configuration.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            anno_key: the annotation key
             backend: a :class:`LabelboxBackend` to use to perform the upload
 
         Returns:
@@ -543,7 +546,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = self._build_frame_id_map(samples)
 
         return LabelboxAnnotationResults(
-            samples, config, id_map, project_id, frame_id_map, backend=backend
+            samples,
+            config,
+            anno_key,
+            id_map,
+            project_id,
+            frame_id_map,
+            backend=backend,
         )
 
     def download_annotations(self, results):
@@ -678,7 +687,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def _setup_project(
         self, project_name, dataset, label_schema, classes_as_attrs
     ):
-        project = self._client.create_project(name=project_name)
+        project = self._client.create_project(
+            name=project_name, queue_mode=lb.QueueMode.Dataset
+        )
         project.datasets.connect(dataset)
 
         self._setup_editor(project, label_schema, classes_as_attrs)
@@ -921,7 +932,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
-        return ndjson.loads(response.text)
+        return etas.load_ndjson(response.text)
 
     def _download_project_labels(self, project_id=None, project=None):
         if project is None:
@@ -1252,21 +1263,18 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     """
 
     def __init__(
-        self, samples, config, id_map, project_id, frame_id_map, backend=None
+        self,
+        samples,
+        config,
+        anno_key,
+        id_map,
+        project_id,
+        frame_id_map,
+        backend=None,
     ):
-        super().__init__(samples, config, id_map, backend=backend)
+        super().__init__(samples, config, anno_key, id_map, backend=backend)
         self.project_id = project_id
         self.frame_id_map = frame_id_map
-
-    def load_credentials(self, url=None, api_key=None):
-        """Load the Labelbox credentials from the given keyword arguments or
-        the FiftyOne annotation config.
-
-        Args:
-            url (None): the url of the Labelbox server
-            api_key (None): the Labelbox API key
-        """
-        self._load_config_parameters(url=url, api_key=api_key)
 
     def launch_editor(self):
         """Launches the Labelbox editor and loads the project for this
@@ -1375,10 +1383,11 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         return status
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         return cls(
             samples,
             config,
+            anno_key,
             d["id_map"],
             d["project_id"],
             d["frame_id_map"],
@@ -1629,6 +1638,8 @@ def export_to_labelbox(
                 "for video datasets"
             )
 
+    sample_collection.compute_metadata()
+
     etau.ensure_empty_file(ndjson_path)
 
     # Export the labels
@@ -1642,16 +1653,6 @@ def export_to_labelbox(
                     labelbox_id_field,
                 )
                 continue
-
-            # Compute metadata if necessary
-            if sample.metadata is None:
-                if is_video:
-                    metadata = fom.VideoMetadata.build_for(sample.filepath)
-                else:
-                    metadata = fom.ImageMetadata.build_for(sample.filepath)
-
-                sample.metadata = metadata
-                sample.save()
 
             # Get frame size
             if is_video:
@@ -1970,7 +1971,7 @@ def _get_nested_classifications(label):
 
 # https://labelbox.com/docs/automation/model-assisted-labeling#mask_annotations
 def _to_mask(name, label, data_row_id):
-    mask = np.asarray(label.mask)
+    mask = np.asarray(label.get_mask())
     if mask.ndim < 3 or mask.dtype != np.uint8:
         raise ValueError(
             "Segmentation masks must be stored as RGB color uint8 images"

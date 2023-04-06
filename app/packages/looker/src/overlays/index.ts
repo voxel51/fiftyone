@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";
@@ -15,9 +15,8 @@ import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
 
-const fromLabel = (overlayType) => (field, label) => [
-  new overlayType(field, label),
-];
+const fromLabel = (overlayType) => (field, label) =>
+  [new overlayType(field, label)];
 
 const fromLabelList = (overlayType, list_key) => (field, labels) =>
   labels[list_key].map((label) => new overlayType(field, label));

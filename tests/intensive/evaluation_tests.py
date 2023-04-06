@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     pytest tests/intensive/evaluation_tests.py -s -k <test_case>
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,6 +13,8 @@ import random
 import unittest
 
 import numpy as np
+
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.zoo as foz
@@ -630,6 +632,101 @@ def test_evaluate_segmentations():
 
     model = foz.load_zoo_model("deeplabv3-resnet101-coco-torch")
     dataset.apply_model(model, "resnet101")
+
+    #
+    # Full evaluation
+    #
+
+    EVAL_KEY = "eval_resnet"
+
+    results = dataset.evaluate_segmentations(
+        "resnet50",
+        gt_field="resnet101",
+        eval_key=EVAL_KEY,
+        mask_index=MASK_INDEX,
+    )
+
+    results.print_report()
+
+    print(dataset.bounds("%s_accuracy" % EVAL_KEY))
+    print(dataset.bounds("%s_precision" % EVAL_KEY))
+    print(dataset.bounds("%s_recall" % EVAL_KEY))
+    print(dataset.get_evaluation_info(EVAL_KEY))
+
+    #
+    # Bandwidth evaluation
+    #
+
+    EVAL_KEY_BW = "eval_resnet_bw"
+
+    results = dataset.evaluate_segmentations(
+        "resnet50",
+        gt_field="resnet101",
+        eval_key=EVAL_KEY_BW,
+        mask_index=MASK_INDEX,
+        bandwidth=5,
+    )
+
+    results.print_report()
+
+    print(dataset.bounds("%s_accuracy" % EVAL_KEY_BW))
+    print(dataset.bounds("%s_precision" % EVAL_KEY_BW))
+    print(dataset.bounds("%s_recall" % EVAL_KEY_BW))
+    print(dataset.get_evaluation_info(EVAL_KEY_BW))
+
+    #
+    # Cleanup
+    #
+
+    dataset.delete_evaluations()
+
+
+def test_evaluate_segmentations_on_disk():
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        max_samples=10,
+        shuffle=True,
+    ).clone()
+
+    # These are the VOC classes
+    CLASSES = [
+        "background",
+        "aeroplane",
+        "bicycle",
+        "bird",
+        "boat",
+        "bottle",
+        "bus",
+        "car",
+        "cat",
+        "chair",
+        "cow",
+        "diningtable",
+        "dog",
+        "horse",
+        "motorbike",
+        "person",
+        "pottedplant",
+        "sheep",
+        "sofa",
+        "train",
+        "tvmonitor",
+    ]
+
+    MASK_INDEX = {idx: label for idx, label in enumerate(CLASSES)}
+
+    # Store segmentations on disk rather than in-database
+    etau.ensure_empty_dir("/tmp/resnet50", cleanup=True)
+    model = foz.load_zoo_model("deeplabv3-resnet50-coco-torch")
+    dataset.apply_model(model, "resnet50", output_dir="/tmp/resnet50")
+    print(dataset.values("resnet50.mask_path"))
+
+    # Store segmentations on disk rather than in-database
+    etau.ensure_empty_dir("/tmp/resnet101", cleanup=True)
+    model = foz.load_zoo_model("deeplabv3-resnet101-coco-torch")
+    dataset.apply_model(model, "resnet101", output_dir="/tmp/resnet101")
+    print(dataset.values("resnet101.mask_path"))
 
     #
     # Full evaluation

@@ -1,9 +1,7 @@
+import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring } from "@react-spring/web";
 
-import { scrollbarStyles } from "../components/utils";
-import { isElectron } from "@fiftyone/utilities";
 import {
   DocsLink,
   GitHubLink,
@@ -12,8 +10,10 @@ import {
   SlackLink,
   useTheme,
 } from "@fiftyone/components";
-import { useRecoilValue } from "recoil";
 import { isNotebook } from "@fiftyone/state";
+import { isElectron } from "@fiftyone/utilities";
+import { useRecoilValue } from "recoil";
+import { scrollbarStyles } from "../components/utils";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -50,9 +50,11 @@ const port = (() => {
     return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
   }
 
-  if (window.location.port !== undefined) {
+  if (typeof window !== "undefined" && window.location.port !== undefined) {
     return parseInt(window.location.port);
   }
+
+  return "";
 })();
 
 const remoteSnippet = `import fiftyone as fo
@@ -99,7 +101,7 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         session and connecting to it from your local machine. See{" "}
         <a
           target="_blank"
-          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions"
+          href="https://docs.voxel51.com/user_guide/app.html#remote-sessions"
         >
           this page
         </a>{" "}

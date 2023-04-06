@@ -1,7 +1,7 @@
 """
 Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -25,6 +25,7 @@ class DatasetFrameDocument(DatasetMixin, Document):
     frame_number = fof.FrameNumberField(required=True)
 
     _sample_id = fof.ObjectIdField(required=True)
+    _dataset_id = fof.ObjectIdField()
 
 
 class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
@@ -43,6 +44,11 @@ class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
         sample_id = kwargs.pop("sample_id", None)
 
         self._data = OrderedDict(
-            [("id", None), ("frame_number", None), ("_sample_id", sample_id)]
+            [
+                ("id", None),
+                ("frame_number", None),
+                ("_sample_id", sample_id),
+                ("_dataset_id", None),
+            ]
         )
         self._data.update(kwargs)

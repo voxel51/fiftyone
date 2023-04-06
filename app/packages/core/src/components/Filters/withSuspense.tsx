@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import styled from "styled-components";
-import LoadingDots from "../Common/LoadingDots";
+import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`
   margin: 3px;

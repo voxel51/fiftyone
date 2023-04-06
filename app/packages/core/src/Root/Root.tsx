@@ -24,6 +24,7 @@ import {
 // built in plugins
 import "@fiftyone/map";
 import "@fiftyone/looker-3d";
+import "@fiftyone/embeddings";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
@@ -31,12 +32,10 @@ import ViewBar from "../components/ViewBar/ViewBar";
 import Teams from "../components/Teams/Teams";
 
 import { RootQuery } from "./__generated__/RootQuery.graphql";
-import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { clone, isElectron } from "@fiftyone/utilities";
-import { RGB } from "@fiftyone/looker";
+import { isElectron } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
 import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 
@@ -46,7 +45,6 @@ import { DarkMode, LightMode } from "@mui/icons-material";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
-    ...RootConfig_query
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
@@ -70,6 +68,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
               cursor
               node {
                 name
+                # can the view selector reuse the savedViews {} fragment?
               }
             }
           }
@@ -223,42 +222,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 };
 
 const Root: Route<RootQuery> = ({ children, prepared }) => {
-  const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
-  const data = useFragment(
-    graphql`
-      fragment RootConfig_query on Query {
-        config {
-          colorBy
-          colorPool
-          colorscale
-          gridZoom
-          loopVideos
-          notebookHeight
-          plugins
-          showConfidence
-          showIndex
-          showLabel
-          showSkeletons
-          showTooltip
-          sidebarMode
-          theme
-          timezone
-          useFrameNumber
-        }
-        colorscale
-      }
-    `,
-    query as RootConfig_query$key
-  );
-
-  const update = fos.useStateUpdate();
-  useEffect(() => {
-    update({
-      colorscale: clone(data.colorscale) as RGB[],
-      config: clone(data.config),
-    });
-  }, [data]);
-
   return (
     <>
       <Nav prepared={prepared} />

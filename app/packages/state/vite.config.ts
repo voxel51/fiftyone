@@ -1,15 +1,16 @@
-import { UserConfig } from "vite";
+import { defineConfig } from "vite";
 
-export default <UserConfig>{
-  esbuild: true,
+export default defineConfig({
   base: "/",
   build: {
     lib: {
       entry: "src/index.ts",
       formats: ["es"],
     },
-    base: "/",
+    rollupOptions: {
+      external: ["recoil"],
+    },
     target: "es2015",
     minify: false,
   },
-};
+});

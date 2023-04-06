@@ -11,6 +11,7 @@ export interface RouteBase<
   exact?: boolean;
   component: Resource<Route<T>>;
   children?: RouteBase<T>[];
+  queryParams?: { [key: string]: string };
 }
 
 export interface RouteDefinition<
@@ -25,6 +26,7 @@ const components = createResourceGroup();
 
 export interface RouteOptions<T extends OperationType | undefined> {
   path: string;
+
   exact?: boolean;
   children?: RouteOptions<T>[];
   component: { name: string; loader: () => Promise<Route<T>> };
@@ -34,6 +36,7 @@ export interface RouteOptions<T extends OperationType | undefined> {
         name: string;
         loader: () => Promise<ConcreteRequest>;
       };
+  queryParams?: { [key: string]: string };
 }
 
 export const makeRouteDefinitions = <T extends OperationType | undefined>(
@@ -42,15 +45,19 @@ export const makeRouteDefinitions = <T extends OperationType | undefined>(
 ): RouteDefinition<T>[] => {
   const queries = createResourceGroup();
 
-  return children.map(({ path, exact, children, component, query }) => ({
-    path,
-    exact,
-    children: children
-      ? makeRouteDefinitions(environment, children)
-      : undefined,
-    component: components(component.name, component.loader),
-    query: query ? queries(query.name, query.loader) : undefined,
-  }));
+  return children.map(
+    ({ path, exact, children, component, query, queryParams, ...rest }) => ({
+      path,
+      exact,
+      children: children
+        ? makeRouteDefinitions(environment, children)
+        : undefined,
+      component: components(component.name, component.loader),
+      query: query ? queries(query.name, query.loader) : undefined,
+      queryParams,
+      ...rest,
+    })
+  );
 };
 
 export default RouteDefinition;

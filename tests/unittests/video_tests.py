@@ -1,10 +1,11 @@
 """
 FiftyOne video-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 from datetime import date, datetime
 
 from bson import ObjectId
@@ -12,6 +13,7 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.odm as foo
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -91,6 +93,27 @@ class VideoTests(unittest.TestCase):
             self.assertEqual(frame_number, frame.frame_number)
 
         self.assertTrue(frame_numbers, [1, 5])
+
+    @drop_datasets
+    def test_video_dataset_frames_init(self):
+        dataset = fo.Dataset()
+        conn = foo.get_db_conn()
+
+        collections = conn.list_collection_names()
+        self.assertIn(dataset._sample_collection_name, collections)
+
+        self.assertIsNone(dataset._frame_collection)
+        self.assertIsNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) == 0)
+
+        dataset.media_type = "video"
+
+        self.assertIsNotNone(dataset._frame_collection)
+        self.assertIsNotNone(dataset._frame_collection_name)
+        self.assertTrue(len(dataset._doc.frame_fields) > 0)
+
+        collections = conn.list_collection_names()
+        self.assertIn(dataset._frame_collection_name, collections)
 
     @drop_datasets
     def test_video_indexes(self):
@@ -829,12 +852,14 @@ class VideoTests(unittest.TestCase):
 
     @drop_datasets
     def test_video_frames_merge(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(field1="a", field2="b")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(field1="c", field2="d")
+
         dataset = fo.Dataset()
-
-        sample = fo.Sample(filepath="video.mp4")
-        sample.frames[1] = fo.Frame(field1="a", field2="b")
-
-        dataset.add_sample(sample)
+        dataset.add_samples([sample1, sample2])
 
         view1 = dataset.select_fields("frames.field1")
         view2 = dataset.select_fields("frames.field2")
@@ -1430,6 +1455,11 @@ class VideoTests(unittest.TestCase):
             fo.VideoMetadata,
         )
 
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "sample_id", "filepath", "support", "metadata", "tags"},
@@ -1544,6 +1574,19 @@ class VideoTests(unittest.TestCase):
             {"meeting": 2, "party": 2},
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(*view2.values(["events.id", "events.label"]))
+        }
+        view.set_label_values("events.also_label", values)
+
+        self.assertEqual(view.count("events.also_label"), 2)
+        self.assertEqual(dataset.count("events.detections.also_label"), 2)
+        self.assertDictEqual(
+            view.count_values("events.also_label"),
+            dataset.count_values("events.detections.also_label"),
+        )
+
         view2.save()
 
         self.assertEqual(len(view), 4)
@@ -1619,6 +1662,25 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["events"]
 
+        # Test saving a clips view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
+
     @drop_datasets
     def test_to_clips_expr(self):
         dataset = fo.Dataset()
@@ -1692,6 +1754,10 @@ class VideoTests(unittest.TestCase):
             F("detections.detections").length() >= 2, min_len=2
         )
         self.assertListEqual(view.values("support"), [[2, 3]])
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
+        )
 
         view = dataset.to_clips("frames.detections", other_fields=["hello"])
         view.select_fields().keep_fields()
@@ -1778,6 +1844,11 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(
             view.get_field("metadata").document_type,
             fo.ImageMetadata,
+        )
+
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
         )
 
         self.assertSetEqual(
@@ -1879,6 +1950,29 @@ class VideoTests(unittest.TestCase):
             {"cat": 1, "dog": 2, "rabbit": 1},
         )
 
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(
+                    [
+                        "ground_truth.detections.id",
+                        "ground_truth.detections.label",
+                    ],
+                    unwind=True,
+                )
+            )
+        }
+        view.set_label_values("ground_truth.detections.also_label", values)
+
+        self.assertEqual(view.count("ground_truth.detections.also_label"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
+
         view2.save()
 
         self.assertEqual(len(view), 6)
@@ -1962,6 +2056,25 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             frame["ground_truth"]
 
+        # Test saving a frame view
+
+        self.assertIsNone(view.name)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertTrue(also_view.is_saved)
+
+        still_view = deepcopy(view)
+        self.assertEqual(still_view.name, view_name)
+        self.assertTrue(still_view.is_saved)
+        self.assertEqual(still_view, view)
+
     @drop_datasets
     def test_to_frames_schema(self):
         sample = fo.Sample(filepath="video.mp4")
@@ -1995,42 +2108,41 @@ class VideoTests(unittest.TestCase):
             filepath="video1.mp4",
             metadata=fo.VideoMetadata(total_frame_count=4),
         )
-        sample1.frames[1] = fo.Frame()
+        sample1.frames[1] = fo.Frame(filepath="image11.jpg")
         sample1.frames[2] = fo.Frame(
+            filepath="image12.jpg",
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(label="cat"),
                     fo.Detection(label="dog"),
                 ]
-            )
+            ),
         )
-        sample1.frames[3] = fo.Frame(hello="goodbye")
+        sample1.frames[3] = fo.Frame(filepath="image13.jpg", hello="goodbye")
 
         sample2 = fo.Sample(
             filepath="video2.mp4",
             metadata=fo.VideoMetadata(total_frame_count=5),
         )
         sample2.frames[1] = fo.Frame(
+            filepath="image21.jpg",
             ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(label="dog"),
-                    fo.Detection(label="rabbit"),
-                ]
+                detections=[fo.Detection(label="rabbit")]
             ),
         )
-        sample2.frames[3] = fo.Frame()
-        sample2.frames[5] = fo.Frame(hello="there")
+        sample2.frames[3] = fo.Frame(filepath="image23.jpg")
+        sample2.frames[5] = fo.Frame(filepath="image25.jpg", hello="there")
 
         dataset.add_samples([sample1, sample2])
 
-        frames = dataset.to_frames(sample_frames="dynamic", sparse=True)
-
+        # `sparse=True` would only be needed here if `sample_frames=True`
+        frames = dataset.to_frames()
         self.assertEqual(len(frames), 6)
 
-        view = dataset.match_frames(F("ground_truth.detections").length() > 0)
-        frames = view.to_frames(sample_frames="dynamic", sparse=True)
-
-        self.assertEqual(len(frames), 2)
+        # `sparse=True` would only be needed here if `sample_frames=True`
+        view = dataset.match_frames(F("ground_truth.detections").length() > 1)
+        frames = view.to_frames()
+        self.assertEqual(len(frames), 1)
 
     @drop_datasets
     def test_to_frames_filepaths(self):
@@ -2141,6 +2253,11 @@ class VideoTests(unittest.TestCase):
                 "sample_id",
                 "frame_number",
             },
+        )
+
+        self.assertListEqual(
+            view.distinct("dataset_id"),
+            [str(view._dataset._doc.id)],
         )
 
         with self.assertRaises(ValueError):
@@ -2507,6 +2624,44 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertIsNone(patches.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            frames.get_field("ground_truth.detections.label_upper")
+        )
+        self.assertIsNone(
+            dataset.get_field("frames.ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(patches.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            frames.get_field("ground_truth.detections.label_dynamic")
+        )
+        self.assertIsNotNone(
+            dataset.get_field("frames.ground_truth.detections.label_dynamic")
+        )
+
+        values = {
+            _id: v
+            for _id, v in zip(
+                *view2.values(["ground_truth.id", "ground_truth.label"])
+            )
+        }
+        patches.set_label_values("ground_truth.also_label", values)
+
+        self.assertEqual(patches.count("ground_truth.also_label"), 2)
+        self.assertEqual(frames.count("ground_truth.detections.also_label"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.also_label"), 2
+        )
+        self.assertDictEqual(
+            patches.count_values("ground_truth.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
+        self.assertDictEqual(
+            frames.count_values("ground_truth.detections.also_label"),
+            dataset.count_values("frames.ground_truth.detections.also_label"),
+        )
 
         view3 = patches.skip(2).set_field(
             "ground_truth.label", F("label").upper()
@@ -2727,6 +2882,16 @@ class VideoTests(unittest.TestCase):
         )
         self.assertEqual(patches.count("ground_truth.label_upper"), 2)
         self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+        self.assertIsNone(patches.get_field("ground_truth.label_upper"))
+        self.assertIsNone(
+            dataset.get_field("frames.ground_truth.detections.label_upper")
+        )
+
+        view2.set_values("ground_truth.label_dynamic", values, dynamic=True)
+        self.assertIsNotNone(patches.get_field("ground_truth.label_dynamic"))
+        self.assertIsNotNone(
+            dataset.get_field("frames.ground_truth.detections.label_dynamic")
+        )
 
         view3 = patches.skip(2).set_field(
             "ground_truth.label", F("label").upper()
@@ -2938,6 +3103,100 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(clips.count_label_tags(), {})
         self.assertEqual(dataset.count_label_tags(), {})
+
+    @drop_datasets
+    def test_to_trajectories(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[fo.Detection(label="cat", index=1)]
+            )
+        )
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=1),
+                ]
+            )
+        )
+        sample1.frames[4] = fo.Frame(
+            detections=fo.Detections(
+                detections=[fo.Detection(label="dog", index=1)]
+            )
+        )
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[2] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=2),
+                ]
+            )
+        )
+        sample2.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", index=1),
+                    fo.Detection(label="dog", index=3),
+                ]
+            )
+        )
+        sample2.frames[5] = fo.Frame(
+            detections=fo.Detections(
+                detections=[fo.Detection(label="dog", index=3)]
+            )
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        trajectories = dataset.to_trajectories("frames.detections")
+
+        self.assertEqual(len(trajectories), 5)
+        self.assertEqual(
+            dataset.count("frames.detections.detections"),
+            trajectories.count("frames.detections.detections"),
+        )
+
+        trajs_map = {
+            (_id, l, i): s
+            for _id, l, i, s in zip(
+                *trajectories.values(
+                    [
+                        "sample_id",
+                        "detections.label",
+                        "detections.index",
+                        "support",
+                    ]
+                )
+            )
+        }
+
+        expected_trajs_map = {
+            (sample1.id, "cat", 1): [1, 3],
+            (sample1.id, "dog", 1): [3, 4],
+            (sample2.id, "cat", 1): [2, 3],
+            (sample2.id, "dog", 2): [2, 2],
+            (sample2.id, "dog", 3): [3, 5],
+        }
+
+        self.assertDictEqual(trajs_map, expected_trajs_map)
+
+        schema = trajectories.get_field_schema(flat=True)
+        self.assertIn("detections.label", schema)
+        self.assertIn("detections.index", schema)
+
+        schema = trajectories.get_frame_field_schema()
+        self.assertIn("detections", schema)
 
 
 if __name__ == "__main__":

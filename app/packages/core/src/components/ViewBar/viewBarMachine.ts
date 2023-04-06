@@ -1,12 +1,12 @@
-import { Machine, actions, assign, spawn, send } from "xstate";
 import { v4 as uuid } from "uuid";
+import { actions, assign, createMachine, send, spawn } from "xstate";
 
+import { viewsAreEqual } from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
-import { getFetchFunction } from "@fiftyone/utilities";
-import { viewsAreEqual } from "@fiftyone/state";
 
 const { choose } = actions;
 
@@ -21,20 +21,24 @@ export const createStage = (
   active,
   parameters,
   submitted,
-  loaded
+  loading,
+  prevStage,
+  added?
 ) => ({
   id: id || uuid(),
   stage: stage,
-  parameters,
-  stageInfo,
-  index,
-  focusOnInit,
-  length,
-  active,
+  parameters: parameters,
+  stageInfo: stageInfo,
+  index: index,
+  focusOnInit: focusOnInit,
+  length: length,
+  active: active,
   inputRef: {},
-  submitted,
-  loaded,
-  fieldNames,
+  submitted: submitted,
+  loading: loading,
+  fieldNames: fieldNames,
+  prevStage: prevStage || "",
+  added: added || false,
 });
 
 function getStageInfo(context) {
@@ -64,12 +68,18 @@ function operate(type, operator, value, isString = true, fieldNames) {
   return type.split("|").reduce((acc, t) => {
     if (acc !== undefined) return acc;
     const parser = PARAM_PARSER[t];
-    return parser.validate(
-      !isString ? parser.castFrom(value, fieldNames) : value,
-      fieldNames
-    )
-      ? parser[operator](value, fieldNames)
-      : acc;
+    try {
+      if (
+        parser.validate(
+          !isString ? parser.castFrom(value, fieldNames) : value,
+          fieldNames
+        )
+      ) {
+        return parser[operator](value, fieldNames);
+      }
+    } catch {}
+
+    return acc;
   }, undefined);
 }
 
@@ -89,7 +99,9 @@ function makeEmptyView(fieldNames, stageInfo) {
     1,
     true,
     [],
-    false
+    false,
+    false,
+    ""
   );
   return [
     {
@@ -136,7 +148,7 @@ function setStages(ctx, stageInfo) {
               stageInfoResult.params[j].type,
               "castFrom",
               p[1],
-              false,
+              typeof p[1] === "string",
               ctx.fieldNames
             ),
             true,
@@ -147,7 +159,8 @@ function setStages(ctx, stageInfo) {
           );
         }),
         true,
-        true
+        true,
+        ctx.stages[i - 1]
       );
       return {
         ...newStage,
@@ -157,7 +170,7 @@ function setStages(ctx, stageInfo) {
   }
 }
 
-const viewBarMachine = Machine(
+const viewBarMachine = createMachine(
   {
     id: "stages",
     context: {
@@ -280,7 +293,10 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) =>
-                          Math.max(Math.ceil(activeStage - 1), 0),
+                          Math.max(
+                            Math.ceil(activeStage - 1),
+                            stages.length - 1
+                          ),
                       }),
                       "sendStagesUpdate",
                     ],
@@ -316,7 +332,9 @@ const viewBarMachine = Machine(
                         },
                         {
                           actions: send(({ stages, activeStage }) => {
-                            stages[activeStage].ref.send({ type: "EDIT" });
+                            return stages[activeStage].ref.send({
+                              type: "EDIT",
+                            });
                           }),
                         },
                       ]),
@@ -379,7 +397,9 @@ const viewBarMachine = Machine(
                 ctx.stages.length + 1,
                 true,
                 [],
-                false
+                false,
+                false,
+                ctx.stages[index - 1]
               );
               newStage.added = true;
               return [
@@ -429,7 +449,9 @@ const viewBarMachine = Machine(
                 0,
                 true,
                 [],
-                false
+                false,
+                false,
+                ""
               );
               return [
                 {
@@ -458,7 +480,9 @@ const viewBarMachine = Machine(
                   0,
                   true,
                   [],
-                  false
+                  false,
+                  false,
+                  ""
                 );
                 return [
                   {

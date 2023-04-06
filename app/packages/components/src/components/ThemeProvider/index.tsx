@@ -22,10 +22,12 @@ let theme = extendJoyTheme({
           level3: "hsl(200, 0%, 95%)",
           looker: "hsl(200, 0%, 95%)",
           mediaSpace: "hsl(200,0%,98%)",
+          mediaSpaceTransparent: "hsla(200,0%,98%,0)",
           modalBackdrop: "hsl(200, 0%, 0%, 0.5)",
           sidebar: "hsl(200, 0%, 100%)",
           tooltip: "hsl(200, 0%, 100%)",
           viewBarButtons: "hsl(200, 0%, 100%)",
+          inactiveTab: "hsl(200, 0%, 90%)",
         },
         divider: "hsl(200, 0%, 80%)",
         danger: {
@@ -60,6 +62,10 @@ let theme = extendJoyTheme({
           shadow: "hsl(200, 0%, 90%)",
           shadowDark: "hsl(200, 0%, 70%)",
         },
+        voxel: {
+          500: "#FF6D04",
+          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
+        },
       },
     }),
     dark: createTheme({
@@ -73,10 +79,12 @@ let theme = extendJoyTheme({
           level2: "hsl(200, 0%, 10%)",
           level3: "hsl(200, 0%, 5%)",
           mediaSpace: "hsl(200, 0%, 10%)",
+          mediaSpaceTransparent: "hsla(200, 0%, 10%,0)",
           modalBackdrop: "hsl(200, 0%, 0%, 0.75)",
           sidebar: "hsl(200, 0%, 15%)",
           tooltip: "hsl(200, 0%, 5%)",
           viewBarButtons: "hsl(200, 0%, 15%)",
+          inactiveTab: "hsl(200, 0%, 18%)",
         },
         divider: "hsl(200, 0%, 20%)",
         danger: {
@@ -93,10 +101,14 @@ let theme = extendJoyTheme({
         },
         primary: {
           main: "hsl(25, 100%, 51%)",
+          mainChannel: "none",
           plainColor: "hsl(25, 100%, 51%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
           softBorder: "hsl(200, 0%, 20%)",
+        },
+        secondary: {
+          main: "hsl(200, 0%, 70%)",
         },
         focusVisible: "hsl(212, 97%, 43%, 0.3)",
         text: {
@@ -110,6 +122,10 @@ let theme = extendJoyTheme({
         custom: {
           shadow: "hsl(200, 0%, 10%)",
           shadowDark: "hsl(200, 0%, 0%)",
+        },
+        voxel: {
+          500: "#FF6D04",
+          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
       },
     }),

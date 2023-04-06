@@ -1,26 +1,27 @@
 """
 Mixins and helpers for dataset backing documents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import OrderedDict
 
 from bson import ObjectId
+from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .database import get_db_conn
-from .dataset import create_field, SampleFieldDocument
-from .document import Document
+from .dataset import SampleFieldDocument
 from .utils import (
-    serialize_value,
     deserialize_value,
+    serialize_value,
+    create_field,
+    create_implied_field,
     validate_field_name,
-    get_implied_field_kwargs,
     validate_fields_match,
 )
 
@@ -175,11 +176,12 @@ class DatasetMixin(object):
         documents in the collection.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of field types to
+                which to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -256,6 +258,11 @@ class DatasetMixin(object):
             return False
 
         for path, field in new_schema.items():
+            # Special syntax for declaring the subfield of a ListField
+            if path.endswith("[]"):
+                path = path[:-2]
+                field = fof.ListField(field=field)
+
             cls._add_field_schema(path, field)
 
         cls._dataset.save()
@@ -365,7 +372,7 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field = cls._create_implied_field(path, value, dynamic)
+        field = create_implied_field(path, value, dynamic=dynamic)
 
         return cls.merge_field_schema(
             {path: field},
@@ -397,12 +404,6 @@ class DatasetMixin(object):
             info=info,
             **kwargs,
         )
-
-    @classmethod
-    def _create_implied_field(cls, path, value, dynamic):
-        field_name = path.rsplit(".", 1)[-1]
-        kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
-        return create_field(field_name, **kwargs)
 
     @classmethod
     def _rename_fields(cls, sample_collection, paths, new_paths):
@@ -490,7 +491,7 @@ class DatasetMixin(object):
             dataset_doc.group_field = new_group_field
 
         dataset_doc.app_config._rename_paths(paths, new_paths)
-        dataset_doc.save()
+        dataset.save()
 
     @classmethod
     def _clone_fields(cls, sample_collection, paths, new_paths):
@@ -560,7 +561,7 @@ class DatasetMixin(object):
         for path, new_path in schema_paths:
             cls._clone_field_schema(path, new_path)
 
-        dataset_doc.save()
+        dataset.save()
 
     @classmethod
     def _clear_fields(cls, sample_collection, paths):
@@ -651,14 +652,22 @@ class DatasetMixin(object):
                 and not is_frame_field
                 and path == dataset.group_field
             ):
-                fou.handle_error(
-                    ValueError(
-                        "Cannot delete group field '%s' of a grouped dataset"
-                        % path
-                    ),
-                    error_level,
-                )
-                continue
+                media_types = list(set(dataset_doc.group_media_types.values()))
+                if len(media_types) > 1:
+                    fou.handle_error(
+                        ValueError(
+                            "Cannot delete group field '%s' of a grouped "
+                            "dataset that contains multiple media types" % path
+                        ),
+                        error_level,
+                    )
+                    continue
+
+                dataset._group_slice = None
+                dataset_doc.group_field = None
+                dataset_doc.default_group_slice = None
+                dataset_doc.group_media_types = {}
+                dataset_doc.media_type = media_types[0]
 
             del_paths.append(path)
             del_schema_paths.append(path)
@@ -671,7 +680,7 @@ class DatasetMixin(object):
 
         if del_paths:
             dataset_doc.app_config._delete_paths(del_paths)
-            dataset_doc.save()
+            dataset.save()
 
     @classmethod
     def _remove_dynamic_fields(cls, paths, error_level=0):
@@ -730,9 +739,9 @@ class DatasetMixin(object):
             cls._delete_field_schema(del_path)
 
         if del_paths:
-            dataset_doc = cls._dataset._doc
-            dataset_doc.app_config._delete_paths(del_paths)
-            dataset_doc.save()
+            dataset = cls._dataset
+            dataset._doc.app_config._delete_paths(del_paths)
+            dataset.save()
 
     @classmethod
     def _rename_fields_simple(cls, paths, new_paths):
@@ -741,7 +750,7 @@ class DatasetMixin(object):
 
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
-        rename_expr = {k: v for k, v in zip(_paths, _new_paths)}
+        rename_expr = dict(zip(_paths, _new_paths))
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, {"$rename": rename_expr})
@@ -937,7 +946,7 @@ class DatasetMixin(object):
 
             doc = schema[chunk]
 
-            if isinstance(doc, fof.ListField):
+            while isinstance(doc, fof.ListField):
                 doc = doc.field
 
             if not isinstance(doc, fof.EmbeddedDocumentField):
@@ -962,12 +971,29 @@ class DatasetMixin(object):
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]
 
-            if recursive and isinstance(
-                existing_field, fof.EmbeddedDocumentField
-            ):
-                return existing_field._merge_fields(
-                    path, field, validate=validate, recursive=recursive
-                )
+            if recursive:
+                is_list_field = False
+
+                while isinstance(existing_field, fof.ListField) and isinstance(
+                    field, fof.ListField
+                ):
+                    existing_field = existing_field.field
+                    field = field.field
+                    is_list_field = True
+
+                if isinstance(existing_field, fof.EmbeddedDocumentField):
+                    return existing_field._merge_fields(
+                        path, field, validate=validate, recursive=recursive
+                    )
+
+                # Special syntax for declaring the subfield of a ListField
+                if (
+                    is_list_field
+                    and field is not None
+                    and existing_field is None
+                    and path.endswith("[]")
+                ):
+                    return {path: field}
 
             if validate:
                 validate_fields_match(path, field, existing_field)
@@ -1003,19 +1029,19 @@ class DatasetMixin(object):
 
     @classmethod
     def _add_field_schema(cls, path, field):
-        field_name, doc, field_docs = cls._parse_path(path)
+        field_name, doc, field_docs, root_doc = cls._parse_path(path)
 
         field = field.copy()
         field.db_field = _get_db_field(field, field_name)
         field.name = field_name
 
         doc._declare_field(cls._dataset, path, field)
-        _add_field_doc(field_docs, field)
+        _add_field_doc(field_docs, root_doc, field)
 
     @classmethod
     def _rename_field_schema(cls, path, new_path):
         same_root, new_field_name = _parse_paths(path, new_path)
-        field_name, doc, field_docs = cls._parse_path(path)
+        field_name, doc, field_docs, _ = cls._parse_path(path)
 
         field = doc._fields[field_name]
         new_db_field = _get_db_field(field, new_field_name)
@@ -1030,20 +1056,22 @@ class DatasetMixin(object):
             doc._undeclare_field(field_name)
             _delete_field_doc(field_docs, field_name)
 
-            _, new_doc, new_field_docs = cls._parse_path(new_path)
+            _, new_doc, new_field_docs, new_root_doc = cls._parse_path(
+                new_path
+            )
             new_doc._declare_field(cls._dataset, new_path, field)
-            _add_field_doc(new_field_docs, field)
+            _add_field_doc(new_field_docs, new_root_doc, field)
 
     @classmethod
     def _clone_field_schema(cls, path, new_path):
-        field_name, doc, _ = cls._parse_path(path)
+        field_name, doc, _, _ = cls._parse_path(path)
         field = doc._fields[field_name]
 
         cls._add_field_schema(new_path, field)
 
     @classmethod
     def _delete_field_schema(cls, path):
-        field_name, doc, field_docs = cls._parse_path(path)
+        field_name, doc, field_docs, _ = cls._parse_path(path)
 
         doc._undeclare_field(field_name)
         _delete_field_doc(field_docs, field_name)
@@ -1057,7 +1085,7 @@ class DatasetMixin(object):
         try:
             for chunk in chunks[:-1]:
                 doc = doc._fields[chunk]
-                if isinstance(doc, fof.ListField):
+                while isinstance(doc, fof.ListField):
                     doc = doc.field
 
             field = doc._fields[field_name]
@@ -1108,6 +1136,7 @@ class DatasetMixin(object):
         field_name = chunks[-1]
         doc = cls
         field_docs = cls._dataset._doc[cls._fields_attr()]
+        root_field_doc = None
 
         root = None
         for chunk in chunks[:-1]:
@@ -1119,13 +1148,14 @@ class DatasetMixin(object):
             found = False
             for field_doc in field_docs:
                 if field_doc.name == chunk:
+                    root_field_doc = field_doc
                     field_docs = field_doc.fields
                     found = True
                     break
 
             if not found:
                 if allow_missing:
-                    return None, None, None
+                    return None, None, None, None
 
                 raise ValueError(
                     "Invalid %s field '%s'; field '%s' does not exist"
@@ -1134,12 +1164,12 @@ class DatasetMixin(object):
 
             doc = doc._fields[chunk]
 
-            if isinstance(doc, fof.ListField):
+            while isinstance(doc, fof.ListField):
                 doc = doc.field
 
             if not isinstance(doc, fof.EmbeddedDocumentField):
                 if allow_missing:
-                    return None, None, None
+                    return None, None, None, None
 
                 raise ValueError(
                     "Invalid %s field '%s'; field '%s' is a %s, not an %s"
@@ -1152,7 +1182,7 @@ class DatasetMixin(object):
                     )
                 )
 
-        return field_name, doc, field_docs
+        return field_name, doc, field_docs, root_field_doc
 
     @classmethod
     def _declare_field(cls, dataset, path, field_or_doc):
@@ -1217,45 +1247,75 @@ class DatasetMixin(object):
 
         delattr(cls, field_name)
 
-    def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
-        """Updates an existing document.
+    def _update(
+        self,
+        _id,
+        updates,
+        deferred=False,
+        upsert=False,
+        filtered_fields=None,
+        **kwargs,
+    ):
+        """Updates an existing document."""
+        extra_updates = self._extract_extra_updates(updates, filtered_fields)
 
-        Helper method; should only be used inside
-        :meth:`DatasetSampleDocument.save`.
-        """
+        if deferred:
+            ops = self._deferred_updates(_id, updates, extra_updates, upsert)
+            updated_existing = None
+        else:
+            ops = None
+            updated_existing = self._do_updates(
+                _id, updates, extra_updates, upsert
+            )
+
+        return ops, updated_existing
+
+    def _do_updates(self, _id, updates, extra_updates, upsert):
         updated_existing = True
-
         collection = self._get_collection()
 
-        select_dict = {"_id": object_id}
-
-        extra_updates = self._extract_extra_updates(
-            update_doc, filtered_fields
-        )
-
-        if update_doc:
+        if updates:
             result = collection.update_one(
-                select_dict, update_doc, upsert=True
+                {"_id": _id}, updates, upsert=upsert
             ).raw_result
+
             if result is not None:
-                updated_existing = result.get("updatedExisting")
+                updated_existing = result.get("updatedExisting", None)
 
         for update, element_id in extra_updates:
             result = collection.update_one(
-                select_dict,
+                {"_id": _id},
                 update,
                 array_filters=[{"element._id": element_id}],
-                upsert=True,
+                upsert=upsert,
             ).raw_result
 
             if result is not None:
                 updated_existing = updated_existing and result.get(
-                    "updatedExisting"
+                    "updatedExisting", None
                 )
 
         return updated_existing
 
-    def _extract_extra_updates(self, update_doc, filtered_fields):
+    def _deferred_updates(self, _id, updates, extra_updates, upsert):
+        ops = []
+
+        if updates:
+            ops.append(UpdateOne({"_id": _id}, updates, upsert=upsert))
+
+        for update, element_id in extra_updates:
+            ops.append(
+                UpdateOne(
+                    {"_id": _id},
+                    update,
+                    array_filters=[{"element._id": element_id}],
+                    upsert=upsert,
+                )
+            )
+
+        return ops
+
+    def _extract_extra_updates(self, updates, filtered_fields):
         """Extracts updates for filtered list fields that need to be updated
         by ID, not relative position (index).
         """
@@ -1270,7 +1330,7 @@ class DatasetMixin(object):
         #   my_detections.detections.1.label  <- NO MATCH
         #
         if filtered_fields:
-            for d in update_doc.values():
+            for d in updates.values():
                 for k in d.keys():
                     for ff in filtered_fields:
                         if k.startswith(ff) and not k[len(ff) :].lstrip(
@@ -1281,8 +1341,8 @@ class DatasetMixin(object):
                                 "is not allowed" % k
                             )
 
-        if filtered_fields and "$set" in update_doc:
-            d = update_doc["$set"]
+        if filtered_fields and "$set" in updates:
+            d = updates["$set"]
             del_keys = []
 
             for k, v in d.items():
@@ -1305,8 +1365,8 @@ class DatasetMixin(object):
             for k in del_keys:
                 del d[k]
 
-            if not update_doc["$set"]:
-                del update_doc["$set"]
+            if not updates["$set"]:
+                del updates["$set"]
 
         return extra_updates
 
@@ -1486,6 +1546,8 @@ class NoDatasetMixin(object):
 
             if k == "_id":
                 k = "id"
+            elif k == "_dataset_id":
+                continue
             elif isinstance(v, ObjectId) and k.startswith("_"):
                 k = k[1:]
 
@@ -1535,8 +1597,7 @@ def _split_path(path):
     return chunks[0], chunks[1]
 
 
-def _add_field_doc(field_docs, field_or_doc):
-    # This is intentionally implemented to modify ``field_docs`` in place
+def _add_field_doc(field_docs, root_doc, field_or_doc):
     if isinstance(field_or_doc, fof.Field):
         new_field_doc = SampleFieldDocument.from_field(field_or_doc)
     else:
@@ -1547,7 +1608,10 @@ def _add_field_doc(field_docs, field_or_doc):
             field_docs[i] = new_field_doc
             return
 
-    field_docs.append(new_field_doc)
+    if root_doc is not None:
+        root_doc.fields = root_doc.fields + [new_field_doc]
+    else:
+        field_docs.append(new_field_doc)
 
 
 def _update_field_doc(field_docs, field_name, field):
@@ -1558,7 +1622,6 @@ def _update_field_doc(field_docs, field_name, field):
 
 
 def _delete_field_doc(field_docs, field_name):
-    # This is intentionally implemented to modify ``field_docs`` in place
     for i, field_doc in enumerate(field_docs):
         if field_doc.name == field_name:
             del field_docs[i]

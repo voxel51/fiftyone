@@ -1,7 +1,7 @@
 """
 FiftyOne quickstart.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -122,8 +122,8 @@ Here are some things you can do to explore the dataset:
 
 Resources:
 
--   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
--   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/index.html
+-   Using the App: https://docs.voxel51.com/user_guide/app.html
+-   Dataset Zoo:   https://docs.voxel51.com/user_guide/dataset_zoo/index.html
 
 """
 
@@ -150,7 +150,7 @@ Here are some things you can do to explore the dataset:
 
 Resources:
 
--   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
--   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/index.html
+-   Using the App: https://docs.voxel51.com/user_guide/app.html
+-   Dataset Zoo:   https://docs.voxel51.com/user_guide/dataset_zoo/index.html
 
 """

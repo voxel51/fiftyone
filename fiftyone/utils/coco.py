@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -877,7 +877,6 @@ class COCODetectionDatasetExporter(
         info = {
             "year": self.info.get("year", ""),
             "version": self.info.get("version", ""),
-            "description": self.info.get("year", "Exported from FiftyOne"),
             "contributor": self.info.get("contributor", ""),
             "url": self.info.get("url", "https://voxel51.com/fiftyone"),
             "date_created": self.info.get("date_created", date_created),

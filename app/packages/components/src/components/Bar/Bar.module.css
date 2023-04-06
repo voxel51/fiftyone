@@ -10,9 +10,9 @@
 
   background-image: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0),
+    var(--joy-palette-background-mediaSpaceTransparent),
     30%,
-    var(--joy-palette-background-level2)
+    var(--joy-palette-background-mediaSpace)
   );
 
   display: flex;

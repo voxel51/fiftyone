@@ -16,7 +16,7 @@ models**
 <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
-<a href="https://medium.com/voxel51">Blog</a> •
+<a href="https://voxel51.com/blog/">Blog</a> •
 <a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
@@ -169,6 +169,13 @@ Then run the install script:
 bash install.bash
 ```
 
+**NOTE:** If you run into issues importing FiftyOne, you may need to add the
+path to the cloned repository to your `PYTHONPATH`:
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
+
 **NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
 `~/.bash_profile`, which is needed for installing and building the App
 
@@ -218,6 +225,22 @@ Refer to
 [these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
 to see how to build and run Docker images containing source or release builds
 of FiftyOne.
+
+### UI Development on Storybook
+
+Voxel51 is currently in the process of implementing a
+[Storybook](https://storybook.js.org/) which contains examples of its basic UI
+components. You can access the current storybook instances by running **yarn
+storybook** in **/app/packages/components**. While the storybook instance is
+running, any changes to the component will trigger a refresh in the storybook
+app.
+
+```shell
+%%shell
+
+cd /app/packages/components
+yarn storybook
+```
 
 ### Generating documentation
 

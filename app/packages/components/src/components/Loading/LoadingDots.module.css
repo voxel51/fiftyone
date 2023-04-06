@@ -1,0 +1,23 @@
+.loading {
+  display: inline-block;
+  height: 12px;
+  line-height: 12px;
+  overflow: hidden;
+  margin-left: 1px;
+  margin-right: 2px;
+}
+.loading::after {
+  display: inline-table;
+  white-space: pre;
+  content: "\A.\A..\A...";
+  animation: spin 1s steps(4) infinite;
+  margin-left: 1px;
+  margin-right: 2px;
+  letter-spacing: 0.1em;
+}
+@keyframes spin {
+  to {
+    -webkit-transform: translateY(-48px);
+    transform: translateY(-48px);
+  }
+}

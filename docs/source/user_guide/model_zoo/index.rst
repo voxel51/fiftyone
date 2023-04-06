@@ -34,6 +34,14 @@ models in the zoo!
     :button_text: Explore the models in the zoo
     :button_link: models.html
 
+.. note::
+
+    Did you know? You can also
+    :ref:`pass custom models <model-zoo-custom-models>` to methods like
+    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+    and
+    :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`!
+
 API reference
 -------------
 
@@ -49,7 +57,9 @@ Methods for working with the Model Zoo are conveniently exposed via the Python
 library and the CLI. The basic recipe is that you load a model from the zoo and
 then apply it to a dataset (or a subset of the dataset specified by a
 |DatasetView|) using methods such as
-:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`.
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+and
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`:
 
 Prediction
 ~~~~~~~~~~
@@ -284,7 +294,8 @@ predictions of a |Model| instance are generated using the following pattern:
                 labels = model.predict(img)
 
                 # Save labels
-                sample.add_labels(labels, label_field)
+                sample.add_labels(labels, label_field=label_field)
+                sample.save()
 
   .. group-tab:: Video models
 
@@ -312,7 +323,8 @@ predictions of a |Model| instance are generated using the following pattern:
                     labels = model.predict(video_reader)
 
                 # Save labels
-                sample.add_labels(labels, label_field)
+                sample.add_labels(labels, label_field=label_field)
+                sample.save()
 
 By convention, |Model| instances must implement the context manager interface,
 which handles any necessary setup and teardown required to use the model.
@@ -330,13 +342,13 @@ storing the output labels:
     :linenos:
 
     labels = model.predict(arg)
-    sample.add_labels(labels, label_field)
+    sample.add_labels(labels, label_field=label_field)
 
 where the model should, at minimum, support ``arg`` values that are:
 
--   *(Image models)* uint8 numpy arrays (HWC)
+-   *Image models:* uint8 numpy arrays (HWC)
 
--   *(Video models)* ``eta.core.video.VideoReader`` instances
+-   *Video models:* ``eta.core.video.VideoReader`` instances
 
 and the output ``labels`` can be any of the following:
 
@@ -458,6 +470,113 @@ return a numpy array containing the embedding.
 For models that support batching, the |EmbeddingsMixin| interface also provides
 a :meth:`embed_all() <fiftyone.core.models.Model.predict_all>` method that can
 provide an efficient implementation of embedding a batch of data.
+
+.. _model-zoo-custom-models:
+
+Using custom models
+-------------------
+
+FiftyOne provides a
+:class:`TorchImageModel <fiftyone.utils.torch.TorchImageModel>`
+class that you can use to load your own custom Torch model and pass it to
+builtin methods like
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+and
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`.
+
+For example, the snippet below loads a pretrained model from `torchvision`
+and uses it both as a classifier and to generate image embeddings:
+
+.. code-block:: python
+    :linenos:
+
+    import os
+    import eta
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.torch as fout
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    labels_path = os.path.join(
+        eta.constants.RESOURCES_DIR, "imagenet-labels-no-background.txt"
+    )
+    config = fout.TorchImageModelConfig(
+        {
+            "entrypoint_fcn": "torchvision.models.mobilenet.mobilenet_v2",
+            "entrypoint_args": {"pretrained": True},
+            "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+            "labels_path": labels_path,
+            "image_min_dim": 224,
+            "image_max_dim": 2048,
+            "image_mean": [0.485, 0.456, 0.406],
+            "image_std": [0.229, 0.224, 0.225],
+            "embeddings_layer": "<classifier.1",
+        }
+    )
+    model = fout.TorchImageModel(config)
+
+    dataset.apply_model(model, label_field="imagenet")
+    embeddings = dataset.compute_embeddings(model)
+
+The necessary configuration is provided via the
+:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>` class,
+which exposes a number of builtin mechanisms for defining the model to load and
+any necessary preprocessing and post-processing.
+
+Under the hood, the torch model is loaded via:
+
+.. code-block:: python
+
+    torch_model = entrypoint_fcn(**entrypoint_args)
+
+which is assumed to return a :class:`torch:torch.nn.Module` whose `__call__()`
+method directly accepts Torch tensors (NCHW) as input.
+
+The :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>` class
+provides a number of builtin mechanisms for specifying the required
+preprocessing for your model, such as resizing and normalization. In the above
+example, `image_min_dim`, `image_max_dim`, `image_mean`, and `image_std` are
+used.
+
+The `output_processor_cls` parameter of
+:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>`  must be
+set to the fully-qualified class name of an
+:class:`OutputProcessor <fiftyone.utils.torch.OutputProcessor>` subclass that
+defines how to translate the model's raw output into the suitable FiftyOne
+|Label| types, and is instantiated as follows:
+
+.. code-block:: python
+
+    output_processor = output_processor_cls(classes=classes, **output_processor_args)
+
+where your model's `classes` are loaded either via the `labels_string` or
+`labels_path` parameters of
+:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>`. The
+following builtin output processors are available for use, if applicable:
+
+- :class:`ClassifierOutputProcessor <fiftyone.utils.torch.ClassifierOutputProcessor>`
+- :class:`DetectorOutputProcessor <fiftyone.utils.torch.DetectorOutputProcessor>`
+- :class:`InstanceSegmenterOutputProcessor <fiftyone.utils.torch.InstanceSegmenterOutputProcessor>`
+- :class:`KeypointDetectorOutputProcessor <fiftyone.utils.torch.KeypointDetectorOutputProcessor>`
+- :class:`SemanticSegmenterOutputProcessor <fiftyone.utils.torch.SemanticSegmenterOutputProcessor>`
+
+Finally, if you would like to pass your custom model to methods like
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
+set the `embeddings_layer` parameter to the name of a layer whose output to
+expose as embeddings (or prepend `<` to use the input tensor instead).
+
+.. note::
+
+    Did you know? You can also
+    :ref:`register your custom model <model-zoo-add>` under a name of your
+    choice so that it can be loaded and used as follows:
+
+    .. code-block:: python
+
+        model = foz.load_zoo_model("your-custom-model")
+        dataset.apply_model(model, label_field="predictions")
 
 .. toctree::
    :maxdepth: 1

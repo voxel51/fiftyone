@@ -1,25 +1,30 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy, deepcopy
+from copy import deepcopy, copy
 from datetime import date, datetime
+import gc
 import os
+import random
+import string
+import unittest
 
 from bson import ObjectId
+from mongoengine import ValidationError
 import numpy as np
 import pytz
-import unittest
 
 import eta.core.utils as etau
 
 import fiftyone as fo
-from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.utils.data as foud
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets, skip_windows
 
@@ -27,7 +32,58 @@ from decorators import drop_datasets, skip_windows
 class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_list_datasets(self):
-        self.assertIsInstance(fo.list_datasets(), list)
+        names = fo.list_datasets()
+        self.assertIsInstance(names, list)
+
+        root = "".join(random.choice(string.ascii_letters) for _ in range(64))
+
+        fo.Dataset(root[:-1])
+        fo.Dataset(root)
+        fo.Dataset(root + "-foo")
+
+        names = fo.list_datasets(root + "-*")
+        self.assertEqual(len(names), 1)
+
+        names = fo.list_datasets(root + "*")
+        self.assertEqual(len(names), 2)
+
+    @drop_datasets
+    def test_dataset_names(self):
+        dataset = fo.Dataset("test dataset names!?!")
+
+        self.assertEqual(dataset.name, "test dataset names!?!")
+        self.assertEqual(dataset.slug, "test-dataset-names")
+
+        dataset.name = "test-dataset-names"
+
+        self.assertEqual(dataset.name, "test-dataset-names")
+        self.assertEqual(dataset.slug, "test-dataset-names")
+
+        # name clashes
+        with self.assertRaises(ValueError):
+            fo.Dataset("test dataset names!?!")
+
+        # slug clashes
+        with self.assertRaises(ValueError):
+            fo.Dataset("test dataset names!?!")
+
+        dataset = fo.Dataset()
+        name = dataset.name
+        slug = dataset.slug
+
+        # name clashes
+        with self.assertRaises(ValueError):
+            dataset.name = "test-dataset-names"
+
+        self.assertEqual(dataset.name, name)
+        self.assertEqual(dataset.slug, slug)
+
+        # slug clashes
+        with self.assertRaises(ValueError):
+            dataset.name = "test dataset names!?!"
+
+        self.assertEqual(dataset.name, name)
+        self.assertEqual(dataset.slug, slug)
 
     @drop_datasets
     def test_delete_dataset(self):
@@ -87,6 +143,24 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1, dataset4)
 
     @drop_datasets
+    def test_last_loaded_at(self):
+        dataset_name = self.test_dataset_info.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        last_loaded_at1 = dataset.last_loaded_at
+
+        also_dataset = fo.load_dataset(dataset_name)
+        last_loaded_at2 = dataset.last_loaded_at
+
+        self.assertIs(also_dataset, dataset)
+        self.assertTrue(last_loaded_at2 > last_loaded_at1)
+
+        dataset.reload()
+        last_loaded_at3 = dataset.last_loaded_at
+
+        self.assertTrue(last_loaded_at3 > last_loaded_at2)
+
+    @drop_datasets
     def test_dataset_tags(self):
         dataset_name = self.test_dataset_tags.__name__
 
@@ -114,6 +188,20 @@ class DatasetTests(unittest.TestCase):
         dataset.reload()
 
         self.assertEqual(dataset.tags, ["cat", "dog", "rabbit"])
+
+    @drop_datasets
+    def test_dataset_description(self):
+        dataset_name = self.test_dataset_description.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertIsNone(dataset.description)
+
+        dataset.description = "Hello, world!"
+
+        dataset.reload()
+
+        self.assertEqual(dataset.description, "Hello, world!")
 
     @drop_datasets
     def test_dataset_info(self):
@@ -784,6 +872,252 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             dataset.clone_frame_field("foo", "_private")
+
+    @drop_datasets
+    def test_field_schemas(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field("foo", fo.StringField)
+        dataset.add_sample_field("bar", fo.BooleanField)
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_sample_field(
+            "eggs", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+
+        schema = dataset.get_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "foo",
+                "bar",
+                "spam",
+                "eggs",
+            },
+        )
+
+        schema = dataset.get_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = dataset.get_field_schema(
+            ftype=[fo.StringField, fo.BooleanField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo", "bar"})
+
+        schema = dataset.get_field_schema(embedded_doc_type=fo.Classification)
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = dataset.get_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        view = dataset.select_fields(["foo", "spam", "eggs"]).exclude_fields(
+            "eggs"
+        )
+
+        schema = view.get_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"id", "filepath", "tags", "metadata", "foo", "spam"},
+        )
+
+        schema = view.get_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = view.get_field_schema(ftype=[fo.BooleanField, fo.StringField])
+        self.assertSetEqual(set(schema.keys()), {"filepath", "foo"})
+
+        schema = view.get_field_schema(embedded_doc_type=fo.Classification)
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = view.get_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        # Just checks for existence
+        dataset.validate_field_type("filepath")
+        dataset.validate_field_type("foo")
+        dataset.validate_field_type("spam.label")
+        dataset.validate_field_type("eggs.detections.label")
+
+        # Check types
+        dataset.validate_field_type("filepath", ftype=fo.StringField)
+        dataset.validate_field_type("bar", ftype=fo.BooleanField)
+        dataset.validate_field_type("bar", ftype=[fo.Field, fo.StringField])
+        dataset.validate_field_type(
+            "spam", embedded_doc_type=fo.Classification
+        )
+        dataset.validate_field_type(
+            "spam", embedded_doc_type=[fo.Label, fo.Detections]
+        )
+        dataset.validate_field_type("eggs", embedded_doc_type=fo.Detections)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("spam.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("eggs.detections.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("foo", ftype=fo.BooleanField)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "spam", embedded_doc_type=fo.Detections
+            )
+
+    @drop_datasets
+    def test_frame_field_schemas(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_frame_field("foo", fo.StringField)
+        dataset.add_frame_field("bar", fo.BooleanField)
+        dataset.add_frame_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_frame_field(
+            "eggs", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+
+        schema = dataset.get_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"id", "frame_number", "foo", "bar", "spam", "eggs"},
+        )
+
+        schema = dataset.get_frame_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = dataset.get_frame_field_schema(
+            ftype=[fo.StringField, fo.BooleanField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"foo", "bar"})
+
+        schema = dataset.get_frame_field_schema(
+            embedded_doc_type=fo.Classification
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = dataset.get_frame_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        view = dataset.select_fields(
+            ["frames.foo", "frames.spam", "frames.eggs"]
+        ).exclude_fields("frames.eggs")
+
+        schema = view.get_frame_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()), {"id", "frame_number", "foo", "spam"}
+        )
+
+        schema = view.get_frame_field_schema(ftype=fo.StringField)
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = view.get_frame_field_schema(
+            ftype=[fo.BooleanField, fo.StringField]
+        )
+        self.assertSetEqual(set(schema.keys()), {"foo"})
+
+        schema = view.get_frame_field_schema(
+            embedded_doc_type=fo.Classification
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        schema = view.get_frame_field_schema(
+            embedded_doc_type=[fo.Classification, fo.Detections]
+        )
+        self.assertSetEqual(set(schema.keys()), {"spam"})
+
+        # Just checks for existence
+        dataset.validate_field_type("frames.id")
+        dataset.validate_field_type("frames.foo")
+        dataset.validate_field_type("frames.spam.label")
+        dataset.validate_field_type("frames.eggs.detections.label")
+
+        # Check types
+        dataset.validate_field_type("frames.id", ftype=fo.ObjectIdField)
+        dataset.validate_field_type("frames.bar", ftype=fo.BooleanField)
+        dataset.validate_field_type(
+            "frames.bar", ftype=[fo.Field, fo.StringField]
+        )
+        dataset.validate_field_type(
+            "frames.spam", embedded_doc_type=fo.Classification
+        )
+        dataset.validate_field_type(
+            "frames.spam", embedded_doc_type=[fo.Label, fo.Detections]
+        )
+        dataset.validate_field_type(
+            "frames.eggs", embedded_doc_type=fo.Detections
+        )
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.spam.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.eggs.detections.missing")
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type("frames.foo", ftype=fo.BooleanField)
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "frames.spam", embedded_doc_type=fo.Detections
+            )
+
+    @drop_datasets
+    def test_add_list_subfield(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Classification(
+                label="cat",
+                info=[
+                    fo.DynamicEmbeddedDocument(
+                        author="Alice",
+                        notes=["foo", "bar"],
+                    ),
+                    fo.DynamicEmbeddedDocument(author="Bob"),
+                ],
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.add_sample_field("ground_truth.info", fo.ListField)
+
+        field = dataset.get_field("ground_truth.info")
+        self.assertIsNone(field.field)
+
+        # Syntax for declaring the subfield type of an existing list field
+        dataset.add_sample_field(
+            "ground_truth.info[]",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        field = dataset.get_field("ground_truth.info")
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
 
     @drop_datasets
     def test_merge_samples1(self):
@@ -2003,7 +2337,6 @@ class DatasetTests(unittest.TestCase):
             dataset.default_classes.append(1)
             dataset.save()  # error
 
-        dataset.default_classes.pop()
         dataset.save()  # success
 
         classes = {"ground_truth": ["cat", "dog"]}
@@ -2017,13 +2350,11 @@ class DatasetTests(unittest.TestCase):
             dataset.classes["other"] = {"hi": "there"}
             dataset.save()  # error
 
-        dataset.classes.pop("other")
+        dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.classes["ground_truth"].append(1)
             dataset.save()  # error
-
-        dataset.classes["ground_truth"].pop()
 
         dataset.save()  # success
 
@@ -2032,18 +2363,40 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_mask_targets = {1: "cat", 2: "dog"}
+        default_mask_targets_str_keys = {"1": "cat", "2": "dog"}
+
         dataset.default_mask_targets = default_mask_targets
+        dataset.default_mask_targets = default_mask_targets_str_keys
+
+        default_mask_targets_invalid_str_keys = {"1hi": "cat", "2": "dog"}
+
+        with self.assertRaises(ValidationError):
+            dataset.default_mask_targets = (
+                default_mask_targets_invalid_str_keys
+            )
 
         dataset.reload()
         self.assertDictEqual(
             dataset.default_mask_targets, default_mask_targets
         )
 
-        with self.assertRaises(Exception):
+        # test rgb mask targets
+        default_mask_targets_rgb = {
+            "#ff0034": "label1",
+            "#00dd32": "label2",
+            "#AABB23": "label3",
+        }
+        dataset.default_mask_targets = default_mask_targets_rgb
+
+        default_mask_targets_rgb_invalid = {"ff0034": "label1"}
+
+        with self.assertRaises(ValidationError):
+            dataset.default_mask_targets = default_mask_targets_rgb_invalid
+
+        with self.assertRaises(ValidationError):
             dataset.default_mask_targets["hi"] = "there"
             dataset.save()  # error
 
-        dataset.default_mask_targets.pop("hi")
         dataset.save()  # success
 
         mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
@@ -2052,32 +2405,28 @@ class DatasetTests(unittest.TestCase):
         dataset.reload()
         self.assertDictEqual(dataset.mask_targets, mask_targets)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["hi"] = "there"
             dataset.save()  # error
 
-        dataset.mask_targets.pop("hi")
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
-        dataset.mask_targets.pop(1)
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["ground_truth"]["hi"] = "there"
             dataset.save()  # error
 
-        dataset.mask_targets["ground_truth"].pop("hi")
         dataset.save()  # success
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             dataset.mask_targets["predictions"] = {1: {"too": "many"}}
             dataset.save()  # error
 
-        dataset.mask_targets.pop("predictions")
         dataset.save()  # success
 
     @drop_datasets
@@ -2096,12 +2445,13 @@ class DatasetTests(unittest.TestCase):
             dataset.default_skeleton.labels = [1]
             dataset.save()  # error
 
-        dataset.default_skeleton.labels = ["left eye", "right eye"]
         dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.default_skeleton.edges = "hello"
             dataset.save()  # error
+
+        dataset.save()  # success
 
         dataset.default_skeleton.edges = [[0, 1]]
         dataset.save()  # success
@@ -2123,7 +2473,6 @@ class DatasetTests(unittest.TestCase):
             dataset.skeletons["hi"] = "there"
             dataset.save()  # error
 
-        dataset.skeletons.pop("hi")
         dataset.save()  # success
 
         with self.assertRaises(Exception):
@@ -2132,21 +2481,18 @@ class DatasetTests(unittest.TestCase):
             )
             dataset.save()  # error
 
-        dataset.skeletons.pop(1)
         dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.skeletons["ground_truth"].labels = [1]
             dataset.save()  # error
 
-        dataset.skeletons["ground_truth"].labels = ["left eye", "right eye"]
         dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.skeletons["ground_truth"].edges = "hello"
             dataset.save()  # error
 
-        dataset.skeletons["ground_truth"].edges = [[0, 1]]
         dataset.save()  # success
 
         dataset.skeletons["ground_truth"].labels = None
@@ -2218,6 +2564,234 @@ class DatasetTests(unittest.TestCase):
             )
 
 
+class DatasetExtrasTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                    predictions=fo.Classification(label="dog", confidence=0.9),
+                ),
+                fo.Sample(
+                    filepath="image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                ),
+                fo.Sample(
+                    filepath="image3.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="pig", confidence=0.1),
+                ),
+            ]
+        )
+
+    def test_saved_views(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_saved_views)
+        self.assertListEqual(dataset.list_saved_views(), [])
+
+        view = dataset.match(F("filepath").contains_str("image2"))
+
+        self.assertIsNone(view.name)
+        self.assertFalse(view.is_saved)
+        self.assertEqual(len(view), 1)
+        self.assertTrue("image2" in view.first().filepath)
+
+        view_name = "test"
+        dataset.save_view(view_name, view)
+
+        last_loaded_at1 = dataset._doc.saved_views[0].last_loaded_at
+        last_modified_at1 = dataset._doc.saved_views[0].last_modified_at
+
+        self.assertEqual(view.name, view_name)
+        self.assertTrue(view.is_saved)
+        self.assertTrue(dataset.has_saved_views)
+        self.assertTrue(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [view_name])
+
+        self.assertIsNone(last_loaded_at1)
+        self.assertIsNotNone(last_modified_at1)
+
+        still_saved_view = deepcopy(view)
+        self.assertEqual(still_saved_view.name, view_name)
+        self.assertTrue(still_saved_view.is_saved)
+        self.assertEqual(still_saved_view, view)
+
+        not_saved_view = view.limit(1)
+        self.assertIsNone(not_saved_view.name)
+        self.assertFalse(not_saved_view.is_saved)
+
+        also_view = dataset.load_saved_view(view_name)
+        last_loaded_at2 = dataset._doc.saved_views[0].last_loaded_at
+
+        self.assertEqual(view, also_view)
+        self.assertEqual(also_view.name, view_name)
+        self.assertIsNotNone(last_loaded_at2)
+
+        info = dataset.get_saved_view_info(view_name)
+        new_view_name = "new-name"
+        info["name"] = new_view_name
+
+        dataset.update_saved_view_info(view_name, info)
+        last_modified_at2 = dataset._doc.saved_views[0].last_modified_at
+
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertTrue(dataset.has_saved_view(new_view_name))
+
+        updated_view = dataset.load_saved_view(new_view_name)
+        self.assertEqual(updated_view.name, new_view_name)
+        dataset.update_saved_view_info(new_view_name, {"name": view_name})
+
+        #
+        # Verify that saved views are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_saved_views)
+        self.assertTrue(dataset2.has_saved_view(view_name))
+        self.assertListEqual(dataset2.list_saved_views(), [view_name])
+
+        view2 = dataset2.load_saved_view(view_name)
+
+        self.assertEqual(len(view2), 1)
+        self.assertTrue("image2" in view2.first().filepath)
+
+        dataset.delete_saved_view(view_name)
+
+        self.assertFalse(dataset.has_saved_views)
+        self.assertFalse(dataset.has_saved_view(view_name))
+        self.assertListEqual(dataset.list_saved_views(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        also_view2 = dataset2.load_saved_view(view_name)
+        self.assertIsNotNone(also_view2)
+
+        #
+        # Verify that saved views are deleted when a dataset is deleted
+        #
+
+        view_id = dataset2._doc.saved_views[0].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 0)
+
+    def test_saved_views_for_app(self):
+        dataset = self.dataset
+
+        names = ["my-view1", "my_view2", "My  %&#  View3!"]
+        slugs = ["my-view1", "my-view2", "my-view3"]
+
+        for idx, name in enumerate(names, 1):
+            dataset.save_view(name, dataset.limit(idx))
+
+        # Can't use duplicate name when saving a view
+        with self.assertRaises(ValueError):
+            dataset.save_view("my-view1", dataset.limit(1))
+
+        # Can't use duplicate slug when saving a view
+        with self.assertRaises(ValueError):
+            dataset.save_view("my   view1", dataset.limit(1))
+
+        # Can't rename a view to an existing name
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2"})
+
+        # Can't rename a view to an existing slug
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-view1", {"name": "my_view2!"})
+
+        view_docs = dataset._doc.saved_views
+
+        self.assertListEqual([v.name for v in view_docs], names)
+        self.assertListEqual([v.slug for v in view_docs], slugs)
+
+        dataset.delete_saved_view("my_view2")
+
+        self.assertSetEqual(
+            {v.name for v in dataset._doc.saved_views},
+            {names[0], names[2]},
+        )
+
+        dataset.delete_saved_views()
+
+        self.assertListEqual(dataset._doc.saved_views, [])
+
+    def test_runs(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_evaluations)
+        self.assertListEqual(dataset.list_evaluations(), [])
+
+        # We currently use only evaluations as a proxy for all run types
+        dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+
+        self.assertTrue(dataset.has_evaluations)
+        self.assertTrue(dataset.has_evaluation("eval"))
+        self.assertListEqual(dataset.list_evaluations(), ["eval"])
+
+        results = dataset.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_evaluations)
+        self.assertTrue(dataset2.has_evaluation("eval"))
+        self.assertListEqual(dataset2.list_evaluations(), ["eval"])
+
+        results = dataset.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        dataset.delete_evaluation("eval")
+
+        self.assertFalse(dataset.has_evaluations)
+        self.assertFalse(dataset.has_evaluation("eval"))
+        self.assertListEqual(dataset.list_evaluations(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        info = dataset2.get_evaluation_info("eval")
+        results = dataset2.load_evaluation_results("eval")
+        self.assertIsNotNone(info)
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are deleted when a dataset is deleted
+        #
+
+        run_id = dataset2._doc.evaluations["eval"].id
+        result_id = dataset2._doc.evaluations["eval"].results.grid_id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 1)
+        self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 0)
+        self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 0)
+
+
 class DatasetSerializationTests(unittest.TestCase):
     @drop_datasets
     def test_serialize_sample(self):
@@ -2226,6 +2800,7 @@ class DatasetSerializationTests(unittest.TestCase):
         d = sample.to_dict()
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
+        self.assertNotIn("_dataset_id", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2234,6 +2809,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_id", d)
         self.assertIn("_media_type", d)
         self.assertIn("_rand", d)
+        self.assertIn("_dataset_id", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2268,6 +2844,7 @@ class DatasetSerializationTests(unittest.TestCase):
         d = frame.to_dict()
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
+        self.assertNotIn("_dataset_id", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -2275,6 +2852,7 @@ class DatasetSerializationTests(unittest.TestCase):
         d = frame.to_dict(include_private=True)
         self.assertIn("_id", d)
         self.assertIn("_sample_id", d)
+        self.assertIn("_dataset_id", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -2416,6 +2994,174 @@ class DatasetSerializationTests(unittest.TestCase):
 
         self.assertNotIn("foo", dataset2.get_frame_field_schema())
         self.assertNotIn("foo", frame2)
+
+
+class DatasetIdTests(unittest.TestCase):
+    @drop_datasets
+    def test_dataset_id(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.jpg"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        schema = dataset.get_field_schema(include_private=True)
+        self.assertIn("_dataset_id", schema)
+
+        dataset_id = str(dataset._doc.id)
+        _dataset_id = dataset._doc.id
+
+        values = dataset.values("_dataset_id")
+        self.assertListEqual(values, [_dataset_id] * len(dataset))
+
+        values = dataset.values("dataset_id")
+        self.assertListEqual(values, [dataset_id] * len(dataset))
+
+        sample = dataset.first()
+        self.assertEqual(sample._dataset_id, _dataset_id)
+        self.assertEqual(sample.dataset_id, dataset_id)
+
+        view = dataset.select_fields()
+
+        schema = view.get_field_schema(include_private=True)
+        self.assertIn("_dataset_id", schema)
+
+        values = view.values("_dataset_id")
+        self.assertListEqual(values, [_dataset_id] * len(view))
+
+        values = view.values("dataset_id")
+        self.assertListEqual(values, [dataset_id] * len(view))
+
+        sample = view.first()
+        self.assertEqual(sample._dataset_id, _dataset_id)
+        self.assertEqual(sample.dataset_id, dataset_id)
+
+        # add_collection()
+
+        dataset2 = fo.Dataset()
+        dataset2.add_collection(dataset)
+
+        dataset_id2 = str(dataset2._doc.id)
+        self.assertListEqual(dataset2.distinct("dataset_id"), [dataset_id2])
+
+        # clone()
+
+        dataset3 = dataset.clone()
+
+        dataset_id3 = str(dataset3._doc.id)
+        self.assertListEqual(dataset3.distinct("dataset_id"), [dataset_id3])
+
+        # add_samples()
+
+        _dataset = dataset.clone()
+
+        dataset4 = fo.Dataset()
+        dataset4.add_samples(list(_dataset))
+
+        dataset_id4 = str(dataset4._doc.id)
+        self.assertListEqual(dataset4.distinct("dataset_id"), [dataset_id4])
+
+        # merge_samples()
+
+        _dataset = dataset.clone()
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples(_dataset)
+
+        dataset_id5 = str(dataset5._doc.id)
+        self.assertListEqual(dataset5.distinct("dataset_id"), [dataset_id5])
+
+    @drop_datasets
+    def test_video_dataset_id(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        schema = dataset.get_frame_field_schema(include_private=True)
+        self.assertIn("_dataset_id", schema)
+
+        dataset_id = str(dataset._doc.id)
+        _dataset_id = dataset._doc.id
+
+        values = dataset.values("frames._dataset_id", unwind=True)
+        self.assertListEqual(values, [_dataset_id] * len(dataset))
+
+        values = dataset.values("frames.dataset_id", unwind=True)
+        self.assertListEqual(values, [dataset_id] * len(dataset))
+
+        frame = dataset.first().frames.first()
+        self.assertEqual(frame._dataset_id, _dataset_id)
+        self.assertEqual(frame.dataset_id, dataset_id)
+
+        view = dataset.select_fields()
+
+        schema = view.get_frame_field_schema(include_private=True)
+        self.assertIn("_dataset_id", schema)
+
+        values = view.values("frames._dataset_id", unwind=True)
+        self.assertListEqual(values, [_dataset_id] * len(view))
+
+        values = view.values("frames.dataset_id", unwind=True)
+        self.assertListEqual(values, [dataset_id] * len(view))
+
+        frame = dataset.first().frames.first()
+        self.assertEqual(frame._dataset_id, _dataset_id)
+        self.assertEqual(frame.dataset_id, dataset_id)
+
+        # add_collection()
+
+        dataset2 = fo.Dataset()
+        dataset2.add_collection(dataset)
+
+        dataset_id2 = str(dataset2._doc.id)
+        self.assertListEqual(
+            dataset2.distinct("frames.dataset_id"), [dataset_id2]
+        )
+
+        # clone()
+
+        dataset3 = dataset.clone()
+
+        dataset_id3 = str(dataset3._doc.id)
+        self.assertListEqual(
+            dataset3.distinct("frames.dataset_id"), [dataset_id3]
+        )
+
+        # add_samples()
+
+        _dataset = dataset.clone()
+
+        dataset4 = fo.Dataset()
+        dataset4.add_samples(list(_dataset))
+
+        dataset_id4 = str(dataset4._doc.id)
+        self.assertListEqual(
+            dataset4.distinct("frames.dataset_id"), [dataset_id4]
+        )
+
+        # merge_samples()
+
+        _dataset = dataset.clone()
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples(_dataset)
+
+        dataset_id5 = str(dataset5._doc.id)
+        self.assertListEqual(
+            dataset5.distinct("frames.dataset_id"), [dataset_id5]
+        )
 
 
 class DatasetDeletionTests(unittest.TestCase):
@@ -3191,6 +3937,93 @@ class DynamicFieldTests(unittest.TestCase):
             sample.save()
 
     @drop_datasets
+    def test_dynamic_list_fields(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            test1=[fo.DynamicEmbeddedDocument(int_field=1, float_field=0.1)],
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1, dynamic=True)
+
+        schema = dataset1.get_field_schema(flat=True)
+        self.assertIn("test1", schema)
+        self.assertIn("test1.int_field", schema)
+        self.assertIn("test1.float_field", schema)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample_field(
+            "test2",
+            fo.ListField,
+            subfield=fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            test2=[fo.DynamicEmbeddedDocument(int_field=1, float_field=0.1)],
+        )
+        dataset2.add_sample(sample2, dynamic=True)
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("test2", schema)
+        self.assertIn("test2.int_field", schema)
+        self.assertIn("test2.float_field", schema)
+
+        dataset1.merge_samples(dataset2)
+
+        schema = dataset1.get_field_schema(flat=True)
+        self.assertIn("test2", schema)
+        self.assertIn("test2.int_field", schema)
+        self.assertIn("test2.float_field", schema)
+
+        dataset3 = fo.Dataset()
+        dataset3.add_sample(fo.Sample(filepath="image3.jpg"))
+
+        dataset3.set_values(
+            "test3",
+            [[fo.DynamicEmbeddedDocument(int_field=1, float_field=0.1)]],
+            dynamic=True,
+        )
+
+        schema = dataset3.get_field_schema(flat=True)
+        self.assertIn("test3", schema)
+        self.assertIn("test3.int_field", schema)
+        self.assertIn("test3.float_field", schema)
+
+        sample4 = fo.Sample(
+            filepath="image.jpg",
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel"),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset4 = fo.Dataset()
+        dataset4.add_sample(sample4, dynamic=True)
+
+        schema = dataset4.get_field_schema(flat=True)
+        self.assertIn("tasks.annotator", schema)
+        self.assertIn("tasks.labels", schema)
+        self.assertIn("tasks.labels.classifications.label", schema)
+
+    @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):
         dataset1 = fo.Dataset()
         dataset1.media_type = "video"
@@ -3354,6 +4187,268 @@ class DynamicFieldTests(unittest.TestCase):
 
         self.assertEqual(detection.float, 2)
         self.assertEqual(detection.mixed, [1, 2, 3])
+
+    @drop_datasets
+    def test_dynamic_fields_nested(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", mood="surly"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel", age=51),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "tasks.annotator",
+                "tasks.labels",
+                "tasks.labels.classifications.age",
+                "tasks.labels.classifications.mood",
+            },
+        )
+
+        dataset.add_dynamic_sample_fields()
+
+        new_paths = [
+            "tasks",
+            "tasks.labels",
+            "tasks.labels.classifications",
+            "tasks.labels.classifications.id",
+            "tasks.labels.classifications.tags",
+            "tasks.labels.classifications.label",
+            "tasks.labels.classifications.logits",
+            "tasks.labels.classifications.confidence",
+            "tasks.labels.classifications.age",
+            "tasks.labels.classifications.mood",
+            "tasks.labels.logits",
+            "tasks.annotator",
+        ]
+        schema = dataset.get_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
+
+        dataset.add_dynamic_sample_fields()
+
+    @drop_datasets
+    def test_add_dynamic_fields_nested(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.png",
+                    ground_truth=fo.Classification(
+                        label="cat",
+                        info=[
+                            fo.DynamicEmbeddedDocument(
+                                task="initial_annotation",
+                                author="Alice",
+                                timestamp=datetime(1970, 1, 1),
+                                notes=["foo", "bar"],
+                                ints=[1],
+                                floats=[1.0],
+                                mixed=[1, "foo"],
+                            ),
+                            fo.DynamicEmbeddedDocument(
+                                task="editing_pass",
+                                author="Bob",
+                                timestamp=datetime.utcnow(),
+                            ),
+                        ],
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.png",
+                    ground_truth=fo.Classification(
+                        label="dog",
+                        info=[
+                            fo.DynamicEmbeddedDocument(
+                                task="initial_annotation",
+                                author="Bob",
+                                timestamp=datetime(2018, 10, 18),
+                                notes=["spam", "eggs"],
+                                ints=[2],
+                                floats=[2],
+                                mixed=[2.0],
+                            ),
+                        ],
+                    ),
+                ),
+            ]
+        )
+
+        schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "ground_truth.info",
+                "ground_truth.info.task",
+                "ground_truth.info.author",
+                "ground_truth.info.timestamp",
+                "ground_truth.info.notes",
+                "ground_truth.info.ints",
+                "ground_truth.info.floats",
+                "ground_truth.info.mixed",
+            },
+        )
+
+        field = schema["ground_truth.info"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
+
+        field = schema["ground_truth.info.author"]
+        self.assertIsInstance(field, fo.StringField)
+
+        field = schema["ground_truth.info.timestamp"]
+        self.assertIsInstance(field, fo.DateTimeField)
+
+        field = schema["ground_truth.info.notes"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.StringField)
+
+        field = schema["ground_truth.info.ints"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.IntField)
+
+        field = schema["ground_truth.info.floats"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.FloatField)
+
+        field = schema["ground_truth.info.mixed"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, list)
+        self.assertEqual(len(field.field), 3)
+
+        dataset.add_dynamic_sample_fields()
+
+        schema = dataset.get_field_schema(flat=True)
+
+        field = schema["ground_truth.info"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.EmbeddedDocumentField)
+        self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
+
+        field = schema["ground_truth.info.author"]
+        self.assertIsInstance(field, fo.StringField)
+
+        field = schema["ground_truth.info.timestamp"]
+        self.assertIsInstance(field, fo.DateTimeField)
+
+        field = schema["ground_truth.info.notes"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.StringField)
+
+        field = schema["ground_truth.info.ints"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.IntField)
+
+        field = schema["ground_truth.info.floats"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.FloatField)
+
+        self.assertNotIn("ground_truth.info.mixed", schema)
+
+        schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(set(schema.keys()), {"ground_truth.info.mixed"})
+
+        dataset.add_dynamic_sample_fields(add_mixed=True)
+
+        schema = dataset.get_field_schema(flat=True)
+
+        field = schema["ground_truth.info.mixed"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.Field)
+
+    @drop_datasets
+    def test_dynamic_frame_fields_nested(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            tasks=[
+                fo.DynamicEmbeddedDocument(
+                    annotator="alice",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat", mood="surly"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.DynamicEmbeddedDocument(
+                    annotator="bob",
+                    labels=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel", age=51),
+                        ]
+                    ),
+                ),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "tasks.annotator",
+                "tasks.labels",
+                "tasks.labels.classifications.age",
+                "tasks.labels.classifications.mood",
+            },
+        )
+
+        dataset.add_dynamic_frame_fields()
+
+        new_paths = [
+            "tasks",
+            "tasks.labels",
+            "tasks.labels.classifications",
+            "tasks.labels.classifications.id",
+            "tasks.labels.classifications.tags",
+            "tasks.labels.classifications.label",
+            "tasks.labels.classifications.logits",
+            "tasks.labels.classifications.confidence",
+            "tasks.labels.classifications.age",
+            "tasks.labels.classifications.mood",
+            "tasks.labels.logits",
+            "tasks.annotator",
+        ]
+        schema = dataset.get_frame_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
+
+        dataset.add_dynamic_frame_fields()
 
     @drop_datasets
     def test_rename_dynamic_embedded_fields(self):
@@ -3741,7 +4836,54 @@ class DynamicFieldTests(unittest.TestCase):
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets
-    def test_custom_embedded_documents(self):
+    def test_custom_embedded_documents_on_the_fly(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field(
+            "camera_info",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # This tests that we've handled a mongoengine reference error that used
+        # to occur before we explicitly accounted for it
+        gc.collect()
+
+        dataset.add_sample_field("camera_info.camera_id", fo.StringField)
+
+        self.assertIn(
+            "camera_info.camera_id", dataset.get_field_schema(flat=True)
+        )
+
+        sample1 = fo.Sample(
+            filepath="/path/to/image1.jpg",
+            camera_info=fo.DynamicEmbeddedDocument(
+                camera_id="123456789",
+                quality=51.0,
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="/path/to/image2.jpg",
+            camera_info=fo.DynamicEmbeddedDocument(camera_id="123456789"),
+        )
+
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        self.assertIn(
+            "camera_info.quality", dataset.get_field_schema(flat=True)
+        )
+
+        dataset.set_values(
+            "camera_info.description", ["foo", "bar"], dynamic=True
+        )
+
+        self.assertIn(
+            "camera_info.description", dataset.get_field_schema(flat=True)
+        )
+
+    @drop_datasets
+    def test_custom_embedded_document_classes(self):
         sample = fo.Sample(
             filepath="/path/to/image.png",
             camera_info=_CameraInfo(
@@ -3771,16 +4913,131 @@ class CustomEmbeddedDocumentTests(unittest.TestCase):
         self.assertIsInstance(sample_view.weather.metadata, _LabelMetadata)
 
 
-class _CameraInfo(foo.EmbeddedDocument):
+class _CameraInfo(fo.EmbeddedDocument):
     camera_id = fof.StringField(required=True)
     quality = fof.FloatField()
     description = fof.StringField()
 
 
-class _LabelMetadata(foo.DynamicEmbeddedDocument):
+class _LabelMetadata(fo.DynamicEmbeddedDocument):
     created_at = fof.DateTimeField(default=datetime.utcnow)
 
     model_name = fof.StringField()
+
+
+class DatasetFactoryTests(unittest.TestCase):
+    @drop_datasets
+    def test_from_images(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_images(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "image.jpg"}]
+        sample_parser = _ImageSampleParser()
+        dataset = fo.Dataset.from_images(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_videos(self):
+        filepaths = ["image.jpg"]
+        dataset = fo.Dataset.from_videos(filepaths)
+
+        self.assertEqual(len(dataset), 1)
+
+        samples = [{"filepath": "video.mp4"}]
+        sample_parser = _VideoSampleParser()
+        dataset = fo.Dataset.from_videos(samples, sample_parser=sample_parser)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_from_labeled_images(self):
+        samples = [{"filepath": "image.jpg", "label": "label"}]
+        sample_parser = _LabeledImageSampleParser()
+        dataset = fo.Dataset.from_labeled_images(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+    @drop_datasets
+    def test_from_labeled_videos(self):
+        samples = [{"filepath": "video.mp4", "label": "label"}]
+        sample_parser = _LabeledVideoSampleParser()
+        dataset = fo.Dataset.from_labeled_videos(
+            samples, sample_parser, label_field="ground_truth"
+        )
+
+        self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+
+class _ImageSampleParser(foud.ImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+
+class _VideoSampleParser(foud.VideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+
+class _LabeledImageSampleParser(foud.LabeledImageSampleParser):
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return False
+
+    def get_image_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+
+class _LabeledVideoSampleParser(foud.LabeledVideoSampleParser):
+    @property
+    def has_video_metadata(self):
+        return False
+
+    def get_video_path(self):
+        return self.current_sample["filepath"]
+
+    @property
+    def label_cls(self):
+        return fo.Classification
+
+    @property
+    def frame_label_cls(self):
+        return None
+
+    def get_label(self):
+        label = self.current_sample["label"]
+        return fo.Classification(label=label)
+
+    def get_frame_labels(self):
+        return None
 
 
 if __name__ == "__main__":

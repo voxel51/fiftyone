@@ -1,6 +1,6 @@
 import { useTheme } from "@fiftyone/components";
-import React, { useEffect, useRef } from "react";
 import { animated, config, useSpring } from "@react-spring/web";
+import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
 
 import { useFollow } from "@fiftyone/state";

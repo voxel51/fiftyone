@@ -2,7 +2,10 @@ import { useCallback, useContext, useTransition } from "react";
 import { RouterContext, RoutingContext } from "../routing";
 
 const goTo = (router: RoutingContext, path: string, state: any) => {
-  router.history.push(path, state);
+  const searchParams = new URLSearchParams(window.location.search);
+  searchParams.delete("view");
+  const search = searchParams.toString();
+  router.history.push(`${path}${search.length ? "?" : ""}${search}`, state);
 };
 
 const useTo = (state: any) => {

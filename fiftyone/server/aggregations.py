@@ -5,11 +5,9 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import asdict
 from datetime import date, datetime
 import typing as t
 
-from dacite import Config, from_dict
 import strawberry as gql
 
 import fiftyone.core.aggregations as foa
@@ -22,17 +20,10 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
-from fiftyone.server.utils import meets_type
+from fiftyone.server.utils import from_dict, meets_type
 import fiftyone.server.view as fosv
-
-
-@gql.input
-class SelectedLabel:
-    label_id: gql.ID
-    field: str
-    sample_id: gql.ID
-    frame_number: t.Optional[int] = None
 
 
 @gql.input
@@ -48,6 +39,7 @@ class AggregationForm:
     sample_ids: t.List[gql.ID]
     slice: t.Optional[str]
     view: BSONArray
+    view_name: t.Optional[str] = None
 
 
 @gql.interface
@@ -117,8 +109,12 @@ AggregateResult = gql.union(
 async def aggregate_resolver(
     form: AggregationForm,
 ) -> t.List[AggregateResult]:
+    if not form.dataset:
+        raise ValueError("Aggregate form missing dataset")
+
     view = fosv.get_view(
         form.dataset,
+        view_name=form.view_name or None,
         stages=form.view,
         filters=form.filters,
         extended_stages=form.extended_stages,
@@ -126,6 +122,8 @@ async def aggregate_resolver(
             group=GroupElementFilter(id=form.group_id, slice=form.slice)
         ),
     )
+
+    slice_view = view if form.mixed and "" in form.paths else None
 
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
@@ -143,35 +141,29 @@ async def aggregate_resolver(
             ]
         )
 
-    if form.mixed:
+    if form.mixed and view.media_type == fom.GROUP:
         view = view.select_group_slices(_allow_mixed=True)
 
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]
     )
     counts = [len(a) for a in aggregations]
-    flattened = []
-    for aggs in aggregations:
-        flattened += aggs
+    flattened = [item for sublist in aggregations for item in sublist]
 
-    result = await view._async_aggregate(flattened)
+    # TODO: stop aggregate resolver from being called for non-existent fields,
+    #  but fail silently for now by just returning empty results
+    try:
+        result = await view._async_aggregate(flattened)
+    except:
+        return []
+
     results = []
     offset = 0
     for length, deserialize in zip(counts, deserializers):
         results.append(deserialize(result[offset : length + offset]))
         offset += length
 
-    if form.mixed and "" in form.paths:
-        slice_view = fosv.get_view(
-            form.dataset,
-            stages=form.view,
-            filters=form.filters,
-            extended_stages=form.extended_stages,
-            sample_filter=SampleFilter(
-                group=GroupElementFilter(id=form.group_id, slice=form.slice)
-            ),
-        )
-
+    if slice_view:
         for result in results:
             if isinstance(result, RootAggregation):
                 result.slice = await slice_view._async_aggregate(foa.Count())
@@ -203,8 +195,11 @@ RESULT_MAPPING = {
 def _resolve_path_aggregation(
     path: str, view: foc.SampleCollection
 ) -> AggregateResult:
-    aggregations: t.List[foa.Aggregation] = [foa.Count(path if path else None)]
+    aggregations: t.List[foa.Aggregation] = [
+        foa.Count(path if path and path != "" else None)
+    ]
     field = view.get_field(path)
+
     while isinstance(field, fof.ListField):
         field = field.field
 
@@ -231,9 +226,6 @@ def _resolve_path_aggregation(
 
     elif meets_type(field, (fof.ObjectIdField, fof.StringField)):
         aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
-
-    if isinstance(field, fof.ListField):
-        aggregations.append(_CountExists(path))
 
     data = {"path": path}
 
@@ -287,8 +279,7 @@ def _resolve_path_aggregation(
                         embedded_doc_type=fol.Label
                     )
                 )
-
-        return from_dict(cls, data, config=Config(check_types=False))
+        return from_dict(cls, data)
 
     return aggregations, from_results
 

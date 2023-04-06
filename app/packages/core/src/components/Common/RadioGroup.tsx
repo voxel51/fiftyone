@@ -1,11 +1,11 @@
-import React, { useLayoutEffect } from "react";
 import { Radio as MaterialRadio } from "@mui/material";
 import { animated } from "@react-spring/web";
+import React, { useLayoutEffect } from "react";
 import styled from "styled-components";
 
-import { useHighlightHover } from "../Actions/utils";
-import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "@fiftyone/components";
+import { ItemAction } from "../Actions/ItemAction";
+import { useHighlightHover } from "../Actions/utils";
 
 const StyledRadioContainer = styled.div``;
 

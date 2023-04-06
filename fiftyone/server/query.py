@@ -1,12 +1,11 @@
 """
-FiftyOne Server queries
+FiftyOne Server queries.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import typing as t
-from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
@@ -15,14 +14,15 @@ import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
-from bson import ObjectId
-from dacite import Config, from_dict
-
+from bson import ObjectId, json_util
 
 import fiftyone as fo
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
+from fiftyone.core.odm import SavedViewDocument
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
@@ -40,6 +40,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.utils import from_dict
 
 
 ID = gql.scalar(
@@ -59,7 +60,7 @@ class Group:
 
 @gql.type
 class Target:
-    target: int
+    target: str
     value: str
 
 
@@ -83,11 +84,51 @@ class Run:
     view_stages: t.Optional[t.List[str]]
 
 
+@gql.enum
+class BrainRunType(Enum):
+    similarity = "similarity"
+    visualization = "visualization"
+
+
 @gql.type
 class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
     method: t.Optional[str]
     patches_field: t.Optional[str]
+    supports_prompts: t.Optional[bool]
+
+    @gql.field
+    def type(self) -> t.Optional[BrainRunType]:
+        try:
+            if issubclass(fob.SimilarityConfig, etau.get_class(self.cls)):
+                return BrainRunType.similarity
+
+            if issubclass(fob.VisualizationConfig, etau.get_class(self.cls)):
+                return BrainRunType.visualization
+        except:
+            pass
+
+        return None
+
+    @gql.field
+    def max_k(self) -> t.Optional[int]:
+        config = self._create_config()
+        return getattr(config, "max_k", None)
+
+    @gql.field
+    def supports_least_similarity(self) -> t.Optional[bool]:
+        config = self._create_config()
+        return getattr(config, "supports_least_similarity", None)
+
+    def _create_config(self):
+        try:
+            cls = etau.get_class(self.cls)
+            return cls(
+                embeddings_field=self.embeddings_field,
+                patches_field=self.patches_field,
+            )
+        except:
+            return None
 
 
 @gql.type
@@ -108,10 +149,44 @@ class EvaluationRun(Run):
 
 
 @gql.type
+class SavedView:
+    id: t.Optional[str]
+    dataset_id: t.Optional[str]
+    name: t.Optional[str]
+    description: t.Optional[str]
+    color: t.Optional[str]
+    slug: t.Optional[str]
+    view_stages: t.Optional[t.List[str]]
+    created_at: t.Optional[datetime]
+    last_modified_at: t.Optional[datetime]
+    last_loaded_at: t.Optional[datetime]
+
+    @gql.field
+    def view_name(self) -> t.Optional[str]:
+        if isinstance(self, ObjectId):
+            return None
+        return self.name
+
+    @gql.field
+    def stage_dicts(self) -> t.Optional[BSONArray]:
+        return [json_util.loads(x) for x in self.view_stages]
+
+    @classmethod
+    def from_doc(cls, doc: SavedViewDocument):
+        stage_dicts = [json_util.loads(x) for x in doc.view_stages]
+        data = doc.to_dict()
+        data["id"] = str(data.pop("_id"))
+        data["dataset_id"] = str(data.pop("_dataset_id"))
+        saved_view = from_dict(data_class=cls, data=data)
+        saved_view.stage_dicts = stage_dicts
+        return saved_view
+
+
+@gql.type
 class SidebarGroup:
     name: str
     paths: t.Optional[t.List[str]]
-    expanded: t.Optional[bool] = True
+    expanded: t.Optional[bool] = None
 
 
 @gql.type
@@ -134,12 +209,13 @@ class SidebarMode(Enum):
 
 @gql.type
 class DatasetAppConfig:
-    media_fields: t.List[str]
+    media_fields: t.Optional[t.List[str]]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -158,14 +234,28 @@ class Dataset:
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
     frame_fields: t.Optional[t.List[SampleField]]
-    brain_methods: t.List[BrainRun]
-    evaluations: t.List[EvaluationRun]
+    brain_methods: t.Optional[t.List[BrainRun]]
+    evaluations: t.Optional[t.List[EvaluationRun]]
+    saved_view_slug: t.Optional[str]
+    saved_views: t.Optional[t.List[SavedView]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
+    view_name: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
+
+    @gql.field
+    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
+        if not slug:
+            return None
+
+        for view in self.saved_views:
+            if view.slug == slug:
+                return view.stage_dicts()
+
+        return None
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -177,10 +267,13 @@ class Dataset:
             NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
-        doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
+        doc["sample_fields"] = _flatten_fields(
+            [], doc.get("sample_fields", [])
+        )
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
+        doc["saved_views"] = doc.get("saved_views", [])
         doc["skeletons"] = list(
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
@@ -194,9 +287,17 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[BSONArray], info: Info
+        cls,
+        name: str,
+        view: t.Optional[BSONArray],
+        info: Info,
+        saved_view_slug: t.Optional[str] = gql.UNSET,
     ) -> t.Optional["Dataset"]:
-        return await serialize_dataset(name, view)
+        return await serialize_dataset(
+            dataset_name=name,
+            serialized_view=view,
+            saved_view_slug=saved_view_slug,
+        )
 
 
 dataset_dataloader = get_dataloader_resolver(
@@ -236,6 +337,7 @@ class AppConfig:
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
+    spaces: t.Optional[JSON]
 
 
 @gql.type
@@ -255,7 +357,7 @@ class Query(fosa.AggregateQuery):
         config = fose.get_state().config
         d = config.serialize()
         d["timezone"] = fo.config.timezone
-        return from_dict(AppConfig, d, config=Config(check_types=False))
+        return from_dict(AppConfig, d)
 
     @gql.field
     def context(self) -> str:
@@ -269,7 +371,7 @@ class Query(fosa.AggregateQuery):
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
 
-    dataset = gql.field(resolver=Dataset.resolver)
+    dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
@@ -320,6 +422,13 @@ class Query(fosa.AggregateQuery):
     def version(self) -> str:
         return foc.VERSION
 
+    @gql.field
+    def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
+        ds = fod.load_dataset(dataset_name)
+        return [
+            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
+        ]
+
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
@@ -338,33 +447,41 @@ def _flatten_fields(
     return result
 
 
-def _convert_targets(targets: t.Dict[str, str]) -> Target:
-    return [Target(target=int(k), value=v) for k, v in targets.items()]
+def _convert_targets(targets: t.Dict[str, str]) -> t.List[Target]:
+    return [Target(target=k, value=v) for k, v in targets.items()]
 
 
-async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
+async def serialize_dataset(
+    dataset_name: str,
+    serialized_view: BSONArray,
+    saved_view_slug: t.Optional[str] = None,
+) -> Dataset:
     def run():
-        dataset = fo.load_dataset(name)
+        dataset = fod.load_dataset(dataset_name)
         dataset.reload()
-        view = fov.DatasetView._build(dataset, serialized_view or [])
+        view_name = None
+        try:
+            doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
+            view = dataset.load_saved_view(doc.name)
+            view_name = view.name
+        except:
+            view = fov.DatasetView._build(dataset, serialized_view or [])
 
-        doc = dataset._doc.to_dict()
+        doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
-        data = from_dict(Dataset, doc, config=Config(check_types=False))
+        data = from_dict(Dataset, doc)
         data.view_cls = None
+        data.view_name = view_name
+        data.saved_view_slug = saved_view_slug
 
         collection = dataset.view()
         if view is not None:
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]
-
-                data.id = view._dataset._doc.id
-
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
-                data.id = ObjectId()
                 data.media_type = view.media_type
 
             collection = view
@@ -378,6 +495,32 @@ async def serialize_dataset(name: str, serialized_view: BSONArray) -> Dataset:
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
+        for brain_method in data.brain_methods:
+            try:
+                type = brain_method.config.type().value
+            except:
+                type = None
+
+            try:
+                max_k = brain_method.config.max_k()
+            except:
+                max_k = None
+
+            try:
+                supports_least_similarity = (
+                    brain_method.config.supports_least_similarity()
+                )
+            except:
+                supports_least_similarity = None
+
+            setattr(brain_method.config, "type", type)
+            setattr(brain_method.config, "max_k", max_k)
+            setattr(
+                brain_method.config,
+                "supports_least_similarity",
+                supports_least_similarity,
+            )
 
         return data
 

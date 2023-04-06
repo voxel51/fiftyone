@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,7 @@ import os
 import random
 
 from bson import json_util
-import cv2
+from mongoengine.base import get_document
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -152,7 +152,7 @@ def import_samples(
                 parse_dataset_info(dataset, info)
 
         if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
-            dataset_importer.import_run_results(dataset)
+            dataset_importer.import_extras(dataset)
 
     return sample_ids
 
@@ -347,7 +347,7 @@ def merge_samples(
                 parse_dataset_info(dataset, info)
 
         if isinstance(dataset_importer, LegacyFiftyOneDatasetImporter):
-            dataset_importer.import_run_results(dataset)
+            dataset_importer.import_extras(dataset)
 
 
 def _handle_legacy_formats(dataset_importer):
@@ -433,6 +433,16 @@ def _build_parse_sample_fcn(
                 metadata=video_metadata,
                 tags=tags,
             )
+
+    elif isinstance(dataset_importer, UnlabeledMediaDatasetImporter):
+        # Unlabeled media dataset
+
+        # The schema never needs expanding when importing unlabeled samples
+        expand_schema = False
+
+        def parse_sample(sample):
+            filepath, metadata = sample
+            return Sample(filepath=filepath, metadata=metadata, tags=tags)
 
     elif isinstance(dataset_importer, LabeledImageDatasetImporter):
         # Labeled image dataset
@@ -616,6 +626,18 @@ def parse_dataset_info(dataset, info, overwrite=True):
         info: an info dict
         overwrite (True): whether to overwrite existing dataset info fields
     """
+    tags = info.pop("tags", None)
+    if tags is not None:
+        if overwrite:
+            dataset.tags = tags
+        else:
+            _update_no_overwrite(dataset.tags, tags)
+
+    description = info.pop("description", None)
+    if description is not None:
+        if overwrite or not dataset.description:
+            dataset.description = str(description)
+
     classes = info.pop("classes", None)
     if isinstance(classes, dict):
         if overwrite:
@@ -685,7 +707,10 @@ def parse_dataset_info(dataset, info, overwrite=True):
 
 
 def _update_no_overwrite(d, dnew):
-    d.update({k: v for k, v in dnew.items() if k not in d})
+    if isinstance(d, list):
+        d.extend([v for v in dnew if v not in d])
+    else:
+        d.update({k: v for k, v in dnew.items() if k not in d})
 
 
 class ImportPathsMixin(object):
@@ -1176,6 +1201,52 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement has_video_metadata")
 
 
+class UnlabeledMediaDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of unlabeled media samples.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __next__(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an ``(filepath, metadata)`` tuple, where
+
+            -   ``filepath``: the path to the media on disk
+            -   ``metadata``: a
+                :class:`fiftyone.core.metadata.Metadata` instance for the
+                media, or ``None`` if :meth:`has_metadata` is ``False``
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.Metadata` instances for each sample.
+        """
+        raise NotImplementedError("subclass must implement has_metadata")
+
+
 class LabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of labeled image samples.
 
@@ -1364,10 +1435,13 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        rel_dir (None): a relative directory to prepend to the ``filepath`` of
-            each sample if the filepath is not absolute. This path is converted
-            to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+        rel_dir (None): a relative directory to prepend to each filepath if it
+            is not absolute. This path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.utils.normalize_path`
+        import_saved_views (True): whether to include saved views in the
+            import. Only applicable when importing full datasets
+        import_runs (True): whether to include annotation/brain/evaluation
+            runs in the import. Only applicable when importing full datasets
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1379,6 +1453,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        import_saved_views=True,
+        import_runs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1391,9 +1467,12 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.import_saved_views = import_saved_views
+        self.import_runs = import_runs
 
         self._metadata = None
         self._rel_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1402,6 +1481,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._iter_samples = None
         self._num_samples = None
         self._media_type = None
+        self._media_fields = None
 
     def __iter__(self):
         self._iter_samples = iter(self._samples)
@@ -1415,6 +1495,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         if not os.path.isabs(sd["filepath"]):
             sd["filepath"] = os.path.join(self._rel_dir, sd["filepath"])
+
+        if self._media_fields:
+            _parse_media_fields(sd, self._media_fields, self._rel_dir)
 
         if (self._media_type == fomm.VIDEO) or (
             self._media_type == fomm.GROUP
@@ -1460,10 +1543,16 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         else:
             self._rel_dir = self.dataset_dir
 
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
+
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = {
+                f: False for f in etau.list_subdirs(self._fields_dir)
+            }
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         samples = etas.read_json(samples_path).get("samples", [])
@@ -1477,86 +1566,68 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def get_dataset_info(self):
         return self._metadata.get("info", {})
 
-    def import_run_results(self, sample_collection):
+    def import_extras(self, sample_collection):
         dataset = sample_collection._dataset
 
-        #
+        # Import saved views
+        saved_views = self._metadata.get("saved_views", None)
+        if (
+            saved_views
+            and self.import_saved_views
+            and self.max_samples is None
+        ):
+            _import_saved_views(dataset, saved_views)
+
         # Import annotation runs
-        #
-
         annotation_runs = self._metadata.get("annotation_runs", None)
-        if annotation_runs:
-            d = {k: json_util.loads(v) for k, v in annotation_runs.items()}
-            d = dataset._doc.field_to_python("annotation_runs", d)
-            for anno_key, run_doc in d.items():
-                # Results are stored in GridFS, which we import separately next
-                run_doc["results"] = None
-
+        if annotation_runs and self.import_runs and self.max_samples is None:
+            for anno_key in annotation_runs.keys():
                 if dataset.has_annotation_run(anno_key):
                     logger.warning(
                         "Overwriting existing annotation run '%s'", anno_key
                     )
                     dataset.delete_annotation_run(anno_key)
 
-            dataset._doc.annotation_runs.update(d)
-            _import_run_results(
+            _import_runs(
                 dataset,
+                annotation_runs,
                 self._anno_dir,
                 foa.AnnotationMethod,
-                keys=list(d.keys()),
             )
-            dataset._doc.save()
 
-        #
         # Import brain method runs
-        #
-
         brain_methods = self._metadata.get("brain_methods", None)
-        if brain_methods:
-            d = {k: json_util.loads(v) for k, v in brain_methods.items()}
-            d = dataset._doc.field_to_python("brain_methods", d)
-            for brain_key, run_doc in d.items():
-                # Results are stored in GridFS, which we import separately next
-                run_doc["results"] = None
-
+        if brain_methods and self.import_runs and self.max_samples is None:
+            for brain_key in brain_methods.keys():
                 if dataset.has_brain_run(brain_key):
                     logger.warning(
-                        "Overwriting existing brain run '%s'", brain_key
+                        "Overwriting existing brain method run '%s'", brain_key
                     )
                     dataset.delete_brain_run(brain_key)
 
-            dataset._doc.brain_methods.update(d)
-            _import_run_results(
-                dataset, self._brain_dir, fob.BrainMethod, keys=list(d.keys())
+            _import_runs(
+                dataset,
+                brain_methods,
+                self._brain_dir,
+                fob.BrainMethod,
             )
-            dataset._doc.save()
 
-        #
-        # Import evaluations
-        #
-
+        # Import evaluation runs
         evaluations = self._metadata.get("evaluations", None)
-        if evaluations:
-            d = {k: json_util.loads(v) for k, v in evaluations.items()}
-            d = dataset._doc.field_to_python("evaluations", d)
-            for eval_key, run_doc in d.items():
-                # Results are stored in GridFS, which we import separately next
-                run_doc["results"] = None
-
+        if evaluations and self.import_runs and self.max_samples is None:
+            for eval_key in evaluations.keys():
                 if dataset.has_evaluation(eval_key):
                     logger.warning(
-                        "Overwriting existing evaluation '%s'", eval_key
+                        "Overwriting existing evaluation run '%s'", eval_key
                     )
                     dataset.delete_evaluation(eval_key)
 
-            dataset._doc.evaluations.update(d)
-            _import_run_results(
+            _import_runs(
                 dataset,
+                evaluations,
                 self._eval_dir,
                 foe.EvaluationMethod,
-                keys=list(d.keys()),
             )
-            dataset._doc.save()
 
     @staticmethod
     def _get_classes(dataset_dir):
@@ -1599,6 +1670,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             each sample if the filepath is not absolute. This path is converted
             to an absolute path (if necessary) via
             :func:`fiftyone.core.utils.normalize_path`
+        import_saved_views (True): whether to include saved views in the
+            import. Only applicable when importing full datasets
+        import_runs (True): whether to include annotation/brain/evaluation
+            runs in the import. Only applicable when importing full datasets
         ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1611,6 +1686,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self,
         dataset_dir,
         rel_dir=None,
+        import_saved_views=True,
+        import_runs=True,
         ordered=True,
         shuffle=False,
         seed=None,
@@ -1624,9 +1701,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
         self.rel_dir = rel_dir
+        self.import_saved_views = import_saved_views
+        self.import_runs = import_runs
         self.ordered = ordered
 
         self._data_dir = None
+        self._fields_dir = None
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
@@ -1634,13 +1714,20 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._samples_path = None
         self._frames_path = None
         self._has_frames = None
+        self._media_fields = None
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
+        self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+
+        if os.path.isdir(self._fields_dir):
+            self._media_fields = {
+                f: False for f in etau.list_subdirs(self._fields_dir)
+            }
 
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
         if not os.path.isfile(self._samples_path):
@@ -1692,6 +1779,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #   - `dataset` is non-empty but no migration is required
         #
 
+        views = dataset_dict.pop("saved_views", [])
+        annotations = dataset_dict.pop("annotation_runs", {})
+        brain_methods = dataset_dict.pop("brain_methods", {})
+        evaluations = dataset_dict.pop("evaluations", {})
+
         if empty_import:
             #
             # The `dataset` we're importing into is empty, so we replace its
@@ -1706,6 +1798,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 dict(
                     _id=doc.id,
                     name=doc.name,
+                    slug=doc.slug,
                     persistent=doc.persistent,
                     created_at=doc.created_at,
                     last_loaded_at=doc.last_loaded_at,
@@ -1713,14 +1806,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                     frame_collection_name=doc.frame_collection_name,
                 )
             )
-
-            # Run results are imported separately
-
-            for run_doc in dataset_dict.get("evaluations", {}).values():
-                run_doc["results"] = None
-
-            for run_doc in dataset_dict.get("brain_methods", {}).values():
-                run_doc["results"] = None
 
             conn = foo.get_db_conn()
             conn.datasets.replace_one({"name": name}, dataset_dict)
@@ -1756,17 +1841,24 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # Prepend `dataset_dir` to all relative paths
             rel_dir = self.dataset_dir
 
-        def parse_sample(sample):
-            if not os.path.isabs(sample["filepath"]):
-                sample["filepath"] = os.path.join(rel_dir, sample["filepath"])
+        media_fields = self._media_fields
+        dataset_id = dataset._doc.id
+
+        def _parse_sample(sd):
+            if not os.path.isabs(sd["filepath"]):
+                sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
             if tags is not None:
-                sample["tags"].extend(tags)
+                sd["tags"].extend(tags)
 
-            return sample
+            if media_fields:
+                _parse_media_fields(sd, media_fields, rel_dir)
+
+            sd["_dataset_id"] = dataset_id
+            return sd
 
         sample_ids = foo.insert_documents(
-            map(parse_sample, samples),
+            map(_parse_sample, samples),
             dataset._sample_collection,
             ordered=self.ordered,
             progress=True,
@@ -1789,8 +1881,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 frames = [f for f in frames if f["_sample_id"] in _sample_ids]
                 num_frames = len(frames)
 
+            def _parse_frame(fd):
+                fd["_dataset_id"] = dataset_id
+                return fd
+
             foo.insert_documents(
-                frames,
+                map(_parse_frame, frames),
                 dataset._frame_collection,
                 ordered=self.ordered,
                 progress=True,
@@ -1798,22 +1894,41 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import run results
+        # Import saved views
         #
 
-        if empty_import:
-            if os.path.isdir(self._anno_dir):
-                _import_run_results(
-                    dataset, self._anno_dir, foa.AnnotationMethod
-                )
+        if (
+            empty_import
+            and self.import_saved_views
+            and self.max_samples is None
+        ):
+            _import_saved_views(dataset, views)
 
-            if os.path.isdir(self._brain_dir):
-                _import_run_results(dataset, self._brain_dir, fob.BrainMethod)
+        #
+        # Import runs
+        #
 
-            if os.path.isdir(self._eval_dir):
-                _import_run_results(
-                    dataset, self._eval_dir, foe.EvaluationMethod
-                )
+        if empty_import and self.import_runs and self.max_samples is None:
+            _import_runs(
+                dataset,
+                annotations,
+                self._anno_dir,
+                foa.AnnotationMethod,
+            )
+
+            _import_runs(
+                dataset,
+                brain_methods,
+                self._brain_dir,
+                fob.BrainMethod,
+            )
+
+            _import_runs(
+                dataset,
+                evaluations,
+                self._eval_dir,
+                foe.EvaluationMethod,
+            )
 
         #
         # Migrate dataset if necessary
@@ -1867,19 +1982,82 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
-def _import_run_results(dataset, run_dir, run_cls, keys=None):
-    if keys is None:
-        keys = [os.path.splitext(f)[0] for f in etau.list_files(run_dir)]
+def _import_saved_views(dataset, views):
+    for d in views:
+        if etau.is_str(d):
+            d = json_util.loads(d)
 
-    for key in keys:
-        json_path = os.path.join(run_dir, key + ".json")
+        name = d["name"]
+        if dataset.has_saved_view(name):
+            logger.warning("Overwriting existing view '%s'", name)
+            dataset.delete_saved_view(name)
+
+        d.pop("_id", None)
+        view_doc = foo.SavedViewDocument.from_dict(d)
+        view_doc.dataset_id = str(dataset._doc.id)
+        view_doc.save(upsert=True)
+
+        dataset._doc.saved_views.append(view_doc)
+
+    dataset.save()
+
+
+def _import_runs(dataset, runs, results_dir, run_cls):
+    # Import run documents
+    for key, d in runs.items():
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        d.pop("_id", None)
+        run_doc = foo.RunDocument.from_dict(d)
+        run_doc.dataset_id = str(dataset._doc.id)
+        run_doc.results = None
+        run_doc.save(upsert=True)
+
+        runs = getattr(dataset._doc, run_cls._runs_field())
+        runs[key] = run_doc
+
+    dataset.save()
+
+    # Import run results
+    for key in runs.keys():
+        json_path = os.path.join(results_dir, key + ".json")
         if os.path.isfile(json_path):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
-            config = run_info.config
             d = etas.read_json(json_path)
-            results = fors.RunResults.from_dict(d, view, config)
+            results = fors.RunResults.from_dict(d, view, run_info.config, key)
             run_cls.save_run_results(dataset, key, results, cache=False)
+
+
+def _parse_media_fields(sd, media_fields, rel_dir):
+    for field_name, key in media_fields.items():
+        value = sd.get(field_name, None)
+        if value is None:
+            continue
+
+        if isinstance(value, dict):
+            if key is False:
+                try:
+                    _cls = value.get("_cls", None)
+                    key = get_document(_cls)._MEDIA_FIELD
+                except Exception as e:
+                    logger.warning(
+                        "Failed to infer media field for '%s'. Reason: %s",
+                        field_name,
+                        e,
+                    )
+                    key = None
+
+                media_fields[field_name] = key
+
+            if key is not None:
+                path = value.get(key, None)
+                if path is not None and not os.path.isabs(path):
+                    value[key] = os.path.join(rel_dir, path)
+        elif etau.is_str(value):
+            if not os.path.isabs(value):
+                sd[field_name] = os.path.join(rel_dir, value)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
@@ -2048,6 +2226,87 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
         filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etav.is_video_mime_type(p)]
         return len(filepaths)
+
+
+class MediaDirectoryImporter(UnlabeledMediaDatasetImporter):
+    """Importer for a directory of media files stored on disk.
+
+    See :ref:`this page <MediaDirectory-import>` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        recursive (True): whether to recursively traverse subdirectories
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.Metadata` instances for each media
+            file when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        recursive=True,
+        compute_metadata=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.recursive = recursive
+        self.compute_metadata = compute_metadata
+
+        self._filepaths = None
+        self._iter_filepaths = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_filepaths = iter(self._filepaths)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        filepath = next(self._iter_filepaths)
+
+        if self.compute_metadata:
+            metadata = fom.Metadata.build_for(filepath)
+        else:
+            metadata = None
+
+        return filepath, metadata
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    @property
+    def has_metadata(self):
+        return self.compute_metadata
+
+    def setup(self):
+        filepaths = etau.list_files(
+            self.dataset_dir, abs_paths=True, recursive=self.recursive
+        )
+        filepaths = self._preprocess_list(filepaths)
+
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
+
+    @staticmethod
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        return len(etau.list_files(dataset_dir, recursive=True))
 
 
 class FiftyOneImageClassificationDatasetImporter(
@@ -2937,6 +3196,8 @@ class ImageSegmentationDirectoryImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels/``
+        load_masks (False): whether to load the masks into the database (True)
+            or simply record the paths to the masks (False)
         force_grayscale (False): whether to load RGB masks as grayscale by
             storing only the first channel
         compute_metadata (False): whether to produce
@@ -2957,8 +3218,9 @@ class ImageSegmentationDirectoryImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
-        compute_metadata=False,
+        load_masks=False,
         force_grayscale=False,
+        compute_metadata=False,
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -2991,6 +3253,7 @@ class ImageSegmentationDirectoryImporter(
 
         self.data_path = data_path
         self.labels_path = labels_path
+        self.load_masks = load_masks
         self.force_grayscale = force_grayscale
         self.compute_metadata = compute_metadata
         self.include_all_data = include_all_data
@@ -3020,8 +3283,11 @@ class ImageSegmentationDirectoryImporter(
             image_metadata = None
 
         if mask_path is not None:
-            mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
-            label = fol.Segmentation(mask=mask)
+            label = fol.Segmentation(mask_path=mask_path)
+            if self.load_masks:
+                label.import_mask(update=True)
+                if self.force_grayscale and label.mask.ndim > 1:
+                    label.mask = label.mask[:, :, 0]
         else:
             label = None
 
@@ -3066,15 +3332,6 @@ class ImageSegmentationDirectoryImporter(
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
-
-
-def _read_mask(mask_path, force_grayscale=False):
-    # pylint: disable=no-member
-    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
-    if force_grayscale and mask.ndim > 1:
-        mask = mask[:, :, 0]
-
-    return mask
 
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):

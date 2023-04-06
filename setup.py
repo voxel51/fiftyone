@@ -2,7 +2,7 @@
 """
 Installs FiftyOne.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.18.0"
+VERSION = "0.20.1"
 
 
 def get_version():
@@ -33,17 +33,18 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "argcomplete",
     "boto3",
-    "dacite>=1.6.0",
+    "cachetools",
+    "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "eventlet",
+    "ftfy",
     "future",
     "hypercorn>=0.13.2",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",
-    "motor>=2.3",
-    "ndjson",
+    "motor>=2.5",
     "numpy",
     "packaging",
     "pandas",
@@ -51,9 +52,10 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo>=3.11",
+    "pymongo>=3.12",
     "pytz",
     "PyYAML",
+    "regex",
     "retrying",
     "scikit-learn",
     "scikit-image",
@@ -66,9 +68,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.9.2,<0.10",
+    "fiftyone-brain>=0.11,<0.12",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.8.1,<0.9",
+    "voxel51-eta>=0.9,<0.10",
 ]
 
 
@@ -105,7 +107,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.24,<0.25"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.26.1,<0.27"]}
 
 
 with open("README.md", "r") as fh:

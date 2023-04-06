@@ -1,155 +1,37 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { BaseState } from "../../state";
-import { BaseElement, Events } from "../base";
-import { ICONS } from "../util";
 import {
-  fullscreen,
-  help,
-  next,
-  previous,
-  settings,
-  zoomIn,
-  zoomOut,
-  cropToContent,
-  json,
-  toggleOverlays,
-} from "./actions";
-import {
-  plus,
-  minus,
-  arrowLeft,
-  arrowRight,
-  overlaysHidden,
-  overlaysVisible,
+  crop,
   fullscreen as fullscreenIcon,
   fullscreenExit,
-  options,
-  crop,
   help as helpIcon,
   json as jsonIcon,
+  minus,
+  options,
+  overlaysHidden,
+  overlaysVisible,
+  plus,
 } from "../../icons";
+import { BaseState } from "../../state";
+import { BaseElement, Events } from "../base";
+import {
+  cropToContent,
+  fullscreen,
+  help,
+  json,
+  settings,
+  toggleOverlays,
+  zoomIn,
+  zoomOut,
+} from "./actions";
 
 import {
-  lookerArrow,
   lookerClickable,
   lookerControlActive,
   lookerControls,
 } from "./controls.module.css";
-
-export class NextElement<State extends BaseState> extends BaseElement<
-  State,
-  HTMLImageElement
-> {
-  private showControls: boolean;
-  getEvents(): Events<State> {
-    return {
-      click: ({ update, event, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        next.action(update, dispatchEvent, null, true);
-      },
-      mouseenter: ({ update }) => {
-        update({ hoveringControls: true });
-      },
-      mouseleave: ({ update }) => {
-        update({ hoveringControls: false });
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerArrow);
-    element.style.right = "0.5rem";
-    element.appendChild(arrowRight);
-    return element;
-  }
-
-  isShown({ thumbnail }: Readonly<State["config"]>) {
-    return !thumbnail;
-  }
-
-  renderSelf({
-    options: { showControls },
-    disableControls,
-    options: { hasNext },
-  }: Readonly<State>) {
-    showControls = showControls && !disableControls && hasNext;
-    if (this.showControls === showControls) {
-      return this.element;
-    }
-    if (showControls) {
-      this.element.style.opacity = "0.95";
-      this.element.style.height = "unset";
-      this.element.style.display = "flex";
-    } else {
-      this.element.style.opacity = "0.0";
-      this.element.style.height = "0";
-      this.element.style.display = "none";
-    }
-    this.showControls = showControls;
-    return this.element;
-  }
-}
-
-export class PreviousElement<State extends BaseState> extends BaseElement<
-  State,
-  HTMLImageElement
-> {
-  private showControls: boolean;
-  getEvents(): Events<State> {
-    return {
-      click: ({ update, event, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        previous.action(update, dispatchEvent, null, true);
-      },
-      mouseenter: ({ update }) => {
-        update({ hoveringControls: true });
-      },
-      mouseleave: ({ update }) => {
-        update({ hoveringControls: false });
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerArrow);
-    element.style.left = "0.5rem";
-    element.appendChild(arrowLeft);
-    return element;
-  }
-
-  isShown({ thumbnail }: Readonly<State["config"]>) {
-    return !thumbnail;
-  }
-
-  renderSelf({
-    options: { showControls },
-    disableControls,
-    options: { hasPrevious },
-  }: Readonly<State>) {
-    showControls = showControls && !disableControls && hasPrevious;
-    if (this.showControls === showControls) {
-      return this.element;
-    }
-    if (showControls) {
-      this.element.style.opacity = "0.95";
-      this.element.style.height = "unset";
-      this.element.style.display = "flex";
-    } else {
-      this.element.style.opacity = "0.0";
-      this.element.style.height = "0";
-      this.element.style.display = "none";
-    }
-    this.showControls = showControls;
-    return this.element;
-  }
-}
 
 export class ControlsElement<
   State extends BaseState

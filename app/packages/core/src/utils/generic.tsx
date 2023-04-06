@@ -1,6 +1,6 @@
+import { prettify as pretty, useExternalLink } from "@fiftyone/utilities";
 import React from "react";
 import styled from "styled-components";
-import { useExternalLink, prettify as pretty } from "@fiftyone/utilities";
 
 export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;

@@ -1,7 +1,7 @@
 """
 PyTorch utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -202,6 +202,8 @@ class TorchImageModel(
     This wrapper assumes that ``config.entrypoint_fcn`` returns a
     :class:`torch:torch.nn.Module` whose ``__call__()`` method directly accepts
     Torch tensors (NCHW) as input.
+
+    See :ref:`this page <model-zoo-custom-models>` for example usage.
 
     Args:
         config: an :class:`TorchImageModelConfig`

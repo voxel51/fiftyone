@@ -5,13 +5,13 @@ CVAT Integration
 
 .. default-role:: code
 
-`CVAT <https://github.com/openvinotoolkit/cvat>`_ is one of the most popular
+`CVAT <https://github.com/opencv/cvat>`_ is one of the most popular
 open-source image and video annotation tools available, and we've made it easy
 to upload your data directly from FiftyOne to CVAT to add or edit labels.
 
 You can use CVAT either through the hosted server at
 `app.cvat.ai <https://app.cvat.ai>`_ or through a
-`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
+`self-hosted server <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
 In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
 that you can use to specify the necessary account credentials and server
 endpoint to use.
@@ -174,7 +174,7 @@ Setup
 _____
 
 FiftyOne supports both `app.cvat.ai <https://app.cvat.ai>`_ and
-`self-hosted servers <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
+`self-hosted servers <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_.
 
 The easiest way to get started is to use the default server
 `app.cvat.ai <https://app.cvat.ai>`_, which simply requires creating an account and
@@ -274,7 +274,7 @@ Self-hosted servers
 -------------------
 
 If you wish to use a
-`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_,
+`self-hosted server <https://opencv.github.io/cvat/docs/administration/basics/installation/>`_,
 you can configure the URL of your server in any of the following ways:
 
 -   Set the `FIFTYONE_CVAT_URL` environment variable:
@@ -360,7 +360,8 @@ The `anno_key` argument defines a unique identifier for the annotation run, and
 you will provide it to methods like
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
 :meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
-:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`, and
+:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`,
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`, and
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
@@ -492,6 +493,7 @@ provided:
     otherwise a new project is created. By default, no project is used
 -   **project_id** (*None*): an optional ID of an existing CVAT project to
     which to upload the annotation tasks. By default, no project is used
+-   **task_name** (None): an optional task name to use for the created CVAT task
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
@@ -501,6 +503,8 @@ provided:
 -   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
     created task(s). This argument can be a list of URLs when annotating videos
     or when using `task_size` and generating multiple tasks
+-   **organization** (*None*): the name of the organization to use when sending
+    requests to CVAT
 
 .. _cvat-label-schema:
 
@@ -921,7 +925,7 @@ shapes:
     existing |Label|
 
 Unfortunately,
-`CVAT does not guarantee <https://github.com/openvinotoolkit/cvat/issues/893#issuecomment-578020576>`_
+`CVAT does not guarantee <https://github.com/opencv/cvat/issues/893#issuecomment-578020576>`_
 that its internal IDs are immutable. Thus, if both the `label_id` attribute and
 (unknown to the user) the internal CVAT ID of a shape are both modified,
 merging the shape with its source |Label| is impossible.
@@ -1075,6 +1079,15 @@ In addition, the
 :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
 subclasses for each backend may provide additional utilities such as support
 for programmatically monitoring the status of the annotation tasks in the run.
+
+You can use
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`
+to rename the annotation key associated with an existing annotation run:
+
+.. code:: python
+    :linenos:
+
+    dataset.rename_annotation_run(anno_key, new_anno_key)
 
 Finally, you can use
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
@@ -1715,10 +1728,10 @@ uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are working on
-    `an update <https://github.com/openvinotoolkit/cvat/pull/3692>`_
-    to resolve this issue natively. In the meantime, the following workflow is
-    our recommended approach to circumvent this issue.
+    The CVAT maintainers made
+    `an update <https://github.com/opencv/cvat/pull/3692>`_
+    to resolve this issue natively, but if you still encounter issues, try
+    the following workflow to circumvent the issue.
 
 You can use the `task_size` parameter to break image annotation runs into
 multiple CVAT tasks, each with a specified maximum number of images. Note that
@@ -2367,9 +2380,10 @@ Using the CVAT API
 
 You can use the
 :func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
-`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
+to retrieve a
+:class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` instance,
+which is a wrapper around the
+`CVAT REST API <https://opencv.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
 that provides convenient methods for performing common actions on your CVAT
 tasks:
 

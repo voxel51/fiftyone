@@ -24,31 +24,26 @@ jobs:
           - win-amd64
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           submodules: true
-      - name: Set up Python 3.9
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
-      - name: Install Python dependencies
+          python-version: 3.8
+      - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-      - name: Install package
-        working-directory: package/desktop
-        run: |
-          pip install --no-deps -e .
-      - name: Fetch dependency cache
-        uses: actions/cache@v2
+      - name: Cache Node Modules
+        id: node-cache
+        uses: actions/cache@v3
         with:
-          path: app/node_modules
-          key: npm-${{ hashFiles('app/packages/desktop/package.json') }}
-          restore-keys: |
-            npm-${{ hashFiles('app/packages/desktop/package.json') }}
-            npm-
-      - name: Install dependencies
-        working-directory: app/packages/desktop
-        run: yarn
+          path: |
+            app/node_modules
+            app/.yarn/cache
+          key: node-modules-${{ hashFiles('app/yarn.lock') }}
+      - name: Install app
+        run: cd app && yarn install
       - name: Package App (Non-Windows)
         if: ${{ matrix.platform != 'win-amd64' }}
         working-directory: app/packages/desktop

@@ -17,13 +17,13 @@ import styled from "styled-components";
 
 import { prettify } from "../../../utils/generic";
 
-import { NameAndCountContainer } from "../../utils";
 import * as fos from "@fiftyone/state";
+import { NameAndCountContainer } from "../../utils";
 
-import RegularEntry from "./RegularEntry";
-
-import LoadingCircle from "../../Common/Loading";
+import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import RegularEntry from "./RegularEntry";
+import { makePseudoField } from "./utils";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -82,7 +82,7 @@ const ScalarValueEntry = ({
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
 
   const field = useRecoilValue(fos.field(path));
-  const { ftype, subfield, embeddedDocType } = field;
+  const pseudoField = makePseudoField(path);
 
   return (
     <RegularEntry
@@ -93,11 +93,11 @@ const ScalarValueEntry = ({
       trigger={trigger}
     >
       <ScalarDiv>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<LoadingDots text="" />}>
           <Loadable path={path} />
         </Suspense>
         <FieldLabelAndInfo
-          field={field}
+          field={field ?? pseudoField}
           color={color}
           template={({ label, hoverTarget }) => (
             <div
@@ -145,7 +145,12 @@ const ListValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
+  const { ftype, subfield, embeddedDocType } =
+    useRecoilValue(fos.field(path)) ?? makePseudoField(path);
+
+  const OVERRIDE = {
+    tags: "sample tags",
+  };
 
   return (
     <RegularEntry
@@ -161,9 +166,9 @@ const ListValueEntry = ({
       color={color}
       heading={
         <NameAndCountContainer>
-          <span key="path">{path}</span>
+          <span key="path">{OVERRIDE[path] ?? path}</span>
           <span key="value">
-            <Suspense fallback={<LoadingCircle />}>
+            <Suspense fallback={<LoadingDots text="" />}>
               <LengthLoadable path={path} />
             </Suspense>
           </span>
@@ -201,7 +206,9 @@ const LengthLoadable = ({ path }: { path: string }) => {
 const ListLoadable = ({ path }: { path: string }) => {
   const data = useData<any[]>(path);
   const values = useMemo(() => {
-    return data ? data.map((value) => prettify(value as string)) : [];
+    return data
+      ? Array.from(data).map((value) => prettify(value as string))
+      : [];
   }, [data]);
 
   return (
@@ -209,6 +216,7 @@ const ListLoadable = ({ path }: { path: string }) => {
       {values.map((v, i) => (
         <div key={i}>{v}</div>
       ))}
+      {values.length == 0 && <>No results</>}
     </ListContainer>
   );
 };
@@ -216,17 +224,23 @@ const ListLoadable = ({ path }: { path: string }) => {
 const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
-  const { ftype } = useRecoilValue(fos.field(path));
+  const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
 
-  return <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>;
+  return (
+    <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
+      {none ? "None" : formatted}
+    </div>
+  );
 };
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  let data = useRecoilValue(fos.activeModalSample);
+  const activeSlice = useRecoilValue(fos.currentSlice(true));
+
+  let data = useRecoilValue(fos.activeModalSample(activeSlice));
 
   let field = useRecoilValue(fos.field(keys[0]));
 
@@ -237,10 +251,10 @@ const useData = <T extends unknown>(path: string): T => {
 
     const key = keys[index];
 
-    data = data[field.dbField || key];
+    data = data[field?.dbField || key];
 
     if (keys[index + 1]) {
-      field = field.fields[keys[index + 1]];
+      field = field?.fields[keys[index + 1]];
     }
   }
 
@@ -261,8 +275,7 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
-
-  return field.ftype !== LIST_FIELD ? (
+  return field && field.ftype !== LIST_FIELD ? (
     <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />
   ) : (
     <ListValueEntry entryKey={entryKey} path={path} trigger={trigger} />

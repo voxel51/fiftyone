@@ -1,10 +1,13 @@
 {
-    "files": [],
-    "references": [
-        { "path": "packages/app" },
-        { "path": "packages/components" },
-        { "path": "packages/flashlight" },
-        { "path": "packages/looker" },
-        { "path": "packages/utilities" }
-    ]
+  "files": [],
+  "references": [
+    { "path": "packages/app" },
+    { "path": "packages/components" },
+    { "path": "packages/flashlight" },
+    { "path": "packages/looker" },
+    { "path": "packages/utilities" },
+    { "path": "packages/plugins" },
+    { "path": "packages/state" },
+    { "path": "packages/aggregations" }
+  ]
 }

@@ -1,10 +1,15 @@
 """
-FiftyOne Server view
+FiftyOne Server view.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
+import strawberry as gql
+from typing import List, Optional
+
+import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -14,46 +19,94 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.utils import iter_label_fields
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
+from fiftyone.server.scalars import BSONArray, JSON
+import fiftyone.server.utils as fosu
 
 
 _LABEL_TAGS = "_label_tags"
 
 
+@gql.input
+class ExtendedViewForm:
+    filters: Optional[JSON] = None
+    mixed: Optional[bool] = None
+    sample_ids: Optional[List[str]] = None
+    slice: Optional[str] = None
+
+
+async def load_view(
+    dataset_name: str,
+    serialized_view: BSONArray,
+    form: ExtendedViewForm,
+    view_name: Optional[str] = None,
+) -> foc.SampleCollection:
+    def run() -> foc.SampleCollection:
+        dataset = fod.load_dataset(dataset_name)
+        dataset.reload()
+        if view_name:
+            return dataset.load_saved_view(view_name)
+        else:
+            view = get_view(
+                dataset_name,
+                stages=serialized_view,
+                filters=form.filters,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(slice=form.slice)
+                ),
+            )
+
+            if form.sample_ids:
+                view = fov.make_optimized_select_view(view, form.sample_ids)
+
+            if form.mixed:
+                view = view.select_group_slices(_allow_mixed=True)
+
+            return view
+
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, run)
+
+
 def get_view(
     dataset_name,
+    view_name=None,
     stages=None,
     filters=None,
     count_label_tags=False,
-    only_matches=True,
     extended_stages=None,
     sample_filter=None,
-    sort=False,
 ):
-    """Get the view from request paramters
+    """Gets the view defined by the given request parameters.
 
     Args:
-        dataset_names: the dataset name
+        dataset_name: the dataset name
+        view_name (None): the name of a saved view to load
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
-        extended_stages (None): extended view stages
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
+        extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        sort (False): whether to include sort extended stages
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    view = fod.load_dataset(dataset_name).view()
-    view.reload()
+    dataset = fod.load_dataset(dataset_name)
+    dataset.reload()
+
+    if view_name is not None:
+        return dataset.load_saved_view(view_name)
 
     if stages:
-        view = fov.DatasetView._build(view, stages)
+        view = fov.DatasetView._build(dataset, stages)
+    else:
+        view = dataset.view()
 
     if sample_filter is not None:
         if sample_filter.group:
@@ -72,9 +125,7 @@ def get_view(
             view,
             filters,
             count_label_tags=count_label_tags,
-            only_matches=only_matches,
             extended_stages=extended_stages,
-            sort=sort,
         )
 
     return view
@@ -84,9 +135,7 @@ def get_extended_view(
     view,
     filters=None,
     count_label_tags=False,
-    only_matches=True,
     extended_stages=None,
-    sort=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -95,40 +144,76 @@ def get_extended_view(
         filters: an optional ``dict`` of App defined filters
         count_label_tags (False): whether to set the hidden ``_label_tags``
             field with counts of tags with respect to all label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
         extended_stages (None): extended view stages
-        sort (False): wheter to include sort extended stages
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
     """
     cleanup_fields = set()
     filtered_labels = set()
-
     label_tags = None
-    if filters is not None and len(filters):
+
+    if extended_stages:
+        view = extend_view(view, extended_stages)
+
+    if filters:
         if "tags" in filters:
             tags = filters.get("tags")
-            if "label" in tags:
-                label_tags = tags["label"]
+            exclude = tags["exclude"]
+            tags = tags["values"]
 
-            if not count_label_tags and label_tags:
-                view = view.select_labels(tags=label_tags)
+            if tags and not exclude:
+                view = view.match_tags(tags)
 
-            if "sample" in tags:
-                view = view.match_tags(tags=tags["sample"])
+            if tags and exclude:
+                view = view.match_tags(tags, bool=False)
+
+        if "_label_tags" in filters:
+            label_tags = filters.get("_label_tags")
+
+            if (
+                not count_label_tags
+                and label_tags
+                and not label_tags["exclude"]
+                and not label_tags["isMatching"]
+            ):
+                view = view.select_labels(tags=label_tags["values"])
+
+            if (
+                not count_label_tags
+                and label_tags
+                and label_tags["exclude"]
+                and not label_tags["isMatching"]
+            ):
+                view = view.exclude_labels(
+                    tags=label_tags["values"], omit_empty=False
+                )
+
+            if (
+                not count_label_tags
+                and label_tags
+                and not label_tags["exclude"]
+                and label_tags["isMatching"]
+            ):
+                view = view.match_labels(tags=label_tags["values"])
+
+            if (
+                not count_label_tags
+                and label_tags
+                and label_tags["exclude"]
+                and label_tags["isMatching"]
+            ):
+                view = view.match_labels(tags=label_tags["values"], bool=False)
 
         stages, cleanup_fields, filtered_labels = _make_filter_stages(
             view,
             filters,
             label_tags=label_tags,
             hide_result=count_label_tags,
-            only_matches=only_matches,
         )
 
         for stage in stages:
             view = view.add_stage(stage)
-
-    if extended_stages:
-        view = extend_view(view, extended_stages, sort)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
@@ -138,20 +223,38 @@ def get_extended_view(
     return view
 
 
-def extend_view(view, extended_stages, sort):
-    for cls, d in extended_stages.items():
+def extend_view(view, extended_stages):
+    """Adds the given extended stages to the view.
+
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+        extended_stages: an extended stages dict
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
+    for _cls, d in extended_stages.items():
         kwargs = [[k, v] for k, v in d.items()]
-        stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
-        if sort or not isinstance(stage, (fosg.SortBySimilarity, fosg.SortBy)):
-            view = view.add_stage(stage)
+        stage = fosg.ViewStage._from_dict({"_cls": _cls, "kwargs": kwargs})
+        view = view.add_stage(stage)
 
     return view
 
 
 def _add_labels_tags_counts(view, filtered_fields, label_tags):
+    """Adds stages necessary to count label tags to the view.
+
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+        filtered_fields: filtered fields
+        label_tags: label tags
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
-    for path, field in iter_label_fields(view):
+    for path, field in fosu.iter_label_fields(view):
         if not issubclass(
             field.document_type, (fol._HasID, fol._HasLabelList)
         ):
@@ -177,6 +280,18 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
 
 
 def _make_expression(field, path, args):
+    """Returns an expression that can be used to filter a view based on the
+    field, path and provided filter args.
+
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+        path: a :class:`str` representing the path to the field
+        args: a :class:`dict` representing the filter arguments, usually with
+            keys `values`, `exclude``
+
+    Returns:
+        a :class:`fiftyone.core.expressions.ViewExpression`
+    """
     if not path:
         return _make_scalar_expression(F(), args, field)
 
@@ -187,12 +302,24 @@ def _make_expression(field, path, args):
         field, fof.FrameSupportField
     ):
         new_field = field.field
-        expr = (
-            lambda subexpr: F(field.db_field or field.name)
-            .filter(subexpr)
-            .length()
-            > 0
-        )
+        if args["exclude"]:
+            # In ListField, exclude uses ``match(expr).length() == 0`` instead
+            # of ``match(~expr)``, so exclude needs to be set to False here to
+            # get the correct subexpr
+            args["exclude"] = False
+            expr = (
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
+                .length()
+                == 0
+            )
+        else:
+            expr = (
+                lambda subexpr: F(field.db_field or field.name)
+                .filter(subexpr)
+                .length()
+                > 0
+            )
     else:
         new_field = field
         expr = lambda subexpr: F(field.db_field or field.name).apply(subexpr)
@@ -205,7 +332,10 @@ def _make_expression(field, path, args):
 
 
 def _make_filter_stages(
-    view, filters, label_tags=None, hide_result=False, only_matches=True
+    view,
+    filters,
+    label_tags=None,
+    hide_result=False,
 ):
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
@@ -213,18 +343,36 @@ def _make_filter_stages(
     else:
         frame_field_schema = None
 
+    label_tags_values = (
+        label_tags["values"] if label_tags is not None else None
+    )
+    label_tags_exclude = (
+        label_tags["exclude"] if label_tags is not None else None
+    )
+    label_tags_is_matching = (
+        label_tags["isMatching"] if label_tags is not None else None
+    )
+
     tag_expr = (F("tags") != None).if_else(
-        F("tags").contains(label_tags), None
+        F("tags").contains(label_tags_values), None
+    )
+
+    tag_expr = (
+        ~tag_expr
+        if label_tags_exclude and not label_tags_is_matching
+        else tag_expr
     )
     cache = {}
-
     stages = []
     cleanup = set()
     filtered_labels = set()
     for path in sorted(filters):
-        args = filters[path]
         if path == "tags" or path.startswith("_"):
             continue
+
+        args = filters[path]
+        is_matching = args.get("isMatching", True)
+        only_matches = args.get("onlyMatch", True)
 
         frames = path.startswith(view._FRAMES_PREFIX)
         keys = path.split(".")
@@ -238,30 +386,24 @@ def _make_filter_stages(
             prefix = ""
 
         if _is_label(field):
-            keypoints = issubclass(
-                field.document_type, (fol.Keypoint, fol.Keypoints)
-            )
-
-            if keypoints:
-                if path.endswith(".id") or path.endswith(".label"):
-                    keypoints = False
-
             parent = field
             field = view.get_field(path)
-            key = field.db_field if field.db_field else field.name
-            view_field = F(key)
-            expr = (
-                _make_keypoint_kwargs(
-                    args,
-                    view,
-                    path if path.endswith(".points") else None,
-                )
-                if keypoints
-                else _make_scalar_expression(view_field, args, field)
+            is_keypoints = issubclass(
+                parent.document_type, (fol.Keypoint, fol.Keypoints)
             )
+            is_list_field = isinstance(field, fof.ListField)
+
+            if is_keypoints and is_list_field:
+                expr = _make_keypoint_list_filter(args, view, path, field)
+            else:
+                key = field.db_field if field.db_field else field.name
+                expr = _make_scalar_expression(
+                    F(key), args, field, is_label=True
+                )
+
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[1 if frames else 0]
+                    new_field = "___%s" % path.split(".")[1 if frames else 0]
                     if frames:
                         new_field = "%s%s" % (
                             view._FRAMES_PREFIX,
@@ -270,15 +412,38 @@ def _make_filter_stages(
                 else:
                     new_field = None
 
-                if keypoints:
-                    stage = fosg.FilterKeypoints(
-                        prefix + parent.name,
-                        _new_field=new_field,
-                        **expr,
+                if is_keypoints:
+                    if is_list_field:
+                        stage = fosg.FilterKeypoints(
+                            prefix + parent.name,
+                            _new_field=new_field,
+                            only_matches=only_matches,
+                            **expr,
+                        )
+                    else:
+                        _field = prefix + parent.name
+                        _field = cache.get(_field, _field)
+
+                        stage = fosg.FilterLabels(
+                            _field,
+                            expr,
+                            only_matches=only_matches,
+                            _new_field=new_field,
+                        )
+                elif is_matching:
+                    _field = prefix + parent.name
+                    _field = cache.get(_field, _field)
+                    stage = fosg.MatchLabels(
+                        fields=_field,
+                        filter=expr,
+                        bool=(not args["exclude"]),
                     )
                 else:
+                    _field = prefix + parent.name
+                    _field = cache.get(_field, _field)
+
                     stage = fosg.FilterLabels(
-                        cache.get(prefix + parent.name, prefix + parent.name),
+                        _field,
                         expr,
                         only_matches=only_matches,
                         _new_field=new_field,
@@ -286,7 +451,7 @@ def _make_filter_stages(
 
                 stages.append(stage)
                 filtered_labels.add(path)
-                if new_field:
+                if new_field and (not is_matching or is_keypoints):
                     cache[prefix + parent.name] = new_field
                     cleanup.add(new_field)
         else:
@@ -295,7 +460,10 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
-        for path, _ in iter_label_fields(view):
+        is_matching = label_tags.get("isMatching", False)
+        exclude = label_tags.get("exclude", False)
+
+        for path, _ in fosu.iter_label_fields(view):
             if hide_result:
                 new_field = _get_filtered_path(
                     view, path, filtered_labels, label_tags
@@ -316,15 +484,20 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        for path, _ in iter_label_fields(view):
-            match_exprs.append(
-                fosg._get_label_field_only_matches_expr(
-                    view,
-                    cache.get(path, path),
-                )
+        for path, _ in fosu.iter_label_fields(view):
+            expr = fosg._get_label_field_only_matches_expr(
+                view,
+                cache.get(path, path),
             )
+            if exclude and is_matching:
+                # pylint: disable=invalid-unary-operand-type
+                expr = ~expr
 
-        stages.append(fosg.Match(F.any(match_exprs)))
+            match_exprs.append(expr)
+
+        if match_exprs:
+            matcher = F.all if exclude else F.any
+            stages.append(fosg.Match(matcher(match_exprs)))
 
     return stages, cleanup, filtered_labels
 
@@ -353,9 +526,16 @@ def _is_label(field):
     )
 
 
-def _make_scalar_expression(f, args, field):
+def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
     expr = None
-    if isinstance(field, fof.BooleanField):
+
+    is_matching = args.get("isMatching", False)
+    if isinstance(field, fof.ListField):
+        expr = f.filter(
+            _make_scalar_expression(F(), args, field.field, list_field=True)
+        ).length()
+        return expr == 0 if args["exclude"] else expr > 0
+    elif isinstance(field, fof.BooleanField):
         true, false = args["true"], args["false"]
         if true and false:
             expr = f.is_in([True, False])
@@ -392,11 +572,12 @@ def _make_scalar_expression(f, args, field):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude:
+        # list_field handles exclude separately
+        if exclude and not (is_label and is_matching) and not list_field:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
-        if none:
+        if none and not (is_label and is_matching) and not list_field:
             if exclude:
                 expr &= f.exists()
             else:
@@ -404,29 +585,66 @@ def _make_scalar_expression(f, args, field):
 
         return expr
 
-    return _apply_others(expr, f, args)
+    return _apply_others(expr, f, args, is_label)
 
 
-def _make_keypoint_kwargs(args, view, points):
-    if points:
-        ske = view._dataset.default_skeleton
-        name = points.split(".")[0]
+def _make_keypoint_list_filter(args, view, path, field):
+    name = path.split(".", 1)[0]
 
-        if name in view._dataset.skeletons:
-            ske = view._dataset.skeletons[name]
+    if path.endswith(".points"):
+        dataset = view._dataset
+        if name in dataset.skeletons:
+            skeleton = dataset.skeletons[name]
+        else:
+            skeleton = dataset.default_skeleton
 
         values = args.get("values", [])
         if args["exclude"]:
-            values = set(ske.labels).difference(values)
+            values = list(set(skeleton.labels).difference(values))
 
         return {"labels": values}
 
-    f = F("confidence")
-    mn, mx = args["range"]
-    return {"filter": (f >= mn) & (f <= mx)}
+    if isinstance(field.field, fof.BooleanField):
+        true, false = args["true"], args["false"]
+        f = F(name)
+        if true and false:
+            expr = f.is_in([True, False])
+
+        if not true and false:
+            expr = f == False
+
+        if true and not false:
+            expr = f == True
+
+        if not true and not false:
+            expr = (f != True) & (f != False)
+
+        return {"filter": expr}
+
+    if isinstance(field.field, (fof.FloatField, fof.IntField)):
+        f = F(name)
+        mn, mx = args["range"]
+        expr = (f >= mn) & (f <= mx)
+        if args["exclude"]:
+            expr = ~expr
+
+        return {"filter": expr}
+
+    if isinstance(field.field, (fof.StringField)):
+        f = F(name)
+        if "values" in args:
+            val = args["values"]
+            expr = f.is_in(val)
+            if args["exclude"]:
+                expr = ~expr
+
+            return {"filter": expr}
+
+    raise ValueError(f"Filtering {field} keypoint fields is not supported")
 
 
-def _apply_others(expr, f, args):
+def _apply_others(expr, f, args, is_label):
+    is_matching = args.get("isMatching", False)
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -445,8 +663,11 @@ def _apply_others(expr, f, args):
     if "none" in args:
         expr = _apply_none(expr, f, args["none"])
 
-    if "exclude" in args and args["exclude"]:
-        # pylint: disable=invalid-unary-operand-type
+    if (
+        "exclude" in args
+        and args["exclude"]
+        and not (is_matching and is_label)
+    ):
         expr = ~expr
 
     return expr
@@ -465,13 +686,19 @@ def _apply_none(expr, f, none):
 
 
 def _get_filtered_path(view, path, filtered_fields, label_tags):
-    if path not in filtered_fields and not label_tags:
+    if label_tags is not None:
+        excludes = label_tags.get("exclude", None)
+        label_tags = label_tags.get("values", None)
+    else:
+        excludes = None
+
+    if path not in filtered_fields and not label_tags and not excludes:
         return path
 
     if path.startswith(view._FRAMES_PREFIX):
-        return "%s__%s" % (view._FRAMES_PREFIX, path.split(".")[1])
+        return "%s___%s" % (view._FRAMES_PREFIX, path.split(".")[1])
 
-    return "__%s" % path
+    return "___%s" % path
 
 
 def _add_frame_labels_tags(path, field, view):

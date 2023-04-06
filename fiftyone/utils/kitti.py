@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -473,9 +473,6 @@ def download_kitti_multiview_dataset(
     if scratch_dir is None:
         scratch_dir = os.path.join(dataset_dir, "tmp-download")
 
-    train_dir = os.path.join(dataset_dir, "train")
-    test_dir = os.path.join(dataset_dir, "test")
-
     if "train" in splits:
         _download_and_unpack_kitti_zip(
             _LABELS,
@@ -529,15 +526,6 @@ def download_kitti_multiview_dataset(
         cleanup=cleanup,
         overwrite=overwrite,
     )
-
-    for split in splits:
-        velodyne_dir = os.path.join(dataset_dir, split, "velodyne")
-        pcd_dir = os.path.join(dataset_dir, split, "pcd")
-        _convert_velodyne_dir_to_pcd_dir(
-            velodyne_dir,
-            pcd_dir,
-            overwrite=overwrite,
-        )
 
     for split in splits:
         split_dir = os.path.join(dataset_dir, split)
@@ -833,40 +821,44 @@ def _prepare_kitti_split(split_dir, overwrite=False):
     dataset.add_group_field(group_field, default="left")
 
     dataset.app_config.plugins["3d"] = {
-        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-        "pointCloud": {
-            "rotation": [0, 0, 90],
-        },
-        "overlay": {
-            "rotation": [-90, 0, 0],
-            "itemRotation": [0, 90, 90],
-        },
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100}
     }
     dataset.save()
 
+    calib_dir = os.path.join(split_dir, "calib")
+    velodyne_dir = os.path.join(split_dir, "velodyne")
     labels_dir = os.path.join(split_dir, "labels")
     left_images_dir = os.path.join(split_dir, "left")
     right_images_dir = os.path.join(split_dir, "right")
     pcd_dir = os.path.join(split_dir, "pcd")
-    calib_dir = os.path.join(split_dir, "calib")
 
     make_map = lambda d: {
         os.path.splitext(os.path.basename(p))[0]: p
         for p in etau.list_files(d, abs_paths=True)
     }
 
-    is_labeled = os.path.isdir(labels_dir)
+    calib_map = make_map(calib_dir)
+    velodyne_map = make_map(velodyne_dir)
 
-    if is_labeled:
-        labels_map = make_map(labels_dir)
-        calib_map = make_map(calib_dir)
+    uuids = sorted(velodyne_map.keys())
+
+    _convert_velodyne_to_pcd(
+        velodyne_map,
+        calib_map,
+        pcd_dir,
+        uuids,
+        overwrite=overwrite,
+    )
 
     left_map = make_map(left_images_dir)
     right_map = make_map(right_images_dir)
     pcd_map = make_map(pcd_dir)
 
+    is_labeled = os.path.isdir(labels_dir)
+    if is_labeled:
+        labels_map = make_map(labels_dir)
+
     samples = []
-    uuids = sorted(left_map.keys())
 
     logger.info("Parsing samples...")
     with fou.ProgressBar() as pb:
@@ -913,7 +905,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
                 right_sample["metadata"] = right_metadata
                 right_sample[label_field] = gt_right
 
-                pcd_sample[label_field] = gt_3d
+                pcd_sample[label_field] = _normalize_3d_detections(gt_3d)
 
             samples.extend([left_sample, right_sample, pcd_sample])
 
@@ -953,6 +945,34 @@ def _load_kitti_annotations(labels_path, frame_size):
     return gt2d, gt3d
 
 
+def _normalize_3d_detections(detections):
+    if detections is None:
+        return None
+
+    # DontCare labels don't have valid coordinates
+    detections.detections = [
+        d for d in detections.detections if d["label"] != "DontCare"
+    ]
+
+    for detection in detections.detections:
+        # KITTI uses bottom-center; FiftyOne uses centroid
+        detection["location"][1] -= 0.5 * detection["dimensions"][1]
+
+        # Resolve yaw mismatch between LIDAR and scene
+        detection["rotation"][1] -= 0.5 * np.pi
+
+        # Switch to z-up coordinates
+        detection["location"] = _swap_coordinates(detection["location"])
+        detection["dimensions"] = _swap_coordinates(detection["dimensions"])
+        detection["rotation"] = _swap_coordinates(detection["rotation"])
+
+    return detections
+
+
+def _swap_coordinates(vec):
+    return [vec[0], vec[2], -vec[1]]
+
+
 def _load_calibration_matrices(inpath):
     with open(inpath, "r") as f:
         lines = [l.strip() for l in f.readlines()]
@@ -964,13 +984,11 @@ def _load_calibration_matrices(inpath):
         vals = [float(v) for v in vals.split()]
 
         if key.startswith("R"):
-            m = np.eye(4)
-            m[:3, :3] = np.reshape(vals, (3, 3))
+            m = np.reshape(vals, (3, 3))
         elif key.startswith("P"):
             m = np.reshape(vals, (3, 4))
         elif key.startswith("T"):
-            m = np.eye(4)
-            m[:3, :4] = np.reshape(vals, (3, 4))
+            m = np.reshape(vals, (3, 4))
 
         calib[key] = m
 
@@ -984,18 +1002,19 @@ def _roty(t):
 
 
 def _proj_3d_to_right_camera(detections3d, calib, frame_size):
-    # Velodyne -> right camera
-    # P = calib["P3"] @ calib["R0_rect"] @ calib["Tr_velo_to_cam"]
+    if detections3d is None:
+        return None
 
-    # Reference 3D coordinates -> right camera
-    # P = calib["P3"] @ calib["R0_rect"]
-
-    # Rectified 3D coordinates -> right camera
     P = calib["P3"]
-
     width, height = frame_size
 
     detections2d = detections3d.copy()
+
+    # DontCare labels don't have valid coordinates
+    detections2d.detections = [
+        d for d in detections2d.detections if d["label"] != "DontCare"
+    ]
+
     for detection in detections2d.detections:
         h, w, l = detection["dimensions"]
         t = np.array(detection["location"])
@@ -1033,26 +1052,26 @@ def _proj_3d_to_right_camera(detections3d, calib, frame_size):
     return detections2d
 
 
-def _convert_velodyne_dir_to_pcd_dir(velodyne_dir, pcd_dir, overwrite=False):
+def _convert_velodyne_to_pcd(
+    velodyne_map, calib_map, pcd_dir, uuids, overwrite=False
+):
     inputs = []
-    for inpath in etau.list_files(velodyne_dir, abs_paths=True):
-        outname = os.path.splitext(os.path.basename(inpath))[0] + ".pcd"
-        outpath = os.path.join(pcd_dir, outname)
+    for uuid in uuids:
+        velodyne_path = velodyne_map[uuid]
+        calib_path = calib_map[uuid]
 
-        if overwrite or not os.path.isfile(outpath):
-            inputs.append((inpath, outpath))
+        outname = os.path.splitext(os.path.basename(velodyne_path))[0] + ".pcd"
+        pcd_path = os.path.join(pcd_dir, outname)
+
+        if overwrite or not os.path.isfile(pcd_path):
+            inputs.append((velodyne_path, calib_path, pcd_path))
 
     if not inputs:
         return
 
-    logger.info(
-        "Converting Velodyne scans in '%s' to PCD format in '%s'",
-        velodyne_dir,
-        pcd_dir,
-    )
-
     etau.ensure_dir(pcd_dir)
 
+    logger.info("Converting Velodyne scans to PCD format...")
     num_workers = multiprocessing.cpu_count()
     with fou.ProgressBar(total=len(inputs)) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
@@ -1061,13 +1080,10 @@ def _convert_velodyne_dir_to_pcd_dir(velodyne_dir, pcd_dir, overwrite=False):
 
 
 def _do_conversion(input):
-    inpath, outpath = input
-    _convert_velodyne_to_pcd(inpath, outpath)
+    velodyne_path, calib_path, pcd_path = input
 
-
-def _convert_velodyne_to_pcd(velodyne_path, pcd_path):
     size_float = 4
-    list_pcd = []
+    list_points = []
     list_colors = []
     with open(velodyne_path, "rb") as f:
         byte = f.read(size_float * 4)
@@ -1076,12 +1092,23 @@ def _convert_velodyne_to_pcd(velodyne_path, pcd_path):
             r = intensity
             g = intensity
             b = intensity
+            list_points.append([x, y, z])
             list_colors.append([r, g, b])
-            list_pcd.append([x, y, z])
             byte = f.read(size_float * 4)
 
+    points = np.array(list_points)
+    colors = np.array(list_colors)
+
+    # Transform to camera coordinates
+    calib = _load_calibration_matrices(calib_path)
+    P = calib["R0_rect"] @ calib["Tr_velo_to_cam"]
+    points = np.hstack((points, np.ones((len(points), 1)))) @ P.T
+
+    # Switch to z-up coordinates
+    points = np.stack((points[:, 0], points[:, 2], -points[:, 1]), axis=1)
+
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(np.asarray(list_pcd))
-    pcd.colors = o3d.utility.Vector3dVector(np.asarray(list_colors))
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
 
     o3d.io.write_point_cloud(pcd_path, pcd)

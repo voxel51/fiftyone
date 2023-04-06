@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
 
 import { SCALE_FACTOR } from "../../constants";
@@ -14,11 +14,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
   HTMLCanvasElement
 > {
-  private width: number = 0;
-  private height: number = 0;
-  private hide: boolean = true;
+  private width = 0;
+  private height = 0;
+  private hide = true;
   private mousedownCoordinates?: Coordinates;
-  private mousedown: boolean = false;
+  private mousedown = false;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
   private cursor: string;
@@ -186,10 +186,14 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     disabled,
     config: { thumbnail },
     panning,
-    windowBBox: [_, __, width, height],
+    windowBBox,
     mouseIsOnOverlay,
     disableOverlays,
   }: Readonly<State>) {
+    if (!windowBBox) {
+      return this.element;
+    }
+    const [_, __, width, height] = windowBBox;
     if (this.width !== width) {
       const dpr = getDPR();
       this.element.width = width * dpr;

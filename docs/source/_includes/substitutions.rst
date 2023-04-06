@@ -115,6 +115,12 @@
 .. |BrainResults| replace:: :class:`BrainResults <fiftyone.core.brain.BrainResults>`
 .. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
 
+.. |SimilarityConfig| replace:: :class:`SimilarityConfig <fiftyone.brain.similarity.SimilarityConfig>`
+.. |SimilarityIndex| replace:: :class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>`
+
+.. |VisualizationConfig| replace:: :class:`VisualizationConfig <fiftyone.brain.visualization.VisualizationConfig>`
+.. |VisualizationResults| replace:: :class:`VisualizationResults <fiftyone.brain.visualization.VisualizationResults>`
+
 .. |RegressionResults| replace:: :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
 .. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
@@ -142,3 +148,8 @@
 
 .. |EmbeddedDocument| replace:: :class:`EmbeddedDocument <fiftyone.core.odm.embedded_document.EmbeddedDocument>`
 .. |DynamicEmbeddedDocument| replace:: :class:`DynamicEmbeddedDocument <fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument>`
+
+.. |Space| replace:: :class:`Space <fiftyone.core.spaces.Space>`
+.. |Panel| replace:: :class:`Panel <fiftyone.core.spaces.Panel>`
+
+.. |OrthographicProjectionMetadata| replace:: :class:`OrthographicProjectionMetadata <fiftyone.utils.utils3d.OrthographicProjectionMetadata>`

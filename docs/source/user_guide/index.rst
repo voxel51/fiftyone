@@ -1,8 +1,6 @@
 FiftyOne User Guide
 ===================
 
-Welcome to the FiftyOne User Guide!
-
 Each section in this guide provides an example-centric deep dive into a core
 feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.

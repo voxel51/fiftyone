@@ -1,13 +1,13 @@
-import React, { useRef } from "react";
-import { animated } from "@react-spring/web";
 import { Checkbox } from "@mui/material";
+import { animated } from "@react-spring/web";
 import numeral from "numeral";
+import React, { useRef } from "react";
 import styled from "styled-components";
 
-import { useHighlightHover } from "./utils";
+import { useTheme } from "@fiftyone/components";
 import { useKeydownHandler } from "@fiftyone/state";
 import { ItemAction } from "./ItemAction";
-import { useTheme } from "@fiftyone/components";
+import { useHighlightHover } from "./utils";
 
 const CheckboxDiv = animated(styled(ItemAction)`
   display: flex;
@@ -194,7 +194,7 @@ const Checker = ({
       setActive(names[index]);
     }
 
-    if (e.key === "Enter" && active.length) {
+    if (e.key === "Enter" && active?.length) {
       createSubmit({
         name: active,
         changes,

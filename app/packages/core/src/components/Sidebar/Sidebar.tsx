@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { Suspense, useCallback, useRef, useState } from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -7,19 +7,22 @@ import { move } from "@fiftyone/utilities";
 import { useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Box } from "@mui/material";
+import ViewSelection from "./ViewSelection";
+import { resizeHandle } from "./Sidebar.module.css";
 const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
   currentOrder: string[],
   newOrder: string[],
-  activeKey: string = null,
+  activeKey: string | null = null,
   delta = 0,
-  lastTouched: string = null
+  lastTouched: string | null = null
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -369,8 +372,8 @@ enum Direction {
 const SidebarColumn = styled.div`
   position: relative;
   max-height: 100%;
-  height: 100%;
   width: 100%;
+  flex: 1;
 
   overflow-y: scroll;
   overflow-x: hidden;
@@ -424,6 +427,7 @@ const InteractiveSidebar = ({
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
   const [width, setWidth] = useRecoilState(fos.sidebarWidth(modal));
+  const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
   const shown = useRecoilValue(fos.sidebarVisible(modal));
   const [entries, setEntries] = fos.useEntries(modal);
   const disabled = useRecoilValue(fos.disabledPaths);
@@ -647,6 +651,10 @@ const InteractiveSidebar = ({
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
     if (!down.current) return;
 
+    // do not allow dragging sample tags and label tags
+    const entry = items.current[down.current].entry;
+    if (["_label_tags", "tags"].includes(entry.path)) return;
+
     requestAnimationFrame(() => {
       animate(clientY);
       scrollWith(lastDirection.current, clientY);
@@ -677,6 +685,7 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
+  const resizableSide = modal ? "left" : "right";
 
   return shown ? (
     <Resizable
@@ -695,6 +704,8 @@ const InteractiveSidebar = ({
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
+        // reset sidebar to default width on double click
+        if (e.detail === 2) resetWidth();
       }}
       style={{
         borderLeft: modal
@@ -703,73 +714,103 @@ const InteractiveSidebar = ({
         borderRight: !modal
           ? `1px solid ${theme.primary.plainBorder}`
           : undefined,
+        borderTopRightRadius: 8,
+        display: "flex",
+        flexDirection: "column",
+      }}
+      handleStyles={{
+        [resizableSide]: { right: 0, width: 4 },
+      }}
+      handleClasses={{
+        [resizableSide]: resizeHandle,
       }}
     >
-      <SidebarColumn
-        ref={container}
-        onScroll={({ target }) => {
-          if (start.current !== null) {
-            start.current += scroll.current - target.scrollTop;
-          }
-
-          scroll.current = target.scrollTop;
-          down.current && animate(last.current);
-        }}
-      >
-        <Container style={containerController.springs}>
-          {order.current.map((key) => {
-            const entry = items.current[key].entry;
-            if (entry.kind === fos.EntryKind.GROUP) {
-              group = entry.name;
-            }
-            const { shadow, cursor, ...springs } =
-              items.current[key].controller.springs;
-            const { children } = render(
-              key,
-              group,
-              entry,
-              items.current[key].controller,
-              trigger
-            );
-            const style = {};
-            if (entry.kind === fos.EntryKind.INPUT) {
-              style.zIndex = 0;
+      {!modal && (
+        <Suspense>
+          <Box
+            style={{
+              padding: 8,
+              paddingLeft: 16,
+              paddingRight: 16,
+              background: theme.background.mediaSpace,
+              borderTopRightRadius: 8,
+            }}
+          >
+            <ViewSelection />
+          </Box>
+        </Suspense>
+      )}
+      <Suspense>
+        <SidebarColumn
+          ref={container}
+          onScroll={({ target }) => {
+            if (start.current !== null) {
+              start.current += scroll.current - target.scrollTop;
             }
 
-            return (
-              <animated.div
-                onMouseDownCapture={() => {
-                  lastTouched.current = undefined;
-                  placeItems();
-                }}
-                key={key}
-                style={{
-                  ...springs,
-                  boxShadow: shadow.to(
-                    (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
-                  ),
-                  ...style,
-                }}
-              >
-                <div
-                  ref={(node) => {
-                    if (!items.current[key]) {
-                      return;
-                    }
+            scroll.current = target.scrollTop;
+            down.current && animate(last.current);
+          }}
+        >
+          <Container style={containerController.springs}>
+            {order.current.map((key) => {
+              const entry = items.current[key].entry;
+              if (entry.kind === fos.EntryKind.GROUP) {
+                group = entry.name;
+              }
 
-                    items.current[key].el &&
-                      observer.unobserve(items.current[key].el);
-                    node && observer.observe(node);
-                    items.current[key].el = node;
+              const { shadow, cursor, ...springs } =
+                items.current[key].controller.springs;
+              const keyTrigger = ["tags", "_label_tags"].includes(key[1])
+                ? null
+                : trigger;
+              const { children } = render(
+                key,
+                group,
+                entry,
+                items.current[key].controller,
+                keyTrigger
+              );
+              const style = {};
+              if (entry.kind === fos.EntryKind.INPUT) {
+                style.zIndex = 0;
+              }
+
+              return (
+                <animated.div
+                  onMouseDownCapture={() => {
+                    lastTouched.current = undefined;
+                    placeItems();
+                  }}
+                  key={key}
+                  style={{
+                    ...springs,
+                    boxShadow: shadow.to(
+                      (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+                    ),
+                    ...style,
                   }}
                 >
-                  {children}
-                </div>
-              </animated.div>
-            );
-          })}
-        </Container>
-      </SidebarColumn>
+                  <div
+                    ref={(node) => {
+                      if (!items.current[key]) {
+                        return;
+                      }
+
+                      items.current[key].el &&
+                        observer.unobserve(items.current[key].el);
+                      node && observer.observe(node);
+                      items.current[key].el = node;
+                    }}
+                  >
+                    {children}
+                  </div>
+                </animated.div>
+              );
+            })}
+          </Container>
+        </SidebarColumn>
+      </Suspense>
     </Resizable>
   ) : null;
 };

@@ -1,7 +1,7 @@
 """
 Segmentation evaluation.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,7 @@ import eta.core.image as etai
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
@@ -64,8 +65,9 @@ def evaluate_segmentations(
 
     .. note::
 
-        The mask value ``0`` is treated as a background class for the purposes
-        of computing evaluation metrics like precision and recall.
+        The mask values ``0`` and ``#000000`` are treated as a background class
+        for the purposes of computing evaluation metrics like precision and
+        recall.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -74,8 +76,8 @@ def evaluate_segmentations(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Segmentation` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
-        mask_targets (None): a dict mapping mask values to labels. If not
-            provided, the observed pixel values are used
+        mask_targets (None): a dict mapping pixel values or RGB hex strings to
+            labels. If not provided, the observed values are used as labels
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple")``
         **kwargs: optional keyword arguments for the constructor of the
@@ -194,6 +196,25 @@ class SegmentationEvaluation(foe.EvaluationMethod):
 
         return fields
 
+    def rename(self, samples, eval_key, new_eval_key):
+        dataset = samples._dataset
+
+        in_fields = self.get_fields(dataset, eval_key)
+        out_fields = self.get_fields(dataset, new_eval_key)
+
+        in_sample_fields, in_frame_fields = fou.split_frame_fields(in_fields)
+        out_sample_fields, out_frame_fields = fou.split_frame_fields(
+            out_fields
+        )
+
+        if in_sample_fields:
+            fields = dict(zip(in_sample_fields, out_sample_fields))
+            dataset.rename_sample_fields(fields)
+
+        if in_frame_fields:
+            fields = dict(zip(in_frame_fields, out_frame_fields))
+            dataset.rename_frame_fields(fields)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
         processing_frames = samples._is_frame_field(self.config.gt_field)
@@ -257,11 +278,15 @@ class SimpleEvaluation(SegmentationEvaluation):
         gt_field = self.config.gt_field
 
         if mask_targets is not None:
+            if fof.is_rgb_mask_targets(mask_targets):
+                mask_targets = {
+                    _hex_to_int(k): v for k, v in mask_targets.items()
+                }
+
             values, classes = zip(*sorted(mask_targets.items()))
         else:
             logger.info("Computing possible mask values...")
-            values = _get_mask_values(samples, pred_field, gt_field)
-            classes = [str(v) for v in values]
+            values, classes = _get_mask_values(samples, pred_field, gt_field)
 
         _samples = samples.select_fields([gt_field, pred_field])
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
@@ -288,19 +313,22 @@ class SimpleEvaluation(SegmentationEvaluation):
             sample_conf_mat = np.zeros((nc, nc), dtype=int)
             for image in images:
                 gt_seg = image[gt_field]
-                if gt_seg is None or gt_seg.mask is None:
+                if gt_seg is None or not gt_seg.has_mask:
                     msg = "Skipping sample with missing ground truth mask"
                     warnings.warn(msg)
                     continue
 
                 pred_seg = image[pred_field]
-                if pred_seg is None or pred_seg.mask is None:
+                if pred_seg is None or not pred_seg.has_mask:
                     msg = "Skipping sample with missing prediction mask"
                     warnings.warn(msg)
                     continue
 
                 image_conf_mat = _compute_pixel_confusion_matrix(
-                    pred_seg.mask, gt_seg.mask, values, bandwidth=bandwidth
+                    pred_seg.get_mask(),
+                    gt_seg.get_mask(),
+                    values,
+                    bandwidth=bandwidth,
                 )
                 sample_conf_mat += image_conf_mat
 
@@ -326,18 +354,18 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample.save()
 
         if nc > 0:
-            missing = classes[0] if values[0] == 0 else None
+            missing = classes[0] if values[0] in (0, "#000000") else None
         else:
             missing = None
 
         return SegmentationResults(
+            samples,
+            self.config,
+            eval_key,
             confusion_matrix,
             classes,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             missing=missing,
-            samples=samples,
+            backend=self,
         )
 
 
@@ -345,25 +373,24 @@ class SegmentationResults(BaseEvaluationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`SegmentationEvaluationConfig` used
+        eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
-        eval_key (None): the evaluation key for the evaluation
-        gt_field (None): the name of the ground truth field
-        pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        backend (None): a :class:`SegmentationEvaluation` backend
     """
 
     def __init__(
         self,
+        samples,
+        config,
+        eval_key,
         pixel_confusion_matrix,
         classes,
-        eval_key=None,
-        gt_field=None,
-        pred_field=None,
         missing=None,
-        samples=None,
+        backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
         ytrue, ypred, weights = self._parse_confusion_matrix(
@@ -371,40 +398,31 @@ class SegmentationResults(BaseEvaluationResults):
         )
 
         super().__init__(
+            samples,
+            config,
+            eval_key,
             ytrue,
             ypred,
             weights=weights,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
             classes=classes,
             missing=missing,
-            samples=samples,
+            backend=backend,
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
 
     def attributes(self):
-        return [
-            "cls",
-            "pixel_confusion_matrix",
-            "eval_key",
-            "gt_field",
-            "pred_field",
-            "classes",
-            "missing",
-        ]
+        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         return cls(
+            samples,
+            config,
+            eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
-            eval_key=d.get("eval_key", None),
-            gt_field=d.get("gt_field", None),
-            pred_field=d.get("pred_field", None),
             missing=d.get("missing", None),
-            samples=samples,
             **kwargs,
         )
 
@@ -438,6 +456,12 @@ def _parse_config(pred_field, gt_field, method, **kwargs):
 def _compute_pixel_confusion_matrix(
     pred_mask, gt_mask, values, bandwidth=None
 ):
+    if pred_mask.ndim == 3:
+        pred_mask = _rgb_array_to_int(pred_mask)
+
+    if gt_mask.ndim == 3:
+        gt_mask = _rgb_array_to_int(gt_mask)
+
     if pred_mask.shape != gt_mask.shape:
         msg = (
             "Resizing predicted mask with shape %s to match ground truth mask "
@@ -470,7 +494,9 @@ def _extract_contour_band_values(pred_mask, gt_mask, bandwidth):
 
 def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     missing = 0 if values[0] == 0 else None
-    results = SegmentationResults(confusion_matrix, values, missing=missing)
+    results = SegmentationResults(
+        None, None, None, confusion_matrix, values, missing=missing
+    )
     metrics = results.metrics(average=average)
     if metrics["support"] == 0:
         return None, None, None
@@ -484,6 +510,7 @@ def _get_mask_values(samples, pred_field, gt_field):
     gt_field, _ = samples._handle_frame_field(gt_field)
 
     values = set()
+    is_rgb = False
 
     for sample in _samples.iter_samples(progress=True):
         if processing_frames:
@@ -494,7 +521,41 @@ def _get_mask_values(samples, pred_field, gt_field):
         for image in images:
             for field in (pred_field, gt_field):
                 seg = image[field]
-                if seg is not None and seg.mask is not None:
-                    values.update(seg.mask.ravel())
+                if seg is not None and seg.has_mask:
+                    mask = seg.get_mask()
+                    if mask.ndim == 3:
+                        is_rgb = True
+                        mask = _rgb_array_to_int(mask)
 
-    return sorted(values)
+                    values.update(mask.ravel())
+
+    values = sorted(values)
+
+    if is_rgb:
+        classes = [_int_to_hex(v) for v in values]
+    else:
+        classes = [str(v) for v in values]
+
+    return values, classes
+
+
+def _rgb_array_to_int(mask):
+    return (
+        np.left_shift(mask[:, :, 0], 16, dtype=int)
+        + np.left_shift(mask[:, :, 1], 8, dtype=int)
+        + mask[:, :, 2]
+    )
+
+
+def _hex_to_int(hex_str):
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return (r << 16) + (g << 8) + b
+
+
+def _int_to_hex(value):
+    r = (value >> 16) & 255
+    g = (value >> 8) & 255
+    b = value & 255
+    return "#%02x%02x%02x" % (r, g, b)

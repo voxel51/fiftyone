@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
+import { useState } from "react";
+import { selectorFamily } from "recoil";
 import styled from "styled-components";
 
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
@@ -13,6 +12,7 @@ import {
   isGroup,
   State,
 } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
@@ -59,24 +59,6 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
     onMouseLeave,
   };
 };
-
-export const allTags = selector<{ sample: string[]; label: string[] } | null>({
-  key: "tagAggs",
-  get: async ({ get }) => {
-    const labels = get(fos.labelTagCounts({ modal: false, extended: false }));
-
-    const sample = get(fos.sampleTagCounts({ modal: false, extended: false }));
-
-    if (!labels || !sample) {
-      return null;
-    }
-
-    return {
-      label: Object.keys(labels).sort(),
-      sample: Object.keys(sample).sort(),
-    };
-  },
-});
 
 export const tagStatistics = selectorFamily<
   {
@@ -149,13 +131,16 @@ export const tagStats = selectorFamily<
   get:
     ({ modal, labels }) =>
     ({ get }) => {
-      const tags = get(allTags);
-      const results = Object.fromEntries(
-        tags[labels ? "label" : "sample"].map((t) => [t, 0])
-      );
+      const data = Object.keys(
+        get(
+          labels
+            ? fos.labelTagCounts({ modal: false, extended: false })
+            : fos.sampleTagCounts({ modal: false, extended: false })
+        )
+      ).map((t) => [t, 0]);
 
       return {
-        ...results,
+        ...Object.fromEntries(data),
         ...get(tagStatistics({ modal, labels })).tags,
       };
     },
@@ -187,21 +172,29 @@ export const tagParameters = ({
   targetLabels: boolean;
   sampleId: string | null;
 }) => {
-  const hasSelected =
-    selectedSamples.size || selectedLabels.length || hiddenLabels.length;
+  const shouldShowCurrentSample =
+    params.modal && selectedSamples.size == 0 && hiddenLabels.length == 0;
   const groups = groupData?.mode === "group";
+
+  const getSampleIds = () => {
+    if (shouldShowCurrentSample && !groups) {
+      if (groupData?.slice) {
+        return null;
+      }
+      return [sampleId];
+    } else if (selectedSamples.size) {
+      return [...selectedSamples];
+    }
+    return null;
+  };
 
   return {
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    slice: !params.modal && !groups ? groupData?.slice : null,
-    sample_ids:
-      params.modal && !hasSelected && !groups
-        ? [sampleId]
-        : selectedSamples.size
-        ? [...selectedSamples]
-        : null,
+    slice: !groups ? groupData?.slice : null,
+    group_id: params.modal ? groupData?.id : null,
+    sample_ids: getSampleIds(),
     labels:
       params.modal && targetLabels && selectedLabels && selectedLabels.length
         ? toSnakeCase(selectedLabels)

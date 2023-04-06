@@ -1,7 +1,7 @@
 """
 FiftyOne import/export-related unit tests.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,8 +20,9 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
-from fiftyone.core.expressions import ViewField as F
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets
 
@@ -1782,6 +1783,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             label_field="segmentations",
         )
 
+        # Default: masks stay on disk
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.ImageSegmentationDirectory,
@@ -1791,7 +1793,21 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         self.assertEqual(len(view), len(dataset2))
         self.assertEqual(
             view.count("segmentations.mask"),
-            dataset2.count("segmentations.mask"),
+            dataset2.count("segmentations.mask_path"),
+        )
+
+        # Load masks into memory
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            label_field="segmentations",
+            load_masks=True,
+        )
+
+        self.assertEqual(len(view), len(dataset3))
+        self.assertEqual(
+            view.count("segmentations.mask"),
+            dataset3.count("segmentations.mask"),
         )
 
         # Detections
@@ -1851,6 +1867,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             label_field="segmentations",
         )
 
+        # Default: masks stay on disk
         dataset2 = fo.Dataset.from_dir(
             dataset_type=fo.types.ImageSegmentationDirectory,
             data_path=data_path,
@@ -1866,7 +1883,27 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         )
         self.assertEqual(
             dataset.count("segmentations.mask"),
-            dataset2.count("segmentations.mask"),
+            dataset2.count("segmentations.mask_path"),
+        )
+
+        # Load masks into memory
+        dataset3 = fo.Dataset.from_dir(
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="segmentations",
+            load_masks=True,
+            include_all_data=True,
+        )
+
+        self.assertEqual(len(dataset), len(dataset3))
+        self.assertSetEqual(
+            set(dataset.values("filepath")),
+            set(dataset3.values("filepath")),
+        )
+        self.assertEqual(
+            dataset.count("segmentations.mask"),
+            dataset3.count("segmentations.mask"),
         )
 
         # Segmentations (with rel dir)
@@ -1885,6 +1922,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.ImageSegmentationDirectory,
             label_field="segmentations",
+            load_masks=True,
             include_all_data=True,
         )
 
@@ -1898,6 +1936,104 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
+
+    @drop_datasets
+    def test_image_segmentation_fiftyone_dataset(self):
+        self._test_image_segmentation_fiftyone_dataset(
+            fo.types.FiftyOneDataset
+        )
+
+    @drop_datasets
+    def test_image_segmentation_legacy_fiftyone_dataset(self):
+        self._test_image_segmentation_fiftyone_dataset(
+            fo.types.LegacyFiftyOneDataset
+        )
+
+    def _test_image_segmentation_fiftyone_dataset(self, dataset_type):
+        dataset = self._make_dataset()
+
+        # In-database segmentations
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(dataset.count("segmentations.mask_path"), 0)
+        self.assertEqual(dataset2.count("segmentations.mask_path"), 0)
+        self.assertEqual(
+            dataset.count("segmentations.mask"),
+            dataset2.count("segmentations.mask"),
+        )
+
+        # Convert to on-disk segmentations
+
+        segmentations_dir = self._new_dir()
+
+        foul.export_segmentations(dataset, "segmentations", segmentations_dir)
+        self.assertEqual(dataset.count("segmentations.mask"), 0)
+        for mask_path in dataset.values("segmentations.mask_path"):
+            if mask_path is not None:
+                self.assertTrue(mask_path.startswith(segmentations_dir))
+
+        # On-disk segmentations
+
+        export_dir = self._new_dir()
+        field_dir = os.path.join(export_dir, "fields", "segmentations")
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(dataset2.count("segmentations.mask"), 0)
+        self.assertEqual(
+            dataset.count("segmentations.mask_path"),
+            dataset2.count("segmentations.mask_path"),
+        )
+
+        for mask_path in dataset2.values("segmentations.mask_path"):
+            if mask_path is not None:
+                self.assertTrue(mask_path.startswith(field_dir))
+
+        # On-disk segmentations (don't export media)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertListEqual(
+            dataset.values("filepath"),
+            dataset2.values("filepath"),
+        )
+        self.assertListEqual(
+            dataset.values("segmentations.mask_path"),
+            dataset2.values("segmentations.mask_path"),
+        )
 
 
 class DICOMDatasetTests(ImageDatasetTests):
@@ -1939,6 +2075,201 @@ class DICOMDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset2), 1)
         self.assertIn("PatientName", dataset2.get_field_schema())
+
+
+class CSVDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_image(),
+                tags=["foo", "bar"],
+                float_field=1.0,
+                weather=fo.Classification(label="sunny"),
+            ),
+            fo.Sample(
+                filepath=self._new_image(),
+                tags=["spam", "eggs"],
+                float_field=2.0,
+                weather=fo.Classification(label="sunny"),
+            ),
+            fo.Sample(filepath=self._new_image()),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_csv_dataset(self):
+        dataset = self._make_dataset()
+
+        export_fields = {
+            "filepath": "filepath",
+            "tags": "tags",
+            "float_field": "float_field",
+            "weather.label": "weather",
+        }
+
+        import_fields = {
+            "filepath": None,  # load as strings
+            "tags": lambda v: v.strip("").split(","),
+            "float_field": lambda v: float(v),
+            "weather": lambda v: fo.Classification(label=v) if v else None,
+        }
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=export_fields,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=import_fields,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(os.path.basename(f) for f in dataset.values("filepath")),
+            set(os.path.basename(f) for f in dataset2.values("filepath")),
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            ).all()
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        # Labels-only
+
+        data_path = self.images_dir
+        labels_path = os.path.join(self._new_dir(), "labels.csv")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=export_fields,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            data_path=data_path,
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=import_fields,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(os.path.basename(f) for f in dataset.values("filepath")),
+            set(os.path.basename(f) for f in dataset2.values("filepath")),
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            ).all()
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        # Labels-only (absolute paths)
+
+        labels_path = os.path.join(self._new_dir(), "labels.csv")
+
+        dataset.export(
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=export_fields,
+            abs_paths=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            labels_path=labels_path,
+            dataset_type=fo.types.CSVDataset,
+            fields=import_fields,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(dataset.values("filepath")), set(dataset2.values("filepath"))
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            ).all()
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        # Standard format (with rel dir)
+
+        export_dir = self._new_dir()
+        rel_dir = self.root_dir
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            rel_dir=rel_dir,
+            fields=export_fields,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=import_fields,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(
+            set(os.path.basename(f) for f in dataset.values("filepath")),
+            set(os.path.basename(f) for f in dataset2.values("filepath")),
+        )
+        self.assertSetEqual(
+            set(dataset.values("tags", unwind=True)),
+            set(dataset2.values("tags", unwind=True)),
+        )
+        self.assertTrue(
+            np.isclose(
+                dataset.bounds("float_field"),
+                dataset2.bounds("float_field"),
+            ).all()
+        )
+        self.assertSetEqual(
+            set(dataset.values("weather.label")),
+            set(dataset2.values("weather.label")),
+        )
+
+        relpath = _relpath(dataset2.first().filepath, export_dir)
+
+        # data/_images/<filename>
+        self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
 
 class GeoLocationDatasetTests(ImageDatasetTests):
@@ -2470,6 +2801,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+        self.assertListEqual(
+            dataset2.distinct("_dataset_id"), [dataset2._doc.id]
+        )
 
         # Include dynamic attributes
 
@@ -2498,7 +2832,33 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertIn("predictions.detections.cute", schema)
         self.assertIn("predictions.detections.mood", schema)
 
-        # Test import/export of run results
+        # Test import/export of saved views
+
+        view = dataset.match(F("weather.label") == "sunny")
+        dataset.save_view("test", view)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_saved_views())
+        self.assertTrue("test" in dataset2.list_saved_views())
+
+        view_doc = dataset2._get_saved_view_doc("test")
+        self.assertEqual(str(dataset2._doc.id), view_doc.dataset_id)
+
+        view2 = dataset2.load_saved_view("test")
+        self.assertEqual(len(view), len(view2))
+
+        # Test import/export of runs
 
         dataset.clone_sample_field("predictions", "ground_truth")
 
@@ -2521,6 +2881,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue("test" in dataset.list_evaluations())
         self.assertTrue("test" in dataset2.list_evaluations())
+
+        run_doc = dataset2._doc.evaluations["test"]
+        self.assertEqual(str(dataset2._doc.id), run_doc.dataset_id)
 
         view2 = dataset2.load_evaluation_view("test")
         self.assertEqual(len(view), len(view2))
@@ -2633,6 +2996,50 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
+        # Alternate media
+
+        export_dir = self._new_dir()
+        field_dir = os.path.join(export_dir, "fields", "filepath2")
+
+        dataset.clone_sample_field("filepath", "filepath2")
+        dataset.app_config.media_fields.append("filepath2")
+        dataset.save()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(
+            dataset.count("filepath2"), dataset2.count("filepath2")
+        )
+        for filepath in dataset2.values("filepath2"):
+            self.assertTrue(filepath.startswith(field_dir))
+
+        # Alternate media (don't export media)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertListEqual(
+            dataset.values("filepath2"), dataset2.values("filepath2")
+        )
+
     @skipwindows
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):
@@ -2664,6 +3071,35 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+        self.assertListEqual(
+            dataset2.distinct("_dataset_id"), [dataset2._doc.id]
+        )
+
+        # Test import/export of saved views
+
+        view = dataset.match(F("weather.label") == "sunny")
+        dataset.save_view("test", view)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_saved_views())
+        self.assertTrue("test" in dataset2.list_saved_views())
+
+        view_doc = dataset2._get_saved_view_doc("test")
+        self.assertEqual(str(dataset2._doc.id), view_doc.dataset_id)
+
+        view2 = dataset2.load_saved_view("test")
+        self.assertEqual(len(view), len(view2))
 
         # Test import/export of runs
 
@@ -2688,6 +3124,9 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue("test" in dataset.list_evaluations())
         self.assertTrue("test" in dataset2.list_evaluations())
+
+        run_doc = dataset2._doc.evaluations["test"]
+        self.assertEqual(str(dataset2._doc.id), run_doc.dataset_id)
 
         view2 = dataset2.load_evaluation_view("test")
         self.assertEqual(len(view), len(view2))
@@ -2772,6 +3211,50 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
+
+        # Alternate media
+
+        export_dir = self._new_dir()
+        field_dir = os.path.join(export_dir, "fields", "filepath2")
+
+        dataset.clone_sample_field("filepath", "filepath2")
+        dataset.app_config.media_fields.append("filepath2")
+        dataset.save()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertEqual(
+            dataset.count("filepath2"), dataset2.count("filepath2")
+        )
+        for filepath in dataset2.values("filepath2"):
+            self.assertTrue(filepath.startswith(field_dir))
+
+        # Alternate media (don't export media)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertListEqual(
+            dataset.values("filepath2"), dataset2.values("filepath2")
+        )
 
 
 class OpenLABELImageDatasetTests(ImageDatasetTests):
@@ -2931,9 +3414,7 @@ class OpenLABELVideoDatasetTests(VideoDatasetTests):
 
 
 class VideoExportCoersionTests(VideoDatasetTests):
-    @skipwindows
-    @drop_datasets
-    def test_clip_exports(self):
+    def _make_dataset(self):
         sample1 = fo.Sample(
             filepath=self._new_video(),
             predictions=fo.TemporalDetections(
@@ -3003,6 +3484,132 @@ class VideoExportCoersionTests(VideoDatasetTests):
 
         dataset = fo.Dataset()
         dataset.add_samples([sample1, sample2])
+
+        return dataset
+
+    @drop_datasets
+    def test_frame_label_fields(self):
+        dataset = self._make_dataset()
+
+        #
+        # `label_field` scalar syntax
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field="frames.predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `label_field` dict syntax
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"dets": "frames.predictions"},
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `frame_labels_field`
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `frame_labels_field` with "frames." prefix
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field="frames.predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # `frame_labels_field` with dict syntax
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field={"dets": "frames.predictions"},
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field={"detections": "predictions"},
+        )
+
+        self.assertEqual(
+            dataset.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+    @skipwindows
+    @drop_datasets
+    def test_clip_exports(self):
+        dataset = self._make_dataset()
 
         #
         # Export unlabeled video clips
@@ -3661,6 +4268,59 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
 
         # data/_videos/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
+
+
+class UnlabeledMediaDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [fo.Sample(filepath=self._new_image()) for _ in range(5)]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_media_directory(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # Standard format (with rel dir)
+
+        export_dir = self._new_dir()
+        rel_dir = self.root_dir
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+            rel_dir=rel_dir,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.MediaDirectory,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        relpath = _relpath(dataset2.first().filepath, export_dir)
+
+        # _images/<filename>
+        self.assertEqual(len(relpath.split(os.path.sep)), 2)
 
 
 def _relpath(path, start):

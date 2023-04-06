@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
-import ResizeObserver from "resize-observer-polyfill";
-import html2canvas from "html2canvas";
-import { getFetchFunction, sendEvent, toCamelCase } from "@fiftyone/utilities";
 
-import * as fos from "../";
+import { toCamelCase } from "@fiftyone/utilities";
+import ResizeObserver from "resize-observer-polyfill";
+
 import { State, StateResolver, transformDataset, useStateUpdate } from "../";
 
 export const useEventHandler = (
@@ -26,7 +24,7 @@ export const useEventHandler = (
     return () => {
       target && target.removeEventListener(eventType, wrapper);
     };
-  }, [target, eventType]);
+  }, [target, eventType, useCapture]);
 };
 
 export const useObserve = (target, handler) => {
@@ -65,7 +63,7 @@ export const useOutsideClick = (ref, handler) => {
         handler(event);
       }
     },
-    [handler]
+    [handler, ref]
   );
 
   useEventHandler(document, "mousedown", handleOutsideClick, true);
@@ -120,130 +118,8 @@ export const useWindowSize = () => {
   return windowSize;
 };
 
-export const useScreenshot = (
-  context: "ipython" | "colab" | "databricks" | undefined
-) => {
-  const subscription = useRecoilValue(fos.stateSubscription);
-
-  const fitSVGs = useCallback(() => {
-    const svgElements = document.body.querySelectorAll("svg");
-    svgElements.forEach((item) => {
-      item.setAttribute("width", item.getBoundingClientRect().width);
-      item.setAttribute("height", item.getBoundingClientRect().height);
-    });
-  }, []);
-
-  const inlineImages = useCallback(() => {
-    const images = document.body.querySelectorAll("img");
-    const promises = [];
-    images.forEach((img) => {
-      !img.classList.contains("fo-captured") &&
-        promises.push(
-          getFetchFunction()("GET", img.src, null, "blob")
-            .then((blob) => {
-              return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  resolve(reader.result);
-                };
-                reader.onerror = (error) => reject(error);
-                reader.readAsDataURL(blob);
-              });
-            })
-            .then((dataURL) => {
-              return new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-                img.src = dataURL;
-              });
-            })
-        );
-    });
-    return Promise.all(promises);
-  }, []);
-
-  const applyStyles = useCallback(() => {
-    const styles: Promise<void>[] = [];
-
-    document.querySelectorAll("link").forEach((link) => {
-      if (link.rel === "stylesheet") {
-        styles.push(
-          fetch(link.href)
-            .then((response) => response.text())
-            .then((text) => {
-              const style = document.createElement("style");
-              style.appendChild(document.createTextNode(text));
-              document.head.appendChild(style);
-            })
-        );
-      }
-    });
-
-    return Promise.all(styles);
-  }, []);
-
-  const captureCanvas = useCallback(() => {
-    const canvases = document.body.querySelectorAll("canvas");
-    const promises = [];
-    canvases.forEach((canvas) => {
-      const rect = canvas.getBoundingClientRect();
-      const dataURI = canvas.toDataURL("image/png");
-      const img = new Image(rect.width, rect.height);
-      img.style.height = `${rect.height}px`;
-      img.style.width = `${rect.width}px`;
-      canvas.parentNode.replaceChild(img, canvas);
-      promises.push(
-        new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = dataURI;
-        })
-      );
-    });
-    return Promise.all(promises);
-  }, []);
-
-  const capture = useCallback(() => {
-    const { width } = document.body.getBoundingClientRect();
-    html2canvas(document.body).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      if (context === "colab") {
-        window.parent.postMessage(
-          {
-            src: imgData,
-            subscription,
-            width,
-          },
-          "*"
-        );
-        return;
-      }
-
-      sendEvent({
-        event: "capture_notebook_cell",
-        subscription,
-        data: { src: imgData, width: canvas.width, subscription },
-      });
-    });
-  }, []);
-
-  const run = () => {
-    if (!context) return;
-
-    fitSVGs();
-    let chain = Promise.resolve(null);
-    if (context === "colab") {
-      chain.then(inlineImages).then(applyStyles).then(capture);
-    } else {
-      chain.then(capture);
-    }
-  };
-
-  return run;
-};
-
-export const useUnprocessedStateUpdate = () => {
-  const update = useStateUpdate();
+export const useUnprocessedStateUpdate = (ignoreSpaces = false) => {
+  const update = useStateUpdate(ignoreSpaces);
   return (resolve: StateResolver) => {
     update((t) => {
       const { colorscale, config, dataset, state } =
@@ -255,10 +131,12 @@ export const useUnprocessedStateUpdate = () => {
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
         config: config ? (toCamelCase(config) as State.Config) : undefined,
-        state: {
-          ...toCamelCase(state),
-          view: state.view,
-        } as State.Description,
+        state: state
+          ? ({
+              ...toCamelCase(state),
+              view: state.view,
+            } as State.Description)
+          : null,
       };
     });
   };

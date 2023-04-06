@@ -1,18 +1,13 @@
 """
 Base classes for documents that back dataset contents.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import mongoengine
 
-import fiftyone.core.utils as fou
-
 from .document import DynamicMixin, MongoEngineBaseDocument
-
-
-food = fou.lazy_import("fiftyone.core.odm.dataset")
 
 
 class BaseEmbeddedDocument(MongoEngineBaseDocument):

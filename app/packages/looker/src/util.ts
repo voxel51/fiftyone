@@ -1,8 +1,8 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2023, Voxel51, Inc.
  */
-import mime from "mime";
 import { mergeWith } from "immutable";
+import mime from "mime";
 
 import { MIN_PIXELS } from "./constants";
 import {
@@ -16,8 +16,14 @@ import {
   Optional,
 } from "./state";
 
-import LookerWorker from "./worker.ts?worker&inline";
-import { getFetchParameters } from "@fiftyone/utilities";
+import {
+  AppError,
+  getFetchParameters,
+  GraphQLError,
+  NetworkError,
+  ServerError,
+} from "@fiftyone/utilities";
+import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
@@ -401,6 +407,9 @@ export const mergeUpdates = <State extends BaseState>(
     if (n instanceof Function) {
       return n;
     }
+    if (n instanceof Error) {
+      return n;
+    }
     if (typeof n !== "object") {
       return n === undefined ? o : n;
     }
@@ -412,20 +421,39 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
+const ERRORS = [AppError, GraphQLError, NetworkError, ServerError].reduce(
+  (acc, cur) => {
+    return {
+      ...acc,
+      [cur.constructor.name]: cur,
+    };
+  },
+  {}
+);
+
 export const createWorker = (
   listeners?: {
     [key: string]: ((worker: Worker, args: any) => void)[];
   },
   dispatchEvent?: DispatchEvent
 ): Worker => {
-  const worker = new LookerWorker();
+  let worker: Worker = null;
+
+  try {
+    worker = new LookerWorker();
+  } catch {
+    worker = new Worker(new URL("./worker/index.ts", import.meta.url));
+  }
 
   worker.onerror = (error) => {
     dispatchEvent("error", error);
   };
   worker.addEventListener("message", ({ data }) => {
     if (data.error) {
-      dispatchEvent("error", new ErrorEvent("error", { error: data.error }));
+      const error = !ERRORS[data.error.cls]
+        ? new Error(data.error.message)
+        : new ERRORS[data.error.cls](data.error.data, data.error.message);
+      dispatchEvent("error", new ErrorEvent("error", { error }));
     }
   });
 

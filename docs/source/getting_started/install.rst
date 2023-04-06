@@ -11,9 +11,8 @@ FiftyOne Installation
 
 .. note::
 
-  FiftyOne is growing!
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  to learn about new features as they come out.
+    Need to collaborate on your datasets? Check out
+    :ref:`FiftyOne Teams <fiftyone-teams>`!
 
 .. _install-prereqs:
 

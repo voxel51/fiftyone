@@ -1,11 +1,12 @@
 """
 Video utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import itertools
+import json
 import logging
 import os
 
@@ -658,6 +659,33 @@ def concat_videos(input_paths, output_path, verbose=False):
             ffmpeg.run(input_list_path, output_path, verbose=verbose)
 
 
+def exact_frame_count(input_path):
+    """Returns the exact number of frames in the video.
+
+    .. warning::
+
+        This method uses the ``-count_frames`` argument of ``ffprobe``, which
+        requires decoding the video and can be very slow.
+
+    Args:
+        input_path: the path to the video
+
+    Returns:
+        the number of frames in the video
+    """
+    opts = [
+        "-count_frames",
+        "-select_streams",
+        "v:0",
+        "-print_format",
+        "json",
+        "-show_streams",
+    ]
+    ffprobe = etav.FFprobe(opts=opts)
+    output = json.loads(ffprobe.run(input_path).decode())
+    return int(output["streams"][0]["nb_read_frames"])
+
+
 def _transform_videos(
     sample_collection,
     frames=None,
@@ -966,4 +994,4 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
     else:
         filename = os.path.basename(inpath)
 
-    return os.path.join(output_dir, filename)
+    return os.path.join(fou.normalize_path(output_dir), filename)

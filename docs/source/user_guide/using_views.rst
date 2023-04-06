@@ -8,7 +8,16 @@ Dataset Views
 FiftyOne provides methods that allow you to sort, slice, and search your
 |Dataset| using any information that you have added to the |Dataset|.
 Performing these actions returns a |DatasetView| into your |Dataset| that will
-that will show only the samples and labels therein that match your criteria.
+show only the samples and labels therein that match your criteria.
+
+.. note::
+
+    |DatasetView| does not hold its contents in-memory. Views simply store the
+    rule(s) that are applied to extract the content of interest from the
+    underlying |Dataset| when the view is iterated/aggregated on.
+
+    This means, for example, that the contents of a |DatasetView| may change
+    as the underlying |Dataset| is modified.
 
 Overview
 ________
@@ -57,12 +66,6 @@ You can access specific information about a view in the natural ways:
     view.media_type
     # "image"
 
-.. note::
-
-    |DatasetView| does not hold its contents in-memory; it contains a pipeline
-    of operations that define what samples will be loaded when the contents of
-    the view are accessed.
-
 Like datasets, you access the samples in a view by iterating over it:
 
 .. code-block:: python
@@ -94,6 +97,96 @@ Or, you can access individual samples in a view by their ID or filepath:
     |SampleView| provides some extra features. See
     :ref:`filtering sample contents <filtering-sample-contents>` for more
     details.
+
+.. _saving-views:
+
+Saving views
+____________
+
+If you find yourself frequently using/recreating certain views, you can use
+:meth:`save_view() <fiftyone.core.dataset.Dataset.save_view>` to save them on
+your dataset under a name of your choice:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.persistent = True
+
+    # Create a view
+    cats_view = (
+        dataset
+        .select_fields("ground_truth")
+        .filter_labels("ground_truth", F("label") == "cat")
+        .sort_by(F("ground_truth.detections").length(), reverse=True)
+    )
+
+    # Save the view
+    dataset.save_view("cats-view", cats_view)
+
+Then you can conveniently use
+:meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>`
+to load the view in a future session:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("quickstart")
+
+    # Retrieve a saved view
+    cats_view = dataset.load_saved_view("cats-view")
+    print(cats_view)
+
+.. note::
+
+    Did you know? You can also save, load, and edit saved views directly
+    :ref:`from the App <app-saving-views>`!
+
+Saved views have certain editable metadata such as a description that you can
+view via
+:meth:`get_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`
+and update via
+:meth:`update_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get a saved view's editable info
+    print(dataset.get_saved_view_info("cats-view"))
+
+    # Update the saved view's name and add a description
+    info = dict(
+        name="still-cats-view",
+        description="a view that only contains cats",
+    )
+    dataset.update_saved_view_info("cats-view", info)
+
+    # Verify that the info has been updated
+    print(dataset.get_saved_view_info("still-cats-view"))
+
+You can also use
+:meth:`list_saved_views() <fiftyone.core.dataset.Dataset.list_saved_views>`,
+:meth:`has_saved_view() <fiftyone.core.dataset.Dataset.has_saved_view>`,
+and
+:meth:`delete_saved_view() <fiftyone.core.dataset.Dataset.delete_saved_view>`
+to manage your saved views.
+
+.. note::
+
+    Saved views only store the rule(s) used to extract content from the
+    underlying dataset, not the actual content itself. Saving views is cheap.
+    Don't worry about storage space!
+
+    Keep in mind, though, that the contents of a saved view may change as the
+    underlying dataset is modified. For example, if a save view contains
+    samples with a certain tag, the view's contents will change as you
+    add/remove this tag from samples.
 
 .. _view-stages:
 
@@ -905,6 +998,8 @@ in the sense that:
 -   Any modifications to the patch labels that you make by iterating over the
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>`,
     :meth:`keep() <fiftyone.core.patches.PatchesView.keep>`, or
@@ -1018,6 +1113,8 @@ Evaluation patches views are just like any other
     patches view that you make by iterating over the contents of the view or
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`,
     :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>`, or
@@ -1313,6 +1410,8 @@ sense that:
 -   Any modifications to the frame-level labels in a clips view that you make
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>`,
     :meth:`keep() <fiftyone.core.clips.ClipsView.keep>`, or
@@ -1330,6 +1429,76 @@ source dataset, there are some differences compared to non-clip views:
     reflected on the source dataset (except for edits to the `support` and
     |Classification| field populated when generating clip views based on
     |TemporalDetection| labels, as described above)
+
+.. _trajectory-views:
+
+Trajectory views
+----------------
+
+You can use
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+to create views into your video datasets that contain one sample per each
+unique object trajectory defined by their ``(label, index)`` in a frame-level
+|Detections| or |Polylines| field.
+
+Trajectory views are a special case of :ref:`clip views <clip-views>` where
+each clip has been filtered to contain only the identifying object, rather than
+than all objects with the trajectory's frame support.
+
+For example, if you have frame-level
+:ref:`object detections <object-detection>` with their ``index`` attributes
+populated, then you can create a trajectories view that contains one clip for
+each object of a specific type using
+:meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+and
+:meth:`to_trajectories() <fiftyone.core.collections.SampleCollection.to_trajectories>`
+as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Create a trajectories view for the vehicles in the dataset
+    trajectories = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "vehicle")
+        .to_trajectories("frames.detections")
+    )
+    print(trajectories)
+
+    session = fo.launch_app(view=trajectories)
+
+.. code-block:: text
+
+    Dataset:    quickstart-video
+    Media type: video
+    Num clips:  109
+    Clip fields:
+        id:         fiftyone.core.fields.ObjectIdField
+        sample_id:  fiftyone.core.fields.ObjectIdField
+        filepath:   fiftyone.core.fields.StringField
+        support:    fiftyone.core.fields.FrameSupportField
+        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'vehicle']}, only_matches=True, trajectories=False)
+        2. ToTrajectories(field='frames.detections', config=None)
+
+.. warning::
+
+    Trajectory views can contain signficantly more frames than their source
+    collection, since the number of frames is now `O(# boxes)` rather than
+    `O(# video frames)`.
 
 .. _frame-views:
 
@@ -1472,6 +1641,8 @@ Frame views are just like any other image collection view in the sense that:
     of the samples in a frames view that you make by iterating over the
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    or
+    :meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.video.FramesView.save>`,
     :meth:`keep() <fiftyone.core.video.FramesView.keep>`, or
@@ -1605,14 +1776,14 @@ to restrict attention to or exclude frames from a view by their IDs:
 
 .. _similarity-views:
 
-Visual similarity
-_________________
+Similarity views
+________________
 
-If you have indexed your dataset by
-:ref:`visual similarity <brain-similarity>`, then you can use the
+If your dataset is :ref:`indexed by similarity <brain-similarity>`, then you
+can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-stage to programmatically query your data by visual similarity to image(s) or
-object patch(es) of interest.
+stage to programmatically query your data by similarity to image(s) or object
+patch(es) of interest.
 
 .. _image-similarity-views:
 
@@ -1622,7 +1793,7 @@ Image similarity
 The example below indexes a dataset by image similarity using
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to sort the dataset by visual similarity to a chosen image:
+to sort the dataset by similarity to a chosen image:
 
 .. code-block:: python
     :linenos:
@@ -1641,7 +1812,7 @@ to sort the dataset by visual similarity to a chosen image:
     # Select a random query image
     query_id = dataset.take(1).first().id
 
-    # Sort the samples by visual similarity to the query image
+    # Sort the samples by similarity to the query image
     view = dataset.sort_by_similarity(query_id, brain_key="image_sim")
     print(view)
 
@@ -1652,7 +1823,7 @@ to sort the dataset by visual similarity to a chosen image:
 
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
-    :ref:`App guide <app-image-similarity>` to see how to sort images by visual
+    :ref:`App guide <app-image-similarity>` to see how to sort images by
     similarity via point-and-click in the App!
 
 .. _object-similarity-views:
@@ -1664,7 +1835,7 @@ The example below indexes the objects in a |Detections| field of a dataset by
 similarity using
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and then uses
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-to retrieve the 15 most visually similar objects to a chosen object:
+to retrieve the 15 most similar objects to a chosen object:
 
 .. code-block:: python
     :linenos:
@@ -1689,7 +1860,7 @@ to retrieve the 15 most visually similar objects to a chosen object:
     # Select a random query object
     query_id = patches.take(1).first().id
 
-    # Retrieve the 15 most visually similar objects
+    # Retrieve the 15 most similar objects
     similar_objects = patches.sort_by_similarity(query_id, k=15, brain_key="gt_sim")
 
     # View results in the App
@@ -1700,7 +1871,92 @@ to retrieve the 15 most visually similar objects to a chosen object:
     Refer to the :ref:`Brain guide <brain-similarity>` for more information
     about generating similarity indexes, and check out the
     :ref:`App guide <app-object-similarity>` to see how to sort objects by
-    visual similarity via point-and-click in the App!
+    similarity via point-and-click in the App!
+
+.. _text-similarity-views:
+
+Text similarity
+---------------
+
+When you create a :ref:`similarity index <brain-similarity>` powered by the
+:ref:`CLIP model <model-zoo-clip-vit-base32-torch>`, you can pass arbitrary
+natural language queries to
+:meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+along with the `brain_key` of a compatible similarity index:
+
+.. tabs::
+
+  .. group-tab:: Image similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index images by similarity
+        image_index = fob.compute_similarity(
+            dataset,
+            model="clip-vit-base32-torch",
+            brain_key="img_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Perform a text query
+        query = "kites high in the air"
+        view = dataset.sort_by_similarity(query, k=15, brain_key="img_sim")
+
+        session.view = view
+
+  .. group-tab:: Object similarity
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Index ground truth objects by similarity
+        object_index = fob.compute_similarity(
+            dataset,
+            patches_field="ground_truth",
+            model="clip-vit-base32-torch",
+            brain_key="gt_sim",
+        )
+
+        session = fo.launch_app(dataset)
+
+        # Convert to patches view
+        patches = dataset.to_patches("ground_truth")
+
+        # Perform a text query
+        query = "cute puppies"
+        view = patches.sort_by_similarity(query, k=15, brain_key="gt_sim")
+
+        session.view = view
+
+You can verify that a similarity index supports text queries by checking that
+it `supports_prompts`:
+
+.. code-block:: python
+    :linenos:
+
+    info = dataset.get_brain_info(brain_key)
+    print(info.config.supports_prompts)  # True
+
+.. note::
+
+    Refer to the :ref:`Brain guide <brain-similarity>` for more information
+    about generating similarity indexes, and check out the
+    :ref:`App guide <app-text-similarity>` to see how to sort objects by text
+    similarity via point-and-click in the App!
 
 .. _geolocation-views:
 
@@ -1945,6 +2201,26 @@ save the updated data in a single batch operation:
 
     print(dataset.count_label_tags())
     # {'low_confidence': 447}
+
+In the particular case of updating the attributes of a |Label| field of your
+dataset, the edits may be most naturally represented as a mapping between label
+IDs and corresponding attribute values to set on each label. In such cases, you
+can use
+:meth:`set_label_values() <fiftyone.core.collections.SampleCollection.set_label_values>`
+to conveniently perform the updates:
+
+.. code-block:: python
+    :linenos:
+
+    # Grab the IDs of all labels in `view`
+    label_ids = view.values("predictions.detections.id", unwind=True)
+
+    # Populate an `is_low_conf` attribute on all of the labels
+    values = {_id: True for _id in label_ids}
+    dataset.set_label_values("predictions.detections.is_low_conf", values)
+
+    print(dataset.count_values("predictions.detections.is_low_conf"))
+    # {True: 447, None: 5173}
 
 .. _transforming-view-fields:
 

@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     pytest tests/intensive/import_export_tests.py -s -k <test_case>
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -19,7 +19,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.brain as fob
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 

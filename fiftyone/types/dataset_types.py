@@ -1,7 +1,7 @@
 """
 FiftyOne dataset types.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -278,6 +278,25 @@ class VideoDirectory(UnlabeledImageDataset):
         return foud.VideoDirectoryExporter
 
 
+class MediaDirectory(UnlabeledDataset):
+    """A directory of media files.
+
+    See :ref:`this page <MediaDirectory-import>` for importing datasets of this
+    type, and see :ref:`this page <MediaDirectory-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.MediaDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.MediaDirectoryExporter
+
+
 class FiftyOneImageClassificationDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
     classification labels stored in a simple JSON format.
@@ -476,6 +495,18 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         import fiftyone.utils.openimages as fouo
 
         return fouo.OpenImagesV6DatasetImporter
+
+
+class OpenImagesV7Dataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openimages as fouo
+
+        return fouo.OpenImagesV7DatasetImporter
 
 
 class FIWDataset(Dataset):
@@ -750,6 +781,26 @@ class GeoTIFFDataset(ImageLabelsDataset):
         import fiftyone.utils.geotiff as foug
 
         return foug.GeoTIFFDatasetImporter
+
+
+class CSVDataset(Dataset):
+    """A flexible CSV format that represents slice(s) of field values of a
+    dataset as columns of a CSV file.
+
+    See :ref:`this page <CSVDataset-import>` for importing datasets of this
+    type, and see :ref:`this page <CSVDataset-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.csv as fouc
+
+        return fouc.CSVDatasetExporter
 
 
 class FiftyOneDataset(Dataset):

@@ -12,7 +12,7 @@ import { RelayEnvironmentKey } from "./relay";
 
 import { datasetName } from "./selectors";
 import { view } from "./view";
-import { selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
@@ -35,10 +35,28 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { State } from "./types";
+import { extendedSelection } from "./atoms";
+import { filters } from "./filters";
+import { groupSlice, groupStatistics } from "./groups";
 
+/**
+ * A generic type that extracts the response type from a GraphQL query.
+ */
 export type AggregationResponseFrom<
   TAggregate extends { response: { aggregate: readonly unknown[] } }
 > = TAggregate["response"]["aggregate"][0];
+
+const extendedViewForm = selector({
+  key: "extendedViewForm",
+  get: ({ get }) => {
+    return {
+      sampleIds: get(extendedSelection)?.selection,
+      filters: get(filters),
+      slice: get(groupSlice(false)),
+      mixed: get(groupStatistics(false)) === "group",
+    };
+  },
+});
 
 const countValuesData = graphQLSelectorFamily<
   VariablesOf<countValuesQuery>,
@@ -55,9 +73,10 @@ const countValuesData = graphQLSelectorFamily<
         dataset: get(datasetName),
         view: get(view),
         path,
+        form: get(extendedViewForm),
       };
     },
-  mapResponse: (data) => data.aggregate[0],
+  mapResponse: (data: countValuesQuery["response"]) => data.aggregate[0],
 });
 
 const histogramValuesData = graphQLSelectorFamily<
@@ -75,6 +94,7 @@ const histogramValuesData = graphQLSelectorFamily<
         dataset: get(datasetName),
         view: get(view),
         path,
+        form: get(extendedViewForm),
       };
     },
   mapResponse: (data) => data.aggregate[0],
