@@ -4,6 +4,7 @@ const componentsByType = {
   String: "FieldView",
   Number: "FieldView",
   List: "ListView",
+  OneOf: "OneOfView",
 };
 const componentByView = {
   RadioGroup: "RadioView",
@@ -17,9 +18,10 @@ const typeMap = {
   String: "string",
   Number: "number",
   List: "array",
+  OneOf: "oneOf",
 };
 
-const fallbackView = "FallbackView";
+const unsupportedView = "UnsupportedView";
 
 function getTypeName(property) {
   const { type } = property;
@@ -29,7 +31,7 @@ function getTypeName(property) {
 function getComponent(property) {
   const typeName = getTypeName(property);
   const ViewComponent = getComponentByView(property);
-  return ViewComponent || componentsByType[typeName] || fallbackView;
+  return ViewComponent || componentsByType[typeName] || unsupportedView;
 }
 
 function getComponentByView(property) {
@@ -58,6 +60,10 @@ function getSchema(property) {
 
   if (typeName === "List") {
     schema.items = getSchema({ type: property.type.elementType });
+  }
+
+  if (typeName === "OneOf") {
+    schema.types = property.type.types.map((type) => getSchema({ type }));
   }
 
   return schema;
