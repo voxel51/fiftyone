@@ -7,9 +7,9 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Checkbox,
   FormControlLabel,
 } from "@material-ui/core";
+import Divider from "@mui/material/Divider";
 import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
 import {
@@ -20,11 +20,10 @@ import {
   INT_FIELD,
   STRING_FIELD,
 } from "@fiftyone/utilities";
-import ColorPalette from "./colorPalette/ColorPalette";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
 import { colorBlindFriendlyPalette, tempColorSetting } from "./utils";
-import Divider from "@mui/material/Divider";
+import Checkbox from "../Common/Checkbox";
 
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
@@ -50,6 +49,9 @@ const FieldSetting: React.FC = ({}) => {
       ftype: FLOAT_FIELD,
     })
   ).map((field) => ({ value: field.path, label: field.name }));
+  const attributeFieldName = colorAttributeOptions.find(
+    (o) => o.value === tempAttributeSetting?.attributeForColor
+  )?.label;
 
   const coloring = useRecoilValue(fos.coloring(false));
   const pool = coloring.pool.filter(
@@ -59,7 +61,6 @@ const FieldSetting: React.FC = ({}) => {
 
   const [checkbox1, setCheckbox1] = useState(false);
   const [checkbox2, setCheckbox2] = useState(false);
-  const [checkbox3, setCheckbox3] = useState(false);
   const [showFieldPicker, setShowFieldPicker] = useState(false);
 
   const handleDropdownChange = (event) => {
@@ -75,47 +76,11 @@ const FieldSetting: React.FC = ({}) => {
     }));
   };
 
-  const getDefault = (key: string) => {
-    if (key === "attributeForOpacity") return undefined;
-    if (key === "colors") return [];
-    if (key === "labelColors")
-      return [
-        {
-          name: "",
-          color:
-            colorBlindFriendlyPalette[
-              Math.floor(Math.random() * coloring.pool.length)
-            ],
-        },
-      ];
-  };
-
-  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    switch (event.target.name) {
-      case "attributeForOpacity":
-        setCheckbox1(event.target.checked);
-        break;
-      case "colors":
-        setCheckbox2(event.target.checked);
-        break;
-      case "labelColors":
-        setCheckbox3(event.target.checked);
-        break;
-      default:
-    }
-    if (!event.target.checked) {
-      setTempAttributeSetting((prev) => ({
-        ...prev,
-        [event.target.name]: getDefault(event.target.name),
-      }));
-    }
-  };
-
-  const hasDefaultColorPool = (colors: string[] | undefined) => {
-    if (!colors || colors.length == 0) return true;
-    if (colors.join("") === coloring.pool.join("")) return true;
-    return false;
-  };
+  //   const hasDefaultColorPool = (colors: string[] | undefined) => {
+  //     if (!colors || colors.length == 0) return true;
+  //     if (colors.join("") === coloring.pool.join("")) return true;
+  //     return false;
+  //   };
 
   const hasDefaultLabelColor = (
     labelColors: { name: string; color: string }[] | undefined
@@ -152,14 +117,16 @@ const FieldSetting: React.FC = ({}) => {
     }
   };
 
+  const defaultColor =
+    colorBlindFriendlyPalette[Math.floor(Math.random() * coloring.pool.length)];
+
   // if customizeColor has settings about attribute for color field, tempFieldColor should copy the settings, otherwise, initialize the settings
   useEffect(() => {
     if (customizeColor?.attributeForColor) {
       setTempAttributeSetting(customizeColor);
       // update checkbox status based on exisiting settings
       setCheckbox1(!!customizeColor.attributeForOpacity);
-      setCheckbox2(!hasDefaultColorPool(customizeColor.colors));
-      setCheckbox3(!hasDefaultLabelColor(customizeColor.labelColors));
+      setCheckbox2(!hasDefaultLabelColor(customizeColor.labelColors));
     } else {
       setTempAttributeSetting({
         field: path!,
@@ -169,7 +136,6 @@ const FieldSetting: React.FC = ({}) => {
         attributeForOpacity:
           opacityAttributeOptions.find((x) => x.label === "confidence")
             ?.value ?? undefined,
-        colors: colorBlindFriendlyPalette,
         labelColors: [
           {
             name: "",
@@ -255,20 +221,32 @@ const FieldSetting: React.FC = ({}) => {
             })}
           </Select>
         </FormControl>
+        {/* set attribute value - color */}
+        <Checkbox
+          name={`Assign color for ${attributeFieldName} value`}
+          value={checkbox2}
+          setValue={(v: boolean) => {
+            setCheckbox2(v);
+            !v &&
+              setTempAttributeSetting((prev) => ({
+                ...prev,
+                labelColors: [{ name: "", color: defaultColor }],
+              }));
+          }}
+        />
+        {checkbox2 && <AttributeColorSetting style={CHILD_STYLE} />}
         {/* set the attribute used for opacity */}
-        <FormControlLabel
-          key="attributeForOpacity"
-          style={FONT_STYLE}
-          control={
-            <Checkbox
-              checked={checkbox1}
-              onChange={handleCheckboxChange}
-              name="attributeForOpacity"
-              disabled={opacityAttributeOptions.length === 0}
-              disableRipple
-            />
-          }
-          label={<CheckboxText>Set up object boxes opacity</CheckboxText>}
+        <Checkbox
+          name={`Select attribute for opacity`}
+          value={checkbox1}
+          setValue={(v: boolean) => {
+            setCheckbox1(v);
+            !v &&
+              setTempAttributeSetting((prev) => ({
+                ...prev,
+                attributeForOpacity: undefined,
+              }));
+          }}
         />
         {checkbox1 && (
           <FormControl style={CHILD_STYLE} key="dropdown-opacity">
@@ -296,35 +274,6 @@ const FieldSetting: React.FC = ({}) => {
             </Select>
           </FormControl>
         )}
-        {/* set colors to use to replace the color pool*/}
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={checkbox2}
-              onChange={handleCheckboxChange}
-              name="colors"
-              disableRipple
-            />
-          }
-          label={<CheckboxText>Overwrite color pool</CheckboxText>}
-          key="colors"
-        />
-        {checkbox2 && <ColorPalette style={CHILD_STYLE} />}
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={checkbox3}
-              onChange={handleCheckboxChange}
-              name="labelColors"
-              disableRipple
-            />
-          }
-          label={
-            <CheckboxText>Assign specfic color to attribute value</CheckboxText>
-          }
-          key="labelColors"
-        />
-        {checkbox3 && <AttributeColorSetting style={CHILD_STYLE} />}
       </form>
     </div>
   );
