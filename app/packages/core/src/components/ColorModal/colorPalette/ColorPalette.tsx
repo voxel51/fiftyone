@@ -5,7 +5,9 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import AddIcon from "@material-ui/icons/Add";
 
 import { ChromePicker } from "react-color";
-import { tempColorSetting } from "../utils";
+import { colorBlindFriendlyPalette, tempColorSetting } from "../utils";
+import Checkbox from "../../Common/Checkbox";
+import { isEmpty, xor } from "lodash";
 
 interface ColorPaletteProps {
   maxColors?: number;
@@ -18,6 +20,9 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
 }) => {
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const colors = tempColor.colors;
+  const isUsingColorBlindOption = isEmpty(
+    xor(colors, colorBlindFriendlyPalette)
+  ); // check if the two array have the same elements
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -97,6 +102,16 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           </AddSquare>
         )}
       </ColorPaletteContainer>
+      {!isUsingColorBlindOption && (
+        <Checkbox
+          name={"Use color blind friendly option"}
+          value={isUsingColorBlindOption}
+          setValue={(v) =>
+            v &&
+            setTempColor((s) => ({ ...s, colors: colorBlindFriendlyPalette }))
+          }
+        />
+      )}
     </div>
   );
 };
