@@ -1,6 +1,3 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
 import React, {
   MutableRefObject,
   useEffect,
@@ -19,8 +16,8 @@ import * as fos from "@fiftyone/state";
 import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
 import { InfoIcon, useTheme } from "@fiftyone/components";
-import { Field } from "@fiftyone/utilities";
-import { coloring, colorModal } from "@fiftyone/state";
+import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
+import { coloring, activeColorField } from "@fiftyone/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -262,7 +259,7 @@ function FieldInfoExpanded({
   const [isCollapsed, setIsCollapsed] = useState(
     descTooLong || tooManyInfoKeys
   );
-  const setIsCustomizingColor = useSetRecoilState(colorModal);
+  const setIsCustomizingColor = useSetRecoilState(activeColorField);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";

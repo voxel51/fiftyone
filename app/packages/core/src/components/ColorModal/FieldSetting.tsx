@@ -14,6 +14,7 @@ import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
+  Field,
   FLOAT_FIELD,
   getColor,
   INT_FIELD,
@@ -27,9 +28,9 @@ import Divider from "@mui/material/Divider";
 
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
-const ColorModalContent: React.FunctionComponent = () => {
-  const field = useRecoilValue(fos.colorModal);
-  const path = field?.path;
+const FieldSetting: React.FC = ({}) => {
+  const field = useRecoilValue(fos.activeColorField) as Field;
+  const path = field.path;
   const customizeColor = useRecoilValue(fos.customizeColors(path!));
   const [tempAttributeSetting, setTempAttributeSetting] =
     useRecoilState(tempColorSetting);
@@ -182,160 +183,154 @@ const ColorModalContent: React.FunctionComponent = () => {
     }
   }, []);
 
-  if (!field || !path) return <div></div>;
-
   return (
-    <div style={{ height: "calc( 80vh - 6rem)", overflow: "scroll" }}>
-      <div style={{ margin: "1rem" }}>
-        Color by field settings
-        <div
+    <div style={{ margin: "1rem" }}>
+      Color by field settings
+      <div
+        style={{
+          margin: "1rem",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "end",
+        }}
+      >
+        <ColorSquare
+          color={fieldColor}
+          onClick={toggleColorPicker}
+          id="color-square"
+        >
+          {showFieldPicker && (
+            <PickerWrapper
+              id="twitter-color-container"
+              onBlur={hideFieldColorPicker}
+              visible={showFieldPicker}
+              tabIndex={0}
+              ref={colorContainer}
+            >
+              <TwitterPicker
+                color={fieldColor}
+                colors={coloring.pool}
+                onChange={onChangeFieldColor}
+                id={"twitter-color-picker"}
+              />
+            </PickerWrapper>
+          )}
+        </ColorSquare>
+        <Input
+          value={fieldColor}
+          setter={(v) => setFieldColor(v)}
           style={{
-            margin: "1rem",
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "end",
+            width: 100,
+            display: "inline-block",
+            margin: 3,
           }}
-        >
-          <ColorSquare
-            color={fieldColor}
-            onClick={toggleColorPicker}
-            id="color-square"
+        />
+      </div>
+      <Divider></Divider>
+      <Text>Color by value settings</Text>
+      <form
+        style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
+      >
+        {/* set the attribute used for color */}
+        <FormControl>
+          <InputLabel key="dropdown-attribute" style={FONT_STYLE}>
+            Select attribute for annotation color
+          </InputLabel>
+          <Select
+            labelId="dropdown-attribute"
+            key="select-attribute-dropdown"
+            value={tempAttributeSetting?.attributeForColor ?? ""}
+            onChange={handleDropdownChange}
+            MenuProps={{ style: { zIndex: 9999999 } }}
+            style={FONT_STYLE}
+            autoWidth
+            required
           >
-            {showFieldPicker && (
-              <PickerWrapper
-                id="twitter-color-container"
-                onBlur={hideFieldColorPicker}
-                visible={showFieldPicker}
-                tabIndex={0}
-                ref={colorContainer}
-              >
-                <TwitterPicker
-                  color={fieldColor}
-                  colors={coloring.pool}
-                  onChange={onChangeFieldColor}
-                  id={"twitter-color-picker"}
-                />
-              </PickerWrapper>
-            )}
-          </ColorSquare>
-          <Input
-            value={fieldColor}
-            setter={(v) => setFieldColor(v)}
-            style={{
-              width: 100,
-              display: "inline-block",
-              margin: 3,
-            }}
-          />
-        </div>
-        <Divider></Divider>
-        <Text>Color by value settings</Text>
-        <form
-          style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
-        >
-          {/* set the attribute used for color */}
-          <FormControl>
-            <InputLabel key="dropdown-attribute" style={FONT_STYLE}>
-              Select attribute for annotation color
+            {colorAttributeOptions.map((option, i) => {
+              return (
+                <MenuItem value={option.value ?? ""} key={`color-${i}`}>
+                  {option.label}
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </FormControl>
+        {/* set the attribute used for opacity */}
+        <FormControlLabel
+          key="attributeForOpacity"
+          style={FONT_STYLE}
+          control={
+            <Checkbox
+              checked={checkbox1}
+              onChange={handleCheckboxChange}
+              name="attributeForOpacity"
+              disabled={opacityAttributeOptions.length === 0}
+              disableRipple
+            />
+          }
+          label={<CheckboxText>Set up object boxes opacity</CheckboxText>}
+        />
+        {checkbox1 && (
+          <FormControl style={CHILD_STYLE} key="dropdown-opacity">
+            <InputLabel key="dropdown-opacity-attribute" style={FONT_STYLE}>
+              Select attribute for opacity
             </InputLabel>
             <Select
-              labelId="dropdown-attribute"
-              key="select-attribute-dropdown"
-              value={tempAttributeSetting?.attributeForColor ?? ""}
-              onChange={handleDropdownChange}
+              labelId="dropdown-opacity-attribute"
+              key="select-opacity-attribute-dropdown"
+              value={tempAttributeSetting?.attributeForOpacity ?? ""}
+              onChange={handleOpacityDropdownChange}
               MenuProps={{ style: { zIndex: 9999999 } }}
               style={FONT_STYLE}
-              autoWidth
-              required
             >
-              {colorAttributeOptions.map((option, i) => {
+              {opacityAttributeOptions.map((option, idx) => {
                 return (
-                  <MenuItem value={option.value ?? ""} key={`color-${i}`}>
+                  <MenuItem
+                    value={option.value ?? ""}
+                    key={`opacity-option-${idx}`}
+                  >
                     {option.label}
                   </MenuItem>
                 );
               })}
             </Select>
           </FormControl>
-          {/* set the attribute used for opacity */}
-          <FormControlLabel
-            key="attributeForOpacity"
-            style={FONT_STYLE}
-            control={
-              <Checkbox
-                checked={checkbox1}
-                onChange={handleCheckboxChange}
-                name="attributeForOpacity"
-                disabled={opacityAttributeOptions.length === 0}
-                disableRipple
-              />
-            }
-            label={<CheckboxText>Set up object boxes opacity</CheckboxText>}
-          />
-          {checkbox1 && (
-            <FormControl style={CHILD_STYLE} key="dropdown-opacity">
-              <InputLabel key="dropdown-opacity-attribute" style={FONT_STYLE}>
-                Select attribute for opacity
-              </InputLabel>
-              <Select
-                labelId="dropdown-opacity-attribute"
-                key="select-opacity-attribute-dropdown"
-                value={tempAttributeSetting?.attributeForOpacity ?? ""}
-                onChange={handleOpacityDropdownChange}
-                MenuProps={{ style: { zIndex: 9999999 } }}
-                style={FONT_STYLE}
-              >
-                {opacityAttributeOptions.map((option, idx) => {
-                  return (
-                    <MenuItem
-                      value={option.value ?? ""}
-                      key={`opacity-option-${idx}`}
-                    >
-                      {option.label}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
-          )}
-          {/* set colors to use to replace the color pool*/}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={checkbox2}
-                onChange={handleCheckboxChange}
-                name="colors"
-                disableRipple
-              />
-            }
-            label={<CheckboxText>Overwrite color pool</CheckboxText>}
-            key="colors"
-          />
-          {checkbox2 && <ColorPalette style={CHILD_STYLE} />}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={checkbox3}
-                onChange={handleCheckboxChange}
-                name="labelColors"
-                disableRipple
-              />
-            }
-            label={
-              <CheckboxText>
-                Assign specfic color to attribute value
-              </CheckboxText>
-            }
-            key="labelColors"
-          />
-          {checkbox3 && <AttributeColorSetting style={CHILD_STYLE} />}
-        </form>
-      </div>
+        )}
+        {/* set colors to use to replace the color pool*/}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checkbox2}
+              onChange={handleCheckboxChange}
+              name="colors"
+              disableRipple
+            />
+          }
+          label={<CheckboxText>Overwrite color pool</CheckboxText>}
+          key="colors"
+        />
+        {checkbox2 && <ColorPalette style={CHILD_STYLE} />}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checkbox3}
+              onChange={handleCheckboxChange}
+              name="labelColors"
+              disableRipple
+            />
+          }
+          label={
+            <CheckboxText>Assign specfic color to attribute value</CheckboxText>
+          }
+          key="labelColors"
+        />
+        {checkbox3 && <AttributeColorSetting style={CHILD_STYLE} />}
+      </form>
     </div>
   );
 };
 
-export default ColorModalContent;
+export default FieldSetting;
 
 const Text = styled.div`
   margin-top: 2rem;
