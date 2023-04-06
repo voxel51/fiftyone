@@ -9,7 +9,7 @@ class BaseType:
 
 
 class Object(BaseType):
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.properties = {}
         self._needsResolution = False
 
@@ -113,6 +113,7 @@ class Number(BaseType):
         self.min = min
         self.max = max
         self.int = int
+        self.float = float
 
     def to_json(self):
         return {
@@ -120,6 +121,7 @@ class Number(BaseType):
             "min": self.min,
             "max": self.max,
             "int": self.int,
+            "float": self.float,
         }
 
 
@@ -153,13 +155,13 @@ class Enum(BaseType):
 
 class Plot(BaseType):
     def __init__(self, **kwargs):
-        self.title = kwargs.get("title", None)
-        self.description = kwargs.get("description", None)
-        self.caption = kwargs.get("caption", None)
-        self.space = kwargs.get("space", None)
+        self.data = kwargs.get("data", None)
 
     def to_json(self):
-        return {"name": self.__class__.__name__, "values": self.values}
+        return {
+            "name": self.__class__.__name__,
+            "data": self.data,
+        }
 
 
 #
@@ -241,14 +243,20 @@ class Choices(View):
         return {
             **super().to_json(),
             "name": self.__class__.__name__,
-            "choices": [choice.to_json() for choice in self.choices]
-            # "choices": self.choices,
+            "choices": [choice.to_json() for choice in self.choices],
         }
 
 
 class RadioGroup(Choices):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.orientation = kwargs.get("orientation", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "orientation": self.orientation,
+        }
 
 
 class Dropdown(Choices):
