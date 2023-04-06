@@ -5,7 +5,7 @@ import { BarChart } from "@mui/icons-material";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Distributions from "../components/Distributions";
-import { scrollbarStyles } from "../components/utils";
+import { scrollbarStyles } from "@fiftyone/utilities";
 
 const DistributionsContainer = styled.div`
   height: 100%;
