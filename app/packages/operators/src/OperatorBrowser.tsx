@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 import { useOperatorBrowser } from "./state";
+import { scrollbarStyles } from "@fiftyone/utilities";
 
 const BrowserContainer = styled.form`
   position: absolute;
@@ -25,6 +26,7 @@ const ResultsContainer = styled.div`
   margin-top: 1rem;
   max-height: calc(100% - 48px);
   overflow: auto;
+  ${scrollbarStyles}
 `;
 
 const QueryInput = styled.input`
