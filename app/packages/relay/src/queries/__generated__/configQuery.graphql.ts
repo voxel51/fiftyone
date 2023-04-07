@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from 'relay-runtime';
-export type ColorBy = "field" | "instance" | "label" | "%future added value";
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 export type configQuery$variables = {};
@@ -18,6 +18,7 @@ export type configQuery$data = {
   readonly config: {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
+    readonly customizedColors: ReadonlyArray<CustomizeColor[]>;
     readonly colorscale: string;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
@@ -38,6 +39,19 @@ export type configQuery = {
   response: configQuery$data;
   variables: configQuery$variables;
 };
+
+type CustomizeColor = {
+  field: string;
+  fieldColor?: string;
+  attributeForColor?: string; // must be string field, int field, or boolean field
+  useOpacity: boolean;
+  attributeForOpacity?: string; // must be float field
+  useLabelColors: boolean;
+  labelColors?: {
+    name: string;
+    color: string;
+  }[];
+}
 
 const node: ConcreteRequest = (function(){
 var v0 = {

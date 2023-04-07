@@ -1,13 +1,17 @@
 import React, { useRef, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import DeleteIcon from "@material-ui/icons/Delete";
 import AddIcon from "@material-ui/icons/Add";
-
 import { ChromePicker } from "react-color";
-import { colorBlindFriendlyPalette, tempColorSetting } from "../utils";
+import * as fos from "@fiftyone/state";
+
+import {
+  colorBlindFriendlyPalette,
+  isSameArray,
+  tempGlobalSetting,
+} from "../utils";
 import Checkbox from "../../Common/Checkbox";
-import { isEmpty, xor } from "lodash";
 
 interface ColorPaletteProps {
   maxColors?: number;
@@ -18,11 +22,16 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
+  const [tempColor, setTempColor] = useRecoilState(tempGlobalSetting);
   const colors = tempColor.colors;
-  const isUsingColorBlindOption = isEmpty(
-    xor(colors, colorBlindFriendlyPalette)
-  ); // check if the two array have the same elements
+
+  const currentColorPalette = useRecoilValue(fos.coloring(false))
+    .pool as string[];
+  const hasChange = !isSameArray(colors, currentColorPalette);
+  const isUsingColorBlindOption = isSameArray(
+    colors,
+    colorBlindFriendlyPalette
+  );
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -109,6 +118,15 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           setValue={(v) =>
             v &&
             setTempColor((s) => ({ ...s, colors: colorBlindFriendlyPalette }))
+          }
+        />
+      )}
+      {hasChange && (
+        <Checkbox
+          name={"revert to current setting"}
+          value={!hasChange}
+          setValue={(v) =>
+            v && setTempColor((s) => ({ ...s, colors: currentColorPalette }))
           }
         />
       )}

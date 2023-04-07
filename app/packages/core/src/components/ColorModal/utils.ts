@@ -1,18 +1,23 @@
 import { CustomizeColor, useUnprocessedStateUpdate } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  selector,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import * as fos from "@fiftyone/state";
+import { isEmpty, xor } from "lodash";
 
 export const tempColorSetting = atom<CustomizeColor>({
   key: "tempAttributeColorSetting",
-  default: {
-    field: null,
-    fieldColor: null,
-    attributeForColor: null, // must be string field, int field, or boolean field
-    attributeForOpacity: null, // must be float field
-    colors: null, // hex colors, overwrite the default color palette
-    labelColors: null,
-  },
+  default: {},
+});
+
+export const tempGlobalSetting = atom<GlobalColorSetting>({
+  key: "tempGlobalSetting",
+  default: {},
 });
 
 export const useSetCustomizeColor = () => {
@@ -46,3 +51,15 @@ export const colorBlindFriendlyPalette = [
   "#d55e00", // vermillion
   "#cc79a7", // reddish purple
 ];
+
+type GlobalColorSetting = {
+  colorBy: "field" | "value";
+  colors: string[];
+  opacity: number;
+  useMulticolorKeypoints: boolean;
+  showSkeleton: boolean;
+};
+
+export const isSameArray = (a: any[], b: any[]) => {
+  return isEmpty(xor(a, b));
+};

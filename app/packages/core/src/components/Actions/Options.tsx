@@ -62,7 +62,6 @@ const ColorBy = ({ modal }) => {
   return (
     <>
       <PopoutSectionTitle>Color by</PopoutSectionTitle>
-
       <TabOption
         active={colorBy}
         options={["field", "value"].map((value) => {

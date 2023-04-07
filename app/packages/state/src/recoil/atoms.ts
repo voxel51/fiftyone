@@ -98,8 +98,9 @@ export interface CustomizeColor {
   field: string;
   fieldColor?: string;
   attributeForColor?: string; // must be string field, int field, or boolean field
+  useOpacity: boolean;
   attributeForOpacity?: string; // must be float field
-  colors?: string[]; // hex colors, overwrite the default color palette
+  useLabelColors: boolean;
   labelColors?: {
     name: string;
     color: string;

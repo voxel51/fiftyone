@@ -1,6 +1,6 @@
 import { config as configGraphQLQuery, configQuery } from "@fiftyone/relay";
 import { RGB } from "@fiftyone/utilities";
-import { selector } from "recoil";
+import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { RelayEnvironmentKey } from "./relay";
@@ -31,6 +31,16 @@ export const colorscale = selector<RGB[]>({
 export const config = selector({
   key: "config",
   get: ({ get }) => get(configData).config,
+});
+
+export const colorPalette = atom<string[]>({
+  key: "colorPalette",
+  default: selector({
+    key: "initial",
+    get: ({ get }) => {
+      return get(colorPool) as string[];
+    },
+  }),
 });
 
 export const colorPool = selector({

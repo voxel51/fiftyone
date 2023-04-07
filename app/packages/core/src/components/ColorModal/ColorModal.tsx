@@ -1,4 +1,4 @@
-import React, { Fragment, useMemo, useRef } from "react";
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Draggable from "react-draggable";
 import ReactDOM from "react-dom";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -12,14 +12,13 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   Field,
   VALID_LABEL_TYPES,
-  withPath,
 } from "@fiftyone/utilities";
-import { Popout, Tooltip, useTheme } from "@fiftyone/components";
+import { Popout, Tooltip } from "@fiftyone/components";
 import Item from "../Filters/categoricalFilter/filterOption/FilterItem";
 import GlobalSetting from "./GlobalSetting";
 import FieldSetting from "./FieldSetting";
 import { Button } from "../utils";
-import { tempColorSetting } from "./utils";
+import { tempColorSetting, tempGlobalSetting } from "./utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -106,6 +105,17 @@ const ColorModal = () => {
   const ref = React.useRef<HTMLDivElement>();
   const [open, setOpen] = React.useState(false);
   const field = useRecoilValue(fos.activeColorField);
+  const colors = useRecoilValue(fos.coloring(false)).pool as string[];
+  const opacity = useRecoilValue(fos.alpha(false));
+  const colorBy = useRecoilValue(
+    fos.appConfigOption({ key: "colorBy", modal: false })
+  );
+  const useMulticolorKeypoints = useRecoilValue(
+    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
+  );
+  const showSkeleton = useRecoilValue(
+    fos.appConfigOption({ key: "showSkeletons", modal: false })
+  );
 
   // get all the embeddedDocfields that can be customized:
   const customizeColorFields = useRecoilValue(
@@ -150,6 +160,53 @@ const ColorModal = () => {
     return activeColorModalField?.path ?? "";
   }, [activeColorModalField]);
 
+  const [tempGlobal, setTempGlobal] = useRecoilState(tempGlobalSetting);
+
+  // initialize tempGlobalSetting on modal mount
+  useEffect(() => {
+    if (!tempGlobal || JSON.stringify(tempGlobal) === "{}") {
+      const setting = {
+        colorBy,
+        colors,
+        opacity,
+        useMulticolorKeypoints,
+        showSkeleton,
+      };
+      console.info(setting, "setting");
+      setTempGlobal(setting);
+    }
+  }, []);
+
+  const ColorModalTitle = () => {
+    return (
+      <ActionDiv ref={ref}>
+        <Tooltip
+          text={"Click to change target field for setup"}
+          placement={"top-center"}
+        >
+          <Text onClick={() => setOpen((o) => !o)}>
+            <IconDiv>
+              {" "}
+              {open ? (
+                <KeyboardArrowUpOutlinedIcon />
+              ) : (
+                <KeyboardArrowDownOutlinedIcon />
+              )}
+            </IconDiv>
+            <div>{selected}</div>
+          </Text>
+        </Tooltip>
+        {open && (
+          <Popout style={{ padding: 0, position: "relative" }}>
+            {options.map((option: Option) => (
+              <Item key={option.value} {...option} />
+            ))}
+          </Popout>
+        )}
+      </ActionDiv>
+    );
+  };
+
   if (targetContainer) {
     return ReactDOM.createPortal(
       <Fragment>
@@ -161,32 +218,7 @@ const ColorModal = () => {
           <Draggable bounds="parent" handle=".draggable-colorModal-handle">
             <Container style={{ ...screen, zIndex: 2 }}>
               <DraggableModalTitle className="draggable-colorModal-handle">
-                <div>
-                  <ActionDiv ref={ref}>
-                    <Tooltip
-                      text={"Click to change target field for setup"}
-                      placement={"top-center"}
-                    >
-                      <Text onClick={() => setOpen((o) => !o)}>
-                        <IconDiv>
-                          {open ? (
-                            <KeyboardArrowUpOutlinedIcon />
-                          ) : (
-                            <KeyboardArrowDownOutlinedIcon />
-                          )}
-                        </IconDiv>
-                        <div>{selected}</div>
-                      </Text>
-                    </Tooltip>
-                    {open && (
-                      <Popout style={{ padding: 0, position: "relative" }}>
-                        {options.map((option: Option) => (
-                          <Item key={option.value} {...option} />
-                        ))}
-                      </Popout>
-                    )}
-                  </ActionDiv>
-                </div>
+                <ColorModalTitle />
                 <CloseIcon onClick={() => setActiveColorModalField(null)} />
               </DraggableModalTitle>
               <div style={{ height: "calc( 80vh - 6rem)", overflow: "auto" }}>
@@ -219,23 +251,41 @@ const SubmitControls = () => {
   const path =
     activeColorModalField == "global" ? "global" : activeColorModalField.path;
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
+  const [tempGlobalSettings, setTempGlobalSettings] =
+    useRecoilState(tempGlobalSetting);
+  const { colorBy, colors, opacity, useMulticolorKeypoints, showSkeleton } =
+    tempGlobalSettings;
+  const setAlpha = useSetRecoilState(fos.alpha(false));
+  const setConfigColorBy = useSetRecoilState(
+    fos.appConfigOption({ modal: false, key: "colorBy" })
+  );
+  const setShowSkeleton = useSetRecoilState(
+    fos.appConfigOption({ key: "showSkeletons", modal: false })
+  );
+  const setMulticolorKeypoints = useSetRecoilState(
+    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
+  );
+  const setColoring = useSetRecoilState(fos.colorPalette);
   const setCustomizeColor = useSetRecoilState(
     fos.customizeColorSelector(path!)
-  );
-  const [customizeColorFields, setCustomizeColorFields] = useRecoilState(
-    fos.customizeColorFields
   );
 
   const onCancel = () => {
     setActiveColorModalField(null);
     setTempColor(null);
+    setTempGlobalSettings(null);
   };
 
   const onSave = () => {
-    console.log("onSave");
-    setActiveColorModalField(null);
-    setCustomizeColor(tempColor);
-    setTempColor(null);
+    if (typeof activeColorModalField == "string") {
+      setConfigColorBy(colorBy);
+      setColoring(colors);
+      setAlpha(opacity);
+      setMulticolorKeypoints(useMulticolorKeypoints);
+      setShowSkeleton(showSkeleton);
+    } else {
+      setCustomizeColor(tempColor);
+    }
   };
 
   return (
@@ -247,8 +297,8 @@ const SubmitControls = () => {
         style={BUTTON_STYLE}
       />
       <Button
-        text={"Cancel"}
-        title={`Cancel`}
+        text={"Close"}
+        title={`Close`}
         onClick={onCancel}
         style={BUTTON_STYLE}
       />
