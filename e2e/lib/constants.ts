@@ -10,4 +10,4 @@ export const DEFAULT_APP_ADDRESS = `http://${DEFAULT_APP_HOSTNAME}:${DEFAULT_APP
 export const GHOST_SERVER_TIMEOUT =
   process.env.NODE_ENV === "development"
     ? Duration.Seconds(5)
-    : Duration.Seconds(10);
+    : Duration.Seconds(15);
