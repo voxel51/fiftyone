@@ -130,6 +130,117 @@ following key to your :ref:`media cache config <teams-media-cache-config>`:
         "google_application_credentials": "/path/to/gcp-service-account.json"
     }
 
+.. _teams-azure:
+
+Microsoft Azure
+_______________
+
+To work with FiftyOne datasets whose media are stored in Azure Storage, you
+simply need to provide
+`Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
+to your Teams client with read access to the relevant files.
+
+You can do this in any of the following ways:
+
+1. Permanently register Azure credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
+
+.. code-block:: json
+
+    {
+        "azure_credentials_file": "/path/to/azure-credentials.ini",
+        "azure_profile": "default"  # optional
+    }
+
+2. Provide Azure credentials on a per-session basis by setting the following
+environment variables to point to your Azure credentials on disk:
+
+.. code-block:: shell
+
+    export AZURE_CREDENTIALS_FILE=/path/to/azure-credentials.ini
+    export AZURE_PROFILE=default  # optional
+
+3. Provide your Azure credentials on a per-session basis by setting any group
+of environment variables shown below:
+
+.. code-block:: shell
+
+    # Option 1
+    export AZURE_STORAGE_CONNECTION_STRING=...
+    export AZURE_ALIAS=...  # optional
+
+.. code-block:: shell
+
+    # Option 2
+    export AZURE_STORAGE_ACCOUNT=...
+    export AZURE_STORAGE_KEY=...
+    export AZURE_ALIAS=...  # optional
+
+.. code-block:: shell
+
+    # Option 3
+    export AZURE_STORAGE_ACCOUNT=...
+    export AZURE_CLIENT_ID=...
+    export AZURE_CLIENT_SECRET=...
+    export AZURE_TENANT_ID=...
+    export AZURE_ALIAS=...  # optional
+
+4. Provide your Azure credentials in any manner recognized by
+`azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
+
+In the options above, the `.ini` file should have syntax similar to one of
+the following:
+
+.. code-block:: shell
+
+    [default]
+    conn_str = ...
+    alias = ...  # optional
+
+.. code-block:: shell
+
+    [default]
+    account_name = ...
+    account_key = ...
+    alias = ...  # optional
+
+.. code-block:: shell
+
+    [default]
+    account_name = ...
+    client_id = ...
+    secret = ...
+    tenant = ...
+    alias = ...  # optional
+
+When populating samples with Azure Storage filepaths, you can either specify
+paths by their full URL:
+
+.. code-block:: python
+
+    filepath = "https://${account_name}.blob.core.windows.net/container/path/to/object.ext"
+
+    # For example
+    filepath = "https://voxel51.blob.core.windows.net/test-container/image.jpg"
+
+or, if you have defined an alias in your config, you may instead prefix the
+alias:
+
+.. code-block:: python
+
+    filepath = "${alias}://container/path/to/object.ext"
+
+    # For example
+    filepath = "az://test-container/image.jpg"
+
+.. note::
+
+    If you use a
+    `custom Azure domain <https://learn.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name?tabs=azure-portal>`_,
+    you can provide it by setting the
+    `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
+    `account_url` key in your credentials `.ini` file.
+
 .. _teams-minio:
 
 MinIO
@@ -152,7 +263,7 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
     }
 
 2. Provide MinIO credentials on a per-session basis by setting the following
-environment variables to point to your MinIO credentials:
+environment variables to point to your MinIO credentials on disk:
 
 .. code-block:: shell
 
@@ -169,9 +280,6 @@ individual environment variables shown below:
     export MINIO_ENDPOINT_URL=...
     export MINIO_ALIAS=...  # optional
     export MINIO_REGION=...  # if applicable
-
-If you combine multiple options above, environment variables will take
-precedence over JSON config settings.
 
 In the options above, the `.ini` file should have syntax similar the following:
 

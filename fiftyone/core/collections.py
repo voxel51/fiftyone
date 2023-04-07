@@ -668,13 +668,23 @@ class SampleCollection(object):
 
     def _get_samples_bytes(self):
         """Computes the total size of the sample documents in the collection."""
+
+        # Impl note: We *could* do group directly without projecting $bsonSize
+        #   first, however we found in Mongo 5.2 a new execution engine
+        #   (Slot Based Execution) optimizes this away and incorrectly sums
+        #   the full document size, thus ignoring selected fields. A ticket
+        #   has been opened to resolve this bug.
+        #   https://jira.mongodb.org/browse/SERVER-75267
+        #   But until then we must do this in 2 stages (project-size, group-sum)
+        #   rather than 1 (group-sum-size)
         pipeline = [
+            {"$project": {"size": {"$bsonSize": "$$ROOT"}}},
             {
                 "$group": {
                     "_id": None,
-                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                    "size_bytes": {"$sum": "$size"},
                 }
-            }
+            },
         ]
 
         results = self._aggregate(pipeline=pipeline)
@@ -689,13 +699,20 @@ class SampleCollection(object):
         if not self._contains_videos():
             return None
 
+        # Impl note: this pipeline does not suffer the same fate as
+        #   _get_samples_bytes, likely because the Slot Based Execution engine
+        #   is not used due to additional stage complexity. However, until the
+        #   underlying issue is addressed, it is more future-proof to use the
+        #   same workaround here rather than rely on the SBE engine not
+        #   being used in this case.
         pipeline = [
             {"$unwind": "$frames"},
             {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$project": {"size": {"$bsonSize": "$$ROOT"}}},
             {
                 "$group": {
                     "_id": None,
-                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                    "size_bytes": {"$sum": "$size"},
                 }
             },
         ]
@@ -1167,7 +1184,7 @@ class SampleCollection(object):
             if last_key and not leaf:
                 continue
 
-            if isinstance(field, fof.ListField):
+            while isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
@@ -1238,7 +1255,7 @@ class SampleCollection(object):
             "Subclass must implement get_frame_field_schema()"
         )
 
-    def get_dynamic_field_schema(self, fields=None):
+    def get_dynamic_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
         samples in the collection.
 
@@ -1248,15 +1265,19 @@ class SampleCollection(object):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 return dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents
 
         Returns:
             a dictionary mapping field paths to field types or lists of field
             types
         """
         schema = self.get_field_schema()
-        return self._get_dynamic_field_schema(schema, "", fields=fields)
+        return self._get_dynamic_field_schema(
+            schema, fields=fields, recursive=recursive
+        )
 
-    def get_dynamic_frame_field_schema(self, fields=None):
+    def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
         frames of the samples in the collection.
 
@@ -1266,47 +1287,122 @@ class SampleCollection(object):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 return dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents
 
         Returns:
             a dictionary mapping field paths to field types or lists of field
-            types
+            types, or ``None`` if the collection does not contain videos
         """
         if not self._has_frame_fields():
             return None
 
         schema = self.get_frame_field_schema()
         prefix = self._FRAMES_PREFIX
-        return self._get_dynamic_field_schema(schema, prefix, fields=fields)
+        return self._get_dynamic_field_schema(
+            schema, prefix=prefix, fields=fields, recursive=recursive
+        )
 
-    def _get_dynamic_field_schema(self, schema, prefix, fields=None):
+    def _get_dynamic_field_schema(
+        self, schema, prefix=None, fields=None, recursive=True
+    ):
+        if prefix is None:
+            prefix = ""
+
         if fields is not None:
             if etau.is_str(fields):
-                fields = {fields}
+                fields = [fields]
             else:
-                fields = set(fields)
+                fields = list(fields)
 
-            schema = {k: v for k, v in schema.items() if k in fields}
+            schema = {
+                k: v
+                for k, v in schema.items()
+                if any(f == k or f.startswith(k + ".") for f in fields)
+            }
+
+        dynamic_schema = self._do_get_dynamic_field_schema(schema, prefix)
+
+        # Recurse into new dynamic fields
+        if recursive:
+            s = dynamic_schema
+            while True:
+                s = self._do_get_dynamic_field_schema(s, prefix, new=True)
+                if s:
+                    dynamic_schema.update(s)
+                else:
+                    break
+
+        # Merge list fields and their subfields
+        while True:
+            edits = {}
+
+            for path, field in dynamic_schema.items():
+                subpath = path + "[]"
+                subfield = dynamic_schema.get(subpath, None)
+                if subfield is not None:
+                    field.field = subfield
+                    edits[subpath] = None
+                    for _path in dynamic_schema.keys():
+                        if _path.startswith(subpath + "."):
+                            edits[_path] = path + _path[len(subpath) :]
+
+                    break
+
+            for path, new_path in edits.items():
+                field = dynamic_schema.pop(path)
+                if new_path:
+                    dynamic_schema[new_path] = field
+
+            if not edits:
+                break
+
+        return dynamic_schema
+
+    def _do_get_dynamic_field_schema(self, schema, prefix, new=False):
+        schema = fof.flatten_schema(schema)
 
         aggs = []
         paths = []
-        for name, field in schema.items():
-            if isinstance(field, fof.EmbeddedDocumentField):
-                path = name
-                aggs.append(foa.Schema(prefix + path, dynamic_only=True))
-                paths.append(path)
+        for path, field in schema.items():
+            is_list_field = False
+            while isinstance(field, fof.ListField):
+                field = field.field
+                is_list_field = True
 
-                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
-                    path = name + "." + field.document_type._LABEL_LIST_FIELD
-                    aggs.append(foa.Schema(prefix + path, dynamic_only=True))
-                    paths.append(path)
+            if isinstance(field, fof.EmbeddedDocumentField):
+                _path = prefix + path
+                if is_list_field and not _path.endswith("[]"):
+                    _path += "[]"
+
+                if new:
+                    # This field hasn't been declared yet, so we must provide
+                    # it's document type so that `Schema()` can distinguish
+                    # dynamic fields from builtin fields
+                    _doc_type = field.document_type
+                else:
+                    _doc_type = None
+
+                agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
+            elif field is None and is_list_field:
+                agg = foa.ListSchema(prefix + path)
+            else:
+                agg = None
+
+            if agg is not None:
+                aggs.append(agg)
+                paths.append(path)
 
         fields = {}
 
         if aggs:
             results = self.aggregate(aggs)
-            for path, schema in zip(paths, results):
-                for name, field in schema.items():
-                    fields[path + "." + name] = field
+            for path, agg, schema in zip(paths, aggs, results):
+                if isinstance(agg, foa.Schema):
+                    for name, field in schema.items():
+                        fields[path + "." + name] = field
+                elif isinstance(agg, foa.ListSchema):
+                    fields[path + "[]"] = schema
 
         return fields
 
@@ -7306,6 +7402,7 @@ class SampleCollection(object):
         field_or_expr,
         expr=None,
         dynamic_only=False,
+        _doc_type=None,
         _include_private=False,
     ):
         """Extracts the names and types of the attributes of a specified
@@ -7389,8 +7486,102 @@ class SampleCollection(object):
             field_or_expr,
             expr=expr,
             dynamic_only=dynamic_only,
+            _doc_type=_doc_type,
             _include_private=_include_private,
         )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
+    def list_schema(self, field_or_expr, expr=None):
+        """Extracts the value type(s) in a specified list field across all
+        samples in the collection.
+
+        Examples::
+
+            from datetime import datetime
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            sample1 = fo.Sample(
+                filepath="image1.png",
+                ground_truth=fo.Classification(
+                    label="cat",
+                    info=[
+                        fo.DynamicEmbeddedDocument(
+                            task="initial_annotation",
+                            author="Alice",
+                            timestamp=datetime(1970, 1, 1),
+                            notes=["foo", "bar"],
+                        ),
+                        fo.DynamicEmbeddedDocument(
+                            task="editing_pass",
+                            author="Bob",
+                            timestamp=datetime.utcnow(),
+                        ),
+                    ],
+                ),
+            )
+
+            sample2 = fo.Sample(
+                filepath="image2.png",
+                ground_truth=fo.Classification(
+                    label="dog",
+                    info=[
+                        fo.DynamicEmbeddedDocument(
+                            task="initial_annotation",
+                            author="Bob",
+                            timestamp=datetime(2018, 10, 18),
+                            notes=["spam", "eggs"],
+                        ),
+                    ],
+                ),
+            )
+
+            dataset.add_samples([sample1, sample2])
+
+            # Determine that `ground_truth.info` contains embedded documents
+            print(dataset.list_schema("ground_truth.info"))
+            # fo.EmbeddedDocumentField
+
+            # Determine the fields of the embedded documents in the list
+            print(dataset.schema("ground_truth.info[]"))
+            # {'task': StringField, ..., 'notes': ListField}
+
+            # Determine the type of the values in the nested `notes` list field
+            # Since `ground_truth.info` is not yet declared on the dataset's
+            # schema, we must manually include `[]` to unwind the info lists
+            print(dataset.list_schema("ground_truth.info[].notes"))
+            # fo.StringField
+
+            # Declare the `ground_truth.info` field
+            dataset.add_sample_field(
+                "ground_truth.info",
+                fo.ListField,
+                subfield=fo.EmbeddedDocumentField,
+                embedded_doc_type=fo.DynamicEmbeddedDocument,
+            )
+
+            # Now we can inspect the nested `notes` field without unwinding
+            print(dataset.list_schema("ground_truth.info.notes"))
+            # fo.StringField
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+
+        Returns:
+            a :class:`fiftyone.core.fields.Field` or list of
+            :class:`fiftyone.core.fields.Field` instances describing the value
+            type(s) in the list
+        """
+        make = lambda field_or_expr: foa.ListSchema(field_or_expr, expr=expr)
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -9508,7 +9699,14 @@ class SampleCollection(object):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
-        if field_name.startswith("__"):
+        if field_name.startswith(
+            "___"
+        ):  # for fiftyone.server.view hidden results
+            field_name = field_name[3:]
+
+        if field_name.startswith(
+            "__"
+        ):  # for fiftyone.core.stages hidden results
             field_name = field_name[2:]
 
         if is_frame_field:

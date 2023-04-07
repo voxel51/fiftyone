@@ -47,5 +47,8 @@
     "workspaces": [
         "packages/*"
     ],
-    "packageManager": "yarn@3.2.1"
+    "packageManager": "yarn@3.2.1",
+    "dependencies": {
+        "jpeg-js": "^0.4.4"
+    }
 }

@@ -40,6 +40,13 @@ export default class SectionElement implements Section {
     this.render = render;
 
     this.section.classList.add(flashlightSection);
+
+    if (horizontal) {
+      this.section.setAttribute("data-cy", "flashlight-section-horizontal");
+    } else {
+      this.section.setAttribute("data-cy", "flashlight-section");
+    }
+
     this.rows = rows.map(({ aspectRatio, extraMargins, items }) => {
       return [
         { aspectRatio, extraMargins },

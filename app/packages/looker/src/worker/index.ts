@@ -14,6 +14,7 @@ import {
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
+import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
 import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
@@ -114,25 +115,34 @@ const imputeOverlayFromPath = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayPngImageUrl = getSampleSrc(
+  const overlayImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
 
-  const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
+  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",
-    overlayPngImageUrl,
+    overlayImageUrl,
     null,
     "arrayBuffer"
   );
 
-  const overlayData = decodePng(pngArrayBuffer);
+  let overlayData;
+
+  if (overlayImageUrl.endsWith(".jpg")) {
+    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
+  } else {
+    overlayData = decodePng(overlayImageBuffer);
+  }
 
   const width = overlayData.width;
   const height = overlayData.height;
 
+  const numChannels =
+    overlayData.channels ?? overlayData.data.length / (width * height);
+
   const overlayMask: OverlayMask = {
     buffer: overlayData.data.buffer,
-    channels: overlayData.channels,
+    channels: numChannels,
     arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
     shape: [height, width],
   };
@@ -184,7 +194,11 @@ const processLabels = async (
 
     if (painterFactory[label._cls]) {
       promises.push(
-        painterFactory[label._cls](prefix + field, label, coloring)
+        painterFactory[label._cls](
+          prefix ? prefix + field : field,
+          label,
+          coloring
+        )
       );
     }
   }

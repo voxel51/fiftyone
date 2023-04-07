@@ -416,15 +416,23 @@ class DatasetsListCommand(Command):
 
         # List available datasets
         fiftyone datasets list
+
+        # List datasets matching a given pattern
+        fiftyone datasets list --glob-patt 'quickstart-*'
     """
 
     @staticmethod
     def setup(parser):
-        pass
+        parser.add_argument(
+            "-p",
+            "--glob-patt",
+            metavar="PATT",
+            help="an optional glob pattern of dataset names to include",
+        )
 
     @staticmethod
     def execute(parser, args):
-        datasets = fod.list_datasets()
+        datasets = fod.list_datasets(glob_patt=args.glob_patt)
 
         if datasets:
             for dataset in datasets:
@@ -438,8 +446,9 @@ class DatasetsInfoCommand(Command):
 
     Examples::
 
-        # Print basic information about all datasets
+        # Print basic information about multiple datasets
         fiftyone datasets info
+        fiftyone datasets info --glob-patt 'quickstart-*'
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
@@ -454,6 +463,12 @@ class DatasetsInfoCommand(Command):
             nargs="?",
             metavar="NAME",
             help="the name of a dataset",
+        )
+        parser.add_argument(
+            "-p",
+            "--glob-patt",
+            metavar="PATT",
+            help="an optional glob pattern of dataset names to include",
         )
         parser.add_argument(
             "-s",
@@ -474,7 +489,7 @@ class DatasetsInfoCommand(Command):
         if args.name:
             _print_dataset_info(args.name)
         else:
-            _print_all_dataset_info(args.sort_by, args.reverse)
+            _print_all_dataset_info(args.glob_patt, args.sort_by, args.reverse)
 
 
 def _print_dataset_info(name):
@@ -482,8 +497,8 @@ def _print_dataset_info(name):
     print(dataset)
 
 
-def _print_all_dataset_info(sort_by, reverse):
-    info = fod.list_datasets(info=True)
+def _print_all_dataset_info(glob_patt, sort_by, reverse):
+    info = fod.list_datasets(glob_patt=glob_patt, info=True)
 
     headers = [
         "name",
