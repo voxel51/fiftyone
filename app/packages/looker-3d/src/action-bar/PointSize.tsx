@@ -82,7 +82,6 @@ export const PointSizeSlider = () => {
             <Checkbox
               checked={isPointSizeAttenuated}
               size="small"
-              disableRipple
               disableFocusRipple
               onChange={handlePointSizeAttenuationChange}
             />

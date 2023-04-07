@@ -39,7 +39,6 @@ const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
             <IconButton
               arial-label={button.ariaLabel}
               size="small"
-              disableRipple
               sx={button.sx}
             >
               {button.icon === "SearchIcon" && <SearchIcon />}

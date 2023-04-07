@@ -13,7 +13,7 @@ export const PanelContainer = styled.div`
 
 export const PanelTabs = styled.div`
   display: flex;
-  background: var(--joy-palette-background-header);
+  background: var(--mui-palette-background-header);
   padding-bottom: 0px;
 `;
 
@@ -21,7 +21,7 @@ export const StyledPanel = styled.div`
   width: 100%;
   height: calc(100% - 28px);
   overflow: auto;
-  background: var(--joy-palette-background-mediaSpace);
+  background: var(--mui-palette-background-mediaSpace);
 `;
 
 export const AddPanelButtonContainer = styled.div`
@@ -34,7 +34,7 @@ export const StyledPanelItem = styled.div`
   padding: 4px 8px;
 
   &:hover {
-    background: var(--joy-palette-background-body);
+    background: var(--mui-palette-background-body);
   }
 `;
 
@@ -44,15 +44,15 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   cursor: pointer;
   background: ${(props) =>
     props.active
-      ? "var(--joy-palette-background-level2)"
-      : "var(--joy-palette-background-inactiveTab)"};
+      ? "var(--mui-palette-background-level2)"
+      : "var(--mui-palette-background-inactiveTab)"};
   border: none;
   color: ${(props) =>
     props.active
-      ? "var(--joy-palette-text-primary)"
-      : "var(--joy-palette-text-secondary)"};
+      ? "var(--mui-palette-text-primary)"
+      : "var(--mui-palette-text-secondary)"};
   padding: 2px 12px 2px 12px;
-  border-right: 1px solid var(--joy-palette-background-level3);
+  border-right: 1px solid var(--mui-palette-background-level3);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 `;
