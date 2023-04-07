@@ -16,6 +16,7 @@
         "@fiftyone/operators": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
+        "@monaco-editor/react": "^4.4.6",
         "@mui/icons-material": "^5.10.2",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.4.3",
