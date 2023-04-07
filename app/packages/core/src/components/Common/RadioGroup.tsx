@@ -38,7 +38,6 @@ const Radio = React.memo(
           <MaterialRadio
             style={{ color, padding: "0 0.5rem 0 0" }}
             checked={value === currentValue}
-            disableRipple={true}
           />
           <RadioName>{value}</RadioName>
         </StyledRadio>

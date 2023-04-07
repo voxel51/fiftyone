@@ -34,7 +34,6 @@ export default function OneOfView(props) {
               key={`${path}-${i}-tab`}
               value={i}
               label={label}
-              disableRipple
               icon={description && <Tooltip title={description} />}
               iconPosition="end"
               sx={{ minHeight: 48 }}

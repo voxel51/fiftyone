@@ -4,9 +4,9 @@ import * as fos from "../../";
 import usePanel from "./usePanel";
 
 export const JSON_COLORS = {
-  keyColor: "var(--joy-palette-text-tertiary)",
+  keyColor: "var(--mui-palette-text-tertiary)",
   numberColor: "rgb(225, 100, 40)",
-  stringColor: "var(--joy-palette-text-secondary)",
+  stringColor: "var(--mui-palette-text-secondary)",
   nullColor: "rgb(225, 100, 40)",
   trueColor: "rgb(225, 100, 40)",
   falseColor: "rgb(225, 100, 40)",
