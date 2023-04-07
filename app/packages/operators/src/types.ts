@@ -159,7 +159,7 @@ type BasicView = {
   label?: string;
   description?: string;
   caption?: string;
-  spaces?: number;
+  space?: number;
 };
 export class View extends BaseType {
   constructor(public options: BasicView = {}) {
@@ -168,7 +168,7 @@ export class View extends BaseType {
   label?: string;
   description?: string;
   caption?: string;
-  spaces?: number;
+  space?: number;
   static fromJSON(json: BasicView) {
     return new View(json);
   }
@@ -191,8 +191,7 @@ type ChoicesOptions = BasicView & {
 export class Choices extends View {
   constructor(options: ChoicesOptions = {}) {
     super(options);
-    if (options.choices)
-      this.choices = options.choices;
+    if (options.choices) this.choices = options.choices;
   }
   public choices: Choice[] = [];
   values() {
