@@ -31,19 +31,19 @@ import "@fiftyone/embeddings";
 const Container = styled.div`
   width: 100%;
   height: 100%;
-  background: var(--joy-palette-background-level2);
+  background: var(--mui-palette-background-level2);
   margin: 0;
   padding: 0;
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
-  color: var(--joy-palette-text-primary);
+  color: var(--mui-palette-text-primary);
   display: flex;
   flex-direction: column;
   min-width: 660px;
 `;
 const ViewBarWrapper = styled.div`
   padding: 16px;
-  background: var(--joy-palette-background-header);
+  background: var(--mui-palette-background-header);
   display: flex;
 `;
 const CoreDatasetContainer = styled.div`
@@ -144,7 +144,6 @@ const HeadersToggle: React.FC<{
       onClick={() => {
         toggleHeaders();
       }}
-      disableRipple
       sx={{ color: (theme) => theme.palette.text.secondary }}
     >
       {hideHeaders && <KeyboardArrowDown />}

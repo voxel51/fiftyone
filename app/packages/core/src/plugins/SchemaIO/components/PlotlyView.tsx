@@ -43,7 +43,7 @@ export default function PlotlyView(props) {
         layout={{
           dragmode: "lasso",
           uirevision: 1,
-          font: { family: "var(--joy-fontFamily-body)", size: 14 },
+          font: { family: "var(--mui-fontFamily-body)", size: 14 },
           showlegend: false,
           width: "100%",
           height: "100%",
