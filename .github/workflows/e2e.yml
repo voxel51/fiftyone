@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-e2e:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       FIFTYONE_DO_NOT_TRACK: true
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
