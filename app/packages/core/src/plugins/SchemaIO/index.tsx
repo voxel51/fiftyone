@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material";
-import { muiTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import DynamicIO from "./components/DynamicIO";
 import { set } from "lodash";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
@@ -21,11 +19,7 @@ export function SchemaIOComponent(props) {
     if (onChange) onChange(state);
   }, [state]);
 
-  return (
-    <CssVarsProvider theme={muiTheme}>
-      <DynamicIO schema={schema} onChange={onIOChange} path="" />
-    </CssVarsProvider>
-  );
+  return <DynamicIO schema={schema} onChange={onIOChange} path="" />;
 }
 
 registerComponent({

@@ -11,7 +11,6 @@ export default function CheckboxView(props) {
       control={
         <Checkbox
           defaultChecked={schema.default === true}
-          disableRipple
           onChange={(e, value) => onChange(path, value)}
         />
       }
