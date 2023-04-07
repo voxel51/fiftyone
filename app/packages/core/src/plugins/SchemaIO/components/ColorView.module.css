@@ -4,24 +4,24 @@
 */
 
 .colorPicker {
-  background: var(--joy-palette-background-level1) !important;
+  background: var(--mui-palette-background-level1) !important;
 }
 
 .colorPicker label {
-  color: var(--joy-palette-text-secondary) !important;
+  color: var(--mui-palette-text-secondary) !important;
 }
 
 .colorPicker input {
-  background: var(--joy-palette-background-level2) !important;
+  background: var(--mui-palette-background-level2) !important;
   box-shadow: none !important;
-  color: var(--joy-palette-text-secondary) !important;
+  color: var(--mui-palette-text-secondary) !important;
 }
 
 .colorPicker > div:last-child {
-  border-top-color: var(--joy-palette-divider) !important;
+  border-top-color: var(--mui-palette-divider) !important;
 }
 
 .colorPicker svg {
-  background-color: var(--joy-palette-background-level2) !important;
-  fill: var(--joy-palette-text-secondary) !important;
+  background-color: var(--mui-palette-background-level2) !important;
+  fill: var(--mui-palette-text-secondary) !important;
 }

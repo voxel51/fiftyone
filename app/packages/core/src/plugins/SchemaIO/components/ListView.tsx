@@ -72,7 +72,6 @@ export default function ListView(props) {
             </Grid>
             <Grid item>
               <IconButton
-                disableRipple
                 onClick={() => {
                   setState((state) => {
                     const updatedState = [...state];
