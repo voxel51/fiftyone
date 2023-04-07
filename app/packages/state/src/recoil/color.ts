@@ -1,10 +1,4 @@
-import {
-  atom,
-  atomFamily,
-  DefaultValue,
-  selector,
-  selectorFamily,
-} from "recoil";
+import { DefaultValue, selector, selectorFamily } from "recoil";
 
 import { Coloring } from "@fiftyone/looker";
 import {
@@ -15,7 +9,7 @@ import {
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
-import { colorPalette, colorPool, colorscale } from "./config";
+import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
@@ -53,14 +47,9 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     (modal) =>
     ({ get }) => {
       get(selectors.appConfigOption({ key: "colorBy", modal }));
-      let pool = get(colorPool);
+      let pool = get(colorPalette);
       pool = pool.length ? pool : ["#000000"];
       const seed = get(atoms.colorSeed(modal));
-      // update Pool to remove customize field colors
-      const customizeColors = get(customizeColorSettings).map(
-        (s) => s.fieldColor
-      );
-      pool = pool.filter((color) => !customizeColors.includes(color));
       return createColorGenerator(pool, seed);
     },
   cachePolicy_UNSTABLE: {
