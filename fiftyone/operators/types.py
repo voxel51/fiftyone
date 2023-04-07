@@ -146,7 +146,7 @@ class Plot(BaseType):
         self.title = kwargs.get("title", None)
         self.description = kwargs.get("description", None)
         self.caption = kwargs.get("caption", None)
-        self.spaces = kwargs.get("spaces", None)
+        self.space = kwargs.get("space", None)
 
     def to_json(self):
         return {"name": self.__class__.__name__, "values": self.values}
@@ -180,9 +180,9 @@ class View:
         self.label = kwargs.get("label", None)
         self.description = kwargs.get("description", None)
         self.caption = kwargs.get("caption", None)
-        self.spaces = kwargs.get("spaces", None)
+        self.space = kwargs.get("space", None)
         self._kwargs = kwargs
-    
+
     def clone(self):
         return self.__class__(**self._kwargs)
 
@@ -192,7 +192,7 @@ class View:
             "label": self.label,
             "description": self.description,
             "caption": self.caption,
-            "spaces": self.spaces,
+            "space": self.space,
         }
 
 
