@@ -1,17 +1,18 @@
-import React from "react";
 import * as fos from "@fiftyone/state";
-import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
 import {
-  createTheme,
   Experimental_CssVarsProvider as CssVarsProvider,
   experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
-let theme = extendJoyTheme({
+let theme = extendMuiTheme({
+  typography: {
+    fontFamily: "Palanquin, sans-serif",
+  },
   colorSchemes: {
-    light: createTheme({
+    light: {
       palette: {
         action: {
           active: "hsl(200, 0%, 30%)",
@@ -72,8 +73,8 @@ let theme = extendJoyTheme({
           600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
       },
-    }),
-    dark: createTheme({
+    },
+    dark: {
       palette: {
         action: {
           active: "hsl(200, 0%, 70%)",
@@ -138,7 +139,14 @@ let theme = extendJoyTheme({
           600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
       },
-    }),
+    },
+  },
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
@@ -169,12 +177,31 @@ const ThemeProvider: React.FC<
 
 export default ThemeProvider;
 
-export const muiTheme = extendMuiTheme({
-  typography: {
-    fontFamily: "Palanquin, sans-serif",
-  },
+// DEPRECATED
+import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
+
+export const joyTheme = extendJoyTheme({
   colorSchemes: {
     dark: theme.colorSchemes.dark,
     light: theme.colorSchemes.light,
   },
+  fontFamily: {
+    body: "Palanquin, sans-serif",
+  },
+  opacity: {
+    inputPlaceholder: 0.5,
+  },
 });
+
+export const JoyThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({
+  children,
+}) => {
+  const current = useRecoilValue(fos.theme);
+  return (
+    <LegacyTheme.Provider value={joyTheme.colorSchemes[current].palette}>
+      <CssVarsProvider theme={joyTheme} defaultMode={current}>
+        {children}
+      </CssVarsProvider>
+    </LegacyTheme.Provider>
+  );
+};

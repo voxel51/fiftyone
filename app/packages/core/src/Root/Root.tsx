@@ -12,7 +12,11 @@ import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
-import { OperatorBrowser, OperatorPrompt, OperatorInvocationRequestExecutor } from "@fiftyone/operators";
+import {
+  OperatorBrowser,
+  OperatorPrompt,
+  OperatorInvocationRequestExecutor,
+} from "@fiftyone/operators";
 
 import {
   Button,
@@ -182,7 +186,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           )}
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
-            disableRipple
             onClick={() => {
               const nextMode = mode === "dark" ? "light" : "dark";
               setMode(nextMode);

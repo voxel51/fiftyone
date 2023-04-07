@@ -31,7 +31,6 @@ const SelectableBar: React.FC<
     >
       <div>
         <Checkbox
-          disableRipple
           title={selected ? "Select sample" : "Selected"}
           checked={selected}
           style={{ color: theme.primary.plainColor }}
@@ -79,7 +78,7 @@ export const GroupBar: React.FC<{
         position: "relative",
         top: "unset",
         left: "unset",
-        borderBottom: `1px solid var(--joy-pallete-primary-plainBorder)`,
+        borderBottom: `1px solid var(--mui-pallete-primary-plainBorder)`,
         zIndex: 10000,
       }}
     >
@@ -93,7 +92,7 @@ export const GroupBar: React.FC<{
         <div
           data-cy="pinned-slice-bar-description"
           style={{
-            color: "var(--joy-palette-text-primary)",
+            color: "var(--mui-palette-text-primary)",
             display: "flex",
             fontWeight: "bold",
             alignItems: "center",
@@ -123,7 +122,7 @@ export const GroupSampleBar: React.FC<{
       {pinned && (
         <div
           style={{
-            color: "var(--joy-palette-text-primary)",
+            color: "var(--mui-palette-text-primary)",
             display: "flex",
             fontSize: "1.2rem",
             fontWeight: "bold",
