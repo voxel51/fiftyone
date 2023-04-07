@@ -319,7 +319,6 @@ const FilterableEntry = ({
         <>
           {!disabled && (
             <Checkbox
-              disableRipple={true}
               checked={active}
               title={`Show ${path}`}
               style={{

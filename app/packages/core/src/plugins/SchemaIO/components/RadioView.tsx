@@ -35,7 +35,7 @@ export default function RadioView(props: RadioGroupProps) {
           <FormControlLabel
             key={value}
             value={value}
-            control={<Radio disableRipple />}
+            control={<Radio />}
             label={
               <Header
                 label={label}
