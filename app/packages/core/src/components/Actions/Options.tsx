@@ -13,6 +13,7 @@ import Checkbox from "../Common/Checkbox";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
+  activeColorField,
   configuredSidebarModeDefault,
   groupStatistics,
   isGroup,
@@ -224,6 +225,16 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
+const MoreSettings = () => {
+  const setActiveField = useSetRecoilState(activeColorField);
+  return (
+    <Button
+      text="Advance color settings"
+      onClick={() => setActiveField("global")}
+    />
+  );
+};
+
 const SidebarMode = ({ modal }) => {
   const mode = useRecoilValue(configuredSidebarModeDefault(modal));
   const setMode = useSetRecoilState(sidebarMode(modal));
@@ -254,6 +265,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
     <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
+      {!modal && <MoreSettings />}
       <Opacity modal={modal} />
       {group && <GroupStatistics modal={modal} />}
       <Keypoints modal={modal} />

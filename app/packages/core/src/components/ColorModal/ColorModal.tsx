@@ -172,7 +172,6 @@ const ColorModal = () => {
         useMulticolorKeypoints,
         showSkeleton,
       };
-      console.info(setting, "setting");
       setTempGlobal(setting);
     }
   }, []);
@@ -224,8 +223,10 @@ const ColorModal = () => {
               <div style={{ height: "calc( 80vh - 6rem)", overflow: "auto" }}>
                 {typeof field === "string" ? (
                   <GlobalSetting />
+                ) : field ? (
+                  <FieldSetting field={activeColorModalField as Field} />
                 ) : (
-                  <FieldSetting />
+                  <></>
                 )}
               </div>
               <SubmitControls />
@@ -247,14 +248,13 @@ const SubmitControls = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
-  if (!activeColorModalField) return null;
-  const path =
-    activeColorModalField == "global" ? "global" : activeColorModalField.path;
-  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const [tempGlobalSettings, setTempGlobalSettings] =
     useRecoilState(tempGlobalSetting);
+  const path =
+    activeColorModalField == "global" ? "global" : activeColorModalField?.path;
+  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const { colorBy, colors, opacity, useMulticolorKeypoints, showSkeleton } =
-    tempGlobalSettings;
+    tempGlobalSettings ?? {};
   const setAlpha = useSetRecoilState(fos.alpha(false));
   const setConfigColorBy = useSetRecoilState(
     fos.appConfigOption({ modal: false, key: "colorBy" })
@@ -287,6 +287,8 @@ const SubmitControls = () => {
       setCustomizeColor(tempColor);
     }
   };
+
+  if (!activeColorModalField || !tempGlobalSettings) return null;
 
   return (
     <ModalActionButtonContainer>

@@ -18,10 +18,13 @@ import Input from "../Common/Input";
 import { tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
 
+type Prop = {
+  field: Field;
+};
+
 const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
-const FieldSetting: React.FC = ({}) => {
-  const field = useRecoilValue(fos.activeColorField) as Field;
+const FieldSetting: React.FC<Prop> = ({ field }) => {
   const path = field.path;
   const customizeColor = useRecoilValue(fos.customizeColors(path!));
   const [tempSetting, setTempSetting] = useRecoilState(tempColorSetting);
@@ -46,9 +49,7 @@ const FieldSetting: React.FC = ({}) => {
   )?.label;
 
   const coloring = useRecoilValue(fos.coloring(false));
-  const pool = coloring.pool.filter(
-    (c) => !fullSetting?.map((x) => x.fieldColor).includes(c)
-  );
+  const pool = useRecoilValue(fos.colorPalette);
   const color = getColor(pool, coloring.seed, path ?? "");
   const initialColor =
     customizeColor?.fieldColor ?? tempSetting?.fieldColor ?? color;
@@ -67,14 +68,6 @@ const FieldSetting: React.FC = ({}) => {
       ...prev,
       attributeForOpacity: event.target.value,
     }));
-  };
-
-  const isLabelColorUnset = (
-    labelColors: { name: string; color: string }[] | undefined
-  ) => {
-    if (!labelColors || labelColors.length == 0) return true;
-    if (labelColors.length == 1 && labelColors[0].name == "") return true;
-    return false;
   };
 
   const onChangeFieldColor = (color) => {
@@ -106,7 +99,8 @@ const FieldSetting: React.FC = ({}) => {
 
   // on initial load, if the tem
   useEffect(() => {
-    if (!tempSetting) {
+    debugger;
+    if (!tempSetting || tempSetting.field != path) {
       // check setting to see if custom setting exists
       const setting = fullSetting.find((x) => x.field == path!);
       if (setting) {
@@ -123,7 +117,7 @@ const FieldSetting: React.FC = ({}) => {
         });
       }
     }
-  }, []);
+  }, [path]);
 
   return (
     <div style={{ margin: "1rem" }}>
