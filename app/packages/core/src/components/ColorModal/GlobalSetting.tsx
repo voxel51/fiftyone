@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Divider, Slider } from "@mui/material";
 import styled from "styled-components";
 
@@ -11,9 +11,15 @@ import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import ColorPalette from "./colorPalette/ColorPalette";
 import { useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
+import { tempGlobalSetting } from "./utils";
+import { cloneDeep } from "lodash";
 
 const ControlGroupWrapper = styled.div`
   margin: 0.5rem 2rem;
+`;
+
+const SectionWrapper = styled.div`
+  margin: 0.5rem 1rem;
 `;
 
 const LabelTitle = styled.div`
@@ -24,60 +30,47 @@ const LabelTitle = styled.div`
   font-weight: bold;
 `;
 
-type State = {
-  colorBy: string;
-  colors: string[];
-  opacity: number;
-  useMulticolorKeypoints: boolean;
-  showSkeleton: boolean;
-};
-
 const GlobalSetting: React.FC = ({}) => {
-  const initialState = {
-    colorBy: useRecoilValue(
-      fos.appConfigOption({ modal: false, key: "colorBy" })
-    ),
-    colors: [],
-    opacity: useRecoilValue(fos.alpha(false)),
-    useMulticolorKeypoints: Boolean(
-      useRecoilValue(
-        fos.appConfigOption({ modal: false, key: "multicolorKeypoints" })
-      )
-    ),
-    showSkeleton: Boolean(
-      useRecoilValue(
-        fos.appConfigOption({ modal: false, key: "showSkeletons" })
-      )
-    ),
-  };
-  const theme = useTheme();
-  const [state, setState] = useState<State>(initialState);
+  const [global, setGlobal] = useRecoilState(tempGlobalSetting);
 
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
-    setState((s) => ({ ...s, opacity: newValue as number }));
+    setGlobal((s) => ({ ...cloneDeep(s), opacity: newValue as number }));
   };
 
+  if (!global) return null;
   return (
     <div>
       <Divider>Color Setting</Divider>
       <ControlGroupWrapper>
         <LabelTitle>Color annotations by</LabelTitle>
-        <RadioGroup
-          choices={["field", "attribute"]}
-          value={state.colorBy}
-          setValue={(mode) => setState((s) => ({ ...s, colorBy: mode }))}
-        />
+        <SectionWrapper>
+          <RadioGroup
+            choices={["field", "value"]}
+            value={global.colorBy}
+            setValue={(mode) =>
+              setGlobal((s) => ({
+                ...cloneDeep(s),
+                colorBy: mode as "field" | "value",
+              }))
+            }
+          />
+        </SectionWrapper>
         <LabelTitle>Color Pool</LabelTitle>
-        <ColorPalette />
+        <SectionWrapper>
+          <ColorPalette />
+        </SectionWrapper>
       </ControlGroupWrapper>
       <Divider>Opacity Setting</Divider>
       <ControlGroupWrapper>
         <LabelTitle>
           <span>Label opacity</span>
-          {state.opacity !== fos.DEFAULT_ALPHA && (
+          {global.opacity !== fos.DEFAULT_ALPHA && (
             <span
               onClick={() =>
-                setState((s) => ({ ...s, opacity: fos.DEFAULT_ALPHA }))
+                setGlobal((s) => ({
+                  ...cloneDeep(s),
+                  opacity: fos.DEFAULT_ALPHA,
+                }))
               }
               style={{ cursor: "pointer", margin: "0.25rem" }}
               title={"Reset label opacity"}
@@ -87,7 +80,7 @@ const GlobalSetting: React.FC = ({}) => {
           )}
         </LabelTitle>
         <Slider
-          value={typeof state.opacity === "number" ? state.opacity : 0}
+          value={typeof global.opacity === "number" ? global.opacity : 0}
           onChange={handleSliderChange}
           min={0}
           max={1}
@@ -97,15 +90,17 @@ const GlobalSetting: React.FC = ({}) => {
       <ControlGroupWrapper>
         <Checkbox
           name={"Show keypoints in multicolor"}
-          value={state.useMulticolorKeypoints}
+          value={Boolean(global.useMulticolorKeypoints)}
           setValue={(v) =>
-            setState((s) => ({ ...s, useMulticolorKeypoints: v }))
+            setGlobal((s) => ({ ...cloneDeep(s), useMulticolorKeypoints: v }))
           }
         />
         <Checkbox
           name={"Show keypoint skeletons"}
-          value={state.showSkeleton}
-          setValue={(v) => setState((s) => ({ ...s, showSkeleton: v }))}
+          value={Boolean(global.showSkeleton)}
+          setValue={(v) =>
+            setGlobal((s) => ({ ...cloneDeep(s), showSkeleton: v }))
+          }
         />
       </ControlGroupWrapper>
     </div>

@@ -15,7 +15,7 @@ import {
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
-import { colorPool, colorscale } from "./config";
+import { colorPalette, colorPool, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
@@ -25,7 +25,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPool);
+      const pool = get(colorPalette);
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,
