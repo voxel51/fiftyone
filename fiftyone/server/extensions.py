@@ -7,7 +7,7 @@ FiftyOne Server extensions
 """
 import traceback
 
-from strawberry.exceptions import StrawberryGraphQLError
+from strawberry.exceptions import StrawberryException
 from strawberry.extensions import Extension
 from strawberry.utils.await_maybe import AwaitableOrValue
 
@@ -20,7 +20,7 @@ class EndSession(Extension):
         result = self.execution_context.result
         if getattr(result, "errors", None):
             result.errors = [
-                StrawberryGraphQLError(
+                StrawberryException(
                     extensions={
                         "stack": traceback.format_tb(error.__traceback__)
                     },
