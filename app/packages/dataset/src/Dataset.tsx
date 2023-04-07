@@ -58,6 +58,7 @@ export interface DatasetProps {
   theme?: "dark" | "light";
   toggleHeaders?: () => void;
   canEditSavedViews?: boolean;
+  canEditCustomColors?: boolean;
 }
 
 export const Dataset: React.FC<DatasetProps> = ({
@@ -68,10 +69,12 @@ export const Dataset: React.FC<DatasetProps> = ({
   theme = "dark",
   toggleHeaders,
   canEditSavedViews = true,
+  canEditCustomColors = true,
 }) => {
   const [queryRef, loadQuery] = useQueryLoader<DatasetQuery>(DatasetNodeQuery);
   const setTheme = useSetRecoilState(fos.theme);
   const setCanChangeSavedViews = useSetRecoilState(fos.canEditSavedViews);
+  const setCanChangeCustomColors = useSetRecoilState(fos.canEditCustomColors);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
 
@@ -96,6 +99,9 @@ export const Dataset: React.FC<DatasetProps> = ({
   React.useEffect(() => {
     setCanChangeSavedViews(canEditSavedViews);
   }, [canEditSavedViews]);
+  React.useEffect(() => {
+    setCanChangeCustomColors(canEditCustomColors);
+  }, [canEditCustomColors]);
 
   const plugins = usePlugins();
   const loadingElement = <Loading>Pixelating...</Loading>;
