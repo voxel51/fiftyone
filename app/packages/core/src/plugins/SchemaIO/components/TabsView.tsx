@@ -40,7 +40,6 @@ export default function TabsView(props) {
               icon={description && <Tooltip title={description} />}
               iconPosition="end"
               sx={{ minHeight: 48 }}
-              disableRipple
             />
           ))}
         </Tabs>
