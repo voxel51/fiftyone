@@ -682,6 +682,20 @@ class DatasetView(foc.SampleCollection):
     def get_group(self, group_id, group_slices=None):
         """Returns a dict containing the samples for the given group ID.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+            view = dataset.select_fields()
+
+            group_id = view.take(1).first().group.id
+            group = view.get_group(group_id)
+
+            print(group.keys())
+            # ['left', 'right', 'pcd']
+
         Args:
             group_id: a group ID
             group_slices (None): an optional subset of group slices to load
@@ -722,6 +736,18 @@ class DatasetView(foc.SampleCollection):
     def get_dynamic_group(self, group_value):
         """Returns a view containing the samples from a dynamic grouped view
         with the given group value.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            view = dataset.take(1000).group_by("ground_truth.label")
+
+            group = view.get_dynamic_group("cat")
+            print(len(group))  # 104
 
         Args:
             group_value: the group value
