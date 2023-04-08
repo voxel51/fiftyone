@@ -4568,9 +4568,9 @@ class SampleCollection(object):
 
             view = dataset.take(1000).group_by("ground_truth.label")
 
-            print(len(view))
-            for group in view.iter_groups():
-                print("%s: %d" % (group[0].ground_truth.label, len(group)))
+            for group in view.iter_dynamic_groups():
+                group_value = group.first().ground_truth.label
+                print("%s: %d" % (group_value, len(group)))
 
             #
             # Variation of above operation that arranges the groups in

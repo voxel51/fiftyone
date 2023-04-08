@@ -3004,7 +3004,6 @@ class GroupBy(ViewStage):
         stage = fo.GroupBy("ground_truth.label")
         view = dataset.take(1000).add_stage(stage)
 
-        print(len(view))
         for group in view.iter_groups():
             print("%s: %d" % (group[0].ground_truth.label, len(group)))
 
@@ -3351,7 +3350,7 @@ class Flatten(ViewStage):
         return self._stages
 
     def to_mongo(self, sample_collection):
-        return sample_collection._groups_only_pipeline(
+        return sample_collection._dynamic_groups_pipeline(
             group_pipeline=self._pipeline
         )
 
