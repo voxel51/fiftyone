@@ -3366,12 +3366,12 @@ class Flatten(ViewStage):
         pipeline = None
 
         if self._stages:
+            _, _, view, _ = sample_collection._parse_dynamic_groups()
+
             if etau.is_container(self._stages):
                 stages = list(self._stages)
             else:
                 stages = [self._stages]
-
-            view, _ = sample_collection._base_groups_view()
 
             pipeline = []
             for stage in stages:

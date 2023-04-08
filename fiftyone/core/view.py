@@ -737,12 +737,19 @@ class DatasetView(foc.SampleCollection):
         if is_id_field and not isinstance(group_value, ObjectId):
             group_value = ObjectId(group_value)
 
-        view = root_view.match(foe.ViewExpression(group_expr) == group_value)
+        pipeline = []
+
+        if etau.is_str(group_expr):
+            pipeline.append({"$match": {group_expr[1:]: group_value}})
+        else:
+            pipeline.append(
+                {"$match": {"$expr": {"$eq": [group_expr, group_value]}}}
+            )
 
         if sort is not None:
-            view = view.sort_by(sort)
+            pipeline.append({"$sort": OrderedDict(sort)})
 
-        return view
+        return root_view.mongo(pipeline)
 
     def get_field_schema(
         self,

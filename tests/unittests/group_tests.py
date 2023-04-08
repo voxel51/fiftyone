@@ -1400,18 +1400,18 @@ class DynamicGroupTests(unittest.TestCase):
 
         sample = view1.first()
         group_id = sample.sample_id
-        group = view1.get_group(group_id)
+        group = view1.get_dynamic_group(group_id)
         sample_ids = [g.sample_id for g in group]
 
-        self.assertIsInstance(group, list)
+        self.assertIsInstance(group, fo.DatasetView)
         self.assertEqual(len(group), counts[group_id])
         self.assertEqual(len(set(sample_ids)), 1)
 
-        group = next(view1.iter_groups())
-        group_id = group[0].sample_id
+        group = next(view1.iter_dynamic_groups())
+        group_id = group.first().sample_id
         sample_ids = [g.sample_id for g in group]
 
-        self.assertIsInstance(group, list)
+        self.assertIsInstance(group, fo.DatasetView)
         self.assertEqual(len(group), counts[group_id])
         self.assertEqual(len(set(sample_ids)), 1)
 
@@ -1423,16 +1423,16 @@ class DynamicGroupTests(unittest.TestCase):
 
         sample = view2.first()
         group_id = sample.sample_id
-        group = view2.get_group(group_id)
-        also_group = next(view2.iter_groups())
+        group = view2.get_dynamic_group(group_id)
+        also_group = next(view2.iter_dynamic_groups())
         sample_ids = view2.values("sample_id")
         frame_numbers = [s.frame_number for s in group]
         also_frame_numbers = [s.frame_number for s in also_group]
 
         self.assertEqual(sample.sample_id, sample_id2)
         self.assertEqual(sample.frame_number, 2)
-        self.assertIsInstance(group, list)
-        self.assertIsInstance(also_group, list)
+        self.assertIsInstance(group, fo.DatasetView)
+        self.assertIsInstance(also_group, fo.DatasetView)
         self.assertListEqual(sample_ids, [sample_id2])
         self.assertListEqual(frame_numbers, [2, 1])
         self.assertListEqual(also_frame_numbers, [2, 1])
@@ -1462,18 +1462,18 @@ class DynamicGroupTests(unittest.TestCase):
 
         sample = view1.first()
         group_id = sample.sample_id
-        group = view1.get_group(group_id)
+        group = view1.get_dynamic_group(group_id)
         sample_ids = [g.sample_id for g in group]
 
-        self.assertIsInstance(group, list)
+        self.assertIsInstance(group, fo.DatasetView)
         self.assertEqual(len(group), counts[group_id])
         self.assertEqual(len(set(sample_ids)), 1)
 
-        group = next(view1.iter_groups())
-        group_id = group[0].sample_id
+        group = next(view1.iter_dynamic_groups())
+        group_id = group.first().sample_id
         sample_ids = [g.sample_id for g in group]
 
-        self.assertIsInstance(group, list)
+        self.assertIsInstance(group, fo.DatasetView)
         self.assertEqual(len(group), counts[group_id])
         self.assertEqual(len(set(sample_ids)), 1)
 
@@ -1485,16 +1485,16 @@ class DynamicGroupTests(unittest.TestCase):
 
         sample = view2.first()
         group_id = sample.sample_id
-        group = view2.get_group(group_id)
-        also_group = next(view2.iter_groups())
+        group = view2.get_dynamic_group(group_id)
+        also_group = next(view2.iter_dynamic_groups())
         sample_ids = view2.values("sample_id")
         frame_numbers = [s.frame_number for s in group]
         also_frame_numbers = [s.frame_number for s in also_group]
 
         self.assertEqual(sample.sample_id, sample_id2)
         self.assertEqual(sample.frame_number, 2)
-        self.assertIsInstance(group, list)
-        self.assertIsInstance(also_group, list)
+        self.assertIsInstance(group, fo.DatasetView)
+        self.assertIsInstance(also_group, fo.DatasetView)
         self.assertListEqual(sample_ids, [sample_id2])
         self.assertListEqual(frame_numbers, [2, 1])
         self.assertListEqual(also_frame_numbers, [2, 1])
@@ -1516,16 +1516,16 @@ class DynamicGroupTests(unittest.TestCase):
 
         sample = view.first()
         group_id = sample.sample_id
-        group = view.get_group(group_id)
-        also_group = next(view.iter_groups())
+        group = view.get_dynamic_group(group_id)
+        also_group = next(view.iter_dynamic_groups())
         sample_ids = view.values("sample_id")
         frame_numbers = [s.frame_number for s in group]
         also_frame_numbers = [s.frame_number for s in also_group]
 
         self.assertEqual(sample.sample_id, sample_id1)
         self.assertEqual(sample.frame_number, 2)
-        self.assertIsInstance(group, list)
-        self.assertIsInstance(also_group, list)
+        self.assertIsInstance(group, fo.DatasetView)
+        self.assertIsInstance(also_group, fo.DatasetView)
         self.assertListEqual(sample_ids, [sample_id1, sample_id2])
         self.assertListEqual(frame_numbers, [2, 1])
         self.assertListEqual(also_frame_numbers, [2, 1])
