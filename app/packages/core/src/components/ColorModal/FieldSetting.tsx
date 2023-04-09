@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { TwitterPicker } from "react-color";
-import { FormControl, InputLabel, MenuItem, Select } from "@material-ui/core";
 import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
 import {
@@ -15,7 +14,7 @@ import {
 } from "@fiftyone/utilities";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
-import { tempColorSetting } from "./utils";
+import { SectionWrapper, tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
 import OpacityAttribute from "./controls/OpacityAttribute";
 import ColorAttribute from "./controls/ColorAttribute";
@@ -103,7 +102,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     <div style={{ margin: "1rem" }}>
       {coloring.by == "field" && (
         <div>
-          Settings for color by field
+          <Text>Settings for color by field</Text>
           <div
             style={{
               margin: "1rem",
@@ -168,9 +167,11 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 }))
               }
             />
-            {tempSetting?.useLabelColors && (
-              <AttributeColorSetting style={CHILD_STYLE} />
-            )}
+            <SectionWrapper>
+              {tempSetting?.useLabelColors && (
+                <AttributeColorSetting style={CHILD_STYLE} />
+              )}
+            </SectionWrapper>
             {/* set the attribute used for opacity */}
             <Checkbox
               name={`Select attribute for opacity`}
@@ -183,9 +184,11 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 }))
               }
             />
-            {tempSetting?.useOpacity && path && (
-              <OpacityAttribute fields={opacityFields} />
-            )}
+            <SectionWrapper>
+              {tempSetting?.useOpacity && path && (
+                <OpacityAttribute fields={opacityFields} />
+              )}
+            </SectionWrapper>
           </form>
         </div>
       )}

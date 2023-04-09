@@ -32,14 +32,18 @@ const ModalWrapper = styled.div`
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 10000;
+  z-index: 1000000;
   align-items: center;
   display: flex;
   justify-content: center;
   background-color: ${({ theme }) => theme.neutral.softBg};
 `;
 
-const Container = styled.div`
+type ContainerProp = {
+  height: string;
+};
+
+const Container = styled.div<ContainerProp>`
   background-color: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   position: relative;
@@ -48,6 +52,14 @@ const Container = styled.div`
   justify-content: start;
   overflow: hidden;
   box-shadow: 0 20px 25px -20px #000;
+  min-width: 500;
+  width: 40vw;
+  height: ${({ height }) => height};
+`;
+
+const DraggableContent = styled.div<ContainerProp>`
+  height: ${({ height }) => `calc(${height} - 6rem)`};
+  overflow: auto;
 `;
 
 const DraggableModalTitle = styled.div`
@@ -68,6 +80,15 @@ const ModalActionButtonContainer = styled.div`
   flex-direction: row;
   justify-content: flex-end;
   padding: 0.5rem;
+`;
+
+const Text = styled.div`
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  cursor: pointer;
 `;
 
 const BUTTON_STYLE: React.CSSProperties = {
@@ -91,21 +112,6 @@ type Option = {
   value: string;
   onClick: () => void;
 };
-
-const screen = {
-  minWidth: "500px",
-  width: "40vw",
-  height: "80vh",
-};
-
-const Text = styled.div`
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  cursor: pointer;
-`;
 
 const ColorModal = () => {
   const ref = React.useRef<HTMLDivElement>();
@@ -171,6 +177,11 @@ const ColorModal = () => {
 
   const [tempGlobal, setTempGlobal] = useRecoilState(tempGlobalSetting);
 
+  // const height = useMemo(() => {
+  //   return colorBy == "value" ? "60vh" : "50vh";
+  // }, [colorBy])
+  const height = "50vh";
+
   // initialize tempGlobalSetting on modal mount
   useEffect(() => {
     if (!tempGlobal || JSON.stringify(tempGlobal) === "{}") {
@@ -224,12 +235,12 @@ const ColorModal = () => {
           aria-labelledby="draggable-color-modal"
         >
           <Draggable bounds="parent" handle=".draggable-colorModal-handle">
-            <Container style={{ ...screen, zIndex: 2 }}>
+            <Container height={height}>
               <DraggableModalTitle className="draggable-colorModal-handle">
                 <ColorModalTitle />
                 <CloseIcon onClick={() => setActiveColorModalField(null)} />
               </DraggableModalTitle>
-              <div style={{ height: "calc( 80vh - 6rem)", overflow: "auto" }}>
+              <DraggableContent height={height}>
                 {typeof field === "string" ? (
                   <GlobalSetting />
                 ) : field ? (
@@ -237,7 +248,7 @@ const ColorModal = () => {
                 ) : (
                   <></>
                 )}
-              </div>
+              </DraggableContent>
               <SubmitControls />
             </Container>
           </Draggable>

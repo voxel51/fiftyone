@@ -8,6 +8,7 @@ import * as fos from "@fiftyone/state";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { tempColorSetting } from "../utils";
 import { cloneDeep } from "lodash";
+import { Button } from "../../utils";
 
 const RowContainer = styled.div`
   display: flex;
@@ -18,15 +19,9 @@ const RowContainer = styled.div`
 
 const AddContainer = styled.div`
   display: flex;
-  justify-content: end;
+  justify-content: start;
   alight-items: center;
-  margin: 0.25rem;
-`;
-
-const Control = styled.div`
-  display: flex;
-  flex-direction: row;
-  cursor: pointer;
+  margin-bottom: 0.5rem;
 `;
 
 const Text = styled.div`
@@ -79,8 +74,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const handleAdd = () => {
     setTempColor((prev) => ({
       ...cloneDeep(prev),
-      labelColors: values
-        ? [...cloneDeep(values), defaultValue]
+      labelColors: prev.labelColors
+        ? [...cloneDeep(prev.labelColors), defaultValue]
         : [defaultValue],
     }));
     setShowPicker([...showPicker, false]);
@@ -117,12 +112,6 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
 
   return (
     <div style={style}>
-      <AddContainer>
-        <Control onClick={handleAdd}>
-          <AddButton />
-          <Text>Add new color pair</Text>
-        </Control>
-      </AddContainer>
       {values.map((value, index) => (
         <RowContainer key={index}>
           <Input
@@ -170,6 +159,13 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
           />
         </RowContainer>
       ))}
+      <AddContainer>
+        <Button
+          onClick={handleAdd}
+          text="Add a new pair"
+          title="add a new pair"
+        />
+      </AddContainer>
     </div>
   );
 };
