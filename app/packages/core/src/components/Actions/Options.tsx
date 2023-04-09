@@ -229,6 +229,12 @@ const MoreSettings = () => {
   const setActiveField = useSetRecoilState(activeColorField);
   return (
     <Button
+      style={{
+        margin: "0.25rem -0.5rem",
+        height: "2rem",
+        borderRadius: 0,
+        textAlign: "center",
+      }}
       text="Advance color settings"
       onClick={() => setActiveField("global")}
     />
@@ -263,9 +269,9 @@ const Options = ({ modal, bounds }: OptionsProps) => {
   const group = useRecoilValue(isGroup);
   return (
     <Popout modal={modal} bounds={bounds}>
+      {!modal && <MoreSettings />}
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
-      {!modal && <MoreSettings />}
       <Opacity modal={modal} />
       {group && <GroupStatistics modal={modal} />}
       <Keypoints modal={modal} />

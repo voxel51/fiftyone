@@ -9,6 +9,7 @@ import {
 } from "recoil";
 import * as fos from "@fiftyone/state";
 import { isEmpty, xor } from "lodash";
+import styled from "styled-components";
 
 export const tempColorSetting = atom<CustomizeColor>({
   key: "tempAttributeColorSetting",
@@ -54,3 +55,20 @@ export const updateFieldSettings = (tempColor) => {
     attributeForOpacity: useOpacity ? tempColor.attributeForOpacity : undefined,
   };
 };
+
+// shared styled.div
+export const ControlGroupWrapper = styled.div`
+  margin: 0.5rem 2rem;
+`;
+
+export const SectionWrapper = styled.div`
+  margin: 0.5rem 1rem;
+`;
+
+export const LabelTitle = styled.div`
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+  font-size: 1rem;
+  line-height: 2;
+  font-weight: bold;
+`;

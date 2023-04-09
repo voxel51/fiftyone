@@ -10,23 +10,12 @@ import RadioGroup from "../Common/RadioGroup";
 import ColorPalette from "./colorPalette/ColorPalette";
 
 import Checkbox from "../Common/Checkbox";
-import { tempGlobalSetting } from "./utils";
-
-const ControlGroupWrapper = styled.div`
-  margin: 0.5rem 2rem;
-`;
-
-const SectionWrapper = styled.div`
-  margin: 0.5rem 1rem;
-`;
-
-const LabelTitle = styled.div`
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
-  font-size: 1rem;
-  line-height: 2;
-  font-weight: bold;
-`;
+import {
+  ControlGroupWrapper,
+  LabelTitle,
+  SectionWrapper,
+  tempGlobalSetting,
+} from "./utils";
 
 const GlobalSetting: React.FC = ({}) => {
   const [global, setGlobal] = useRecoilState(tempGlobalSetting);
@@ -58,7 +47,6 @@ const GlobalSetting: React.FC = ({}) => {
           <ColorPalette />
         </SectionWrapper>
       </ControlGroupWrapper>
-      <Divider>Opacity Setting</Divider>
       <ControlGroupWrapper>
         <LabelTitle>
           <span>Label opacity</span>
