@@ -45,3 +45,12 @@ type GlobalColorSetting = {
 export const isSameArray = (a: any[], b: any[]) => {
   return isEmpty(xor(a, b));
 };
+
+export const updateFieldSettings = (tempColor) => {
+  const { useLabelColors, useOpacity } = tempColor;
+  return {
+    ...tempColor,
+    labelColors: useLabelColors ? tempColor.labelColors : undefined,
+    attributeForOpacity: useOpacity ? tempColor.attributeForOpacity : undefined,
+  };
+};

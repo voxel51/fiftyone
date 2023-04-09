@@ -1,18 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import { Divider, Slider } from "@mui/material";
 import styled from "styled-components";
-
+import { useRecoilState } from "recoil";
 import { Check } from "@mui/icons-material";
-import OpacityIcon from "@mui/icons-material/Opacity";
-
+import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
+
 import RadioGroup from "../Common/RadioGroup";
-import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import ColorPalette from "./colorPalette/ColorPalette";
-import { useRecoilState, useRecoilValue } from "recoil";
+
 import Checkbox from "../Common/Checkbox";
 import { tempGlobalSetting } from "./utils";
-import { cloneDeep } from "lodash";
 
 const ControlGroupWrapper = styled.div`
   margin: 0.5rem 2rem;
