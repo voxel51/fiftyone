@@ -108,13 +108,9 @@ export abstract class CoordinateOverlay<
         if (fieldColor && isValidColor(fieldColor)) {
           return fieldColor;
         }
-        const colorUsed = customizeColorSetting.map((s) => s.fieldColor);
+
         // use default settings
-        return getColor(
-          coloring.pool.filter((c) => !colorUsed.includes(c)),
-          coloring.seed,
-          this.field
-        );
+        return getColor(coloring.pool, coloring.seed, this.field);
 
       default:
         // check if the field has customized setting
