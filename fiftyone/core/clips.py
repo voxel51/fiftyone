@@ -302,9 +302,9 @@ class ClipsView(fov.DatasetView):
         _view = self._clips_stage.load_view(self._source_collection)
         self._clips_dataset = _view._clips_dataset
 
-        view = self._base_view
+        _view = self._base_view
         for stage in self._stages:
-            view = view.add_stage(stage)
+            _view = _view.add_stage(stage)
 
     def _sync_source_sample(self, sample):
         if not self._classification_field:

@@ -1108,9 +1108,9 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.reload()
 
-        view = self._base_view
+        _view = self._base_view
         for stage in self._stages:
-            view = view.add_stage(stage)
+            _view = _view.add_stage(stage)
 
     def to_dict(
         self,

@@ -276,9 +276,9 @@ class FramesView(fov.DatasetView):
         _view = self._frames_stage.load_view(self._source_collection)
         self._frames_dataset = _view._frames_dataset
 
-        view = self._base_view
+        _view = self._base_view
         for stage in self._stages:
-            view = view.add_stage(stage)
+            _view = _view.add_stage(stage)
 
     def _set_labels(self, field_name, sample_ids, label_docs):
         super()._set_labels(field_name, sample_ids, label_docs)
