@@ -14,6 +14,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   activeColorField,
+  canEditCustomColors,
   configuredSidebarModeDefault,
   groupStatistics,
   isGroup,
@@ -267,9 +268,10 @@ type OptionsProps = {
 
 const Options = ({ modal, bounds }: OptionsProps) => {
   const group = useRecoilValue(isGroup);
+  const canEdit = useRecoilValue(canEditCustomColors);
   return (
     <Popout modal={modal} bounds={bounds}>
-      {!modal && <MoreSettings />}
+      {!modal && canEdit && <MoreSettings />}
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />

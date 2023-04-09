@@ -17,7 +17,11 @@ import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
 import { InfoIcon, useTheme } from "@fiftyone/components";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import { coloring, activeColorField } from "@fiftyone/state";
+import {
+  coloring,
+  activeColorField,
+  canEditCustomColors,
+} from "@fiftyone/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -259,6 +263,7 @@ function FieldInfoExpanded({
   const [isCollapsed, setIsCollapsed] = useState(
     descTooLong || tooManyInfoKeys
   );
+  const canEdit = useRecoilValue(canEditCustomColors);
   const setIsCustomizingColor = useSetRecoilState(activeColorField);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
@@ -272,8 +277,6 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    // pass in the field info
-    console.info("clicked customize color", field, colorBy);
     setIsCustomizingColor(field);
   };
 
@@ -290,7 +293,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {field.embeddedDocType && !isModal && (
+        {field.embeddedDocType && !isModal && canEdit && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}
