@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { TwitterPicker } from "react-color";
@@ -51,11 +51,8 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const coloring = useRecoilValue(fos.coloring(false));
   const pool = useRecoilValue(fos.colorPalette);
   const color = getColor(pool, coloring.seed, path ?? "");
-  const initialColor =
-    customizeColor?.fieldColor ?? tempSetting?.fieldColor ?? color;
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
-  const [fieldColor, setFieldColor] = useState(initialColor);
 
   const handleDropdownChange = (event) => {
     setTempSetting((prev) => ({
@@ -71,7 +68,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   };
 
   const onChangeFieldColor = (color) => {
-    setFieldColor(color.hex);
     setTempSetting((prev) => ({
       ...cloneDeep(prev),
       field: path!,
@@ -100,7 +96,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   // on initial load, if the tem
   useEffect(() => {
     debugger;
-    if (!tempSetting || tempSetting.field != path) {
+    if (!tempSetting) {
       // check setting to see if custom setting exists
       const setting = fullSetting.find((x) => x.field == path!);
       if (setting) {
@@ -108,14 +104,24 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       } else {
         setTempSetting({
           field: path!,
-          fieldColor: initialColor,
+          fieldColor: color,
           attributeForColor: "",
           attributeForOpacity: "",
           labelColors: [{ name: "", color: defaultColor }],
-          useOpacity: false, // checkbox2
-          useLabelColors: false, // checkbox1
+          useOpacity: false, // check
+          useLabelColors: false, // check
         });
       }
+    } else if (tempSetting.field !== path) {
+      setTempSetting({
+        field: path!,
+        fieldColor: color,
+        attributeForColor: "",
+        attributeForOpacity: "",
+        labelColors: [{ name: "", color: defaultColor }],
+        useOpacity: false, // check
+        useLabelColors: false, // check
+      });
     }
   }, [path]);
 
@@ -133,7 +139,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
             }}
           >
             <ColorSquare
-              color={fieldColor}
+              color={tempSetting?.fieldColor ?? color}
               onClick={toggleColorPicker}
               id="color-square"
             >
@@ -146,7 +152,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                   ref={colorContainer}
                 >
                   <TwitterPicker
-                    color={fieldColor}
+                    color={tempSetting?.fieldColor ?? color}
                     colors={coloring.pool}
                     onChange={onChangeFieldColor}
                     id={"twitter-color-picker"}
@@ -155,8 +161,8 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
               )}
             </ColorSquare>
             <Input
-              value={fieldColor}
-              setter={(v) => setFieldColor(v)}
+              value={tempSetting?.fieldColor ?? color}
+              setter={(v) => onChangeFieldColor(v)}
               style={{
                 width: 100,
                 display: "inline-block",
