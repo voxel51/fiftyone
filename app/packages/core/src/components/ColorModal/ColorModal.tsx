@@ -18,7 +18,11 @@ import Item from "../Filters/categoricalFilter/filterOption/FilterItem";
 import GlobalSetting from "./GlobalSetting";
 import FieldSetting from "./FieldSetting";
 import { Button } from "../utils";
-import { tempColorSetting, tempGlobalSetting } from "./utils";
+import {
+  tempColorSetting,
+  tempGlobalSetting,
+  updateFieldSettings,
+} from "./utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -253,8 +257,6 @@ const SubmitControls = () => {
   const path =
     activeColorModalField == "global" ? "global" : activeColorModalField?.path;
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
-  const { colorBy, colors, opacity, useMulticolorKeypoints, showSkeleton } =
-    tempGlobalSettings ?? {};
   const setAlpha = useSetRecoilState(fos.alpha(false));
   const setConfigColorBy = useSetRecoilState(
     fos.appConfigOption({ modal: false, key: "colorBy" })
@@ -283,13 +285,18 @@ const SubmitControls = () => {
 
   const onApply = () => {
     if (typeof activeColorModalField == "string") {
+      // save global settings
+      const { colorBy, colors, opacity, useMulticolorKeypoints, showSkeleton } =
+        tempGlobalSettings ?? {};
       setConfigColorBy(colorBy);
       setColoring(colors);
       setAlpha(opacity);
       setMulticolorKeypoints(useMulticolorKeypoints);
       setShowSkeleton(showSkeleton);
     } else {
-      setCustomizeColor(tempColor);
+      // save field settings (update tempcolor by checkbox options)
+      const update = updateFieldSettings(tempColor);
+      setCustomizeColor(update);
     }
   };
 

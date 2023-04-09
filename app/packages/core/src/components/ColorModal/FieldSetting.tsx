@@ -96,7 +96,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   // on initial load, if the tem
   useEffect(() => {
     debugger;
-    if (!tempSetting) {
+    if (!tempSetting || tempSetting.field !== path) {
       // check setting to see if custom setting exists
       const setting = fullSetting.find((x) => x.field == path!);
       if (setting) {
@@ -108,20 +108,10 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
           attributeForColor: "",
           attributeForOpacity: "",
           labelColors: [{ name: "", color: defaultColor }],
-          useOpacity: false, // check
-          useLabelColors: false, // check
+          useOpacity: false,
+          useLabelColors: false,
         });
       }
-    } else if (tempSetting.field !== path) {
-      setTempSetting({
-        field: path!,
-        fieldColor: color,
-        attributeForColor: "",
-        attributeForOpacity: "",
-        labelColors: [{ name: "", color: defaultColor }],
-        useOpacity: false, // check
-        useLabelColors: false, // check
-      });
     }
   }, [path]);
 
