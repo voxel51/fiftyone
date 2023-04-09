@@ -277,6 +277,11 @@ const SubmitControls = () => {
   };
 
   const onSave = () => {
+    onApply();
+    onCancel();
+  };
+
+  const onApply = () => {
     if (typeof activeColorModalField == "string") {
       setConfigColorBy(colorBy);
       setColoring(colors);
@@ -292,6 +297,12 @@ const SubmitControls = () => {
 
   return (
     <ModalActionButtonContainer>
+      <Button
+        text={"Apply"}
+        title={`Apply`}
+        onClick={onApply}
+        style={BUTTON_STYLE}
+      />
       <Button
         text={"Save"}
         title={`Save`}
