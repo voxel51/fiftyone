@@ -23,6 +23,8 @@ import {
   tempGlobalSetting,
   updateFieldSettings,
 } from "./utils";
+import { useOutsideClick } from "@fiftyone/state";
+import useMeasure from "react-use-measure";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -108,6 +110,9 @@ const Text = styled.div`
 const ColorModal = () => {
   const ref = React.useRef<HTMLDivElement>();
   const [open, setOpen] = React.useState(false);
+  useOutsideClick(ref, () => open && setOpen(false));
+  const [mRef, bounds] = useMeasure();
+
   const field = useRecoilValue(fos.activeColorField);
   const colors = useRecoilValue(fos.coloring(false)).pool as string[];
   const opacity = useRecoilValue(fos.alpha(false));
@@ -187,7 +192,7 @@ const ColorModal = () => {
           text={"Click to change target field for setup"}
           placement={"top-center"}
         >
-          <Text onClick={() => setOpen((o) => !o)}>
+          <Text onClick={() => setOpen((o) => !o)} ref={mRef}>
             <IconDiv>
               {" "}
               {open ? (
@@ -200,7 +205,7 @@ const ColorModal = () => {
           </Text>
         </Tooltip>
         {open && (
-          <Popout style={{ padding: 0, position: "relative" }}>
+          <Popout style={{ padding: 0, position: "relative" }} bounds={bounds}>
             {options.map((option: Option) => (
               <Item key={option.value} {...option} />
             ))}

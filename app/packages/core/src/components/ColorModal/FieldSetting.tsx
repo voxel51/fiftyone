@@ -17,55 +17,38 @@ import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
 import { tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
+import OpacityAttribute from "./controls/OpacityAttribute";
+import ColorAttribute from "./controls/ColorAttribute";
 
 type Prop = {
   field: Field;
 };
 
-const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
-
 const FieldSetting: React.FC<Prop> = ({ field }) => {
+  const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
+  const [showFieldPicker, setShowFieldPicker] = useState(false);
   const path = field.path;
-  const customizeColor = useRecoilValue(fos.customizeColors(path!));
   const [tempSetting, setTempSetting] = useRecoilState(tempColorSetting);
   const fullSetting = useRecoilValue(fos.customizeColorSettings);
+  const coloring = useRecoilValue(fos.coloring(false));
+  const pool = useRecoilValue(fos.colorPalette);
+  const color = getColor(pool, coloring.seed, path);
+  const defaultColor =
+    coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
   const expandedPath = useRecoilValue(fos.expandPath(path!));
-  const colorAttributeOptions = useRecoilValue(
+  const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
+  const colorFields = useRecoilValue(
     fos.fields({
       path: expandedPath,
       ftype: VALID_COLOR_ATTRIBUTE_TYPES,
     })
-  )
-    .filter((field) => field.dbField !== "tags")
-    .map((field) => ({ value: field.path, label: field.name }));
-  const opacityAttributeOptions = useRecoilValue(
+  ).filter((field) => field.dbField !== "tags");
+  const opacityFields = useRecoilValue(
     fos.fields({
       path: expandedPath,
       ftype: FLOAT_FIELD,
     })
-  ).map((field) => ({ value: field.path, label: field.name }));
-  const attributeFieldName = colorAttributeOptions.find(
-    (o) => o.value === tempSetting?.attributeForColor
-  )?.label;
-
-  const coloring = useRecoilValue(fos.coloring(false));
-  const pool = useRecoilValue(fos.colorPalette);
-  const color = getColor(pool, coloring.seed, path ?? "");
-
-  const [showFieldPicker, setShowFieldPicker] = useState(false);
-
-  const handleDropdownChange = (event) => {
-    setTempSetting((prev) => ({
-      ...prev,
-      attributeForColor: event.target.value,
-    }));
-  };
-  const handleOpacityDropdownChange = (event) => {
-    setTempSetting((prev) => ({
-      ...prev,
-      attributeForOpacity: event.target.value,
-    }));
-  };
+  );
 
   const onChangeFieldColor = (color) => {
     setTempSetting((prev) => ({
@@ -75,7 +58,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     }));
   };
 
-  const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
   const toggleColorPicker = (e) => {
     if (e.target.id == "color-square") {
       setShowFieldPicker(!showFieldPicker);
@@ -90,12 +72,8 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     }
   };
 
-  const defaultColor =
-    coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
-
   // on initial load, if the tem
   useEffect(() => {
-    debugger;
     if (!tempSetting || tempSetting.field !== path) {
       // check setting to see if custom setting exists
       const setting = fullSetting.find((x) => x.field == path!);
@@ -105,8 +83,14 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         setTempSetting({
           field: path!,
           fieldColor: color,
-          attributeForColor: "",
-          attributeForOpacity: "",
+          attributeForColor:
+            colorFields.find(
+              (f) => f.path?.includes("label") || f.name == "label"
+            )?.path ?? undefined,
+          attributeForOpacity:
+            opacityFields.find(
+              (f) => f.path?.includes("confidence") || f.name == "confidence"
+            )?.path ?? undefined,
           labelColors: [{ name: "", color: defaultColor }],
           useOpacity: false,
           useLabelColors: false,
@@ -119,7 +103,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     <div style={{ margin: "1rem" }}>
       {coloring.by == "field" && (
         <div>
-          Color by field mode settings
+          Settings for color by field
           <div
             style={{
               margin: "1rem",
@@ -164,37 +148,15 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       )}
       {coloring.by == "value" && (
         <div>
-          <Text>Color by value mode settings</Text>
+          <Text>Settings for color by value</Text>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
           >
             {/* set the attribute used for color */}
-            <FormControl>
-              <InputLabel key="dropdown-attribute" style={FONT_STYLE}>
-                Select attribute for annotation color
-              </InputLabel>
-              <Select
-                labelId="dropdown-attribute"
-                key="select-attribute-dropdown"
-                value={tempSetting?.attributeForColor ?? ""}
-                onChange={handleDropdownChange}
-                MenuProps={{ style: { zIndex: 9999999 } }}
-                style={FONT_STYLE}
-                autoWidth
-                required
-              >
-                {colorAttributeOptions.map((option, i) => {
-                  return (
-                    <MenuItem value={option.value ?? ""} key={`color-${i}`}>
-                      {option.label}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+            {path && <ColorAttribute fields={colorFields} />}
             {/* set attribute value - color */}
             <Checkbox
-              name={`Assign color for ${attributeFieldName} value`}
+              name={`Assign color based on selected color attribute's values`}
               value={Boolean(tempSetting?.useLabelColors)}
               setValue={(v: boolean) =>
                 setTempSetting((prev) => ({
@@ -221,31 +183,8 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 }))
               }
             />
-            {tempSetting?.useOpacity && (
-              <FormControl style={CHILD_STYLE} key="dropdown-opacity">
-                <InputLabel key="dropdown-opacity-attribute" style={FONT_STYLE}>
-                  Select attribute for opacity
-                </InputLabel>
-                <Select
-                  labelId="dropdown-opacity-attribute"
-                  key="select-opacity-attribute-dropdown"
-                  value={tempSetting?.attributeForOpacity ?? ""}
-                  onChange={handleOpacityDropdownChange}
-                  MenuProps={{ style: { zIndex: 9999999 } }}
-                  style={FONT_STYLE}
-                >
-                  {opacityAttributeOptions.map((option, idx) => {
-                    return (
-                      <MenuItem
-                        value={option.value ?? ""}
-                        key={`opacity-option-${idx}`}
-                      >
-                        {option.label}
-                      </MenuItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
+            {tempSetting?.useOpacity && path && (
+              <OpacityAttribute fields={opacityFields} />
             )}
           </form>
         </div>
@@ -280,7 +219,7 @@ const PickerWrapper = styled.div<{ visible: boolean }>`
   visibility: ${(props) => (props.visible ? "visible" : "hidden")};
 `;
 
-const CHILD_STYLE = {
+export const CHILD_STYLE = {
   marginLeft: "2rem",
   marginTop: "-0.25rem",
 };
