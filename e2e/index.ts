@@ -2,7 +2,12 @@ import cypress from "cypress";
 import { config as dotEnvConfig } from "dotenv";
 import { createServer } from "http";
 import cypressConfig from "./cypress.config";
-import { DEFAULT_APP_PORT } from "./lib/constants";
+import {
+  DEFAULT_APP_ADDRESS,
+  DEFAULT_APP_HOSTNAME,
+  DEFAULT_APP_PORT,
+  GHOST_SERVER_TIMEOUT,
+} from "./lib/constants";
 
 dotEnvConfig({ path: ".env.cypress" });
 
@@ -41,7 +46,7 @@ const runCypress = async () => {
 // THIS IS A HACK
 const ghostServer = createServer((_, res) => {
   res.writeHead(200);
-}).listen(DEFAULT_APP_PORT, async () => {
+}).listen(DEFAULT_APP_PORT, DEFAULT_APP_HOSTNAME, async () => {
   // cypress does work with `null` baseUrl but that causes tests to run twice
   // it's because cypress caches test runner process for each unique baseUrl
   // todo: better strategy?
@@ -52,8 +57,9 @@ const ghostServer = createServer((_, res) => {
   await runCypress();
 });
 
+// todo: use a more reliable way to stop the ghost server
 setTimeout(() => {
   ghostServer.close();
   console.log("ghost fiftyone server stopped. ignore this message.");
   // this time needs to be just enough to allow cypress to start but not more
-}, 4000);
+}, GHOST_SERVER_TIMEOUT);

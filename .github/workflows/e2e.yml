@@ -8,10 +8,10 @@ on:
 
 jobs:
   test-e2e:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       FIFTYONE_DO_NOT_TRACK: true
-      ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
     defaults:
       run:
         shell: bash
@@ -30,11 +30,9 @@ jobs:
             requirements/test.txt
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
-        run: |
-          pip install -r requirements/github.txt
+        run: pip install -r requirements/github.txt
       - name: Install fiftyone
-        run: |
-          pip install .
+        run: pip install .
       - name: Configure
         id: test_config
         run: |
@@ -44,8 +42,7 @@ jobs:
         uses: FedericoCarboni/setup-ffmpeg@v2
 
       - name: Run e2e tests
-        uses: cypress-io/github-action@v5
-        with:
-          working-directory: e2e
-          start: yarn start
-          wait-on: 'http://localhost:8787'
+        run: |
+          npm install -g ts-node
+          yarn start
+        working-directory: ./e2e
