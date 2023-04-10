@@ -370,3 +370,8 @@ class ColorView(View):
             "compact": self.compact,
             "variant": self.variant,
         }
+
+
+class JSONView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
