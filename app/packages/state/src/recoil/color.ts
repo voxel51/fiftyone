@@ -121,8 +121,11 @@ export const customizeColorSelector = selectorFamily<
   set:
     (fieldPath) =>
     ({ set, reset }, newFieldSetting) => {
-      // if newFieldSetting is DefaultValue, the set method will delete the atom from the atomFamily and update customizeColorFields
-      if (newFieldSetting instanceof DefaultValue) {
+      // if newFieldSetting is DefaultValue or {}, the set method will delete the atom from the atomFamily and update customizeColorFields
+      if (
+        isEmptyObject(newFieldSetting) ||
+        newFieldSetting instanceof DefaultValue
+      ) {
         reset(atoms.customizeColors(fieldPath));
         set(atoms.customizeColorFields, (preValue) =>
           preValue.filter((field) => field !== fieldPath)
@@ -145,3 +148,7 @@ export const customizeColorSettings = selector<atoms.CustomizeColor[]>({
     return fields.map((field) => get(customizeColorSelector(field)));
   },
 });
+
+const isEmptyObject = (x) => {
+  return Object.keys(x).length === 0 && x.constructor === Object;
+};

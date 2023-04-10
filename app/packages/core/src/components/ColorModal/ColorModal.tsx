@@ -1,7 +1,12 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Draggable from "react-draggable";
 import ReactDOM from "react-dom";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
@@ -23,9 +28,14 @@ import {
   tempColorSetting,
   tempGlobalSetting,
   updateFieldSettings,
+  useOverwriteCustomizeColors,
   validateJSONSetting,
 } from "./utils";
-import { useOutsideClick } from "@fiftyone/state";
+import {
+  CustomizeColor,
+  customizeColorFields,
+  useOutsideClick,
+} from "@fiftyone/state";
 import useMeasure from "react-use-measure";
 import JSONViewer from "./JSONViewer";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
@@ -254,7 +264,11 @@ const ColorModal = () => {
                 <ColorModalTitle />
                 <CloseIcon onClick={() => setActiveColorModalField(null)} />
               </DraggableModalTitle>
-              <DraggableContent height={height}>
+              <DraggableContent
+                height={height}
+                width={width}
+                minWidth={minWidth}
+              >
                 {field === "global" && <GlobalSetting />}
                 {field === "json" && <JSONViewer />}
                 {typeof field !== "string" && field && (
@@ -287,10 +301,12 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
   const [tempGlobalSettings, setTempGlobalSettings] =
     useRecoilState(tempGlobalSetting);
   const [json, setJson] = useRecoilState(tempColorJSON);
+  const customizeColorFields = useRecoilValue(fos.customizeColorFields);
   const path =
     typeof activeColorModalField === "string"
       ? activeColorModalField
       : activeColorModalField?.path;
+
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const setAlpha = useSetRecoilState(fos.alpha(false));
   const setConfigColorBy = useSetRecoilState(
@@ -352,9 +368,35 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
         customizedColorSettings,
         eligibleFields
       );
-      validated && validated.forEach((update) => setCustomizeColor(update));
+      if (validated) {
+        resetCustomizeColors(validated);
+        validated && validated.forEach((update) => setCustomizeColor(update));
+      }
     }
   };
+
+  const resetCustomizeColors =
+    useOverwriteCustomizeColors(customizeColorFields);
+
+  function useOverwriteCustomizeColors(customizeColorFields: string[]) {
+    return useRecoilCallback(
+      ({ set, reset }) =>
+        (newValues: CustomizeColor[]) => {
+          const newKeys = newValues.map((v) => v.field);
+          customizeColorFields.forEach((key) => {
+            debugger;
+            if (newKeys.includes(key)) {
+              set(
+                fos.customizeColorSelector(key),
+                newValues.find((v) => v.field === key)!
+              );
+            } else {
+              set(fos.customizeColorSelector(key), {});
+            }
+          });
+        }
+    );
+  }
 
   if (!activeColorModalField || !tempGlobalSettings) return null;
 
