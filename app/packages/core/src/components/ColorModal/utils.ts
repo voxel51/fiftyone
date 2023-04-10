@@ -66,12 +66,13 @@ export const isString = (v: unknown) => typeof v === "string";
 export const isObject = (v: unknown) => typeof v === "object" && v != null;
 export const isBoolean = (v: unknown) => typeof v === "boolean";
 
-const getValidLabelColors = (labelColors: unknown[]) =>
-  (
-    labelColors?.filter((x) => {
-      x && isObject(x) && isString(x["name"]) && isString(x["color"]);
-    }) as { name: string; color: string }[]
-  )?.map(({ name, color }) => ({ name, color }));
+const getValidLabelColors = (labelColors: unknown[]) => {
+  const result = labelColors?.filter((x) => {
+    return x && isObject(x) && isString(x["name"]) && isString(x["color"]);
+  }) as { name: string; color: string }[];
+
+  return result;
+};
 
 const isValidFieldPath = (str: string, fields: Field[]) =>
   fields.map((f) => f.path).includes(str);

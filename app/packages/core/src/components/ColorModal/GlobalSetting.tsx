@@ -19,7 +19,6 @@ import {
 
 const GlobalSetting: React.FC = ({}) => {
   const [global, setGlobal] = useRecoilState(tempGlobalSetting);
-
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     setGlobal((s) => ({ ...cloneDeep(s), opacity: newValue as number }));
   };

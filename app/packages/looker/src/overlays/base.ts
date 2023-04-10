@@ -123,7 +123,7 @@ export abstract class CoordinateOverlay<
             ? setting.colors
             : coloring.pool;
           // check if this label has a assigned color, use it if it is a valid color
-          console.info(setting.labelColors, this.label, key);
+          // console.info(setting.labelColors, this.label, key);
           const labelColor = setting.labelColors?.find(
             (l) => l.name == this.label[key].toString()
           )?.color;

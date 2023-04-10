@@ -14,7 +14,7 @@ import {
 } from "@fiftyone/utilities";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
-import { SectionWrapper, tempColorSetting } from "./utils";
+import { isSameArray, SectionWrapper, tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
 import OpacityAttribute from "./controls/OpacityAttribute";
 import ColorAttribute from "./controls/ColorAttribute";
@@ -97,7 +97,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         });
       }
     }
-  }, [path]);
+  }, [path, fullSetting]);
 
   return (
     <div style={{ margin: "1rem" }}>
