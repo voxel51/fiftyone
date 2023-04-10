@@ -10,8 +10,8 @@ const componentsByType = {
 const componentByView = {
   RadioGroup: "RadioView",
   Dropdown: "DropdownView",
+  CodeEditorView: "CodeEditorView",
 };
-
 const typeMap = {
   ObjectType: "object",
   Enum: "string",
@@ -22,7 +22,6 @@ const typeMap = {
   OneOf: "oneOf",
   Tuple: "array",
 };
-
 const unsupportedView = "UnsupportedView";
 
 function getTypeName(property) {

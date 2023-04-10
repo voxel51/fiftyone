@@ -2,6 +2,22 @@
     "type": {
         "name": "Object",
         "properties": {
+            "jsEditor": {
+                "type": { "name": "String" },
+                "defaultValue": "Winter",
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "CodeEditorView",
+                    "label": "JS editor",
+                    "description": "JS editor with auto-complete and syntax highlighting",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "language": "javascript",
+                    "readOnly": false
+                }
+            },
             "oneoffs": {
                 "type": {
                     "name": "OneOf",
@@ -18,7 +34,7 @@
                         }
                     ]
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -50,7 +66,7 @@
                     "name": "Enum",
                     "values": ["cvat", "labelbox", "labelstudio"]
                 },
-                "default": "cvat",
+                "defaultValue": "cvat",
                 "required": true,
                 "choices": null,
                 "view": {
@@ -88,7 +104,7 @@
                         "predictions"
                     ]
                 },
-                "default": "filepath",
+                "defaultValue": "filepath",
                 "required": true,
                 "choices": null,
                 "view": {
@@ -110,7 +126,7 @@
                         { "name": "Boolean" }
                     ]
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -152,7 +168,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": false,
+                "defaultValue": false,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -164,7 +180,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": false,
+                "defaultValue": false,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -176,7 +192,7 @@
                 "type": {
                     "name": "String"
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": true,
                 "choices": null,
                 "view": {
@@ -196,7 +212,7 @@
                         "segmentations"
                     ]
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": true,
                 "choices": null,
                 "view": {
@@ -209,7 +225,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": false,
+                "defaultValue": false,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -225,7 +241,7 @@
                     "min_items": 1,
                     "max_items": null
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": true,
                 "choices": null,
                 "view": {
@@ -235,9 +251,9 @@
             "attributes_style": {
                 "type": {
                     "name": "Enum",
-                    "values": ["default", "list", "dict"]
+                    "values": ["defaultValue", "list", "dict"]
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -250,7 +266,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": null,
+                "defaultValue": null,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -261,7 +277,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": true,
+                "defaultValue": true,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -272,7 +288,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": true,
+                "defaultValue": true,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -283,7 +299,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": true,
+                "defaultValue": true,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -294,7 +310,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": true,
+                "defaultValue": true,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -305,7 +321,7 @@
                 "type": {
                     "name": "Boolean"
                 },
-                "default": true,
+                "defaultValue": true,
                 "required": false,
                 "choices": null,
                 "view": {
@@ -315,7 +331,7 @@
         },
         "needsResolution": false
     },
-    "default": null,
+    "defaultValue": null,
     "required": false,
     "choices": null,
     "view": {
