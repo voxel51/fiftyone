@@ -2,6 +2,49 @@
     "type": {
         "name": "Object",
         "properties": {
+            "tags": {
+                "type": { "name": "String" },
+                "defaultValue": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "AutocompleteView",
+                    "label": "Tags",
+                    "description": "Select a tag or type a custom tag",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "choices": [
+                        {
+                            "name": "Choice",
+                            "label": "Tag one",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "value": "one"
+                        },
+                        {
+                            "name": "Choice",
+                            "label": "Tag two",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "value": "two"
+                        },
+                        {
+                            "name": "Choice",
+                            "label": "Tag three",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "value": "three"
+                        }
+                    ]
+                }
+            },
             "json": {
                 "type": { "name": "String" },
                 "defaultValue": "{\"name\": \"Full Name\"}",
