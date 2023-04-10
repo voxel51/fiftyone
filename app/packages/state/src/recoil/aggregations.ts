@@ -38,12 +38,6 @@ export const aggregationQuery = graphQLSelectorFamily<
   variables:
     ({ extended, modal, paths, root = false, mixed = false }) =>
     ({ get }) => {
-      const dataset = get(selectors.datasetName);
-
-      if (!dataset) {
-        throw new Promise(() => null);
-      }
-
       mixed = mixed || get(groupStatistics(modal)) === "group";
       const group = get(groupId) || null;
       const aggForm = {

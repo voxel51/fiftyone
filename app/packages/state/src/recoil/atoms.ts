@@ -10,11 +10,9 @@ import {
   sampleFieldsFragment,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { StrictField } from "@fiftyone/utilities";
-import * as rfn from "@recoiljs/refine";
 import { atom, atomFamily } from "recoil";
-import { syncEffect } from "recoil-sync";
+import { sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
 import { State } from "./types";
 
@@ -152,12 +150,11 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
  */
 export const dataset = graphQLSyncFragmentAtom<
   datasetFragment$key,
-  State.Dataset
+  State.Dataset | null
 >(
   {
     fragments: [datasetFragment],
     keys: ["dataset"],
-    storeKey: "session",
     read: (dataset) => {
       return { ...transformDataset(dataset) };
     },
@@ -170,7 +167,6 @@ export const dataset = graphQLSyncFragmentAtom<
 
 export const mediaType = graphQLSyncFragmentAtom<mediaTypeFragment$key, string>(
   {
-    storeKey: "session",
     fragments: [datasetFragment, mediaTypeFragment],
     keys: ["dataset"],
     read: (data) => data.mediaType,
@@ -185,10 +181,9 @@ export const sampleFields = graphQLSyncFragmentAtom<
   StrictField[]
 >(
   {
-    storeKey: "session",
     fragments: [datasetFragment, sampleFieldsFragment],
     keys: ["dataset"],
-    read: (dataset) => collapseFields(dataset.sampleFields || []),
+    read: (dataset) => collapseFields(dataset?.sampleFields || []),
   },
   {
     key: "sampleFields",
@@ -201,10 +196,9 @@ export const frameFields = graphQLSyncFragmentAtom<
   StrictField[]
 >(
   {
-    storeKey: "session",
     fragments: [datasetFragment, frameFieldsFragment],
     keys: ["dataset"],
-    read: (data) => collapseFields(data.frameFields || []),
+    read: (data) => collapseFields(data?.frameFields || []),
   },
   {
     key: "frameFields",
@@ -217,33 +211,14 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
-export const selectedLabels = atom({
+export const selectedLabels = sessionAtom({
   key: "selectedLabels",
   default: [],
-  effects: [
-    syncEffect({
-      storeKey: "session",
-      refine: rfn.writableArray(
-        rfn.object({
-          field: rfn.string(),
-          frameNumber: rfn.voidable(rfn.number()),
-          labelId: rfn.string(),
-          sampleId: rfn.string(),
-        })
-      ),
-    }),
-  ],
 });
 
-export const selectedSamples = atom({
+export const selectedSamples = sessionAtom({
   key: "selectedSamples",
   default: new Set<string>(),
-  effects: [
-    syncEffect({
-      storeKey: "session",
-      refine: rfn.set(rfn.string()),
-    }),
-  ],
 });
 
 export const selectedSampleObjects = atom<Map<string, Sample>>({
@@ -382,12 +357,7 @@ export const theme = atom<"dark" | "light">({
 
 export const canEditSavedViews = atom({
   key: "canEditSavedViews",
-  default: true,
-});
-
-export const canEditCustomColors = atom({
-  key: "canEditCustomColors",
-  default: true,
+  default: false,
 });
 
 export const compactLayout = atom({
@@ -397,15 +367,23 @@ export const compactLayout = atom({
 
 export const readOnly = atom({
   key: "readOnly",
+
   default: false,
 });
 
-export const sessionSpaces = atom<SpaceNodeJSON>({
+export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
-  effects: [
-    syncEffect({
-      storeKey: "session",
-      refine: rfn.custom<SpaceNodeJSON>((v) => v as SpaceNodeJSON),
-    }),
-  ],
+  default: {
+    id: "root",
+    children: [
+      {
+        id: "default-samples-node",
+        children: [],
+        type: "Samples",
+        pinned: true,
+      },
+    ],
+    type: "panel-container",
+    activeChild: "default-samples-node",
+  },
 });

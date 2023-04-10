@@ -1,4 +1,4 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useRecoilCallback } from "recoil";
 
 import * as fos from "../recoil";
 
@@ -19,15 +19,17 @@ import * as fos from "../recoil";
  */
 
 export default () => {
-  return useRecoilTransaction_UNSTABLE(
-    ({ reset, set, get }) =>
-      () => {
-        const fullscreen = get(fos.fullscreen);
+  return useRecoilCallback(
+    ({ reset, set, snapshot }) =>
+      async () => {
+        const fullscreen = await snapshot.getPromise(fos.fullscreen);
         if (fullscreen) {
           return;
         }
 
-        const currentOptions = get(fos.savedLookerOptions);
+        const currentOptions = await snapshot.getPromise(
+          fos.savedLookerOptions
+        );
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
         reset(fos.selectedLabels);
         reset(fos.hiddenLabels);

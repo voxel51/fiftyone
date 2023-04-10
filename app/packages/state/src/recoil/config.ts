@@ -1,20 +1,28 @@
 import {
   configFragment,
   configFragment$data,
-  graphQLFragmentEffect,
+  configFragment$key,
+  graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { RGB } from "@fiftyone/utilities";
-import { atom, selector } from "recoil";
+import { selector } from "recoil";
 
-const configData = atom<configFragment$data>({
-  key: "configData",
-  default: null,
-  effects: [graphQLFragmentEffect(configFragment)],
-});
+const configData = graphQLSyncFragmentAtom<
+  configFragment$key,
+  configFragment$data
+>(
+  { fragments: [configFragment] },
+  {
+    key: "configData",
+    default: null,
+  }
+);
 
 export const colorscale = selector<RGB[]>({
   key: "colorscale",
-  get: ({ get }) => get(configData).colorscale as RGB[],
+  get: ({ get }) => {
+    return get(configData).colorscale as RGB[];
+  },
 });
 
 export const config = selector({

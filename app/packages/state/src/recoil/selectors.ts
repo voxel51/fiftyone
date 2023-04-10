@@ -1,13 +1,15 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
-import { KeypointSkeleton, MaskTargets } from "@fiftyone/looker/src/state";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
+import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import {
-  isRgbMaskTargets,
-  normalizeMaskTargetsCase,
-} from "@fiftyone/looker/src/overlays/util";
-import { StateForm } from "@fiftyone/relay";
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtom,
+  StateForm,
+} from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
@@ -19,12 +21,22 @@ import { fieldSchema } from "./schema";
 import { State } from "./types";
 import { isPatchesView } from "./view";
 
-export const datasetName = selector<string | undefined>({
-  key: "datasetName",
-  get: ({ get }) => {
-    return get(atoms.dataset)?.name;
+export const datasetName = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  string | null
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    read: (dataset) => {
+      return dataset?.name || null;
+    },
   },
-});
+  {
+    key: "datasetName",
+    default: null,
+  }
+);
 
 export const isNotebook = selector<boolean>({
   key: "isNotebook",
@@ -91,9 +103,7 @@ export const datasetAppConfig = selector<State.DatasetAppConfig>({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    return normalizeMaskTargetsCase(
-      (get(atoms.dataset).defaultMaskTargets || {}) as MaskTargets
-    );
+    return get(atoms.dataset)?.defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -103,22 +113,11 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = normalizeMaskTargetsCase(
-      (get(atoms.dataset).defaultMaskTargets || {}) as MaskTargets
-    );
+    const defaults = get(atoms.dataset)?.defaultMaskTargets || {};
     const labelTargets = get(atoms.dataset)?.maskTargets || {};
-    const labelTargetsCaseNormalized = Object.entries(labelTargets).reduce(
-      (acc, [fieldName, fieldMaskTargets]) => {
-        acc[fieldName] = normalizeMaskTargetsCase(
-          fieldMaskTargets as MaskTargets
-        );
-        return acc;
-      },
-      {}
-    );
     return {
       defaults,
-      fields: labelTargetsCaseNormalized,
+      fields: labelTargets,
     };
   },
   cachePolicy_UNSTABLE: {
@@ -447,7 +446,7 @@ export const selectedPatchIds = selectorFamily({
       const modal = get(atoms.modal);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
-      const selectedSampleObjects = get(atoms.selectedSampleObjects);
+      const selectedSampleObjects = sampleSto;
 
       if (isPatches || modal) {
         return selectedSamples;

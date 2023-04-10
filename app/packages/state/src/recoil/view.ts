@@ -1,4 +1,3 @@
-import * as rfn from "@recoiljs/refine";
 import { atom, selector } from "recoil";
 
 import {
@@ -17,7 +16,6 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
   stageDefinitionsFragment$data["stageDefinitions"]
 >(
   {
-    storeKey: "session",
     fragments: [stageDefinitionsFragment],
     read: (data) => {
       return data.stageDefinitions;
@@ -30,24 +28,9 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
   {
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
-    storeKey: "session",
-    read: (data) => data.stages,
-    refine: rfn.writableArray(
-      rfn.writableObject({
-        _cls: rfn.string(),
-        kwargs: rfn.writableArray(
-          rfn.tuple(
-            rfn.string(),
-            rfn.nullable(
-              rfn.custom<unknown>((v) => {
-                return v;
-              })
-            )
-          ) as rfn.Checker<[string, unknown]>
-        ),
-        _uuid: rfn.optional(rfn.string()),
-      })
-    ),
+    read: (data) => {
+      return data?.stages || [];
+    },
   },
   {
     key: "view",
@@ -62,8 +45,6 @@ export const viewCls = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
     read: (data) => data.viewCls,
-    storeKey: "session",
-    refine: rfn.nullable(rfn.string()),
   },
   {
     key: "viewCls",
@@ -78,8 +59,6 @@ export const viewName = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
     read: (data) => data.viewName,
-    storeKey: "session",
-    refine: rfn.nullable(rfn.string()),
   },
   {
     key: "viewName",

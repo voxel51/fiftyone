@@ -1,6 +1,6 @@
 import Flashlight from "@fiftyone/flashlight";
 import { Sample } from "@fiftyone/looker/src/state";
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useRecoilCallback } from "recoil";
 import { selectedSampleObjects, selectedSamples } from "../recoil/atoms";
 
 const argFact = (compareFn) => (array) =>
@@ -69,14 +69,16 @@ export interface SelectThumbnailData {
 }
 
 export default () => {
-  return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) =>
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
       async (
         flashlight: Flashlight<number>,
         { shiftKey, sampleId, sample }: SelectThumbnailData
       ) => {
-        let selected = new Set(get(selectedSamples));
-        const selectedObjects = new Map(get(selectedSampleObjects));
+        let selected = new Set(await snapshot.getPromise(selectedSamples));
+        const selectedObjects = new Map(
+          await snapshot.getPromise(selectedSampleObjects)
+        );
         const items = [...selected];
         const map = flashlight.itemIndexes;
         const index = map[sampleId];

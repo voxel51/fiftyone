@@ -3,6 +3,7 @@ import {
   frameFieldsFragment,
   frameFieldsFragment$key,
   graphQLSyncFragmentAtomFamily,
+  readFragment,
   sampleFieldsFragment,
   sampleFieldsFragment$key,
   setSidebarGroups,
@@ -23,7 +24,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { commitMutation, readInlineData, VariablesOf } from "react-relay";
+import { commitMutation, VariablesOf } from "react-relay";
 import {
   atomFamily,
   DefaultValue,
@@ -355,22 +356,19 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
       {
         fragments: [datasetFragment, sidebarGroupsFragment],
         keys: ["dataset"],
-        storeKey: "session",
         sync: (modal) => !modal,
         read: (data) => {
           config = data.appConfig?.sidebarGroups;
           current = resolveGroups(
             collapseFields(
-              readInlineData(
+              readFragment(
                 sampleFieldsFragment,
                 data as sampleFieldsFragment$key
               ).sampleFields
             ),
             collapseFields(
-              readInlineData(
-                frameFieldsFragment,
-                data as frameFieldsFragment$key
-              ).frameFields
+              readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
+                .frameFields
             ),
             current,
             config

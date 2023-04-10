@@ -1,3 +1,4 @@
+import { savedViewsFragment$key } from "@fiftyone/relay";
 import {
   clone,
   Field,
@@ -7,7 +8,7 @@ import {
   Schema,
   StrictField,
 } from "@fiftyone/utilities";
-import { MutableRefObject } from "react";
+import React, { MutableRefObject } from "react";
 import {
   Environment,
   GraphQLResponse,
@@ -162,3 +163,7 @@ export const getEnvironment = () =>
   });
 
 let currentEnvironment: Environment = getEnvironment();
+
+export const datasetQueryContext = React.createContext<
+  savedViewsFragment$key | undefined
+>(undefined);
