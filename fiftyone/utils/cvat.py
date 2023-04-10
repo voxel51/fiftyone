@@ -3592,11 +3592,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             anno_filepath,
         )
 
+    def labels_url(self, task_id):
+        return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
+
     def jobs_url(self, task_id):
-        return "%s/jobs" % self.task_url(task_id)
+        return "%s/jobs?task_id=%d" % (self.base_api_url, task_id)
 
     def job_url(self, task_id, job_id):
-        return "%s/%d" % (self.jobs_url(task_id), job_id)
+        return self.taskless_job_url(job_id)
+        #return "%s/%d" % (self.jobs_url(task_id), job_id)
 
     def taskless_job_url(self, job_id):
         return "%s/jobs/%d" % (self.base_api_url, job_id)
@@ -3699,6 +3703,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _make_request(
         self, request_method, url, print_error_info=True, **kwargs
     ):
+        logger.debug(f' {request_method.__name__}: {url}')
         response = request_method(url, verify=False, **kwargs)
         if print_error_info:
             self._validate(response, kwargs)
@@ -3741,7 +3746,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(self._session.post, url, **kwargs)
+        resp = self._make_request(self._session.post, url, **kwargs)
+        return resp
 
     def put(self, url, **kwargs):
         """Sends a PUT request to the given CVAT API URL.
@@ -3934,16 +3940,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of task IDs
         """
         resp = self.get(self.project_url(project_id)).json()
-        tasks = []
-        for task in resp.get("tasks", []):
-            if isinstance(task, int):
-                # For CVATv2 servers, task ids are stored directly as an array
-                # of integers
-                tasks.append(task)
-            else:
-                # For CVATv1 servers, project tasks are dictionaries we need to
-                # exctract "id" from
-                tasks.append(task["id"])
+        val = resp.get("tasks", [])
+
+        if isinstance(val, dict):
+            tasks = self._get_paginated_results_2(val['url'])
+            tasks = [x['id'] for x in tasks]
+        else:
+            # @todo merge/cleanup below with above
+
+            tasks = []
+            for task in val:
+                if isinstance(task, int):
+                    # For CVATv2 servers, task ids are stored directly as an array
+                    # of integers
+                    tasks.append(task)
+                else:
+                    # For CVATv1 servers, project tasks are dictionaries we need to
+                    # exctract "id" from
+                    tasks.append(task["id"])
         return tasks
 
     def create_task(
@@ -4005,9 +4019,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_resp = self.post(self.tasks_url, json=task_json).json()
         task_id = task_resp["id"]
 
+        lbl = task_resp['labels']
+        lbl_count = lbl['count']
+        lbl_url = lbl['url']
+        labels = self._get_paginated_results_2(lbl_url)
+        #lbl_resp = self.get(lbl_url).json()
+        #labels = lbl_resp['results']
+
+        # @todo: see _get_attr_class_maps
         class_id_map = {}
         attr_id_map = {}
-        for label in task_resp["labels"]:
+        for label in labels: # task_resp["labels"]:
             class_id = label["id"]
             class_id_map[label["name"]] = class_id
             attr_id_map[class_id] = {}
@@ -4154,14 +4176,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 f.close()
 
         # @todo is this loop really needed?
+        # AL 20230402 testing on a local cvat server this polling loop does 
+        # repeat a few times before jobs show up
         job_ids = []
-        while not job_ids:
-            job_resp = self.get(self.jobs_url(task_id))
-            job_resp_json = job_resp.json()
-            if "results" in job_resp_json:
-                job_resp_json = job_resp_json["results"]
+        while not job_ids:            
+            url = self.jobs_url(task_id)
+            jobs = self._get_paginated_results_2(url)
+            #job_resp = self.get(self.jobs_url(task_id))
+            #job_resp_json = job_resp.json()
+            #if "results" in job_resp_json:
+            #    job_resp_json = job_resp_json["results"]
 
-            job_ids = [j["id"] for j in job_resp_json]
+            job_ids = [j["id"] for j in jobs]
 
         if job_assignees is not None:
             num_assignees = len(job_assignees)
@@ -4599,20 +4625,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return annotations
 
     def _get_attr_class_maps(self, task_id):
-        task_json = self.get(self.task_url(task_id)).json()
+        #lbl_json = self.get(self.labels_url(task_id)).json()
+        url = self.labels_url(task_id)
+        labels = self._get_paginated_results_2(url)
 
         _class_map = {}
         attr_id_map = {}
-        for label in task_json["labels"]:
+        for label in labels: # lbl_json["results"]:
             _class_map[label["id"]] = label["name"]
             attr_id_map[label["id"]] = {
                 i["name"]: i["id"] for i in label["attributes"]
             }
 
+        # AL: not sure why we didn't just reverse keys/vals initially
         class_map_rev = {n: i for i, n in _class_map.items()}
 
         return attr_id_map, class_map_rev
-
+    
     def _get_paginated_results(self, base_url, get_page_url, value=None):
         results = []
         page_number = 1
@@ -4632,6 +4661,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             page = get_page_url(page_number)
 
         return results
+    
+    def _get_paginated_results_2(self, base_url):
+
+        res_all = []
+        url = base_url
+        while url is not None:
+            response = self.get(url).json()
+            if 'results' not in response:
+                break
+            res_all.extend(response['results'])
+            url = response['next']
+        
+        return res_all
+
 
     def _get_value_from_search(
         self, search_url_fcn, target, target_key, value_key
@@ -4665,14 +4708,36 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             raise ValueError("Project '%s' not found" % project_id)
 
         resp = self.get(self.project_url(project_id)).json()
-        return resp["labels"]
+        #return resp["labels"]
+    
+        lbl = resp['labels']
+        #lbl_count = lbl['count']
+        lbl_url = lbl['url']
+
+        labels = self._get_paginated_results_2(lbl_url)
+                                    
+        #lbl_resp = self.get(lbl_url).json()
+        #labels = lbl_resp['results']        
+        return labels
 
     def _get_task_labels(self, task_id):
         resp = self.get(self.task_url(task_id)).json()
         if "labels" not in resp:
             raise ValueError("Task '%s' not found" % task_id)
 
-        return resp["labels"]
+        #return resp["labels"]
+    
+        lbl = resp['labels']
+        #lbl_count = lbl['count']
+        lbl_url = lbl['url']
+        #lbl_resp = self.get(lbl_url).json()
+        #labels = lbl_resp['results']
+
+        labels = self._get_paginated_results_2(lbl_url)
+
+        
+        return labels
+
 
     def _parse_project_details(self, project_name, project_id):
         if project_id is not None:
