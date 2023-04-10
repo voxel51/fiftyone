@@ -7,11 +7,11 @@ import Header from "./Header";
 export default function ColorView(props) {
   const { onChange, path, schema } = props;
   const { view = {} } = schema;
-  const { compact, variant = "ChromePicker" } = view;
+  const { compact, variant } = view;
   const [open, setOpen] = useState(false);
   const [color, setColor] = useState(defaultColor);
   const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
-  const Component = ColorPickers[variant];
+  const Component = ColorPickers[variant] || ColorPickers.ChromePicker;
 
   const { bgColor, hexColor } = formatColor(color);
 
