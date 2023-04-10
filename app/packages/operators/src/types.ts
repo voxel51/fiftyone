@@ -163,6 +163,15 @@ export class Enum extends BaseType {
     return new Enum(json.values);
   }
 }
+export class Tuple extends BaseType {
+  constructor(public items: [ANY_TYPE]) {
+    super();
+  }
+
+  static fromJSON({ items }) {
+    return new Tuple(items.map(typeFromJSON));
+  }
+}
 
 type BasicView = {
   label?: string;
@@ -280,7 +289,16 @@ class Button extends View {
 export class SampleID extends String {}
 
 // NOTE: this should always match fiftyone/operators/types.py
-export const TYPES = [ObjectType, String, Boolean, Number, List, Enum, OneOf];
+export const TYPES = [
+  ObjectType,
+  String,
+  Boolean,
+  Number,
+  List,
+  Enum,
+  OneOf,
+  Tuple,
+];
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
   if (name === "Object") {
