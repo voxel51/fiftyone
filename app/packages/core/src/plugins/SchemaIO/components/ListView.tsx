@@ -5,7 +5,6 @@ import Header from "./Header";
 import Button from "./Button";
 import EmptyState from "./EmptyState";
 import DynamicIO from "./DynamicIO";
-import { log } from "../utils";
 
 export default function ListView(props) {
   const { schema, onChange, path } = props;
