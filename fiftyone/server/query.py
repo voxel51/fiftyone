@@ -127,7 +127,6 @@ class BrainRunConfig(RunConfig):
             return cls(
                 embeddings_field=self.embeddings_field,
                 patches_field=self.patches_field,
-                supports_prompts=self.supports_prompts,
             )
         except:
             return None
