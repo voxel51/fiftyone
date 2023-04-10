@@ -5,6 +5,7 @@ const componentsByType = {
   Number: "FieldView",
   List: "ListView",
   OneOf: "OneOfView",
+  Tuple: "TupleView",
 };
 const componentByView = {
   RadioGroup: "RadioView",
@@ -19,6 +20,7 @@ const typeMap = {
   Number: "number",
   List: "array",
   OneOf: "oneOf",
+  Tuple: "array",
 };
 
 const unsupportedView = "UnsupportedView";
@@ -64,6 +66,12 @@ function getSchema(property) {
 
   if (typeName === "OneOf") {
     schema.types = property.type.types.map((type) => getSchema({ type }));
+  }
+
+  // todo: use "prefixItems","minItems","maxItems", "items: false" for proper
+  //  json schema validation support
+  if (typeName === "Tuple") {
+    schema.items = property.type.items.map((type) => getSchema({ type }));
   }
 
   return schema;
