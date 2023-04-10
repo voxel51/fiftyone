@@ -39,6 +39,7 @@ import {
 import useMeasure from "react-use-measure";
 import JSONViewer from "./JSONViewer";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { cloneDeep } from "lodash";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -201,12 +202,13 @@ const ColorModal = () => {
   }, [activeColorModalField]);
 
   const [tempGlobal, setTempGlobal] = useRecoilState(tempGlobalSetting);
-
+  const json = useRecoilValue(tempColorJSON);
   const height = activeColorModalField == "json" ? "80vh" : "60vh";
   const width = activeColorModalField == "json" ? "80vw" : "50vw";
   const minWidth = activeColorModalField == "json" ? "600px" : "500px";
 
-  // initialize tempGlobalSetting on modal mount,
+  // initialize tempGlobalSetting on modal mount
+  // when json changes update the colors accordingly
   useEffect(() => {
     if (!tempGlobal || JSON.stringify(tempGlobal) === "{}") {
       const setting = {
@@ -217,8 +219,13 @@ const ColorModal = () => {
         showSkeleton,
       };
       setTempGlobal(setting);
+    } else {
+      setTempGlobal((prev) => ({
+        ...cloneDeep(prev),
+        colors: json.colorScheme,
+      }));
     }
-  }, []);
+  }, [json.colorScheme]);
 
   const ColorModalTitle = () => {
     return (
@@ -327,6 +334,7 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
     setActiveColorModalField(null);
     setTempColor(null);
     setTempGlobalSettings(null);
+    setJson(null);
   };
 
   const onSave = () => {
@@ -362,6 +370,7 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
       const { colorScheme, customizedColorSettings } = json;
       // update color palette
       const validColors = colorScheme.filter((c) => isValidColor(c));
+      console.info(validColors);
       validColors.length > 0 && setColoring(validColors);
       // validate customizedColorSettings
       const validated = validateJSONSetting(

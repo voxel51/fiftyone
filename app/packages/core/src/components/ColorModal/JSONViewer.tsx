@@ -1,11 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { cloneDeep } from "lodash";
 import Editor from "@monaco-editor/react";
 import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 
-import { SectionWrapper, tempColorJSON, tempGlobalSetting } from "./utils";
+import {
+  SectionWrapper,
+  tempColorJSON,
+  tempColorSetting,
+  tempGlobalSetting,
+} from "./utils";
 import { customizeColorSettings } from "@fiftyone/state";
 import { ActionOption } from "../Actions/Common";
 import { useTheme } from "@fiftyone/components";
@@ -15,9 +20,10 @@ const JSONViewer: React.FC = ({}) => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const global = useRecoilValue(tempGlobalSetting);
+  const [global, setGlobal] = useRecoilState(tempGlobalSetting);
   const fullSetting = useRecoilValue(customizeColorSettings);
   const [data, setData] = useRecoilState(tempColorJSON);
+  const resetTempCustomizeColor = useSetRecoilState(tempColorSetting);
 
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
@@ -25,11 +31,13 @@ const JSONViewer: React.FC = ({}) => {
   };
 
   useEffect(() => {
+    // reset the other temp settings as tab changes
+    resetTempCustomizeColor(null);
     setData({
       colorScheme: global.colors,
       customizedColorSettings: fullSetting,
     });
-  }, [fullSetting, global.colors]);
+  }, [fullSetting, global]);
 
   if (!global) return null;
   return (
