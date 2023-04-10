@@ -12,6 +12,7 @@ const componentByView = {
   Dropdown: "DropdownView",
   CodeEditorView: "CodeEditorView",
   ColorView: "ColorView",
+  TabsView: "TabsView",
 };
 const typeMap = {
   ObjectType: "object",
