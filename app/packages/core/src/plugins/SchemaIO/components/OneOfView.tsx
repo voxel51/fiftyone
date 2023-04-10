@@ -3,15 +3,12 @@ import React, { useState } from "react";
 import Header from "./Header";
 import Tooltip from "./Tooltip";
 import DynamicIO from "./DynamicIO";
-import { log } from "../utils";
 
 export default function OneOfView(props) {
   const { schema, path, onChange } = props;
   const { types, view } = schema;
   const { oneof = [] } = view;
   const [tab, setTab] = useState(0);
-
-  log({ oneof });
 
   return (
     <Box>
