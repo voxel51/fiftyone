@@ -5,11 +5,11 @@ import { CodeBlock } from "@fiftyone/components";
 
 export default function JSONView(props) {
   const { text, schema } = props;
-  const { view = {} } = schema;
+  const { defaultValue, view = {} } = schema;
   return (
     <Box>
       <Header {...view} />
-      <CodeBlock language="javascript" text={text} content />
+      <CodeBlock language="javascript" text={text || defaultValue} content />
     </Box>
   );
 }
