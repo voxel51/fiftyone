@@ -7,6 +7,7 @@ import ListView from "../components/ListView";
 import OneOfView from "../components/OneOfView";
 import UnsupportedView from "../components/UnsupportedView";
 import TuplesView from "../components/TuplesView";
+import CodeEditorView from "../components/CodeEditorView";
 
 export function log(...args) {
   console.groupCollapsed(">>>", ...args);
@@ -30,6 +31,7 @@ const componentsMap = {
   DropdownView: DropdownView,
   OneOfView: OneOfView,
   TupleView: TuplesView,
+  CodeEditorView: CodeEditorView,
   UnsupportedView: UnsupportedView,
 };
 
