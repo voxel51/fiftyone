@@ -34,12 +34,6 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view
 
 
-@gql.type
-class ViewResponse:
-    view: BSONArray
-    dataset: Dataset
-
-
 @gql.input
 class SidebarGroupInput(SidebarGroup):
     pass
@@ -148,12 +142,11 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        dataset_name: t.Optional[str] = None,
+        dataset_name: str,
         view: t.Optional[BSONArray] = None,
         saved_view_slug: t.Optional[str] = None,
         form: t.Optional[StateForm] = None,
-        info: Info = Info,
-    ) -> ViewResponse:
+    ) -> t.Union[BSONArray, None]:
         state = get_state()
         state.selected = []
         state.selected_labels = []
@@ -164,6 +157,12 @@ class Mutation:
             await dispatch_event(subscription, StateUpdate(state=state))
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+            except:
+                pass
 
         # Load saved views
         if saved_view_slug is not None:
@@ -203,16 +202,7 @@ class Mutation:
         if state and state.view:
             final_view = state.view._serialize()
 
-        dataset = await Dataset.resolver(
-            name=dataset_name,
-            view=final_view,
-            saved_view_slug=slug,
-            info=info,
-        )
-        return ViewResponse(
-            dataset=dataset,
-            view=final_view,
-        )
+        return final_view
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
