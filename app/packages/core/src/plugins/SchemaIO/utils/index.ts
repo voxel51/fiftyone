@@ -6,9 +6,12 @@ import FieldView from "../components/FieldView";
 import ListView from "../components/ListView";
 import OneOfView from "../components/OneOfView";
 import UnsupportedView from "../components/UnsupportedView";
+import TuplesView from "../components/TuplesView";
 
 export function log(...args) {
-  console.log(">>>", ...args);
+  console.groupCollapsed(">>>", ...args);
+  console.trace();
+  console.groupEnd();
 }
 
 export function getPath(basePath, propertyKey) {
@@ -26,6 +29,7 @@ const componentsMap = {
   RadioView: RadioView,
   DropdownView: DropdownView,
   OneOfView: OneOfView,
+  TupleView: TuplesView,
   UnsupportedView: UnsupportedView,
 };
 

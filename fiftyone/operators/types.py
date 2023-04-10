@@ -175,6 +175,17 @@ class OneOf(BaseType):
         }
 
 
+class Tuple(BaseType):
+    def __init__(self, *items):
+        self.items = items
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "items": [item.to_json() for item in self.items],
+        }
+
+
 #
 # Trigger
 #
@@ -318,4 +329,16 @@ class ListView(View):
         return {
             **super().to_json(),
             "items": self.items.to_json() if self.items else None,
+        }
+
+
+class TupleView(View):
+    def __init__(self, *itemsView, **options):
+        super().__init__(**options)
+        self.items = itemsView
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "items": [item.to_json() for item in self.items],
         }
