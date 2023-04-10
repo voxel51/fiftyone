@@ -27,7 +27,11 @@ __GIST_CONTENT_URL = {
 __LOCAL_HOME_DIR = os.path.expanduser("~")
 # ====================== Logging ======================
 
-log_level = logging.DEBUG
+log_level = (
+    logging.DEBUG
+    if os.environ.get("FIFTYONE_ENABLE_DEBUG_LOGGING", False)
+    else logging.INFO
+)
 log_format = "%(message)s"
 logger = logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -37,17 +41,15 @@ log_formatter = logging.Formatter(log_format)
 log_handler.setFormatter(log_formatter)
 logger.addHandler(log_handler)
 
-# ====================== HTTP abstraction ======================
 
-
-def http(url, method="get", headers=None):
-    """Wraps HTTP/S calls in one place
+def http(url: str, headers=None, method="get") -> Optional[dict]:
+    """Makes a request to the given url
     Args:
         url (str):
         headers (dict):
         method (str):
     Returns:
-        dict: A dict containing 'code', 'headers', 'body' of HTTP response
+        dict: A dict containing 'code', 'headers', 'body' of HTTP response.
     """
     if not headers:
         headers = {"User-Agent": "fiftyone"}
@@ -62,8 +64,14 @@ def http(url, method="get", headers=None):
                 "body": resp.text,
             }
     except requests.exceptions.HTTPError as he:
-        return {"error": he, "code": resp.status_code}
+        return {
+            "error": he,
+            "code": resp.status_code,
+            "headers": {},
+            "body": None,
+        }
     except Exception as e:
+        # Should not get here...
         raise ValueError(f"Uncaught Error: {e}")
 
 
@@ -84,8 +92,7 @@ def _create_paths(module_name, file_types=["py"]):
 
 
 def _parse_url(url):
-    # params = re.search('github.com/(?P<user>[A-Za-z0-9_-]+)/.+#file-(?P<dataset>[A-Za-z0-9_-]+).py', url).groupdict()
-    print(url)
+    logging.debug(f"Parsing url: {url}")
     params = re.search(
         "github.com/(?P<user>[A-Za-z0-9_-]+)/((?P<repo>["
         "A-Za-z0-9_-]+)((/.+?)?/(?P<branch>[A-Za-z0-9_-]+)?(?P<path>.*)?)?)",
@@ -94,12 +101,17 @@ def _parse_url(url):
     params["is_gist"] = False
     params["branch"] = params["branch"] or "main"
     params["path"] = params["path"] or ""
-
+    logging.debug(f"params = {params}")
     return params
 
 
 def _parse_repo(repo):
+    logging.debug(f"Parsing repo: {repo}")
     params = repo.split("/")
+    if len(params) < 2:
+        raise ValueError(
+            "Invalid repo format. Must be in the form of user/repo/<branch>"
+        )
     return {
         "user": params[0],
         "repo": params[1],
@@ -110,16 +122,18 @@ def _parse_repo(repo):
 
 
 def _parse_gist_url(url):
+    logging.debug(f"Parsing gist url: {url}")
     params = re.search(
         r"gist.github.com/(?P<user>[A-Za-z0-9_-]+)/(?P<gist_id>[A-Za-z0-9_-]+)(#file-(?P<file>[A-Za-z0-9_.-]+))?",
         url,
     ).groupdict()
     params["is_gist"] = True
+    logging.debug(f"params = {params}")
     return params
 
 
-def _retrieve_archive(content, url):
-    """Returns an ZipFile or tarfile Archive object if available"""
+def _retrieve_archive(content):
+    """Returns a zip or tar archive object if available"""
     content_io = io.BytesIO(content)
     try:
         tar = tarfile.open(fileobj=content_io, mode="r:*")
@@ -143,7 +157,7 @@ def _open_archive_file(archive_obj, filepath, zip_pwd=None):
     Returns:
         bytes: The content of the extracted file
     """
-    print("[*] Attempting extraction of '%s' from archive..." % (filepath))
+    logging.debug(f"Opening archive file: {filepath}")
     if isinstance(archive_obj, tarfile.TarFile):
         return archive_obj.extractfile(filepath).read()
     if isinstance(archive_obj, zipfile.ZipFile):
@@ -178,22 +192,43 @@ class GitHubImporter(object):
                 params = _parse_gist_url(repo_or_url)
             else:
                 params = _parse_url(repo_or_url)
+            self.repo_params = params
             self.url = _create_content_url(params)
         except Exception as e:
             logger.error("Error parsing repo_or_url string: %s" % e)
             raise e
         self.modules = {}
         self.archive = None
-        # Try to extract an archive from URL
-        # self.archive = _retrieve_archive(resp["body"], url)
 
-    def list_importable_packages(self, user: str, repo: str, branch="main"):
+    def list_repo_packages(self, user: str, repo: str, branch="main"):
         """Returns a list of packages that can be imported from a GitHub repo"""
+        packages = []
         # https://api.github.com/repos/voxel51/fiftyone-plugins/git/trees/operators?recursive=1
         url = f"https://api.github.com/repos/{user}/{repo}/git/trees/operators?recursive=1"
         resp = http(url, headers=self.headers)
         if not resp.get("error", None):
-            json.loads(resp["body"])["tree"]
+            # python packages
+            packages += list(
+                map(
+                    lambda x: x["path"][:-12].replace("/", "."),
+                    filter(
+                        lambda x: x["path"].endswith("__init__.py"),
+                        json.loads(resp["body"])["tree"],
+                    ),
+                )
+            )
+
+        return packages
+
+    def show_package_details(self, package_name: str):
+        pass
+
+    def list_modules(self, package_name):
+        pass
+
+    def list_installed_zoo_packages(self):
+        # TODO:
+        pass
 
     def find_module(self, fullname, path=None):
         """Method to find importable python modules
@@ -208,6 +243,8 @@ class GitHubImporter(object):
                 url = self.url + "/" + path
                 resp = http(url, headers=self.headers)
                 if not resp.get("error", None):
+                    # Set the archive object if url points to a zip or tar file
+                    self.archive = _retrieve_archive(resp["body"])
                     self.modules[fullname] = {}
                     self.modules[fullname]["content"] = resp["body"]
                     self.modules[fullname]["filepath"] = url
@@ -216,7 +253,9 @@ class GitHubImporter(object):
                     )
                     return self
                 else:
-                    print(resp["error"])
+                    logging.debug(
+                        f"Error making request to {url}: {resp['error']}"
+                    )
                     continue
             else:
                 try:
@@ -245,25 +284,19 @@ class GitHubImporter(object):
         # If the module has not been found as loadable through 'find_module'
         # method (yet)
         if fullname not in self.modules:
-            print(
-                "[*] Module '%s' has not been attempted before. Trying to load..."
-                % fullname
-            )
+            logging.debug(f"Attempting to load '{fullname}' from '{self.url}'")
             # Run 'find_module' and see if it is loadable through this Importer
             # object
             if self.find_module(fullname) is not self:
-                print(
-                    "[-] Module '%s' has not been found as loadable. Failing..."
-                    % fullname
+                logging.debug(
+                    f"'{fullname}' has not been found as loadable. Failing..."
                 )
-                # If it is not loadable ('find_module' did not return 'self' but 'None'):
-                # throw error:
+                # Not loadable if 'find_module' returns None
                 raise ImportError(
-                    "Module '%s' cannot be loaded from '%s'"
-                    % (fullname, self.url)
+                    f"'{fullname}' cannot be loaded from '{self.url}'"
                 )
 
-        print("[*] Creating Python Module object for '%s'" % (fullname))
+        logging.debug(f"Creating Python Module object for '{fullname}'")
         mod = types.ModuleType(fullname)
         mod.__loader__ = self
         mod.__file__ = self.modules[fullname]["filepath"]
@@ -282,8 +315,8 @@ class GitHubImporter(object):
                 pkg_name = ".".join(pkg_name.split(".")[:-1])
             mod.__package__ = pkg_name
 
-        print(
-            "[*] Metadata (__package__) set to '%s' for %s '%s'"
+        logging.debug(
+            f"Metadata (__package__) set to {mod.__package__} for %s '%s'"
             % (
                 mod.__package__,
                 "package" if self.modules[fullname]["package"] else "module",
@@ -293,10 +326,14 @@ class GitHubImporter(object):
 
         if sys_modules:
             sys.modules[fullname] = mod
+            logging.debug(f"Module '{mod.__package__}' added to sys.modules")
 
         # Add the module/package code into the module obj
         try:
             exec(self.modules[fullname]["content"], mod.__dict__)
+            logging.debug(
+                f"Module '{mod.__package__}' contents added to module"
+            )
         except BaseException:
             if not sys_modules:
                 print(
@@ -305,7 +342,7 @@ class GitHubImporter(object):
         return mod
 
     def load_module(self, fullname):
-        """Method that loads a module into current Python Namespace. Part of Importer API
+        """Method that loads the module into current Python Namespace. Part of Importer API
         Args:
             fullname (str): The name of the module/package to be loaded
         Returns:
@@ -316,7 +353,7 @@ class GitHubImporter(object):
 
 
 def _create_content_url(url_params: dict = None):
-    """Function that creates a URL to the raw contents"""
+    """Function that creates a URL to the raw code on GitHub."""
 
     templeter = (
         __GIST_CONTENT_URL
@@ -328,7 +365,7 @@ def _create_content_url(url_params: dict = None):
     return url_template.format(**url_params)
 
 
-def add_remote_repo(url=None, importer_class=GitHubImporter):
+def create_importer(url=None, importer_class=GitHubImporter):
     """Creates an GitHubImporter object and adds it to the `sys.meta_path`.
     Returns:
       GitHubImporter: The `GitHubImporter` object added to the `sys.meta_path`
@@ -339,7 +376,7 @@ def add_remote_repo(url=None, importer_class=GitHubImporter):
     return importer
 
 
-def remove_remote_repo(url):
+def remove_importer(url):
     """Removes from the 'sys.meta_path' an GitHubImporter object given its HTTP/S URL.
     Args:
       url (str): The URL of the `GitHubImporter` object to remove
@@ -357,41 +394,60 @@ def remove_remote_repo(url):
 
 
 @contextmanager
-def remote_repo(url=None):
-    """Context Manager that provides remote import functionality through a URL"""
-    importer = add_remote_repo(url=url, importer_class=GitHubImporter)
+def checkout(url: str) -> None:
+    """Import module/package from a repo or gist using the Context Manager to ensure that the importer is removed from sys.meta_path when done.
+    Usage:
+    ```
+    with GithubImporter.checkout('https://github.com/username/repo'):
+        import module
+
+    # module is now available in the current namespace
+    # and the importer has been removed from sys.meta_path
+    ```
+    """
+    importer = create_importer(url=url, importer_class=GitHubImporter)
     url = importer.url
     try:
         yield
     except ImportError as e:
         raise e
     finally:
-        remove_remote_repo(url)
+        remove_importer(url)
 
 
-@contextmanager
-def github_content(url=None):
-    """Context Manager that enables importing modules/packages from GitHub repositories.
-    Args:
-        url (str): The URL of a GitHub repository
+def load(
+    module_name,
+    url_or_repo=None,
+) -> types.ModuleType:
+    """Load a python module/package from a GitHub repository by its name and URL directly into a variable.
+    Example:
+    ```
+    module = GithubImporter.load('module', 'https://github.com/username/repo')
+    ```
+
     """
-    add_remote_repo(url=url)
-    try:
-        yield
-    except ImportError as e:
-        raise e
-    finally:
-        remove_remote_repo(url)
+    importer = GitHubImporter(url_or_repo)
+    try:  # Try to load the module
+        return importer._create_python_module(module_name, sys_modules=False)
+    except:
+        raise ImportError(
+            f"{module_name} cannot be imported from URL/repo: '{url_or_repo}'"
+        )
 
 
-def load(module_name, url=None):
-    importer = GitHubImporter(url)
-    return importer._create_python_module(module_name, sys_modules=False)
+def install(module_name, url_or_repo=None, force=False):
+    """Install a module/package from a GitHub repository by its name and URL ."""
+    if not force:
+        if module_name in sys.modules:
+            raise ImportError(
+                f"Module {module_name} is already installed in sys.modules. Use 'force=True' to overwrite."
+            )
+    importer = GitHubImporter(url_or_repo)
+    return importer._create_python_module(module_name, sys_modules=True)
     raise ImportError(
-        f"Module {module_name} cannot be imported from URL: '{url}'"
+        f"Module {module_name} cannot be imported from URL/repo: '{url_or_repo}'"
     )
 
 
 if __name__ == "__main__":
     print("This module should not be called directly!")
-    pass

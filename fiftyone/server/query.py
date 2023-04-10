@@ -378,6 +378,10 @@ class Query(fosa.AggregateQuery):
         )
     )
 
+    # @gql.field
+    # async def plugins(self) -> t.List[Plugin]:
+    #     return await get_plugins()
+
     @gql.field
     async def samples(
         self,
