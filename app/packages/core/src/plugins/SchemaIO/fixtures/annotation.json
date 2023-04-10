@@ -2,6 +2,41 @@
     "type": {
         "name": "Object",
         "properties": {
+            "export": {
+                "type": { "name": "String" },
+                "defaultValue": "direct",
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "TabsView",
+                    "label": "Export method",
+                    "description": "Select your export method",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "choices": [
+                        {
+                            "name": "Choice",
+                            "label": "Direct export",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "value": "direct"
+                        },
+                        {
+                            "name": "Choice",
+                            "label": "Cloud export",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "value": "cloud"
+                        }
+                    ],
+                    "variant": "rounded"
+                }
+            },
             "color": {
                 "type": { "name": "String" },
                 "default": null,
