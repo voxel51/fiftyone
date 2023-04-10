@@ -1,7 +1,7 @@
 import { graphql } from "relay-runtime";
 
 export default graphql`
-  fragment sidebarGroupsFragment on Dataset @inline {
+  fragment sidebarGroupsFragment on Dataset {
     appConfig {
       sidebarGroups {
         expanded

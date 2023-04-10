@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0f39250b4a70f0b9d9ddf74e062cf0f7>>
+ * @generated SignedSource<<5e14b8684d241250dd05426f4159dcf1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type frameFieldsFragment$data = {
   readonly frameFields: ReadonlyArray<{
@@ -27,11 +27,77 @@ export type frameFieldsFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment">;
 };
 
-const node: ReaderInlineDataFragment = {
-  "kind": "InlineDataFragment",
-  "name": "frameFieldsFragment"
+const node: ReaderFragment = {
+  "argumentDefinitions": [],
+  "kind": "Fragment",
+  "metadata": null,
+  "name": "frameFieldsFragment",
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "SampleField",
+      "kind": "LinkedField",
+      "name": "frameFields",
+      "plural": true,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "ftype",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "subfield",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "embeddedDocType",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "path",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "dbField",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "description",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "info",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    }
+  ],
+  "type": "Dataset",
+  "abstractKey": null
 };
 
-(node as any).hash = "00c9435f28789a50c174ba7e463a0be6";
+(node as any).hash = "2127dbdf29c6c99f99aa81bc3ba14ae1";
 
 export default node;

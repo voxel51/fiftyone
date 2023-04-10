@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c60124e12bb25e7c04330cb562ae1db4>>
+ * @generated SignedSource<<44362fad3a11a4ae873097ac23fb76aa>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "label" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
@@ -40,11 +40,144 @@ export type configFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"configFragment">;
 };
 
-const node: ReaderInlineDataFragment = {
-  "kind": "InlineDataFragment",
-  "name": "configFragment"
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "colorscale",
+  "storageKey": null
 };
+return {
+  "argumentDefinitions": [],
+  "kind": "Fragment",
+  "metadata": null,
+  "name": "configFragment",
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "AppConfig",
+      "kind": "LinkedField",
+      "name": "config",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "colorBy",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "colorPool",
+          "storageKey": null
+        },
+        (v0/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "gridZoom",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "loopVideos",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "notebookHeight",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "plugins",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showConfidence",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showIndex",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showLabel",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showSkeletons",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showTooltip",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "sidebarMode",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "theme",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "timezone",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "useFrameNumber",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    (v0/*: any*/)
+  ],
+  "type": "Query",
+  "abstractKey": null
+};
+})();
 
-(node as any).hash = "3e68ea93fcb891208dda7b512f65c218";
+(node as any).hash = "f615a13c21fc89dabb4ea9d7d48f36ad";
 
 export default node;

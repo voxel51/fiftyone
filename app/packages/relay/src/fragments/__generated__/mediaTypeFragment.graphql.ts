@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a97697b73e0d1be523b9168584072617>>
+ * @generated SignedSource<<fc6825cddd839cb49f62c044dd1b6e44>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type mediaTypeFragment$data = {
@@ -20,11 +20,24 @@ export type mediaTypeFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"mediaTypeFragment">;
 };
 
-const node: ReaderInlineDataFragment = {
-  "kind": "InlineDataFragment",
-  "name": "mediaTypeFragment"
+const node: ReaderFragment = {
+  "argumentDefinitions": [],
+  "kind": "Fragment",
+  "metadata": null,
+  "name": "mediaTypeFragment",
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaType",
+      "storageKey": null
+    }
+  ],
+  "type": "Dataset",
+  "abstractKey": null
 };
 
-(node as any).hash = "df3111d45bf90184ac38ac1110429992";
+(node as any).hash = "9802746759cfac8641524eb511c0e838";
 
 export default node;

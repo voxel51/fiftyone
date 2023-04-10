@@ -1,21 +1,22 @@
-import * as rfn from "@recoiljs/refine";
-import { atom, AtomOptions } from "recoil";
-import { syncEffect } from "recoil-sync";
-import { GraphQLTaggedNode } from "relay-runtime";
-import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
-import { stores_INTERNAL } from "./internal";
+import { Disposable } from "react-relay";
+import {
+  atom,
+  AtomOptions,
+  DefaultValue,
+  TransactionInterface_UNSTABLE,
+} from "recoil";
+import { GraphQLTaggedNode, OperationType } from "relay-runtime";
+import { KeyType } from "relay-runtime/lib/store/readInlineData";
+import { selectorWithEffect } from "./selectorWithEffect";
+import { loadContext } from "./utils";
+import { getPageQuery, PageQuery } from "./Writer";
 
 export type GraphQLSyncFragmentAtomOptions<K> = AtomOptions<K>;
 
-export type GraphQLSyncFragmentSyncAtomOptions<
-  T extends KeyType,
-  K = KeyTypeData<T>
-> = {
+export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
-  read?: (data: KeyTypeData<T>) => K;
-  storeKey: string;
-  refine?: rfn.Checker<K>;
+  read: (data: NonNullable<T[" $data"]>) => K;
 };
 
 /**
@@ -23,32 +24,76 @@ export type GraphQLSyncFragmentSyncAtomOptions<
  * cannot be read from given the parent fragment keys and the optional final
  * read function, the atom's default value will be used
  */
-export function graphQLSyncFragmentAtom<T extends KeyType, K = KeyTypeData<T>>(
+export function graphQLSyncFragmentAtom<T extends KeyType, K>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>
 ) {
-  if (!stores_INTERNAL.has(fragmentOptions.storeKey)) {
-    stores_INTERNAL.set(fragmentOptions.storeKey, new Map());
-  }
-
-  const store = stores_INTERNAL.get(fragmentOptions.storeKey);
-  store.set(options.key, {
-    fragments: fragmentOptions.fragments,
-    keys: fragmentOptions.keys,
-    reader: fragmentOptions.read || ((value) => value),
-  });
-
-  return atom({
+  const value = atom({
     ...options,
     effects: [
-      syncEffect({
-        storeKey: fragmentOptions.storeKey,
-        refine:
-          fragmentOptions.refine || rfn.voidable(rfn.custom<K>((v) => v as K)),
-      }),
+      ({ setSelf, trigger }) => {
+        if (trigger === "set") {
+          return;
+        }
+        const { pageQuery, subscribe } = getPageQuery();
+        let ctx: ReturnType<typeof loadContext>;
+        let parent;
+        let disposable: Disposable;
+        const setter = (d, int?: TransactionInterface_UNSTABLE) => {
+          const set = int ? (v) => int.set(value, v) : setSelf;
+          set(fragmentOptions.read ? fragmentOptions.read(d) : (d as K));
+        };
+
+        const run = (
+          { data, preloadedQuery }: PageQuery<OperationType>,
+          transactionInterface?: TransactionInterface_UNSTABLE
+        ): Disposable => {
+          fragmentOptions.fragments.forEach((fragment, i) => {
+            if (fragmentOptions.keys && fragmentOptions.keys[i]) {
+              data = data[fragmentOptions.keys[i]];
+            }
+
+            // @ts-ignore
+            ctx = loadContext(fragment, preloadedQuery.environment, data);
+            parent = data;
+            data = ctx.result.data;
+          });
+          setter(data, transactionInterface);
+          disposable?.dispose();
+
+          return ctx.FragmentResource.subscribe(ctx.result, () => {
+            const update = loadContext(
+              fragmentOptions.fragments[fragmentOptions.fragments.length - 1],
+              preloadedQuery.environment,
+              parent
+            ).result.data;
+            setter(update);
+          });
+        };
+
+        try {
+          disposable = run(pageQuery);
+        } catch (e) {
+          setSelf(new DefaultValue());
+        }
+
+        const dispose = subscribe(run);
+        return () => {
+          dispose();
+          disposable?.dispose();
+        };
+      },
       ...(options.effects || []),
     ],
   });
+
+  return selectorWithEffect(
+    {
+      key: `_${options.key}__setter`,
+      get: ({ get }) => get(value),
+    },
+    options.key
+  );
 }
 
 export default graphQLSyncFragmentAtom;

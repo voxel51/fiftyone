@@ -1,7 +1,7 @@
 import { graphql } from "relay-runtime";
 
 export default graphql`
-  fragment sampleFieldsFragment on Dataset @inline {
+  fragment sampleFieldsFragment on Dataset {
     sampleFields {
       ftype
       subfield

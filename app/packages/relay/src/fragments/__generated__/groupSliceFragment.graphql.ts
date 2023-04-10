@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2d379501623ccd50612048a9f9ae2adf>>
+ * @generated SignedSource<<0ca01eaa22c870627c5ee01d0f5fc836>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type groupSliceFragment$data = {
   readonly groupSlice: string | null;
@@ -19,11 +19,24 @@ export type groupSliceFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"groupSliceFragment">;
 };
 
-const node: ReaderInlineDataFragment = {
-  "kind": "InlineDataFragment",
-  "name": "groupSliceFragment"
+const node: ReaderFragment = {
+  "argumentDefinitions": [],
+  "kind": "Fragment",
+  "metadata": null,
+  "name": "groupSliceFragment",
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "groupSlice",
+      "storageKey": null
+    }
+  ],
+  "type": "Dataset",
+  "abstractKey": null
 };
 
-(node as any).hash = "4ba3b44211fb55983c69c08fdeb78055";
+(node as any).hash = "a6891bedfc51ef0ce664b119878a6f9d";
 
 export default node;

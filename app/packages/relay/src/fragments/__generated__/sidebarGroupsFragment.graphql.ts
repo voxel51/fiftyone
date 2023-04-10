@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6709f44750bdd91c9d5bc2d8fd87e3b5>>
+ * @generated SignedSource<<4c717083ade5ef0874f432a6761646d2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type sidebarGroupsFragment$data = {
   readonly appConfig: {
@@ -26,11 +26,70 @@ export type sidebarGroupsFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"sidebarGroupsFragment">;
 };
 
-const node: ReaderInlineDataFragment = {
-  "kind": "InlineDataFragment",
-  "name": "sidebarGroupsFragment"
+const node: ReaderFragment = {
+  "argumentDefinitions": [],
+  "kind": "Fragment",
+  "metadata": null,
+  "name": "sidebarGroupsFragment",
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "DatasetAppConfig",
+      "kind": "LinkedField",
+      "name": "appConfig",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "SidebarGroup",
+          "kind": "LinkedField",
+          "name": "sidebarGroups",
+          "plural": true,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "expanded",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "paths",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "name",
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
+      "name": "frameFieldsFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
+      "name": "sampleFieldsFragment"
+    }
+  ],
+  "type": "Dataset",
+  "abstractKey": null
 };
 
-(node as any).hash = "5fea8ee29a267e33b6edf9e7e4f1359d";
+(node as any).hash = "9773f95e0982d690b47488b11a35c215";
 
 export default node;

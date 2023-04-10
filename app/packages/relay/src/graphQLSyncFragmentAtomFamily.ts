@@ -1,9 +1,15 @@
-import * as rfn from "@recoiljs/refine";
-import { atomFamily, AtomFamilyOptions, SerializableParam } from "recoil";
-import { syncEffect } from "recoil-sync";
-import { GraphQLTaggedNode } from "relay-runtime";
+import { Disposable } from "react-relay";
+import {
+  atomFamily,
+  AtomFamilyOptions,
+  DefaultValue,
+  SerializableParam,
+  TransactionInterface_UNSTABLE,
+} from "recoil";
+import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
-import { stores_INTERNAL } from "./internal";
+import { loadContext } from "./utils";
+import { getPageQuery, PageQuery } from "./Writer";
 
 export type GraphQLSyncFragmentAtomFamilyOptions<
   K,
@@ -18,8 +24,6 @@ export type GraphQLSyncFragmentSyncAtomFamilyOptions<
   fragments: GraphQLTaggedNode[];
   keys?: string[];
   read: (data: KeyTypeData<T>) => K;
-  storeKey: string;
-  refine?: rfn.Checker<K>;
   sync?: (params: P) => boolean;
 };
 
@@ -36,24 +40,71 @@ export function graphQLSyncFragmentAtomFamily<
   fragmentOptions: GraphQLSyncFragmentSyncAtomFamilyOptions<T, K, P>,
   options: GraphQLSyncFragmentAtomFamilyOptions<K, P>
 ) {
-  if (!stores_INTERNAL.has(fragmentOptions.storeKey)) {
-    stores_INTERNAL.set(fragmentOptions.storeKey, new Map());
-  }
-
-  const store = stores_INTERNAL.get(fragmentOptions.storeKey);
-
   const family = atomFamily({
     ...options,
     effects: (params) => {
       const effects =
         !fragmentOptions.sync || fragmentOptions.sync(params)
           ? [
-              syncEffect({
-                storeKey: fragmentOptions.storeKey,
-                refine:
-                  fragmentOptions.refine ||
-                  rfn.voidable(rfn.custom<K>((v) => v as K)),
-              }),
+              ({ setSelf, trigger }) => {
+                if (trigger === "set") {
+                  return;
+                }
+                const { pageQuery, subscribe } = getPageQuery();
+                let ctx: ReturnType<typeof loadContext>;
+                let parent;
+                let disposable: Disposable;
+                const setter = (d, int?: TransactionInterface_UNSTABLE) => {
+                  const set = int ? (v) => int.set(family(params), v) : setSelf;
+                  set(
+                    fragmentOptions.read ? fragmentOptions.read(d) : (d as K)
+                  );
+                };
+
+                const run = (
+                  { data, preloadedQuery }: PageQuery<OperationType>,
+                  transactionInterface?: TransactionInterface_UNSTABLE
+                ) => {
+                  fragmentOptions.fragments.forEach((fragment, i) => {
+                    if (fragmentOptions.keys && fragmentOptions.keys[i]) {
+                      data = data[fragmentOptions.keys[i]];
+                    }
+
+                    ctx = loadContext(
+                      fragment,
+                      preloadedQuery.environment,
+                      data
+                    );
+                    parent = data;
+                    data = ctx.result.data;
+                  });
+                  setter(data, transactionInterface);
+                  disposable?.dispose();
+
+                  return ctx.FragmentResource.subscribe(ctx.result, () => {
+                    const update = loadContext(
+                      fragmentOptions.fragments[
+                        fragmentOptions.fragments.length - 1
+                      ],
+                      preloadedQuery.environment,
+                      parent
+                    ).result.data;
+                    setter(update);
+                  });
+                };
+
+                try {
+                  disposable = run(pageQuery);
+                } catch (e) {
+                  setSelf(new DefaultValue());
+                }
+                const dispose = subscribe(run);
+
+                return () => {
+                  dispose();
+                  disposable?.dispose();
+                };
+              },
             ]
           : [];
 
@@ -66,19 +117,7 @@ export function graphQLSyncFragmentAtomFamily<
     },
   });
 
-  return (params: P) => {
-    const atom = family(params);
-
-    if (!store.has(atom.key)) {
-      store.set(atom.key, {
-        fragments: fragmentOptions.fragments,
-        keys: fragmentOptions.keys,
-        reader: fragmentOptions.read,
-      });
-    }
-
-    return atom;
-  };
+  return (params: P) => family(params);
 }
 
 export default graphQLSyncFragmentAtomFamily;

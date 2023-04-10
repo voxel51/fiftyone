@@ -1,7 +1,7 @@
 import { graphql } from "relay-runtime";
 
 export default graphql`
-  fragment datasetFragment on Dataset @inline {
+  fragment datasetFragment on Dataset {
     createdAt
     groupField
     groupSlice

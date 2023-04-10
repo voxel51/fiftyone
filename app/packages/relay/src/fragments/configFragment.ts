@@ -3,7 +3,7 @@ import { graphql } from "react-relay";
 import r from "../resolve";
 
 export default r(graphql`
-  fragment configFragment on Query @inline {
+  fragment configFragment on Query {
     config {
       colorBy
       colorPool

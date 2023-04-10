@@ -1,18 +1,44 @@
-import React from "react";
-import { DefaultValue } from "recoil";
-import { ItemSnapshot, RecoilSync } from "recoil-sync";
-import { OperationType, readInlineData } from "relay-runtime";
-import { stores_INTERNAL } from "./internal";
+import { default as React } from "react";
+import { PreloadedQuery } from "react-relay";
+import {
+  TransactionInterface_UNSTABLE,
+  useRecoilTransaction_UNSTABLE,
+} from "recoil";
+import { ConcreteRequest, OperationType } from "relay-runtime";
+import type { Set } from "./selectorWithEffect";
+import { SelectorEffectContext } from "./selectorWithEffect";
+
+export interface PageQuery<T extends OperationType> {
+  preloadedQuery: PreloadedQuery<T>;
+  concreteRequest: ConcreteRequest;
+  data: T["response"];
+}
+
+export type PageSubscription<T extends OperationType> = (
+  pageQuery: PageQuery<T>,
+  transationInterface: TransactionInterface_UNSTABLE
+) => void;
+
+let pageQueryReader: () => PageQuery<OperationType> = null;
+
+const subscribers = new Set<PageSubscription<OperationType>>();
+
+export function subscribe<T extends OperationType>(
+  subscription: PageSubscription<T>
+) {
+  subscribers.add(subscription);
+
+  return () => subscribers.delete(subscription);
+}
+
+export function getPageQuery() {
+  return { pageQuery: pageQueryReader(), subscribe };
+}
 
 type WriterProps<T extends OperationType> = React.PropsWithChildren<{
-  external: Map<string, () => unknown>;
-  storeKey: string;
-  writer: (itemKey: string, value: unknown) => void;
-  read: () => T["response"];
-  subscription: (update: (data: T["response"]) => void) => () => void;
-  updateExternals: React.MutableRefObject<
-    ((items: ItemSnapshot) => void) | undefined
-  >;
+  read: () => PageQuery<T>;
+  setters: Map<string, Set<unknown>>;
+  subscribe?: (fn: (pageQuery: PageQuery<T>) => void) => () => void;
 }>;
 
 /**
@@ -23,88 +49,30 @@ type WriterProps<T extends OperationType> = React.PropsWithChildren<{
 export function Writer<T extends OperationType>({
   children,
   read,
-  storeKey,
-  subscription,
-  writer,
-  external,
-  updateExternals,
+  subscribe,
+  setters,
 }: WriterProps<T>) {
-  const store = React.useMemo(() => stores_INTERNAL.get(storeKey), [storeKey]);
+  pageQueryReader = read;
 
-  const readValue = React.useCallback(
-    (itemKey: string, query?: T["response"]) => {
-      query ??= read();
-      let value: unknown = new DefaultValue();
-      try {
-        const item = store.get(itemKey);
-
-        value = item.reader(
-          item.fragments.reduce((data, fragment, i) => {
-            if (item.keys && item.keys[i]) {
-              data = data[item.keys[i]];
-            }
-            return readInlineData(fragment, data);
-          }, query as { " $fragmentSpreads": unknown })
-        );
-      } catch (e) {
-        /* fragment not present, use default atom value */
-      }
-
-      return value;
-    },
-    [read, store]
+  const set = useRecoilTransaction_UNSTABLE(
+    (transactionInterface) =>
+      (cb: (TransactionInterface: TransactionInterface_UNSTABLE) => void) => {
+        cb(transactionInterface);
+      },
+    []
   );
 
+  React.useEffect(() => {
+    return subscribe((pageQuery) => {
+      pageQueryReader = () => pageQuery;
+      set((transactionInterface) => {
+        subscribers.forEach((cb) => cb(pageQuery, transactionInterface));
+      });
+    });
+  }, [set, subscribe]);
+
   return (
-    <RecoilSync
-      read={React.useCallback(
-        (itemKey) => {
-          if (external.has(itemKey)) {
-            return external.get(itemKey)();
-          }
-
-          if (!store.has(itemKey)) {
-            throw new Error(`unexpected synced atom:  ${itemKey}`);
-          }
-
-          return readValue(itemKey);
-        },
-        [external, readValue, store]
-      )}
-      storeKey={storeKey}
-      listen={React.useCallback(
-        ({ updateAllKnownItems, updateItems }) => {
-          updateExternals.current = (items) => {
-            items.forEach((_, key) => {
-              if (!external.has(key)) {
-                throw new Error(`${key} is not external`);
-              }
-            });
-            updateItems(items);
-          };
-          const cleanup = subscription((data) => {
-            const values = new Map();
-            external.forEach((fn, itemKey) => values.set(itemKey, fn()));
-            store.forEach((_, key) => values.set(key, readValue(key, data)));
-            updateAllKnownItems(values);
-          });
-
-          return () => {
-            cleanup();
-            updateExternals.current = undefined;
-          };
-        },
-        [external, readValue, store, subscription, updateExternals]
-      )}
-      write={React.useCallback(
-        ({ diff }) => {
-          diff.forEach((value, key) => writer(key, value));
-        },
-        [writer]
-      )}
-    >
-      {children}
-    </RecoilSync>
+    <SelectorEffectContext setters={setters}>{children}</SelectorEffectContext>
   );
 }
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3474b22b5f44ae9aa6fe05843a2aeb46>>
+ * @generated SignedSource<<482864a2dd553ff812f6b6138b893bd9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { InlineFragment, ReaderInlineDataFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type viewFragment$data = {
   readonly stages: Array | null;
@@ -21,11 +21,58 @@ export type viewFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"viewFragment">;
 };
 
-const node: ReaderInlineDataFragment = {
-  "kind": "InlineDataFragment",
-  "name": "viewFragment"
+const node: ReaderFragment = {
+  "argumentDefinitions": [
+    {
+      "kind": "RootArgument",
+      "name": "savedViewSlug"
+    },
+    {
+      "kind": "RootArgument",
+      "name": "view"
+    }
+  ],
+  "kind": "Fragment",
+  "metadata": null,
+  "name": "viewFragment",
+  "selections": [
+    {
+      "alias": null,
+      "args": [
+        {
+          "kind": "Variable",
+          "name": "slug",
+          "variableName": "savedViewSlug"
+        },
+        {
+          "kind": "Variable",
+          "name": "view",
+          "variableName": "view"
+        }
+      ],
+      "kind": "ScalarField",
+      "name": "stages",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "viewCls",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "viewName",
+      "storageKey": null
+    }
+  ],
+  "type": "Dataset",
+  "abstractKey": null
 };
 
-(node as any).hash = "1527bc53e1cbb480f9712b02fcd0e3e2";
+(node as any).hash = "9fd7005e9bb2ad89b1257bdb60f9e435";
 
 export default node;
