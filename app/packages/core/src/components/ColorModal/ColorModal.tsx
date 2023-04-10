@@ -180,7 +180,7 @@ const ColorModal = () => {
   // const height = useMemo(() => {
   //   return colorBy == "value" ? "60vh" : "50vh";
   // }, [colorBy])
-  const height = "50vh";
+  const height = "60vh";
 
   // initialize tempGlobalSetting on modal mount
   useEffect(() => {

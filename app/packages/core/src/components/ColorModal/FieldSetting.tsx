@@ -81,6 +81,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       } else {
         setTempSetting({
           field: path!,
+          useFieldColor: false,
           fieldColor: color,
           attributeForColor:
             colorFields.find(
@@ -103,46 +104,55 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       {coloring.by == "field" && (
         <div>
           <Text>Settings for color by field</Text>
-          <div
-            style={{
-              margin: "1rem",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "end",
-            }}
-          >
-            <ColorSquare
-              color={tempSetting?.fieldColor ?? color}
-              onClick={toggleColorPicker}
-              id="color-square"
-            >
-              {showFieldPicker && (
-                <PickerWrapper
-                  id="twitter-color-container"
-                  onBlur={hideFieldColorPicker}
-                  visible={showFieldPicker}
-                  tabIndex={0}
-                  ref={colorContainer}
-                >
-                  <TwitterPicker
-                    color={tempSetting?.fieldColor ?? color}
-                    colors={coloring.pool}
-                    onChange={onChangeFieldColor}
-                    id={"twitter-color-picker"}
-                  />
-                </PickerWrapper>
-              )}
-            </ColorSquare>
-            <Input
-              value={tempSetting?.fieldColor ?? color}
-              setter={(v) => onChangeFieldColor(v)}
+          <Checkbox
+            name={`Use specific color for ${field.name} field`}
+            value={Boolean(tempSetting?.useFieldColor)}
+            setValue={(v: boolean) =>
+              setTempSetting((s) => ({ ...cloneDeep(s), useFieldColor: v }))
+            }
+          />
+          {tempSetting?.useFieldColor && (
+            <div
               style={{
-                width: 100,
-                display: "inline-block",
-                margin: 3,
+                margin: "1rem",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "end",
               }}
-            />
-          </div>
+            >
+              <ColorSquare
+                color={tempSetting?.fieldColor ?? color}
+                onClick={toggleColorPicker}
+                id="color-square"
+              >
+                {showFieldPicker && (
+                  <PickerWrapper
+                    id="twitter-color-container"
+                    onBlur={hideFieldColorPicker}
+                    visible={showFieldPicker}
+                    tabIndex={0}
+                    ref={colorContainer}
+                  >
+                    <TwitterPicker
+                      color={tempSetting?.fieldColor ?? color}
+                      colors={coloring.pool}
+                      onChange={onChangeFieldColor}
+                      id={"twitter-color-picker"}
+                    />
+                  </PickerWrapper>
+                )}
+              </ColorSquare>
+              <Input
+                value={tempSetting?.fieldColor ?? color}
+                setter={(v) => onChangeFieldColor(v)}
+                style={{
+                  width: 100,
+                  display: "inline-block",
+                  margin: 3,
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
       {coloring.by == "value" && (

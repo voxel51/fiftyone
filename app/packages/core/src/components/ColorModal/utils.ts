@@ -1,12 +1,6 @@
 import { CustomizeColor, useUnprocessedStateUpdate } from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
-import {
-  atom,
-  selector,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { atom } from "recoil";
 import * as fos from "@fiftyone/state";
 import { isEmpty, xor } from "lodash";
 import styled from "styled-components";
@@ -53,6 +47,7 @@ export const updateFieldSettings = (tempColor) => {
     ...tempColor,
     labelColors: useLabelColors ? tempColor.labelColors : undefined,
     attributeForOpacity: useOpacity ? tempColor.attributeForOpacity : undefined,
+    fieldColor: tempColor.useFieldColor ? tempColor.fieldColor : undefined,
   };
 };
 
