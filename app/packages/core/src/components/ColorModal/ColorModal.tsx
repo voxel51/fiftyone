@@ -19,12 +19,16 @@ import GlobalSetting from "./GlobalSetting";
 import FieldSetting from "./FieldSetting";
 import { Button } from "../utils";
 import {
+  tempColorJSON,
   tempColorSetting,
   tempGlobalSetting,
   updateFieldSettings,
+  validateJSONSetting,
 } from "./utils";
 import { useOutsideClick } from "@fiftyone/state";
 import useMeasure from "react-use-measure";
+import JSONViewer from "./JSONViewer";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -41,6 +45,8 @@ const ModalWrapper = styled.div`
 
 type ContainerProp = {
   height: string;
+  width: string;
+  minWidth: string;
 };
 
 const Container = styled.div<ContainerProp>`
@@ -52,8 +58,8 @@ const Container = styled.div<ContainerProp>`
   justify-content: start;
   overflow: hidden;
   box-shadow: 0 20px 25px -20px #000;
-  min-width: 500;
-  width: 40vw;
+  min-width: ${({ minWidth }) => minWidth};
+  width: ${({ width }) => width};
   height: ${({ height }) => height};
 `;
 
@@ -168,21 +174,29 @@ const ColorModal = () => {
       },
       tooltip: "global annotation settings",
     },
+    {
+      value: "JSON viewer",
+      onClick: () => {
+        setActiveColorModalField("json");
+        setOpen(false);
+      },
+      tooltip: "Edit all settings in JSON",
+    },
   ]);
 
   const selected = useMemo(() => {
     if (activeColorModalField == "global") return "global";
+    if (activeColorModalField == "json") return "JSON viewer";
     return activeColorModalField?.path ?? "";
   }, [activeColorModalField]);
 
   const [tempGlobal, setTempGlobal] = useRecoilState(tempGlobalSetting);
 
-  // const height = useMemo(() => {
-  //   return colorBy == "value" ? "60vh" : "50vh";
-  // }, [colorBy])
-  const height = "60vh";
+  const height = activeColorModalField == "json" ? "80vh" : "60vh";
+  const width = activeColorModalField == "json" ? "80vw" : "50vw";
+  const minWidth = activeColorModalField == "json" ? "600px" : "500px";
 
-  // initialize tempGlobalSetting on modal mount
+  // initialize tempGlobalSetting on modal mount,
   useEffect(() => {
     if (!tempGlobal || JSON.stringify(tempGlobal) === "{}") {
       const setting = {
@@ -200,7 +214,7 @@ const ColorModal = () => {
     return (
       <ActionDiv ref={ref}>
         <Tooltip
-          text={"Click to change target field for setup"}
+          text={"Click to change to a different field for color settings"}
           placement={"top-center"}
         >
           <Text onClick={() => setOpen((o) => !o)} ref={mRef}>
@@ -235,21 +249,19 @@ const ColorModal = () => {
           aria-labelledby="draggable-color-modal"
         >
           <Draggable bounds="parent" handle=".draggable-colorModal-handle">
-            <Container height={height}>
+            <Container height={height} width={width} minWidth={minWidth}>
               <DraggableModalTitle className="draggable-colorModal-handle">
                 <ColorModalTitle />
                 <CloseIcon onClick={() => setActiveColorModalField(null)} />
               </DraggableModalTitle>
               <DraggableContent height={height}>
-                {typeof field === "string" ? (
-                  <GlobalSetting />
-                ) : field ? (
+                {field === "global" && <GlobalSetting />}
+                {field === "json" && <JSONViewer />}
+                {typeof field !== "string" && field && (
                   <FieldSetting field={activeColorModalField as Field} />
-                ) : (
-                  <></>
                 )}
               </DraggableContent>
-              <SubmitControls />
+              <SubmitControls eligibleFields={customizeColorFields} />
             </Container>
           </Draggable>
         </ModalWrapper>
@@ -264,14 +276,21 @@ const ColorModal = () => {
 
 export default React.memo(ColorModal);
 
-const SubmitControls = () => {
+type Prop = {
+  eligibleFields: Field[];
+};
+
+const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
   const [tempGlobalSettings, setTempGlobalSettings] =
     useRecoilState(tempGlobalSetting);
+  const [json, setJson] = useRecoilState(tempColorJSON);
   const path =
-    activeColorModalField == "global" ? "global" : activeColorModalField?.path;
+    typeof activeColorModalField === "string"
+      ? activeColorModalField
+      : activeColorModalField?.path;
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const setAlpha = useSetRecoilState(fos.alpha(false));
   const setConfigColorBy = useSetRecoilState(
@@ -300,7 +319,12 @@ const SubmitControls = () => {
   };
 
   const onApply = () => {
-    if (typeof activeColorModalField == "string") {
+    if (typeof activeColorModalField !== "string") {
+      // save field settings (update tempcolor by checkbox options)
+      const update = updateFieldSettings(tempColor);
+      setCustomizeColor(update);
+    }
+    if (activeColorModalField == "global") {
       // save global settings
       const { colorBy, colors, opacity, useMulticolorKeypoints, showSkeleton } =
         tempGlobalSettings ?? {};
@@ -309,10 +333,26 @@ const SubmitControls = () => {
       setAlpha(opacity);
       setMulticolorKeypoints(useMulticolorKeypoints);
       setShowSkeleton(showSkeleton);
-    } else {
-      // save field settings (update tempcolor by checkbox options)
-      const update = updateFieldSettings(tempColor);
-      setCustomizeColor(update);
+    }
+    if (activeColorModalField == "json") {
+      if (
+        typeof json !== "object" ||
+        !json.colorScheme ||
+        !Array.isArray(json.colorScheme) ||
+        !json.customizedColorSettings ||
+        !Array.isArray(json.customizedColorSettings)
+      )
+        return;
+      const { colorScheme, customizedColorSettings } = json;
+      // update color palette
+      const validColors = colorScheme.filter((c) => isValidColor(c));
+      validColors.length > 0 && setColoring(validColors);
+      // validate customizedColorSettings
+      const validated = validateJSONSetting(
+        customizedColorSettings,
+        eligibleFields
+      );
+      validated && validated.forEach((update) => setCustomizeColor(update));
     }
   };
 

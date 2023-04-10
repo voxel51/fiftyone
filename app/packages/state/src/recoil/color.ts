@@ -129,9 +129,10 @@ export const customizeColorSelector = selectorFamily<
         );
       } else {
         // create the atom and update the customizeColorFields list
-        set(atoms.customizeColors(fieldPath), newFieldSetting);
+        // do not replace newFieldSetting.field with fieldPath, because jsonEditor use dynamic path to update
+        set(atoms.customizeColors(newFieldSetting.field), newFieldSetting);
         set(atoms.customizeColorFields, (preValue) => [
-          ...new Set([...preValue, fieldPath]),
+          ...new Set([...preValue, newFieldSetting.field]),
         ]);
       }
     },
