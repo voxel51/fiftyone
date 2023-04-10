@@ -342,3 +342,17 @@ class TupleView(View):
             **super().to_json(),
             "items": [item.to_json() for item in self.items],
         }
+
+
+class CodeEditorView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.language = kwargs.get("language", None)
+        self.readOnly = kwargs.get("readOnly", False)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "language": self.language,
+            "readOnly": self.readOnly,
+        }
