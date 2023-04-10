@@ -13,6 +13,7 @@ const componentByView = {
   CodeEditorView: "CodeEditorView",
   ColorView: "ColorView",
   TabsView: "TabsView",
+  JSONView: "JSONView",
 };
 const typeMap = {
   ObjectType: "object",
