@@ -49,6 +49,7 @@
     ],
     "packageManager": "yarn@3.2.1",
     "dependencies": {
+        "@monaco-editor/react": "^4.5.0",
         "jpeg-js": "^0.4.4"
     }
 }
