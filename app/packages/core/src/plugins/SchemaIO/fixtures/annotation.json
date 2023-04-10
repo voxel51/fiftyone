@@ -2,6 +2,20 @@
     "type": {
         "name": "Object",
         "properties": {
+            "json": {
+                "type": { "name": "String" },
+                "defaultValue": "{\"name\": \"Full Name\"}",
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "JSONView",
+                    "label": "JSON Viewer",
+                    "description": "JSON Viewer with syntax highlighting",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null
+                }
+            },
             "export": {
                 "type": { "name": "String" },
                 "defaultValue": "direct",
