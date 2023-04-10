@@ -356,3 +356,17 @@ class CodeEditorView(View):
             "language": self.language,
             "readOnly": self.readOnly,
         }
+
+
+class ColorView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.compact = kwargs.get("compact", False)
+        self.variant = kwargs.get("variant", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "compact": self.compact,
+            "variant": self.variant,
+        }
