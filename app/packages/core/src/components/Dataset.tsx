@@ -1,4 +1,4 @@
-import { dataset, modal } from "@fiftyone/state";
+import { modal } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";

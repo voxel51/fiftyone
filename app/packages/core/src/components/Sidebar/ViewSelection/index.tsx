@@ -5,7 +5,8 @@ import {
   savedViewsFragmentQuery,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useContext, useEffect, useMemo } from "react";
+import { datasetQueryContext } from "@fiftyone/state";
+import { Suspense, useContext, useEffect, useMemo } from "react";
 import { useRefetchableFragment } from "react-relay";
 import {
   atom,
@@ -17,10 +18,6 @@ import {
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-
-export const datasetQueryContext = React.createContext<
-  savedViewsFragment$key | undefined
->(undefined);
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",

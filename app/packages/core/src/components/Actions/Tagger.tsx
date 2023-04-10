@@ -20,13 +20,7 @@ import styled from "styled-components";
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import {
-  groupId,
-  groupSlice,
-  groupStatistics,
-  Lookers,
-  refresher,
-} from "@fiftyone/state";
+import { groupId, groupStatistics, Lookers, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { Button } from "../utils";
@@ -345,7 +339,7 @@ const useTagCallback = (
             groupData: isGroup
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
-                  slice: await snapshot.getPromise(groupSlice(modal)),
+                  slice: await snapshot.getPromise(currentSlice(modal)),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,

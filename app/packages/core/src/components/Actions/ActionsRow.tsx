@@ -1,3 +1,7 @@
+import { PillButton, useTheme } from "@fiftyone/components";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import {
   Bookmark,
   Check,
@@ -5,10 +9,10 @@ import {
   KeyboardArrowLeft,
   KeyboardArrowRight,
   LocalOffer,
+  Search,
   Settings,
   VisibilityOff,
   Wallpaper,
-  Search,
 } from "@mui/icons-material";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
@@ -19,18 +23,13 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-
-import { PillButton, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import * as fos from "@fiftyone/state";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import Tagger from "./Tagger";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
