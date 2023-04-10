@@ -95,6 +95,59 @@
                     "label": "Media Field"
                 }
             },
+            "tuples": {
+                "type": {
+                    "name": "Tuple",
+                    "items": [
+                        { "name": "String" },
+                        {
+                            "name": "Number",
+                            "min": null,
+                            "max": null,
+                            "int": false,
+                            "float": false
+                        },
+                        { "name": "Boolean" }
+                    ]
+                },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "TupleView",
+                    "label": "The Tuple",
+                    "description": "Tuple with string as the type for first item, number for second, and boolean for third",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "items": [
+                        {
+                            "name": "View",
+                            "label": "String item",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null
+                        },
+                        {
+                            "name": "View",
+                            "label": "Number Item",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null
+                        },
+                        {
+                            "name": "View",
+                            "label": "Boolean Item",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null
+                        }
+                    ]
+                }
+            },
             "launch_editor": {
                 "type": {
                     "name": "Boolean"
