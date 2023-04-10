@@ -5,7 +5,7 @@ import { CodeBlock } from "@fiftyone/components";
 
 export default function JSONView(props) {
   const { text, schema } = props;
-  const { defaultValue, view = {} } = schema;
+  const { default: defaultValue, view = {} } = schema;
   return (
     <Box>
       <Header {...view} />
