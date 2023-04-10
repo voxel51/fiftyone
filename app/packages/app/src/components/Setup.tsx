@@ -193,7 +193,7 @@ const Setup = () => {
 
   return (
     <>
-      <Header title={"FiftyOne"}>
+      <Header title={"FiftyOne Teams"}>
         <div className={iconContainer} style={{ flex: 1 }}>
           <SlackLink />
           <GitHubLink />

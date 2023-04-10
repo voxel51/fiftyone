@@ -1,8 +1,9 @@
-import { Dataset, ViewSelection } from "@fiftyone/core";
+import { Dataset } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
 import "@fiftyone/relay";
+import { datasetQueryContext } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
 import React from "react";
 import { usePreloadedQuery } from "react-relay";
@@ -44,9 +45,9 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
     <>
       <Nav fragment={data} hasDataset={true} />
       <div className={style.page}>
-        <ViewSelection.datasetQueryContext.Provider value={data}>
+        <datasetQueryContext.Provider value={data}>
           <Dataset />
-        </ViewSelection.datasetQueryContext.Provider>
+        </datasetQueryContext.Provider>
       </div>
     </>
   );

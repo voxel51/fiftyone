@@ -20,7 +20,7 @@ const Network: React.FC<{
         <RouterContext.Provider value={context}>
           <RelayEnvironmentContext.Provider value={environment}>
             <Sync>
-              <Renderer router={context} />
+              <Renderer />
             </Sync>
           </RelayEnvironmentContext.Provider>
         </RouterContext.Provider>

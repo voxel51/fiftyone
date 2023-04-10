@@ -14,21 +14,25 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import {
+  datasetName,
+  Session,
   State,
   stateSubscription,
   useClearModal,
   useReset,
   useScreenshot,
+  useSession,
   viewsAreEqual,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
 import { ItemSnapshot } from "recoil-sync";
 import { commitMutation } from "relay-runtime";
 import Setup from "./components/Setup";
+import { pendingEntry } from "./Renderer";
 import {
   Entry,
   matchPath,
@@ -55,12 +59,6 @@ enum AppReadyState {
   CLOSED = 2,
 }
 
-interface SessionData {
-  selectedSamples: string[];
-  selectedLabels: State.SelectedLabel[];
-  spaces?: SpaceNodeJSON;
-}
-
 const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
   const readyStateRef = useRef<AppReadyState>();
@@ -83,10 +81,8 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       | "databricks"
       | undefined
   );
-  const sessionRef = useRef<SessionData>({
-    selectedSamples: [],
-    selectedLabels: [],
-  });
+  const sessionRef = useRef<Session>({});
+
   const updateExternals = useRef<(items: ItemSnapshot) => void>();
   React.useEffect(() => {
     const controller = new AbortController();
@@ -139,11 +135,13 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
 
-              sessionRef.current.selectedSamples = payload.state.selected;
+              sessionRef.current.selectedSamples = new Set(
+                payload.state.selected
+              );
               sessionRef.current.selectedLabels = toCamelCase(
                 payload.state.selected_labels
               ) as State.SelectedLabel[];
-              sessionRef.current.spaces = payload.state.spaces;
+              sessionRef.current.sessionSpaces = payload.state.spaces;
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
@@ -205,14 +203,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return () => controller.abort();
   }, []);
 
-  const external = useMemo(() => {
-    return new Map<string, () => unknown>([
-      ["routeEntry", () => router.get()],
-      ["selectedSamples", () => new Set(sessionRef.current.selectedSamples)],
-      ["selectedLabels", () => sessionRef.current.selectedLabels],
-      ["sessionSpaces", () => sessionRef.current.spaces],
-    ]);
-  }, [router]);
+  useSession(sessionRef.current, () => {});
 
   return (
     <>
@@ -222,25 +213,55 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       )}
       {readyState === AppReadyState.OPEN && (
         <Writer<Queries>
-          storeKey="session"
-          read={() => router.get().data}
-          subscription={(update) => {
-            return router.subscribe((entry, action) => {
-              dispatchSideEffect(entry, action, subscription);
-              update(entry.data);
-            });
+          read={() => {
+            const { concreteRequest, data, preloadedQuery } = router.get();
+            return {
+              concreteRequest,
+              data,
+              preloadedQuery,
+            };
           }}
-          writer={(itemKey, value) => {
-            WRITE_HANDLERS[itemKey] &&
-              WRITE_HANDLERS[itemKey](
-                router,
-                value,
-                subscription,
-                sessionRef.current
-              );
-          }}
-          external={external}
-          updateExternals={updateExternals}
+          setters={
+            new Map([
+              [
+                "view",
+                ({ get, set }, view) => {
+                  set(pendingEntry, true);
+                  if (view instanceof DefaultValue) {
+                    view = [];
+                  }
+                  commitMutation<setViewMutation>(
+                    router.get().preloadedQuery.environment,
+                    {
+                      mutation: setView,
+                      variables: {
+                        view,
+                        datasetName: get(datasetName) as string,
+                        subscription: get(stateSubscription),
+                        form: {},
+                      },
+                      onCompleted: ({ setView: view }) => {
+                        const params = new URLSearchParams(router.get().search);
+                        const current = params.get("view");
+
+                        if (
+                          !viewsAreEqual(view, router.get().state.view || []) ||
+                          current
+                        ) {
+                          sessionRef.current.selectedSamples = new Set();
+                          sessionRef.current.selectedLabels = [];
+                          router.history.push(`${router.get().pathname}`, {
+                            view,
+                          });
+                        }
+                      },
+                    }
+                  );
+                },
+              ],
+            ])
+          }
+          subscribe={(fn) => router.subscribe(fn)}
         >
           {children}
         </Writer>
@@ -339,21 +360,6 @@ const WRITE_HANDLERS: {
         subscription,
       },
     });
-  },
-  view: (
-    router: RoutingContext<Queries>,
-    view: DefaultValue | State.Stage[]
-  ) => {
-    if (view instanceof DefaultValue) {
-      view = [];
-    }
-
-    const params = new URLSearchParams(router.get().search);
-    const current = params.get("view");
-
-    if (!viewsAreEqual(view, router.get().state.view || []) || current) {
-      router.history.push(`${router.get().pathname}`, { view });
-    }
   },
   viewName: (
     router: RoutingContext<Queries>,
