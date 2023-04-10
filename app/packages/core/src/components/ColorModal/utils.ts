@@ -4,7 +4,6 @@ import { atom } from "recoil";
 import * as fos from "@fiftyone/state";
 import { isEmpty, xor } from "lodash";
 import styled from "styled-components";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { Field } from "@fiftyone/utilities";
 
 type ColorJSON = {
@@ -63,29 +62,30 @@ export const updateFieldSettings = (tempColor) => {
   };
 };
 
-export const isString = (v: unknown) => typeof v === "string" && v != "";
+export const isString = (v: unknown) => typeof v === "string";
 export const isObject = (v: unknown) => typeof v === "object" && v != null;
 export const isBoolean = (v: unknown) => typeof v === "boolean";
 
 const getValidLabelColors = (labelColors: unknown[]) =>
   (
-    labelColors.filter((x) => {
+    labelColors?.filter((x) => {
       x && isObject(x) && isString(x["name"]) && isString(x["color"]);
     }) as { name: string; color: string }[]
-  ).map(({ name, color }) => ({ name, color }));
+  )?.map(({ name, color }) => ({ name, color }));
 
 const isValidFieldPath = (str: string, fields: Field[]) =>
   fields.map((f) => f.path).includes(str);
 
 // should return a valid customize color object that can be used to setCustomizeColor
 export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
-  const filtered = json.filter(
+  const filtered = json?.filter(
     (s) =>
       s &&
       isObject(s) &&
       isString(s["field"]) &&
       isValidFieldPath(s["field"], fields)
   ) as {}[];
+
   return filtered?.map((input) => ({
     field: input["field"],
     useFieldColor: isBoolean(input["useFieldColor"])
