@@ -2,6 +2,22 @@
     "type": {
         "name": "Object",
         "properties": {
+            "color": {
+                "type": { "name": "String" },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "ColorView",
+                    "label": "Favorite color",
+                    "description": "Pick your favorite color using the color picker",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "compact": false,
+                    "variant": null
+                }
+            },
             "jsEditor": {
                 "type": { "name": "String" },
                 "defaultValue": "Winter",

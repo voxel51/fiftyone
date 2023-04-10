@@ -11,6 +11,7 @@ const componentByView = {
   RadioGroup: "RadioView",
   Dropdown: "DropdownView",
   CodeEditorView: "CodeEditorView",
+  ColorView: "ColorView",
 };
 const typeMap = {
   ObjectType: "object",
