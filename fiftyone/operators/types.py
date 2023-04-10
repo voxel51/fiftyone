@@ -375,3 +375,8 @@ class ColorView(View):
 class JSONView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class AutocompleteView(Choices):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
