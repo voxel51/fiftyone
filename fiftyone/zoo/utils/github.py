@@ -7,6 +7,7 @@ import eta.core.web as etaw
 
 
 def parse_url(url):
+    """Parses a GitHub URL into its components."""
     logging.debug(f"Parsing url: {url}")
     params = re.search(
         "github.com/(?P<user>[A-Za-z0-9_-]+)/((?P<repo>["
@@ -21,6 +22,7 @@ def parse_url(url):
 
 
 def parse_repo(repo):
+    """Parses a GitHub repo string into its components."""
     logging.debug(f"Parsing repo: {repo}")
     params = repo.split("/")
     if len(params) < 2:
@@ -37,6 +39,7 @@ def parse_repo(repo):
 
 
 def parse_gist_url(url):
+    """Parses a GitHub Gist URL into its components."""
     logging.debug(f"Parsing gist url: {url}")
     params = re.search(
         r"gist.github.com/(?P<user>[A-Za-z0-9_-]+)/(?P<gist_id>[A-Za-z0-9_-]+)(#file-(?P<file>[A-Za-z0-9_.-]+))?",
@@ -83,16 +86,20 @@ class GitHubRepo:
 
     @property
     def user(self) -> str:
+        """The GitHub user name of the repo owner"""
         return self._user
 
     @property
     def name(self) -> str:
+        """The name of the repo"""
         return self._name
 
     @property
     def ref(self) -> Optional[str]:
+        """The ref of the repo (e.g. branch, tag, commit hash)"""
         return self._ref
 
     @ref.setter
     def ref(self, ref: str):
+        """Sets the ref of the repo (e.g. branch, tag, commit hash)"""
         self._ref = ref
