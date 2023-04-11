@@ -12,7 +12,6 @@ import os
 import warnings
 
 from bson import json_util
-import numpy as np
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -1887,17 +1886,15 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         return outpath
 
     def _export_media_fields(self, sd):
-        for field_name, label_type in self._media_fields.items():
+        for field_name, key in self._media_fields.items():
             value = sd.get(field_name, None)
             if value is None:
                 continue
 
-            if label_type is None:
+            if key is not None:
+                self._export_media_field(value, field_name, key=key)
+            else:
                 self._export_media_field(sd, field_name)
-            elif issubclass(label_type, fol.Segmentation):
-                self._export_media_field(value, field_name, key="mask_path")
-            elif issubclass(label_type, fol.Heatmap):
-                self._export_media_field(value, field_name, key="map_path")
 
     def _export_media_field(self, d, field_name, key=None):
         if key is not None:
@@ -2163,17 +2160,15 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             media_exporter.close()
 
     def _export_media_fields(self, sd):
-        for field_name, label_type in self._media_fields.items():
+        for field_name, key in self._media_fields.items():
             value = sd.get(field_name, None)
             if value is None:
                 continue
 
-            if label_type is None:
+            if key is not None:
+                self._export_media_field(value, field_name, key=key)
+            else:
                 self._export_media_field(sd, field_name)
-            elif issubclass(label_type, fol.Segmentation):
-                self._export_media_field(value, field_name, key="mask_path")
-            elif issubclass(label_type, fol.Heatmap):
-                self._export_media_field(value, field_name, key="map_path")
 
     def _export_media_field(self, d, field_name, key=None):
         if key is not None:
@@ -2696,7 +2691,6 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         if etau.is_str(image_or_path):
             image_path = fou.normalize_path(image_or_path)
         else:
-            img = image_or_path
             image_path = self._default_filename_patt % (
                 self._class_counts[_label]
             )

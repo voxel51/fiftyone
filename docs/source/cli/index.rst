@@ -321,14 +321,16 @@ List FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets list [-h]
+    fiftyone datasets list [-h] [-p PATT]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help        show this help message and exit
+      -p PATT, --glob-patt PATT
+                        an optional glob pattern of dataset names to include
 
 **Examples**
 
@@ -336,6 +338,9 @@ List FiftyOne datasets.
 
     # List available datasets
     fiftyone datasets list
+
+    # List datasets matching a given pattern
+    fiftyone datasets list --glob-patt 'quickstart-*'
 
 .. _cli-fiftyone-datasets-info:
 
@@ -346,7 +351,7 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] [-s FIELD] [-r] [NAME]
+    fiftyone datasets info [-h] [-p PATT] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
@@ -357,6 +362,8 @@ Print information about FiftyOne datasets.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -p PATT, --glob-patt PATT
+                            an optional glob pattern of dataset names to include
       -s FIELD, --sort-by FIELD
                             a field to sort the dataset rows by
       -r, --reverse         whether to print the results in reverse order
@@ -365,8 +372,9 @@ Print information about FiftyOne datasets.
 
 .. code-block:: shell
 
-    # Print basic information about all datasets
+    # Print basic information about multiple datasets
     fiftyone datasets info
+    fiftyone datasets info --glob-patt 'quickstart-*'
     fiftyone datasets info --sort-by created_at
     fiftyone datasets info --sort-by name --reverse
 

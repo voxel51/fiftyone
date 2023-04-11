@@ -16,7 +16,7 @@ models**
 <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
-<a href="https://medium.com/voxel51">Blog</a> •
+<a href="https://voxel51.com/blog/">Blog</a> •
 <a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)

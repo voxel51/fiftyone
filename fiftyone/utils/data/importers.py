@@ -11,8 +11,8 @@ import logging
 import os
 import random
 
-from bson import json_util, ObjectId
-import cv2
+from bson import json_util
+from mongoengine.base import get_document
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -636,7 +636,7 @@ def parse_dataset_info(dataset, info, overwrite=True):
     description = info.pop("description", None)
     if description is not None:
         if overwrite or not dataset.description:
-            dataset.description = description
+            dataset.description = str(description)
 
     classes = info.pop("classes", None)
     if isinstance(classes, dict):
@@ -1550,7 +1550,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
 
         if os.path.isdir(self._fields_dir):
-            self._media_fields = etau.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in etau.list_subdirs(self._fields_dir)
+            }
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         samples = etas.read_json(samples_path).get("samples", [])
@@ -1723,7 +1725,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
 
         if os.path.isdir(self._fields_dir):
-            self._media_fields = etau.list_subdirs(self._fields_dir)
+            self._media_fields = {
+                f: False for f in etau.list_subdirs(self._fields_dir)
+            }
 
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
         if not os.path.isfile(self._samples_path):
@@ -2027,21 +2031,30 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
 
 def _parse_media_fields(sd, media_fields, rel_dir):
-    for field_name in media_fields:
+    for field_name, key in media_fields.items():
         value = sd.get(field_name, None)
         if value is None:
             continue
 
         if isinstance(value, dict):
-            label_type = value.get("_cls", None)
-            if label_type == "Segmentation":
-                mask_path = value.get("mask_path", None)
-                if mask_path is not None and not os.path.isabs(mask_path):
-                    value["mask_path"] = os.path.join(rel_dir, mask_path)
-            elif label_type == "Heatmap":
-                map_path = value.get("map_path", None)
-                if map_path is not None and not os.path.isabs(map_path):
-                    value["map_path"] = os.path.join(rel_dir, map_path)
+            if key is False:
+                try:
+                    _cls = value.get("_cls", None)
+                    key = get_document(_cls)._MEDIA_FIELD
+                except Exception as e:
+                    logger.warning(
+                        "Failed to infer media field for '%s'. Reason: %s",
+                        field_name,
+                        e,
+                    )
+                    key = None
+
+                media_fields[field_name] = key
+
+            if key is not None:
+                path = value.get(key, None)
+                if path is not None and not os.path.isabs(path):
+                    value[key] = os.path.join(rel_dir, path)
         elif etau.is_str(value):
             if not os.path.isabs(value):
                 sd[field_name] = os.path.join(rel_dir, value)

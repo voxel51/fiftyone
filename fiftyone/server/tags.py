@@ -19,15 +19,13 @@ def get_tag_view(
     dataset: str,
     stages: t.List,
     filters: t.Dict,
-    slice: str = None,
     extended_stages: t.List = None,
-    sample_ids: t.Optional[t.List[str]] = None,
     label_fields: t.List[str] = None,
     labels: t.Optional[t.List[t.Dict]] = None,
     hidden_labels: t.Optional[t.List[t.Dict]] = None,
     sample_filter: SampleFilter = None,
     target_labels: bool = False,
-    modal: bool = False,
+    sample_ids: t.List[str] = None,
 ) -> foc.SampleCollection:
     view = fosv.get_view(
         dataset,
@@ -37,17 +35,14 @@ def get_tag_view(
         sample_filter=sample_filter,
     )
 
-    sample_ids = set(sample_ids or [])
-    if labels:
-        for label in labels:
-            sample_ids.add(label["sample_id"])
-
     if sample_ids:
-        view = fov.make_optimized_select_view(
-            view, sample_ids, select_groups=not modal and not slice
-        )
-    elif view.media_type == fom.GROUP and not slice:
-        view = view.select_group_slices(_allow_mixed=True)
+        view = fov.make_optimized_select_view(view, sample_ids)
+
+    if view.media_type == fom.GROUP:
+        if labels or (
+            sample_filter.group.id and not sample_filter.group.slice
+        ):
+            view = view.select_group_slices(_allow_mixed=True)
 
     if target_labels:
         if labels:

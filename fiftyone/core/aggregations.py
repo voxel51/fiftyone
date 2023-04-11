@@ -9,10 +9,12 @@ from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
 import inspect
+import logging
 import reprlib
 import uuid
 
 import numpy as np
+from mongoengine.base import get_document
 
 import eta.core.utils as etau
 
@@ -24,6 +26,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 class Aggregation(object):
@@ -1836,12 +1841,13 @@ class Schema(Aggregation):
         field_or_expr,
         expr=None,
         dynamic_only=False,
+        _doc_type=None,
         _include_private=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._dynamic_only = dynamic_only
         self._include_private = _include_private
-        self._doc_type = None
+        self._doc_type = _doc_type
 
     def _kwargs(self):
         return [
@@ -1890,6 +1896,16 @@ class Schema(Aggregation):
 
             if name in doc_fields:
                 field = doc_fields[name]
+            elif "." in _type:
+                _type, _cls = _type.split(".", 1)
+                try:
+                    document_type = get_document(_cls)
+                    field = fof.EmbeddedDocumentField(document_type)
+                except Exception as e:
+                    field = None
+                    logger.warning(
+                        "Unable to load document class '%s': %s", _cls, e
+                    )
             else:
                 field = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
 
@@ -1897,23 +1913,19 @@ class Schema(Aggregation):
 
         schema = {}
         for name, raw_types in raw_schema.items():
-            types = _resolve_types(raw_types)
-            schema[name] = types[0] if len(types) == 1 else types
+            schema[name] = _resolve_types(raw_types)
 
         return schema
 
     def to_mongo(self, sample_collection, context=None):
         field_name = self._field_name
-        doc_type = None
 
-        if self._expr is None:
+        if self._doc_type is None and self._expr is None:
             field_type = _get_field_type(
                 sample_collection, field_name, unwind=True
             )
             if isinstance(field_type, fof.EmbeddedDocumentField):
-                doc_type = field_type
-
-        self._doc_type = doc_type
+                self._doc_type = field_type
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
             sample_collection,
@@ -1921,6 +1933,40 @@ class Schema(Aggregation):
             expr=self._expr,
             context=context,
         )
+
+        field_type_expr = {
+            "$let": {
+                "vars": {"ftype": {"$type": "$fields.v"}},
+                "in": {
+                    "$cond": {
+                        "if": {
+                            "$and": [
+                                {
+                                    "$eq": [
+                                        "$$ftype",
+                                        "object",
+                                    ]
+                                },
+                                {
+                                    "$gt": [
+                                        "$fields.v._cls",
+                                        None,
+                                    ]
+                                },
+                            ],
+                        },
+                        "then": {
+                            "$concat": [
+                                "$$ftype",
+                                ".",
+                                "$fields.v._cls",
+                            ]
+                        },
+                        "else": "$$ftype",
+                    }
+                },
+            }
+        }
 
         pipeline.extend(
             [
@@ -1931,13 +1977,201 @@ class Schema(Aggregation):
                         "_id": None,
                         "schema": {
                             "$addToSet": {
-                                "$concat": [
-                                    "$fields.k",
-                                    ".",
-                                    {"$type": "$fields.v"},
-                                ]
+                                "$concat": ["$fields.k", ".", field_type_expr]
                             }
                         },
+                    }
+                },
+            ]
+        )
+
+        return pipeline
+
+
+class ListSchema(Aggregation):
+    """Extracts the value type(s) in a specified list field across all samples
+    in a collection.
+
+    Examples::
+
+        from datetime import datetime
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Classification(
+                label="cat",
+                info=[
+                    fo.DynamicEmbeddedDocument(
+                        task="initial_annotation",
+                        author="Alice",
+                        timestamp=datetime(1970, 1, 1),
+                        notes=["foo", "bar"],
+                    ),
+                    fo.DynamicEmbeddedDocument(
+                        task="editing_pass",
+                        author="Bob",
+                        timestamp=datetime.utcnow(),
+                    ),
+                ],
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Classification(
+                label="dog",
+                info=[
+                    fo.DynamicEmbeddedDocument(
+                        task="initial_annotation",
+                        author="Bob",
+                        timestamp=datetime(2018, 10, 18),
+                        notes=["spam", "eggs"],
+                    ),
+                ],
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        # Determine that `ground_truth.info` contains embedded documents
+        aggregation = fo.ListSchema("ground_truth.info")
+        print(dataset.aggregate(aggregation))
+        # fo.EmbeddedDocumentField
+
+        # Determine the fields of the embedded documents in the list
+        aggregation = fo.Schema("ground_truth.info[]")
+        print(dataset.aggregate(aggregation))
+        # {'task': StringField, ..., 'notes': ListField}
+
+        # Determine the type of the values in the nested `notes` list field
+        # Since `ground_truth.info` is not yet declared on the dataset's
+        # schema, we must manually include `[]` to unwind the info lists
+        aggregation = fo.ListSchema("ground_truth.info[].notes")
+        print(dataset.aggregate(aggregation))
+        # fo.StringField
+
+        # Declare the `ground_truth.info` field
+        dataset.add_sample_field(
+            "ground_truth.info",
+            fo.ListField,
+            subfield=fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # Now we can inspect the nested `notes` field without unwinding
+        aggregation = fo.ListSchema("ground_truth.info.notes")
+        print(dataset.aggregate(aggregation))
+        # fo.StringField
+
+    Args:
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
+    """
+
+    def __init__(self, field_or_expr, expr=None):
+        super().__init__(field_or_expr, expr=expr)
+
+    def _kwargs(self):
+        return [["field_or_expr", self._field_name], ["expr", self._expr]]
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``[]``
+        """
+        return []
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            a :class:`fiftyone.core.fields.Field` or list of
+            :class:`fiftyone.core.fields.Field` instances describing the value
+            type(s) in the list
+        """
+        raw_types = set()
+        for _type in d["schema"]:
+            if "." in _type:
+                _type, _cls = _type.split(".", 1)
+                try:
+                    document_type = get_document(_cls)
+                    field = fof.EmbeddedDocumentField(document_type)
+                except Exception as e:
+                    field = None
+                    logger.warning(
+                        "Unable to load document class '%s': %s", _cls, e
+                    )
+            else:
+                field = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
+
+            raw_types.add(field)
+
+        return _resolve_types(raw_types)
+
+    def to_mongo(self, sample_collection, context=None):
+        field_name = self._field_name
+
+        path, pipeline, _, _, _ = _parse_field_and_expr(
+            sample_collection,
+            field_name,
+            expr=self._expr,
+            context=context,
+        )
+
+        field_type_expr = {
+            "$let": {
+                "vars": {"ftype": {"$type": "$" + path}},
+                "in": {
+                    "$cond": {
+                        "if": {
+                            "$and": [
+                                {
+                                    "$eq": [
+                                        "$$ftype",
+                                        "object",
+                                    ]
+                                },
+                                {
+                                    "$gt": [
+                                        "$" + path + "._cls",
+                                        None,
+                                    ]
+                                },
+                            ],
+                        },
+                        "then": {
+                            "$concat": [
+                                "$$ftype",
+                                ".",
+                                "$" + path + "._cls",
+                            ]
+                        },
+                        "else": "$$ftype",
+                    }
+                },
+            }
+        }
+
+        pipeline.extend(
+            [
+                {"$unwind": "$" + path},
+                {
+                    "$group": {
+                        "_id": None,
+                        "schema": {"$addToSet": field_type_expr},
                     }
                 },
             ]
@@ -1963,7 +2197,7 @@ def _resolve_types(raw_types):
         ):
             types = [fof.FloatField()]
 
-    return types
+    return types[0] if len(types) == 1 else types
 
 
 class Std(Aggregation):

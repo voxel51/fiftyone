@@ -14,6 +14,7 @@ import {
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
+import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
 import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
@@ -90,12 +91,13 @@ const imputeOverlayFromPath = async (
   field: string,
   label: Record<string, any>,
   coloring: Coloring,
-  buffers: ArrayBuffer[]
+  buffers: ArrayBuffer[],
+  sources: { [path: string]: string }
 ) => {
   // handle all list types here
   if (label._cls === DETECTIONS) {
     label.detections.forEach((detection) =>
-      imputeOverlayFromPath(field, detection, coloring, buffers)
+      imputeOverlayFromPath(field, detection, coloring, buffers, {})
     );
     return;
   }
@@ -113,23 +115,34 @@ const imputeOverlayFromPath = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayPngImageUrl = getSampleSrc(label[overlayPathField] as string);
+  const overlayImageUrl = getSampleSrc(
+    sources[`${field}.${overlayPathField}`] || label[overlayPathField]
+  );
 
-  const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
+  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",
-    overlayPngImageUrl,
+    overlayImageUrl,
     null,
     "arrayBuffer"
   );
 
-  const overlayData = decodePng(pngArrayBuffer);
+  let overlayData;
+
+  if (overlayImageUrl.endsWith(".jpg")) {
+    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
+  } else {
+    overlayData = decodePng(overlayImageBuffer);
+  }
 
   const width = overlayData.width;
   const height = overlayData.height;
 
+  const numChannels =
+    overlayData.channels ?? overlayData.data.length / (width * height);
+
   const overlayMask: OverlayMask = {
     buffer: overlayData.data.buffer,
-    channels: overlayData.channels,
+    channels: numChannels,
     arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
     shape: [height, width],
   };
@@ -148,9 +161,10 @@ const imputeOverlayFromPath = async (
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
-  prefix: string = ""
+  prefix = "",
+  sources: { [key: string]: string }
 ): Promise<ArrayBuffer[]> => {
-  let buffers: ArrayBuffer[] = [];
+  const buffers: ArrayBuffer[] = [];
   const promises = [];
 
   for (const field in sample) {
@@ -160,7 +174,7 @@ const processLabels = async (
     }
 
     if (DENSE_LABELS.has(label._cls)) {
-      await imputeOverlayFromPath(field, label, coloring, buffers);
+      await imputeOverlayFromPath(field, label, coloring, buffers, sources);
     }
 
     if (label._cls in DeserializerFactory) {
@@ -180,7 +194,11 @@ const processLabels = async (
 
     if (painterFactory[label._cls]) {
       promises.push(
-        painterFactory[label._cls](prefix + field, label, coloring)
+        painterFactory[label._cls](
+          prefix ? prefix + field : field,
+          label,
+          coloring
+        )
       );
     }
   }
@@ -205,11 +223,12 @@ export interface ProcessSample {
   uuid: string;
   sample: Sample & FrameSample;
   coloring: Coloring;
+  sources: { [path: string]: string };
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
+const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
   mapId(sample);
 
   let bufferPromises = [];
@@ -217,14 +236,14 @@ const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
   if (sample._media_type === "point-cloud") {
     process3DLabels(sample);
   } else {
-    bufferPromises = [processLabels(sample, coloring)];
+    bufferPromises = [processLabels(sample, coloring, null, sources)];
   }
 
   if (sample.frames && sample.frames.length) {
     bufferPromises = [
       ...bufferPromises,
       ...sample.frames
-        .map((frame) => processLabels(frame, coloring, "frames."))
+        .map((frame) => processLabels(frame, coloring, "frames.", sources))
         .flat(),
     ];
   }
@@ -336,7 +355,7 @@ const getSendChunk =
     if (value) {
       Promise.all(
         value.frames.map((frame) =>
-          processLabels(frame, value.coloring, "frames.")
+          processLabels(frame, value.coloring, "frames.", {})
         )
       ).then((buffers) => {
         postMessage(

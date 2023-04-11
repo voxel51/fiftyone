@@ -87,8 +87,8 @@ export const PointSizeSlider = () => {
               onChange={handlePointSizeAttenuationChange}
             />
           }
+          classes={{ label: style.pointSizeAttenuationLabel }}
           label="Point Size Attenuation"
-          className="pointSizeAttenuationCheckbox"
         />
 
         <div className={style.pointSizeContainer}>
