@@ -12,6 +12,7 @@ import ColorView from "../components/ColorView";
 import TabsView from "../components/TabsView";
 import JSONView from "../components/JSONView";
 import AutocompleteView from "../components/AutocompleteView";
+import FileView from "../components/FileView";
 
 export function log(...args) {
   console.groupCollapsed(">>>", ...args);
@@ -40,6 +41,7 @@ const componentsMap = {
   TabsView: TabsView,
   JSONView: JSONView,
   AutocompleteView: AutocompleteView,
+  FileView: FileView,
   UnsupportedView: UnsupportedView,
 };
 
