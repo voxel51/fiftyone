@@ -15,6 +15,7 @@ const componentByView = {
   TabsView: "TabsView",
   JSONView: "JSONView",
   AutocompleteView: "AutocompleteView",
+  FileView: "FileView",
 };
 const typeMap = {
   ObjectType: "object",
