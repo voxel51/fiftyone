@@ -72,6 +72,9 @@ let theme = extendMuiTheme({
           500: "#FF6D04",
           600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
+        error: {
+          main: "hsl(0, 87%, 53%)",
+        },
       },
     },
     dark: {
@@ -137,6 +140,9 @@ let theme = extendMuiTheme({
         voxel: {
           500: "#FF6D04",
           600: "#D54B00", // Not in the design. Darker shade of 500 of is used
+        },
+        error: {
+          main: "hsl(0, 87%, 53%)",
         },
       },
     },
