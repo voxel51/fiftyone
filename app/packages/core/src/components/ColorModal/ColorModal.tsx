@@ -28,14 +28,9 @@ import {
   tempColorSetting,
   tempGlobalSetting,
   updateFieldSettings,
-  useOverwriteCustomizeColors,
   validateJSONSetting,
 } from "./utils";
-import {
-  CustomizeColor,
-  customizeColorFields,
-  useOutsideClick,
-} from "@fiftyone/state";
+import { CustomizeColor, useOutsideClick } from "@fiftyone/state";
 import useMeasure from "react-use-measure";
 import JSONViewer from "./JSONViewer";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
@@ -222,10 +217,10 @@ const ColorModal = () => {
     } else {
       setTempGlobal((prev) => ({
         ...cloneDeep(prev),
-        colors: json.colorScheme,
+        colors: json?.colorScheme,
       }));
     }
-  }, [json.colorScheme]);
+  }, [json?.colorScheme]);
 
   const ColorModalTitle = () => {
     return (
@@ -361,16 +356,15 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
     if (activeColorModalField == "json") {
       if (
         typeof json !== "object" ||
-        !json.colorScheme ||
-        !Array.isArray(json.colorScheme) ||
-        !json.customizedColorSettings ||
-        !Array.isArray(json.customizedColorSettings)
+        !json?.colorScheme ||
+        !Array.isArray(json?.colorScheme) ||
+        !json?.customizedColorSettings ||
+        !Array.isArray(json?.customizedColorSettings)
       )
         return;
       const { colorScheme, customizedColorSettings } = json;
       // update color palette
-      const validColors = colorScheme.filter((c) => isValidColor(c));
-      console.info(validColors);
+      const validColors = colorScheme?.filter((c) => isValidColor(c));
       validColors.length > 0 && setColoring(validColors);
       // validate customizedColorSettings
       const validated = validateJSONSetting(
@@ -379,7 +373,7 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
       );
       if (validated) {
         resetCustomizeColors(validated);
-        validated && validated.forEach((update) => setCustomizeColor(update));
+        validated.forEach((update) => setCustomizeColor(update));
       }
     }
   };
@@ -388,23 +382,19 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
     useOverwriteCustomizeColors(customizeColorFields);
 
   function useOverwriteCustomizeColors(customizeColorFields: string[]) {
-    return useRecoilCallback(
-      ({ set, reset }) =>
-        (newValues: CustomizeColor[]) => {
-          const newKeys = newValues.map((v) => v.field);
-          customizeColorFields.forEach((key) => {
-            debugger;
-            if (newKeys.includes(key)) {
-              set(
-                fos.customizeColorSelector(key),
-                newValues.find((v) => v.field === key)!
-              );
-            } else {
-              set(fos.customizeColorSelector(key), {});
-            }
-          });
+    return useRecoilCallback(({ set }) => (newValues: CustomizeColor[]) => {
+      const newKeys = newValues.map((v) => v.field);
+      customizeColorFields.forEach((key) => {
+        if (newKeys.includes(key)) {
+          set(
+            fos.customizeColorSelector(key),
+            newValues.find((v) => v.field === key)!
+          );
+        } else {
+          set(fos.customizeColorSelector(key), {});
         }
-    );
+      });
+    });
   }
 
   if (!activeColorModalField || !tempGlobalSettings) return null;
