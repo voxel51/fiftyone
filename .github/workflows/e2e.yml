@@ -43,7 +43,6 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          npm install --save-dev tsconfig-paths
-          npm install -g ts-node
+          yarn install
           yarn start
         working-directory: ./e2e
