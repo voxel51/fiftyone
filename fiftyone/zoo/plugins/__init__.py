@@ -16,7 +16,7 @@ import eta.core.web as etaw
 import yaml
 
 import fiftyone as fo
-from fiftyone.zoo.utils.github import _parse_repo, _parse_url
+import fiftyone.zoo.utils.github as fozug
 
 
 class GitHubRepo:
@@ -28,13 +28,13 @@ class GitHubRepo:
             github_repo: URL or '<user>/<repo>[/<ref>]' of the GitHub repo containing the plugin
         """
         if not etaw.is_url(repo_or_url):
-            params = _parse_repo(repo_or_url)
+            params = fozug.parse_repo(repo_or_url)
         else:
-            params = _parse_url(repo_or_url)
+            params = fozug.parse_url(repo_or_url)
         self._user = params.get("user")
         self._name = params.get("repo")
         self._ref = params.get("branch")
-        self.download_url = _get_zip_url(repo_or_url)
+        self.download_url = fozug.get_zip_url(repo_or_url)
 
     @property
     def user(self) -> str:
@@ -76,7 +76,7 @@ class ZooPluginConfig(etas.Serializable):
         self.ref = ref
         self.description = description
         self.installed = installed
-        self.download_url = _get_zip_url(
+        self.download_url = fozug.get_zip_url(
             os.path.join(author, plugin_name), ref=ref
         )
 
@@ -159,23 +159,6 @@ def download_zoo_plugin(
             f"Error downloading archive of repo '{github_repo}' ({zipurl}): {e}"
         )
         return None
-
-
-def _get_zip_url(github_repo: str, ref: str = None):
-    """
-    Returns the URL to the zip file of the GitHub repo
-    Args:
-        github_repo: URL or '<username>/<repo>' of the GitHub repo containing the plugin
-    """
-    repo_spec = github_repo.split("github.com/")[-1]
-
-    if "tree" in repo_spec:
-        repo_spec.replace("tree", "zipball")
-    else:
-        repo_spec = os.path.join(repo_spec, "zipball")
-    if ref:
-        repo_spec = os.path.join(repo_spec, ref)
-    return f"https://api.github.com/repos/{repo_spec}"
 
 
 def install_zoo_plugin(plugin_name):
