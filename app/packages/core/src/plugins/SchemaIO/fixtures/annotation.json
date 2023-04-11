@@ -2,6 +2,20 @@
     "type": {
         "name": "Object",
         "properties": {
+            "sampleFile": {
+                "type": { "name": "String" },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "FileView",
+                    "label": "Sample file",
+                    "description": "Upload or provide a URL to a sample file",
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null
+                }
+            },
             "tags": {
                 "type": { "name": "String" },
                 "defaultValue": null,
