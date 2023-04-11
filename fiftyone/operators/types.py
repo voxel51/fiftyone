@@ -380,3 +380,8 @@ class JSONView(View):
 class AutocompleteView(Choices):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class FileView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
