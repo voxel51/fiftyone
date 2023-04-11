@@ -1,0 +1,49 @@
+name: Test e2e
+
+# on: workflow_call
+on:
+  push:
+    branches:
+      - e2e-ci
+
+jobs:
+  test-e2e:
+    runs-on: ubuntu-latest
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup
+        uses: actions/setup-python@v2
+        id: pip-cache
+        with:
+          python-version: ${{ matrix.python }}
+          cache: "pip"
+          cache-dependency-path: |
+            requirements/common.txt
+            requirements/github.txt
+            requirements/test.txt
+      - name: Install requirements
+        if: steps.pip-cache.outputs.cache-hit != true
+        run: pip install -r requirements/github.txt
+      - name: Install fiftyone
+        run: pip install .
+      - name: Configure
+        id: test_config
+        run: |
+          python tests/utils/setup_config.py
+          python tests/utils/github_actions_flags.py
+      - name: FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v2
+
+      - name: Run e2e tests
+        run: |
+          npm install --save-dev tsconfig-paths
+          npm install -g ts-node
+          yarn start
+        working-directory: ./e2e

@@ -15,6 +15,18 @@ Cypress.Commands.add("executePythonCode", (sourceCode) => {
   return cy.task("executePythonProcessTask", { sourceCode });
 });
 
+Cypress.Commands.add("waitForGridToBeVisible", (datasetName?: string) => {
+  if (datasetName) {
+    cy.visit(`/datasets/${datasetName}`);
+  } else {
+    cy.visit("/");
+    cy.get(`[data-cy="selector-Select dataset"]`).click();
+    cy.get("[data-cy=selector-result]").first().click();
+  }
+
+  cy.get("[data-cy=fo-grid]").should("be.visible");
+});
+
 Cypress.Commands.add(
   "waitForLookerToRender",
   (timeout = Duration.Seconds(0.4)) => {
