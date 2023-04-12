@@ -27,7 +27,7 @@
     },
     "dependencies": {
         "@recoiljs/refine": "^0.1.1",
-        "react-relay": "^14.0.0",
+        "react-relay": "^14.1.0",
         "recoil-sync": "^0.2.0"
     }
 }

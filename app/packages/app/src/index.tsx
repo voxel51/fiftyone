@@ -2,7 +2,6 @@ import { ErrorBoundary, Loading, ThemeProvider } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
-  EventsContext,
   modal,
   screenshotCallbacks,
 } from "@fiftyone/state";
@@ -37,9 +36,7 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
     <ThemeProvider>
       <ErrorBoundary>
         <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
-          <EventsContext.Provider value={{ session: null }}>
-            <App />
-          </EventsContext.Provider>
+          <App />
         </BeforeScreenshotContext.Provider>
       </ErrorBoundary>
     </ThemeProvider>

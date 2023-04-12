@@ -4400,18 +4400,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/dataset@workspace:packages/dataset":
-  version: 0.0.0-use.local
-  resolution: "@fiftyone/dataset@workspace:packages/dataset"
-  dependencies:
-    "@fiftyone/core": "*"
-    prettier: ^2.7.1
-    typescript: ^4.7.4
-    typescript-plugin-css-modules: ^3.4.0
-    vite: ^3.0.0
-  languageName: unknown
-  linkType: soft
-
 "@fiftyone/embeddings@workspace:packages/embeddings":
   version: 0.0.0-use.local
   resolution: "@fiftyone/embeddings@workspace:packages/embeddings"
@@ -4577,7 +4565,7 @@ __metadata:
   dependencies:
     "@recoiljs/refine": ^0.1.1
     prettier: ^2.7.1
-    react-relay: ^14.0.0
+    react-relay: ^14.1.0
     recoil-sync: ^0.2.0
     relay-compiler: ^14.0.0
     relay-compiler-language-typescript: ^15.0.1
@@ -8446,9 +8434,9 @@ __metadata:
   linkType: hard
 
 "@types/relay-runtime@npm:*":
-  version: 13.0.3
-  resolution: "@types/relay-runtime@npm:13.0.3"
-  checksum: b6151ddc74bd306873a854afaa651f972c7ca6e7685c9fe791f32f3ce1cff56e30c64db457abfa8488957af6a8e3462a5097d4b87ae2076d25e0ec59a115ac5f
+  version: 14.1.10
+  resolution: "@types/relay-runtime@npm:14.1.10"
+  checksum: 498af0a8b6521edcf3c2945bbd126167ffe29d18505085527641ba5d617533e37f356af17ec8d1ea7192fa1d398da116b9457d5a5c054d9b2f9ea2542adec61d
   languageName: node
   linkType: hard
 
@@ -22645,21 +22633,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-relay@npm:^14.0.0":
-  version: 14.0.0
-  resolution: "react-relay@npm:14.0.0"
-  dependencies:
-    "@babel/runtime": ^7.0.0
-    fbjs: ^3.0.2
-    invariant: ^2.2.4
-    nullthrows: ^1.1.1
-    relay-runtime: 14.0.0
-  peerDependencies:
-    react: ^16.9.0 || ^17 || ^18
-  checksum: c329e91cd6ab86421db1be11c46a7ebaf8ede5a7acf5d4dc14d767e31990094d124da8e16796c8f54045f72118742990ed0333250ca2e35fd4499c7d2fa2c2bc
-  languageName: node
-  linkType: hard
-
 "react-resize-detector@npm:^6.6.3":
   version: 6.7.8
   resolution: "react-resize-detector@npm:6.7.8"
@@ -23392,17 +23365,6 @@ __metadata:
   dependencies:
     cosmiconfig: ^5.0.5
   checksum: bad9578b1e2525dd21897cb35e89acbf21cc3a19852c916aec81baf3c5246493a1ac8c5c0f40736325a04116aa66129ec854dfe089b28eca65b79844788fd9d9
-  languageName: node
-  linkType: hard
-
-"relay-runtime@npm:14.0.0":
-  version: 14.0.0
-  resolution: "relay-runtime@npm:14.0.0"
-  dependencies:
-    "@babel/runtime": ^7.0.0
-    fbjs: ^3.0.2
-    invariant: ^2.2.4
-  checksum: 5226f3dcf878ddf843c4248199021b679504668320e35b700237c6ae9ff0ead2710c9099f855cff0e840e14e78c5159f7a9c132a9096ad0cb32986837dcf75a0
   languageName: node
   linkType: hard
 
