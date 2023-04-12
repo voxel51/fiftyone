@@ -37,7 +37,9 @@ class Plugins(HTTPEndpoint):
         for filepath in pkgs:
             pkg = etas.read_json(filepath)
 
-            if "fiftyone" not in pkg:
+            if "fiftyone" not in pkg or not pkg["fiftyone"].get(
+                "enabled", True
+            ):
                 continue
 
             plugin_definition = {
