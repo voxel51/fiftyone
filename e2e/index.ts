@@ -12,7 +12,7 @@ import {
 dotEnvConfig({ path: ".env.cypress" });
 
 const runCypress = async () => {
-  const args = ["cypress", "run", "--browser", "chrome", "--headed"];
+  const args = ["cypress", "run", "--browser", "chrome", "--headless"];
 
   const options = await cypress.cli.parseRunArguments([
     ...args,
