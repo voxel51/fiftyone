@@ -49,7 +49,6 @@ class ResolveType(HTTPEndpoint):
     async def post(self, request: Request, data: dict) -> dict:
         operator_name = data.get("operator_name", None)
         target_type = data.get("type", None)
-        print(operator_name)
         if operator_name is None:
             raise ValueError("Operator name must be provided")
         if operator_exists(operator_name) is False:
