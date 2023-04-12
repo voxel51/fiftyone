@@ -97,7 +97,7 @@ class ZooPluginConfig(etas.Serializable):
         plugin_download_dir_name = "-".join(
             [self.author, self.plugin_name, self.ref]
         )
-        plugin_download_dir_path = _find_download_dir(plugin_download_dir_name)
+        plugin_download_dir_path = find_zoo_plugin(plugin_download_dir_name)
         print(f"Checking {plugin_download_dir_path} for plugin files")
         if os.path.isdir(plugin_download_dir_path):
             print("Writing config file to: ", plugin_download_dir_path)
@@ -170,7 +170,7 @@ def install_zoo_plugin(plugin_name):
     Returns:
         the path to the installed plugin
     """
-    plugin_dir = _find_download_dir(plugin_name)
+    plugin_dir = find_zoo_plugin(plugin_name)
     if not plugin_dir:
         raise ValueError(f"Plugin '{plugin_name}' not downloaded.")
 
@@ -186,7 +186,7 @@ def uninstall_zoo_plugin(plugin_name):
     Returns:
         the path to the installed plugin
     """
-    plugin_dir = _find_download_dir(plugin_name)
+    plugin_dir = find_zoo_plugin(plugin_name)
     if not plugin_dir:
         raise ValueError(f"Plugin '{plugin_name}' not downloaded.")
 
@@ -224,7 +224,7 @@ def delete_zoo_plugin(plugin_name):
     Args:
         plugin_name: the name of the downloaded plugin
     """
-    plugin_dir = _find_download_dir(plugin_name)
+    plugin_dir = find_zoo_plugin(plugin_name)
     if not os.path.isdir(plugin_dir):
         raise ValueError(f"Plugin directory '{plugin_dir}' does not exist.")
 
@@ -270,7 +270,7 @@ def _list_plugins(installed_only: bool = None) -> Set[str]:
                         .get("plugin_name")
                     )
                     logging.debug(plugin_name)
-                    plugins.add(plugin_name + "(.py)")
+                    plugins.add(plugin_name + " (.py)")
                 except AttributeError:
                     logging.debug(
                         f"error parsing plugin_name from filepath: {fpath}"
@@ -288,7 +288,7 @@ def _list_plugins(installed_only: bool = None) -> Set[str]:
                 installed_only and config.get("enabled", True)
             ) or installed_only is None:
                 logging.debug(f'Found js plugin: {config.get("name")}')
-                plugins.add(config.get("name") + "(.js)")
+                plugins.add(config.get("name") + " (.js)")
 
     return plugins
 
@@ -304,10 +304,9 @@ def _is_downloaded(plugin_name: str) -> bool:
     return False
 
 
-def _find_download_dir(plugin_name: str) -> Optional[str]:
+def find_zoo_plugin(plugin_name: str) -> Optional[str]:
     """Returns the path to the plugin directory if it exists, None otherwise."""
     pat = re.sub(r"[-/_]", ".", plugin_name)
-    print("Checking for previous download with pattern: ", pat)
     for fp in glob.glob(fo.config.plugins_dir + "/**", recursive=True):
         if re.search(pat, fp):
             return fp
