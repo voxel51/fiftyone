@@ -43,6 +43,7 @@ jobs:
 
       - name: Run e2e tests
         run: |
+          set -x
           fiftyone app connect --destination [<runner>@]<$(hostname)> --port 8787
           yarn install
           yarn start
