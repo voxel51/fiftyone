@@ -34,11 +34,11 @@ const runCypress = async () => {
 
   console.log("cypress options", options);
 
-  if (!options.headed) {
-    throw new Error(
-      "Cypress is running in headless mode, but screenshotting doesn't work as expected in this mode with looker. See https://github.com/cypress-io/cypress/issues/15605 for more details."
-    );
-  }
+  // if (!options.headed) {
+  //   throw new Error(
+  //     "Cypress is running in headless mode, but screenshotting doesn't work as expected in this mode with looker. See https://github.com/cypress-io/cypress/issues/15605 for more details."
+  //   );
+  // }
 
   return cypress.run(options);
 };
