@@ -1,6 +1,6 @@
 import { Loading } from "@fiftyone/components";
-import React, { Suspense, useEffect, useState } from "react";
-
+import { subscribe } from "@fiftyone/relay";
+import React, { Suspense, useEffect } from "react";
 import { atom, useRecoilState } from "recoil";
 import style from "./pending.module.css";
 import { Queries, useRouterContext } from "./routing";
@@ -15,21 +15,31 @@ export const pendingEntry = atom<boolean>({
   default: false,
 });
 
+export const entry = atom<Entry<Queries> | null>({
+  key: "Entry",
+  default: null,
+  dangerouslyAllowMutability: true,
+});
+
 const Renderer = () => {
-  const [routeEntry, setRouteEntry] = useState<Entry<Queries>>();
+  const [routeEntry, setRouteEntry] = useRecoilState(entry);
   const [pending, setPending] = useRecoilState(pendingEntry);
   const router = useRouterContext();
 
   useEffect(() => {
     router.load().then(setRouteEntry);
+    subscribe((_, { set }) => {
+      set(entry, router.get());
+      set(pendingEntry, false);
+    });
+  }, [router, setRouteEntry]);
+
+  useEffect(() => {
     return router.subscribe(
-      (entry) => {
-        setRouteEntry(entry);
-        setPending(false);
-      },
+      () => {},
       () => setPending(true)
     );
-  }, [router]);
+  }, [router, setPending]);
 
   const loading = <Loading>Pixelating...</Loading>;
 

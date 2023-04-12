@@ -4,9 +4,11 @@ import { atom, DefaultValue, selector } from "recoil";
 import { State } from "./recoil";
 
 export interface Session {
-  selectedSamples: Set<string>;
-  selectedLabels: State.SelectedLabel[];
-  sessionSpaces: SpaceNodeJSON;
+  canEditSavedViews?: boolean;
+  readOnly?: boolean;
+  selectedSamples?: Set<string>;
+  selectedLabels?: State.SelectedLabel[];
+  sessionSpaces?: SpaceNodeJSON;
 }
 
 type Setter = <K extends keyof Session>(key: K, value: Session[K]) => void;
@@ -16,28 +18,46 @@ type SessionAtomOptions<K extends keyof Session> = {
   default: Session[K];
 };
 
-let sessionRef: Session;
+const sessionRef: Session = {};
 let setterRef: Setter;
 
-export const useSession = (session: Session, setter: Setter) => {
-  sessionRef = session;
+type Setters<K extends keyof Session = keyof Session> = Partial<{
+  [key in K]: (value: Session[K]) => void;
+}>;
+const setters: Setters = {};
+
+export const useSession = (setter: Setter) => {
   setterRef = setter;
-  return;
+  return <K extends keyof Session>(key: K, value: Session[K]) => {
+    setters[key] && setters[key](value);
+    sessionRef[key] = value;
+  };
 };
 
 export function sessionAtom<K extends keyof Session>(
   options: SessionAtomOptions<K>
 ) {
-  const value = atom({
+  const value = atom<Session[K]>({
     ...options,
     effects: [
       ({ setSelf, trigger }) => {
         if (trigger === "get") {
-          setSelf(sessionRef[options.key]);
+          setSelf(
+            sessionRef[options.key] === undefined
+              ? options.default
+              : sessionRef[options.key]
+          );
         }
 
+        setters[options.key] = (value: Session[K]) => setSelf(value);
+
         return subscribe((_, { set }) => {
-          set(value, sessionRef[options.key]);
+          set(
+            value,
+            sessionRef[options.key] === undefined
+              ? options.default
+              : sessionRef[options.key]
+          );
         });
       },
     ],

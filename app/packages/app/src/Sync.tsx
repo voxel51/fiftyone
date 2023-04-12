@@ -19,17 +19,15 @@ import {
   State,
   stateSubscription,
   useClearModal,
-  useReset,
   useScreenshot,
   useSession,
   viewsAreEqual,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { DefaultValue, useRecoilValue } from "recoil";
-import { ItemSnapshot } from "recoil-sync";
 import { commitMutation } from "relay-runtime";
 import Setup from "./components/Setup";
 import { pendingEntry } from "./Renderer";
@@ -65,13 +63,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   readyStateRef.current = readyState;
   const subscription = useRecoilValue(stateSubscription);
   const handleError = useErrorHandler();
-
-  const reset = useReset();
   const clearModal = useClearModal();
-
-  React.useEffect(() => {
-    readyState === AppReadyState.CLOSED && reset();
-  }, [readyState, reset]);
   const router = useRouterContext();
   const refresh = useRefresh();
   const screenshot = useScreenshot(
@@ -82,8 +74,10 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       | undefined
   );
   const sessionRef = useRef<Session>({});
+  const setter = useSession((key, value) => {
+    WRITE_HANDLERS[key](router, value, subscription);
+  });
 
-  const updateExternals = useRef<(items: ItemSnapshot) => void>();
   React.useEffect(() => {
     const controller = new AbortController();
 
@@ -105,43 +99,26 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               refresh();
               break;
             case Events.SELECT_LABELS:
-              sessionRef.current.selectedLabels = toCamelCase(
-                JSON.parse(msg.data).selected_labels
-              ) as State.SelectedLabel[];
-              updateExternals.current &&
-                updateExternals.current(
-                  new Map([
-                    [
-                      "selectedLabels",
-                      new Set(sessionRef.current.selectedLabels),
-                    ],
-                  ])
-                );
+              setter(
+                "selectedLabels",
+                toCamelCase(
+                  JSON.parse(msg.data).selected_labels
+                ) as State.SelectedLabel[]
+              );
               break;
             case Events.SELECT_SAMPLES:
-              sessionRef.current.selectedSamples = JSON.parse(
-                msg.data
-              ).sample_ids;
-              updateExternals.current &&
-                updateExternals.current(
-                  new Map([
-                    [
-                      "selectedSamples",
-                      new Set(sessionRef.current.selectedSamples),
-                    ],
-                  ])
-                );
+              setter("selectedSamples", JSON.parse(msg.data).sample_ids);
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
-
-              sessionRef.current.selectedSamples = new Set(
-                payload.state.selected
+              setter("selectedSamples", new Set(payload.state.selected));
+              setter(
+                "selectedLabels",
+                toCamelCase(
+                  payload.state.selected_labels
+                ) as State.SelectedLabel[]
               );
-              sessionRef.current.selectedLabels = toCamelCase(
-                payload.state.selected_labels
-              ) as State.SelectedLabel[];
-              sessionRef.current.sessionSpaces = payload.state.spaces;
+              setter("sessionSpaces", payload.state.spaces);
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
@@ -203,7 +180,11 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return () => controller.abort();
   }, []);
 
-  useSession(sessionRef.current, () => {});
+  useEffect(() => {
+    return router.subscribe((entry, action) =>
+      dispatchSideEffect(entry, action, subscription)
+    );
+  }, [router]);
 
   return (
     <>
@@ -259,6 +240,35 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   );
                 },
               ],
+              [
+                "viewName",
+                ({ set }, slug) => {
+                  set(pendingEntry, true);
+                  if (slug instanceof DefaultValue) {
+                    slug = null;
+                  }
+                  const params = new URLSearchParams(router.get().search);
+                  const current = params.get("view");
+                  if (current === slug) {
+                    return;
+                  }
+
+                  if (slug) {
+                    params.set("view", slug);
+                  } else {
+                    params.delete("view");
+                  }
+
+                  let search = params.toString();
+                  if (search.length) {
+                    search = `?${search}`;
+                  }
+
+                  router.history.push(`${router.get().pathname}${search}`, {
+                    view: [],
+                  });
+                },
+              ],
             ])
           }
           subscribe={(fn) => router.subscribe(fn)}
@@ -294,7 +304,7 @@ const dispatchSideEffect = (
       view: entry.state.view,
       savedViewSlug: entry.state.savedViewSlug,
       form: {},
-      datasetName: getDatasetName(entry.pathname),
+      datasetName: getDatasetName(entry.pathname) as string,
       subscription,
     },
   });
@@ -304,24 +314,21 @@ const WRITE_HANDLERS: {
   [key: string]: (
     router: RoutingContext<Queries>,
     value: any,
-    subscription: string,
-    session: SessionData
+    subscription: string
   ) => void;
 } = {
   selectedSamples: (
     router: RoutingContext<Queries>,
     selected: Set<string> | DefaultValue,
-    subscription: string,
-    session: SessionData
+    subscription: string
   ) => {
-    session.selectedSamples =
-      selected instanceof DefaultValue ? [] : [...selected];
     commitMutation<setSelectedMutation>(
       router.get().preloadedQuery.environment,
       {
         mutation: setSelected,
         variables: {
-          selected: session.selectedSamples,
+          selected:
+            selected instanceof DefaultValue ? [] : Array.from(selected),
           subscription,
         },
       }
@@ -330,17 +337,15 @@ const WRITE_HANDLERS: {
   selectedLabels: (
     router: RoutingContext<Queries>,
     selectedLabels: State.SelectedLabel[] | DefaultValue,
-    subscription: string,
-    session: SessionData
+    subscription: string
   ) => {
-    session.selectedLabels =
-      selectedLabels instanceof DefaultValue ? [] : selectedLabels;
     commitMutation<setSelectedLabelsMutation>(
       router.get().preloadedQuery.environment,
       {
         mutation: setSelectedLabels,
         variables: {
-          selectedLabels: session.selectedLabels,
+          selectedLabels:
+            selectedLabels instanceof DefaultValue ? [] : selectedLabels,
           subscription,
         },
       }
@@ -349,10 +354,8 @@ const WRITE_HANDLERS: {
   sessionSpaces: (
     router: RoutingContext<Queries>,
     spaces: SpaceNodeJSON,
-    subscription: string,
-    session: SessionData
+    subscription: string
   ) => {
-    session.spaces = spaces;
     commitMutation<setSpacesMutation>(router.get().preloadedQuery.environment, {
       mutation: setSpaces,
       variables: {
@@ -360,32 +363,6 @@ const WRITE_HANDLERS: {
         subscription,
       },
     });
-  },
-  viewName: (
-    router: RoutingContext<Queries>,
-    slug: string | null | DefaultValue
-  ) => {
-    if (slug instanceof DefaultValue) {
-      slug = null;
-    }
-    const params = new URLSearchParams(router.get().search);
-    const current = params.get("view");
-    if (current === slug) {
-      return;
-    }
-
-    if (slug) {
-      params.set("view", slug);
-    } else {
-      params.delete("view");
-    }
-
-    let search = params.toString();
-    if (search.length) {
-      search = `?${search}`;
-    }
-
-    router.history.push(`${router.get().pathname}${search}`, { view: [] });
   },
 };
 

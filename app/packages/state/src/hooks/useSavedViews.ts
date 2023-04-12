@@ -8,7 +8,6 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 
 export default function useSavedViews() {
   const datasetNameValue = useRecoilValue(fos.datasetName);
-  const send = fos.useSendEvent();
   const onError = useErrorHandler();
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -22,27 +21,24 @@ export default function useSavedViews() {
   const handleDeleteView = useCallback(
     (nameValue: string, onDeleteSuccess: (deletedId) => void) => {
       if (nameValue) {
-        send((session) =>
-          deleteView({
-            onError,
-            variables: {
-              viewName: nameValue,
-              datasetName: datasetNameValue,
-              subscription,
-              session,
-            },
-            onCompleted: (data, err) => {
-              if (err) {
-                console.log("handleDeleteView error:", err);
-              }
-              const deletedId = data?.deleteSavedView;
-              onDeleteSuccess(deletedId);
-            },
-          })
-        );
+        deleteView({
+          onError,
+          variables: {
+            viewName: nameValue,
+            datasetName: datasetNameValue,
+            subscription,
+          },
+          onCompleted: (data, err) => {
+            if (err) {
+              console.log("handleDeleteView error:", err);
+            }
+            const deletedId = data?.deleteSavedView;
+            onDeleteSuccess(deletedId);
+          },
+        });
       }
     },
-    [datasetNameValue, deleteView, onError, send, subscription]
+    [datasetNameValue, deleteView, onError, subscription]
   );
 
   const handleCreateSavedView = useRecoilCallback(
@@ -55,31 +51,28 @@ export default function useSavedViews() {
         onSuccess: (saveView) => void
       ) => {
         if (name) {
-          send((session) =>
-            saveView({
-              onError,
-              variables: {
-                viewName: name,
-                datasetName: datasetNameValue,
-                viewStages: view,
-                form: snapshot.getLoadable(viewStateForm({ modal: false }))
-                  .contents,
-                description,
-                color,
-                subscription,
-                session,
-              },
-              onCompleted: (data, err) => {
-                if (err) {
-                  console.log("handleCreateSavedView response error:", err);
-                }
-                onSuccess(data?.createSavedView);
-              },
-            })
-          );
+          saveView({
+            onError,
+            variables: {
+              viewName: name,
+              datasetName: datasetNameValue,
+              viewStages: view,
+              form: snapshot.getLoadable(viewStateForm({ modal: false }))
+                .contents,
+              description,
+              color,
+              subscription,
+            },
+            onCompleted: (data, err) => {
+              if (err) {
+                console.log("handleCreateSavedView response error:", err);
+              }
+              onSuccess(data?.createSavedView);
+            },
+          });
         }
       },
-    [datasetNameValue, saveView, onError, send, subscription]
+    [datasetNameValue, saveView, onError, subscription]
   );
 
   const handleUpdateSavedView = useCallback(
@@ -91,28 +84,25 @@ export default function useSavedViews() {
       onSuccess: (saveView) => void
     ) => {
       if (initialName) {
-        send((session) =>
-          updateView({
-            onError,
-            variables: {
-              subscription,
-              session,
-              datasetName: datasetNameValue,
-              viewName: initialName,
-              updatedInfo: {
-                name,
-                color,
-                description,
-              },
+        updateView({
+          onError,
+          variables: {
+            subscription,
+            datasetName: datasetNameValue,
+            viewName: initialName,
+            updatedInfo: {
+              name,
+              color,
+              description,
             },
-            onCompleted: ({ updateSavedView }) => {
-              onSuccess(updateSavedView);
-            },
-          })
-        );
+          },
+          onCompleted: ({ updateSavedView }) => {
+            onSuccess(updateSavedView);
+          },
+        });
       }
     },
-    [datasetNameValue, updateView, onError, send, subscription]
+    [datasetNameValue, updateView, onError, subscription]
   );
 
   return {

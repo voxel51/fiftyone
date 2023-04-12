@@ -71,7 +71,7 @@ type KeyValue<T> = {
 export const removeKeys = <T>(
   obj: KeyValue<T>,
   keys: Iterable<string>,
-  startsWith: boolean = false
+  startsWith = false
 ): KeyValue<T> => {
   const set = new Set(keys);
   const values = Array.from(keys);
@@ -381,12 +381,12 @@ const isURL = (() => {
       return false;
     }
 
-    var match = string.match(protocolAndDomainRE);
+    const match = string.match(protocolAndDomainRE);
     if (!match) {
       return false;
     }
 
-    var everythingAfterProtocol = match[1];
+    const everythingAfterProtocol = match[1];
     if (!everythingAfterProtocol) {
       return false;
     }
@@ -517,7 +517,7 @@ export const toSlug = (name: string) => {
   const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
 
   let slug = name.toLowerCase();
-  let matches = [];
+  const matches = [];
   let match;
   while ((match = valid_chars.exec(slug)) !== null) {
     matches.push(match);
@@ -525,7 +525,7 @@ export const toSlug = (name: string) => {
   if (matches.length) {
     slug = matches.join("")?.replace(replace_symbols, "-");
     if (slug.length && slug !== "-") {
-      return slug.length ? trim.exec(slug)?.groups?.slug : "";
+      return slug.length ? trim.exec(slug)?.groups?.slug || "" : "";
     }
   }
   return "";

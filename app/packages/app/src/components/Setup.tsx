@@ -10,10 +10,10 @@ import {
   SlackLink,
   useTheme,
 } from "@fiftyone/components";
+import { scrollbarStyles } from "@fiftyone/core/src/components/utils";
 import { isNotebook } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
-import { scrollbarStyles } from "@fiftyone/core/src/components/utils";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -102,6 +102,7 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         <a
           target="_blank"
           href="https://docs.voxel51.com/user_guide/app.html#remote-sessions"
+          rel="noreferrer"
         >
           this page
         </a>{" "}
@@ -192,8 +193,8 @@ const Setup = () => {
   const notebook = useRecoilValue(isNotebook);
 
   return (
-    <>
-      <Header title={"FiftyOne Teams"}>
+    <div data-cy="setup-page">
+      <Header title={"FiftyOne"}>
         <div className={iconContainer} style={{ flex: 1 }}>
           <SlackLink />
           <GitHubLink />
@@ -225,7 +226,7 @@ const Setup = () => {
           )}
         </SetupContainer>
       </SetupWrapper>
-    </>
+    </div>
   );
 };
 

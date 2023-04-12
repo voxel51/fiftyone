@@ -43,7 +43,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
       (selection && selection.length > 0) || isSimilarityOn;
 
     return Boolean(
-      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet?.size > 0
     );
   },
 });

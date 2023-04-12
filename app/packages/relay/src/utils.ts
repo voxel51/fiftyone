@@ -14,6 +14,10 @@ export function loadContext(
   data: unknown
 ) {
   const node = getFragment(fragment);
+  if (!data["__fragments"][node.name]) {
+    throw new Error(`fragment ${node.name} not present`);
+  }
+
   const identifier = getFragmentIdentifier(node, data);
   const FragmentResource = getFragmentResourceForEnvironment(environment);
   return {

@@ -85,7 +85,9 @@ export const createRouter = (
   >();
 
   const update = (location: FiftyOneLocation, action?: Action) => {
-    subscribers.forEach(([_, onPending]) => onPending && onPending());
+    requestAnimationFrame(() =>
+      subscribers.forEach(([_, onPending]) => onPending && onPending())
+    );
     currentEntryResource.load().then(({ cleanup }) => {
       currentEntryResource = getEntryResource(
         environment,

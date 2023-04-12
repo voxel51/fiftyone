@@ -313,11 +313,11 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    datasetName: String = null
+    datasetName: String!
     view: BSONArray = null
     savedViewSlug: String = null
     form: StateForm = null
-  ): ViewResponse!
+  ): BSONArray
   storeTeamsSubmission: Boolean!
   setGroupSlice(
     subscription: String!
@@ -376,11 +376,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(
-    name: String!
-    savedViewSlug: String
-    view: BSONArray = null
-  ): Dataset!
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -575,11 +571,6 @@ type VideoSample implements Sample {
   urls: [MediaURL!]!
   aspectRatio: Float!
   frameRate: Float!
-}
-
-type ViewResponse {
-  view: BSONArray!
-  dataset: Dataset!
 }
 
 scalar date

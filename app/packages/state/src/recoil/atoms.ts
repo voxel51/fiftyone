@@ -355,19 +355,13 @@ export const theme = atom<"dark" | "light">({
   effects: [getBrowserStorageEffectForKey("mui-mode")],
 });
 
-export const canEditSavedViews = atom({
+export const canEditSavedViews = sessionAtom({
   key: "canEditSavedViews",
-  default: false,
+  default: true,
 });
 
-export const compactLayout = atom({
-  key: "compactLayout",
-  default: false,
-});
-
-export const readOnly = atom({
+export const readOnly = sessionAtom({
   key: "readOnly",
-
   default: false,
 });
 

@@ -1,10 +1,5 @@
 import { Disposable } from "react-relay";
-import {
-  atom,
-  AtomOptions,
-  DefaultValue,
-  TransactionInterface_UNSTABLE,
-} from "recoil";
+import { atom, AtomOptions, TransactionInterface_UNSTABLE } from "recoil";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType } from "relay-runtime/lib/store/readInlineData";
 import { selectorWithEffect } from "./selectorWithEffect";
@@ -41,41 +36,48 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
         let disposable: Disposable;
         const setter = (d, int?: TransactionInterface_UNSTABLE) => {
           const set = int ? (v) => int.set(value, v) : setSelf;
-          set(fragmentOptions.read ? fragmentOptions.read(d) : (d as K));
+          set(
+            fragmentOptions.read && d !== null
+              ? fragmentOptions.read(d)
+              : d === null
+              ? options.default
+              : d
+          );
         };
 
         const run = (
           { data, preloadedQuery }: PageQuery<OperationType>,
           transactionInterface?: TransactionInterface_UNSTABLE
         ): Disposable => {
-          fragmentOptions.fragments.forEach((fragment, i) => {
-            if (fragmentOptions.keys && fragmentOptions.keys[i]) {
-              data = data[fragmentOptions.keys[i]];
-            }
+          try {
+            fragmentOptions.fragments.forEach((fragment, i) => {
+              if (fragmentOptions.keys && fragmentOptions.keys[i]) {
+                data = data[fragmentOptions.keys[i]];
+              }
 
-            // @ts-ignore
-            ctx = loadContext(fragment, preloadedQuery.environment, data);
-            parent = data;
-            data = ctx.result.data;
-          });
-          setter(data, transactionInterface);
-          disposable?.dispose();
+              // @ts-ignore
+              ctx = loadContext(fragment, preloadedQuery.environment, data);
+              parent = data;
+              data = ctx.result.data;
+            });
+            setter(data, transactionInterface);
+            disposable?.dispose();
 
-          return ctx.FragmentResource.subscribe(ctx.result, () => {
-            const update = loadContext(
-              fragmentOptions.fragments[fragmentOptions.fragments.length - 1],
-              preloadedQuery.environment,
-              parent
-            ).result.data;
-            setter(update);
-          });
+            return ctx.FragmentResource.subscribe(ctx.result, () => {
+              const update = loadContext(
+                fragmentOptions.fragments[fragmentOptions.fragments.length - 1],
+                preloadedQuery.environment,
+                parent
+              ).result.data;
+              setter(update);
+            });
+          } catch (e) {
+            setter(null, transactionInterface);
+            return undefined;
+          }
         };
 
-        try {
-          disposable = run(pageQuery);
-        } catch (e) {
-          setSelf(new DefaultValue());
-        }
+        disposable = run(pageQuery);
 
         const dispose = subscribe(run);
         return () => {

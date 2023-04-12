@@ -21,7 +21,7 @@ const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   return (
     <>
       <Nav fragment={queryRef} hasDataset={false} />
-      <div className={style.page}>
+      <div className={style.page} data-cy="no-dataset">
         <Loading>No dataset selected</Loading>
       </div>
     </>

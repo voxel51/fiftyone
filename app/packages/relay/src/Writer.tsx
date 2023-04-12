@@ -28,7 +28,9 @@ export function subscribe<T extends OperationType>(
 ) {
   subscribers.add(subscription);
 
-  return () => subscribers.delete(subscription);
+  return () => {
+    subscribers.delete(subscription);
+  };
 }
 
 export function getPageQuery() {
@@ -65,9 +67,9 @@ export function Writer<T extends OperationType>({
   React.useEffect(() => {
     return subscribe((pageQuery) => {
       pageQueryReader = () => pageQuery;
-      set((transactionInterface) => {
-        subscribers.forEach((cb) => cb(pageQuery, transactionInterface));
-      });
+      set((transactionInterface) =>
+        subscribers.forEach((cb) => cb(pageQuery, transactionInterface))
+      );
     });
   }, [set, subscribe]);
 

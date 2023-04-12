@@ -1,19 +1,15 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useRecoilCallback } from "recoil";
 import { selectedSamples } from "../recoil";
-import useSetSelected from "./useSetSelected";
 
 const useSelectSample = () => {
-  const setSelected = useSetSelected();
-
-  return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) =>
-      (sampleId: string) => {
-        const selected = new Set(get(selectedSamples));
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (sampleId: string) => {
+        const selected = new Set(await snapshot.getPromise(selectedSamples));
         selected.has(sampleId)
           ? selected.delete(sampleId)
           : selected.add(sampleId);
         set(selectedSamples, selected);
-        setSelected([...selected]);
       },
     []
   );

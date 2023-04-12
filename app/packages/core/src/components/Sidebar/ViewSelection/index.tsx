@@ -6,7 +6,7 @@ import {
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import { Suspense, useContext, useEffect, useMemo } from "react";
+import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import { useRefetchableFragment } from "react-relay";
 import {
   atom,
@@ -43,8 +43,8 @@ export default function ViewSelection() {
     fos.selectedSavedViewState
   );
   const datasetName = useRecoilValue(fos.datasetName);
-  const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
-  const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
+  const canEditSavedViews = useRecoilValue(fos.canEditSavedViews);
+  const setIsOpen = useSetRecoilState(viewDialogOpen);
   const [savedViewParam, setViewName] = useRecoilState(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
   const resetView = useResetRecoilState(fos.view);
@@ -105,6 +105,7 @@ export default function ViewSelection() {
 
   const loadedView = useRecoilValue(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+
   const isEmptyView = !bookmarkIconOn && !loadedView?.length;
 
   useEffect(() => {
