@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8d60afb39eaf5873b72df6d187b193ad>>
+ * @generated SignedSource<<92a06903c9ab3eb2cc59575c1da483e5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest, Query } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
+export type BrainRunType = "similarity" | "visualization" | "%future added value";
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type DatasetQuery$variables = {
@@ -40,7 +41,7 @@ export type DatasetQuery$data = {
         readonly patchesField: string | null;
         readonly supportsLeastSimilarity: boolean | null;
         readonly supportsPrompts: boolean | null;
-        readonly type: string | null;
+        readonly type: BrainRunType | null;
       } | null;
       readonly key: string;
       readonly timestamp: any | null;
@@ -122,7 +123,7 @@ export type DatasetQuery$data = {
     readonly version: string | null;
     readonly viewCls: string | null;
     readonly viewName: string | null;
-  } | null;
+  };
   readonly " $fragmentSpreads": FragmentRefs<"DatasetSavedViewsFragment">;
 };
 export type DatasetQuery = {

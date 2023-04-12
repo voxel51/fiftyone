@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7ce083342d0050e1d6b70fd0eda2108c>>
+ * @generated SignedSource<<93119e469f5db03cefb8ccc1b88f10c3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,13 +25,13 @@ export type configQuery$data = {
       readonly field: string;
       readonly fieldColor: string | null;
       readonly labelColors: ReadonlyArray<{
-        readonly color: string | null;
-        readonly name: string | null;
-      } | null> | null;
+        readonly color: string;
+        readonly name: string;
+      }> | null;
       readonly useFieldColor: boolean | null;
       readonly useLabelColors: boolean | null;
       readonly useOpacity: boolean | null;
-    } | null> | null;
+    }>;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
     readonly notebookHeight: number;
