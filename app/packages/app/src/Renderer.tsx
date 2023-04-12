@@ -1,14 +1,9 @@
-import { Loading } from "@fiftyone/components";
+import { Loading, Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import React, { Suspense, useEffect } from "react";
 import { atom, useRecoilState } from "recoil";
-import style from "./pending.module.css";
 import { Queries, useRouterContext } from "./routing";
 import { Entry } from "./routing/RouterContext";
-
-const Pending = () => {
-  return <div className={style.pending} />;
-};
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
