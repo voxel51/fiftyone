@@ -43,9 +43,9 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          USERNAME=$(whoami)
-          HOSTNAME=$(hostname)
-          fiftyone app connect --destination [<$USERNAME>@]<$HOSTNAME> --port 8787
+          # fiftyone app connect --destination [<username>@]<hostname> --port 8787
+          whoami
+          hostname
           yarn install
           yarn start
         working-directory: ./e2e
