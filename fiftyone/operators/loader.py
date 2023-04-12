@@ -72,6 +72,9 @@ def load_from_dir():
     for yaml_path in fiftyone_plugin_yamls:
         with open(yaml_path, "r") as f:
             plugin_dict = yaml.load(f, Loader=yaml.FullLoader)
+            # not enabled, skip
+            if not plugin_dict.get("enabled", True):
+                continue
 
         module_dir = os.path.dirname(yaml_path)
         mod = exec_module_from_dir(module_dir)
