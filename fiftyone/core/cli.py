@@ -35,6 +35,7 @@ import fiftyone.utils.quickstart as fouq
 import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
+import fiftyone.zoo.plugins as fozp
 
 # pylint: disable=import-error,no-name-in-module
 import fiftyone.brain as fob
@@ -1606,6 +1607,7 @@ class ZooCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "datasets", DatasetZooCommand)
         _register_command(subparsers, "models", ModelZooCommand)
+        _register_command(subparsers, "plugins", PluginZooCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -2580,6 +2582,188 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class PluginZooCommand(Command):
+    """Tools for working with the FiftyOne Plugin Zoo."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", PluginZooListCommand)
+        _register_command(subparsers, "install", PluginZooInstallCommand)
+        _register_command(subparsers, "uninstall", PluginZooUninstallCommand)
+        _register_command(subparsers, "download", PluginZooDownloadCommand)
+        _register_command(subparsers, "delete", PluginZooDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class PluginZooListCommand(Command):
+    """List plugins in the FiftyOne Plugin Zoo.
+
+    Examples::
+
+        # List all locally available plugins
+        fiftyone zoo plugins list
+
+        # List installed plugins
+        fiftyone zoo plugins list --installed-only
+
+        # List downloaded but not installed plugins
+        fiftyone zoo plugins list --downloaded-only
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show plugin names",
+        )
+        parser.add_argument(
+            "-i",
+            "--installed-only",
+            action="store_true",
+            default=None,
+            help="only show installed plugins",
+        )
+        parser.add_argument(
+            "-d",
+            "--downloaded-only",
+            action="store_true",
+            default=None,
+            help="only show plugins that have been downloaded but not installed",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        installed_only = args.installed_only
+        downloaded_only = args.downloaded_only
+        names_only = args.names_only
+        if downloaded_only:
+            installed_only = False
+
+        plugins_list = fozp._list_plugins(installed_only=installed_only)
+        _print_zoo_plugins_list(
+            plugins_list, installed_only=installed_only, names_only=names_only
+        )
+
+
+def _print_zoo_plugins_list(
+    plugins_list, installed_only=None, names_only=False
+):
+    show_status = False
+
+    if installed_only is None:
+        show_status = True
+
+
+#     TODO: complete this once there is clarification on what `download-only` means
+
+
+class PluginZooDownloadCommand(Command):
+    """Download zoo plugins. Note that this command only downloads the plugin files.
+    Run the `install` command to enable the plugin in Fiftyone.
+
+    Examples::
+
+        # Download plugins by providing a GitHub repository URL:
+        fiftyone zoo plugins download <github-repo-url>
+
+        # Download plugins by specifying the GitHub repository owner and name:
+        fiftyone zoo plugins download <username>/<repo>[/<branch>]
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "repo", metavar="REPO", help="URL or owner/name of the GitHub repo"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        repo = args.repo
+        fozp.download_zoo_plugin(repo)
+
+
+class PluginZooInstallCommand(Command):
+    """Enable zoo plugins in the App.
+    Examples::
+
+        # Install a zoo plugin that has already been downloaded:
+        fiftyone zoo plugins install <plugin_name>
+
+        # Download and install a zoo plugin:
+        fiftyone zoo plugins install -d <github-repo-url>
+
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            help="the GitHub repository URL or owner/name",
+        )
+        parser.add_argument(
+            "-d",
+            "--download",
+            action=argparse.BooleanOptionalAction,
+            metavar="DOWNLOAD",
+            default=False,
+            help="download (if necessary) and install the plugin",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        if args.download:
+            fozp.download_zoo_plugin(name, install=True)
+        else:
+            fozp.install_zoo_plugin(name)
+
+
+class PluginZooUninstallCommand(Command):
+    """Disable the zoo plugins in the App.
+    Examples::
+
+        # Uninstall a zoo plugin:
+        fiftyone zoo plugins uninstall <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fozp.uninstall_zoo_plugin(name)
+
+
+class PluginZooDeleteCommand(Command):
+    """Deletes the local copy of the zoo plugin on disk.
+
+    Examples::
+
+        # Delete an entire zoo plugin from disk
+        fiftyone zoo datasets delete <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the plugin"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fozp.delete_zoo_plugin(name)
 
 
 class MigrateCommand(Command):
