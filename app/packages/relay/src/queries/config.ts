@@ -7,6 +7,19 @@ export default r(graphql`
     config {
       colorBy
       colorPool
+      customizedColors {
+        field
+        useFieldColor
+        fieldColor
+        attributeForColor
+        useOpacity
+        attributeForOpacity
+        useLabelColors
+        labelColors {
+          name
+          color
+        }
+      }
       colorscale
       gridZoom
       loopVideos

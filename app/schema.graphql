@@ -43,6 +43,7 @@ union AggregationResponses =
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
+  customizedColors: [CustomizeColor]
   colorscale: String!
   gridZoom: Int!
   loopVideos: Boolean!
@@ -546,6 +547,22 @@ enum Theme {
   browser
   dark
   light
+}
+
+type CustomizeColor {
+  field: String!
+  useFieldColor: Boolean
+  fieldColor: String
+  attributeForColor: String
+  useOpacity: Boolean
+  attributeForOpacity: String
+  useLabelColors: Boolean
+  labelColors: [LabelSetting]
+}
+
+type LabelSetting {
+  name: String
+  color: String
 }
 
 type VideoSample implements Sample {

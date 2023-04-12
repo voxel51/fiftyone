@@ -1,5 +1,6 @@
 import { StrictField } from "@fiftyone/utilities";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { CustomizeColor } from "./atoms";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -17,6 +18,7 @@ export namespace State {
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
+    customizedColors: CustomizeColor[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;

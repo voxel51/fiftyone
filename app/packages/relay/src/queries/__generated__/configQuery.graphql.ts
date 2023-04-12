@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<50428ff9f2e09bbd56346a9f39c88996>>
+ * @generated SignedSource<<7ce083342d0050e1d6b70fd0eda2108c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from 'relay-runtime';
-export type ColorBy = "field" | "instance" | "value" | "%future added value";
+export type ColorBy = "field" | "instance" | "label" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 export type configQuery$variables = {};
@@ -18,8 +18,20 @@ export type configQuery$data = {
   readonly config: {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
-    readonly customizedColors: ReadonlyArray<CustomizeColor[]>;
     readonly colorscale: string;
+    readonly customizedColors: ReadonlyArray<{
+      readonly attributeForColor: string | null;
+      readonly attributeForOpacity: string | null;
+      readonly field: string;
+      readonly fieldColor: string | null;
+      readonly labelColors: ReadonlyArray<{
+        readonly color: string | null;
+        readonly name: string | null;
+      } | null> | null;
+      readonly useFieldColor: boolean | null;
+      readonly useLabelColors: boolean | null;
+      readonly useOpacity: boolean | null;
+    } | null> | null;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
     readonly notebookHeight: number;
@@ -39,19 +51,6 @@ export type configQuery = {
   response: configQuery$data;
   variables: configQuery$variables;
 };
-
-type CustomizeColor = {
-  field: string;
-  fieldColor?: string;
-  attributeForColor?: string; // must be string field, int field, or boolean field
-  useOpacity: boolean;
-  attributeForOpacity?: string; // must be float field
-  useLabelColors: boolean;
-  labelColors?: {
-    name: string;
-    color: string;
-  }[];
-}
 
 const node: ConcreteRequest = (function(){
 var v0 = {
@@ -82,6 +81,91 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "colorPool",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "CustomizeColor",
+        "kind": "LinkedField",
+        "name": "customizedColors",
+        "plural": true,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "field",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "useFieldColor",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "fieldColor",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "attributeForColor",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "useOpacity",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "attributeForOpacity",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "useLabelColors",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "LabelSetting",
+            "kind": "LinkedField",
+            "name": "labelColors",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "name",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "color",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
         "storageKey": null
       },
       (v0/*: any*/),
@@ -199,16 +283,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "497837366e8e184b835d79f15542f9e1",
+    "cacheID": "f07b7a721a1a85d176a74bc448542e53",
     "id": null,
     "metadata": {},
     "name": "configQuery",
     "operationKind": "query",
-    "text": "query configQuery {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
+    "text": "query configQuery {\n  config {\n    colorBy\n    colorPool\n    customizedColors {\n      field\n      useFieldColor\n      fieldColor\n      attributeForColor\n      useOpacity\n      attributeForOpacity\n      useLabelColors\n      labelColors {\n        name\n        color\n      }\n    }\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
   }
 };
 })();
 
-(node as any).hash = "783e2f84017cb7b0379aabf403fe52fa";
+(node as any).hash = "b80c7a89d3502122e5548eb4d742365c";
 
 export default node;
