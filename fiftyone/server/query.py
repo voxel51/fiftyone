@@ -320,9 +320,28 @@ class Theme(Enum):
 
 
 @gql.type
+class LabelSetting:
+    name: str
+    color: str
+
+
+@gql.type
+class CustomizeColor:
+    field: str
+    use_field_color: t.Optional[bool] = None
+    field_color: t.Optional[str] = None
+    attribute_for_color: t.Optional[str] = None
+    use_opacity: t.Optional[bool] = None
+    attribute_for_Opacity: t.Optional[str] = None
+    use_label_colors: t.Optional[bool] = None
+    label_colors: t.Optional[t.List[LabelSetting]] = None
+
+
+@gql.type
 class AppConfig:
     color_by: ColorBy
     color_pool: t.List[str]
+    customized_colors: t.List[CustomizeColor]
     colorscale: str
     grid_zoom: int
     loop_videos: bool

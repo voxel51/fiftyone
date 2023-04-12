@@ -43,7 +43,7 @@ union AggregationResponses =
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
-  customizedColors: [CustomizeColor]
+  customizedColors: [CustomizeColor!]!
   colorscale: String!
   gridZoom: Int!
   loopVideos: Boolean!
@@ -96,9 +96,14 @@ type BrainRunConfig implements RunConfig {
   method: String
   patchesField: String
   supportsPrompts: Boolean
-  type: String
+  type: BrainRunType
   maxK: Int
   supportsLeastSimilarity: Boolean
+}
+
+enum BrainRunType {
+  similarity
+  visualization
 }
 
 enum ColorBy {
@@ -109,6 +114,17 @@ enum ColorBy {
 
 input CountValues {
   field: String!
+}
+
+type CustomizeColor {
+  field: String!
+  useFieldColor: Boolean
+  fieldColor: String
+  attributeForColor: String
+  useOpacity: Boolean
+  attributeForOpacity: String
+  useLabelColors: Boolean
+  labelColors: [LabelSetting!]
 }
 
 type DataAggregation implements Aggregation {
@@ -270,6 +286,11 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
+type LabelSetting {
+  name: String!
+  color: String!
+}
+
 enum MediaType {
   image
   group
@@ -374,7 +395,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
+  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset!
   datasets(
     search: String
     first: Int = 200
@@ -425,6 +446,7 @@ interface Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type SampleField {
@@ -463,6 +485,8 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
+  id: String
+  datasetId: String
   name: String
   description: String
   color: String
@@ -471,8 +495,6 @@ type SavedView {
   createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
-  id: String
-  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }
@@ -547,22 +569,6 @@ enum Theme {
   browser
   dark
   light
-}
-
-type CustomizeColor {
-  field: String!
-  useFieldColor: Boolean
-  fieldColor: String
-  attributeForColor: String
-  useOpacity: Boolean
-  attributeForOpacity: String
-  useLabelColors: Boolean
-  labelColors: [LabelSetting]
-}
-
-type LabelSetting {
-  name: String
-  color: String
 }
 
 type VideoSample implements Sample {
