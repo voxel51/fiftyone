@@ -67,7 +67,7 @@ export interface CustomizeColor {
   labelColors?: {
     name: string;
     color: string;
-  }[];
+  };
 }
 
 export const customizeColors = atomFamily<CustomizeColor, string>({

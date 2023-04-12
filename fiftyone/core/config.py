@@ -295,6 +295,23 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_POOL",
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
+        self.customized_colors = [
+            {
+                "field": "test",
+                "useFieldColor": False,
+                "fieldColor": "test",
+                "attributeForColor": "test",
+                "useOpacity": False,
+                "attributeForOpacity": "test",
+                "useLabelColors": False,
+                "labelColors": [
+                    {
+                        "name": "test",
+                        "color": "test",
+                    }
+                ],
+            }
+        ]
         self.colorscale = self.parse_string(
             d,
             "colorscale",
@@ -418,7 +435,7 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        supported_color_bys = {"field", "instance", "label"}
+        supported_color_bys = {"field", "value"}
         default_color_by = "field"
         if self.color_by not in supported_color_bys:
             logger.warning(

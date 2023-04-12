@@ -342,6 +342,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     defaultMaskTargets: null,
     targets: ["#000000"],
   },
+  customizeColorSetting: [],
   smoothMasks: true,
   fullscreen: false,
   zoomPad: 0.2,
