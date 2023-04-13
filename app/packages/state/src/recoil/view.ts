@@ -24,6 +24,11 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
   { key: "stageDefinitions" }
 );
 
+export const patch_INTERNAL = atom<State.Stage>({
+  key: "patch_INTERNAL",
+  default: null,
+});
+
 export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
   {
     fragments: [datasetFragment, viewFragment],

@@ -1,7 +1,8 @@
 import { subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { atom, DefaultValue, selector } from "recoil";
-import { State } from "./recoil";
+import { useEffect } from "react";
+import { atom, DefaultValue, RecoilState, selector } from "recoil";
+import { filters, State } from "./recoil";
 
 export interface Session {
   canEditSavedViews?: boolean;
@@ -28,8 +29,16 @@ const setters: Setters = {};
 
 export const useSession = (setter: Setter) => {
   setterRef = setter;
+
+  useEffect(() => {
+    return subscribe((_, { reset }) => {
+      reset(filters);
+    });
+  }, []);
+
   return <K extends keyof Session>(key: K, value: Session[K]) => {
-    setters[key] && setters[key](value);
+    const setter = setters[key];
+    setter && setter(value);
     sessionRef[key] = value;
   };
 };
@@ -49,6 +58,7 @@ export function sessionAtom<K extends keyof Session>(
           );
         }
 
+        // @ts-ignore
         setters[options.key] = (value: Session[K]) => setSelf(value);
 
         return subscribe((_, { set }) => {
@@ -74,5 +84,5 @@ export function sessionAtom<K extends keyof Session>(
       setterRef(options.key, newValue);
       set(value, newValue);
     },
-  });
+  }) as RecoilState<NonNullable<Session[K]>>;
 }

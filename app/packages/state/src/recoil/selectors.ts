@@ -321,7 +321,7 @@ export const similarityMethods = selector<{
 }>({
   key: "similarityMethods",
   get: ({ get }) => {
-    const methods = get(atoms.dataset).brainMethods;
+    const methods = get(atoms.dataset)?.brainMethods || [];
 
     return methods
       .filter(
@@ -430,7 +430,7 @@ export const viewStateForm = selectorFamily<
     ({ get }) => {
       return {
         filters: get(modal ? modalFilters : filters),
-        sampleIds: omitSelected ? [] : [...get(selectedSamples)],
+        sampleIds: omitSelected ? [] : Array.from(get(selectedSamples)),
         labels: get(atoms.selectedLabels),
         extended: get(extendedStages),
         slice: selectSlice ? get(groupSlice(Boolean(modal))) : null,

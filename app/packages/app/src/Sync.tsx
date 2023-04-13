@@ -2,6 +2,8 @@ import { Loading } from "@fiftyone/components";
 import {
   setDataset,
   setDatasetMutation,
+  setGroupSlice,
+  setGroupSliceMutation,
   setSelected,
   setSelectedLabels,
   setSelectedLabelsMutation,
@@ -23,6 +25,7 @@ import {
   useScreenshot,
   useSession,
   viewsAreEqual,
+  viewStateForm_INTERNAL,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
@@ -220,7 +223,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                         view,
                         datasetName: get(datasetName) as string,
                         subscription: get(stateSubscription),
-                        form: {},
+                        form: get(viewStateForm_INTERNAL) || {},
                       },
                       onCompleted: ({ setView: view }) => {
                         const params = new URLSearchParams(router.get().search);
@@ -268,6 +271,21 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   router.history.push(`${router.get().pathname}${search}`, {
                     view: [],
                   });
+                },
+              ],
+              [
+                "groupSlice",
+                (_, slice) => {
+                  commitMutation<setGroupSliceMutation>(
+                    router.get().preloadedQuery.environment,
+                    {
+                      mutation: setGroupSlice,
+                      variables: {
+                        slice,
+                        subscription,
+                      },
+                    }
+                  );
                 },
               ],
             ])
