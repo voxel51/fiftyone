@@ -20,40 +20,6 @@ import fiftyone.zoo.utils.github as fozug
 import datetime
 
 
-class GitHubRepo:
-    """A GitHub repo containing a FiftyOne zoo package"""
-
-    def __init__(self, repo_or_url: str):
-        """
-        Args:
-            github_repo: URL or '<user>/<repo>[/<ref>]' of the GitHub repo containing the plugin
-        """
-        if not etaw.is_url(repo_or_url):
-            params = fozug.parse_repo(repo_or_url)
-        else:
-            params = fozug.parse_url(repo_or_url)
-        self._user = params.get("user")
-        self._name = params.get("repo")
-        self._ref = params.get("branch")
-        self.download_url = fozug.get_zip_url(repo_or_url)
-
-    @property
-    def user(self) -> str:
-        return self._user
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def ref(self) -> Optional[str]:
-        return self._ref
-
-    @ref.setter
-    def ref(self, ref: str):
-        self._ref = ref
-
-
 class ZooPluginConfig(etas.Serializable):
     """A Zoo plugin configuration."""
 
@@ -131,7 +97,7 @@ def download_zoo_plugin(
         raise ValueError("Plugins directory not set.")
     elif not os.path.isdir(plugins_dir):
         raise ValueError(f"Plugins directory '{plugins_dir}' does not exist.")
-    gh_repo = GitHubRepo(github_repo)
+    gh_repo = fozug.GitHubRepo(github_repo)
     zipurl = gh_repo.download_url
     try:
         with urlopen(zipurl) as zipresp:
