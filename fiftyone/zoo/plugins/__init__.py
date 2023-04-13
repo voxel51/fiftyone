@@ -66,6 +66,7 @@ class ZooPluginConfig(etas.Serializable):
             [self.author, self.plugin_name, self.ref]
         )
         plugin_download_dir_path = find_zoo_plugin(plugin_download_dir_name)
+        logging
         logging.debug(f"Checking {plugin_download_dir_path} for plugin files")
         if os.path.isdir(plugin_download_dir_path):
             logging.debug(
@@ -82,7 +83,7 @@ class ZooPluginConfig(etas.Serializable):
 
 
 def download_zoo_plugin(
-    github_repo: str, install: bool = False
+    github_repo: str, install: bool = False, force: bool = False
 ) -> Optional[str]:
     """Downloads a GitHub repo into the directory specified by FIFTYONE_PLUGINS_DIR.
 
@@ -103,14 +104,17 @@ def download_zoo_plugin(
         with urlopen(zipurl) as zipresp:
             logging.info(f"Attempting to download plugin from {zipurl}...")
             with ZipFile(BytesIO(zipresp.read())) as zfile:
+                logging.debug(f"Files in archive: {zfile.namelist()}")
                 extracted_dir = zfile.namelist()[0]
                 gh_repo.ref = extracted_dir.rsplit("-")[-1]
-                if _is_downloaded(extracted_dir):
+                if _is_downloaded(extracted_dir) and not force:
                     logging.info(
                         "Plugin already downloaded and up to date. Skipping download."
                     )
                 else:
-                    logging.debug(f"Extracting plugin to {extracted_dir}...")
+                    logging.debug(
+                        f"Extracting plugin files to {extracted_dir}..."
+                    )
                     zfile.extractall(fo.config.plugins_dir)
                     config = ZooPluginConfig(
                         author=gh_repo.user,
@@ -316,11 +320,15 @@ def _is_installed(plugin_name: str) -> bool:
 
 def find_zoo_plugin(plugin_name: str) -> Optional[str]:
     """Returns the path to the plugin directory if it exists, None otherwise."""
-    pat = re.sub(r"[-/_]", ".", plugin_name)
+    pat = (
+        re.sub(r"[-/_]", ".", plugin_name.rstrip("/"))
+        + r"[a-zA-Z0-9.-]*/(fiftyone.yml|package.json)$"
+    )
+    logging.debug(f"Checking for plugin with pattern: {pat}")
     for fp in glob.glob(fo.config.plugins_dir + "/**", recursive=True):
         if re.search(pat, fp):
-            logging.debug(f"Found plugin at {fp}")
-            return fp
+            logging.debug(f"Found plugin at {os.path.dirname(fp)}")
+            return os.path.dirname(fp)
     logging.debug(
         f"Plugin '{plugin_name}' not found in {fo.config.plugins_dir}."
     )
