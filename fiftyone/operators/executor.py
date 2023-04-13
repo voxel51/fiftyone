@@ -10,6 +10,7 @@ from .registry import list_operators, operator_exists, get_operator
 from .loader import list_module_errors
 import fiftyone.server.view as fosv
 import fiftyone as fo
+import fiftyone.operators.types as types
 
 
 class InvocationRequest:
@@ -160,7 +161,7 @@ class ValidationError:
 
 class ValidationContext:
     def __init__(self, ctx, inputs_property):
-        self.params = params
+        self.ctx = ctx
         self.inputs_property = inputs_property
         self._errors = []
         self.errors = self._validate()
@@ -195,15 +196,15 @@ class ValidationContext:
         for i in range(len(value)):
             item = value[i]
             item_path = f"{path}[{i}]"
-            if isinstance(element_type, Enum):
+            if isinstance(element_type, types.Enum):
                 return self.validate_enum(
                     item_path, property, element_type, item
                 )
-            if isinstance(element_type, Object):
+            if isinstance(element_type, types.Object):
                 return self.validate_object(
                     item_path, property, element_type, item
                 )
-            if isinstance(element_type, List):
+            if isinstance(element_type, types.List):
                 return self.validate_list(
                     item_path, property, element_type, item
                 )
@@ -213,11 +214,11 @@ class ValidationContext:
             return ValidationError("Invalid property", property, path)
         if property.required and value is None:
             return ValidationError("Required property", property, path)
-        if isinstance(property.type, Enum):
+        if isinstance(property.type, types.Enum):
             return self.validate_enum(path, property, property.type, value)
-        if isinstance(property.type, Object):
+        if isinstance(property.type, types.Object):
             return self.validate_object(path, property, property.type, value)
-        if isinstance(property.type, List):
+        if isinstance(property.type, types.List):
             return self.validate_list(path, property, property.type, value)
 
     def validate_object(self, path, parent_property, object, params):
@@ -225,7 +226,7 @@ class ValidationContext:
             return ValidationError("Invalid object", parent_property, path)
         for name, property in object.properties.items():
             value = params.get(name, None)
-            validation_error = validate_property(
+            validation_error = self.validate_property(
                 path + "." + name, property, value
             )
             if validation_error is not None:
