@@ -94,6 +94,7 @@ interface BaseField {
   embeddedDocType: string | null;
   subfield: string | null;
   path: string | null;
+  searchField: string | null;
 }
 
 export interface StrictField extends BaseField {

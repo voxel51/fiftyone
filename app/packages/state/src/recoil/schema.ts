@@ -57,9 +57,48 @@ export const filterPaths = (
     : [];
 };
 
-export const buildSchema = (dataset: State.Dataset): Schema => {
-  const schema = dataset.sampleFields.reduce(schemaReduce, {});
+export const buildFlatExtendedSchema = (schema: Schema): Schema => {
+  const flatSchema = {};
+  const fieldsQueue = [];
+  for (const fieldName in schema) {
+    const field = schema[fieldName];
+    fieldsQueue.push(field);
+  }
+  while (fieldsQueue?.length) {
+    const ff = fieldsQueue.shift();
+    const ffNest = ff?.fields;
+    const fieldPath = ff?.path;
+    const desc = ff?.description;
+    const info = ff?.info;
 
+    if (ffNest) {
+      for (const fNested in ffNest) {
+        fieldsQueue.push(ffNest[fNested]);
+      }
+    }
+
+    flatSchema[fieldPath] = {
+      ...ff,
+      // add fields to be FE/client-side filterable - stay conservative
+      searchField:
+        ff.path + (desc ? desc : "") + (info ? JSON.stringify(info) : ""),
+    };
+  }
+
+  return flatSchema;
+};
+
+export const buildSchema = (
+  dataset: State.Dataset,
+  flat: boolean = false
+): Schema => {
+  let schema = dataset.sampleFields.reduce(schemaReduce, {});
+
+  if (flat) {
+    return buildFlatExtendedSchema(schema);
+  }
+
+  // TODO: mixed datasets - test video
   if (dataset.frameFields && dataset.frameFields.length) {
     schema.frames = {
       ftype: LIST_FIELD,
