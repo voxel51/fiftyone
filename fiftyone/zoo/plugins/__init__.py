@@ -17,6 +17,7 @@ import yaml
 
 import fiftyone as fo
 import fiftyone.zoo.utils.github as fozug
+import datetime
 
 
 class GitHubRepo:
@@ -79,9 +80,9 @@ class ZooPluginConfig(etas.Serializable):
         self.download_url = fozug.get_zip_url(
             os.path.join(author, plugin_name), ref=ref
         )
-
-    def to_dict(self):
-        return vars(self)
+        self.download_date = datetime.datetime.utcnow().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
     def save(self) -> None:
         config = configparser.ConfigParser()
@@ -93,6 +94,7 @@ class ZooPluginConfig(etas.Serializable):
             "description": self.description,
             "installed": self.installed,
             "download_url": self.download_url,
+            "download_date": self.download_date,
         }
         plugin_download_dir_name = "-".join(
             [self.author, self.plugin_name, self.ref]
@@ -146,7 +148,7 @@ def download_zoo_plugin(
                         author=gh_repo.user,
                         plugin_name=gh_repo.name,
                         ref=gh_repo.ref,
-                        installed=False,
+                        installed=install,
                     )
                     config.save()
 
@@ -161,7 +163,7 @@ def download_zoo_plugin(
         return None
 
 
-def install_zoo_plugin(plugin_name):
+def install_zoo_plugin(plugin_name: str):
     """Enable the plugin in the app.
 
     Args:
@@ -172,7 +174,10 @@ def install_zoo_plugin(plugin_name):
     """
     plugin_dir = find_zoo_plugin(plugin_name)
     if not plugin_dir:
-        raise ValueError(f"Plugin '{plugin_name}' not downloaded.")
+        logging.warning(
+            f"Plugin '{plugin_name}' not downloaded. "
+            f"Run `download_zoo_plugin({plugin_name}, install = True)` to download and install."
+        )
 
     return _update_plugin_config(plugin_dir, installed=True)
 
@@ -242,6 +247,11 @@ def list_installed_zoo_plugins():
     return _list_plugins(installed_only=True)
 
 
+def list_uninstalled_zoo_plugins():
+    """Returns a list of all downloaded zoo plugins that are currently disabled in the app."""
+    return _list_plugins(installed_only=False)
+
+
 def _list_plugins(installed_only: bool = None) -> Set[str]:
     """Returns a list of zoo plugins.
     If installed_only == True, only returns installed plugins.
@@ -255,26 +265,25 @@ def _list_plugins(installed_only: bool = None) -> Set[str]:
         lambda x: x.endswith("fiftyone.yml"),
         glob.glob(os.path.join(fo.config.plugins_dir, "**"), recursive=True),
     ):
-        with open(fpath) as f:
-            config = yaml.safe_load(f)
-            if (
-                installed_only and config.get("enabled", True)
-            ) or installed_only is None:
-                try:
-                    plugin_name = (
-                        re.search(
-                            r"/(?P<plugin_name>[a-zA-Z0-9_.-]+)/fiftyone.yml",
-                            fpath,
-                        )
-                        .groupdict()
-                        .get("plugin_name")
-                    )
-                    logging.debug(plugin_name)
-                    plugins.add(plugin_name + " (.py)")
-                except AttributeError:
-                    logging.debug(
-                        f"error parsing plugin_name from filepath: {fpath}"
-                    )
+        try:
+            # get plugin name from directory name
+            plugin_name = (
+                re.search(
+                    r"/(?P<plugin_name>[a-zA-Z0-9_.-]+)/fiftyone.yml",
+                    fpath,
+                )
+                .groupdict()
+                .get("plugin_name")
+            )
+            logging.debug(plugin_name)
+        except AttributeError:
+            logging.debug(f"error parsing plugin_name from filepath: {fpath}")
+            continue
+
+        if (
+            installed_only == _is_installed(plugin_name)
+        ) or installed_only is None:
+            plugins.add(plugin_name + " (.py)")
 
     # js plugins must have a package.json file at the root of the plugin
     for fpath in filter(
@@ -282,10 +291,10 @@ def _list_plugins(installed_only: bool = None) -> Set[str]:
         glob.glob(os.path.join(fo.config.plugins_dir, "**"), recursive=True),
     ):
         with open(fpath) as f:
+            # get the plugin name from the package.json file
             config = json.load(f)
-
             if (
-                installed_only and config.get("enabled", True)
+                installed_only == _is_installed(plugin_name)
             ) or installed_only is None:
                 logging.debug(f'Found js plugin: {config.get("name")}')
                 plugins.add(config.get("name") + " (.js)")
@@ -304,11 +313,39 @@ def _is_downloaded(plugin_name: str) -> bool:
     return False
 
 
+def _is_installed(plugin_name: str) -> bool:
+    """Returns True if the plugin is installed, False otherwise."""
+    plugin_dir = find_zoo_plugin(plugin_name)
+    if plugin_dir:
+        if os.path.exists(os.path.join(plugin_dir, ".fiftyone-plugin")):
+            print(f"Found config file for '{plugin_name}' at {plugin_dir}")
+            config = configparser.ConfigParser()
+            config.read(os.path.join(plugin_dir, ".fiftyone-plugin"))
+            if (
+                "SETTINGS" in config.sections()
+                and "installed" in config["SETTINGS"]
+            ):
+                print(
+                    f"installed = {config.getboolean('SETTINGS', 'installed')}"
+                )
+                return config.getboolean("SETTINGS", "installed")
+        else:
+            # For backwards compatibility, if the plugin is downloaded,
+            # but does not have a config file, consider it installed and
+            # create a config file the first time it is queried
+            print("Creating config file for plugin: ", plugin_name)
+            _update_plugin_config(plugin_dir, installed=True)
+            return True
+    # If the plugin is not downloaded, it is not installed
+    return False
+
+
 def find_zoo_plugin(plugin_name: str) -> Optional[str]:
     """Returns the path to the plugin directory if it exists, None otherwise."""
     pat = re.sub(r"[-/_]", ".", plugin_name)
     for fp in glob.glob(fo.config.plugins_dir + "/**", recursive=True):
         if re.search(pat, fp):
+            print(fp)
             return fp
 
     return None
