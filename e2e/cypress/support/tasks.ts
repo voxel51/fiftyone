@@ -37,6 +37,7 @@ export const customTasks = {
   // poll and wait for fiftyone server to start
   waitForFiftyoneAppTask: (timeout: number) => {
     console.log(`Waiting for fiftyone app to start, timeout = ${timeout} ms`);
+    console.log(`DEFAULT_APP_ADDRESS: ${DEFAULT_APP_ADDRESS}`);
     return new Promise((resolve, reject) =>
       waitOn({
         resources: [DEFAULT_APP_ADDRESS],
