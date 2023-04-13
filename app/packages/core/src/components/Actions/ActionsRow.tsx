@@ -1,7 +1,8 @@
 import { PillButton, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import { useEventHandler, useOutsideClick } from "@fiftyone/state";
 import {
   Bookmark,
   Check,
@@ -28,8 +29,8 @@ import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
-import SortBySimilarity from "./similar/Similar";
 import Tagger from "./Tagger";
+import SortBySimilarity from "./similar/Similar";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -288,12 +289,6 @@ const Hidden = () => {
 
 const SaveFilters = () => {
   const loading = useRecoilValue(fos.savingFilters);
-  const onComplete = useRecoilCallback(({ set, reset }) => () => {
-    set(fos.savingFilters, false);
-    reset(fos.similarityParameters);
-    reset(fos.extendedSelection);
-  });
-  const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -305,22 +300,28 @@ const SaveFilters = () => {
           return;
         }
 
+        const unsubscribe = subscribe((_, { set, reset }) => {
+          set(fos.savingFilters, false);
+          reset(fos.similarityParameters);
+          reset(fos.extendedSelection);
+          unsubscribe();
+        });
+
         set(fos.savingFilters, true);
+        set(fos.viewStateForm_INTERNAL, {
+          filters: await snapshot.getPromise(fos.filters),
+          extended: await snapshot.getPromise(fos.extendedStages),
+        });
         if (selected.size > 0) {
-          setView(
-            (v) => [
-              ...v,
-              {
-                _cls: "fiftyone.core.stages.Select",
-                kwargs: [["sample_ids", [...selected]]],
-              },
-            ],
-            undefined,
-            undefined,
-            true
-          );
+          set(fos.view, (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [["sample_ids", [...selected]]],
+            } as fos.State.Stage,
+          ]);
         } else {
-          setView((v) => v);
+          set(fos.view, (v) => v);
         }
       },
     []
