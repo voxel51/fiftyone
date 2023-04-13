@@ -31,7 +31,7 @@ const JSONViewer: React.FC = ({}) => {
   };
 
   useEffect(() => {
-    // reset the other temp settings as tab changes
+    // reset the other temp settings as tab changes, otherwise could cause field setting tab not to show the most updated setting
     resetTempCustomizeColor(null);
     setData({
       colorScheme: global.colors,
