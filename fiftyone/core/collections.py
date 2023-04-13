@@ -5512,20 +5512,12 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
 
-        if meta_filter is not None:
-            filter_fields = self._get_field_matches(meta_filter)
-            if isinstance(field_names, str):
-                field_names = [field_names]
-            all_fields = (
-                set(field_names + filter_fields)
-                if field_names
-                else filter_fields
-            )
-        else:
-            all_fields = field_names
-
         return self._add_view_stage(
-            fos.SelectFields(all_fields, _allow_missing=_allow_missing)
+            fos.SelectFields(
+                field_names,
+                _allow_missing=_allow_missing,
+                _meta_filter=meta_filter,
+            )
         )
 
     @view_stage
@@ -9635,80 +9627,6 @@ class SampleCollection(object):
             for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
         }
         return [values_map.get(i, None) for i in ids]
-
-    def _get_field_matches(self, filter):
-        if isinstance(filter, str):
-            str_filter = filter
-            filter = {}
-        else:
-            str_filter = None
-
-        description_filter = filter.pop("description", None)
-        matcher = (
-            lambda q, v: q.lower() in v.lower()
-            if isinstance(v, str)
-            else q == v
-        )
-        schema = self.get_field_schema(flat=True)
-        paths = []
-        for path, field in schema.items():
-            is_match = True
-            if str_filter is not None:
-                is_match &= self._matches_any_info_or_description(
-                    field, matcher, str_filter
-                )
-
-            if description_filter is not None:
-                is_match &= self._matches_info_or_description(
-                    field, matcher, "description", description_filter
-                )
-
-            for key, val in filter.items():
-                is_match &= self._matches_info_or_description(
-                    field, matcher, key, val
-                )
-
-            if is_match:
-                paths.append(path)
-
-        return paths
-
-    def _matches_any_info_or_description(self, field, matcher, query):
-        matches = matcher(query, field.description)
-        if not matches and isinstance(field.info, dict):
-            matches |= self._recursive_match_any(field.info, matcher, query)
-        return matches
-
-    def _matches_info_or_description(self, field, matcher, key, query):
-        if key == "description":
-            return matcher(query, field.description)
-
-        if not isinstance(field.info, dict):
-            return False
-
-        return self._recursive_match(field.info, matcher, key, query)
-
-    def _recursive_match_any(self, info, matcher, query):
-        for val in info.values():
-            if isinstance(val, dict):
-                if self._recursive_match_any(val, matcher, query):
-                    return True
-            elif matcher(query, val):
-                return True
-
-        return False
-
-    def _recursive_match(self, info, matcher, key, query):
-        if key in info:
-            if matcher(query, info[key]):
-                return True
-
-        for sub_key, sub_value in info.items():
-            if isinstance(sub_value, dict):
-                if self._recursive_match(sub_value, matcher, key, query):
-                    return True
-
-        return False
 
 
 def _serialize_value(field_name, field, value, validate=True):

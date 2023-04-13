@@ -1430,10 +1430,28 @@ class DatasetView(foc.SampleCollection):
             frames=frames
         )
 
+        meta_filtered_fields = self._get_meta_filtered_fields(_schema=schema)
+
+        if meta_filtered_fields is not None:
+            selected_fields.update(meta_filtered_fields)
+
         if selected_fields is not None or excluded_fields is not None:
             _filter_schema(schema, selected_fields, excluded_fields)
 
         return schema
+
+    def _get_meta_filtered_fields(self, _schema):
+        filtered_fields = None
+        _view = self._base_view
+        for stage in self._stages:
+            meta_filter = stage.get_meta_filtered_fields(_schema)
+            if meta_filter:
+                if filtered_fields is None:
+                    filtered_fields = set(meta_filter)
+                else:
+                    filtered_fields.update(meta_filter)
+
+        return filtered_fields
 
     def _get_selected_excluded_fields(self, frames=False, roots_only=False):
         selected_fields = None

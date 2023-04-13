@@ -4873,26 +4873,67 @@ class DynamicFieldTests(unittest.TestCase):
             "c": 36,
             "owner": "jill",
             "test": True,
+            "d_1": {
+                "e_2": {"f_3": "oo", "g_3": {"h_4": {"i_5": {"j_6": "nope"}}}}
+            },
         }
-        field_2.info = {"list": [1, 2, 3], "owner": "joe", "test": True}
+        field_2.info = {
+            "list": [1, 2, 3],
+            "owner": "joe",
+            "test": True,
+            "other": "this is a unique info value",
+        }
         field_3.info = {"one": {"two": {"three": "test123"}}}
 
+        # doesn't return anything on empty string
+        view = dataset.select_fields(meta_filter="")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        # returns everything on None
+        view = dataset.select_fields(meta_filter=None)
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        # basic string match anywhere
         view = dataset.select_fields(meta_filter="unique")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        # specific info key: value match with some recursive checking
+        view = dataset.select_fields(meta_filter={"f_3": "oo"})
         fields = view.get_field_schema(flat=True)
         assert "field_1" in fields
         assert "field_2" not in fields
         assert "field_3" not in fields
         assert "ground_truth" not in fields
 
+        # should bust the recursion limit (default is 5)
+        view = dataset.select_fields(meta_filter=dict(j_6="nope"))
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" not in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        # basic string match anywhere
         view = dataset.select_fields(meta_filter="test123")
         fields = view.get_field_schema(flat=True)
         assert "field_1" not in fields
         assert "field_2" in fields
-        assert (
-            "field_3" in fields
-        )  # @todo this should be true with a recursive dict match
+        assert "field_3" in fields
         assert "ground_truth" not in fields
 
+        # match entire info with some additional selected fields
         view = dataset.select_fields(
             ["ground_truth", "field_2"],
             meta_filter=dict(one=dict(two=dict(three="test123"))),
@@ -4903,6 +4944,7 @@ class DynamicFieldTests(unittest.TestCase):
         assert "field_3" in fields
         assert "ground_truth" in fields
 
+        # match entire info with no additional selected fields
         view = dataset.select_fields(
             meta_filter=dict(one=dict(two=dict(three="test123")))
         )
@@ -4912,6 +4954,7 @@ class DynamicFieldTests(unittest.TestCase):
         assert "field_3" in fields
         assert "ground_truth" not in fields
 
+        # match recursively located key:value
         view = dataset.select_fields(meta_filter=dict(three="test123"))
         fields = view.get_field_schema(flat=True)
         assert "field_1" not in fields
@@ -4943,6 +4986,7 @@ class DynamicFieldTests(unittest.TestCase):
         assert "field_3" not in fields
         assert "ground_truth" not in fields
 
+        # match a boolean value
         view = dataset.select_fields(meta_filter=dict(test=True))
         fields = view.get_field_schema(flat=True)
         assert "field_1" in fields
@@ -4951,11 +4995,40 @@ class DynamicFieldTests(unittest.TestCase):
         assert "ground_truth" not in fields
 
         view = dataset.select_fields(meta_filter=dict(description="joe"))
+        dataset.save_view("joe_view", view=view)
         fields = view.get_field_schema(flat=True)
+
         assert "field_1" in fields
         assert "field_2" not in fields
         assert "field_3" not in fields
         assert "ground_truth" not in fields
+
+        assert len(view) == 3
+
+        # add another field that would match the previous view
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_4=4,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        field_4 = dataset.get_field("field_4")
+        field_4.description = "this was added by joe as well"
+
+        # make sure the new field comes back in the schema as well
+        view = dataset.load_saved_view("joe_view")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "field_4" in fields
+        assert "ground_truth" not in fields
+        assert len(view) == 4
 
 
 class CustomEmbeddedDocumentTests(unittest.TestCase):

@@ -125,6 +125,21 @@ class ViewStage(object):
         """
         return None
 
+    def get_meta_filtered_fields(self, schema):
+        """Returns a filter definition that is used to include fields in the stage
+        that have a description or info which matched the meta filter, if any.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            a meta filter to apply to the description or info of a fields,
+            as a string or dict, or ``None`` if no meta_filter has been supplied
+        """
+        return None
+
     def get_excluded_fields(self, sample_collection, frames=False):
         """Returns a list of fields that have been excluded by the stage, if
         any.
@@ -5205,7 +5220,9 @@ class SelectFields(ViewStage):
             May contain ``embedded.field.name`` as well
     """
 
-    def __init__(self, field_names=None, _allow_missing=False):
+    def __init__(
+        self, field_names=None, _allow_missing=False, _meta_filter=None
+    ):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
@@ -5213,17 +5230,111 @@ class SelectFields(ViewStage):
 
         self._field_names = field_names
         self._allow_missing = _allow_missing
+        self._meta_filter = _meta_filter
 
     @property
     def field_names(self):
         """The list of field names to select."""
         return self._field_names or []
 
+    @property
+    def meta_filter(self):
+        """The meta filters to apply, as a string or dict."""
+        return self._meta_filter or {}
+
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
             return self._get_selected_frame_fields(sample_collection)
 
         return self._get_selected_fields(sample_collection)
+
+    def get_meta_filtered_fields(self, schema):
+        if not self.meta_filter:
+            return
+
+        meta_filter = self._meta_filter
+        if isinstance(meta_filter, str):
+            str_filter = meta_filter
+            meta_filter = {}
+        else:
+            str_filter = None
+
+        description_filter = meta_filter.pop("description", None)
+        matcher = (
+            lambda q, v: q.lower() in v.lower()
+            if isinstance(v, str)
+            else q == v
+        )
+
+        paths = []
+
+        for path, field in schema.items():
+            is_match = True
+            if str_filter is not None:
+                is_match &= self._matches_info_or_description(
+                    field, matcher, str_filter
+                )
+
+            if description_filter is not None:
+                is_match &= self._matches_info_or_description(
+                    field,
+                    matcher,
+                    description_filter,
+                    "description",
+                )
+
+            for key, val in meta_filter.items():
+                is_match &= self._matches_info_or_description(
+                    field, matcher, val, key
+                )
+
+            if is_match:
+                paths.append(path)
+
+        return paths
+
+    def _matches_info_or_description(self, field, matcher, query, key=None):
+        if key is None:
+            matches = matcher(query, field.description)
+            if not matches and isinstance(field.info, dict):
+                matches |= self._recursive_match(field.info, matcher, query)
+            return matches
+
+        if key == "description":
+            return matcher(query, field.description)
+
+        if not isinstance(field.info, dict):
+            return False
+
+        return self._recursive_match(field.info, matcher, query, key)
+
+    def _recursive_match(
+        self, info, matcher, query, key=None, recursion_limit=5
+    ):
+        if recursion_limit <= 0:
+            return False
+        if not key:
+            for val in info.values():
+                if isinstance(val, dict):
+                    if self._recursive_match(
+                        val, matcher, query, recursion_limit - 1
+                    ):
+                        return True
+                elif matcher(query, val):
+                    return True
+
+        if key in info:
+            if matcher(query, info[key]):
+                return True
+
+        for sub_key, sub_value in info.items():
+            if isinstance(sub_value, dict):
+                if self._recursive_match(
+                    sub_value, matcher, query, key, recursion_limit - 1
+                ):
+                    return True
+
+        return False
 
     def _get_selected_fields(self, sample_collection, use_db_fields=False):
         selected_paths = set()
@@ -5319,6 +5430,7 @@ class SelectFields(ViewStage):
         return [
             ["field_names", self._field_names],
             ["_allow_missing", self._allow_missing],
+            ["_meta_filter", self._meta_filter],
         ]
 
     @classmethod
