@@ -8,14 +8,10 @@ import {
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtom,
-  StateForm,
 } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
 import * as atoms from "./atoms";
-import { selectedSamples } from "./atoms";
 import { config } from "./config";
-import { filters, modalFilters } from "./filters";
-import { groupSlice } from "./groups";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -415,29 +411,6 @@ export const modalNavigation = selector<atoms.ModalNavigation>({
   get: ({ get }) => get(atoms.modal).navigation,
 });
 
-export const viewStateForm = selectorFamily<
-  StateForm,
-  {
-    addStages?: string;
-    modal?: boolean;
-    selectSlice?: boolean;
-    omitSelected?: boolean;
-  }
->({
-  key: "viewStateForm",
-  get:
-    ({ addStages, modal, selectSlice, omitSelected }) =>
-    ({ get }) => {
-      return {
-        filters: get(modal ? modalFilters : filters),
-        sampleIds: omitSelected ? [] : Array.from(get(selectedSamples)),
-        labels: get(atoms.selectedLabels),
-        extended: get(extendedStages),
-        slice: selectSlice ? get(groupSlice(Boolean(modal))) : null,
-        addStages: addStages ? JSON.parse(addStages) : [],
-      };
-    },
-});
 export const selectedPatchIds = selectorFamily({
   key: "selectedPatchIds",
   get:
@@ -446,13 +419,13 @@ export const selectedPatchIds = selectorFamily({
       const modal = get(atoms.modal);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
-      const selectedSampleObjects = sampleSto;
+      const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
       if (isPatches || modal) {
         return selectedSamples;
       }
-      let patchIds = [];
-      for (const sampleId of selectedSamples) {
+      let patchIds: string[] = [];
+      for (const sampleId of Array.from(selectedSamples)) {
         if (selectedSampleObjects.has(sampleId)) {
           const sample = selectedSampleObjects.get(sampleId);
           patchIds = [
@@ -477,11 +450,11 @@ export const selectedPatchSamples = selector({
     const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
     if (isPatches) {
-      let sampleIds = [];
-      for (const patchId of selectedPatches) {
+      let sampleIds: string[] = [];
+      for (const patchId of Array.from(selectedPatches)) {
         if (selectedSampleObjects.has(patchId)) {
           const sample = selectedSampleObjects.get(patchId);
-          sampleIds = [...sampleIds, sample._sample_id];
+          sampleIds = [...sampleIds, sample?._sample_id as unknown as string];
         }
       }
       return new Set(sampleIds);
