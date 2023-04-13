@@ -5,6 +5,7 @@ Remote media caching.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import time
 from datetime import datetime, timedelta
 import logging
 import multiprocessing
@@ -594,7 +595,13 @@ def _do_garbage_collection(media_dir, cache_size, gc_logger):
                 atime = stat.st_atime
             except:
                 # Found media with missing or invalid cache file
-                atime = -1
+                #   If file was modified recently, let's leave it alone.
+                #   It might be a temp file used by the download client.
+                #   We don't want to pull the rug from under it.
+                if (time.time() - stat.st_mtime) < 60 * 60:
+                    atime = stat.st_atime
+                else:
+                    atime = -1
 
             current_count += 1
             current_size += size_bytes

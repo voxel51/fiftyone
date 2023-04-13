@@ -7,6 +7,7 @@ Garbage collection service for the FiftyOne media cache.
 """
 from functools import wraps
 import logging
+import logging.handlers
 import schedule
 import os
 import time
