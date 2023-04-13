@@ -5,15 +5,16 @@ import {
   selector,
 } from "recoil";
 
-export type Set<T> = ReadWriteSelectorOptions<T>["set"];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Setter = ReadWriteSelectorOptions<any>["set"];
 
-let effectStore_INTERNAL: Map<string, Set<unknown>>;
+let effectStore_INTERNAL: Map<string, Setter>;
 
 export function SelectorEffectContext({
   setters,
   children,
 }: React.PropsWithChildren<{
-  setters: Map<string, Set<unknown>>;
+  setters: Map<string, Setter>;
 }>) {
   effectStore_INTERNAL = setters;
 

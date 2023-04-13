@@ -5,8 +5,7 @@ import {
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import { ConcreteRequest, OperationType } from "relay-runtime";
-import type { Set } from "./selectorWithEffect";
-import { SelectorEffectContext } from "./selectorWithEffect";
+import { SelectorEffectContext, Setter } from "./selectorWithEffect";
 
 export interface PageQuery<T extends OperationType> {
   preloadedQuery: PreloadedQuery<T>;
@@ -39,7 +38,7 @@ export function getPageQuery() {
 
 type WriterProps<T extends OperationType> = React.PropsWithChildren<{
   read: () => PageQuery<T>;
-  setters: Map<string, Set<unknown>>;
+  setters: Map<string, Setter>;
   subscribe?: (fn: (pageQuery: PageQuery<T>) => void) => () => void;
 }>;
 

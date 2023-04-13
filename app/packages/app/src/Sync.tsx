@@ -8,6 +8,7 @@ import {
   setSelectedMutation,
   setSpaces,
   setSpacesMutation,
+  Setter,
   setView,
   setViewMutation,
   Writer,
@@ -203,10 +204,10 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             };
           }}
           setters={
-            new Map([
+            new Map<string, Setter>([
               [
                 "view",
-                ({ get, set }, view) => {
+                ({ get, set }, view: State.Stage[]) => {
                   set(pendingEntry, true);
                   if (view instanceof DefaultValue) {
                     view = [];
@@ -242,7 +243,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               ],
               [
                 "viewName",
-                ({ set }, slug) => {
+                ({ set }, slug: string | DefaultValue | null) => {
                   set(pendingEntry, true);
                   if (slug instanceof DefaultValue) {
                     slug = null;
