@@ -100,9 +100,11 @@ class ZooPluginConfig(etas.Serializable):
             [self.author, self.plugin_name, self.ref]
         )
         plugin_download_dir_path = find_zoo_plugin(plugin_download_dir_name)
-        print(f"Checking {plugin_download_dir_path} for plugin files")
+        logging.debug(f"Checking {plugin_download_dir_path} for plugin files")
         if os.path.isdir(plugin_download_dir_path):
-            print("Writing config file to: ", plugin_download_dir_path)
+            logging.debug(
+                f"Writing config file to: '{plugin_download_dir_path}'"
+            )
             with open(
                 os.path.join(plugin_download_dir_path, ".fiftyone-plugin"), "w"
             ) as configfile:
@@ -133,16 +135,16 @@ def download_zoo_plugin(
     zipurl = gh_repo.download_url
     try:
         with urlopen(zipurl) as zipresp:
-            print(f"Attempting to download plugin from {zipurl}...")
+            logging.info(f"Attempting to download plugin from {zipurl}...")
             with ZipFile(BytesIO(zipresp.read())) as zfile:
                 extracted_dir = zfile.namelist()[0]
                 gh_repo.ref = extracted_dir.rsplit("-")[-1]
                 if _is_downloaded(extracted_dir):
-                    print(
+                    logging.info(
                         "Plugin already downloaded and up to date. Skipping download."
                     )
                 else:
-                    print(f"Extracting plugin to {extracted_dir}...")
+                    logging.debug(f"Extracting plugin to {extracted_dir}...")
                     zfile.extractall(fo.config.plugins_dir)
                     config = ZooPluginConfig(
                         author=gh_repo.user,
@@ -152,15 +154,19 @@ def download_zoo_plugin(
                     )
                     config.save()
 
-                    print(
+                    logging.info(
                         f"Downloaded plugin to {os.path.join(fo.config.plugins_dir, extracted_dir)}"
                     )
             return os.path.join(fo.config.plugins_dir, extracted_dir)
     except HTTPError as e:
-        print(
-            f"Error downloading archive of repo '{github_repo}' ({zipurl}): {e}"
-        )
-        return None
+        if e.status == 404:
+            raise ValueError(
+                f"Plugin '{github_repo}' not found. Check that the URL or <user>/<repo_name> is correct."
+            )
+        else:
+            raise ValueError(
+                f"Error downloading archive of repo '{github_repo}' ({zipurl}): {e}"
+            )
 
 
 def install_zoo_plugin(plugin_name: str):
@@ -208,7 +214,7 @@ def _update_plugin_config(plugin_dir, installed: bool):
         ) as configfile:
             config.write(configfile)
     else:
-        print(
+        logging.debug(
             f"Plugin config file not found at {plugin_dir}. Creating new local config file."
         )
         config = configparser.ConfigParser()
@@ -219,7 +225,7 @@ def _update_plugin_config(plugin_dir, installed: bool):
             config.write(configfile)
 
     status = "Installed" if installed else "Uninstalled"
-    print(f"{status} plugin at {plugin_dir}")
+    logging.info(f"{status} plugin at {plugin_dir}")
     return
 
 
@@ -234,7 +240,7 @@ def delete_zoo_plugin(plugin_name):
         raise ValueError(f"Plugin directory '{plugin_dir}' does not exist.")
 
     shutil.rmtree(plugin_dir)
-    print(f"Deleted plugin at {plugin_dir}")
+    logging.info(f"Deleted plugin at {plugin_dir}")
 
 
 def list_downloaded_zoo_plugins():
@@ -305,7 +311,7 @@ def _list_plugins(installed_only: bool = None) -> Set[str]:
 def _is_downloaded(plugin_name: str) -> bool:
     """Returns True if the plugin is downloaded, False otherwise."""
     pat = re.sub(r"[-/_]", ".", plugin_name)
-    print("Checking for previous download with pattern: ", pat)
+    logging.debug(f"Checking for previous download with pattern: {pat}")
     for fp in glob.glob(fo.config.plugins_dir + "/**", recursive=True):
         if re.search(pat, fp):
             return True
@@ -318,14 +324,16 @@ def _is_installed(plugin_name: str) -> bool:
     plugin_dir = find_zoo_plugin(plugin_name)
     if plugin_dir:
         if os.path.exists(os.path.join(plugin_dir, ".fiftyone-plugin")):
-            print(f"Found config file for '{plugin_name}' at {plugin_dir}")
+            logging.debug(
+                f"Found config file for '{plugin_name}' at {plugin_dir}"
+            )
             config = configparser.ConfigParser()
             config.read(os.path.join(plugin_dir, ".fiftyone-plugin"))
             if (
                 "SETTINGS" in config.sections()
                 and "installed" in config["SETTINGS"]
             ):
-                print(
+                logging.debug(
                     f"installed = {config.getboolean('SETTINGS', 'installed')}"
                 )
                 return config.getboolean("SETTINGS", "installed")
@@ -333,7 +341,7 @@ def _is_installed(plugin_name: str) -> bool:
             # For backwards compatibility, if the plugin is downloaded,
             # but does not have a config file, consider it installed and
             # create a config file the first time it is queried
-            print("Creating config file for plugin: ", plugin_name)
+            logging.debug(f"Creating config file for plugin: {plugin_name}")
             _update_plugin_config(plugin_dir, installed=True)
             return True
     # If the plugin is not downloaded, it is not installed
@@ -345,7 +353,9 @@ def find_zoo_plugin(plugin_name: str) -> Optional[str]:
     pat = re.sub(r"[-/_]", ".", plugin_name)
     for fp in glob.glob(fo.config.plugins_dir + "/**", recursive=True):
         if re.search(pat, fp):
-            print(fp)
+            logging.debug(f"Found plugin at {fp}")
             return fp
-
+    logging.debug(
+        f"Plugin '{plugin_name}' not found in {fo.config.plugins_dir}."
+    )
     return None
