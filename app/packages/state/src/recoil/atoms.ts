@@ -1,10 +1,16 @@
-import { atom, atomFamily, useRecoilCallback } from "recoil";
+import {
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+  useRecoilCallback,
+} from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
 
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
-import { Field } from "@fiftyone/utilities";
+import { sessionColorConfig } from "./config";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -110,12 +116,26 @@ export interface CustomizeColor {
 
 export const customizeColors = atomFamily<CustomizeColor, string>({
   key: "customizeColors",
-  default: null,
+  default: selectorFamily<CustomizeColor, string>({
+    key: "initialCustomizeColors",
+    get:
+      (path) =>
+      ({ get }) => {
+        const settings = get(sessionColorConfig);
+        return settings?.find((s) => s.field === path) ?? null;
+      },
+  }),
 });
 
 export const customizeColorFields = atom<string[]>({
   key: "customizeColorFields",
-  default: [],
+  default: selector({
+    key: "initialColorFields",
+    get: ({ get }) => {
+      // use session.config.customizedColors as default
+      return [...new Set(get(sessionColorConfig).map((s) => s.field))];
+    },
+  }),
 });
 
 export interface SortResults {

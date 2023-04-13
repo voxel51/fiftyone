@@ -112,7 +112,7 @@ export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
       Array.isArray(input["labelColors"])
         ? getValidLabelColors(input["labelColors"])
         : undefined,
-  }));
+  })) as CustomizeColor[];
 };
 
 // shared styled.div
