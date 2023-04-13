@@ -3,6 +3,7 @@ import { DefaultValue, selector, selectorFamily } from "recoil";
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
+  Field,
   getColor,
   hexToRgb,
   RGB,
