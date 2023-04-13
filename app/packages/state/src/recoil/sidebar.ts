@@ -37,6 +37,7 @@ import { isLargeVideo } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import { getCurrentEnvironment } from "../hooks/useRouter";
+import { dataset } from "./atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -116,11 +117,12 @@ export const useTagText = (modal: boolean) => {
 export const useEntries = (
   modal: boolean
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
+  const ds = useRecoilValue(dataset);
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loading: false, filtered: true })
+    sidebarEntries({ modal, loading: false, filtered: true, dataset: ds })
   );
   const loadingEntries = useRecoilValue(
-    sidebarEntries({ modal, loading: true, filtered: true })
+    sidebarEntries({ modal, loading: true, filtered: true, dataset: ds })
   );
 
   return [
@@ -344,19 +346,25 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean; dataset?: any }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true, persist = true }) =>
+    ({ modal, loading, filtered = true, dataset = null }) =>
     ({ get }) => {
-      const f = get(textFilter(modal));
+      const schema = dataset ? buildSchema(dataset, true) : null;
+      const f = get(textFilter(modal)).split("=")[0];
+
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
 
           paths: filtered
-            ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
+            ? paths.filter(
+                (path) =>
+                  get(pathIsShown(path)) &&
+                  (path.includes(f) || schema?.[path]?.searchField?.includes(f))
+              )
             : paths,
         }))
         .filter(
@@ -490,7 +498,7 @@ export const persistSidebarGroups = (
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
-  { modal: boolean; loading: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean; dataset?: any }
 >({
   key: "sidebarEntries",
   get:
