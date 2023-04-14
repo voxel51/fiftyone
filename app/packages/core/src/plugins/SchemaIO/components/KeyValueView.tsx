@@ -17,7 +17,7 @@ export default function KeyValueView(props) {
     <Box>
       <Header {...view} divider />
       <TableContainer component={nested ? Box : Paper}>
-        <Table sx={{ minWidth: 650 }}>
+        <Table>
           <TableBody>
             {data.map((item) => (
               <TableRow

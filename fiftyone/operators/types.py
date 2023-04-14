@@ -153,17 +153,6 @@ class Enum(BaseType):
         return {"name": self.__class__.__name__, "values": self.values}
 
 
-class Plot(BaseType):
-    def __init__(self, **kwargs):
-        self.data = kwargs.get("data", None)
-
-    def to_json(self):
-        return {
-            "name": self.__class__.__name__,
-            "data": self.data,
-        }
-
-
 class OneOf(BaseType):
     def __init__(self, types):
         self.types = types
@@ -303,9 +292,25 @@ class Warning(View):
         super().__init__(**kwargs)
 
 
+class Error(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class Button(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.href = kwargs.get("href", None)
+        self.operator = kwargs.get("operator", None)
+        self.params = kwargs.get("params", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "href": self.href,
+            "operator": self.operator,
+            "params": self.params,
+        }
 
 
 class OneOfView(View):
@@ -372,6 +377,15 @@ class ColorView(View):
         }
 
 
+class TabsView(Choices):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.variant = kwargs.get("variant", None)
+
+    def to_json(self):
+        return {**super().to_json(), "variant": self.variant}
+
+
 class JSONView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -385,3 +399,55 @@ class AutocompleteView(Choices):
 class FileView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class LinkView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.href = kwargs.get("href", None)
+
+    def to_json(self):
+        return {**super().to_json(), "href": self.href}
+
+
+class HiddenView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class LoadingView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class PlotlyView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.data = kwargs.get("data", None)
+        self.config = kwargs.get("config", None)
+        self.layout = kwargs.get("layout", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "data": self.data,
+            "config": self.config,
+            "layout": self.layout,
+        }
+
+
+# todo: ...
+# class ReadOnlyView(View):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+
+
+# todo: ...
+# class KeyValueView(View):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+
+# todo: ...
+# class TableView(View):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
