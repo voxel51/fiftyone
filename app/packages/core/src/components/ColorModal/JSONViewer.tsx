@@ -18,10 +18,21 @@ const JSONViewer: React.FC = ({}) => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const global = useRecoilValue(tempGlobalSetting);
+  const [global, setGlobal] = useRecoilState(tempGlobalSetting);
   const fullSetting = useRecoilValue(customizeColorSettings);
   const [data, setData] = useRecoilState(tempColorJSON);
   const resetTempCustomizeColor = useSetRecoilState(tempColorSetting);
+  const colors = useRecoilValue(fos.coloring(false)).pool as string[];
+  const opacity = useRecoilValue(fos.alpha(false));
+  const colorBy = useRecoilValue(
+    fos.appConfigOption({ key: "colorBy", modal: false })
+  );
+  const useMulticolorKeypoints = useRecoilValue(
+    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
+  );
+  const showSkeleton = useRecoilValue(
+    fos.appConfigOption({ key: "showSkeletons", modal: false })
+  );
 
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
@@ -31,6 +42,17 @@ const JSONViewer: React.FC = ({}) => {
   useEffect(() => {
     // reset the other temp settings as tab changes, otherwise could cause field setting tab not to show the most updated setting
     resetTempCustomizeColor(null);
+    // if globalSetting is not initialized, set global
+    if (!global) {
+      const setting = {
+        colorBy,
+        colors,
+        opacity,
+        useMulticolorKeypoints,
+        showSkeleton,
+      };
+      setGlobal(setting);
+    }
     setData({
       colorScheme: global?.colors,
       customizedColorSettings: fullSetting,
