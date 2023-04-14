@@ -9,6 +9,7 @@ import { SchemaIOComponent } from ".";
 import { types } from "@fiftyone/operators";
 import annotation from "./fixtures/annotation.json";
 import { log, operatorToIOSchema } from "./utils";
+import InferredView from "./components/InferredView";
 
 registerComponent({
   name: "OperatorIO",
@@ -38,8 +39,11 @@ function OperatorIO() {
 }
 
 function OperatorIOComponent(props) {
-  const { schema, onChange } = props;
+  const { schema, onChange, type, data } = props;
   const ioSchema = operatorToIOSchema(schema);
+
+  // todo: ...
+  if (type === "output") return <InferredView label="Output" data={data} />;
 
   return <SchemaIOComponent schema={ioSchema} onChange={onChange} />;
 }
