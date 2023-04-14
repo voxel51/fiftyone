@@ -15,7 +15,7 @@ import {
   Select,
 } from "@mui/material";
 import { useRecoilValue } from "recoil";
-import OperatorInput from "./OperatorInput";
+import OperatorIO from "./OperatorIO";
 import { Box } from "@mui/material";
 import { scrollbarStyles } from "@fiftyone/utilities";
 
@@ -33,7 +33,9 @@ const PromptContainer = styled.div`
 const PromptModal = styled.div`
   align-self: stretch;
   background: ${({ theme }) => theme.background.level2};
-  width: 50%;
+  max-width: 90vw;
+  min-width: 50%;
+  width: auto;
   padding: 1rem;
   max-height: calc(80vh);
   overflow: auto;
@@ -81,7 +83,7 @@ function Prompting({ operatorPrompt }) {
   return (
     <Box>
       <Box sx={{ pb: 2 }}>
-        <OperatorInput
+        <OperatorIO
           schema={operatorPrompt.inputFields}
           onChange={(data) => {
             const formData = data;
@@ -89,7 +91,7 @@ function Prompting({ operatorPrompt }) {
               operatorPrompt.setFieldValue(field, formData[field]);
             }
           }}
-          formData={operatorPrompt.promptingOperator.params}
+          data={operatorPrompt.promptingOperator.params}
         />
       </Box>
       <ButtonsContainer>
@@ -104,26 +106,19 @@ function Prompting({ operatorPrompt }) {
 
 function Results({ operatorPrompt }) {
   if (!operatorPrompt.outputFields) return null;
-  const fields = Array.from(operatorPrompt.outputFields.type.properties);
+  const { result } = operatorPrompt.executor;
   return (
-    <>
-      <h3>Result</h3>
-      {fields.map(([name, property]) => {
-        return (
-          <Field
-            key={name}
-            field={property}
-            readOnly={true}
-            defaultValue={
-              operatorPrompt.executor.result[name] || property.view.default
-            }
-          />
-        );
-      })}
+    <Box>
+      <OperatorIO
+        type="output"
+        data={result}
+        schema={operatorPrompt.outputFields}
+        onChange={() => {}}
+      />
       <ButtonsContainer>
         <Button onClick={() => operatorPrompt.close()}>Close</Button>
       </ButtonsContainer>
-    </>
+    </Box>
   );
 }
 
