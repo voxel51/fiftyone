@@ -1,14 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Divider, Slider } from "@mui/material";
-import styled from "styled-components";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Check } from "@mui/icons-material";
 import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
 
 import RadioGroup from "../Common/RadioGroup";
 import ColorPalette from "./colorPalette/ColorPalette";
-
 import Checkbox from "../Common/Checkbox";
 import {
   ControlGroupWrapper,
@@ -22,6 +20,29 @@ const GlobalSetting: React.FC = ({}) => {
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     setGlobal((s) => ({ ...cloneDeep(s), opacity: newValue as number }));
   };
+  const colors = useRecoilValue(fos.coloring(false)).pool as string[];
+  const opacity = useRecoilValue(fos.alpha(false));
+  const colorBy = useRecoilValue(
+    fos.appConfigOption({ key: "colorBy", modal: false })
+  );
+  const useMulticolorKeypoints = useRecoilValue(
+    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
+  );
+  const showSkeleton = useRecoilValue(
+    fos.appConfigOption({ key: "showSkeletons", modal: false })
+  );
+
+  // initialize tempGlobalSetting on modal mount
+  useEffect(() => {
+    const setting = {
+      colorBy,
+      colors,
+      opacity,
+      useMulticolorKeypoints,
+      showSkeleton,
+    };
+    setGlobal(setting);
+  }, []);
 
   if (!global) return null;
   return (
