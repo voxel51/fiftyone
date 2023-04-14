@@ -9,7 +9,7 @@ export default function PrimitiveListView(props) {
     <Box>
       <Header {...view} divider />
       {data.map(({ id, label }) => (
-        <Chip key={id} label={label} sx={{ mx: 0.25 }} />
+        <Chip key={id} label={label} sx={{ m: 0.25 }} />
       ))}
     </Box>
   );
