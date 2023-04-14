@@ -58,6 +58,12 @@ def execute_operator(operator_name, request_params):
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)
+    if not isinstance(inputs, types.Property):
+        raise ValueError(
+            "Operator '%s' resolve_input() does not return a valid Property()"
+            % operator_name
+        )
+
     validation_ctx = ValidationContext(ctx, inputs)
     if validation_ctx.invalid:
         return ExecutionResult(None, None, "Validation Error", validation_ctx)
@@ -107,7 +113,6 @@ class ExecutionContext:
     def dataset(self):
         dataset_name = self.request_params.get("dataset_name", None)
         d = fo.load_dataset(dataset_name)
-        print(d)
         return d
 
     @property
@@ -167,7 +172,7 @@ class ValidationContext:
         self.errors = self._validate()
         self.invalid = len(self.errors) > 0
 
-    def to_json():
+    def to_json(self):
         return {
             "invalid": self.invalid,
             "errors": [e.to_json() for e in self.errors],
