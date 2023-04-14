@@ -1,59 +1,45 @@
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import {
-  getSampleSrc,
-  modal,
-  selectedMediaField,
-  useOnSelectLabel,
-} from "@fiftyone/state";
 import React, { Suspense, useMemo } from "react";
 
 import { Loading } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
 
-const PluggableSample = () => {
-  const data = useRecoilValue(modal);
+const PluginWrapper = () => {
+  // if (!data) {
+  //   throw new Error("no data");
+  // }
 
-  if (!data) {
-    throw new Error("no data");
-  }
+  // const { sample, urls } = data;
+  const groupId = useRecoilValue(fos.groupId);
 
-  const { sample, urls } = data;
-
-  const mediaField = useRecoilValue(selectedMediaField(true));
+  // const mediaField = useRecoilValue(selectedMediaField(true));
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
-  const onSelectLabel = useOnSelectLabel();
+  // const onSelectLabel = useOnSelectLabel();
   const dataset = useRecoilValue(fos.dataset);
 
   const pluginAPI = useMemo(
     () => ({
       dataset,
-      mediaField,
-      onSelectLabel,
-      sample,
-      mediaFieldValue: urls[mediaField],
-      src: getSampleSrc(urls[mediaField]),
-      state: fos,
-      useState: useRecoilValue,
+      // mediaField,
+      // onSelectLabel,
+      // mediaFieldValue: urls[mediaField],
+      // src: getSampleSrc(urls[mediaField]),
+      // state: fos,
+      // useState: useRecoilValue,
     }),
-    [dataset, sample, mediaField, onSelectLabel, urls]
+    [dataset]
   );
 
-  const isPluginActive = plugin && plugin.activator(pluginAPI);
-
-  return isPluginActive ? (
-    <plugin.component key={sample._id} api={pluginAPI} />
-  ) : null;
+  return <plugin.component key={groupId} api={pluginAPI} />;
 };
 
-const Sample3d: React.FC = () => {
+export const Sample3d: React.FC = () => {
   return (
     <>
       <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <PluggableSample />
+        <PluginWrapper />
       </Suspense>
     </>
   );
 };
-
-export default Sample3d;

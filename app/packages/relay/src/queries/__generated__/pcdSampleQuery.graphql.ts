@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<50e2ce74043e9cd5468b056a7ac1c49e>>
+ * @generated SignedSource<<fe6d880b0b16afce20e3845482461098>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,12 +17,12 @@ export type GroupElementFilter = {
   id?: string | null;
   slice?: string | null;
 };
-export type pinnedSampleQuery$variables = {
+export type pcdSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
   view: Array;
 };
-export type pinnedSampleQuery$data = {
+export type pcdSampleQuery$data = {
   readonly sample: {
     readonly id?: string;
     readonly sample?: object;
@@ -32,9 +32,9 @@ export type pinnedSampleQuery$data = {
     }>;
   } | null;
 };
-export type pinnedSampleQuery = {
-  response: pinnedSampleQuery$data;
-  variables: pinnedSampleQuery$variables;
+export type pcdSampleQuery = {
+  response: pcdSampleQuery$data;
+  variables: pcdSampleQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -129,7 +129,7 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "pinnedSampleQuery",
+    "name": "pcdSampleQuery",
     "selections": [
       {
         "alias": null,
@@ -155,7 +155,7 @@ return {
       (v1/*: any*/)
     ],
     "kind": "Operation",
-    "name": "pinnedSampleQuery",
+    "name": "pcdSampleQuery",
     "selections": [
       {
         "alias": null,
@@ -191,16 +191,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "1acff8b3a33f491ec9d5e3ea1cee6bad",
+    "cacheID": "6c937e342401270b447cd586c47c1e36",
     "id": null,
     "metadata": {},
-    "name": "pinnedSampleQuery",
+    "name": "pcdSampleQuery",
     "operationKind": "query",
-    "text": "query pinnedSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on PointCloudSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ImageSample {\n      id\n    }\n    ... on VideoSample {\n      id\n    }\n  }\n}\n"
+    "text": "query pcdSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on PointCloudSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ImageSample {\n      id\n    }\n    ... on VideoSample {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1c03615213506567db79981363a7f764";
+(node as any).hash = "feb7d193dddb5df136a297ac5857307f";
 
 export default node;

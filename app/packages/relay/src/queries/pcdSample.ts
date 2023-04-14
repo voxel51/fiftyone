@@ -3,7 +3,7 @@ import { graphql } from "react-relay";
 import r from "../resolve";
 
 export default r(graphql`
-  query pinnedSampleQuery(
+  query pcdSampleQuery(
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!

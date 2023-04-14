@@ -13,13 +13,13 @@ export type OverlayLabel = {
 };
 
 export const load3dOverlays = (
-  sample: fos.Sample | fos.Sample[],
+  samples: fos.Sample | fos.Sample[],
   selectedLabels: Record<string, unknown>,
   currentPath = []
 ) => {
   let overlays: OverlayLabel[] = [];
-  const labels = Array.isArray(sample) ? sample : Object.values(sample);
-  const labelKeys = Array.isArray(sample) ? null : Object.keys(sample);
+  const labels = Array.isArray(samples) ? samples : Object.values(samples);
+  const labelKeys = Array.isArray(samples) ? null : Object.keys(samples);
 
   for (let i = 0; i < labels.length; i++) {
     const label = labels[i];

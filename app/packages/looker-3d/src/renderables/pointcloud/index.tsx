@@ -1,5 +1,7 @@
+import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
+import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { computeMinMaxForColorBufferAttribute } from "../../../utils";
 import { ShadeBy } from "../../state";
 import {
@@ -14,7 +16,7 @@ type PointCloudMeshArgs = {
   shadeBy: ShadeBy;
   pointSize: string;
   isPointSizeAttenuated: boolean;
-  points: THREE.Points;
+  src: string;
   rotation: [number, number, number];
   minZ: number | null | undefined;
   onLoad: (boundingBox: THREE.Box3) => void;
@@ -44,10 +46,12 @@ export const PointCloudMesh = ({
   minZ,
   shadeBy,
   pointSize,
-  points,
+  src,
   rotation,
   onLoad,
 }: PointCloudMeshArgs) => {
+  const points = useLoader(PCDLoader, src);
+
   const [colorMinMax, setColorMinMax] = useState<ColorMinMax>({
     min: 0,
     max: 1,

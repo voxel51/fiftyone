@@ -4,8 +4,8 @@ import {
   paginateGroup,
   paginateGroupQuery,
   paginateGroup_query$key,
-  pinnedSample,
-  pinnedSampleQuery,
+  pcdSample,
+  pcdSampleQuery,
 } from "@fiftyone/relay";
 
 import { VariablesOf } from "react-relay";
@@ -15,12 +15,12 @@ import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import {
   AppSample,
+  SampleData,
   dataset,
   getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
-  SampleData,
-  sidebarOverride,
+  pinned3DSample,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -70,8 +70,8 @@ export const groupSlices = selector<string[]>({
   },
 });
 
-export const defaultPinnedSlice = selector<string | null>({
-  key: "defaultPinnedSlice",
+export const defaultPcdSlice = selector<string | null>({
+  key: "defaultPcdSlice",
   get: ({ get }) => {
     const { groupMediaTypes } = get(dataset);
 
@@ -86,10 +86,48 @@ export const defaultPinnedSlice = selector<string | null>({
   },
 });
 
-export const pinnedSlice = atom<string | null>({
-  key: "pinnedSlice",
-  default: defaultPinnedSlice,
-  effects: [getBrowserStorageEffectForKey("pinnedSlice")],
+// export const pinnedSlice = atom<string | null>({
+//   key: "pinnedSlice",
+//   default: defaultPinnedSlice,
+//   effects: [getBrowserStorageEffectForKey("pinnedSlice")],
+// });
+
+export const pointCloudSliceExists = selector<boolean>({
+  key: "sliceMediaTypeMap",
+  get: ({ get }) =>
+    get(dataset).groupMediaTypes.some((g) => g.mediaType === "point_cloud"),
+});
+
+export const allPcdSlices = selector<string[]>({
+  key: "allPcdSlices",
+  get: ({ get }) =>
+    get(dataset)
+      .groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
+      .map((g) => g.name),
+});
+
+export const activePcdSlices = atom<string[] | null>({
+  key: "activePcdSlices",
+  default: selector({
+    key: "activePcdSlicesDefault",
+    get: ({ get }) => {
+      const defaultPcdSliceValue = get(defaultPcdSlice);
+      return defaultPcdSliceValue ? [defaultPcdSliceValue] : null;
+    },
+  }),
+  effects: [
+    // todo: key by dataset name
+    getBrowserStorageEffectForKey(`activePcdSlices`, {
+      valueClass: "stringArray",
+    }),
+  ],
+});
+
+export const activePcdSliceToSampleMap = atom<{
+  [sliceName: string]: SampleData;
+}>({
+  key: "activePcdSamples",
+  default: {},
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({
@@ -99,17 +137,17 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal && get(sidebarOverride)) {
-        return get(pinnedSlice);
+      if (modal && get(pinned3DSample)) {
+        return get(activePcdSlices)[0];
       }
 
       return get(groupSlice(modal)) || get(defaultGroupSlice);
     },
 });
 
-export const hasPinnedSlice = selector<boolean>({
-  key: "hasPinnedSlice",
-  get: ({ get }) => Boolean(get(pinnedSlice)),
+export const hasPcdSlice = selector<boolean>({
+  key: "hasPcdSlice",
+  get: ({ get }) => Boolean(get(activePcdSlices)?.length > 0),
 });
 
 export const groupField = selector<string>({
@@ -158,7 +196,7 @@ const mapSampleResponse = (response) => {
   const actualRawSample = response?.sample?.sample;
 
   // This value may be a string that needs to be deserialized
-  // Only occurs after calling useUpdateSample for pinned sample
+  // Only occurs after calling useUpdateSample for pcd sample
   // - https://github.com/voxel51/fiftyone/pull/2622
   // - https://github.com/facebook/relay/issues/91
   if (actualRawSample && typeof actualRawSample === "string") {
@@ -171,28 +209,41 @@ const mapSampleResponse = (response) => {
   return response.sample;
 };
 
-export const pinnedSliceSample = graphQLSelector<
-  VariablesOf<pinnedSampleQuery>,
-  ResponseFrom<pinnedSampleQuery>["sample"]
+export const pcdSampleQueryFamily = graphQLSelectorFamily<
+  VariablesOf<pcdSampleQuery>,
+  string,
+  ResponseFrom<pcdSampleQuery>["sample"]
 >({
-  key: "pinnedSliceSampleFragment",
+  key: "pcdSampleQuery",
   environment: RelayEnvironmentKey,
-  query: pinnedSample,
-  variables: ({ get }) => {
-    const sample = get(modalAtom).sample;
-    const group = get(groupField);
-    return {
-      dataset: get(datasetName),
-      view: get(view),
-      filter: {
-        group: {
-          id: sample[group]._id,
-          slice: get(pinnedSlice),
+  query: pcdSample,
+  variables:
+    (pcdSlice) =>
+    ({ get }) => {
+      const groupIdValue = get(groupId);
+
+      return {
+        dataset: get(datasetName),
+        view: get(view),
+        filter: {
+          group: {
+            id: groupIdValue,
+            slice: pcdSlice,
+          },
         },
-      },
-    };
-  },
+      };
+    },
   mapResponse: mapSampleResponse,
+});
+
+export const pcdSamples = atom<string[] | null>({
+  key: "pcdSamples",
+  default: selector({
+    key: "pcdSamplesDefault",
+    get: ({ get }) => {
+      const defaultPcdSliceValue = get(defaultPcdSlice);
+    },
+  }),
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
@@ -201,7 +252,7 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
 });
 
 export const activeModalSample = selectorFamily<
-  AppSample | ResponseFrom<pinnedSampleQuery>["sample"],
+  AppSample | ResponseFrom<pcdSampleQuery>["sample"],
   SliceName
 >({
   key: "activeModalSample",
@@ -212,8 +263,8 @@ export const activeModalSample = selectorFamily<
         return get(modalAtom).sample;
       }
 
-      if (get(sidebarOverride) || get(pinnedSlice) === sliceName) {
-        return get(pinnedSliceSample).sample;
+      if (get(pinned3DSample) || get(activePcdSlices).includes(sliceName)) {
+        return get(pcdSampleQueryFamily(sliceName)).sample;
       }
 
       return get(groupSample(sliceName)).sample;

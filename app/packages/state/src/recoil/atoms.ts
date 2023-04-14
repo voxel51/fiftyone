@@ -50,7 +50,7 @@ export const getBrowserStorageEffectForKey =
     key: string,
     props: {
       sessionStorage?: boolean;
-      valueClass?: "string" | "number" | "boolean";
+      valueClass?: "string" | "stringArray" | "number" | "boolean";
     } = { sessionStorage: false, valueClass: "string" }
   ) =>
   ({ setSelf, onSet }) => {
@@ -67,6 +67,12 @@ export const getBrowserStorageEffectForKey =
       procesedValue = Number(value);
     } else if (valueClass === "boolean") {
       procesedValue = value === "true";
+    } else if (valueClass === "stringArray") {
+      if (value?.length > 0) {
+        procesedValue = value?.split(",");
+      } else {
+        procesedValue = [];
+      }
     } else {
       procesedValue = value;
     }
@@ -241,8 +247,8 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const sidebarOverride = atom<string>({
-  key: "sidebarOverride",
+export const pinned3DSample = atom<string>({
+  key: "pinned3DSample",
   default: null,
 });
 

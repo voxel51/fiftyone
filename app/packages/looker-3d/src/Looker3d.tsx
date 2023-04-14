@@ -1,9 +1,8 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { AppSample as Sample } from "@fiftyone/state";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
-import { Canvas, useLoader } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
 import React, {
   useCallback,
@@ -13,34 +12,24 @@ import React, {
   useState,
 } from "react";
 import * as recoil from "recoil";
+import { useRecoilValue } from "recoil";
 import { Box3, Object3D, PerspectiveCamera, Vector3 } from "three";
-import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { toEulerFromDegreesArray } from "../utils";
+import { Environment } from "./Environment";
 import {
-  ChooseColorSpace,
+  Looker3dPluginSettings,
+  defaultPluginSettings,
+} from "./Looker3dPlugin";
+import {
   Screenshot,
   SetPointSizeButton,
   SetViewButton,
   SliceSelector,
   ViewHelp,
-  ViewJSON,
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
-import { Environment } from "./Environment";
 import { useHotkey, usePathFilter } from "./hooks";
-import {
-  defaultPluginSettings,
-  Looker3dPluginSettings,
-} from "./Looker3dPlugin";
-import {
-  Cuboid,
-  CuboidProps,
-  load3dOverlays,
-  OverlayLabel,
-  Polyline,
-  PolyLineProps,
-} from "./overlays";
 import { PointCloudMesh } from "./renderables";
 import {
   currentActionAtom,
@@ -55,36 +44,30 @@ type View = "pov" | "top";
 export type Looker3dProps = {
   api: {
     dataset: fos.State.Dataset;
-    mediaField: string;
-    mediaFieldValue: string;
-    src: string;
-    sample: Sample;
   };
 };
 
 export const Looker3d = (props: Looker3dProps) => {
-  const mediaFieldValue = props?.api?.mediaFieldValue;
-  const mediaField = props?.api?.mediaField;
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  if (!mediaFieldValue) {
+  if (!mediaField) {
     return <Loading>No value provided for &quot;{mediaField}&quot;.</Loading>;
   }
 
   return (
     <ErrorBoundary>
-      <Looker3dCore {...props} />
+      <Looker3dCore dataset={props.api.dataset} />
     </ErrorBoundary>
   );
 };
 
-const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
+const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings
   );
 
   const modal = true;
-  const points = useLoader(PCDLoader, src);
   const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
@@ -96,51 +79,54 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
   const { coloring } = recoil.useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal })
   );
-
-  const isRgbPresent = useMemo(
-    () => Boolean(points.geometry.attributes?.color),
-    [points]
+  const activePcdSlices = recoil.useRecoilValue(fos.activePcdSlices);
+  const [sampleMap, setSampleMap] = recoil.useRecoilState(
+    fos.activePcdSliceToSampleMap
   );
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+
+  const fetchSamples = recoil.useRecoilCallback(
+    ({ snapshot }) =>
+      async () => {
+        const newSampleMap = {};
+
+        for (const slice of activePcdSlices) {
+          const sample = await snapshot.getPromise(
+            fos.pcdSampleQueryFamily(slice)
+          );
+          newSampleMap[slice] = sample;
+        }
+
+        setSampleMap(newSampleMap);
+      },
+    [activePcdSlices, setSampleMap]
+  );
+
+  useEffect(() => {
+    fetchSamples();
+  }, [fetchSamples]);
+
+  // const isRgbPresent = useMemo(
+  //   () => Boolean(points.geometry.attributes?.color),
+  //   [points]
+  // );
 
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
 
-  const overlays = useMemo(
-    () =>
-      load3dOverlays(sample, selectedLabels)
-        .map((l) => {
-          const path = l.path.join(".");
-          let color: string;
-          switch (coloring.by) {
-            case "field":
-              color = getColor(path);
-              break;
-            case "instance":
-              color = getColor(l._id);
-              break;
-            default:
-              color = getColor(l.label);
-              break;
-          }
-          return { ...l, color, id: l._id };
-        })
-        .filter((l) => pathFilter(l.path.join("."), l)),
-    [coloring, getColor, pathFilter, sample, selectedLabels]
-  );
-
-  const handleSelect = useCallback(
-    (label: OverlayLabel) => {
-      onSelectLabel({
-        detail: {
-          id: label._id,
-          field: label.path[label.path.length - 1],
-          sampleId: sample._id,
-        },
-      });
-    },
-    [onSelectLabel, sample]
-  );
+  // const handleSelect = useCallback(
+  //   (label: OverlayLabel) => {
+  //     onSelectLabel({
+  //       detail: {
+  //         id: label._id,
+  //         field: label.path[label.path.length - 1],
+  //         sampleId: sample._id,
+  //       },
+  //     });
+  //   },
+  //   [onSelectLabel, sample]
+  // );
 
   const colorBy = recoil.useRecoilValue(shadeByAtom);
   const pointSize = recoil.useRecoilValue(currentPointSizeAtom);
@@ -305,6 +291,70 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
 
   const isGridOn = recoil.useRecoilValue(isGridOnAtom);
 
+  const filteredSamples = useMemo(
+    () =>
+      Object.entries(sampleMap).map(([_slice, sample]) => {
+        let mediaUrl;
+
+        if (Array.isArray(sample.urls)) {
+          mediaUrl = fos.getSampleSrc(
+            sample.urls.find((u) => u.field === mediaField).url
+          );
+        } else {
+          mediaUrl = fos.getSampleSrc(sample.urls[mediaField]);
+        }
+
+        return (
+          <PointCloudMesh
+            key={sample.id}
+            minZ={minZ}
+            shadeBy={colorBy}
+            pointSize={pointSize}
+            src={fos.getSampleSrc(mediaUrl)}
+            rotation={pcRotation}
+            onLoad={(boundingBox) => {
+              setPointCloudBounds(boundingBox);
+            }}
+            defaultShadingColor={theme.text.primary}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+          />
+        );
+      }),
+    [
+      sampleMap,
+      mediaField,
+      colorBy,
+      pointSize,
+      pcRotation,
+      minZ,
+      theme,
+      isPointSizeAttenuated,
+    ]
+  );
+
+  // const overlays = useMemo(
+  //   () =>
+  //     load3dOverlays(samples, selectedLabels)
+  //       .map((l) => {
+  //         const path = l.path.join(".");
+  //         let color: string;
+  //         switch (coloring.by) {
+  //           case "field":
+  //             color = getColor(path);
+  //             break;
+  //           case "instance":
+  //             color = getColor(l._id);
+  //             break;
+  //           default:
+  //             color = getColor(l.label);
+  //             break;
+  //         }
+  //         return { ...l, color, id: l._id };
+  //       })
+  //       .filter((l) => pathFilter(l.path.join("."), l)),
+  //   [coloring, getColor, pathFilter, samples, selectedLabels]
+  // );
+
   return (
     <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas onClick={() => setAction(null)} data-cy="looker3d">
@@ -317,7 +367,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
           bounds={pointCloudBounds}
         />
         <mesh rotation={overlayRotation}>
-          {overlays
+          {/* {overlays
             .filter((o) => o._cls === "Detection")
             .map((label, key) => (
               <Cuboid
@@ -330,9 +380,9 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
                 tooltip={tooltip}
                 useLegacyCoordinates={settings.useLegacyCoordinates}
               />
-            ))}
+            ))} */}
         </mesh>
-        {overlays
+        {/* {overlays
           .filter(
             (o) =>
               o._cls === "Polyline" && (o as unknown as PolyLineProps).points3d
@@ -344,33 +394,24 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
               opacity={labelAlpha}
               {...(label as unknown as PolyLineProps)}
               label={label}
-              onClick={() => handleSelect(label)}
+              // onClick={() => handleSelect(label)}
               tooltip={tooltip}
             />
-          ))}
-        <PointCloudMesh
-          minZ={minZ}
-          shadeBy={colorBy}
-          pointSize={pointSize}
-          points={points}
-          rotation={pcRotation}
-          onLoad={(boundingBox) => {
-            setPointCloudBounds(boundingBox);
-          }}
-          defaultShadingColor={theme.text.primary}
-          isPointSizeAttenuated={isPointSizeAttenuated}
-        />
+          ))} */}
+
+        {filteredSamples}
       </Canvas>
-      {(hoveringRef.current || hovering) && (
+      {/* {(hoveringRef.current || hovering) && ( */}
+      {true && (
         <ActionBarContainer
           onMouseEnter={() => (hoveringRef.current = true)}
-          onMouseLeave={() => (hoveringRef.current = false)}
+          // onMouseLeave={() => (hoveringRef.current = false)}
         >
           {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
           <ActionsBar>
             <ToggleGridHelper />
             <SetPointSizeButton />
-            <ChooseColorSpace isRgbPresent={isRgbPresent} />
+            {/* <ChooseColorSpace isRgbPresent={isRgbPresent} /> */}
             <SetViewButton
               onChangeView={onChangeView}
               view={"top"}
@@ -383,7 +424,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
               label={"E"}
               hint="Ego View"
             />
-            <ViewJSON jsonPanel={jsonPanel} sample={sample} />
+            {/* <ViewJSON jsonPanel={jsonPanel} sample={sample} /> */}
             <ViewHelp helpPanel={helpPanel} />
           </ActionsBar>
         </ActionBarContainer>

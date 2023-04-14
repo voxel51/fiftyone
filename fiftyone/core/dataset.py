@@ -51,6 +51,12 @@ foud = fou.lazy_import("fiftyone.utils.data")
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(filename="/tmp/fiftyone.log",
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.INFO)
+
 
 def list_datasets(glob_patt=None, info=False):
     """Lists the available FiftyOne datasets.

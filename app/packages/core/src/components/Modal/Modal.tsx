@@ -22,7 +22,7 @@ import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
-import Sample3d from "./Sample3d";
+import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
 
 const ModalWrapper = styled.div`
@@ -87,7 +87,7 @@ const Arrow = styled.span<{ isRight?: boolean }>`
 const SampleModal = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
-  const override = useRecoilValue(fos.sidebarOverride);
+  const override = useRecoilValue(fos.pinned3DSample);
   const disabled = useRecoilValue(fos.disabledPaths);
 
   const lookerRef = useRef<AbstractLooker>();

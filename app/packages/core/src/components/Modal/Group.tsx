@@ -5,23 +5,19 @@ import {
   mainGroup,
 } from "./Group.module.css";
 
-import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {
   currentSlice,
   defaultGroupSlice,
-  getSampleSrc,
+  defaultPcdSlice,
   groupField,
   groupId,
   groupSample as groupSampleSelectorFamily,
-  hasPinnedSlice,
-  pinnedSlice,
-  pinnedSliceSample,
-  selectedMediaField,
-  sidebarOverride,
+  hasPcdSlice,
+  pcdSampleQueryFamily,
+  pinned3DSample,
   useBrowserStorage,
   useClearModal,
-  useOnSelectLabel,
 } from "@fiftyone/state";
 import React, {
   MouseEventHandler,
@@ -43,6 +39,7 @@ import GroupList from "../Group";
 import { GroupBar, GroupSampleBar } from "./Bars";
 import Looker from "./Looker";
 import Sample from "./Sample";
+import { Sample3d } from "./Sample3d";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
@@ -130,7 +127,7 @@ const AltGroupSample: React.FC<{
 }> = ({ lookerRef, lookerRefCallback, altSlice }) => {
   const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(altSlice));
   const clearModal = useClearModal();
-  const reset = useResetRecoilState(sidebarOverride);
+  const reset = useResetRecoilState(pinned3DSample);
 
   const hover = fos.useHoveredSample(sample);
 
@@ -160,8 +157,8 @@ const MainSample: React.FC<{
 }> = ({ lookerRef, lookerRefCallback }) => {
   const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(null));
   const clearModal = useClearModal();
-  const pinned = !useRecoilValue(sidebarOverride);
-  const reset = useResetRecoilState(sidebarOverride);
+  const pinned = !useRecoilValue(pinned3DSample);
+  const reset = useResetRecoilState(pinned3DSample);
   const hover = fos.useHoveredSample(sample);
 
   const thisSampleSlice = useSlice(sample);
@@ -212,50 +209,10 @@ const MainSample: React.FC<{
   );
 };
 
-const withVisualizerPlugin = <T extends {}>(Component: React.FC<T>) => {
-  const PluginComponentWrapper = (props: T) => {
-    const { sample, urls } = useRecoilValue(pinnedSliceSample);
-    const [plugin] = usePlugin(PluginComponentType.Visualizer);
-    const mediaField = useRecoilValue(selectedMediaField(true));
-    const onSelectLabel = useOnSelectLabel();
-
-    const urlMap = useMemo(() => {
-      return Object.fromEntries(urls.map(({ field, url }) => [field, url]));
-    }, [urls]);
-
-    const pluginAPI = {
-      dataset: useRecoilValue(fos.dataset),
-      sample: sample,
-      onSelectLabel,
-      useState: useRecoilValue,
-      state: fos,
-      mediaFieldValue: urlMap[mediaField],
-      mediaField,
-      src: getSampleSrc(urlMap[mediaField]),
-    };
-
-    const pluginIsActive = plugin && plugin.activator(pluginAPI);
-    const PluginComponent = pluginIsActive && plugin.component;
-
-    return pluginIsActive ? (
-      <PluginComponent key={sample._id} api={pluginAPI} />
-    ) : (
-      <Component {...props} />
-    );
-  };
-
-  return PluginComponentWrapper;
-};
-
-const PluggableSample: React.FC<{}> = withVisualizerPlugin(() => {
-  return <Loading>No visualizer was found</Loading>;
-});
-
-const PinnedSample: React.FC = () => {
-  const { sample } = useRecoilValue(pinnedSliceSample);
-
-  const [pinned, setPinned] = useRecoilState(sidebarOverride);
-  const slice = useRecoilValue(pinnedSlice) as string;
+const Sample3dWrapper: React.FC = () => {
+  const [pinned, setPinned] = useRecoilState(pinned3DSample);
+  const slice = useRecoilValue(defaultPcdSlice) as string;
+  const { sample } = useRecoilValue(pcdSampleQueryFamily(slice));
   const hover = fos.useHoveredSample(sample.sample);
 
   useEffect(() => () => setPinned(null), []);
@@ -268,7 +225,7 @@ const PinnedSample: React.FC = () => {
       slice={slice}
       {...hover.handlers}
     >
-      <PluggableSample />
+      <Sample3d />
     </GroupSample>
   );
 };
@@ -282,7 +239,10 @@ const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
   const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
-  const is3DVisible = useRecoilValue(fos.groupMediaIs3DVisible);
+
+  const pointCloudSliceExists = useRecoilValue(fos.pointCloudSliceExists);
+  const is3DVisible =
+    useRecoilValue(fos.groupMediaIs3DVisible) && pointCloudSliceExists;
   const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
 
   const shouldSplitVertically = useMemo(
@@ -351,24 +311,14 @@ const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
                 />
               </PixelatingSuspense>
             ) : is3DVisible ? (
-              <PixelatingSuspense>
-                <PinnedSample />
-              </PixelatingSuspense>
+              <Sample3dWrapper />
             ) : null}
           </Resizable>
         )}
 
-        {shouldSplitVertically && (
-          <PixelatingSuspense>
-            <PinnedSample />
-          </PixelatingSuspense>
-        )}
+        {shouldSplitVertically && <Sample3dWrapper />}
 
-        {!shouldSplitVertically && is3DVisible && (
-          <PixelatingSuspense>
-            <PinnedSample />
-          </PixelatingSuspense>
-        )}
+        {!shouldSplitVertically && is3DVisible && <Sample3dWrapper />}
       </div>
     </div>
   );
@@ -377,7 +327,7 @@ const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
 const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
   lookerRefCallback,
 }) => {
-  const hasPinned = useRecoilValue(hasPinnedSlice);
+  const hasPinned = useRecoilValue(hasPcdSlice);
   const key = useRecoilValue(groupId);
 
   if (!hasPinned) {
