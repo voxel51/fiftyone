@@ -6,4 +6,4 @@ quickstart_groups_dataset = foz.load_zoo_dataset(
 )
 
 session = fo.launch_app(quickstart_groups_dataset, remote=True)
-session.wait()
+session.wait(-1)
