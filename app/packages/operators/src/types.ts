@@ -69,7 +69,7 @@ export class ObjectType extends BaseType {
 export class Property {
   constructor(type: ANY_TYPE, options?) {
     this.type = type;
-    this.defaultValue = options?.defaultValue;
+    this.defaultValue = options?.defaultValue || options?.default;
     this.required = options?.required;
     this.choices = options?.choices;
     this.view = options?.view;
