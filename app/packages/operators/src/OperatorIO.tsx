@@ -2,15 +2,20 @@ import { Box } from "@mui/material";
 import { useActivePlugins } from "@fiftyone/plugins";
 import { PluginComponentType } from "@fiftyone/plugins";
 
-export default function OperatorInput(props) {
+export default function OperatorIO(props) {
   const componentPlugins = useActivePlugins(PluginComponentType.Component, {});
-  const OperatorIO = componentPlugins.find(
+  const OperatorIOComponent = componentPlugins.find(
     ({ name }) => name === "OperatorIOComponent"
   ).component;
-  const { schema, onChange, formData, onError } = props;
+  const { schema, onChange, data, onError, type } = props;
   return (
     <Box sx={{ p: 2 }}>
-      <OperatorIO schema={schema} onChange={onChange} />
+      <OperatorIOComponent
+        schema={schema}
+        onChange={onChange}
+        type={type}
+        data={data}
+      />
     </Box>
   );
 }
