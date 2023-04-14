@@ -29,7 +29,7 @@ import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 
-import { prettify } from "./util";
+import { getColorFromOptions, prettify } from "./util";
 
 import { lookerTags } from "./tags.module.css";
 
@@ -60,7 +60,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema },
-      options: { activePaths, coloring, timeZone },
+      options: { activePaths, coloring, timeZone, customizeColorSetting },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -73,7 +73,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
-        this.colorByValue === (coloring.by === "label") &&
+        this.colorByValue === (coloring.by === "value") &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -96,7 +96,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value : path
+            coloring.by === "value" ? value : path
           ),
         };
       },
@@ -109,7 +109,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value : path
+            coloring.by === "value" ? value : path
           ),
         };
       },
@@ -122,7 +122,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value.datetime : path
+            coloring.by === "value" ? value.datetime : path
           ),
         };
       },
@@ -135,7 +135,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value.datetime : path
+            coloring.by === "value" ? value.datetime : path
           ),
         };
       },
@@ -148,7 +148,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value : path
+            coloring.by === "value" ? value : path
           ),
         };
       },
@@ -161,7 +161,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value : path
+            coloring.by === "value" ? value : path
           ),
         };
       },
@@ -173,7 +173,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? v : path
+            coloring.by === "value" ? v : path
           ),
         };
       },
@@ -184,7 +184,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value : path
+            coloring.by === "value" ? value : path
           ),
         };
       },
@@ -195,7 +195,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by === "label" ? value : path
+            coloring.by === "value" ? value : path
           ),
         };
       },
@@ -209,38 +209,32 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     } = {
       [withPath(LABELS_PATH, CLASSIFICATION)]: (
         path,
-        { label }: Classification
-      ) => ({
-        value: label,
-        title: `${path}: ${label}`,
-        color: getColor(
-          coloring.pool,
-          coloring.seed,
-          coloring.by === "label" ? label : path
-        ),
-      }),
-      [withPath(LABELS_PATH, CLASSIFICATIONS)]: (
-        path,
-        { label }: Classification
-      ) => ({
-        value: label,
-        title: `${path}: ${label}`,
-        color: getColor(
-          coloring.pool,
-          coloring.seed,
-          coloring.by === "label" ? label : path
-        ),
-      }),
-      [withPath(LABELS_PATH, REGRESSION)]: (path, { value }: Regression) => {
-        const v = prettyNumber(value);
+        param: Classification
+      ) => {
+        return {
+          value: param.label,
+          title: `${path}: ${param.label}`,
+          color: getColorFromOptions({
+            coloring,
+            path,
+            param,
+            customizeColorSetting,
+            labelDefault: true,
+          }),
+        };
+      },
+      [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
+        const v = prettyNumber(param.value);
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptions({
+            coloring,
+            path,
+            param,
+            customizeColorSetting,
+            labelDefault: false,
+          }),
         };
       },
     };
@@ -338,7 +332,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     }
 
-    this.colorByValue = coloring.by === "label";
+    this.colorByValue = coloring.by === "value";
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";

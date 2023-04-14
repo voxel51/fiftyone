@@ -2,10 +2,16 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { prettify as pretty, useExternalLink } from "@fiftyone/utilities";
+import {
+  getColor,
+  prettify as pretty,
+  useExternalLink,
+} from "@fiftyone/utilities";
 
 import { Overlay } from "../../overlays/base";
-import { BaseState } from "../../state";
+import { Classification, Regression } from "../../overlays/classifications";
+import { isValidColor } from "../../overlays/util";
+import { BaseState, Coloring, CustomizeColor } from "../../state";
 import { DispatchEvent } from "../../state";
 
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
@@ -83,4 +89,52 @@ export const prettify = (
   }
 
   return result;
+};
+type Param = {
+  coloring: Coloring;
+  path: string;
+  param: Classification | Regression;
+  customizeColorSetting: CustomizeColor[];
+  labelDefault: boolean; // use .label or .value as default
+};
+export const getColorFromOptions = ({
+  coloring,
+  path,
+  param,
+  customizeColorSetting,
+  labelDefault,
+}: Param) => {
+  let key;
+  switch (coloring.by) {
+    case "field":
+      const customSetting = customizeColorSetting.find((s) => s.field === path);
+      const fieldColor = customSetting?.fieldColor;
+      const useFieldColor = customSetting?.useFieldColor;
+      if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
+        return fieldColor;
+      }
+      // default setting:
+      return getColor(coloring.pool, coloring.seed, path);
+    case "value":
+    default:
+      const setting = customizeColorSetting.find((s) => s.field === path);
+      if (setting) {
+        key =
+          setting.attributeForColor?.split(".").slice(-1)[0] ?? labelDefault
+            ? "label"
+            : "value";
+        // TODO: what if param[key] does not exist? need to test it
+        // check if this label has a assigned color, use it if it is a valid color
+        const labelColor = setting.labelColors?.find(
+          (l) => l.name == param[key]?.toString()
+        )?.color;
+
+        if (setting.useLabelColors && isValidColor(labelColor)) {
+          return labelColor;
+        }
+      } else {
+        key = labelDefault ? "label" : "value";
+      }
+      return getColor(coloring.pool, coloring.seed, param[key]);
+  }
 };
