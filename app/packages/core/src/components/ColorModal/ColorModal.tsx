@@ -364,7 +364,7 @@ const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
     });
   }
 
-  if (!activeColorModalField || !tempGlobalSettings) return null;
+  if (!activeColorModalField) return null;
 
   return (
     <ModalActionButtonContainer>
