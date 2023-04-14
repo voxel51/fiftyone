@@ -16,6 +16,16 @@ const componentByView = {
   JSONView: "JSONView",
   AutocompleteView: "AutocompleteView",
   FileView: "FileView",
+  Notice: "AlertView",
+  Warning: "AlertView",
+  Error: "AlertView",
+  Success: "AlertView",
+  Header: "HeaderView",
+  LoadingView: "LoadingView",
+  HiddenView: "HiddenView",
+  Button: "ButtonView",
+  ReadOnlyView: "ReadOnlyView",
+  LinkView: "LinkView",
 };
 const typeMap = {
   ObjectType: "object",

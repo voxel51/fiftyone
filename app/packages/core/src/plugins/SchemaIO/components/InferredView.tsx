@@ -5,6 +5,7 @@ import KeyValueView from "./KeyValueView";
 import PrimitiveListView from "./PrimitiveListView";
 import TableView from "./TableView";
 
+// todo: ...
 export default function InferredView(props) {
   const { label, data, ...otherProps } = props;
   const Component = getComponent(data);
@@ -23,6 +24,7 @@ function PrimitiveView(props) {
 
 function ObjectView(props) {
   const { label, data, nested } = props;
+  if (!data) return null;
   const properties = Object.keys(data);
 
   const keyValue = properties.map((key) => {
@@ -51,6 +53,9 @@ function ObjectView(props) {
 function ArrayView(props) {
   const { label, data, nested } = props;
 
+  // todo: ...
+  if (data?.length === 0) return null;
+
   const type = getDominantType(data);
 
   if (primitives.includes(type)) {
@@ -70,7 +75,10 @@ function ArrayView(props) {
   if (tableView) {
     const columns = Object.keys(data[0]).map((key) => ({ key, label: key }));
     return (
-      <TableView view={{ columns, label: !nested && label }} data={data} />
+      <TableView
+        schema={{ view: { columns, label: !nested && label } }}
+        data={data}
+      />
     );
   }
 
