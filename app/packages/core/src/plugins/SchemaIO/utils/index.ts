@@ -13,6 +13,13 @@ import TabsView from "../components/TabsView";
 import JSONView from "../components/JSONView";
 import AutocompleteView from "../components/AutocompleteView";
 import FileView from "../components/FileView";
+import AlertView from "../components/AlertView";
+import HeaderView from "../components/HeaderView";
+import LoadingView from "../components/LoadingView";
+import HiddenView from "../components/HiddenView";
+import ButtonView from "../components/ButtonView";
+import LinkView from "../components/LinkView";
+import InferredView from "../components/InferredView";
 
 export function log(...args) {
   console.groupCollapsed(">>>", ...args);
@@ -42,6 +49,13 @@ const componentsMap = {
   JSONView: JSONView,
   AutocompleteView: AutocompleteView,
   FileView: FileView,
+  AlertView: AlertView,
+  HeaderView: HeaderView,
+  LoadingView: LoadingView,
+  HiddenView: HiddenView,
+  ButtonView: ButtonView,
+  LinkView: LinkView,
+  ReadOnlyView: InferredView,
   UnsupportedView: UnsupportedView,
 };
 
