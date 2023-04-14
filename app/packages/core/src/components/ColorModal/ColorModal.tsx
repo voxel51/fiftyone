@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useMemo, useRef } from "react";
 import Draggable from "react-draggable";
 import ReactDOM from "react-dom";
 import {
@@ -132,17 +132,6 @@ const ColorModal = () => {
   const [mRef, bounds] = useMeasure();
 
   const field = useRecoilValue(fos.activeColorField);
-  const colors = useRecoilValue(fos.coloring(false)).pool as string[];
-  const opacity = useRecoilValue(fos.alpha(false));
-  const colorBy = useRecoilValue(
-    fos.appConfigOption({ key: "colorBy", modal: false })
-  );
-  const useMulticolorKeypoints = useRecoilValue(
-    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
-  );
-  const showSkeleton = useRecoilValue(
-    fos.appConfigOption({ key: "showSkeletons", modal: false })
-  );
 
   // get all the embeddedDocfields that can be customized:
   const customizeColorFields = useRecoilValue(
@@ -196,31 +185,9 @@ const ColorModal = () => {
     return activeColorModalField?.path ?? "";
   }, [activeColorModalField]);
 
-  const [tempGlobal, setTempGlobal] = useRecoilState(tempGlobalSetting);
-  const json = useRecoilValue(tempColorJSON);
   const height = activeColorModalField == "json" ? "80vh" : "60vh";
   const width = activeColorModalField == "json" ? "80vw" : "50vw";
   const minWidth = activeColorModalField == "json" ? "600px" : "500px";
-
-  // initialize tempGlobalSetting on modal mount
-  // when json changes update the colors accordingly
-  useEffect(() => {
-    if (!tempGlobal || JSON.stringify(tempGlobal) === "{}") {
-      const setting = {
-        colorBy,
-        colors,
-        opacity,
-        useMulticolorKeypoints,
-        showSkeleton,
-      };
-      setTempGlobal(setting);
-    } else {
-      setTempGlobal((prev) => ({
-        ...cloneDeep(prev),
-        colors: json?.colorScheme,
-      }));
-    }
-  }, [json?.colorScheme]);
 
   const ColorModalTitle = () => {
     return (

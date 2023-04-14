@@ -111,7 +111,7 @@ export interface CustomizeColor {
   labelColors?: {
     name: string;
     color: string;
-  };
+  }[];
 }
 
 export const customizeColors = atomFamily<CustomizeColor, string>({
@@ -121,7 +121,7 @@ export const customizeColors = atomFamily<CustomizeColor, string>({
     get:
       (path) =>
       ({ get }) => {
-        const settings = get(sessionColorConfig);
+        const settings = get(sessionColorConfig) as unknown as CustomizeColor[];
         return settings?.find((s) => s.field === path) ?? null;
       },
   }),

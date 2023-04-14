@@ -1,8 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { cloneDeep } from "lodash";
 import Editor from "@monaco-editor/react";
-import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 
 import {
@@ -37,7 +35,7 @@ const JSONViewer: React.FC = ({}) => {
       colorScheme: global.colors,
       customizedColorSettings: fullSetting,
     });
-  }, [fullSetting, global]);
+  }, []);
 
   if (!global) return null;
   return (
