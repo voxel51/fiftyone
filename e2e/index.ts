@@ -1,11 +1,7 @@
 import cypress from "cypress";
 import { config as dotEnvConfig } from "dotenv";
 import { createServer } from "http";
-import {
-  DEFAULT_APP_HOSTNAME,
-  DEFAULT_APP_PORT,
-  GHOST_SERVER_TIMEOUT,
-} from "./lib/constants";
+import { DEFAULT_APP_HOSTNAME, DEFAULT_APP_PORT } from "./lib/constants";
 
 dotEnvConfig({ path: ".env.cypress" });
 
@@ -52,13 +48,5 @@ const ghostServer = createServer((_, res) => {
     "ghost fiftyone server started. ignore this message, just placating cypress because it needs a valid baseUrl when it starts"
   );
 
-  // todo: use a more reliable way to stop the ghost server
-  setTimeout(() => {
-    ghostServer.close();
-    console.log("ghost fiftyone server stopped. ignore this message.");
-    // this time needs to be just enough to allow cypress to start but not more
-  }, GHOST_SERVER_TIMEOUT);
-
   await runCypress();
-  ghostServer.close();
 });

@@ -2,7 +2,9 @@ import { defineConfig } from "cypress";
 import getCompareSnapshotsPlugin from "cypress-visual-regression/dist/plugin";
 import { customTasks } from "./cypress/support/tasks";
 import { Duration } from "./cypress/support/utils";
-import { DEFAULT_APP_ADDRESS } from "./lib/constants";
+import { DEFAULT_APP_ADDRESS, DEFAULT_APP_PORT } from "./lib/constants";
+import os from "os";
+import { exec } from "child_process";
 
 export default defineConfig({
   env: {
@@ -17,6 +19,7 @@ export default defineConfig({
   e2e: {
     baseUrl: DEFAULT_APP_ADDRESS,
     videoUploadOnPasses: false,
+    experimentalInteractiveRunEvents: true,
     // retry once on test failure to account for random errors
     // note: this is a global config, this can be configured per-test as well
     retries: 1,
@@ -51,6 +54,11 @@ export default defineConfig({
         return launchOptions;
       });
 
+      on("before:run", (spec) => {
+        // kill whatever is running on app port
+        freeAppPort();
+      });
+
       on("task", {
         ...customTasks,
       });
@@ -64,3 +72,34 @@ export default defineConfig({
     screenshotsFolder: "cypress/snapshots/actual",
   },
 });
+
+const freeAppPort = () => {
+  const platform = os.platform();
+  let command;
+
+  if (platform.startsWith("win")) {
+    command = `FOR /F "tokens=5" %P IN ('netstat -a -n -o ^| findstr :${DEFAULT_APP_PORT}') DO TaskKill.exe /F /PID %P`;
+  } else {
+    command = `lsof -i :${DEFAULT_APP_PORT} | awk 'NR!=1 {print $2}' | xargs kill -9`;
+  }
+
+  console.log(
+    "Attempting to purge ghost server process on port",
+    DEFAULT_APP_PORT,
+    "if it's running..."
+  );
+
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error: ${error.message}`);
+      return;
+    }
+
+    if (stderr) {
+      console.error(`Stderr: ${stderr}`);
+      return;
+    }
+
+    console.log(`Process on port ${DEFAULT_APP_PORT} has been terminated.`);
+  });
+};
