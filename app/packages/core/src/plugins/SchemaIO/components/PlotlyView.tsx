@@ -7,14 +7,15 @@ import { log } from "../utils";
 
 export default function PlotlyView(props) {
   const { data, schema } = props;
-  const { view } = schema;
+  const { view = {} } = schema;
+  const { data: viewData, config = {}, layout = {} } = view;
   const theme = useTheme();
 
   return (
     <Box>
       <Header {...view} />
       <Plot
-        data={data}
+        data={data || viewData}
         style={{ zIndex: 1 }}
         onSelected={log}
         // onSelected={selected => {
@@ -39,6 +40,7 @@ export default function PlotlyView(props) {
           displaylogo: false,
           responsive: true,
           displayModeBar: false,
+          ...config,
         }}
         layout={{
           dragmode: "lasso",
@@ -66,6 +68,7 @@ export default function PlotlyView(props) {
             bgcolor: theme.background.level1,
             font: { color: theme.text.secondary },
           },
+          ...layout,
         }}
       />
     </Box>

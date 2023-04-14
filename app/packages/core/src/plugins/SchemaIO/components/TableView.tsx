@@ -12,7 +12,8 @@ import {
 import Header from "./Header";
 
 export default function TableView(props) {
-  const { view, data } = props;
+  const { schema, data } = props;
+  const { view = {} } = schema;
   const { columns } = view;
 
   return (
