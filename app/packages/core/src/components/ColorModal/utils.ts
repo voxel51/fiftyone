@@ -1,7 +1,7 @@
-import { CustomizeColor, useUnprocessedStateUpdate } from "@fiftyone/state";
-import { useErrorHandler } from "react-error-boundary";
+import { CustomizeColor } from "@fiftyone/state";
+
 import { atom } from "recoil";
-import * as fos from "@fiftyone/state";
+
 import { isEmpty, xor } from "lodash";
 import styled from "styled-components";
 import { Field } from "@fiftyone/utilities";
@@ -11,6 +11,7 @@ type ColorJSON = {
   customizedColorSettings: CustomizeColor[];
 };
 
+// atoms for temporary saving color settings of Field, Global, and Json tabs on the color modal
 export const tempColorSetting = atom<CustomizeColor>({
   key: "tempAttributeColorSetting",
   default: {},
@@ -25,8 +26,6 @@ export const tempColorJSON = atom<ColorJSON>({
   key: "tempColorJSON",
   default: {},
 });
-
-export const useSetCustomizeColor = () => {};
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their website Color Universal Design (CUD). This palette is a “Set of colors that is unambiguous both to colorblinds and non-colorblinds”.
 // https://jfly.uni-koeln.de/color/

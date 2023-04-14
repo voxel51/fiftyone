@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import styled from "styled-components";
-import AddIcon from "@material-ui/icons/Add";
 import DeleteIcon from "@material-ui/icons/Delete";
 import { ChromePicker } from "react-color";
 import Input from "../../Common/Input";
@@ -24,16 +23,8 @@ const AddContainer = styled.div`
   margin-bottom: 0.5rem;
 `;
 
-const Text = styled.div`
-  margin: auto 5px;
-`;
-
 const DeleteButton = styled(DeleteIcon)`
   cursor: pointer;
-`;
-
-const AddButton = styled(AddIcon)`
-  margin: auto 0;
 `;
 
 const ColorSquare = styled.div<{ color: string }>`

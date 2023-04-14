@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { TwitterPicker } from "react-color";
@@ -14,7 +14,7 @@ import {
 } from "@fiftyone/utilities";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
-import { isSameArray, SectionWrapper, tempColorSetting } from "./utils";
+import { SectionWrapper, tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
 import OpacityAttribute from "./controls/OpacityAttribute";
 import ColorAttribute from "./controls/ColorAttribute";

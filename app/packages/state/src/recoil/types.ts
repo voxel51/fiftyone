@@ -109,6 +109,11 @@ export namespace State {
     paths: string[];
   }
 
+  export interface ColorSetting {
+    colorPool: string[];
+    customizedColors: CustomizeColor[];
+  }
+
   export interface DatasetAppConfig {
     gridMediaField?: string;
     modalMediaField?: string;
@@ -116,6 +121,7 @@ export namespace State {
     plugins?: PluginConfig;
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
+    colorSetting?: ColorSetting;
   }
 
   /**
