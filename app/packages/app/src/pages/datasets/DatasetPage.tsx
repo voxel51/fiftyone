@@ -8,7 +8,6 @@ import { NotFoundError } from "@fiftyone/utilities";
 import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
-
 import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";

@@ -181,13 +181,23 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     );
 
     return () => controller.abort();
-  }, []);
+  }, [
+    clearModal,
+    handleError,
+    refresh,
+    router,
+    screenshot,
+    setter,
+    subscription,
+  ]);
 
   useEffect(() => {
-    return router.subscribe((entry, action) =>
-      dispatchSideEffect(entry, action, subscription)
-    );
-  }, [router]);
+    return router.subscribe((entry, action) => {
+      sessionRef.current.selectedSamples = new Set();
+      sessionRef.current.selectedLabels = [];
+      dispatchSideEffect(entry, action, subscription);
+    });
+  }, [router, subscription]);
 
   return (
     <>

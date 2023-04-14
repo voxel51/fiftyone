@@ -31,7 +31,7 @@ const Renderer = () => {
 
   useEffect(() => {
     return router.subscribe(
-      () => {},
+      () => undefined,
       () => setPending(true)
     );
   }, [router, setPending]);

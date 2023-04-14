@@ -11,13 +11,14 @@ export type GraphQLSyncFragmentAtomOptions<K> = AtomOptions<K>;
 export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
-  read: (data: NonNullable<T[" $data"]>) => K;
+  read?: (data: NonNullable<T[" $data"]>) => K;
+  default: K;
 };
 
 /**
- * Creates a recoil atom synced with a recoil sync store. If the fragment path
- * cannot be read from given the parent fragment keys and the optional final
- * read function, the atom's default value will be used
+ * Creates a recoil atom synced with a relay fragment via its path in a query.
+ * If the fragment path cannot be read from given the parent fragment keys and
+ * the optional final read function, the atom's default value will be used
  */
 export function graphQLSyncFragmentAtom<T extends KeyType, K>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
@@ -32,26 +33,30 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
         }
         const { pageQuery, subscribe } = getPageQuery();
         let ctx: ReturnType<typeof loadContext>;
-        let parent;
-        let disposable: Disposable;
-        const setter = (d, int?: TransactionInterface_UNSTABLE) => {
-          const set = int ? (v) => int.set(value, v) : setSelf;
+        let parent: unknown;
+        let disposable: Disposable | undefined = undefined;
+        const setter = (
+          d: null | T[" $data"],
+          int?: TransactionInterface_UNSTABLE
+        ) => {
+          const set = int ? (v: K) => int.set(value, v) : setSelf;
           set(
             fragmentOptions.read && d !== null
-              ? fragmentOptions.read(d)
+              ? (fragmentOptions.read(d) as K)
               : d === null
-              ? options.default
-              : d
+              ? fragmentOptions.default
+              : (d as K)
           );
         };
 
         const run = (
           { data, preloadedQuery }: PageQuery<OperationType>,
           transactionInterface?: TransactionInterface_UNSTABLE
-        ): Disposable => {
+        ): Disposable | undefined => {
           try {
             fragmentOptions.fragments.forEach((fragment, i) => {
               if (fragmentOptions.keys && fragmentOptions.keys[i]) {
+                // @ts-ignore
                 data = data[fragmentOptions.keys[i]];
               }
 

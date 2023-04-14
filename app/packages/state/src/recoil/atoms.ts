@@ -158,18 +158,22 @@ export const dataset = graphQLSyncFragmentAtom<
     read: (dataset) => {
       return { ...transformDataset(dataset) };
     },
+    default: null,
   },
   {
     key: "dataset",
-    default: null,
   }
 );
 
-export const mediaType = graphQLSyncFragmentAtom<mediaTypeFragment$key, string>(
+export const mediaType = graphQLSyncFragmentAtom<
+  mediaTypeFragment$key,
+  string | null
+>(
   {
     fragments: [datasetFragment, mediaTypeFragment],
     keys: ["dataset"],
     read: (data) => data.mediaType,
+    default: null,
   },
   {
     key: "mediaType",
@@ -184,10 +188,10 @@ export const sampleFields = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, sampleFieldsFragment],
     keys: ["dataset"],
     read: (dataset) => collapseFields(dataset?.sampleFields || []),
+    default: [],
   },
   {
     key: "sampleFields",
-    default: [],
   }
 );
 
@@ -199,10 +203,10 @@ export const frameFields = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, frameFieldsFragment],
     keys: ["dataset"],
     read: (data) => collapseFields(data?.frameFields || []),
+    default: [],
   },
   {
     key: "frameFields",
-    default: [],
   }
 );
 

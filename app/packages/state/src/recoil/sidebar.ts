@@ -24,10 +24,10 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { commitMutation, VariablesOf } from "react-relay";
+import { VariablesOf, commitMutation } from "react-relay";
 import {
-  atomFamily,
   DefaultValue,
+  atomFamily,
   selector,
   selectorFamily,
   useRecoilStateLoadable,
@@ -349,7 +349,9 @@ const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
 };
 
 export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
-  let config: sidebarGroupsFragment$data["appConfig"]["sidebarGroups"] = [];
+  let config: NonNullable<
+    sidebarGroupsFragment$data["appConfig"]
+  >["sidebarGroups"] = [];
   let current: State.SidebarGroup[] = [];
   return [
     (sampleFields: StrictField[], frameFields: StrictField[]) => {
@@ -365,7 +367,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
         keys: ["dataset"],
         sync: (modal) => !modal,
         read: (data) => {
-          config = data.appConfig?.sidebarGroups;
+          config = data.appConfig?.sidebarGroups || null;
           current = resolveGroups(
             collapseFields(
               readFragment(
@@ -382,10 +384,10 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
           );
           return current;
         },
+        default: [],
       },
       {
         key: "sidebarGroupsDefinition",
-        default: [],
       }
     ),
   ];

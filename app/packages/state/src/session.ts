@@ -37,10 +37,6 @@ export const useSession = (setter: Setter, ref: Session) => {
   };
 };
 
-export const sessionAtoms_INTERNAL: {
-  [key in keyof Session]: RecoilState<Session[key]>;
-} = {};
-
 export function sessionAtom<K extends keyof Session>(
   options: SessionAtomOptions<K>
 ) {
@@ -73,8 +69,6 @@ export function sessionAtom<K extends keyof Session>(
       },
     ],
   });
-  // @ts-ignore
-  sessionAtoms_INTERNAL[options.key] = value;
 
   return selector<Session[K]>({
     key: `__${options.key}_SELECTOR`,

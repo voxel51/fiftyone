@@ -28,10 +28,10 @@ export const datasetName = graphQLSyncFragmentAtom<
     read: (dataset) => {
       return dataset?.name || null;
     },
+    default: null,
   },
   {
     key: "datasetName",
-    default: null,
   }
 );
 

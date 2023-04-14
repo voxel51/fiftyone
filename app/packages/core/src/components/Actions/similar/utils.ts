@@ -119,10 +119,6 @@ export const useSortBySimilarity = (close) => {
         });
         unsubscribeReset.current && unsubscribeReset.current();
         const unsubscribe = subscribe((_, { set }) => {
-          fos.sessionAtoms_INTERNAL["selectedSamples"] &&
-            set(fos.sessionAtoms_INTERNAL["selectedSamples"], new Set());
-          fos.sessionAtoms_INTERNAL["selectedLabels"] &&
-            set(fos.sessionAtoms_INTERNAL["selectedLabels"], []);
           set(fos.similarityParameters, combinedParameters);
           set(fos.similaritySorting, false);
           set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));

@@ -18,9 +18,10 @@ export type PageSubscription<T extends OperationType> = (
   transationInterface: TransactionInterface_UNSTABLE
 ) => void;
 
-let pageQueryReader: () => PageQuery<OperationType> = null;
+let pageQueryReader: () => PageQuery<OperationType>;
 
-const subscribers = new Set<PageSubscription<OperationType>>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const subscribers = new Set<PageSubscription<any>>();
 
 export function subscribe<T extends OperationType>(
   subscription: PageSubscription<T>
@@ -39,7 +40,7 @@ export function getPageQuery() {
 type WriterProps<T extends OperationType> = React.PropsWithChildren<{
   read: () => PageQuery<T>;
   setters: Map<string, Setter>;
-  subscribe?: (fn: (pageQuery: PageQuery<T>) => void) => () => void;
+  subscribe: (fn: (pageQuery: PageQuery<T>) => void) => () => void;
 }>;
 
 /**

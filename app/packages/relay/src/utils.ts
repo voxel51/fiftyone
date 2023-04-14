@@ -1,19 +1,21 @@
+// @ts-ignore
 import { getFragmentResourceForEnvironment } from "react-relay/lib/relay-hooks/FragmentResource";
 import { KeyType, KeyTypeData } from "react-relay/relay-hooks/helpers";
 import {
-  Environment,
+  GraphQLTaggedNode,
+  IEnvironment,
   getFragment,
   getFragmentIdentifier,
-  GraphQLTaggedNode,
 } from "relay-runtime";
 import { getPageQuery } from "./Writer";
 
 export function loadContext(
   fragment: GraphQLTaggedNode,
-  environment: Environment,
+  environment: IEnvironment,
   data: unknown
 ) {
   const node = getFragment(fragment);
+  // @ts-ignore
   if (!data["__fragments"][node.name]) {
     throw new Error(`fragment ${node.name} not present`);
   }

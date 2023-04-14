@@ -19,12 +19,12 @@ import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import {
   AppSample,
+  SampleData,
   dataset,
   getBrowserStorageEffectForKey,
   mediaType,
   modal,
   modal as modalAtom,
-  SampleData,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -51,10 +51,10 @@ export const groupSlice = graphQLSyncFragmentAtomFamily<
       return data.groupSlice;
     },
     sync: (modal) => !modal,
+    default: null,
   },
   {
     key: "groupSlice",
-    default: null,
   }
 );
 

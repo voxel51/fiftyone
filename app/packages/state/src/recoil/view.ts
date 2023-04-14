@@ -20,6 +20,7 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
     read: (data) => {
       return data.stageDefinitions;
     },
+    default: [],
   },
   { key: "stageDefinitions" }
 );
@@ -36,6 +37,7 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
     read: (data) => {
       return data?.stages || [];
     },
+    default: [],
   },
   {
     key: "view",
@@ -50,6 +52,7 @@ export const viewCls = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
     read: (data) => data.viewCls,
+    default: null,
   },
   {
     key: "viewCls",
@@ -64,6 +67,7 @@ export const viewName = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, viewFragment],
     keys: ["dataset"],
     read: (data) => data.viewName,
+    default: null,
   },
   {
     key: "viewName",

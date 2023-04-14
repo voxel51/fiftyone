@@ -1,14 +1,15 @@
 import { Disposable } from "react-relay";
 import {
-  atomFamily,
+  AtomEffect,
   AtomFamilyOptions,
   SerializableParam,
   TransactionInterface_UNSTABLE,
+  atomFamily,
 } from "recoil";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
+import { PageQuery, getPageQuery } from "./Writer";
 import { loadContext } from "./utils";
-import { getPageQuery, PageQuery } from "./Writer";
 
 export type GraphQLSyncFragmentAtomFamilyOptions<
   K,
@@ -22,14 +23,16 @@ export type GraphQLSyncFragmentSyncAtomFamilyOptions<
 > = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
-  read: (data: KeyTypeData<T>) => K;
+  read?: (data: KeyTypeData<T>) => K;
   sync?: (params: P) => boolean;
+  default: K;
 };
 
 /**
- * Creates a recoil atom family synced with a recoil sync store. If the
- * fragment path cannot be read from given the parent fragment keys and the
- * optional final read function, the atom's default value will be used
+ * Creates a recoil atom family synced with a relay fragment via its path in a
+ * query. If the fragment path cannot be read from given the parent fragment
+ * keys and the optional final read function, the atom's default value will be
+ * used. An option sync function can used to explicitly add the atom effect
  */
 export function graphQLSyncFragmentAtomFamily<
   T extends KeyType,
@@ -45,32 +48,38 @@ export function graphQLSyncFragmentAtomFamily<
       const effects =
         !fragmentOptions.sync || fragmentOptions.sync(params)
           ? [
-              ({ setSelf, trigger }) => {
+              ({ setSelf, trigger }: Parameters<AtomEffect<K>>[0]) => {
                 if (trigger === "set") {
                   return;
                 }
                 const { pageQuery, subscribe } = getPageQuery();
                 let ctx: ReturnType<typeof loadContext>;
-                let parent;
-                let disposable: Disposable;
-                const setter = (d, int?: TransactionInterface_UNSTABLE) => {
-                  const set = int ? (v) => int.set(family(params), v) : setSelf;
+                let parent: unknown;
+                let disposable: Disposable | undefined = undefined;
+                const setter = (
+                  d: null | T[" $data"],
+                  int?: TransactionInterface_UNSTABLE
+                ) => {
+                  const set = int
+                    ? (v: K) => int.set(family(params), v)
+                    : setSelf;
                   set(
                     fragmentOptions.read && d !== null
-                      ? fragmentOptions.read(d)
+                      ? (fragmentOptions.read(d) as K)
                       : d === null
-                      ? options.default
-                      : d
+                      ? fragmentOptions.default
+                      : (d as K)
                   );
                 };
 
                 const run = (
                   { data, preloadedQuery }: PageQuery<OperationType>,
                   transactionInterface?: TransactionInterface_UNSTABLE
-                ): Disposable => {
+                ): Disposable | undefined => {
                   try {
                     fragmentOptions.fragments.forEach((fragment, i) => {
                       if (fragmentOptions.keys && fragmentOptions.keys[i]) {
+                        // @ts-ignore
                         data = data[fragmentOptions.keys[i]];
                       }
 
