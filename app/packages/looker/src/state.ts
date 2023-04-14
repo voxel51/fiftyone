@@ -24,6 +24,9 @@ export interface Coloring {
 export interface CustomizeColor {
   field: string;
   fieldColor?: string;
+  useFieldColor: boolean;
+  useOpacity: boolean;
+  useLabelColors: boolean;
   attributeForColor?: string;
   attributeForOpacity?: string;
   colors?: string[];
