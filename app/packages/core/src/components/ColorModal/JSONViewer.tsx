@@ -18,7 +18,7 @@ const JSONViewer: React.FC = ({}) => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const [global, setGlobal] = useRecoilState(tempGlobalSetting);
+  const global = useRecoilValue(tempGlobalSetting);
   const fullSetting = useRecoilValue(customizeColorSettings);
   const [data, setData] = useRecoilState(tempColorJSON);
   const resetTempCustomizeColor = useSetRecoilState(tempColorSetting);

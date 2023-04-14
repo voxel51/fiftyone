@@ -7,10 +7,10 @@ import {
 } from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
-
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
 import { sessionColorConfig } from "./config";
+import { Field } from "@fiftyone/utilities";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -121,6 +121,7 @@ export const customizeColors = atomFamily<CustomizeColor, string>({
     get:
       (path) =>
       ({ get }) => {
+        // use session.config.customizedColors as default
         const settings = get(sessionColorConfig) as unknown as CustomizeColor[];
         return settings?.find((s) => s.field === path) ?? null;
       },
