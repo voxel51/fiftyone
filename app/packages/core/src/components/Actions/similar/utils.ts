@@ -1,4 +1,4 @@
-import { subscribe } from "@fiftyone/relay";
+import { PageSubscription, subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   Method,
@@ -7,8 +7,9 @@ import {
   useBrowserStorage,
 } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Snapshot, selectorFamily, useRecoilCallback } from "recoil";
+import { OperationType } from "relay-runtime";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -63,6 +64,21 @@ export const useSortBySimilarity = (close) => {
     return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
   }, [lastUsedBrainkeys]);
 
+  const resetParameters = useCallback<PageSubscription<OperationType>>(
+    (_, { reset }) => {
+      reset(fos.similarityParameters);
+    },
+    []
+  );
+
+  const unsubscribeReset = useRef<() => void>();
+
+  useEffect(() => {
+    unsubscribeReset.current = subscribe(resetParameters);
+
+    return () => unsubscribeReset.current && unsubscribeReset.current();
+  }, [resetParameters]);
+
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
@@ -101,6 +117,7 @@ export const useSortBySimilarity = (close) => {
           filters,
           extended: toSnakeCase(combinedParameters),
         });
+        unsubscribeReset.current && unsubscribeReset.current();
         const unsubscribe = subscribe((_, { set }) => {
           fos.sessionAtoms_INTERNAL["selectedSamples"] &&
             set(fos.sessionAtoms_INTERNAL["selectedSamples"], new Set());
@@ -113,6 +130,9 @@ export const useSortBySimilarity = (close) => {
           set(fos.modal, null);
           close();
           unsubscribe();
+          requestAnimationFrame(
+            () => (unsubscribeReset.current = subscribe(resetParameters))
+          );
         });
         set(fos.refreshPage, undefined);
       },

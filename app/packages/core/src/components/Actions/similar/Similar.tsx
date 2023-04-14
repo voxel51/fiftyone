@@ -182,7 +182,6 @@ const SortBySimilarity = ({
       },
     [updateState, state]
   );
-  console.log(hasSimilarityKeys);
 
   return (
     <Popout modal={modal} bounds={bounds} style={{ minWidth: 280 }}>
