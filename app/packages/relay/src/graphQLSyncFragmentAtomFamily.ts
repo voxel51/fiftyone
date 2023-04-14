@@ -31,8 +31,8 @@ export type GraphQLSyncFragmentSyncAtomFamilyOptions<
 /**
  * Creates a recoil atom family synced with a relay fragment via its path in a
  * query. If the fragment path cannot be read from given the parent fragment
- * keys and the optional final read function, the atom's default value will be
- * used. An option sync function can used to explicitly add the atom effect
+ * keys. Includes the optional `sync` parameter to conditionally opt-in to
+ * fragment syncing given an atom instance's parameters `P`.
  */
 export function graphQLSyncFragmentAtomFamily<
   T extends KeyType,
