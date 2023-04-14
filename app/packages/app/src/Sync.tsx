@@ -24,7 +24,6 @@ import {
   useClearModal,
   useScreenshot,
   useSession,
-  viewsAreEqual,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
@@ -80,7 +79,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const sessionRef = useRef<Session>({});
   const setter = useSession((key, value) => {
     WRITE_HANDLERS[key](router, value, subscription);
-  });
+  }, sessionRef.current);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -226,19 +225,11 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                         form: get(viewStateForm_INTERNAL) || {},
                       },
                       onCompleted: ({ setView: view }) => {
-                        const params = new URLSearchParams(router.get().search);
-                        const current = params.get("view");
-
-                        if (
-                          !viewsAreEqual(view, router.get().state.view || []) ||
-                          current
-                        ) {
-                          sessionRef.current.selectedSamples = new Set();
-                          sessionRef.current.selectedLabels = [];
-                          router.history.push(`${router.get().pathname}`, {
-                            view,
-                          });
-                        }
+                        sessionRef.current.selectedSamples = new Set();
+                        sessionRef.current.selectedLabels = [];
+                        router.history.push(`${router.get().pathname}`, {
+                          view,
+                        });
                       },
                     }
                   );
@@ -286,6 +277,12 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                       },
                     }
                   );
+                },
+              ],
+              [
+                "refreshPage",
+                () => {
+                  router.load(true);
                 },
               ],
             ])

@@ -1,18 +1,18 @@
-import { refresher } from "@fiftyone/state";
-import { useCallback } from "react";
-import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { useRouterContext } from "./routing";
+import { subscribe } from "@fiftyone/relay";
+import { refreshPage, refresher } from "@fiftyone/state";
+import { useRecoilCallback } from "recoil";
 
 const useRefresh = () => {
-  const router = useRouterContext();
-  const setter = useRecoilTransaction_UNSTABLE(
+  return useRecoilCallback(
     ({ set }) =>
-      () =>
-        set(refresher, (cur) => cur + 1),
+      () => {
+        subscribe((_, { set }) => {
+          set(refresher, (cur) => cur + 1);
+        });
+        set(refreshPage, undefined);
+      },
     []
   );
-
-  return useCallback(() => router.load(true).then(setter), [router, setter]);
 };
 
 export default useRefresh;

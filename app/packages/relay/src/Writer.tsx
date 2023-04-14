@@ -43,9 +43,8 @@ type WriterProps<T extends OperationType> = React.PropsWithChildren<{
 }>;
 
 /**
- * A recoil sync implementation for atomic syncing between relay fragment data
- * and atom and atom families. For atoms that also require atomic syncing that
- * do not use relay fragment data, external and updateExternals can be used.
+ * A Recoil/Relay atomic syncing interface between a current page query
+ * and atom and atom families
  */
 export function Writer<T extends OperationType>({
   children,

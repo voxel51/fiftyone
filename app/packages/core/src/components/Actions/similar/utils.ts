@@ -1,25 +1,14 @@
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
-  collapseFields,
   Method,
   ModalSample,
   selectedLabels,
-  transformDataset,
   useBrowserStorage,
 } from "@fiftyone/state";
-import {
-  getFetchFunction,
-  toCamelCase,
-  toSnakeCase,
-} from "@fiftyone/utilities";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import {
-  selectorFamily,
-  Snapshot,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useSetRecoilState,
-} from "recoil";
+import { Snapshot, selectorFamily, useRecoilCallback } from "recoil";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -39,26 +28,28 @@ export const getQueryIds = async (
     );
   }
 
-  const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
+  const selectedSamples = Array.from(
+    await snapshot.getPromise(fos.selectedSamples)
+  );
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
   const modal = await snapshot.getPromise(fos.modal);
 
   if (isPatches) {
-    if (selectedSamples.size) {
-      return [...selectedSamples].map((id) => {
+    if (selectedSamples.length) {
+      return selectedSamples.map((id) => {
         const sample = fos.getSample(id);
         if (sample) {
-          return sample.sample[labels_field]._id;
+          return sample.sample[labels_field]._id as string;
         }
 
         throw new Error("sample not found");
       });
     }
 
-    return modal?.sample[labels_field]._id;
+    return modal?.sample[labels_field]._id as string;
   }
 
-  if (selectedSamples.size) {
+  if (selectedSamples.length) {
     return [...selectedSamples];
   }
 
@@ -68,36 +59,14 @@ export const getQueryIds = async (
 export const useSortBySimilarity = (close) => {
   const [lastUsedBrainkeys, setLastUsedBrainKeys] =
     useBrowserStorage("lastUsedBrainKeys");
-  const setSorting = useSetRecoilState(fos.similaritySorting);
   const current = useMemo(() => {
     return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
   }, [lastUsedBrainkeys]);
-  const setSortingState = useRecoilTransaction_UNSTABLE(
-    ({ set, reset }) =>
-      (
-        combinedParameters: fos.State.SortBySimilarityParameters,
-        sampleFields,
-        frameFields
-      ) => {
-        set(fos.similarityParameters, combinedParameters);
-        set(fos.modal, null);
-        set(fos.similaritySorting, false);
-        set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
-        set(fos.hiddenLabels, {});
-        set(fos.modal, null);
-        reset(fos.selectedLabels);
-        reset(fos.selectedSamples);
-        set(fos.sampleFields, sampleFields);
-        set(fos.frameFields, frameFields);
-        close();
-      },
-    [close]
-  );
 
   return useRecoilCallback(
-    ({ snapshot }) =>
+    ({ set, snapshot }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
-        setSorting(true);
+        set(fos.similaritySorting, true);
         const dataset = await snapshot.getPromise(fos.dataset);
         if (!dataset) {
           throw new Error("dataset is not defined");
@@ -125,22 +94,29 @@ export const useSortBySimilarity = (close) => {
             [dataset.id]: combinedParameters.brainKey,
           })
         );
-        let { dataset: data } = await getFetchFunction()("POST", "/sort", {
+        await getFetchFunction()("POST", "/sort", {
           dataset: dataset.name,
           view,
           subscription,
           filters,
           extended: toSnakeCase(combinedParameters),
         });
-        data = transformDataset(toCamelCase(data));
-
-        setSortingState(
-          combinedParameters,
-          collapseFields(data.sampleFields),
-          collapseFields(data.frameFields)
-        );
+        const unsubscribe = subscribe((_, { set }) => {
+          fos.sessionAtoms_INTERNAL["selectedSamples"] &&
+            set(fos.sessionAtoms_INTERNAL["selectedSamples"], new Set());
+          fos.sessionAtoms_INTERNAL["selectedLabels"] &&
+            set(fos.sessionAtoms_INTERNAL["selectedLabels"], []);
+          set(fos.similarityParameters, combinedParameters);
+          set(fos.similaritySorting, false);
+          set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
+          set(fos.hiddenLabels, {});
+          set(fos.modal, null);
+          close();
+          unsubscribe();
+        });
+        set(fos.refreshPage, undefined);
       },
-    [setSorting, setSortingState]
+    []
   );
 };
 

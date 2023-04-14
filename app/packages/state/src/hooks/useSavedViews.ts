@@ -1,6 +1,5 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { viewStateForm } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
@@ -19,7 +18,10 @@ export default function useSavedViews() {
     useMutation<foq.updateSavedViewMutation>(foq.updateSavedView);
 
   const handleDeleteView = useCallback(
-    (nameValue: string, onDeleteSuccess: (deletedId) => void) => {
+    (
+      nameValue: string,
+      onDeleteSuccess: (deletedId: string | null) => void
+    ) => {
       if (nameValue) {
         deleteView({
           onError,
@@ -43,12 +45,14 @@ export default function useSavedViews() {
 
   const handleCreateSavedView = useRecoilCallback(
     ({ snapshot }) =>
-      (
+      async (
         name: string,
         description: string,
         color: string,
         view: fos.State.Stage[],
-        onSuccess: (saveView) => void
+        onSuccess: (
+          savedView: foq.createSavedViewMutation$data["createSavedView"]
+        ) => void
       ) => {
         if (name) {
           saveView({
@@ -57,8 +61,14 @@ export default function useSavedViews() {
               viewName: name,
               datasetName: datasetNameValue,
               viewStages: view,
-              form: snapshot.getLoadable(viewStateForm({ modal: false }))
-                .contents,
+              form: {
+                filters: await snapshot.getPromise(fos.filters),
+                sampleIds: Array.from(
+                  await snapshot.getPromise(fos.selectedSamples)
+                ),
+                slice: await snapshot.getPromise(fos.groupSlice(false)),
+                extended: await snapshot.getPromise(fos.extendedStages),
+              },
               description,
               color,
               subscription,
@@ -81,7 +91,9 @@ export default function useSavedViews() {
       name: string,
       description: string,
       color: string,
-      onSuccess: (saveView) => void
+      onSuccess: (
+        savedView: foq.updateSavedViewMutation$data["updateSavedView"]
+      ) => void
     ) => {
       if (initialName) {
         updateView({

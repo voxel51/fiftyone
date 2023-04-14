@@ -1,8 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { useEffect } from "react";
 import { atom, DefaultValue, RecoilState, selector } from "recoil";
-import { filters, State } from "./recoil";
+import { State } from "./recoil";
 
 export interface Session {
   canEditSavedViews?: boolean;
@@ -19,7 +18,7 @@ type SessionAtomOptions<K extends keyof Session> = {
   default: Session[K];
 };
 
-const sessionRef: Session = {};
+let sessionRef: Session;
 let setterRef: Setter;
 
 type Setters<K extends keyof Session = keyof Session> = Partial<{
@@ -27,14 +26,9 @@ type Setters<K extends keyof Session = keyof Session> = Partial<{
 }>;
 const setters: Setters = {};
 
-export const useSession = (setter: Setter) => {
+export const useSession = (setter: Setter, ref: Session) => {
   setterRef = setter;
-
-  useEffect(() => {
-    return subscribe((_, { reset }) => {
-      reset(filters);
-    });
-  }, []);
+  sessionRef = ref;
 
   return <K extends keyof Session>(key: K, value: Session[K]) => {
     const setter = setters[key];
@@ -42,6 +36,10 @@ export const useSession = (setter: Setter) => {
     sessionRef[key] = value;
   };
 };
+
+export const sessionAtoms_INTERNAL: {
+  [key in keyof Session]: RecoilState<Session[key]>;
+} = {};
 
 export function sessionAtom<K extends keyof Session>(
   options: SessionAtomOptions<K>
@@ -59,7 +57,10 @@ export function sessionAtom<K extends keyof Session>(
         }
 
         // @ts-ignore
-        setters[options.key] = (value: Session[K]) => setSelf(value);
+        setters[options.key] = (value: Session[K]) => {
+          setSelf(value);
+          sessionRef[options.key] = value;
+        };
 
         return subscribe((_, { set }) => {
           set(
@@ -72,6 +73,8 @@ export function sessionAtom<K extends keyof Session>(
       },
     ],
   });
+  // @ts-ignore
+  sessionAtoms_INTERNAL[options.key] = value;
 
   return selector<Session[K]>({
     key: `__${options.key}_SELECTOR`,
@@ -82,6 +85,7 @@ export function sessionAtom<K extends keyof Session>(
       }
 
       setterRef(options.key, newValue);
+      sessionRef[options.key] = newValue;
       set(value, newValue);
     },
   }) as RecoilState<NonNullable<Session[K]>>;

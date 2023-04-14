@@ -5,6 +5,7 @@ import {
   filters,
   groupSlice,
   patching,
+  selectedSamples,
   view,
   viewStateForm_INTERNAL,
 } from "../recoil";
@@ -27,6 +28,7 @@ export default function useToClips() {
           slice: await snapshot.getPromise(groupSlice(false)),
           filters: await snapshot.getPromise(filters),
           extended: await snapshot.getPromise(extendedStages),
+          sampleIds: Array.from(await snapshot.getPromise(selectedSamples)),
         });
         set(view, (v) => v);
         const unsubscribe = subscribe((_, { reset, set }) => {
