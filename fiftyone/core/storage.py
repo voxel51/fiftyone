@@ -36,6 +36,7 @@ import fiftyone.internal.credentials as foc
 
 logger = logging.getLogger(__name__)
 
+creds_manager = None
 s3_client = None
 gcs_client = None
 azure_client = None
@@ -44,7 +45,6 @@ http_client = None
 bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
-creds_manager = None
 
 minio_alias_prefix = None
 minio_endpoint_prefix = None
@@ -59,11 +59,16 @@ HTTPS_PREFIX = "https://"
 
 def init_storage():
     """Initializes storage client use."""
+    global creds_manager
     global minio_alias_prefix
     global minio_endpoint_prefix
     global azure_alias_prefix
     global azure_endpoint_prefix
-    global creds_manager
+
+    if foc.has_encryption_key():
+        creds_manager = foc.CloudCredentialsManager()
+    else:
+        creds_manager = None
 
     minio_alias_prefix = None
     minio_endpoint_prefix = None
@@ -95,11 +100,6 @@ def init_storage():
                 account_name=credentials.get("account_name", None),
             )
             azure_endpoint_prefix = account_url.rstrip("/") + "/"
-
-    if foc.has_encryption_key():
-        creds_manager = foc.CloudCredentialsManager()
-    else:
-        creds_manager = None
 
 
 class FileSystem(object):
