@@ -9,3 +9,4 @@ quickstart_groups_dataset.persistent = True
 session = fo.launch_app(
     quickstart_groups_dataset, address="0.0.0.0", remote=True
 )
+session.wait(-1)
