@@ -627,7 +627,7 @@ def test_evaluate_segmentations(compute_dice):
         "tvmonitor",
     ]
 
-    MASK_INDEX = {idx: label for idx, label in enumerate(CLASSES)}
+    MASK_TARGETS = {idx: label for idx, label in enumerate(CLASSES)}
 
     model = foz.load_zoo_model("deeplabv3-resnet50-coco-torch")
     dataset.apply_model(model, "resnet50")
@@ -645,7 +645,7 @@ def test_evaluate_segmentations(compute_dice):
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
         compute_dice=compute_dice,
     )
 
@@ -660,6 +660,7 @@ def test_evaluate_segmentations(compute_dice):
         assert 0 < dice <= 1
     else:
         assert dataset.has_field("%s_dice" % EVAL_KEY) is False
+
     print(dataset.get_evaluation_info(EVAL_KEY))
 
     #
@@ -672,7 +673,7 @@ def test_evaluate_segmentations(compute_dice):
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY_BW,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
         bandwidth=5,
     )
 
@@ -723,7 +724,7 @@ def test_evaluate_segmentations_on_disk():
         "tvmonitor",
     ]
 
-    MASK_INDEX = {idx: label for idx, label in enumerate(CLASSES)}
+    MASK_TARGETS = {idx: label for idx, label in enumerate(CLASSES)}
 
     # Store segmentations on disk rather than in-database
     etau.ensure_empty_dir("/tmp/resnet50", cleanup=True)
@@ -747,7 +748,7 @@ def test_evaluate_segmentations_on_disk():
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
     )
 
     results.print_report()
@@ -767,7 +768,7 @@ def test_evaluate_segmentations_on_disk():
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY_BW,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
         bandwidth=5,
     )
 
