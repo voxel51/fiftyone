@@ -249,10 +249,13 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         predictions, id_map = {}, {}
         for label_field, label_info in label_schema.items():
+            label_type = label_info["type"]
             if label_info["existing_field"]:
                 predictions[label_field] = {
                     smp.id: export_label_to_label_studio(
-                        smp[label_field],
+                        smp, 
+                        label_field,
+                        label_type,
                         full_result={
                             "from_name": "label",
                             "to_name": "image",
@@ -267,7 +270,6 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                     smp.id: _get_label_ids(smp[label_field])
                     for smp in samples.select_fields(label_field)
                 }
-
         return tasks, predictions, id_map
 
     def _upload_tasks(self, project, tasks, predictions=None):
@@ -359,11 +361,12 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             )
             if label_type == "keypoints":
                 labels = import_label_studio_annotation(
-                    latest_annotation["result"]
+                    latest_annotation["result"],
+                    label_type
                 )
             else:
                 labels = [
-                    import_label_studio_annotation(r)
+                    import_label_studio_annotation(r, label_type)
                     for r in latest_annotation.get("result", [])
                 ]
 
@@ -569,11 +572,12 @@ def generate_labeling_config(media, label_type, labels=None):
     return config_str
 
 
-def import_label_studio_annotation(result):
+def import_label_studio_annotation(result, label_type):
     """Imports an annotation from Label Studio.
 
     Args:
         result: the annotation result from Label Studio
+        label_type: the FiftyOne Label type of the annotation
 
     Returns:
         a :class:`fiftyone.core.labels.Label`
@@ -596,7 +600,7 @@ def import_label_studio_annotation(result):
     elif ls_type == "keypointlabels":
         label = _from_keypointlabels(result)
     elif ls_type == "brushlabels":
-        label = _from_brushlabels(result)
+        label = _from_brushlabels(result, label_type)
     elif ls_type == "number":
         label = _from_number(result)
     else:
@@ -618,7 +622,7 @@ def _update_dict(src_dict, update_dict):
     return new
 
 
-def export_label_to_label_studio(label, full_result=None):
+def export_label_to_label_studio(sample, label_field, label_type, full_result=None):
     """Exports a label to the Label Studio format.
 
     Args:
@@ -630,12 +634,16 @@ def export_label_to_label_studio(label, full_result=None):
         a dictionary or a list in Label Studio format
     """
     # TODO model version and model score
+    label = sample[label_field]
     if label is None:
         result_value = {}
         ls_type = None
         ids = []
     elif _check_type(label, fol.Classification, fol.Classifications):
         result_value, ls_type, ids = _to_classification(label)
+    elif _check_type(label, fol.Detection, fol.Detections) and label_type == 'instances':
+        size = (sample.metadata['width'], sample.metadata['height'])
+        result_value, ls_type, ids = _to_instance(label, size)
     elif _check_type(label, fol.Detection, fol.Detections):
         result_value, ls_type, ids = _to_detection(label)
     elif _check_type(label, fol.Polyline, fol.Polylines):
@@ -693,7 +701,6 @@ def _to_classification(label):
 
 def _to_detection(label):
     ls_type = "rectanglelabels"
-
     if isinstance(label, list):
         return (
             [_to_detection(l)[0] for l in label],
@@ -717,6 +724,30 @@ def _to_detection(label):
         "rotation": getattr(label, "rotation", 0),
         "rectanglelabels": [label.label],
     }
+    return result, ls_type, label.id
+
+def _to_instance(label, size):
+    ls_type = "brushlabels"
+    if isinstance(label, list):
+        return (
+            [_to_instance(l, size)[0] for l in label],
+            ls_type,
+            [l.id for l in label],
+        )
+
+    if isinstance(label, fol.Detections):
+        return (
+            [_to_instance(l, size)[0] for l in label.detections],
+            ls_type,
+            [l.id for l in label.detections],
+        )
+
+    brush = fou.lazy_import(
+    "label_studio_converter.brush",
+    callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+    )
+    rle = brush.mask2rle(label.to_segmentation(frame_size=size).get_mask())
+    result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, ls_type, label.id
 
 
@@ -826,7 +857,7 @@ def _from_keypointlabels(result):
     return keypoints
 
 
-def _from_brushlabels(result):
+def _from_brushlabels(result, label_type):
     brush = fou.lazy_import(
         "label_studio_converter.brush",
         callback=lambda: fou.ensure_import("label_studio_converter.brush"),
@@ -837,7 +868,11 @@ def _from_brushlabels(result):
     mask = img.reshape(
         (result["original_height"], result["original_width"], 4)
     )[:, :, 3]
-    return fol.Segmentation(label=label_values[0], mask=mask)
+    if label_type == "segmentation":
+        return fol.Segmentation(label=label_values[0], mask=mask)
+    elif label_type == "detections":
+        mask_targets = {255: label_values[0]}
+        return fol.Segmentation(label=label_values[0], mask=mask).to_detections(mask_targets).detections[0]
 
 
 def _from_number(result):
@@ -935,6 +970,11 @@ _LABEL_TYPES = {
     ),
     "detections": dict(
         parent_tag="RectangleLabels",
+        child_tag="Label",
+        label=fol.Detection,
+    ),
+    "instances": dict(
+        parent_tag="BrushLabels",
         child_tag="Label",
         label=fol.Detection,
     ),
