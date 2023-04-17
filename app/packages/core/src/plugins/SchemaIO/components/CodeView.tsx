@@ -3,11 +3,11 @@ import { Box, useColorScheme } from "@mui/material";
 import React from "react";
 import Header from "./Header";
 
-export default function CodeEditorView(props) {
+export default function CodeView(props) {
   const { mode } = useColorScheme();
   const { onChange, path, schema } = props;
   const { default: defaultValue, view = {} } = schema;
-  const { language, readOnly } = view;
+  const { language, read_only: readOnly } = view;
 
   return (
     <Box
