@@ -207,6 +207,7 @@ class View:
         self.caption = kwargs.get("caption", None)
         self.space = kwargs.get("space", None)
         self.placeholder = kwargs.get("placeholder", None)
+        self.read_only = kwargs.get("read_only", None)
         self._kwargs = kwargs
 
     def clone(self):
@@ -220,6 +221,7 @@ class View:
             "caption": self.caption,
             "space": self.space,
             "placeholder": self.placeholder,
+            "read_only": self.read_only,
         }
 
 class Form(View):
@@ -236,6 +238,12 @@ class Form(View):
             "submit_button_label": self.submit_button_label,
             "cancel_button_label": self.cancel_button_label,
         }
+
+class ReadonlyView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.read_only = True
+
 
 class Choice(View):
     def __init__(self, value, **kwargs):
@@ -365,18 +373,13 @@ class TupleView(View):
         }
 
 
-class CodeEditorView(View):
+class CodeView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.language = kwargs.get("language", None)
-        self.readOnly = kwargs.get("readOnly", False)
 
     def to_json(self):
-        return {
-            **super().to_json(),
-            "language": self.language,
-            "readOnly": self.readOnly,
-        }
+        return {**super().to_json(), "language": self.language}
 
 
 class ColorView(View):
@@ -431,7 +434,7 @@ class HiddenView(View):
         super().__init__(**kwargs)
 
 
-class LoadingView(View):
+class LoadingView(ReadonlyView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -473,18 +476,44 @@ class Places(enum.Enum):
     def to_json(self):
         return self.value
 
-# todo: ...
-# class ReadOnlyView(View):
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
+class KeyValueView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
-# todo: ...
-# class KeyValueView(View):
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
+class Column(View):
+    def __init__(self, key, **kwargs):
+        super().__init__(**kwargs)
+        self.key = key
 
-# todo: ...
-# class TableView(View):
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
+    def clone(self):
+        clone = Column(self.key, **self._kwargs)
+        return clone
+
+    def to_json(self):
+        return {**super().to_json(), "key": self.key}
+
+
+class TableView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.columns = kwargs.get("columns", [])
+
+    def keys(self):
+        return [column.key for column in self.columns]
+
+    def add_column(self, key, **kwargs):
+        column = Column(key, **kwargs)
+        self.columns.append(column)
+        return column
+
+    def clone(self):
+        clone = super().clone()
+        clone.columns = [column.clone() for column in self.columns]
+        return clone
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "columns": [column.to_json() for column in self.columns],
+        }
