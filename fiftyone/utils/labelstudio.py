@@ -29,6 +29,14 @@ ls = fou.lazy_import(
     "label_studio_sdk",
     callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),
 )
+brush = fou.lazy_import(
+    "label_studio_converter.brush",
+    callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+)
+etree = fou.lazy_import(
+    "lxml.etree",
+    callback=lambda: fou.ensure_import("lxml.etree"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -253,7 +261,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             if label_info["existing_field"]:
                 predictions[label_field] = {
                     smp.id: export_label_to_label_studio(
-                        smp, 
+                        smp,
                         label_field,
                         label_type,
                         full_result={
@@ -361,8 +369,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             )
             if label_type == "keypoints":
                 labels = import_label_studio_annotation(
-                    latest_annotation["result"],
-                    label_type
+                    latest_annotation["result"], label_type
                 )
             else:
                 labels = [
@@ -544,10 +551,6 @@ def generate_labeling_config(media, label_type, labels=None):
     Returns:
         a labeling config
     """
-    etree = fou.lazy_import(
-        "lxml.etree", callback=lambda: fou.ensure_import("lxml.etree")
-    )
-
     assert media in ["image", "video"]
     assert (
         label_type in _LABEL_TYPES.keys()
@@ -622,7 +625,9 @@ def _update_dict(src_dict, update_dict):
     return new
 
 
-def export_label_to_label_studio(sample, label_field, label_type, full_result=None):
+def export_label_to_label_studio(
+    sample, label_field, label_type, full_result=None
+):
     """Exports a label to the Label Studio format.
 
     Args:
@@ -638,14 +643,15 @@ def export_label_to_label_studio(sample, label_field, label_type, full_result=No
     if label is None:
         result_value = {}
         ls_type = None
-        ids = []
+        ids = None
     elif _check_type(label, fol.Classification, fol.Classifications):
         result_value, ls_type, ids = _to_classification(label)
-    elif _check_type(label, fol.Detection, fol.Detections) and label_type == 'instances':
-        size = (sample.metadata['width'], sample.metadata['height'])
-        result_value, ls_type, ids = _to_instance(label, size)
     elif _check_type(label, fol.Detection, fol.Detections):
-        result_value, ls_type, ids = _to_detection(label)
+        if label_type == "instances":
+            size = (sample.metadata["width"], sample.metadata["height"])
+            result_value, ls_type, ids = _to_instance(label, size)
+        else:
+            result_value, ls_type, ids = _to_detection(label)
     elif _check_type(label, fol.Polyline, fol.Polylines):
         result_value, ls_type, ids = _to_polyline(label)
     elif _check_type(label, fol.Keypoint, fol.Keypoints):
@@ -653,9 +659,7 @@ def export_label_to_label_studio(sample, label_field, label_type, full_result=No
     elif isinstance(label, fol.Segmentation):
         result_value, ls_type, ids = _to_segmentation(label)
     elif isinstance(label, fol.Regression):
-        result_value = {"number": label.value}
-        ls_type = "number"
-        ids = label.id
+        result_value, ls_type, ids = _to_regression(label)
     else:
         raise ValueError("Label type %s is not supported" % type(label))
 
@@ -663,6 +667,7 @@ def export_label_to_label_studio(sample, label_field, label_type, full_result=No
         # return full LS result
         if not isinstance(result_value, (list, tuple)):
             result_value = [result_value]
+            ids = [ids]
 
         return [
             _update_dict(
@@ -726,6 +731,7 @@ def _to_detection(label):
     }
     return result, ls_type, label.id
 
+
 def _to_instance(label, size):
     ls_type = "brushlabels"
     if isinstance(label, list):
@@ -742,10 +748,6 @@ def _to_instance(label, size):
             [l.id for l in label.detections],
         )
 
-    brush = fou.lazy_import(
-    "label_studio_converter.brush",
-    callback=lambda: fou.ensure_import("label_studio_converter.brush"),
-    )
     rle = brush.mask2rle(label.to_segmentation(frame_size=size).get_mask())
     result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, ls_type, label.id
@@ -806,13 +808,13 @@ def _to_keypoint(label):
 
 
 def _to_segmentation(label):
-    brush = fou.lazy_import(
-        "label_studio_converter.brush",
-        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
-    )
     rle = brush.mask2rle(label.get_mask())
     result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, "brushlabels", label.id
+
+
+def _to_regression(label):
+    return {"number": label.value}, "number", label.id
 
 
 def _from_choices(result):
@@ -858,21 +860,20 @@ def _from_keypointlabels(result):
 
 
 def _from_brushlabels(result, label_type):
-    brush = fou.lazy_import(
-        "label_studio_converter.brush",
-        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
-    )
-
     label_values = result["value"]["brushlabels"]
     img = brush.decode_rle(result["value"]["rle"])
     mask = img.reshape(
         (result["original_height"], result["original_width"], 4)
     )[:, :, 3]
-    if label_type == "segmentation":
-        return fol.Segmentation(label=label_values[0], mask=mask)
-    elif label_type == "detections":
-        mask_targets = {255: label_values[0]}
-        return fol.Segmentation(label=label_values[0], mask=mask).to_detections(mask_targets).detections[0]
+
+    label = label_values[0]
+    segmentation = fol.Segmentation(label=label, mask=mask)
+
+    if label_type == "detections":
+        detections = segmentation.to_detections({255: label}).detections
+        return detections[0] if detections else None
+
+    return segmentation
 
 
 def _from_number(result):
