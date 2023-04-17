@@ -19,6 +19,8 @@ export class PythonRunner {
       FIFTYONE_DEFAULT_APP_PORT: String(DEFAULT_APP_PORT),
     };
 
+    console.log(fs.existsSync(sourceFilePath));
+    console.log(`python ${sourceFilePath}`);
     const proc = spawn("python", [sourceFilePath], {
       env,
     });

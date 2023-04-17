@@ -34,7 +34,7 @@ jobs:
       - name: Install fiftyone
         run: pip install .
       - name: Start background server
-        run: python fiftyone/server/main.py --port 5151 &
+        run: python fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
       - name: Configure
         id: test_config
         run: |

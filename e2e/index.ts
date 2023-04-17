@@ -1,7 +1,5 @@
 import cypress from "cypress";
 import { config as dotEnvConfig } from "dotenv";
-import { createServer } from "http";
-import { DEFAULT_APP_HOSTNAME, DEFAULT_APP_PORT } from "./lib/constants";
 
 dotEnvConfig({ path: ".env.cypress" });
 
@@ -37,16 +35,4 @@ const runCypress = async () => {
   return cypress.run(options);
 };
 
-// THIS IS A HACK
-const ghostServer = createServer((_, res) => {
-  res.writeHead(200);
-}).listen(DEFAULT_APP_PORT, DEFAULT_APP_HOSTNAME, async () => {
-  // cypress does work with `null` baseUrl but that causes tests to run twice
-  // it's because cypress caches test runner process for each unique baseUrl
-  // todo: better strategy?
-  console.log(
-    "ghost fiftyone server started. ignore this message, just placating cypress because it needs a valid baseUrl when it starts"
-  );
-
-  await runCypress();
-});
+runCypress();
