@@ -7,7 +7,7 @@ import ListView from "../components/ListView";
 import OneOfView from "../components/OneOfView";
 import UnsupportedView from "../components/UnsupportedView";
 import TuplesView from "../components/TuplesView";
-import CodeEditorView from "../components/CodeEditorView";
+import CodeView from "../components/CodeView";
 import ColorView from "../components/ColorView";
 import TabsView from "../components/TabsView";
 import JSONView from "../components/JSONView";
@@ -43,7 +43,7 @@ const componentsMap = {
   DropdownView: DropdownView,
   OneOfView: OneOfView,
   TupleView: TuplesView,
-  CodeEditorView: CodeEditorView,
+  CodeView: CodeView,
   ColorView: ColorView,
   TabsView: TabsView,
   JSONView: JSONView,
