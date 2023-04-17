@@ -10,7 +10,3 @@ compareSnapshotCommand({
 });
 
 // todo: check if app port is available in beforeAll() and fail fast if not
-
-before(() => {
-  // cy.executePythonCode(`import fiftyone as fo; fo.delete_datasets("*")`);
-});
