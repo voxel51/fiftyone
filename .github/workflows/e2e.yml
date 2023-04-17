@@ -33,6 +33,8 @@ jobs:
         run: pip install -r requirements/github.txt
       - name: Install fiftyone
         run: pip install .
+      - name: Install fiftyone
+        run: python fiftyone/server/main.py --port 5151 &
       - name: Configure
         id: test_config
         run: |
