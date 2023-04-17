@@ -130,7 +130,7 @@
                 "required": false,
                 "choices": null,
                 "view": {
-                    "name": "CodeEditorView",
+                    "name": "CodeView",
                     "label": "JS editor",
                     "description": "JS editor with auto-complete and syntax highlighting",
                     "caption": null,
