@@ -10,7 +10,7 @@ const componentsByType = {
 const componentByView = {
   RadioGroup: "RadioView",
   Dropdown: "DropdownView",
-  CodeEditorView: "CodeEditorView",
+  CodeView: "CodeView",
   ColorView: "ColorView",
   TabsView: "TabsView",
   JSONView: "JSONView",
