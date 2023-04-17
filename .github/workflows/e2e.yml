@@ -31,7 +31,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v3
         with:
-          node-version: 16.20.0
+          node-version: 16
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: pip install -r requirements/github.txt
