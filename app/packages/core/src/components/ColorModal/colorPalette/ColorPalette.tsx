@@ -8,6 +8,7 @@ import * as fos from "@fiftyone/state";
 
 import {
   colorBlindFriendlyPalette,
+  fiftyoneDefaultColorPalette,
   isSameArray,
   tempGlobalSetting,
 } from "../utils";
@@ -31,6 +32,11 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const isUsingColorBlindOption = isSameArray(
     colors,
     colorBlindFriendlyPalette
+  );
+
+  const isUsingFiftyoneClassic = isSameArray(
+    colors,
+    fiftyoneDefaultColorPalette
   );
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -111,6 +117,26 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           </AddSquare>
         )}
       </ColorPaletteContainer>
+
+      {hasChange && (
+        <Checkbox
+          name={"Revert to current setting"}
+          value={!hasChange}
+          setValue={(v) =>
+            v && setTempColor((s) => ({ ...s, colors: currentColorPalette }))
+          }
+        />
+      )}
+      {!isUsingFiftyoneClassic && (
+        <Checkbox
+          name={"Use fiftyone classic option"}
+          value={isUsingFiftyoneClassic}
+          setValue={(v) =>
+            v &&
+            setTempColor((s) => ({ ...s, colors: fiftyoneDefaultColorPalette }))
+          }
+        />
+      )}
       {!isUsingColorBlindOption && (
         <Checkbox
           name={"Use color blind friendly option"}
@@ -118,15 +144,6 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           setValue={(v) =>
             v &&
             setTempColor((s) => ({ ...s, colors: colorBlindFriendlyPalette }))
-          }
-        />
-      )}
-      {hasChange && (
-        <Checkbox
-          name={"revert to current setting"}
-          value={!hasChange}
-          setValue={(v) =>
-            v && setTempColor((s) => ({ ...s, colors: currentColorPalette }))
           }
         />
       )}
