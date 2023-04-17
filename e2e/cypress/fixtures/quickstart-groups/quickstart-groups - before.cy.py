@@ -5,5 +5,6 @@ quickstart_groups_dataset = foz.load_zoo_dataset(
     "quickstart-groups", max_samples=12
 )
 
-session = fo.launch_app(quickstart_groups_dataset, remote=True)
-session.wait(-1)
+session = fo.launch_app(
+    quickstart_groups_dataset, address="0.0.0.0", remote=True
+)
