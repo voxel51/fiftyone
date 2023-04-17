@@ -789,9 +789,19 @@ def test_classification_results():
     ytrue = ["cat", "cat", "dog", "dog", "fox", "fox"]
     ypred = ["cat", "dog", "dog", "fox", "fox", "cat"]
 
-    # FIXME: update this test to match changes in fo.utils.eval.classification.ClassificationResults
-    # pylint: disable=no-value-for-parameter
-    results = fo.ClassificationResults(ytrue, ypred, None)
+    samples = []
+    for i, (yt, yp) in enumerate(zip(ytrue, ypred)):
+        sample = fo.Sample(
+            filepath="image%d.jpg" % i,
+            ground_truth=fo.Classification(label=yt),
+            predictions=fo.Classification(label=yp),
+        )
+        samples.append(sample)
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    results = dataset.evaluate_classifications("predictions")
 
     # Includes all 3 classes
     results.print_report()
@@ -822,9 +832,19 @@ def test_classification_results_missing_data():
     ytrue = ["cat", "cat", "cat", "dog", "dog", "dog", "fox", "fox", "fox"]
     ypred = ["cat", "dog", None, "dog", "fox", None, "fox", "cat", None]
 
-    # FIXME: update this test to match changes in fo.utils.eval.classification.ClassificationResults
-    # pylint: disable=no-value-for-parameter
-    results = fo.ClassificationResults(ytrue, ypred, None)
+    samples = []
+    for i, (yt, yp) in enumerate(zip(ytrue, ypred)):
+        sample = fo.Sample(
+            filepath="image%d.jpg" % i,
+            ground_truth=fo.Classification(label=yt),
+            predictions=fo.Classification(label=yp),
+        )
+        samples.append(sample)
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    results = dataset.evaluate_classifications("predictions")
 
     # No row for "missing" GT labels, since these entires represent false
     # positive predictions
