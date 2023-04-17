@@ -111,8 +111,8 @@ class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
     Args:
         pred_field: the name of the field containing the predicted
             :class:`fiftyone.core.labels.Segmentation` instances
-        gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Segmentation` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Segmentation` instances
         compute_dice (False): whether to compute the Dice coefficient for each
             sample
     """
