@@ -9,8 +9,8 @@ export function SchemaIOComponent(props) {
 
   function onIOChange(path, value) {
     setState((state) => {
-      const updatedState = { ...state };
-      set(updatedState, path, value);
+      const updatedState = structuredClone(state);
+      set(updatedState, path, structuredClone(value));
       return updatedState;
     });
   }
