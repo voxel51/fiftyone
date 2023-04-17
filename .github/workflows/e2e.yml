@@ -4,7 +4,7 @@ name: Test e2e
 on:
   push:
     branches:
-      - e2e-ci
+      - e2e-ci*
 
 jobs:
   test-e2e:
