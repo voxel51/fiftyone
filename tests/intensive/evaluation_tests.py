@@ -15,6 +15,7 @@ import unittest
 import numpy as np
 
 import eta.core.utils as etau
+import pytest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
@@ -592,7 +593,8 @@ def test_evaluate_detections_frames():
     dataset.delete_evaluations()
 
 
-def test_evaluate_segmentations():
+@pytest.mark.parametrize("compute_dice", [True, False])
+def test_evaluate_segmentations(compute_dice):
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
@@ -644,6 +646,7 @@ def test_evaluate_segmentations():
         gt_field="resnet101",
         eval_key=EVAL_KEY,
         mask_index=MASK_INDEX,
+        compute_dice=compute_dice,
     )
 
     results.print_report()
@@ -651,6 +654,12 @@ def test_evaluate_segmentations():
     print(dataset.bounds("%s_accuracy" % EVAL_KEY))
     print(dataset.bounds("%s_precision" % EVAL_KEY))
     print(dataset.bounds("%s_recall" % EVAL_KEY))
+    if compute_dice:
+        print(dataset.bounds("%s_dice" % EVAL_KEY))
+        dice = results.dice_score()
+        assert 0 < dice <= 1
+    else:
+        assert dataset.has_field("%s_dice" % EVAL_KEY) is False
     print(dataset.get_evaluation_info(EVAL_KEY))
 
     #
@@ -780,6 +789,8 @@ def test_classification_results():
     ytrue = ["cat", "cat", "dog", "dog", "fox", "fox"]
     ypred = ["cat", "dog", "dog", "fox", "fox", "cat"]
 
+    # FIXME: update this test to match changes in fo.utils.eval.classification.ClassificationResults
+    # pylint: disable=no-value-for-parameter
     results = fo.ClassificationResults(ytrue, ypred, None)
 
     # Includes all 3 classes
@@ -811,6 +822,8 @@ def test_classification_results_missing_data():
     ytrue = ["cat", "cat", "cat", "dog", "dog", "dog", "fox", "fox", "fox"]
     ypred = ["cat", "dog", None, "dog", "fox", None, "fox", "cat", None]
 
+    # FIXME: update this test to match changes in fo.utils.eval.classification.ClassificationResults
+    # pylint: disable=no-value-for-parameter
     results = fo.ClassificationResults(ytrue, ypred, None)
 
     # No row for "missing" GT labels, since these entires represent false
