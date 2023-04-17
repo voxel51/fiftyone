@@ -32,7 +32,6 @@ def evaluate_segmentations(
     eval_key=None,
     mask_targets=None,
     method="simple",
-    compute_dice=False,
     **kwargs,
 ):
     """Evaluates the specified semantic segmentation masks in the given
@@ -81,8 +80,6 @@ def evaluate_segmentations(
             labels. If not provided, the observed values are used as labels
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple")``
-        compute_dice (False): whether to compute the Dice coefficient for each
-            sample
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
@@ -93,9 +90,7 @@ def evaluate_segmentations(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )
 
-    config = _parse_config(
-        pred_field, gt_field, method, compute_dice=compute_dice, **kwargs
-    )
+    config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.ensure_requirements()
 
@@ -118,12 +113,15 @@ class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
             :class:`fiftyone.core.labels.Segmentation` instances
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Segmentation` instances
+        compute_dice (False): whether to compute the Dice coefficient for each
+            sample
     """
 
-    def __init__(self, pred_field, gt_field, **kwargs):
+    def __init__(self, pred_field, gt_field, compute_dice=False, **kwargs):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
+        self.compute_dice = compute_dice
 
 
 class SegmentationEvaluation(foe.EvaluationMethod):
@@ -163,6 +161,12 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             dataset.add_frame_field(pre_field, fof.FloatField)
             dataset.add_frame_field(rec_field, fof.FloatField)
 
+        if self.config.compute_dice:
+            dice_field = "%s_dice" % eval_key
+            dataset.add_sample_field(dice_field, fof.FloatField)
+            if processing_frames:
+                dataset.add_frame_field(dice_field, fof.FloatField)
+
     def evaluate_samples(self, samples, eval_key=None, mask_targets=None):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
@@ -189,6 +193,9 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             "%s_recall" % eval_key,
         ]
 
+        if self.config.compute_dice:
+            fields.append("%s_dice" % eval_key)
+
         if processing_frames:
             prefix = samples._FRAMES_PREFIX + eval_key
             fields.extend(
@@ -198,6 +205,9 @@ class SegmentationEvaluation(foe.EvaluationMethod):
                     "%s_recall" % prefix,
                 ]
             )
+
+            if self.config.compute_dice:
+                fields.append("%s_dice" % prefix)
 
         return fields
 
@@ -230,6 +240,9 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             "%s_recall" % eval_key,
         ]
 
+        if self.config.compute_dice:
+            fields.append("%s_dice" % eval_key)
+
         dataset.delete_sample_fields(fields, error_level=1)
 
         if processing_frames:
@@ -248,6 +261,8 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
             :class:`fiftyone.core.labels.Segmentation` instances
         gt_field: the name of the field containing the ground truth
             :class:`fiftyone.core.labels.Segmentation` instances
+        compute_dice (False): whether to compute the Dice coefficient for each
+            sample
         bandwidth (None): an optional bandwidth along the contours of the
             ground truth masks to which to restrict attention when computing
             accuracies. A typical value for this parameter is 5 pixels. By
@@ -256,23 +271,24 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
             precision and recall numbers on each sample
     """
 
-    @property
-    def method(self):
-        return "simple"
-
     def __init__(
         self,
         pred_field,
         gt_field,
+        compute_dice=False,
         bandwidth=None,
         average="micro",
-        compute_dice=False,
         **kwargs,
     ):
-        super().__init__(pred_field, gt_field, **kwargs)
+        super().__init__(
+            pred_field, gt_field, compute_dice=compute_dice, **kwargs
+        )
         self.bandwidth = bandwidth
         self.average = average
-        self.compute_dice = compute_dice
+
+    @property
+    def method(self):
+        return "simple"
 
 
 class SimpleEvaluation(SegmentationEvaluation):
@@ -356,7 +372,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                     image[pre_field] = fpre
                     image[rec_field] = frec
                     if compute_dice:
-                        image[dice_field] = _dice_score(image_conf_mat)
+                        image[dice_field] = _compute_dice_score(image_conf_mat)
 
             confusion_matrix += sample_conf_mat
 
@@ -369,7 +385,8 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample[pre_field] = spre
                 sample[rec_field] = srec
                 if compute_dice:
-                    sample[dice_field] = _dice_score(confusion_matrix)
+                    sample[dice_field] = _compute_dice_score(confusion_matrix)
+
                 sample.save()
 
         if nc > 0:
@@ -433,6 +450,14 @@ class SegmentationResults(BaseEvaluationResults):
     def attributes(self):
         return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
+    def dice_score(self):
+        """Computes the Dice score across all samples in the evaluation.
+
+        Returns:
+            the Dice score in ``[0, 1]``
+        """
+        return _compute_dice_score(self.pixel_confusion_matrix)
+
     @classmethod
     def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         return cls(
@@ -461,23 +486,13 @@ class SegmentationResults(BaseEvaluationResults):
 
         return ytrue, ypred, weights
 
-    def dice_score(self):
-        """Returns the Dice score for all samples.
 
-        Returns:
-            an overall Dice score
-        """
-        return _dice_score(self.pixel_confusion_matrix)
-
-
-def _parse_config(pred_field, gt_field, method, compute_dice, **kwargs):
+def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = "simple"
 
     if method == "simple":
-        return SimpleEvaluationConfig(
-            pred_field, gt_field, compute_dice=compute_dice, **kwargs
-        )
+        return SimpleEvaluationConfig(pred_field, gt_field, **kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 
@@ -516,15 +531,7 @@ def _compute_pixel_confusion_matrix(
         return np.zeros((num_classes, num_classes), dtype=int)
 
 
-def _dice_score(confusion_matrix):
-    """Computes the Dice score from a pixel confusion matrix.
-
-    Args:
-        confusion_matrix: a pixel value confusion matrix
-
-    Returns:
-        the Dice score
-    """
+def _compute_dice_score(confusion_matrix):
     confusion_matrix = np.asarray(confusion_matrix)
     tp = np.diag(confusion_matrix).sum()
     fp = confusion_matrix.sum() - tp
