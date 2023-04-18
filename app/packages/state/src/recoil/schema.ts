@@ -29,7 +29,7 @@ import _ from "lodash";
 import { Sample } from "@fiftyone/looker/src/state";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
-  schema[field.name] = {
+  schema[field.name || field.path] = {
     ...field,
     fields: field.fields?.reduce(schemaReduce, {}),
   };
@@ -58,7 +58,7 @@ export const filterPaths = (
 };
 
 export const buildFlatExtendedSchema = (schema: Schema): Schema => {
-  const flatSchema = {};
+  const flatSchema = {} as Schema;
   const fieldsQueue = [];
   for (const fieldName in schema) {
     const field = schema[fieldName];
@@ -82,6 +82,7 @@ export const buildFlatExtendedSchema = (schema: Schema): Schema => {
       // add fields to be FE/client-side filterable - stay conservative
       searchField:
         ff.path + (desc ? desc : "") + (info ? JSON.stringify(info) : ""),
+      visible: false,
     };
   }
 
@@ -95,7 +96,9 @@ export const buildSchema = (
   let schema = dataset.sampleFields.reduce(schemaReduce, {});
 
   if (flat) {
-    return buildFlatExtendedSchema(schema);
+    return buildFlatExtendedSchema(
+      dataset.datasetSchema.reduce(schemaReduce, {})
+    );
   }
 
   // TODO: mixed datasets - test video
