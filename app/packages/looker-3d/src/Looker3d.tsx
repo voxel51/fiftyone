@@ -13,7 +13,7 @@ import React, {
 } from "react";
 import * as recoil from "recoil";
 import { useRecoilValue } from "recoil";
-import { Box3, Object3D, PerspectiveCamera, Vector3 } from "three";
+import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
 import { Environment } from "./Environment";
 import {
@@ -72,7 +72,7 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
   const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
-  const cameraRef = React.useRef();
+  const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
   const getColor = recoil.useRecoilValue(fos.colorMap(true));
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
@@ -134,6 +134,34 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
     isPointSizeAttenuatedAtom
   );
 
+  const defaultCameraPosition = useMemo(() => {
+    if (settings.defaultCameraPosition) {
+      return [
+        settings.defaultCameraPosition.x,
+        settings.defaultCameraPosition.y,
+        settings.defaultCameraPosition.z,
+      ];
+    } else {
+      if (!pointCloudBounds) {
+        return [0, 0, 0];
+      }
+
+      const absMax = Math.max(
+        pointCloudBounds.max?.x,
+        pointCloudBounds.max?.y,
+        pointCloudBounds.max?.z
+      );
+
+      const upVectorNormalized = new Vector3(...settings.defaultUp).normalize();
+
+      // we want the camera to be along the up vector
+      // the scaling factor determines by how much
+      const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
+      const upVectorScaled = upVectorNormalized.multiplyScalar(scalingFactor);
+      return [upVectorScaled.x, upVectorScaled.y, upVectorScaled.z];
+    }
+  }, [pointCloudBounds, settings]);
+
   const onChangeView = useCallback(
     (view: View) => {
       const camera = cameraRef.current as PerspectiveCamera;
@@ -150,35 +178,11 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
 
         switch (view) {
           case "top":
-            if (settings.defaultCameraPosition) {
-              camera.position.set(
-                settings.defaultCameraPosition.x,
-                settings.defaultCameraPosition.y,
-                settings.defaultCameraPosition.z
-              );
-            } else {
-              const absMax = Math.max(
-                pointCloudBounds.max?.x,
-                pointCloudBounds.max?.y,
-                pointCloudBounds.max?.z
-              );
-
-              const upVectorNormalized = new Vector3(
-                ...settings.defaultUp
-              ).normalize();
-
-              // we want the camera to be along the up vector
-              // the scaling factor determines by how much
-              const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
-              const upVectorScaled =
-                upVectorNormalized.multiplyScalar(scalingFactor);
-
-              camera.position.set(
-                upVectorScaled.x,
-                upVectorScaled.y,
-                upVectorScaled.z
-              );
-            }
+            camera.position.set(
+              defaultCameraPosition[0],
+              defaultCameraPosition[1],
+              defaultCameraPosition[2]
+            );
             break;
           case "pov":
             // todo: account for non-z up here
@@ -193,7 +197,7 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
         );
       }
     },
-    [cameraRef, controlsRef, settings, pointCloudBounds]
+    [cameraRef, controlsRef, defaultCameraPosition]
   );
 
   const jsonPanel = fos.useJSONPanel();
@@ -277,8 +281,19 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
   );
 
   useEffect(() => {
+    const currentCameraPosition = cameraRef.current?.position;
+
+    if (
+      !currentCameraPosition ||
+      (currentCameraPosition.x === defaultCameraPosition[0] &&
+        currentCameraPosition.y === defaultCameraPosition[1] &&
+        currentCameraPosition.z === defaultCameraPosition[2])
+    ) {
+      return;
+    }
+
     onChangeView("top");
-  }, [onChangeView, cameraRef, controlsRef]);
+  }, [onChangeView, defaultCameraPosition]);
 
   const hasMultiplePcdSlices = useMemo(
     () =>
@@ -293,7 +308,7 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
 
   const filteredSamples = useMemo(
     () =>
-      Object.entries(sampleMap).map(([_slice, sample]) => {
+      Object.entries(sampleMap).map(([slice, sample]) => {
         let mediaUrl;
 
         if (Array.isArray(sample.urls)) {
@@ -306,14 +321,14 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
 
         return (
           <PointCloudMesh
-            key={sample.id}
+            key={slice}
             minZ={minZ}
             shadeBy={colorBy}
             pointSize={pointSize}
             src={fos.getSampleSrc(mediaUrl)}
             rotation={pcRotation}
             onLoad={(boundingBox) => {
-              setPointCloudBounds(boundingBox);
+              if (!pointCloudBounds) setPointCloudBounds(boundingBox);
             }}
             defaultShadingColor={theme.text.primary}
             isPointSizeAttenuated={isPointSizeAttenuated}
@@ -407,7 +422,7 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
           onMouseEnter={() => (hoveringRef.current = true)}
           // onMouseLeave={() => (hoveringRef.current = false)}
         >
-          {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
+          {hasMultiplePcdSlices && <SliceSelector />}
           <ActionsBar>
             <ToggleGridHelper />
             <SetPointSizeButton />

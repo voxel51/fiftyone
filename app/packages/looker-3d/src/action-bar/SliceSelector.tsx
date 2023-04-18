@@ -9,12 +9,9 @@ import { ActionItem } from "../containers";
 import { ACTION_SET_PCDS, currentActionAtom } from "../state";
 import { ActionPopOver } from "./shared";
 
-interface SliceSelectorProps {
-  dataset: fos.State.Dataset;
-}
-
-export const SliceSelector = ({ dataset }: SliceSelectorProps) => {
+export const SliceSelector = () => {
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
@@ -24,8 +21,11 @@ export const SliceSelector = ({ dataset }: SliceSelectorProps) => {
     if (activePcdSlices.length === 2) {
       return activePcdSlices.join(" and ");
     }
+    if (activePcdSlices.length === allPcdSlices.length) {
+      return "All pcds selected";
+    }
     return `${activePcdSlices.length} selected`;
-  }, [activePcdSlices]);
+  }, [activePcdSlices, allPcdSlices]);
 
   const handleActionClick = useCallback(() => {
     setAction(ACTION_SET_PCDS);
