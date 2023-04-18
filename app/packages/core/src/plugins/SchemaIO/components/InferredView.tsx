@@ -2,7 +2,7 @@ import { Box, Stack, Typography } from "@mui/material";
 import React from "react";
 import Header from "./Header";
 import KeyValueView from "./KeyValueView";
-import PrimitiveListView from "./PrimitiveListView";
+import TagsView from "./TagsView";
 import TableView from "./TableView";
 
 // todo: ...
@@ -64,7 +64,7 @@ function ArrayView(props) {
       label: value.toString(),
     }));
     return (
-      <PrimitiveListView
+      <TagsView
         data={formattedData}
         schema={nested ? {} : { view: { label } }}
       />

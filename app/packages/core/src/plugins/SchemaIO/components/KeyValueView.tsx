@@ -11,7 +11,7 @@ import {
 import Header from "./Header";
 
 export default function KeyValueView(props) {
-  const { schema, data, nested } = props;
+  const { path, schema, data, nested } = props;
   const { view } = schema;
   return (
     <Box>
@@ -19,9 +19,9 @@ export default function KeyValueView(props) {
       <TableContainer component={nested ? Box : Paper}>
         <Table>
           <TableBody>
-            {data.map((item) => (
+            {Object.entries(data).map(([key, value]) => (
               <TableRow
-                key={item.id}
+                key={`${path}-${key}`}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
               >
                 <TableCell
@@ -35,11 +35,9 @@ export default function KeyValueView(props) {
                     textAlign: "right",
                   }}
                 >
-                  {item.label}
+                  {getLabel(schema, key)}
                 </TableCell>
-                <TableCell align="left">
-                  {item.Component || item.value.toString()}
-                </TableCell>
+                <TableCell align="left">{value}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -47,4 +45,8 @@ export default function KeyValueView(props) {
       </TableContainer>
     </Box>
   );
+}
+
+function getLabel(schema, key) {
+  return schema?.properties?.[key]?.view?.label || key;
 }
