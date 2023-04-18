@@ -3601,13 +3601,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
 
     def jobs_url(self, task_id):
-        if self._server_version == (2,4):
+        if self._server_version == (2, 4):
             return "%s/jobs?task_id=%d" % (self.base_api_url, task_id)
         else:
             return "%s/jobs" % self.task_url(task_id)
 
     def job_url(self, task_id, job_id):
-        if self._server_version == (2,4):
+        if self._server_version == (2, 4):
             return self.taskless_job_url(job_id)
         else:
             return "%s/%d" % (self.jobs_url(task_id), job_id)
@@ -3679,24 +3679,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             self._server_version = (1, None)
             self._login(username, password)
-            
+
         self._add_referer()
         self._add_organization()
 
         try:
-            response = self.get(self.about_url).json()    
-            toks = response['version'].split('.')
+            response = self.get(self.about_url).json()
+            toks = response["version"].split(".")
             major_ver = int(toks[0])
             minor_ver = int(toks[1])
             if major_ver != self._server_version[0]:
-                logger.warning(f"CVAT server major versions don't match: {major_ver} vs {self._server_version[0]}")
+                logger.warning(
+                    f"CVAT server major versions don't match: {major_ver} vs {self._server_version[0]}"
+                )
             self._server_version = (major_ver, minor_ver)
             # major version ._server_version[0] set above, assume consistent for now
         except Exception as e:
-            logger.debug(f"Couldn't access or parse CVAT server version: {print(e)}")
+            logger.debug(
+                f"Couldn't access or parse CVAT server version: {print(e)}"
+            )
 
         logger.debug(f"CVAT server version: {self._server_version}")
-
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:
@@ -3728,7 +3731,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _make_request(
         self, request_method, url, print_error_info=True, **kwargs
     ):
-        logger.debug(f' {request_method.__name__}: {url}')
+        logger.debug(f" {request_method.__name__}: {url}")
         response = request_method(url, verify=False, **kwargs)
         if print_error_info:
             self._validate(response, kwargs)
@@ -3966,9 +3969,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         resp = self.get(self.project_url(project_id)).json()
         val = resp.get("tasks", [])
 
-        if self._server_version == (2,4):
-            tasks = self._get_paginated_results_2(val['url'])
-            tasks = [x['id'] for x in tasks]
+        if self._server_version == (2, 4):
+            tasks = self._get_paginated_results_2(val["url"])
+            tasks = [x["id"] for x in tasks]
         else:
             tasks = []
             for task in val:
@@ -4190,12 +4193,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 f.close()
 
         # @todo is this loop really needed?
-        # AL 20230402 testing on a local cvat server this polling loop does 
+        # AL 20230402 testing on a local cvat server this polling loop does
         # repeat a few times before jobs show up
         job_ids = []
-        while not job_ids:            
+        while not job_ids:
             url = self.jobs_url(task_id)
-            if self._server_version == (2,4) # or self._server_version == (2,3):
+            if self._server_version == (2, 4) or self._server_version == (
+                2,
+                3,
+            ):
                 jobs = self._get_paginated_results_2(url)
                 job_ids = [j["id"] for j in jobs]
             else:
@@ -4641,7 +4647,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return annotations
 
-    def _get_attr_class_maps(self, task_id):        
+    def _get_attr_class_maps(self, task_id):
         labels = self._get_task_labels(task_id)
         _class_map = {}
         attr_id_map = {}
@@ -4655,7 +4661,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         class_map_rev = {n: i for i, n in _class_map.items()}
 
         return attr_id_map, class_map_rev
-    
+
     def _get_paginated_results(self, base_url, get_page_url, value=None):
         results = []
         page_number = 1
@@ -4675,20 +4681,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             page = get_page_url(page_number)
 
         return results
-    
-    def _get_paginated_results_2(self, base_url):
 
+    def _get_paginated_results_2(self, base_url):
         res_all = []
         url = base_url
         while url is not None:
             response = self.get(url).json()
-            if 'results' not in response:
+            if "results" not in response:
                 break
-            res_all.extend(response['results'])
-            url = response['next']
-        
-        return res_all
+            res_all.extend(response["results"])
+            url = response["next"]
 
+        return res_all
 
     def _get_value_from_search(
         self, search_url_fcn, target, target_key, value_key
@@ -4722,10 +4726,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             raise ValueError("Project '%s' not found" % project_id)
 
         resp = self.get(self.project_url(project_id)).json()
-        labels = resp['labels']
+        labels = resp["labels"]
 
-        if self._server_version == (2,4):
-            labels = self._get_paginated_results_2(labels['url'])
+        if self._server_version == (2, 4):
+            labels = self._get_paginated_results_2(labels["url"])
 
         return labels
 
@@ -4734,19 +4738,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if "labels" not in resp:
             raise ValueError("Task '%s' not found" % task_id)
 
-        labels = resp['labels']
-        if self._server_version == (2,4):
-            labels = self._get_paginated_results_2(labels['url'])
-        
+        labels = resp["labels"]
+        if self._server_version == (2, 4):
+            labels = self._get_paginated_results_2(labels["url"])
+
         return labels
-    
+
     def _get_task_id_labels_json(self, task_json):
         resp = self.post(self.tasks_url, json=task_json).json()
         task_id = resp["id"]
 
-        labels = resp['labels']
-        if self._server_version == (2,4):
-            labels = self._get_paginated_results_2(labels['url'])
+        labels = resp["labels"]
+        if self._server_version == (2, 4):
+            labels = self._get_paginated_results_2(labels["url"])
 
         return task_id, labels
 
