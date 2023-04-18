@@ -86,12 +86,6 @@ export const defaultPcdSlice = selector<string | null>({
   },
 });
 
-// export const pinnedSlice = atom<string | null>({
-//   key: "pinnedSlice",
-//   default: defaultPinnedSlice,
-//   effects: [getBrowserStorageEffectForKey("pinnedSlice")],
-// });
-
 export const pointCloudSliceExists = selector<boolean>({
   key: "sliceMediaTypeMap",
   get: ({ get }) =>
@@ -145,9 +139,28 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     },
 });
 
-export const hasPcdSlice = selector<boolean>({
-  key: "hasPcdSlice",
-  get: ({ get }) => Boolean(get(activePcdSlices)?.length > 0),
+export const activeSliceDescriptorLabel = selector<string>({
+  key: "activeSliceDescriptorLabel",
+  get: ({ get }) => {
+    const currentSliceValue = get(currentSlice(true));
+    const activePcdSlicesValue = get(activePcdSlices);
+    const isPcdSliceActive = activePcdSlicesValue?.includes(currentSliceValue);
+
+    if (!isPcdSliceActive) {
+      return currentSliceValue;
+    }
+
+    const numActivePcdSlices = get(activePcdSlices)?.length;
+
+    switch (numActivePcdSlices) {
+      case 1:
+        return activePcdSlicesValue[0];
+      case 2:
+        return `${activePcdSlicesValue.join(" and ")}`;
+      default:
+        return `${numActivePcdSlices} point-clouds`;
+    }
+  },
 });
 
 export const groupField = selector<string>({
@@ -234,16 +247,6 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
       };
     },
   mapResponse: mapSampleResponse,
-});
-
-export const pcdSamples = atom<string[] | null>({
-  key: "pcdSamples",
-  default: selector({
-    key: "pcdSamplesDefault",
-    get: ({ get }) => {
-      const defaultPcdSliceValue = get(defaultPcdSlice);
-    },
-  }),
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({

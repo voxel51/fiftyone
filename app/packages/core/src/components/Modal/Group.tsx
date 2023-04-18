@@ -106,7 +106,6 @@ const GroupSample: React.FC<
           hoveringRef={hoveringRef}
           sampleId={sampleId}
           pinned={pinned}
-          slice={slice}
         />
       )}
     </div>

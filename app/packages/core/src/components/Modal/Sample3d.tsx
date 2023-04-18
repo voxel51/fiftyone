@@ -6,34 +6,22 @@ import { Loading } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
 
 const PluginWrapper = () => {
-  // if (!data) {
-  //   throw new Error("no data");
-  // }
-
-  // const { sample, urls } = data;
   const groupId = useRecoilValue(fos.groupId);
   const sample = useRecoilValue(fos.modal);
 
-  // const mediaField = useRecoilValue(selectedMediaField(true));
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
-  // const onSelectLabel = useOnSelectLabel();
   const dataset = useRecoilValue(fos.dataset);
 
   const pluginAPI = useMemo(
     () => ({
       dataset,
-      // mediaField,
-      // onSelectLabel,
-      // mediaFieldValue: urls[mediaField],
-      // src: getSampleSrc(urls[mediaField]),
-      // state: fos,
-      // useState: useRecoilValue,
     }),
     [dataset]
   );
 
   return (
     <plugin.component
+      // use group id in group model sample filepath in non-group mode to force a remount when switching between samples
       key={groupId ?? sample?.sample.filepath}
       api={pluginAPI}
     />
@@ -42,10 +30,8 @@ const PluginWrapper = () => {
 
 export const Sample3d: React.FC = () => {
   return (
-    <>
-      <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <PluginWrapper />
-      </Suspense>
-    </>
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>
+      <PluginWrapper />
+    </Suspense>
   );
 };

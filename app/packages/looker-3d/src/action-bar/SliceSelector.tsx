@@ -11,10 +11,16 @@ export const SliceSelector = () => {
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
   const allPcdSlices = useRecoilValue(fos.allPcdSlices);
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
+  const activeSliceDescriptorLabel = useRecoilValue(
+    fos.activeSliceDescriptorLabel
+  );
 
   const activeSlicesLabel = useMemo(() => {
     if (activePcdSlices.length === 0) {
       return "Select pcds";
+    }
+    if (activePcdSlices.length === 1) {
+      return `${activePcdSlices[0]} selected`;
     }
     if (activePcdSlices.length === 2) {
       return activePcdSlices.join(" and ");
@@ -22,7 +28,7 @@ export const SliceSelector = () => {
     if (activePcdSlices.length === allPcdSlices.length) {
       return "All pcds selected";
     }
-    return `${activePcdSlices.length} selected`;
+    return `${activePcdSlices.length} point-clouds selected`;
   }, [activePcdSlices, allPcdSlices]);
 
   const handleActionClick = useCallback(() => {
