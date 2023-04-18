@@ -1,12 +1,7 @@
 import React, { Fragment, useMemo, useRef } from "react";
 import Draggable from "react-draggable";
 import ReactDOM from "react-dom";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
@@ -22,19 +17,10 @@ import { Popout, Tooltip } from "@fiftyone/components";
 import Item from "../Filters/categoricalFilter/filterOption/FilterItem";
 import GlobalSetting from "./GlobalSetting";
 import FieldSetting from "./FieldSetting";
-import { Button } from "../utils";
-import {
-  tempColorJSON,
-  tempColorSetting,
-  tempGlobalSetting,
-  updateFieldSettings,
-  validateJSONSetting,
-} from "./utils";
-import { CustomizeColor, useOutsideClick } from "@fiftyone/state";
+import { useOutsideClick } from "@fiftyone/state";
 import useMeasure from "react-use-measure";
 import JSONViewer from "./JSONViewer";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { cloneDeep } from "lodash";
+import ColorFooter from "./ColorFooter";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -63,7 +49,7 @@ const Container = styled.div<ContainerProp>`
   flex-direction: column;
   justify-content: start;
   overflow: hidden;
-  box-shadow: 0 20px 25px -20px #000;
+  box-shadow: ${({ theme }) => `0 20px 25px -20px ${theme.background.level1}`};
   min-width: ${({ minWidth }) => minWidth};
   width: ${({ width }) => width};
   height: ${({ height }) => height};
@@ -83,15 +69,7 @@ const DraggableModalTitle = styled.div`
   background-color: ${({ theme }) => theme.background.level1};
   padding: 2px;
   cursor: pointer;
-  fontweight: 600;
-`;
-
-const ModalActionButtonContainer = styled.div`
-  align-self: flex-end;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
-  padding: 0.5rem;
+  font-weight: 600;
 `;
 
 const Text = styled.div`
@@ -102,14 +80,6 @@ const Text = styled.div`
   flex-direction: row;
   cursor: pointer;
 `;
-
-const BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.5rem 1rem",
-  height: "2rem",
-  width: "6rem",
-  flex: 1,
-  textAlign: "center",
-};
 
 const ActionDiv = styled.div`
   position: relative;
@@ -244,7 +214,7 @@ const ColorModal = () => {
                   <FieldSetting field={activeColorModalField as Field} />
                 )}
               </DraggableContent>
-              <SubmitControls eligibleFields={customizeColorFields} />
+              <ColorFooter eligibleFields={customizeColorFields} />
             </Container>
           </Draggable>
         </ModalWrapper>
@@ -258,134 +228,3 @@ const ColorModal = () => {
 };
 
 export default React.memo(ColorModal);
-
-type Prop = {
-  eligibleFields: Field[];
-};
-
-const SubmitControls: React.FC<Prop> = ({ eligibleFields }) => {
-  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.activeColorField
-  );
-  const [tempGlobalSettings, setTempGlobalSettings] =
-    useRecoilState(tempGlobalSetting);
-  const [json, setJson] = useRecoilState(tempColorJSON);
-  const customizeColorFields = useRecoilValue(fos.customizeColorFields);
-  const path =
-    typeof activeColorModalField === "string"
-      ? activeColorModalField
-      : activeColorModalField?.path;
-
-  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
-  const setAlpha = useSetRecoilState(fos.alpha(false));
-  const setConfigColorBy = useSetRecoilState(
-    fos.appConfigOption({ modal: false, key: "colorBy" })
-  );
-  const setShowSkeleton = useSetRecoilState(
-    fos.appConfigOption({ key: "showSkeletons", modal: false })
-  );
-  const setMulticolorKeypoints = useSetRecoilState(
-    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
-  );
-  const setColoring = useSetRecoilState(fos.colorPalette);
-  const setCustomizeColor = useSetRecoilState(
-    fos.customizeColorSelector(path!)
-  );
-
-  const onCancel = () => {
-    setActiveColorModalField(null);
-    setTempColor(null);
-    setTempGlobalSettings(null);
-    setJson(null);
-  };
-
-  const onSave = () => {
-    onApply();
-    onCancel();
-  };
-
-  const onApply = () => {
-    if (typeof activeColorModalField !== "string") {
-      // save field settings (update tempcolor by checkbox options)
-      const update = updateFieldSettings(tempColor);
-      setCustomizeColor(update);
-    }
-    if (activeColorModalField == "global") {
-      // save global settings
-      const { colorBy, colors, opacity, useMulticolorKeypoints, showSkeleton } =
-        tempGlobalSettings ?? {};
-      setConfigColorBy(colorBy);
-      setColoring(colors);
-      setAlpha(opacity);
-      setMulticolorKeypoints(useMulticolorKeypoints);
-      setShowSkeleton(showSkeleton);
-    }
-    if (activeColorModalField == "json") {
-      if (
-        typeof json !== "object" ||
-        !json?.colorScheme ||
-        !Array.isArray(json?.colorScheme) ||
-        !json?.customizedColorSettings ||
-        !Array.isArray(json?.customizedColorSettings)
-      )
-        return;
-      const { colorScheme, customizedColorSettings } = json;
-      // update color palette
-      const validColors = colorScheme?.filter((c) => isValidColor(c));
-      validColors.length > 0 && setColoring(validColors);
-      // validate customizedColorSettings
-      const validated = validateJSONSetting(
-        customizedColorSettings,
-        eligibleFields
-      );
-      if (validated) {
-        resetCustomizeColors(validated);
-        validated.forEach((update) => setCustomizeColor(update));
-      }
-    }
-  };
-
-  const resetCustomizeColors =
-    useOverwriteCustomizeColors(customizeColorFields);
-
-  function useOverwriteCustomizeColors(customizeColorFields: string[]) {
-    return useRecoilCallback(({ set }) => (newValues: CustomizeColor[]) => {
-      const newKeys = newValues.map((v) => v.field);
-      customizeColorFields.forEach((key) => {
-        if (newKeys.includes(key)) {
-          set(
-            fos.customizeColorSelector(key),
-            newValues.find((v) => v.field === key)!
-          );
-        } else {
-          set(fos.customizeColorSelector(key), {});
-        }
-      });
-    });
-  }
-
-  if (!activeColorModalField) return null;
-
-  return (
-    <ModalActionButtonContainer>
-      <Button
-        text={"Apply"}
-        title={`Apply`}
-        onClick={onApply}
-        style={BUTTON_STYLE}
-      />
-      <Button
-        text={"Save"}
-        title={`Save`}
-        onClick={onSave}
-        style={BUTTON_STYLE}
-      />
-      <Button
-        text={"Close"}
-        title={`Close`}
-        onClick={onCancel}
-        style={BUTTON_STYLE}
-      />
-    </ModalActionButtonContainer>
-  );
-};
