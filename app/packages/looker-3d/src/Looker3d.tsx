@@ -15,7 +15,7 @@ import * as recoil from "recoil";
 import { useRecoilValue } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
-import { Environment } from "./Environment";
+import { CAMERA_POSITION_KEY, Environment } from "./Environment";
 import {
   Looker3dPluginSettings,
   defaultPluginSettings,
@@ -138,10 +138,35 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
   const isPointSizeAttenuated = recoil.useRecoilValue(
     isPointSizeAttenuatedAtom
   );
-  const [previousCameraPosition, setPreviousCameraPosition] =
-    fos.useBrowserStorage("previousCameraPosition", "hi");
+
+  const topCameraPosition = useMemo(() => {
+    if (!pointCloudBounds) {
+      return [1, 1, 10];
+    }
+
+    const absMax = Math.max(
+      pointCloudBounds.max?.x,
+      pointCloudBounds.max?.y,
+      pointCloudBounds.max?.z
+    );
+
+    const upVectorNormalized = new Vector3(...settings.defaultUp).normalize();
+
+    // we want the camera to be along the up vector
+    // the scaling factor determines by how much
+    const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
+    const upVectorScaled = upVectorNormalized.multiplyScalar(scalingFactor);
+    return [upVectorScaled.x, upVectorScaled.y, upVectorScaled.z];
+  }, [pointCloudBounds, settings]);
 
   const defaultCameraPosition = useMemo(() => {
+    const lastSavedCameraPosition =
+      window?.localStorage.getItem(CAMERA_POSITION_KEY);
+
+    if (lastSavedCameraPosition) {
+      return JSON.parse(lastSavedCameraPosition);
+    }
+
     if (settings.defaultCameraPosition) {
       return [
         settings.defaultCameraPosition.x,
@@ -149,25 +174,9 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
         settings.defaultCameraPosition.z,
       ];
     } else {
-      if (!pointCloudBounds) {
-        return [0, 0, 0];
-      }
-
-      const absMax = Math.max(
-        pointCloudBounds.max?.x,
-        pointCloudBounds.max?.y,
-        pointCloudBounds.max?.z
-      );
-
-      const upVectorNormalized = new Vector3(...settings.defaultUp).normalize();
-
-      // we want the camera to be along the up vector
-      // the scaling factor determines by how much
-      const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
-      const upVectorScaled = upVectorNormalized.multiplyScalar(scalingFactor);
-      return [upVectorScaled.x, upVectorScaled.y, upVectorScaled.z];
+      return topCameraPosition;
     }
-  }, [pointCloudBounds, settings]);
+  }, [topCameraPosition, settings]);
 
   const onChangeView = useCallback(
     (view: View) => {
@@ -186,9 +195,9 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
         switch (view) {
           case "top":
             camera.position.set(
-              defaultCameraPosition[0],
-              defaultCameraPosition[1],
-              defaultCameraPosition[2]
+              topCameraPosition[0],
+              topCameraPosition[1],
+              topCameraPosition[2]
             );
             break;
           case "pov":
@@ -204,7 +213,7 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
         );
       }
     },
-    [cameraRef, controlsRef, defaultCameraPosition]
+    [topCameraPosition]
   );
 
   const jsonPanel = fos.useJSONPanel();
@@ -299,8 +308,12 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
       return;
     }
 
-    onChangeView("top");
-  }, [onChangeView, defaultCameraPosition]);
+    cameraRef.current.position.set(
+      defaultCameraPosition[0],
+      defaultCameraPosition[1],
+      defaultCameraPosition[2]
+    );
+  }, [defaultCameraPosition]);
 
   const hasMultiplePcdSlices = useMemo(
     () =>
