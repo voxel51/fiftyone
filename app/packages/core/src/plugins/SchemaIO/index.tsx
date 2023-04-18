@@ -4,7 +4,7 @@ import { set } from "lodash";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 
 export function SchemaIOComponent(props) {
-  const { schema, onChange } = props;
+  const { schema, onChange, data } = props;
   const [state, setState] = useState({});
 
   function onIOChange(path, value) {
@@ -19,7 +19,9 @@ export function SchemaIOComponent(props) {
     if (onChange) onChange(state);
   }, [state]);
 
-  return <DynamicIO schema={schema} onChange={onIOChange} path="" />;
+  return (
+    <DynamicIO schema={schema} onChange={onIOChange} path="" data={data} />
+  );
 }
 
 registerComponent({
