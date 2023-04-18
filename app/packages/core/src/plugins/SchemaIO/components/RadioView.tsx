@@ -9,7 +9,7 @@ import {
 import Header from "./Header";
 
 export default function RadioView(props: RadioGroupProps) {
-  const { schema, onChange, path } = props;
+  const { schema, onChange, path, data } = props;
   const { view = {} } = schema;
   const { choices, label, description, orientation } = view;
   return (
@@ -24,7 +24,7 @@ export default function RadioView(props: RadioGroupProps) {
         </FormLabel>
       )}
       <MUIRadioGroup
-        defaultValue={schema.default}
+        defaultValue={data ?? schema.default}
         onChange={(e, value) => {
           onChange(path, value);
         }}

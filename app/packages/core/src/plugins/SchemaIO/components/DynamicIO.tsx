@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { getComponent } from "../utils";
 
 export default function DynamicIO(props) {
-  const { schema, onChange, path } = props;
+  const { schema, onChange, path, data } = props;
   const Component = getComponent(schema);
 
   // todo: need to improve initializing default value in state
@@ -10,5 +10,7 @@ export default function DynamicIO(props) {
     if (schema.default) onChange(path, schema.default);
   }, []);
 
-  return <Component schema={schema} onChange={onChange} path={path} />;
+  return (
+    <Component schema={schema} onChange={onChange} path={path} data={data} />
+  );
 }
