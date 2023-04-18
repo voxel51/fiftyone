@@ -5,11 +5,11 @@ import { colorPicker } from "./ColorView.module.css";
 import Header from "./Header";
 
 export default function ColorView(props) {
-  const { onChange, path, schema } = props;
+  const { onChange, path, schema, data } = props;
   const { view = {} } = schema;
   const { compact, variant } = view;
   const [open, setOpen] = useState(false);
-  const [color, setColor] = useState(defaultColor);
+  const [color, setColor] = useState(data ?? defaultColor);
   const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
   const Component = ColorPickers[variant] || ColorPickers.ChromePicker;
 

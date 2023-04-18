@@ -7,8 +7,8 @@ import EmptyState from "./EmptyState";
 import DynamicIO from "./DynamicIO";
 
 export default function ListView(props) {
-  const { schema, onChange, path } = props;
-  const [state, setState] = useState<string[]>(schema.default || []);
+  const { schema, onChange, path, data } = props;
+  const [state, setState] = useState<string[]>(data ?? (schema.default || []));
   const { items, view } = schema;
   const { items: itemsView = {} } = view;
 
@@ -67,6 +67,7 @@ export default function ListView(props) {
                   });
                 }}
                 path={i}
+                data={data?.[i]}
               />
             </Grid>
             <Grid item>
