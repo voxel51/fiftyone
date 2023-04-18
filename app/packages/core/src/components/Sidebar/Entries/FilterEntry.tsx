@@ -1,15 +1,17 @@
 import { textFilter, useSetView } from "@fiftyone/state";
 import React, { useState } from "react";
 import { useDebounce } from "react-use";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { InputDiv } from "./utils";
 import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
 import { Stage } from "@fiftyone/utilities";
 import * as fos from "@fiftyone/state";
+import { OpenInFull, Settings } from "@mui/icons-material";
 
 const Filter = ({ modal }: { modal: boolean }) => {
   const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
   const [value, setValue] = useState(() => debouncedValue);
+  const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const setView = useSetView();
   const dataset = useRecoilValue(fos.dataset);
   const schemaSettings = schemaAtoms.buildSchema(dataset, true);
@@ -64,6 +66,13 @@ const Filter = ({ modal }: { modal: boolean }) => {
           }
         }}
         style={{ textTransform: "unset" }}
+      />
+      <Settings
+        onClick={() =>
+          setSchemaModal({
+            open: true,
+          })
+        }
       />
     </InputDiv>
   );
