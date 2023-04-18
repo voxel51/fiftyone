@@ -1,4 +1,479 @@
 {
+    "schema": {
+        "type": {
+            "name": "Object",
+            "properties": {
+                "string": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "String value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "number": {
+                    "type": {
+                        "name": "Number",
+                        "min": null,
+                        "max": null,
+                        "int": false,
+                        "float": false
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Number value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "float": {
+                    "type": {
+                        "name": "Number",
+                        "min": null,
+                        "max": null,
+                        "int": false,
+                        "float": false
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Float value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "boolean": {
+                    "type": { "name": "Boolean" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Boolean value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "nestedObject": {
+                    "type": {
+                        "name": "Object",
+                        "properties": {
+                            "id": {
+                                "type": {
+                                    "name": "Number",
+                                    "min": null,
+                                    "max": null,
+                                    "int": false,
+                                    "float": false
+                                },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Car ID",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "first_name": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Owner First Name",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "last_name": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Owner Last Name",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "email": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Owner Email",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "Year": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Year",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "Make": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Make",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "Model": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Model",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            }
+                        },
+                        "needsResolution": false
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Car details",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfStrings": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "String" },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "String array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfNumbers": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Number",
+                            "min": null,
+                            "max": null,
+                            "int": false,
+                            "float": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Number array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfFloats": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Number",
+                            "min": null,
+                            "max": null,
+                            "int": false,
+                            "float": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Float array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfBooleans": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "Boolean" },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Boolean array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "table": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Object",
+                            "properties": {
+                                "id": {
+                                    "type": {
+                                        "name": "Number",
+                                        "min": null,
+                                        "max": null,
+                                        "int": false,
+                                        "float": false
+                                    },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Car ID",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "first_name": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Owner First Name",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "last_name": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Owner Last Name",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "email": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Owner Email",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "Year": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Year",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "Make": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Make",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "Model": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Model",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                }
+                            },
+                            "needsResolution": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Table",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "columns": [
+                            {
+                                "name": "Column",
+                                "label": "ID",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "key": "id"
+                            },
+                            {
+                                "name": "Column",
+                                "label": "Owner First Name",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "key": "first_name"
+                            },
+                            {
+                                "name": "Column",
+                                "label": "Owner Last Name",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "key": "last_name"
+                            }
+                        ]
+                    }
+                }
+            },
+            "needsResolution": false
+        },
+        "default": null,
+        "required": false,
+        "choices": null,
+        "view": null
+    },
     "data": {
         "string": "This is a string",
         "number": 3,
@@ -6,9 +481,9 @@
         "boolean": true,
         "nestedObject": {
             "id": 1,
-            "first_name": "Kendrick",
-            "last_name": "Yegorchenkov",
-            "email": "kyegorchenkov0@woothemes.com",
+            "first_name": "Jon",
+            "last_name": "Do",
+            "email": "jondo@voxel51.com",
             "Year": 1996,
             "Make": "Buick",
             "Model": "Hearse"
