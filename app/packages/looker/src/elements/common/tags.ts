@@ -26,7 +26,7 @@ import {
 
 import { getColor } from "@fiftyone/utilities";
 import { Classification, Regression } from "../../overlays/classifications";
-import { BaseState, NONFINITE, Sample } from "../../state";
+import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 
 import { getColorFromOptions, prettify } from "./util";
@@ -43,6 +43,7 @@ const LABEL_LISTS = [withPath(LABELS_PATH, CLASSIFICATIONS)];
 
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
+  private customizedColors: CustomizeColor[] = [];
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
@@ -74,6 +75,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
         this.colorByValue === (coloring.by === "value") &&
+        compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -336,6 +338,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
+    this.customizedColors = customizeColorSetting;
 
     elements.forEach(({ value, color, title }) => {
       const div = document.createElement("div");
@@ -420,3 +423,58 @@ const getFieldAndValue = (
 
   return [field, value, list];
 };
+
+const compareObjectArrays = (arr1, arr2) => {
+  // Check if the arrays are the same length
+  if (arr1.length !== arr2.length) {
+    return false;
+  }
+
+  // Create a copy of each array and sort them
+  const sortedArr1 = arr1.slice().sort(sortObjectArrays);
+  const sortedArr2 = arr2.slice().sort(sortObjectArrays);
+
+  // Compare each object in the sorted arrays
+  for (let i = 0; i < sortedArr1.length; i++) {
+    const obj1 = sortedArr1[i];
+    const obj2 = sortedArr2[i];
+
+    // Check if the objects have the same keys
+    const obj1Keys = Object.keys(obj1).sort();
+    const obj2Keys = Object.keys(obj2).sort();
+    if (JSON.stringify(obj1Keys) !== JSON.stringify(obj2Keys)) {
+      return false;
+    }
+
+    // Check if the objects have the same values for each key
+    for (let j = 0; j < obj1Keys.length; j++) {
+      const key = obj1Keys[j];
+      if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
+        return false;
+      }
+    }
+  }
+
+  // If all objects pass the comparison checks, return true
+  return true;
+};
+
+// Helper function to sort arrays of objects based on their key-value pairs
+function sortObjectArrays(a, b) {
+  const keysA = Object.keys(a).sort();
+  const keysB = Object.keys(b).sort();
+  for (let i = 0; i < keysA.length; i++) {
+    const key = keysA[i];
+    const comparison = key.localeCompare(keysB[i]);
+    if (comparison !== 0) {
+      return comparison;
+    }
+    const valueComparison = JSON.stringify(a[key]).localeCompare(
+      JSON.stringify(b[key])
+    );
+    if (valueComparison !== 0) {
+      return valueComparison;
+    }
+  }
+  return 0;
+}
