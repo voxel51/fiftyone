@@ -8,12 +8,12 @@ import * as fos from "@fiftyone/state";
 import RadioGroup from "../Common/RadioGroup";
 import ColorPalette from "./colorPalette/ColorPalette";
 import Checkbox from "../Common/Checkbox";
+import { tempGlobalSetting } from "./utils";
 import {
   ControlGroupWrapper,
   LabelTitle,
   SectionWrapper,
-  tempGlobalSetting,
-} from "./utils";
+} from "./ShareStyledDiv";
 
 const GlobalSetting: React.FC = ({}) => {
   const [global, setGlobal] = useRecoilState(tempGlobalSetting);

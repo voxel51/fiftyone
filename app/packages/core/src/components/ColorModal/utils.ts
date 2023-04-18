@@ -129,20 +129,3 @@ export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
         : undefined,
   })) as CustomizeColor[];
 };
-
-// shared styled.div
-export const ControlGroupWrapper = styled.div`
-  margin: 0.5rem 2rem;
-`;
-
-export const SectionWrapper = styled.div`
-  margin: 0.5rem 1rem;
-`;
-
-export const LabelTitle = styled.div`
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
-  font-size: 1rem;
-  line-height: 2;
-  font-weight: bold;
-`;
