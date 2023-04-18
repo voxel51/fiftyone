@@ -92,6 +92,9 @@ class StateDescription(etas.Serializable):
                 d["sample_fields"] = serialize_fields(
                     collection.get_field_schema(flat=True)
                 )
+                d["dataset_schema"] = serialize_fields(
+                    self.dataset.get_field_schema(flat=True)
+                )
                 d["frame_fields"] = serialize_fields(
                     collection.get_frame_field_schema(flat=True)
                 )

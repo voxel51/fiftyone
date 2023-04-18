@@ -8557,6 +8557,7 @@ class SampleCollection(object):
             d["default_group_slice"] = self.default_group_slice
 
         d["sample_fields"] = self._serialize_field_schema()
+        d["dataset_schema"] = self._serialize_field_schema()
 
         if contains_videos:
             d["frame_fields"] = self._serialize_frame_field_schema()

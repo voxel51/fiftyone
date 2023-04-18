@@ -1,10 +1,26 @@
-import React, { Suspense, useCallback, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useRef,
+  useState,
+  Fragment,
+  useEffect,
+} from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
-import { move } from "@fiftyone/utilities";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  move,
+  VALID_PRIMITIVE_TYPES,
+} from "@fiftyone/utilities";
 
-import { useEventHandler } from "@fiftyone/state";
+import {
+  buildSchema,
+  textFilter,
+  useEventHandler,
+  useSetView,
+} from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -14,7 +30,33 @@ import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
+import CloseIcon from "@mui/icons-material/Close";
+import Checkbox from "@mui/material/Checkbox";
+import groupBy from "lodash/groupBy";
+import {
+  CheckBoxOutlineBlankRounded,
+  CheckBoxSharp,
+  PlusOne,
+  PlusOneSharp,
+  VisibilityOff,
+  VisibilityRounded,
+} from "@mui/icons-material";
+
 const MARGIN = 3;
+
+// TODO: move
+const ModalWrapper = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000000;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  background-color: ${({ theme }) => theme.neutral.softBg};
+`;
 
 const fn = (
   items: InteractiveItems,
@@ -397,6 +439,14 @@ const Container = animated(styled.div`
   }
 `);
 
+const NewContainer = styled(Container)`
+  margin: 1rem;
+  width: 75vw;
+  min-height: auto;
+  height: 80vh;
+  background: white;
+`;
+
 type RenderEntry = (
   key: string,
   group: string,
@@ -435,6 +485,79 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const modalContainer = document.getElementById("modal");
+  const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
+  const { open: isSettingsModalOpen } = settingModal;
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const dataset = useRecoilValue(fos.dataset);
+  const baseSchema = dataset ? buildSchema(dataset, true) : null;
+  const [schema, setSchmea] = useState(baseSchema);
+  const [fieldsOnly, setFieldsOnly] = useState(false);
+  const eligibleEntries = groupBy(entries, "path");
+
+  console.log("dataset", dataset);
+  const emptySet = new Set<string>();
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(emptySet);
+  const [visiblePaths, setVisiblePaths] = useState<Set<string>>(selectedPaths);
+  const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(emptySet);
+  const viewStages = useRecoilValue(fos.view);
+  const setView = useSetView();
+  console.log("schema", schema);
+  console.log("entries", entries);
+  console.log("eligibleEntries", eligibleEntries);
+  console.log("items", items);
+  console.log("currentView", viewStages);
+
+  const getSelectedSubPaths = (path: string) => {
+    const tmpSelected = new Set();
+    Object.keys(schema).map((currPath: string) => {
+      if (currPath.startsWith(path)) {
+        tmpSelected.add(currPath);
+      }
+    });
+    return tmpSelected;
+  };
+
+  const toggleSelection = (path: string, checked: boolean) => {
+    const subPaths = new Set();
+    Object.keys(schema).map((currPath: string) => {
+      if (currPath.startsWith(path)) {
+        subPaths.add(currPath);
+      }
+    });
+    if (checked) {
+      const diff = new Set([...selectedPaths].filter((x) => !subPaths.has(x)));
+      setSelectedPaths(diff);
+    } else {
+      const union = new Set<string>([...selectedPaths, ...subPaths]);
+      setSelectedPaths(union);
+    }
+  };
+
+  useEffect(() => {
+    if (viewStages?.length) {
+      const finalSelectedFields = new Set<string>();
+      for (let i = 0; i < viewStages?.length; i++) {
+        const view = viewStages[i];
+        if (view && view?.["_cls"] === "fiftyone.core.stages.SelectFields") {
+          const selectedFields = view?.["kwargs"]?.filter(
+            (item) => item[0] === "field_names"
+          )[0];
+          selectedFields[1].forEach((item) => finalSelectedFields.add(item));
+        }
+      }
+      if (finalSelectedFields.size) {
+        const ffff = new Set<string>();
+        finalSelectedFields.forEach((p: string) => {
+          const subPaths = getSelectedSubPaths(p);
+          subPaths.forEach((item: string) => ffff.add(item));
+        });
+        setVisiblePaths(ffff);
+      }
+    }
+  }, [viewStages]);
 
   if (entries instanceof Error) {
     throw entries;
@@ -725,6 +848,206 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
+      {modalContainer && isSettingsModalOpen && (
+        <Fragment>
+          <ModalWrapper
+            ref={wrapperRef}
+            onClick={(event) =>
+              event.target === wrapperRef.current && console.log("TODO")
+            }
+          >
+            <NewContainer style={{ ...screen, zIndex: 10001, padding: "1rem" }}>
+              <Box
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <h3
+                  color="black"
+                  style={{ padding: 0, color: "black", margin: 0 }}
+                >
+                  Schema Settings
+                </h3>
+                <CloseIcon
+                  color="action"
+                  onClick={() =>
+                    setSettingsModal({ ...settingModal, open: false })
+                  }
+                />
+              </Box>
+              <Box style={{ position: "relative", padding: "1rem 0" }}>
+                <input
+                  value={searchTerm}
+                  placeholder="search fields and/or attributes"
+                  style={{ color: "#232323", width: "100%" }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </Box>
+              <Box
+                style={{
+                  position: "relative",
+                  padding: "1rem 0",
+                  color: "black",
+                  display: "flex",
+                }}
+              >
+                Fields only
+                <Box
+                  onClick={() => setFieldsOnly(!fieldsOnly)}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  {fieldsOnly && <CheckBoxSharp />}
+                  {!fieldsOnly && <CheckBoxOutlineBlankRounded />}
+                </Box>
+              </Box>
+              <Box
+                style={{
+                  position: "relative",
+                  height: "50vh",
+                  overflow: "auto",
+                  color: "#232323",
+                }}
+              >
+                {Object.keys(schema)
+                  .sort()
+                  .filter((path) => {
+                    // TODO
+                    if (fieldsOnly) {
+                      console.log("path", path);
+                      return (
+                        !path?.includes(".") &&
+                        schema[path]?.searchField?.includes(searchTerm)
+                      );
+                    }
+                    if (!searchTerm) {
+                      return true;
+                    } else if (
+                      searchTerm &&
+                      schema[path]?.searchField?.includes(searchTerm)
+                    ) {
+                      return true;
+                    }
+                    return false;
+                  })
+                  .map((path: string) => {
+                    const count = path.split(".")?.length;
+                    const isSelected = selectedPaths.has(path);
+                    const isVisible = visiblePaths.has(path);
+                    const pathLabel = path.split(".");
+                    const pathLabelFinal = pathLabel[pathLabel.length - 1];
+                    const skip =
+                      schema[path].ftype === "fiftyone.core.fields.DictField";
+
+                    if (skip) return null;
+
+                    return (
+                      <Box
+                        style={{
+                          padding: "0.5rem 0.5rem",
+                          borderBottom: "1px solid #efefef",
+                          display: "flex",
+                        }}
+                      >
+                        <Box>
+                          <Checkbox
+                            name={"Carousel"}
+                            value={path}
+                            checked={isSelected}
+                            onChange={() => {
+                              toggleSelection(path, isSelected);
+                            }}
+                            style={{
+                              padding: 0,
+                            }}
+                          />
+                        </Box>
+                        {/* <Box>
+                        {!isLeaf && <PlusOne />}
+                        {isLeaf && <HdrPlus />}
+                      </Box> */}
+                        <Box
+                          style={{ paddingLeft: `${(count - 1) * 15 + 5}px` }}
+                        >
+                          {pathLabelFinal}
+                        </Box>
+                        <Box
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            paddingLeft: "0.5rem",
+                          }}
+                          onClick={() => {
+                            if (isVisible) {
+                              const affectedPaths = getSelectedSubPaths(path);
+                              const diff = new Set(
+                                [...visiblePaths].filter(
+                                  (x) =>
+                                    !affectedPaths.has(x) &&
+                                    schema[x].ftype !==
+                                      "fiftyone.core.fields.DictField"
+                                )
+                              );
+                              setVisiblePaths(diff);
+                            } else {
+                              const affectedPaths = getSelectedSubPaths(path);
+                              const diff = new Set(
+                                [...visiblePaths, ...affectedPaths].filter(
+                                  (x) =>
+                                    schema[x].ftype !==
+                                    "fiftyone.core.fields.DictField"
+                                )
+                              );
+                              setVisiblePaths(diff);
+                            }
+                          }}
+                        >
+                          {isVisible && (
+                            <VisibilityRounded
+                              style={{ color: "#797979", fontSize: "18px" }}
+                            />
+                          )}
+                          {!isVisible && (
+                            <VisibilityOff
+                              style={{ color: "#efefef", fontSize: "18px" }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+                    );
+                  })}
+              </Box>
+              <Box>
+                <button
+                  style={{ color: "black" }}
+                  onClick={() => {
+                    console.log("[...visiblePaths]", [...visiblePaths]);
+                    const stageKwargs = [
+                      ["field_names", [...visiblePaths]],
+                      ["_allow_missing", true],
+                    ];
+                    const stageCls = "fiftyone.core.stages.SelectFields";
+                    const stage = {
+                      _cls: stageCls,
+                      kwargs: stageKwargs,
+                    } as Stage;
+                    try {
+                      setView([stage]);
+                    } catch (e) {
+                      console.log("error", e);
+                    }
+                  }}
+                >
+                  Add to view
+                </button>
+                <button style={{ color: "black" }}>Apply to sidebar</button>
+                <button style={{ color: "black" }}>cancel</button>
+              </Box>
+            </NewContainer>
+          </ModalWrapper>
+        </Fragment>
+      )}
       {!modal && (
         <Suspense>
           <Box

@@ -457,6 +457,7 @@ class DatasetDocument(Document):
     skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
+    dataset_schema = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))
     annotation_runs = DictField(ReferenceField(RunDocument))

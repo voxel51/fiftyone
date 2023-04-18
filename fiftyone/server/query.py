@@ -233,6 +233,7 @@ class Dataset:
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
+    dataset_schema: t.List[SampleField]
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.Optional[t.List[BrainRun]]
     evaluations: t.Optional[t.List[EvaluationRun]]
@@ -267,9 +268,10 @@ class Dataset:
             NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
-        doc["sample_fields"] = _flatten_fields(
-            [], doc.get("sample_fields", [])
-        )
+        flat = _flatten_fields([], doc.get("sample_fields", []))
+        doc["sample_fields"] = flat
+        doc["dataset_schema"] = flat
+
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
@@ -489,6 +491,10 @@ async def serialize_dataset(
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)
         )
+        data.dataset_schema = serialize_fields(
+            dataset.get_field_schema(flat=True)
+        )
+
         data.frame_fields = serialize_fields(
             collection.get_frame_field_schema(flat=True)
         )
