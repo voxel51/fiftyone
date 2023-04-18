@@ -5,7 +5,7 @@ import DynamicIO from "./DynamicIO";
 import Header from "./Header";
 
 export default function TuplesView(props) {
-  const { onChange, path, schema } = props;
+  const { onChange, path, schema, data } = props;
   const { view = {}, items } = schema;
 
   return (
@@ -13,17 +13,18 @@ export default function TuplesView(props) {
       <Header {...view} divider />
       <Stack spacing={1}>
         {items.map((item, i) => {
-          const schema = item;
+          const itemSchema = item;
           const schemaView = item?.view || {};
           const itemView = view?.items?.[i] || {};
-          schema.view = { ...schemaView, ...itemView };
+          itemSchema.view = { ...schemaView, ...itemView };
 
           return (
             <DynamicIO
               key={`${path}-${i}`}
-              schema={schema}
+              schema={itemSchema}
               onChange={onChange}
               path={getPath(path, i)}
+              data={data?.[i] ?? itemSchema?.default ?? schema?.default?.[i]}
             />
           );
         })}
