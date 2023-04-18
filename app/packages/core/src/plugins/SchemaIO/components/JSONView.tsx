@@ -4,12 +4,12 @@ import Header from "./Header";
 import { CodeBlock } from "@fiftyone/components";
 
 export default function JSONView(props) {
-  const { text, schema } = props;
+  const { data, schema } = props;
   const { default: defaultValue, view = {} } = schema;
   return (
     <Box>
       <Header {...view} />
-      <CodeBlock language="javascript" text={text || defaultValue} content />
+      <CodeBlock language="javascript" text={data ?? defaultValue} content />
     </Box>
   );
 }

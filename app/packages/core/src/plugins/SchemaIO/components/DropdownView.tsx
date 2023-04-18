@@ -3,7 +3,7 @@ import { Box, Typography, Select, MenuItem, ListItemText } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
 
 export default function DropdownView(props) {
-  const { onChange, schema, path } = props;
+  const { onChange, schema, path, data } = props;
   const { view = {} } = schema;
   const { choices } = view;
 
@@ -15,7 +15,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
-        defaultValue={schema.default}
+        defaultValue={data ?? schema.default}
         size="small"
         fullWidth
         renderValue={(value) => choiceLabels[value]}
