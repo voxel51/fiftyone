@@ -5,10 +5,10 @@ import Tooltip from "./Tooltip";
 import RoundedTabs from "./RoundedTabs";
 
 export default function TabsView(props) {
-  const { onChange, path, schema } = props;
+  const { onChange, path, schema, data } = props;
   const { view = {}, default: defaultValue } = schema;
   const { choices = [], variant = "default" } = view;
-  const [tab, setTab] = useState(defaultValue || choices[0]?.value);
+  const [tab, setTab] = useState(data ?? (defaultValue || choices[0]?.value));
 
   useEffect(() => {
     onChange(path, tab);
