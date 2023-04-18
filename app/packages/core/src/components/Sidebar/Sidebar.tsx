@@ -23,7 +23,12 @@ import {
 } from "@fiftyone/state";
 import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -500,10 +505,12 @@ const InteractiveSidebar = ({
   console.log("dataset", dataset);
   const emptySet = new Set<string>();
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(emptySet);
-  const [visiblePaths, setVisiblePaths] = useState<Set<string>>(selectedPaths);
-  const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(emptySet);
+  const [visiblePaths, setVisiblePaths] = useRecoilState<Set<string>>(
+    fos.visiblePaths
+  );
   const viewStages = useRecoilValue(fos.view);
   const setView = useSetView();
+  const setSchemaModal = useSetRecoilState(fos.settingsModal);
   console.log("schema", schema);
   console.log("entries", entries);
   console.log("eligibleEntries", eligibleEntries);
@@ -530,9 +537,11 @@ const InteractiveSidebar = ({
     if (checked) {
       const diff = new Set([...selectedPaths].filter((x) => !subPaths.has(x)));
       setSelectedPaths(diff);
+      setVisiblePaths(diff);
     } else {
       const union = new Set<string>([...selectedPaths, ...subPaths]);
       setSelectedPaths(union);
+      setVisiblePaths(union);
     }
   };
 
@@ -868,13 +877,17 @@ const InteractiveSidebar = ({
                   color="black"
                   style={{ padding: 0, color: "black", margin: 0 }}
                 >
-                  Schema Settings
+                  Schema Visibility
                 </h3>
                 <CloseIcon
                   color="action"
-                  onClick={() =>
-                    setSettingsModal({ ...settingModal, open: false })
-                  }
+                  onClick={() => {
+                    setSchemaModal(false);
+                    setSearchTerm("");
+                    setVisiblePaths(new Set());
+                    setSelectedPaths(new Set());
+                    setSettingsModal({ ...settingModal, open: false });
+                  }}
                 />
               </Box>
               <Box style={{ position: "relative", padding: "1rem 0" }}>
@@ -888,19 +901,19 @@ const InteractiveSidebar = ({
               <Box
                 style={{
                   position: "relative",
-                  padding: "1rem 0",
+                  padding: "0 0 1rem 0",
                   color: "black",
                   display: "flex",
                 }}
               >
                 Fields only
-                <Box
-                  onClick={() => setFieldsOnly(!fieldsOnly)}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  {fieldsOnly && <CheckBoxSharp />}
-                  {!fieldsOnly && <CheckBoxOutlineBlankRounded />}
-                </Box>
+                <Checkbox
+                  name={"Carousel"}
+                  value={fieldsOnly}
+                  checked={fieldsOnly}
+                  onChange={() => setFieldsOnly(!fieldsOnly)}
+                  style={{ padding: "4px 2px" }}
+                />
               </Box>
               <Box
                 style={{
@@ -908,6 +921,7 @@ const InteractiveSidebar = ({
                   height: "50vh",
                   overflow: "auto",
                   color: "#232323",
+                  border: "1px solid #efefef",
                 }}
               >
                 {Object.keys(schema)
@@ -934,18 +948,18 @@ const InteractiveSidebar = ({
                   .map((path: string) => {
                     const count = path.split(".")?.length;
                     const isSelected = selectedPaths.has(path);
-                    const isVisible = visiblePaths.has(path);
                     const pathLabel = path.split(".");
                     const pathLabelFinal = pathLabel[pathLabel.length - 1];
                     const skip =
-                      schema[path].ftype === "fiftyone.core.fields.DictField";
+                      schema[path].ftype === "fiftyone.core.fields.DictField" ||
+                      path.includes(".logits");
 
                     if (skip) return null;
 
                     return (
                       <Box
                         style={{
-                          padding: "0.5rem 0.5rem",
+                          padding: "0.25rem 0.25rem",
                           borderBottom: "1px solid #efefef",
                           display: "flex",
                         }}
@@ -963,66 +977,28 @@ const InteractiveSidebar = ({
                             }}
                           />
                         </Box>
-                        {/* <Box>
-                        {!isLeaf && <PlusOne />}
-                        {isLeaf && <HdrPlus />}
-                      </Box> */}
                         <Box
                           style={{ paddingLeft: `${(count - 1) * 15 + 5}px` }}
                         >
                           {pathLabelFinal}
                         </Box>
-                        <Box
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            paddingLeft: "0.5rem",
-                          }}
-                          onClick={() => {
-                            if (isVisible) {
-                              const affectedPaths = getSelectedSubPaths(path);
-                              const diff = new Set(
-                                [...visiblePaths].filter(
-                                  (x) =>
-                                    !affectedPaths.has(x) &&
-                                    schema[x].ftype !==
-                                      "fiftyone.core.fields.DictField"
-                                )
-                              );
-                              setVisiblePaths(diff);
-                            } else {
-                              const affectedPaths = getSelectedSubPaths(path);
-                              const diff = new Set(
-                                [...visiblePaths, ...affectedPaths].filter(
-                                  (x) =>
-                                    schema[x].ftype !==
-                                    "fiftyone.core.fields.DictField"
-                                )
-                              );
-                              setVisiblePaths(diff);
-                            }
-                          }}
-                        >
-                          {isVisible && (
-                            <VisibilityRounded
-                              style={{ color: "#797979", fontSize: "18px" }}
-                            />
-                          )}
-                          {!isVisible && (
-                            <VisibilityOff
-                              style={{ color: "#efefef", fontSize: "18px" }}
-                            />
-                          )}
-                        </Box>
                       </Box>
                     );
                   })}
               </Box>
-              <Box>
+              <Box
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  padding: "1rem 0",
+                }}
+              >
                 <button
-                  style={{ color: "black" }}
+                  style={{
+                    color: "black",
+                  }}
                   onClick={() => {
-                    console.log("[...visiblePaths]", [...visiblePaths]);
+                    if (!visiblePaths.size) return;
                     const stageKwargs = [
                       ["field_names", [...visiblePaths]],
                       ["_allow_missing", true],
@@ -1036,13 +1012,24 @@ const InteractiveSidebar = ({
                       setView([stage]);
                     } catch (e) {
                       console.log("error", e);
+                    } finally {
+                      setSettingsModal({ open: false });
                     }
                   }}
                 >
                   Add to view
                 </button>
-                <button style={{ color: "black" }}>Apply to sidebar</button>
-                <button style={{ color: "black" }}>cancel</button>
+                <button
+                  style={{ color: "black" }}
+                  onClick={() => {
+                    setSchemaModal({ open: false });
+                    setSearchTerm("");
+                    setVisiblePaths(new Set());
+                    setSelectedPaths(new Set());
+                  }}
+                >
+                  cancel
+                </button>
               </Box>
             </NewContainer>
           </ModalWrapper>
@@ -1080,6 +1067,22 @@ const InteractiveSidebar = ({
               const entry = items.current[key].entry;
               if (entry.kind === fos.EntryKind.GROUP) {
                 group = entry.name;
+              }
+
+              if (entry.kind === fos.EntryKind.GROUP) {
+                if (visiblePaths.size && !visiblePaths.has(entry.name)) {
+                  return <></>;
+                }
+              }
+              if (entry.kind === fos.EntryKind.EMPTY) {
+                if (visiblePaths.size && !visiblePaths.has(entry.group)) {
+                  return <></>;
+                }
+              }
+              if (entry.kind === fos.EntryKind.PATH) {
+                if (visiblePaths.size && !visiblePaths.has(entry.path)) {
+                  return <></>;
+                }
               }
 
               const { shadow, cursor, ...springs } =

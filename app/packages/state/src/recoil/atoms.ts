@@ -94,6 +94,11 @@ export const settingsModal = atom<{ open: boolean } | null>({
   },
 });
 
+export const visiblePaths = atom<Set<string> | null>({
+  key: "visiblePaths",
+  default: new Set(),
+});
+
 export interface SortResults {
   count: boolean;
   asc: boolean;
