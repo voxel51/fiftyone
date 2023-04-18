@@ -4349,6 +4349,7 @@ __metadata:
     "@fiftyone/map": "*"
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
+    "@monaco-editor/react": ^4.5.0
     "@mui/icons-material": ^5.10.2
     "@mui/material": ^5.9.0
     "@react-spring/web": ^9.4.3
@@ -4443,7 +4444,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/fiftyone@workspace:."
   dependencies:
-    "@monaco-editor/react": ^4.5.0
     "@testing-library/react": latest
     "@testing-library/react-hooks": latest
     "@typescript-eslint/eslint-plugin": ^5.44.0
