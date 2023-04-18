@@ -40,10 +40,9 @@ function OperatorIO() {
 
 function OperatorIOComponent(props) {
   const { schema, onChange, type, data } = props;
-  const ioSchema = operatorToIOSchema(schema);
+  const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
 
-  // todo: ...
-  if (type === "output") return <InferredView label="Output" data={data} />;
-
-  return <SchemaIOComponent schema={ioSchema} onChange={onChange} />;
+  return (
+    <SchemaIOComponent schema={ioSchema} onChange={onChange} data={data} />
+  );
 }
