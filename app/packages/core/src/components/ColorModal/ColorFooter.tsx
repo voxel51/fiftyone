@@ -5,7 +5,6 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import styled from "styled-components";
 
 import * as fos from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
@@ -19,27 +18,11 @@ import {
   validateJSONSetting,
 } from "./utils";
 import { CustomizeColor } from "@fiftyone/state";
-
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { ModalActionButtonContainer, BUTTON_STYLE } from "./ShareStyledDiv";
 
 type Prop = {
   eligibleFields: Field[];
-};
-
-const ModalActionButtonContainer = styled.div`
-  align-self: flex-end;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
-  padding: 0.5rem;
-`;
-
-const BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.5rem 1rem",
-  height: "2rem",
-  width: "6rem",
-  flex: 1,
-  textAlign: "center",
 };
 
 const onCancel = () => {

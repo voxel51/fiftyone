@@ -14,10 +14,11 @@ import {
 } from "@fiftyone/utilities";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
-import { SectionWrapper, tempColorSetting } from "./utils";
+import { tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
 import OpacityAttribute from "./controls/OpacityAttribute";
 import ColorAttribute from "./controls/ColorAttribute";
+import { SectionWrapper } from "./ShareStyledDiv";
 
 type Prop = {
   field: Field;
@@ -103,7 +104,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     <div style={{ margin: "1rem" }}>
       {coloring.by == "field" && (
         <div>
-          <Text>Settings for color by field</Text>
+          <TextField>Settings for color by field</TextField>
           <Checkbox
             name={`Use specific color for ${field.name} field`}
             value={Boolean(tempSetting?.useFieldColor)}
@@ -208,10 +209,8 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
 
 export default FieldSetting;
 
-const Text = styled.div`
+const TextField = styled.div`
   margin-top: 2rem;
-  font-family: "Palanquin", sans-serif;
-  font-weight: "500";
 `;
 
 const ColorSquare = styled.div<{ color: string }>`
@@ -235,9 +234,4 @@ const PickerWrapper = styled.div<{ visible: boolean }>`
 export const CHILD_STYLE = {
   marginLeft: "2rem",
   marginTop: "-0.25rem",
-};
-
-const FONT_STYLE = {
-  fontFamily: "Palanquin, sans-serif",
-  fontWeight: "500",
 };
