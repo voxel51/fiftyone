@@ -26,6 +26,10 @@ const componentByView = {
   Button: "ButtonView",
   ReadOnlyView: "ReadOnlyView",
   LinkView: "LinkView",
+  TableView: "TableView",
+  TagsView: "TagsView",
+  KeyValueView: "KeyValueView",
+  LabelValueView: "LabelValueView",
 };
 const typeMap = {
   ObjectType: "object",
@@ -39,15 +43,45 @@ const typeMap = {
 };
 const unsupportedView = "UnsupportedView";
 
+const outputComponentByType = {
+  ObjectType: "ObjectView",
+  Boolean: "LabelValueView",
+  String: "LabelValueView",
+  Number: "LabelValueView",
+  List: "ListView",
+  OneOf: "OneOfView",
+  Tuple: "TupleView",
+};
+
+const primitiveOperatorTypes = ["Boolean", "String", "Number"];
+
 function getTypeName(property) {
   const { type } = property;
   return type.constructor.name;
 }
 
-function getComponent(property) {
-  const typeName = getTypeName(property);
+function getComponent(property, options) {
   const ViewComponent = getComponentByView(property);
-  return ViewComponent || componentsByType[typeName] || unsupportedView;
+  const TypeComponent = getComponentByType(property, options);
+  return ViewComponent || TypeComponent || unsupportedView;
+}
+
+function getComponentByType(property, options) {
+  const typeName = getTypeName(property);
+  const component = componentsByType[typeName];
+  if (options?.isOutput) return getOutputComponent(property, options);
+  return component;
+}
+
+function getOutputComponent(property, options) {
+  const typeName = getTypeName(property);
+  const component = outputComponentByType[typeName];
+  if (typeName === "List") {
+    const elementTypeName = getTypeName({ type: property.type.elementType });
+    const isPrimitive = primitiveOperatorTypes.includes(elementTypeName);
+    if (isPrimitive) return "TagsView";
+  }
+  return component;
 }
 
 function getComponentByView(property) {
@@ -57,7 +91,7 @@ function getComponentByView(property) {
   if (Array.isArray(view.choices)) return "DropdownView";
 }
 
-function getSchema(property) {
+function getSchema(property, options?) {
   const { defaultValue, required } = property;
   const typeName = getTypeName(property);
   const type = typeMap[typeName];
@@ -67,25 +101,29 @@ function getSchema(property) {
     default: defaultValue,
     required,
   };
-  const component = getComponent(property);
+  const component = getComponent(property, options);
   schema.view.component = component;
 
   if (typeName === "ObjectType") {
-    schema.properties = getPropertiesSchema(property);
+    schema.properties = getPropertiesSchema(property, options);
   }
 
   if (typeName === "List") {
-    schema.items = getSchema({ type: property.type.elementType });
+    schema.items = getSchema({ type: property.type.elementType }, options);
   }
 
   if (typeName === "OneOf") {
-    schema.types = property.type.types.map((type) => getSchema({ type }));
+    schema.types = property.type.types.map((type) =>
+      getSchema({ type }, options)
+    );
   }
 
   // todo: use "prefixItems","minItems","maxItems", "items: false" for proper
   //  json schema validation support
   if (typeName === "Tuple") {
-    schema.items = property.type.items.map((type) => getSchema({ type }));
+    schema.items = property.type.items.map((type) =>
+      getSchema({ type }, options)
+    );
   }
 
   return schema;
@@ -105,18 +143,18 @@ function getViewSchema(property) {
   return view;
 }
 
-function getPropertiesSchema(property) {
+function getPropertiesSchema(property, options?) {
   const { properties } = property?.type;
   if (properties instanceof Map) {
     const propertiesObject = {};
     properties.forEach((value, key) => {
-      propertiesObject[key] = getSchema(value);
+      propertiesObject[key] = getSchema(value, options);
     });
     return propertiesObject;
   }
   return {};
 }
 
-export function operatorToIOSchema(operatorSchema) {
-  return getSchema(operatorSchema);
+export function operatorToIOSchema(operatorSchema, options?) {
+  return getSchema(operatorSchema, options);
 }

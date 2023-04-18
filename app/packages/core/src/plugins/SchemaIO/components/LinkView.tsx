@@ -2,12 +2,13 @@ import { Box, Link } from "@mui/material";
 import React from "react";
 
 export default function LinkView(props) {
-  const { schema } = props;
+  const { schema, data = {} } = props;
   const { view = {} } = schema;
-  const { label, href } = view;
+  const { label: viewLabel, href: viewHref } = view;
+  const { label, href } = data;
   return (
     <Box>
-      <Link href={href}>{label}</Link>
+      <Link href={href || viewHref}>{label || viewLabel}</Link>
     </Box>
   );
 }
