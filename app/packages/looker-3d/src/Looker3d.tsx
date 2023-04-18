@@ -344,6 +344,7 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
       minZ,
       theme,
       isPointSizeAttenuated,
+      pointCloudBounds,
     ]
   );
 
