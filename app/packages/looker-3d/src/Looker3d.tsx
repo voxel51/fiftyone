@@ -90,11 +90,16 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
       async () => {
         const newSampleMap = {};
 
-        for (const slice of activePcdSlices) {
-          const sample = await snapshot.getPromise(
-            fos.pcdSampleQueryFamily(slice)
-          );
-          newSampleMap[slice] = sample;
+        if (activePcdSlices) {
+          for (const slice of activePcdSlices) {
+            const sample = await snapshot.getPromise(
+              fos.pcdSampleQueryFamily(slice)
+            );
+            newSampleMap[slice] = sample;
+          }
+        } else {
+          const sample = await snapshot.getPromise(fos.modal);
+          newSampleMap[sample.sample.filepath] = sample;
         }
 
         setSampleMap(newSampleMap);
@@ -133,6 +138,8 @@ const Looker3dCore = ({ dataset }: Looker3dProps["api"]) => {
   const isPointSizeAttenuated = recoil.useRecoilValue(
     isPointSizeAttenuatedAtom
   );
+  const [previousCameraPosition, setPreviousCameraPosition] =
+    fos.useBrowserStorage("previousCameraPosition", "hi");
 
   const defaultCameraPosition = useMemo(() => {
     if (settings.defaultCameraPosition) {

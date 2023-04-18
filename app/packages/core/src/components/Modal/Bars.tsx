@@ -1,7 +1,7 @@
 import { Bar, useTheme } from "@fiftyone/components";
 import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { currentSlice, hasPcdSlice } from "@fiftyone/state";
+import { currentSlice } from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useRef } from "react";
 import { useRecoilValue } from "recoil";
@@ -61,7 +61,6 @@ export const GroupBar: React.FC<{
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
   const slice = useRecoilValue(currentSlice(true));
-  const hasPinned = useRecoilValue(hasPcdSlice);
   return (
     <Bar
       style={{
@@ -79,21 +78,19 @@ export const GroupBar: React.FC<{
           fontSize: "1.2rem",
         }}
       >
-        {hasPinned && (
-          <div
-            data-cy="pinned-slice-bar-description"
-            style={{
-              color: "var(--joy-palette-text-primary)",
-              display: "flex",
-              fontWeight: "bold",
-              alignItems: "center",
-              columnGap: "0.25rem",
-            }}
-          >
-            <Pin />
-            {slice} is pinned
-          </div>
-        )}
+        <div
+          data-cy="pinned-slice-bar-description"
+          style={{
+            color: "var(--joy-palette-text-primary)",
+            display: "flex",
+            fontWeight: "bold",
+            alignItems: "center",
+            columnGap: "0.25rem",
+          }}
+        >
+          <Pin />
+          {slice} is pinned
+        </div>
       </div>
       <ModalActionsRow lookerRef={lookerRef} isGroup />
     </Bar>

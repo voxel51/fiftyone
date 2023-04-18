@@ -13,7 +13,6 @@ import {
   groupField,
   groupId,
   groupSample as groupSampleSelectorFamily,
-  hasPcdSlice,
   pcdSampleQueryFamily,
   pinned3DSample,
   useBrowserStorage,
@@ -38,7 +37,6 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import GroupList from "../Group";
 import { GroupBar, GroupSampleBar } from "./Bars";
 import Looker from "./Looker";
-import Sample from "./Sample";
 import { Sample3d } from "./Sample3d";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
@@ -327,17 +325,6 @@ const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
 const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
   lookerRefCallback,
 }) => {
-  const hasPinned = useRecoilValue(hasPcdSlice);
-  const key = useRecoilValue(groupId);
-
-  if (!hasPinned) {
-    return (
-      <>
-        <GroupList key={key} /> <Sample lookerRefCallback={lookerRefCallback} />
-      </>
-    );
-  }
-
   return (
     <Suspense>
       <DualView lookerRefCallback={lookerRefCallback} />

@@ -51,13 +51,13 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
       <Checkbox
         name={"Carousel"}
         value={isCarouselVisible}
-        muted={!is3DVisible && !isImageVisible}
+        muted={!(is3DVisible && pointCloudSliceExists) && !isImageVisible}
         setValue={(value) => setIsCarouselVisible(value)}
       />
       <Checkbox
         name={"Image"}
         value={isImageVisible}
-        muted={!is3DVisible && !isCarouselVisible}
+        muted={!(is3DVisible && pointCloudSliceExists) && !isCarouselVisible}
         setValue={(value) => setIsImageVisible(value)}
       />
     </Popout>

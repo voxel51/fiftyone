@@ -138,7 +138,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
       if (!get(isGroup)) return null;
 
       if (modal && get(pinned3DSample)) {
-        return get(activePcdSlices)[0];
+        return get(activePcdSlices)?.at(0);
       }
 
       return get(groupSlice(modal)) || get(defaultGroupSlice);
@@ -263,7 +263,7 @@ export const activeModalSample = selectorFamily<
         return get(modalAtom).sample;
       }
 
-      if (get(pinned3DSample) || get(activePcdSlices).includes(sliceName)) {
+      if (get(pinned3DSample) || get(activePcdSlices)?.includes(sliceName)) {
         return get(pcdSampleQueryFamily(sliceName)).sample;
       }
 

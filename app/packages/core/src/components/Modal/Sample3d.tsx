@@ -12,6 +12,7 @@ const PluginWrapper = () => {
 
   // const { sample, urls } = data;
   const groupId = useRecoilValue(fos.groupId);
+  const sample = useRecoilValue(fos.modal);
 
   // const mediaField = useRecoilValue(selectedMediaField(true));
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
@@ -31,7 +32,12 @@ const PluginWrapper = () => {
     [dataset]
   );
 
-  return <plugin.component key={groupId} api={pluginAPI} />;
+  return (
+    <plugin.component
+      key={groupId ?? sample?.sample.filepath}
+      api={pluginAPI}
+    />
+  );
 };
 
 export const Sample3d: React.FC = () => {
