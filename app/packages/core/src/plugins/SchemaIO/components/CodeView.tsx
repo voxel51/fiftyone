@@ -5,7 +5,7 @@ import Header from "./Header";
 
 export default function CodeView(props) {
   const { mode } = useColorScheme();
-  const { onChange, path, schema } = props;
+  const { onChange, path, schema, data } = props;
   const { default: defaultValue, view = {} } = schema;
   const { language, read_only: readOnly } = view;
 
@@ -25,7 +25,7 @@ export default function CodeView(props) {
       <Editor
         height={250}
         theme={mode === "dark" ? "vs-dark" : "light"}
-        defaultValue={defaultValue}
+        defaultValue={data ?? defaultValue}
         onChange={(value) => onChange(path, value)}
         language={language}
         options={{ readOnly }}
