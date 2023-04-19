@@ -112,6 +112,11 @@ enum ColorBy {
   label
 }
 
+input ColorScheme {
+  colorPool: [String!] = null
+  customizedColorSettings: JSON = null
+}
+
 input CountValues {
   field: String!
 }
@@ -367,6 +372,12 @@ type Mutation {
     datasetName: String = null
   ): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
+  setColorScheme(
+    subscription: String!
+    session: String
+    colorScheme: ColorScheme!
+    saveToApp: Boolean! = false
+  ): Boolean!
 }
 
 type NamedKeypointSkeleton {

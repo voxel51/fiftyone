@@ -93,6 +93,12 @@ const useStateUpdate = (ignoreSpaces = false) => {
         reset(sessionSpaces);
       }
 
+      if (state?.colorScheme) {
+        // update colorScheme atoms here
+      }
+
+      console.info("state", state);
+
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});

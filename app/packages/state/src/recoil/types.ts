@@ -205,6 +205,11 @@ export namespace State {
     labelId: string;
   }
 
+  export interface ColorScheme {
+    colorPool: string[];
+    customizedColors: CustomizeColor[];
+  }
+
   export interface Description {
     dataset: string;
     selected: string[];
@@ -215,5 +220,6 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
+    colorScheme?: ColorScheme;
   }
 }

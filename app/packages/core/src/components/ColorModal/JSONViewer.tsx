@@ -3,16 +3,12 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import Editor from "@monaco-editor/react";
 import * as fos from "@fiftyone/state";
 
-import {
-  SectionWrapper,
-  tempColorJSON,
-  tempColorSetting,
-  tempGlobalSetting,
-} from "./utils";
+import { tempColorJSON, tempColorSetting, tempGlobalSetting } from "./utils";
 import { customizeColorSettings } from "@fiftyone/state";
 import { ActionOption } from "../Actions/Common";
 import { useTheme } from "@fiftyone/components";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
+import { SectionWrapper } from "./ShareStyledDiv";
 
 const JSONViewer: React.FC = ({}) => {
   const themeMode = useRecoilValue(fos.theme);

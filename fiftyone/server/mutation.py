@@ -56,6 +56,12 @@ class SavedViewInfo:
     color: t.Optional[str] = None
 
 
+@gql.input
+class ColorScheme:
+    color_pool: t.Optional[t.List[str]] = None
+    customized_color_settings: t.Optional[JSON] = None
+
+
 @gql.type
 class Mutation:
     @gql.mutation
@@ -388,6 +394,19 @@ class Mutation:
     ) -> bool:
         state = get_state()
         state.spaces = Space.from_dict(spaces)
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_color_scheme(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        color_scheme: ColorScheme,
+        save_to_app: bool = False,
+    ) -> Dataset:
+        state = get_state()
+        state.color_scheme = color_scheme
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 

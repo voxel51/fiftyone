@@ -405,3 +405,16 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
     activeChild: "default-samples-node",
   },
 });
+
+export interface ColorScheme {
+  colorPool: string[];
+  customizedColors: object;
+}
+
+export const sessionColorScheme = atom<ColorScheme>({
+  key: "sessionColorScheme",
+  default: {
+    colorPool: [],
+    customizedColors: [],
+  },
+});
