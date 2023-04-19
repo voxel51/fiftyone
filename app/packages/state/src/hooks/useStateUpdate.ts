@@ -26,6 +26,8 @@ import {
   tagging,
   theme,
   _activeFields,
+  activePcdSlices,
+  activePcdSliceToSampleMap,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -142,6 +144,8 @@ const useStateUpdate = (ignoreSpaces = false) => {
           );
           reset(extendedSelection);
           reset(filters);
+          reset(activePcdSlices);
+          reset(activePcdSliceToSampleMap);
         }
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {

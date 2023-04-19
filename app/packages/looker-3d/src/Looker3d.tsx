@@ -11,7 +11,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
 import { CAMERA_POSITION_KEY, Environment } from "./Environment";
@@ -67,7 +72,20 @@ export const Looker3d = () => {
   const { coloring } = useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE })
   );
-  const activePcdSlices = useRecoilValue(fos.activePcdSlices);
+  const [activePcdSlices, setActivePcdSlices] = useRecoilState(
+    fos.activePcdSlices
+  );
+  const defaultPcdSlice = useRecoilValue(fos.defaultPcdSlice);
+
+  useEffect(() => {
+    if (
+      (!activePcdSlices || activePcdSlices.length === 0) &&
+      defaultPcdSlice?.length > 0
+    ) {
+      setActivePcdSlices([defaultPcdSlice]);
+    }
+  }, [activePcdSlices, setActivePcdSlices, defaultPcdSlice]);
+
   const [sampleMap, setSampleMap] = useRecoilState(
     fos.activePcdSliceToSampleMap
   );
@@ -78,7 +96,7 @@ export const Looker3d = () => {
       async () => {
         const newSampleMap = {};
 
-        if (activePcdSlices) {
+        if (activePcdSlices?.length > 0) {
           for (const slice of activePcdSlices) {
             const sample = await snapshot.getPromise(
               fos.pcdSampleQueryFamily(slice)
@@ -223,7 +241,7 @@ export const Looker3d = () => {
   );
 
   const [hovering, setHovering] = useState(false);
-  const setAction = recoil.useSetRecoilState(currentActionAtom);
+  const setAction = useSetRecoilState(currentActionAtom);
 
   const timeout = useRef<NodeJS.Timeout>(null);
 

@@ -17,7 +17,6 @@ import {
   AppSample,
   SampleData,
   dataset,
-  getBrowserStorageEffectForKey,
   modal,
   modal as modalAtom,
   pinned3DSample,
@@ -102,19 +101,7 @@ export const allPcdSlices = selector<string[]>({
 
 export const activePcdSlices = atom<string[] | null>({
   key: "activePcdSlices",
-  default: selector({
-    key: "activePcdSlicesDefault",
-    get: ({ get }) => {
-      const defaultPcdSliceValue = get(defaultPcdSlice);
-      return defaultPcdSliceValue ? [defaultPcdSliceValue] : null;
-    },
-  }),
-  effects: [
-    // todo: key by dataset name
-    getBrowserStorageEffectForKey(`activePcdSlices`, {
-      valueClass: "stringArray",
-    }),
-  ],
+  default: null,
 });
 
 export const activePcdSliceToSampleMap = atom<{
@@ -132,7 +119,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
       if (!get(isGroup)) return null;
 
       if (modal && get(pinned3DSample)) {
-        return get(activePcdSlices)?.at(0);
+        return get(defaultPcdSlice);
       }
 
       return get(groupSlice(modal)) || get(defaultGroupSlice);
@@ -143,14 +130,14 @@ export const activeSliceDescriptorLabel = selector<string>({
   key: "activeSliceDescriptorLabel",
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
-    const activePcdSlicesValue = get(activePcdSlices);
+    const activePcdSlicesValue = get(activePcdSlices) ?? [get(defaultPcdSlice)];
     const isPcdSliceActive = activePcdSlicesValue?.includes(currentSliceValue);
 
     if (!isPcdSliceActive) {
       return currentSliceValue;
     }
 
-    const numActivePcdSlices = get(activePcdSlices)?.length;
+    const numActivePcdSlices = activePcdSlicesValue?.length;
 
     switch (numActivePcdSlices) {
       case 1:
