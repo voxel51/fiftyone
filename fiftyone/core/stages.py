@@ -3151,7 +3151,6 @@ class GroupBy(ViewStage):
         return pipeline
 
     def _make_grouped_pipeline(self, sample_collection):
-        order_by = self._order_by
         group_expr, _ = self._get_group_expr(sample_collection)
 
         pipeline = []
