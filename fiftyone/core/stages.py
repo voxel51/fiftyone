@@ -5139,8 +5139,8 @@ class Mongo(ViewStage):
 
     def __init__(self, pipeline, _needs_frames=None, _group_slices=None):
         self._pipeline = pipeline
-        self._needs_frames = _needs_frames
-        self._group_slices = _group_slices
+        self._needs_frames_manual = _needs_frames
+        self._group_slices_manual = _group_slices
 
     @property
     def pipeline(self):
@@ -5151,8 +5151,8 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
-        if self._needs_frames is not None:
-            return self._needs_frames
+        if self._needs_frames_manual is not None:
+            return self._needs_frames_manual
 
         if not sample_collection._contains_videos():
             return False
@@ -5161,11 +5161,11 @@ class Mongo(ViewStage):
         return True
 
     def _needs_group_slices(self, sample_collection):
-        if self._group_slices is not None:
-            if etau.is_str(self._group_slices):
-                return [self._group_slices]
+        if self._group_slices_manual is not None:
+            if etau.is_str(self._group_slices_manual):
+                return [self._group_slices_manual]
 
-            return self._group_slices
+            return self._group_slices_manual
 
         if sample_collection.media_type != fom.GROUP:
             return None
@@ -5176,8 +5176,8 @@ class Mongo(ViewStage):
     def _kwargs(self):
         return [
             ["pipeline", self._pipeline],
-            ["_needs_frames", self._needs_frames],
-            ["_group_slices", self._group_slices],
+            ["_needs_frames", self._needs_frames_manual],
+            ["_group_slices", self._group_slices_manual],
         ]
 
     @classmethod
