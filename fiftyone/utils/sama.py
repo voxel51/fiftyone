@@ -120,7 +120,7 @@ def download_sama_coco_dataset_split(
         subdir = split
         anno_type = "annotations"
     else:
-        src_path = _TEST_INFO_DOWNLOAD_LINKS
+        src_path = _TEST_INFO_DOWNLOAD_LINK
         rel_path = _TEST_INFO_PATHS
         subdir = "test"
         anno_type = "test info"
@@ -135,13 +135,20 @@ def download_sama_coco_dataset_split(
         etaw.download_file(src_path, path=zip_path)
 
         logger.info("Extracting %s to '%s'", anno_type, full_anno_path)
-        merge_dir = tempfile.TemporaryDirectory()
-        etau.extract_zip(zip_path, outdir=merge_dir.name, delete_zip=False)
-        _merge_annotations(
-            merge_dir.name,
-            os.path.join(unzip_dir, "annotations", f"sama_coco_{split}.json"),
-        )
-        merge_dir.cleanup()
+
+        if split != "test":
+            merge_dir = tempfile.TemporaryDirectory()
+            etau.extract_zip(zip_path, outdir=merge_dir.name, delete_zip=False)
+            _merge_annotations(
+                merge_dir.name,
+                os.path.join(
+                    unzip_dir, "annotations", f"sama_coco_{split}.json"
+                ),
+            )
+            merge_dir.cleanup()
+        else:
+            etau.extract_zip(zip_path, outdir=unzip_dir, delete_zip=False)
+
         fouc._merge_dir(content_dir, raw_dir)
         did_download = True
     else:
@@ -356,8 +363,8 @@ _ANNOTATION_PATHS = {
     "validation": "annotations/sama_coco_validation.json",
 }
 
-_TEST_INFO_DOWNLOAD_LINKS = (
-    "http://images.cocodataset.org/annotations/image_info_test2017.zip",
+_TEST_INFO_DOWNLOAD_LINK = (
+    "http://images.cocodataset.org/annotations/image_info_test2017.zip"
 )
 
 _TEST_INFO_PATHS = "annotations/image_info_test2017.json"

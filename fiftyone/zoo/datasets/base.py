@@ -3238,7 +3238,6 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
-    "sama-coco": SamaCOCODataset,
     "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
@@ -3255,6 +3254,7 @@ AVAILABLE_DATASETS = {
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "quickstart-groups": QuickstartGroupsDataset,
+    "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }
 
