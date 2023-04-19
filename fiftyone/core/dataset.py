@@ -7,7 +7,7 @@ FiftyOne datasets.
 """
 from collections import defaultdict
 import contextlib
-from datetime import datetime
+from datetime import datetime, timedelta
 import fnmatch
 import itertools
 import logging
@@ -211,6 +211,8 @@ def delete_non_persistent_datasets(verbose=False):
     """
     conn = foo.get_db_conn()
 
+    now = datetime.utcnow()
+
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
@@ -219,7 +221,14 @@ def delete_non_persistent_datasets(verbose=False):
             # which means it is persistent, so we don't worry about it here
             continue
 
-        if not dataset.persistent and not dataset.deleted:
+        if (
+            not dataset.persistent
+            and not dataset.deleted
+            and (
+                dataset.created_at is None
+                or now - dataset.created_at >= timedelta(hours=24)
+            )
+        ):
             dataset.delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
