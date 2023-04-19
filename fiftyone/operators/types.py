@@ -1,3 +1,5 @@
+import enum
+
 class BaseType:
     def __init__(self):
         pass
@@ -220,6 +222,20 @@ class View:
             "placeholder": self.placeholder,
         }
 
+class Form(View):
+    def __init__(self, live=False, submit_button_label="Execute", cancel_button_label="Close", **kwargs):
+        super().__init__(**kwargs)
+        self.live = live
+        self.submit_button_label = submit_button_label
+        self.cancel_button_label = cancel_button_label
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "live": self.live,
+            "submit_button_label": self.submit_button_label,
+            "cancel_button_label": self.cancel_button_label,
+        }
 
 class Choice(View):
     def __init__(self, value, **kwargs):
@@ -435,6 +451,27 @@ class PlotlyView(View):
             "layout": self.layout,
         }
 
+class Placement:
+    def __init__(self, place, view=None):
+        self.place = place
+        self.view = view
+
+    def to_json(self):
+        return {
+            "place": self.place.to_json(),
+            "view": self.view.to_json() if self.view else None,
+        }
+
+class Places(enum.Enum):
+    SAMPLES_GRID_ACTIONS = "samples-grid-actions"
+    SAMPLES_GRID_SECONDARY_ACTIONS = "samples-grid-secondary-actions"
+    EMBEDDINGS_ACTIONS = "embeddings-actions"
+    HISTOGRAM_ACTIONS = "histograms-actions"
+    MAP_ACTIONS = "map-actions"
+    MAP_SECONDARY_ACTIONS = "map-secondary-actions"
+    DISPLAY_OPTIONS = "display-options"
+    def to_json(self):
+        return self.value
 
 # todo: ...
 # class ReadOnlyView(View):
