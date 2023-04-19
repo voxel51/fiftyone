@@ -221,4 +221,4 @@ on your team's deployment.
 .. note::
 
    Any member who creates a dataset (including cloning an existing dataset or
-   view) will be gratned **Can manage** permissions on the new dataset.
+   view) will be granted **Can manage** permissions on the new dataset.

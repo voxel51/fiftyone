@@ -68,6 +68,12 @@ pages on this site apply to Teams deployments as well.
     :button_text: Migrate to Teams
     :button_link: migrations.html
 
+.. customcalloutitem::
+    :header: Management SDK
+    :description: Learn how to manage your Teams deployment via code with the Management SDK.
+    :button_text: Manage your Teams deployment with code
+    :button_link: management_sdk.html
+
 .. End callouts ---------------------------------------------------------------
 
 .. raw:: html

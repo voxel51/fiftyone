@@ -1461,7 +1461,7 @@ class ViewExpression(object):
     def type(self):
         """Returns the type string of this expression.
 
-        See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/type>`_
+        See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/type>`__
         for more details.
 
         Examples::
@@ -4164,7 +4164,7 @@ class ViewExpression(object):
     def literal(value):
         """Returns an expression representing the given value without parsing.
 
-        See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/literal>`_
+        See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/literal>`__
         for more information on when this method is reqiured.
 
         Examples::
