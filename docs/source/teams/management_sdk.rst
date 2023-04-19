@@ -30,9 +30,6 @@ for more about the FiftyOne `config` object.
 |                               |                                     |                               | unique to each user. See <blah> for information on creating an API key.                |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 
-.. note::
-
-    You
 
 .. _teams-sdk-api-reference:
 
