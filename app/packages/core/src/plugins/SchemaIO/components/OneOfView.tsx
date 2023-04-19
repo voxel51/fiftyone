@@ -5,7 +5,7 @@ import Tooltip from "./Tooltip";
 import DynamicIO from "./DynamicIO";
 
 export default function OneOfView(props) {
-  const { schema, path, onChange, data } = props;
+  const { schema, path, onChange, data, errors } = props;
   const { types, view } = schema;
   const { oneof = [] } = view;
   const [tab, setTab] = useState(0);
@@ -45,6 +45,7 @@ export default function OneOfView(props) {
           onChange={onChange}
           path={path}
           data={data} // todo: need to support selecting oneof matching data
+          errors={errors}
         />
       </Box>
     </Box>

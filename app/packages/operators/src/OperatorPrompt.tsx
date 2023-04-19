@@ -92,6 +92,7 @@ function Prompting({ operatorPrompt }) {
             }
           }}
           data={operatorPrompt.promptingOperator.params}
+          errors={operatorPrompt?.validationErrors || []}
         />
       </Box>
       <ButtonsContainer>
