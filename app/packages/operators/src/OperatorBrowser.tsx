@@ -2,6 +2,9 @@ import { createPortal } from "react-dom";
 import styled from "styled-components";
 import { useOperatorBrowser } from "./state";
 import { scrollbarStyles } from "@fiftyone/utilities";
+import { Link } from "@mui/material";
+import { Close, Help } from "@mui/icons-material";
+import { useTheme } from "@fiftyone/components";
 
 const BrowserContainer = styled.form`
   position: absolute;
@@ -31,9 +34,9 @@ const ResultsContainer = styled.div`
 
 const QueryInput = styled.input`
   width: 100%;
-  background: ${({ theme }) => theme.background.level1};
+  background: none;
   outline: none;
-  border: solid 1px ${({ theme }) => theme.background.level3};
+  border: none;
   padding: 0.5rem 1rem;
 `;
 const ChoiceContainer = styled.div`
@@ -74,7 +77,47 @@ const Choice = ({ onClick, choice, selected }) => {
   );
 };
 
+
+const QueryDiv = styled.div`
+  position: relative;
+  display: flex;
+  overflow-x: scroll;
+  scrollbar-width: none;
+  min-width: 200px;
+  flex: 1;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+`;
+
+const IconsContainer = styled.div`
+  display: flex;
+  margin-left: auto;
+  align-items: center;
+  z-index: 1;
+  column-gap: 0.5rem;
+  padding: 0 0.5rem;
+  z-index: 801;
+`;
+const TopBarDiv = styled.div`
+  display: flex;
+  background-color: ${({ theme }) => theme.background.level1};
+  border-radius: 3px;
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  box-sizing: border-box;
+  height: 52px;
+  width: 100%;
+`;
+
 export default function OperatorBrowser() {
+  const theme = useTheme();
   const browser = useOperatorBrowser();
 
   if (!browser.isVisible) {
@@ -83,11 +126,31 @@ export default function OperatorBrowser() {
   return createPortal(
     <BrowserContainer onSubmit={browser.onSubmit} onKeyDown={browser.onKeyDown}>
       <BrowserModal>
-        <QueryInput
-          autoFocus
-          placeholder="Search operators by name..."
-          onChange={(e) => browser.onChangeQuery(e.target.value)}
-        />
+        <TopBarDiv>
+          <QueryDiv>
+            <QueryInput
+              autoFocus
+              placeholder="Search operations by name..."
+              onChange={(e) => browser.onChangeQuery(e.target.value)}
+            />
+          </QueryDiv>
+          <IconsContainer>
+            {browser.hasQuery && <Close
+              onClick={() => browser.clear()}
+              style={{
+                cursor: "pointer",
+                color: theme.text.secondary,
+              }}
+            />}
+            <Link
+              href="https://docs.voxel51.com/user_guide/app.html#operations"
+              style={{ display: "flex" }}
+              target="_blank"
+            >
+              <Help style={{ color: theme.text.secondary }} />
+            </Link>
+          </IconsContainer>
+        </TopBarDiv>
         <ResultsContainer>
           {browser.choices.map((choice) => (
             <Choice
