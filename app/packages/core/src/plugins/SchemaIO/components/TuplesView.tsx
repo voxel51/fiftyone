@@ -5,7 +5,7 @@ import DynamicIO from "./DynamicIO";
 import Header from "./Header";
 
 export default function TuplesView(props) {
-  const { onChange, path, schema, data } = props;
+  const { onChange, path, schema, data, errors } = props;
   const { view = {}, items } = schema;
 
   return (
@@ -25,6 +25,7 @@ export default function TuplesView(props) {
               onChange={onChange}
               path={getPath(path, i)}
               data={data?.[i] ?? itemSchema?.default ?? schema?.default?.[i]}
+              errors={errors}
             />
           );
         })}

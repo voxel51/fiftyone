@@ -19,4 +19,4 @@ export function getComponent(schema) {
   return components[component] || UnsupportedView;
 }
 
-export { operatorToIOSchema } from "./operator-schema";
+export { operatorToIOSchema } from "./operator";
