@@ -1340,47 +1340,9 @@ def _make_group_dataset():
 
 
 class DynamicGroupTests(unittest.TestCase):
-    def _make_dataset(self):
-        sample_id1 = ObjectId()
-        sample_id2 = ObjectId()
-
-        samples = [
-            fo.Sample(
-                filepath="frame11.jpg",
-                sample_id=sample_id1,
-                frame_number=1,
-            ),
-            fo.Sample(
-                filepath="frame22.jpg",
-                sample_id=sample_id2,
-                frame_number=2,
-            ),
-            fo.Sample(
-                filepath="frame13.jpg",
-                sample_id=sample_id1,
-                frame_number=3,
-            ),
-            fo.Sample(
-                filepath="frame21.jpg",
-                sample_id=sample_id2,
-                frame_number=1,
-            ),
-            fo.Sample(
-                filepath="frame12.jpg",
-                sample_id=sample_id1,
-                frame_number=2,
-            ),
-        ]
-
-        dataset = fo.Dataset()
-        dataset.add_sample_field("sample_id", fo.ObjectIdField)
-        dataset.add_samples(samples)
-
-        return dataset
-
     @drop_datasets
     def test_group_by(self):
-        dataset = self._make_dataset()
+        dataset = _make_group_by_dataset()
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
         counts = dataset.count_values("sample_id")
 
@@ -1439,7 +1401,7 @@ class DynamicGroupTests(unittest.TestCase):
 
     @drop_datasets
     def test_group_by_ordered(self):
-        dataset = self._make_dataset()
+        dataset = _make_group_by_dataset()
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
         counts = dataset.count_values("sample_id")
 
@@ -1501,7 +1463,7 @@ class DynamicGroupTests(unittest.TestCase):
 
     @drop_datasets
     def test_group_by_complex(self):
-        dataset = self._make_dataset()
+        dataset = _make_group_by_dataset()
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
 
         view = (
@@ -1542,7 +1504,7 @@ class DynamicGroupTests(unittest.TestCase):
 
     @drop_datasets
     def test_group_by_flat(self):
-        dataset = self._make_dataset()
+        dataset = _make_group_by_dataset()
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
 
         view = dataset.group_by("sample_id", flat=True)
@@ -1563,7 +1525,7 @@ class DynamicGroupTests(unittest.TestCase):
 
     @drop_datasets
     def test_flatten(self):
-        dataset = self._make_dataset()
+        dataset = _make_group_by_dataset()
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
 
         view = dataset.group_by("sample_id").sort_by("filepath").flatten()
@@ -1623,6 +1585,137 @@ class DynamicGroupTests(unittest.TestCase):
             [sample_id1, sample_id2],
         )
         self.assertListEqual(view.values("frame_number"), [1, 1])
+
+    @drop_datasets
+    def test_group_by_group_dataset(self):
+        dataset = _make_group_by_group_dataset()
+
+        view = dataset.group_by("scene")
+
+        self.assertEqual(view.media_type, "group")
+        self.assertEqual(view.group_field, "group_field")
+        self.assertEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertEqual(view.group_slice, "left")
+        self.assertEqual(len(view), 2)
+
+        sample = view.first()
+        self.assertEqual(sample.group_field.name, "left")
+
+        view.group_slice = "right"
+
+        self.assertEqual(view.group_slice, "right")
+
+        sample = view.first()
+        self.assertEqual(sample.group_field.name, "right")
+
+        view2 = view.get_dynamic_group("bar")
+
+        self.assertEqual(view2.media_type, "group")
+        self.assertEqual(view2.group_field, "group_field")
+        self.assertEqual(
+            view2.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertEqual(view2.group_slice, "right")
+        self.assertEqual(len(view2), 1)
+
+        sample2 = view2.first()
+
+        self.assertEqual(sample2.scene, "bar")
+        self.assertEqual(sample2.group_field.name, "right")
+
+        group = view2.get_group(sample2.group_field.id)
+
+        self.assertIsInstance(group, dict)
+        self.assertEqual(len(group), 2)
+        for sample in group.values():
+            self.assertEqual(sample.scene, "bar")
+
+
+def _make_group_by_dataset():
+    sample_id1 = ObjectId()
+    sample_id2 = ObjectId()
+
+    samples = [
+        fo.Sample(
+            filepath="frame11.jpg",
+            sample_id=sample_id1,
+            frame_number=1,
+        ),
+        fo.Sample(
+            filepath="frame22.jpg",
+            sample_id=sample_id2,
+            frame_number=2,
+        ),
+        fo.Sample(
+            filepath="frame13.jpg",
+            sample_id=sample_id1,
+            frame_number=3,
+        ),
+        fo.Sample(
+            filepath="frame21.jpg",
+            sample_id=sample_id2,
+            frame_number=1,
+        ),
+        fo.Sample(
+            filepath="frame12.jpg",
+            sample_id=sample_id1,
+            frame_number=2,
+        ),
+    ]
+
+    dataset = fo.Dataset()
+    dataset.add_sample_field("sample_id", fo.ObjectIdField)
+    dataset.add_samples(samples)
+
+    return dataset
+
+
+def _make_group_by_group_dataset():
+    dataset = fo.Dataset()
+    dataset.add_group_field("group_field", default="left")
+
+    group1 = fo.Group()
+    group2 = fo.Group()
+    group3 = fo.Group()
+
+    samples = [
+        fo.Sample(
+            filepath="left-image1.jpg",
+            group_field=group1.element("left"),
+            scene="foo",
+        ),
+        fo.Sample(
+            filepath="right-image1.jpg",
+            group_field=group1.element("right"),
+            scene="foo",
+        ),
+        fo.Sample(
+            filepath="left-image2.jpg",
+            group_field=group2.element("left"),
+            scene="foo",
+        ),
+        fo.Sample(
+            filepath="right-image2.jpg",
+            group_field=group2.element("right"),
+            scene="foo",
+        ),
+        fo.Sample(
+            filepath="left-image3.jpg",
+            group_field=group3.element("left"),
+            scene="bar",
+        ),
+        fo.Sample(
+            filepath="right-image3.jpg",
+            group_field=group3.element("right"),
+            scene="bar",
+        ),
+    ]
+
+    dataset.add_samples(samples)
+
+    return dataset
 
 
 def _rle(values):

@@ -5299,7 +5299,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
-    def mongo(self, pipeline):
+    def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
         """Adds a view stage defined by a raw MongoDB aggregation pipeline.
 
         See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
@@ -5390,7 +5390,13 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Mongo(pipeline))
+        return self._add_view_stage(
+            fos.Mongo(
+                pipeline,
+                _needs_frames=_needs_frames,
+                _group_slices=_group_slices,
+            )
+        )
 
     @view_stage
     def select(self, sample_ids, ordered=False):

@@ -5137,8 +5137,10 @@ class Mongo(ViewStage):
         pipeline: a MongoDB aggregation pipeline (list of dicts)
     """
 
-    def __init__(self, pipeline):
+    def __init__(self, pipeline, _needs_frames=None, _group_slices=None):
         self._pipeline = pipeline
+        self._needs_frames = _needs_frames
+        self._group_slices = _group_slices
 
     @property
     def pipeline(self):
@@ -5149,13 +5151,22 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
+        if self._needs_frames is not None:
+            return self._needs_frames
+
         if not sample_collection._contains_videos():
             return False
 
-        # The pipeline could be anything; always attach frames for videos
+        # The pipeline could be anything; always attach frames
         return True
 
     def _needs_group_slices(self, sample_collection):
+        if self._group_slices is not None:
+            if etau.is_str(self._group_slices):
+                return [self._group_slices]
+
+            return self._group_slices
+
         if sample_collection.media_type != fom.GROUP:
             return None
 
@@ -5163,11 +5174,27 @@ class Mongo(ViewStage):
         return list(sample_collection.group_media_types.keys())
 
     def _kwargs(self):
-        return [["pipeline", self._pipeline]]
+        return [
+            ["pipeline", self._pipeline],
+            ["_needs_frames", self._needs_frames],
+            ["_group_slices", self._group_slices],
+        ]
 
     @classmethod
     def _params(cls):
-        return [{"name": "pipeline", "type": "json", "placeholder": ""}]
+        return [
+            {"name": "pipeline", "type": "json", "placeholder": ""},
+            {
+                "name": "_needs_frames",
+                "type": "NoneType|bool",
+                "default": "None",
+            },
+            {
+                "name": "_group_slices",
+                "type": "NoneType|list<str>|str",
+                "default": "None",
+            },
+        ]
 
 
 class Select(ViewStage):

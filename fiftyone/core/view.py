@@ -211,7 +211,7 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("DatasetView has no groups")
 
-        if self._is_dynamic_groups:
+        if self._is_dynamic_groups and self._dataset.media_type != fom.GROUP:
             raise ValueError("Dynamic grouped collections don't have slices")
 
         if slice_name is not None and slice_name not in self.group_media_types:
@@ -774,6 +774,13 @@ class DatasetView(foc.SampleCollection):
 
         if sort is not None:
             pipeline.append({"$sort": OrderedDict(sort)})
+
+        if root_view.media_type == fom.GROUP:
+            view = root_view.mongo(pipeline, _group_slices=[])
+            if self.group_slice != root_view.group_slice:
+                view.group_slice = self.group_slice
+
+            return view
 
         return root_view.mongo(pipeline)
 
