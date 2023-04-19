@@ -158,3 +158,12 @@ function getPropertiesSchema(property, options?) {
 export function operatorToIOSchema(operatorSchema, options?) {
   return getSchema(operatorSchema, options);
 }
+
+export function getErrorsByPath(errors: []) {
+  return errors.reduce((pathErrors, error) => {
+    const { path } = error;
+    if (!pathErrors[path]) pathErrors[path] = [];
+    pathErrors[path].push(error);
+    return pathErrors;
+  }, {});
+}
