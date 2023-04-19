@@ -312,4 +312,22 @@ export function typeFromJSON({ name, ...rest }): ANY_TYPE {
   throw new Error(`Unknown type ${name}`);
 }
 
+
+export class Placement {
+  constructor(public place: Places, public view: View = null) {}
+  static fromJSON(json) {
+    return new Placement(json.place, json.view ? View.fromJSON(json.view) : null);
+  }
+}
+
+export enum Places {
+  SAMPLES_GRID_ACTIONS = "samples-grid-actions",
+  SAMPLES_GRID_SECONDARY_ACTIONS = "samples-grid-secondary-actions",
+  EMBEDDINGS_ACTIONS = "embeddings-actions",
+  HISTOGRAM_ACTIONS = "histograms-actions",
+  MAP_ACTIONS = "map-actions",
+  MAP_SECONDARY_ACTIONS = "map-secondary-actions",
+  DISPLAY_OPTIONS = "display-options"
+}
+
 export type ANY_TYPE = String | Boolean | Number | List | Enum;
