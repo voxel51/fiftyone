@@ -102,6 +102,7 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
         customizedColorSettings,
         eligibleFields
       );
+      const jsonCustomizeColor = JSON.stringify(validated);
       if (validated) {
         resetCustomizeColors(validated);
         validated.forEach((update) => setCustomizeColor(update));
