@@ -9,6 +9,7 @@ import {
   VisibilityOff,
   Wallpaper,
   Search,
+  List
 } from "@mui/icons-material";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
@@ -31,6 +32,9 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { useOperatorBrowser, useOperatorPlacements } from "@fiftyone/operators/src/state";
+import {types, OperatorPlacement} from '@fiftyone/operators'
+import { Button } from "@mui/material";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -385,9 +389,27 @@ const ActionsRowDiv = styled.div`
   align-items: center;
 `;
 
+export const BrowseOperations = () => {
+  const browser = useOperatorBrowser();
+  return (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={<List />}
+        onClick={() => browser.toggle()}
+        title={"Browse operations"}
+      />
+    </ActionDiv>
+  )
+}
+
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
+  // const {placements} = useOperatorPlacements(types.Places.SAMPLES_GRID_ACTIONS)
+
+  // console.log({placements})
 
   return (
     <ActionsRowDiv>
@@ -398,6 +420,10 @@ export const GridActionsRow = () => {
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <BrowseOperations />
+      {/* {placements.map(({placement, operator}) => (
+        <OperatorPlacement placement={placement} operator={operator}  />
+      ))} */}
     </ActionsRowDiv>
   );
 };

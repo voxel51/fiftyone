@@ -10,7 +10,7 @@ from .registry import list_operators, operator_exists, get_operator
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from fiftyone.server.decorators import route
-from .executor import execute_operator, resolve_type
+from .executor import execute_operator, resolve_type, resolve_placement
 from .loader import list_module_errors
 from starlette.exceptions import HTTPException
 
@@ -23,6 +23,18 @@ class ListOperators(HTTPEndpoint):
         ]
         return {"operators": operators_as_json, "errors": list_module_errors()}
 
+class ResolvePlacements(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict):
+        placements = []
+        for operator in list_operators():
+            placement = resolve_placement(operator, data)
+            if placement is not None:
+                placements.append({
+                    "operator_name": operator.name,
+                    "placement": placement.to_json(),
+                })
+        return {"placements": placements}
 
 class ExecuteOperator(HTTPEndpoint):
     @route
@@ -42,7 +54,6 @@ class ExecuteOperator(HTTPEndpoint):
             print(result.error)
             raise HTTPException(status_code=500, detail=json)
         return json
-
 
 class ResolveType(HTTPEndpoint):
     @route
@@ -65,4 +76,5 @@ OperatorRoutes = [
     ("/operators", ListOperators),
     ("/operators/execute", ExecuteOperator),
     ("/operators/resolve-type", ResolveType),
+    ("/operators/resolve-placements", ResolvePlacements),
 ]
