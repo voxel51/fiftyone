@@ -269,7 +269,7 @@ def delete_zoo_plugin(plugin_name):
     plugin_dir = find_zoo_plugin(plugin_name)
     if plugin_dir and os.path.isdir(plugin_dir):
         shutil.rmtree(plugin_dir)
-        logging.info(f"Deleted plugin at {plugin_dir}")
+        print(f"Deleted plugin at {plugin_dir}")
         return
     raise ValueError(f"Plugin directory '{plugin_dir}' does not exist.")
 
@@ -444,7 +444,6 @@ def _find_plugin_dir_js(name: str) -> Optional[str]:
 def _get_plugin_name(config_file: str) -> Optional[str]:
     """Returns the plugin name."""
     if not os.path.exists(config_file):
-        print("Config file does not exist at", config_file)
         return None
     if config_file.endswith("fiftyone.yml"):
         return _get_plugin_name_python(config_file)
