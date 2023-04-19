@@ -18,10 +18,11 @@ import {
   getInvocationRequestQueue,
   InvocationRequestQueue,
   OperatorResult,
+  fetchRemotePlacements,
 } from "./operators";
 import * as fos from "@fiftyone/state";
 import { BROWSER_CONTROL_KEYS } from "./constants";
-
+import {Places} from './types'
 export const promptingOperatorState = atom({
   key: "promptingOperator",
   default: null,
@@ -65,34 +66,53 @@ export const showOperatorPromptSelector = selector({
 });
 
 export const usePromptOperatorInput = () => {
+  const [recentlyUsedOperators, setRecentlyUsedOperators] = useRecoilState(recentlyUsedOperatorsState);
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
 
   const prompt = (operatorName) => {
+    setRecentlyUsedOperators((recentlyUsedOperators) => {
+      const update = new Set([
+        ...recentlyUsedOperators,
+        operatorName,
+      ])
+      return Array.from(update).slice(-5);
+    });
+
     setPromptingOperator({ operatorName, params: {} });
   };
 
   return prompt;
 };
 
+const globalContextSelector = selector({
+  key: "globalContext",
+  get: ({ get }) => {
+    const datasetName = get(fos.datasetName);
+    const view = get(fos.view);
+    const extended = get(fos.extendedStages);
+    const filters = get(fos.filters);
+    const selectedSamples = get(fos.selectedSamples);
+    return {
+      datasetName,
+      view,
+      extended,
+      filters,
+      selectedSamples,
+    };
+  }
+});
+
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
   get:
     (operatorName) =>
     ({ get }) => {
-      const datasetName = get(fos.datasetName);
-      const view = get(fos.view);
-      const extended = get(fos.extendedStages);
-      const filters = get(fos.filters);
-      const selectedSamples = get(fos.selectedSamples);
+      const globalContext = get(globalContextSelector);
       const params = get(currentOperatorParamsSelector(operatorName));
       return {
-        datasetName,
-        view,
-        extended,
-        filters,
-        selectedSamples,
+        ...globalContext,
         params,
       };
     },
@@ -266,16 +286,40 @@ export const operatorBrowserQueryState = atom({
   key: "operatorBrowserQueryState",
   default: "",
 });
+
+function sortResults(results, recentlyUsedOperators) {
+  return results.map((result) => {
+    let score = (result.description || result.label).charCodeAt(0);
+    if (recentlyUsedOperators.includes(result.label)) {
+      const recentIdx = recentlyUsedOperators.indexOf(result.label);
+      const recentScore = (recentlyUsedOperators.length - recentIdx);
+      score = recentScore;
+    }
+    return {
+      ...result,
+      score
+    }
+  }).sort((a, b) => {
+    if (a.score < b.score) {
+      return -1;
+    }
+    if (a.scrote > b.scrote) {
+      return 1;
+    }
+    return 0
+  })
+}
+
 export const operatorBrowserChoices = selector({
   key: "operatorBrowserChoices",
   get: ({ get }) => {
     const allChoices = get(availableOperators);
     const query = get(operatorBrowserQueryState);
+    let results = [...allChoices];
     if (query && query.length > 0) {
-      return filterChoicesByQuery(query, allChoices);
-    } else {
-      return allChoices;
+      results = filterChoicesByQuery(query, allChoices);
     }
+    return sortResults(results, get(recentlyUsedOperatorsState))
   },
 });
 export const operatorChoiceState = atom({
@@ -283,9 +327,14 @@ export const operatorChoiceState = atom({
   default: null,
 });
 
+export const recentlyUsedOperatorsState = atom({
+  key: "recentlyUsedOperators",
+  default: [],
+})
+
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
-  const setQuery = useSetRecoilState(operatorBrowserQueryState);
+  const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
   const [selectedValue, setSelected] = useRecoilState(operatorChoiceState);
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
@@ -300,6 +349,8 @@ export function useOperatorBrowser() {
     setQuery("");
     setSelected(null);
   };
+
+
 
   const onSubmit = () => {
     close();
@@ -367,6 +418,10 @@ export function useOperatorBrowser() {
     [selectNext, selectPrevious, onSubmit, isVisible]
   );
 
+  const toggle = useCallback(() => {
+    setIsVisible((isVisible) => !isVisible);
+  }, [setIsVisible]);
+
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown);
     return () => {
@@ -382,6 +437,11 @@ export function useOperatorBrowser() {
     [setSelected, setIsVisible, onSubmit]
   );
 
+  const clear = () => {
+    setQuery("");
+    setSelected(null);
+  }
+
   return {
     selectedValue,
     isVisible,
@@ -392,6 +452,9 @@ export function useOperatorBrowser() {
     selectPrevious,
     setSelectedAndSubmit,
     close,
+    clear,
+    toggle,
+    hasQuery: typeof query === "string" && query.length > 0,
   };
 }
 
@@ -521,7 +584,6 @@ export function useInvocationRequestExecutor({
   onSuccess,
   onError,
 }) {
-  console.log({ queueItem });
   const executor = useOperatorExecutor(queueItem.request.operatorName, {
     onSuccess: () => {
       onSuccess(queueItem.id);
@@ -532,4 +594,49 @@ export function useInvocationRequestExecutor({
   });
 
   return executor;
+}
+
+export const operatorPlacementsSelector = selector({
+  key: "operatorPlacementsSelector",
+  get: async ({ get }) => {
+    // const globalContext = get(globalContextSelector);
+
+    const datasetName = get(fos.datasetName);
+    const view = get(fos.view);
+    const extended = get(fos.extendedStages);
+    const filters = get(fos.filters);
+    // TODO: this should include the actual selected samples
+    // using get(fos.selectedSamples) ends up in an infinite loop
+    const selectedSamples = new Set() // get(fos.selectedSamples);
+    const _ctx = {
+      datasetName,
+      view,
+      extended,
+      filters,
+      selectedSamples,
+    };
+    const ctx = new ExecutionContext({}, _ctx);
+    const placements = await fetchRemotePlacements(ctx);
+    return placements;
+  }
+});
+
+export const placementsForPlaceSelector = selectorFamily({
+  key: "operatorsForPlaceSelector",
+  get: (place: Places) => ({ get }) => {
+    const placements = get(operatorPlacementsSelector);
+    return placements
+      .filter((p) => p.placement.place === place)
+      .map((p) => ({
+        placement: p.placement,
+        operator: p.operator.operator
+      }));
+  }
+});
+
+
+export function useOperatorPlacements(place: Place) {
+  const placements = useRecoilValue(placementsForPlaceSelector(place));
+
+  return {placements}
 }

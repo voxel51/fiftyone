@@ -5,7 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object
+from .types import Object, Form
 
 
 class Operator:
@@ -23,8 +23,6 @@ class Operator:
         self,
         name=None,
         description=None,
-        input_view=None,
-        output_view=None,
     ):
         if name is None:
             raise ValueError("Operator name cannot be None")
@@ -33,8 +31,8 @@ class Operator:
         self.description = description
         self.definition = Object()
 
-        self.definition.define_property("inputs", Object(), view=input_view)
-        self.definition.define_property("outputs", Object(), view=output_view)
+        self.definition.define_property("inputs", Object(), view=Form())
+        self.definition.define_property("outputs", Object())
 
     @property
     def inputs(self):
@@ -65,7 +63,10 @@ class Operator:
 
     def resolve_type(self, ctx, type):
         if type == "inputs":
-            return self.resolve_input(ctx)
+            resolved_input_property = self.resolve_input(ctx)
+            if resolved_input_property.view is None:
+                resolved_input_property.view = Form()
+            return resolved_input_property
         elif type == "outputs":
             return self.resolve_output(ctx)
         else:
@@ -76,6 +77,9 @@ class Operator:
 
     def resolve_output(self, ctx):
         return self.definition.get_property("outputs")
+
+    def resolve_placement(self, ctx):
+        return None
 
     def to_json(self):
         """Returns a JSON representation of the operator."""
