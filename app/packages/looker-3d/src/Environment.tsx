@@ -2,7 +2,7 @@
  * This module exports cameras and lights for the scene
  */
 import { OrbitControls } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import { MutableRefObject, useEffect, useMemo } from "react";
 import { Box3, Camera, Quaternion, Vector3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -59,11 +59,9 @@ export const Environment = ({
 
     const controls = controlsRef.current;
 
-    console.log("adding event listener");
     controls?.addEventListener("change", handleCameraChange);
 
     return () => {
-      console.log("removing event listener");
       controls?.removeEventListener("change", handleCameraChange);
     };
   }, [camera, cameraRef, controlsRef]);
