@@ -9,7 +9,7 @@ import { SchemaIOComponent } from ".";
 import { types } from "@fiftyone/operators";
 import annotation from "./fixtures/annotation.json";
 import { log, operatorToIOSchema } from "./utils";
-import InferredView from "./components/InferredView";
+import { getErrorsByPath } from "./utils/operator";
 
 registerComponent({
   name: "OperatorIO",
@@ -39,10 +39,15 @@ function OperatorIO() {
 }
 
 function OperatorIOComponent(props) {
-  const { schema, onChange, type, data } = props;
+  const { schema, onChange, type, data, errors } = props;
   const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
 
   return (
-    <SchemaIOComponent schema={ioSchema} onChange={onChange} data={data} />
+    <SchemaIOComponent
+      schema={ioSchema}
+      onChange={onChange}
+      data={data}
+      errors={getErrorsByPath(errors)}
+    />
   );
 }
