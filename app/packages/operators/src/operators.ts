@@ -136,6 +136,12 @@ export class Operator {
     const outputsType = this.outputs.type as types.ObjectType;
     return outputsType.needsResolution();
   }
+  async resolvePlacement(ctx: ExecutionContext) {
+    return null;
+  }
+  async resolvePlacementRemote(ctx: ExecutionContext) {
+
+  }
   needsOutput(result: OperatorResult) {
     const outputType = this.outputs.type as types.ObjectType;
     if (outputType.properties.size > 0 && result.hasOutputContent()) {
@@ -362,6 +368,36 @@ export async function resolveRemoteType(
   }
 
   return types.Property.fromJSON(typeAsJSON);
+}
+
+
+export async function fetchRemotePlacements(
+  ctx: ExecutionContext
+) {
+  const currentContext = ctx._currentContext;
+  const result = await getFetchFunction()(
+    "POST",
+    "/operators/resolve-placements",
+    {
+      dataset_name: currentContext.datasetName,
+      extended: currentContext.extended,
+      view: currentContext.view,
+      filters: currentContext.filters,
+      selected: currentContext.selectedSamples
+        ? Array.from(currentContext.selectedSamples)
+        : [],
+    }
+  );
+  if (result && result.error) {
+    throw new Error(result.error);
+  }
+
+  const placementsAsJSON = result.placements;
+
+  return placementsAsJSON.map(p => ({
+    operator: getLocalOrRemoteOperator(p.operator_name),
+    placement: types.Placement.fromJSON(p.placement),
+  }));
 }
 
 // a queue that stores the invocation requests for all operator results
