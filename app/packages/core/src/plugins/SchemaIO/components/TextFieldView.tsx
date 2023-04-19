@@ -1,6 +1,7 @@
 import React from "react";
 import { TextField } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
+import { log } from "../utils";
 
 export default function TextFieldView(props) {
   const { schema, onChange, path, data } = props;

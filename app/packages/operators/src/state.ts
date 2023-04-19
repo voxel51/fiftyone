@@ -14,7 +14,6 @@ import {
   listLocalAndRemoteOperators,
   executeOperator,
   ExecutionContext,
-  Executor,
   getInvocationRequestQueue,
   InvocationRequestQueue,
   OperatorResult,
@@ -22,7 +21,9 @@ import {
 } from "./operators";
 import * as fos from "@fiftyone/state";
 import { BROWSER_CONTROL_KEYS } from "./constants";
-import {Places} from './types'
+import { Places } from "./types";
+import { ValidationContext } from "./validation";
+
 export const promptingOperatorState = atom({
   key: "promptingOperator",
   default: null,
@@ -46,16 +47,14 @@ export const operatorPromptState = selector({
 
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
-  get:
-    (operatorName) =>
-    ({ get }) => {
-      const promptingOperator = get(promptingOperatorState);
-      if (!promptingOperator) {
-        return {};
-      }
-      const { params } = promptingOperator;
-      return params;
-    },
+  get: (operatorName) => ({ get }) => {
+    const promptingOperator = get(promptingOperatorState);
+    if (!promptingOperator) {
+      return {};
+    }
+    const { params } = promptingOperator;
+    return params;
+  },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -66,17 +65,16 @@ export const showOperatorPromptSelector = selector({
 });
 
 export const usePromptOperatorInput = () => {
-  const [recentlyUsedOperators, setRecentlyUsedOperators] = useRecoilState(recentlyUsedOperatorsState);
+  const [recentlyUsedOperators, setRecentlyUsedOperators] = useRecoilState(
+    recentlyUsedOperatorsState
+  );
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
 
   const prompt = (operatorName) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
-      const update = new Set([
-        ...recentlyUsedOperators,
-        operatorName,
-      ])
+      const update = new Set([...recentlyUsedOperators, operatorName]);
       return Array.from(update).slice(-5);
     });
 
@@ -101,27 +99,31 @@ const globalContextSelector = selector({
       filters,
       selectedSamples,
     };
-  }
+  },
 });
 
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
-  get:
-    (operatorName) =>
-    ({ get }) => {
-      const globalContext = get(globalContextSelector);
-      const params = get(currentOperatorParamsSelector(operatorName));
-      return {
-        ...globalContext,
-        params,
-      };
-    },
+  get: (operatorName) => ({ get }) => {
+    const globalContext = get(globalContextSelector);
+    const params = get(currentOperatorParamsSelector(operatorName));
+    return {
+      ...globalContext,
+      params,
+    };
+  },
 });
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const { datasetName, view, extended, filters, selectedSamples, params } =
-    curCtx;
+  const {
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    params,
+  } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -159,6 +161,7 @@ export const useOperatorPrompt = () => {
   useEffect(() => {
     resolveInputFields();
   }, [ctx.params]);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   const [outputFields, setOutputFields] = useState();
   const resolveOutputFields = useCallback(async () => {
@@ -175,19 +178,24 @@ export const useOperatorPrompt = () => {
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      (fieldName, value) => {
-        const state = get(promptingOperatorState);
-        set(promptingOperatorState, {
-          ...state,
-          params: {
-            ...state.params,
-            [fieldName]: value,
-          },
-        });
-      }
+    ({ get, set }) => (fieldName, value) => {
+      const state = get(promptingOperatorState);
+      set(promptingOperatorState, {
+        ...state,
+        params: {
+          ...state.params,
+          [fieldName]: value,
+        },
+      });
+    }
   );
-  const execute = useCallback(() => {
+  const execute = useCallback(async () => {
+    const resolved = await operator.resolveInput(ctx);
+    const validationContext = new ValidationContext(ctx, resolved);
+    if (validationContext.invalid) {
+      setValidationErrors(validationContext.toProps().errors);
+      return;
+    }
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
   const close = () => {
@@ -250,6 +258,7 @@ export const useOperatorPrompt = () => {
     hasResultOrError,
     close,
     cancel: close,
+    validationErrors,
   };
 };
 
@@ -288,26 +297,28 @@ export const operatorBrowserQueryState = atom({
 });
 
 function sortResults(results, recentlyUsedOperators) {
-  return results.map((result) => {
-    let score = (result.description || result.label).charCodeAt(0);
-    if (recentlyUsedOperators.includes(result.label)) {
-      const recentIdx = recentlyUsedOperators.indexOf(result.label);
-      const recentScore = (recentlyUsedOperators.length - recentIdx);
-      score = recentScore;
-    }
-    return {
-      ...result,
-      score
-    }
-  }).sort((a, b) => {
-    if (a.score < b.score) {
-      return -1;
-    }
-    if (a.scrote > b.scrote) {
-      return 1;
-    }
-    return 0
-  })
+  return results
+    .map((result) => {
+      let score = (result.description || result.label).charCodeAt(0);
+      if (recentlyUsedOperators.includes(result.label)) {
+        const recentIdx = recentlyUsedOperators.indexOf(result.label);
+        const recentScore = recentlyUsedOperators.length - recentIdx;
+        score = recentScore;
+      }
+      return {
+        ...result,
+        score,
+      };
+    })
+    .sort((a, b) => {
+      if (a.score < b.score) {
+        return -1;
+      }
+      if (a.scrote > b.scrote) {
+        return 1;
+      }
+      return 0;
+    });
 }
 
 export const operatorBrowserChoices = selector({
@@ -319,7 +330,7 @@ export const operatorBrowserChoices = selector({
     if (query && query.length > 0) {
       results = filterChoicesByQuery(query, allChoices);
     }
-    return sortResults(results, get(recentlyUsedOperatorsState))
+    return sortResults(results, get(recentlyUsedOperatorsState));
   },
 });
 export const operatorChoiceState = atom({
@@ -330,7 +341,7 @@ export const operatorChoiceState = atom({
 export const recentlyUsedOperatorsState = atom({
   key: "recentlyUsedOperators",
   default: [],
-})
+});
 
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
@@ -349,8 +360,6 @@ export function useOperatorBrowser() {
     setQuery("");
     setSelected(null);
   };
-
-
 
   const onSubmit = () => {
     close();
@@ -440,7 +449,7 @@ export function useOperatorBrowser() {
   const clear = () => {
     setQuery("");
     setSelected(null);
-  }
+  };
 
   return {
     selectedValue,
@@ -607,7 +616,7 @@ export const operatorPlacementsSelector = selector({
     const filters = get(fos.filters);
     // TODO: this should include the actual selected samples
     // using get(fos.selectedSamples) ends up in an infinite loop
-    const selectedSamples = new Set() // get(fos.selectedSamples);
+    const selectedSamples = new Set(); // get(fos.selectedSamples);
     const _ctx = {
       datasetName,
       view,
@@ -618,7 +627,7 @@ export const operatorPlacementsSelector = selector({
     const ctx = new ExecutionContext({}, _ctx);
     const placements = await fetchRemotePlacements(ctx);
     return placements;
-  }
+  },
 });
 
 export const placementsForPlaceSelector = selectorFamily({
@@ -629,14 +638,13 @@ export const placementsForPlaceSelector = selectorFamily({
       .filter((p) => p.placement.place === place)
       .map((p) => ({
         placement: p.placement,
-        operator: p.operator.operator
+        operator: p.operator.operator,
       }));
-  }
+  },
 });
-
 
 export function useOperatorPlacements(place: Place) {
   const placements = useRecoilValue(placementsForPlaceSelector(place));
 
-  return {placements}
+  return { placements };
 }
