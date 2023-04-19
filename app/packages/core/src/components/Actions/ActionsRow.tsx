@@ -10,6 +10,7 @@ import {
   Wallpaper,
   Search,
   ColorLens,
+  List,
 } from "@mui/icons-material";
 import React, {
   MutableRefObject,
@@ -40,6 +41,12 @@ import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
+import {
+  useOperatorBrowser,
+  useOperatorPlacements,
+} from "@fiftyone/operators/src/state";
+import { types, OperatorPlacement } from "@fiftyone/operators";
+import { Button } from "@mui/material";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -337,33 +344,32 @@ const SaveFilters = () => {
   const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const loading = await snapshot.getPromise(fos.savingFilters);
-        const selected = await snapshot.getPromise(fos.selectedSamples);
+    ({ snapshot, set }) => async () => {
+      const loading = await snapshot.getPromise(fos.savingFilters);
+      const selected = await snapshot.getPromise(fos.selectedSamples);
 
-        if (loading) {
-          return;
-        }
+      if (loading) {
+        return;
+      }
 
-        set(fos.savingFilters, true);
-        if (selected.size > 0) {
-          setView(
-            (v) => [
-              ...v,
-              {
-                _cls: "fiftyone.core.stages.Select",
-                kwargs: [["sample_ids", [...selected]]],
-              },
-            ],
-            undefined,
-            undefined,
-            true
-          );
-        } else {
-          setView((v) => v);
-        }
-      },
+      set(fos.savingFilters, true);
+      if (selected.size > 0) {
+        setView(
+          (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [["sample_ids", [...selected]]],
+            },
+          ],
+          undefined,
+          undefined,
+          true
+        );
+      } else {
+        setView((v) => v);
+      }
+    },
     []
   );
 
@@ -425,9 +431,27 @@ const ActionsRowDiv = styled.div`
   align-items: center;
 `;
 
+export const BrowseOperations = () => {
+  const browser = useOperatorBrowser();
+  return (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={<List />}
+        onClick={() => browser.toggle()}
+        title={"Browse operations"}
+      />
+    </ActionDiv>
+  );
+};
+
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
+  // const {placements} = useOperatorPlacements(types.Places.SAMPLES_GRID_ACTIONS)
+
+  // console.log({placements})
 
   const isUsingSessionColorScheme = useRecoilValue(
     fos.isUsingSessionColorScheme
@@ -462,6 +486,10 @@ export const GridActionsRow = () => {
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <BrowseOperations />
+      {/* {placements.map(({placement, operator}) => (
+        <OperatorPlacement placement={placement} operator={operator}  />
+      ))} */}
       <Options modal={false} />
     </ActionsRowDiv>
   );
