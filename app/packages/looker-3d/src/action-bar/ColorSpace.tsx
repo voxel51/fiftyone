@@ -168,17 +168,15 @@ const CustomColorSpace = () => {
       )}
       {activePcdSlices.map((slice) => {
         return (
-          <>
-            <MultiPcdColorPickerContainer key={slice}>
-              <span>{slice} </span>
-              <ColorPickerBox
-                backgroundColor={customColorMap[slice]}
-                onClick={() => {
-                  setColorPickerSlice((prev) => (prev === slice ? "" : slice));
-                }}
-              />
-            </MultiPcdColorPickerContainer>
-          </>
+          <MultiPcdColorPickerContainer key={slice}>
+            <span>{slice} </span>
+            <ColorPickerBox
+              backgroundColor={customColorMap[slice]}
+              onClick={() => {
+                setColorPickerSlice((prev) => (prev === slice ? "" : slice));
+              }}
+            />
+          </MultiPcdColorPickerContainer>
         );
       })}
     </animated.div>
