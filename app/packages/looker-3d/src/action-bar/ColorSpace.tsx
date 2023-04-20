@@ -83,12 +83,12 @@ const ChromePickerContainer = styled.div`
   margin-top: 0.5em;
   margin-right: 0.5em;
   display: flex;
-  margin: auto;
+  margin: 0.5em auto;
 `;
 
 const ColorPickerBox = styled.div<{ backgroundColor: string }>`
   width: 100%;
-  height: 2rem;
+  min-height: 2rem;
   margin: 0.5em 0.5em 0.25em 0.5em;
   background-color: ${(props) => props.backgroundColor};
 `;
