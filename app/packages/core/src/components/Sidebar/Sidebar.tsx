@@ -21,7 +21,7 @@ import {
   useEventHandler,
   useSetView,
 } from "@fiftyone/state";
-import { scrollbarStyles } from "../utils";
+import { scrollbarStyles, TabOption } from "../utils";
 import { Resizable } from "re-resizable";
 import {
   useRecoilState,
@@ -46,6 +46,8 @@ import {
   VisibilityOff,
   VisibilityRounded,
 } from "@mui/icons-material";
+import Typography from "@mui/material/Typography";
+import { PanelTab, PanelTabs } from "@fiftyone/spaces/src/components";
 
 const MARGIN = 3;
 
@@ -62,6 +64,33 @@ const ModalWrapper = styled.div`
   justify-content: center;
   background-color: ${({ theme }) => theme.neutral.softBg};
 `;
+
+// todo: move
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+// todo: move
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          <Typography>{children}</Typography>
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const fn = (
   items: InteractiveItems,
@@ -509,6 +538,7 @@ const InteractiveSidebar = ({
   const viewStages = useRecoilValue(fos.view);
   const setView = useSetView();
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
+  const [selectedTab, setSelectedTab] = useState("selection");
   console.log("schema", schema);
   console.log("entries", entries);
   console.log("eligibleEntries", eligibleEntries);
@@ -860,7 +890,7 @@ const InteractiveSidebar = ({
               event.target === wrapperRef.current && console.log("TODO")
             }
           >
-            <NewContainer style={{ ...screen, zIndex: 10001, padding: "1rem" }}>
+            <NewContainer style={{ ...screen, zIndex: 10001, padding: "2rem" }}>
               <Box
                 style={{
                   position: "relative",
@@ -884,145 +914,166 @@ const InteractiveSidebar = ({
                   }}
                 />
               </Box>
-              <Box style={{ position: "relative", padding: "1rem 0" }}>
-                <input
-                  value={searchTerm}
-                  placeholder="search fields and/or attributes"
-                  style={{ color: "#232323", width: "100%" }}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </Box>
-              <Box
-                style={{
-                  position: "relative",
-                  padding: "0 0 1rem 0",
-                  color: "black",
-                  display: "flex",
-                }}
-              >
-                Fields only
-                <Checkbox
-                  name={"Carousel"}
-                  value={fieldsOnly}
-                  checked={fieldsOnly}
-                  onChange={() => setFieldsOnly(!fieldsOnly)}
-                  style={{ padding: "4px 2px" }}
-                />
-              </Box>
-              <Box
-                style={{
-                  position: "relative",
-                  height: "50vh",
-                  overflow: "auto",
-                  color: "#232323",
-                  border: "1px solid #efefef",
-                }}
-              >
-                {Object.keys(schema)
-                  .sort()
-                  .filter((path) => {
-                    // TODO
-                    if (fieldsOnly) {
-                      console.log("path", path);
-                      return (
-                        !path?.includes(".") &&
-                        schema[path]?.searchField?.includes(searchTerm)
-                      );
-                    }
-                    if (!searchTerm) {
-                      return true;
-                    } else if (
-                      searchTerm &&
-                      schema[path]?.searchField?.includes(searchTerm)
-                    ) {
-                      return true;
-                    }
-                    return false;
-                  })
-                  .map((path: string) => {
-                    const count = path.split(".")?.length;
-                    const isSelected = selectedPaths.has(path);
-                    const pathLabel = path.split(".");
-                    const pathLabelFinal = pathLabel[pathLabel.length - 1];
-                    const skip =
-                      schema[path].ftype === "fiftyone.core.fields.DictField" ||
-                      path.includes(".logits");
-
-                    if (skip) return null;
-
-                    return (
-                      <Box
-                        style={{
-                          padding: "0.25rem 0.25rem",
-                          borderBottom: "1px solid #efefef",
-                          display: "flex",
-                        }}
-                      >
-                        <Box>
-                          <Checkbox
-                            name={"Carousel"}
-                            value={path}
-                            checked={isSelected}
-                            onChange={() => {
-                              toggleSelection(path, isSelected);
-                            }}
-                            style={{
-                              padding: 0,
-                            }}
-                          />
-                        </Box>
-                        <Box
-                          style={{ paddingLeft: `${(count - 1) * 15 + 5}px` }}
-                        >
-                          {pathLabelFinal}
-                        </Box>
-                      </Box>
-                    );
+              <Box sx={{ position: "relative !important" }}>
+                <TabOption
+                  active={selectedTab}
+                  options={["selection", "search"].map((value) => {
+                    return {
+                      text: value,
+                      title: `Fiele ${value}`,
+                      onClick: () => setSelectedTab(value),
+                    };
                   })}
+                />
               </Box>
-              <Box
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  padding: "1rem 0",
-                }}
-              >
-                <button
-                  style={{
-                    color: "black",
-                  }}
-                  onClick={() => {
-                    const stageKwargs = [
-                      ["field_names", [...selectedPaths]],
-                      ["_allow_missing", true],
-                    ];
-                    const stageCls = "fiftyone.core.stages.SelectFields";
-                    const stage = {
-                      _cls: stageCls,
-                      kwargs: stageKwargs,
-                    } as Stage;
-                    try {
-                      setView([stage]);
-                    } catch (e) {
-                      console.log("error", e);
-                    } finally {
-                      setSettingsModal({ open: false });
-                    }
-                  }}
-                >
-                  Add to view
-                </button>
-                <button
-                  style={{ color: "black" }}
-                  onClick={() => {
-                    setSchemaModal({ open: false });
-                    setSearchTerm("");
-                    setSelectedPaths(new Set());
-                  }}
-                >
-                  cancel
-                </button>
-              </Box>
+              {selectedTab === "search" && (
+                <Box style={{ display: "flex", position: "relative" }}>
+                  <input
+                    value={searchTerm}
+                    placeholder="search fields and/or attributes"
+                    style={{ color: "#232323", width: "100%" }}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </Box>
+              )}
+              {selectedTab === "selection" && (
+                <Box display="flex" flexDirection="column" position="relative">
+                  <Box
+                    style={{
+                      position: "relative",
+                      padding: "1rem 0",
+                      color: "black",
+                      display: "flex",
+                    }}
+                  >
+                    Fields only
+                    <Checkbox
+                      name={"Carousel"}
+                      value={fieldsOnly}
+                      checked={fieldsOnly}
+                      onChange={() => setFieldsOnly(!fieldsOnly)}
+                      style={{ padding: "4px 2px" }}
+                    />
+                  </Box>
+                  <Box
+                    style={{
+                      position: "relative",
+                      height: "50vh",
+                      overflow: "auto",
+                      color: "#232323",
+                      border: "1px solid #efefef",
+                    }}
+                  >
+                    {Object.keys(schema)
+                      .sort()
+                      .filter((path) => {
+                        // TODO
+                        if (fieldsOnly) {
+                          console.log("path", path);
+                          return (
+                            !path?.includes(".") &&
+                            schema[path]?.searchField?.includes(searchTerm)
+                          );
+                        }
+                        if (!searchTerm) {
+                          return true;
+                        } else if (
+                          searchTerm &&
+                          schema[path]?.searchField?.includes(searchTerm)
+                        ) {
+                          return true;
+                        }
+                        return false;
+                      })
+                      .map((path: string) => {
+                        const count = path.split(".")?.length;
+                        const isSelected = selectedPaths.has(path);
+                        const pathLabel = path.split(".");
+                        const pathLabelFinal = pathLabel[pathLabel.length - 1];
+                        const skip =
+                          schema[path].ftype ===
+                            "fiftyone.core.fields.DictField" ||
+                          path.includes(".logits");
+
+                        if (skip) return null;
+
+                        return (
+                          <Box
+                            style={{
+                              padding: "0.25rem 0.25rem",
+                              borderBottom: "1px solid #efefef",
+                              display: "flex",
+                            }}
+                          >
+                            <Box>
+                              <Checkbox
+                                name={"Carousel"}
+                                value={path}
+                                checked={isSelected}
+                                onChange={() => {
+                                  toggleSelection(path, isSelected);
+                                }}
+                                style={{
+                                  padding: 0,
+                                }}
+                              />
+                            </Box>
+                            <Box
+                              style={{
+                                paddingLeft: `${(count - 1) * 15 + 5}px`,
+                              }}
+                            >
+                              {pathLabelFinal}
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                  </Box>
+                  <Box
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      padding: "1rem 0",
+                    }}
+                  >
+                    <button
+                      style={{
+                        color: "black",
+                      }}
+                      onClick={() => {
+                        const stageKwargs = [
+                          ["field_names", [...selectedPaths]],
+                          ["_allow_missing", true],
+                        ];
+                        const stageCls = "fiftyone.core.stages.SelectFields";
+                        const stage = {
+                          _cls: stageCls,
+                          kwargs: stageKwargs,
+                        } as Stage;
+                        try {
+                          setView([stage]);
+                        } catch (e) {
+                          console.log("error", e);
+                        } finally {
+                          setSettingsModal({ open: false });
+                        }
+                      }}
+                    >
+                      Add to view
+                    </button>
+                    <button
+                      style={{ color: "black" }}
+                      onClick={() => {
+                        setSchemaModal({ open: false });
+                        setSearchTerm("");
+                        setSelectedPaths(new Set());
+                      }}
+                    >
+                      cancel
+                    </button>
+                  </Box>
+                </Box>
+              )}
             </NewContainer>
           </ModalWrapper>
         </Fragment>
