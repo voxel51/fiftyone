@@ -173,7 +173,7 @@ class ValidationError:
 class ValidationContext:
     def __init__(self, ctx, inputs_property):
         self.ctx = ctx
-        self.params = ctx["params"]
+        self.params = ctx.params
         self.inputs_property = inputs_property
         self._errors = []
         self.errors = self._validate()
