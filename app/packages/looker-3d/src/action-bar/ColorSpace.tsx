@@ -121,8 +121,8 @@ const CustomColorSpace = () => {
     [setCustomColorMap]
   );
 
-  if (activePcdSlices.length < 2) {
-    const slice = activePcdSlices.length > 0 ? defaultPcdSlice : "default";
+  if (!defaultPcdSlice || activePcdSlices?.length < 2) {
+    const slice = activePcdSlices?.length > 0 ? defaultPcdSlice : "default";
     return (
       <animated.div style={{ display: "flex", ...springProps }}>
         <ColorPickerBox
