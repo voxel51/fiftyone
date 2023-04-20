@@ -19,7 +19,6 @@ export default function ObjectView(props) {
       <Header {...view} divider />
       <Grid spacing={2} container>
         {propertiesAsArray.map((property, i) => {
-          console.log({ property });
           const space = property?.view?.space || 12;
           return (
             <Grid key={property.id} item xs={space}>
