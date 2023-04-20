@@ -1,5 +1,5 @@
 """
-FiftyOne Server ``/plugins`` route.
+FiftyOne Plugin Definitions.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -15,6 +15,7 @@ import importlib
 import sys
 import traceback
 from enum import Enum
+from fiftyone.operators import Operator, register_operator
 
 # BEFORE PR: where should this go?
 def find_files(root_dir, filename, extensions, max_depth):
@@ -80,8 +81,8 @@ class PluginTypes(Enum):
 
 
 class PluginDefinition:
-    def __init__(self, module_dir, metadata):
-        self.module_dir = module_dir
+    def __init__(self, directory, metadata):
+        self.directory = directory
         self.metadata = metadata
         self.name = metadata.get("name", None)
         self.version = metadata.get("version", None)
@@ -96,6 +97,13 @@ class PluginDefinition:
     @property
     def type(self):
         return PluginTypes.JAVASCRIPT if self.js_bundle else PluginTypes.PYTHON
+
+    def register(self, cls):
+        if self.type == PluginTypes.PYTHON:
+            if issubclass(cls, Operator):
+                operator = Operator(self)
+                if operator.name in self.operators:
+                    register_operator(operator)
 
 
 def load_plugin_definition(metadata_file):
