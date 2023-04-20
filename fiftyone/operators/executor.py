@@ -85,6 +85,7 @@ def resolve_type(operator_name, request_params):
     except Exception as e:
         return ExecutionResult(None, None, str(e))
 
+
 def resolve_placement(operator, request_params):
     ctx = ExecutionContext(request_params)
     try:
@@ -132,9 +133,7 @@ class ExecutionContext:
         self.executor.trigger(operator_name, params)
 
     def log(self, message):
-        if self.executor is None:
-            raise ValueError("No executor available")
-        self.executor.log(message)
+        self.trigger("console_log", {"message": message})
 
 
 class ExecutionResult:
