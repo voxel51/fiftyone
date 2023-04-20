@@ -538,6 +538,19 @@ class GetAppValue extends DynamicOperator {
   }
 }
 
+class ConsoleLog extends Operator {
+  constructor() {
+    super("console_log", "Console Log");
+    this.defineInputProperty("message", new types.String(), {
+      label: "Message",
+      required: true,
+    });
+  }
+  async execute({ params }: ExecutionContext) {
+    console.log(params.message);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     registerOperator(new CopyViewAsJSON());
@@ -564,6 +577,7 @@ export function registerBuiltInOperators() {
     registerOperator(new ClearShowSamples());
     registerOperator(new GetAppValue());
     registerOperator(new CustomColors());
+    registerOperator(new ConsoleLog());
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");
