@@ -93,6 +93,12 @@ const ColorPickerBox = styled.div<{ backgroundColor: string }>`
   background-color: ${(props) => props.backgroundColor};
 `;
 
+const MultiPcdColorPickerContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: 0.25em;
+`;
+
 const CustomColorSpace = () => {
   const springProps = useSpring({
     from: { opacity: 0 },
@@ -163,14 +169,7 @@ const CustomColorSpace = () => {
       {activePcdSlices.map((slice) => {
         return (
           <>
-            <div
-              key={slice}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginLeft: "0.25em",
-              }}
-            >
+            <MultiPcdColorPickerContainer key={slice}>
               <span>{slice} </span>
               <ColorPickerBox
                 backgroundColor={customColorMap[slice]}
@@ -178,7 +177,7 @@ const CustomColorSpace = () => {
                   setColorPickerSlice((prev) => (prev === slice ? "" : slice));
                 }}
               />
-            </div>
+            </MultiPcdColorPickerContainer>
           </>
         );
       })}
