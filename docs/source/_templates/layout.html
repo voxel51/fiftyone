@@ -93,10 +93,15 @@
       </div>
 
       <div class="nav__item desktop_only" id="octocat">
-        <a href="{{link_voxel51_github}}fiftyone">
-          <i class="fa-brands fa-github">
-          </i>
-        </a>
+        <!-- https://buttons.github.io -->
+        <a
+          class="github-button"
+          href="https://github.com/voxel51/fiftyone"
+          data-color-scheme="no-preference: dark_high_contrast; light: dark_high_contrast; dark: dark_high_contrast;"
+          data-size="large"
+          data-show-count="true"
+          aria-label="Star voxel51/fiftyone on GitHub"
+        >Star</a>
       </div>
 
       <div class="nav__item full_nav_only">
@@ -196,6 +201,9 @@ endblock %} {% block custom_footer %}
     </div>
   </div>
 </footer>
+
+<!-- https://buttons.github.io -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
 
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script
