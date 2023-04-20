@@ -22,7 +22,7 @@ import yaml
 import fiftyone as fo
 import fiftyone.core.config as focc
 import fiftyone.zoo.utils.github as fozug
-from .registry import list_all_plugins
+from .definitions import list_plugins
 
 logger = logging.getLogger(__name__)
 _PLUGIN_DEFINITION_FILE_PATTERN = r"/?fiftyone\.y*ml$"
