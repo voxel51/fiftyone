@@ -55,7 +55,7 @@ const useClearSelectedLabels = () => {
   return useRecoilCallback(
     ({ set }) =>
       async () =>
-        set(fos.selectedLabels, {}),
+        set(fos.selectedLabels, []),
     []
   );
 };

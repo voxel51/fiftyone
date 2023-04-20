@@ -1,4 +1,4 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
@@ -186,6 +186,19 @@ export const selectedLabelMap = selector<State.SelectedLabelMap>({
         ...acc,
       }),
       {}
+    );
+  },
+  set: ({ set }, newValue) => {
+    if (newValue instanceof DefaultValue) {
+      newValue = {};
+    }
+
+    set(
+      atoms.selectedLabels,
+      Object.entries(newValue).map(([labelId, label]) => ({
+        ...label,
+        labelId,
+      }))
     );
   },
 });
@@ -401,6 +414,7 @@ export const mediaFields = selector<string[]>({
     const selectedFields = Object.keys(
       get(fieldSchema({ space: State.SPACE.SAMPLE }))
     );
+    console.log(get(atoms.dataset)?.appConfig?.mediaFields);
     return (get(atoms.dataset)?.appConfig?.mediaFields || []).filter((field) =>
       selectedFields.includes(field)
     );

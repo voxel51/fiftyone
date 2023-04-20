@@ -1,5 +1,7 @@
 import {
   datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtom,
   graphQLSyncFragmentAtomFamily,
   groupSliceFragment,
   groupSliceFragment$key,
@@ -13,7 +15,7 @@ import {
 } from "@fiftyone/relay";
 
 import { VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { atom, selector, selectorFamily } from "recoil";
 
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
@@ -39,10 +41,9 @@ export const isGroup = selector<boolean>({
   },
 });
 
-export const groupSlice = graphQLSyncFragmentAtomFamily<
+export const groupSlice = graphQLSyncFragmentAtom<
   groupSliceFragment$key,
-  string | null,
-  boolean
+  string
 >(
   {
     fragments: [datasetFragment, groupSliceFragment],
@@ -50,13 +51,18 @@ export const groupSlice = graphQLSyncFragmentAtomFamily<
     read: (data) => {
       return data.groupSlice;
     },
-    sync: (modal) => !modal,
     default: null,
+    selectorEffect: true,
   },
   {
     key: "groupSlice",
   }
 );
+
+export const modalGroupSlice = atom<string>({
+  key: "modalGroupSlice",
+  default: null,
+});
 
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
@@ -224,7 +230,7 @@ const groupSampleQuery = graphQLSelectorFamily<
         dataset: get(dataset).name,
         filter: {
           group: {
-            slice: slice ?? get(groupSlice(true)),
+            slice: slice ?? get(groupSlice),
             id: get(modal).sample[get(groupField)]._id,
           },
         },
@@ -248,7 +254,7 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
 
       if (!field || !group) return sample;
 
-      if (sample.sample[field].name === get(groupSlice(true))) {
+      if (sample.sample[field].name === get(groupSlice)) {
         return sample;
       }
 
@@ -256,7 +262,13 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
     },
 });
 
-export const groupStatistics = atomFamily<"group" | "slice", boolean>({
-  key: "groupStatistics",
-  default: "slice",
-});
+export const groupStatistics = graphQLSyncFragmentAtomFamily<
+  datasetFragment$key,
+  "group" | "slice",
+  boolean
+>(
+  { fragments: [datasetFragment], keys: ["dataset"], default: "slice" },
+  {
+    key: "groupStatistics",
+  }
+);

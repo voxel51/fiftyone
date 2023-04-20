@@ -28,19 +28,14 @@ import {
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
+import { useRelayEnvironment } from "react-relay";
 import { DefaultValue, useRecoilValue } from "recoil";
-import { commitMutation } from "relay-runtime";
+import { commitMutation, IEnvironment } from "relay-runtime";
 import Setup from "./components/Setup";
 import { pendingEntry } from "./Renderer";
-import {
-  Entry,
-  matchPath,
-  Queries,
-  RoutingContext,
-  useRouterContext,
-} from "./routing";
+import { Entry, matchPath, Queries, useRouterContext } from "./routing";
 import useRefresh from "./useRefresh";
 
 enum Events {
@@ -60,10 +55,13 @@ enum AppReadyState {
   CLOSED = 2,
 }
 
+export const SessionContext = React.createContext<Session>({});
+
 const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
   const readyStateRef = useRef<AppReadyState>();
   readyStateRef.current = readyState;
+  const environment = useRelayEnvironment();
   const subscription = useRecoilValue(stateSubscription);
   const handleError = useErrorHandler();
   const clearModal = useClearModal();
@@ -78,7 +76,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   );
   const sessionRef = useRef<Session>({});
   const setter = useSession((key, value) => {
-    WRITE_HANDLERS[key](router, value, subscription);
+    WRITE_HANDLERS[key](environment, value, subscription);
   }, sessionRef.current);
 
   React.useEffect(() => {
@@ -105,12 +103,15 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               setter(
                 "selectedLabels",
                 toCamelCase(
-                  JSON.parse(msg.data).selected_labels
+                  JSON.parse(msg.data).labels
                 ) as State.SelectedLabel[]
               );
               break;
             case Events.SELECT_SAMPLES:
               setter("selectedSamples", JSON.parse(msg.data).sample_ids);
+              break;
+            case Events.SET_SPACES:
+              setter("sessionSpaces", JSON.parse(msg.data).spaces);
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
@@ -175,6 +176,7 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           Events.REFRESH,
           Events.SELECT_LABELS,
           Events.SELECT_SAMPLES,
+          Events.SET_SPACES,
           Events.STATE_UPDATE,
         ],
       }
@@ -191,16 +193,8 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     subscription,
   ]);
 
-  useEffect(() => {
-    return router.subscribe((entry, action) => {
-      sessionRef.current.selectedSamples = new Set();
-      sessionRef.current.selectedLabels = [];
-      dispatchSideEffect(entry, action, subscription);
-    });
-  }, [router, subscription]);
-
   return (
-    <>
+    <SessionContext.Provider value={sessionRef.current}>
       {readyState === AppReadyState.CLOSED && <Setup />}
       {readyState === AppReadyState.CONNECTING && (
         <Loading>Pixelating...</Loading>
@@ -224,30 +218,27 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   if (view instanceof DefaultValue) {
                     view = [];
                   }
-                  commitMutation<setViewMutation>(
-                    router.get().preloadedQuery.environment,
-                    {
-                      mutation: setView,
-                      variables: {
+                  commitMutation<setViewMutation>(environment, {
+                    mutation: setView,
+                    variables: {
+                      view,
+                      datasetName: get(datasetName) as string,
+                      subscription: get(stateSubscription),
+                      form: get(viewStateForm_INTERNAL) || {},
+                    },
+                    onCompleted: ({ setView: view }) => {
+                      sessionRef.current.selectedSamples = new Set();
+                      sessionRef.current.selectedLabels = [];
+                      router.history.push(`${router.get().pathname}`, {
                         view,
-                        datasetName: get(datasetName) as string,
-                        subscription: get(stateSubscription),
-                        form: get(viewStateForm_INTERNAL) || {},
-                      },
-                      onCompleted: ({ setView: view }) => {
-                        sessionRef.current.selectedSamples = new Set();
-                        sessionRef.current.selectedLabels = [];
-                        router.history.push(`${router.get().pathname}`, {
-                          view,
-                        });
-                      },
-                    }
-                  );
+                      });
+                    },
+                  });
                 },
               ],
               [
                 "viewName",
-                ({ set }, slug: string | DefaultValue | null) => {
+                ({ get, set }, slug: string | DefaultValue | null) => {
                   set(pendingEntry, true);
                   if (slug instanceof DefaultValue) {
                     slug = null;
@@ -268,6 +259,16 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   if (search.length) {
                     search = `?${search}`;
                   }
+                  commitMutation<setViewMutation>(environment, {
+                    mutation: setView,
+                    variables: {
+                      subscription,
+                      view: [],
+                      savedViewSlug: slug,
+                      datasetName: get(datasetName) as string,
+                      form: {},
+                    },
+                  });
 
                   router.history.push(`${router.get().pathname}${search}`, {
                     view: [],
@@ -277,16 +278,13 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               [
                 "groupSlice",
                 (_, slice) => {
-                  commitMutation<setGroupSliceMutation>(
-                    router.get().preloadedQuery.environment,
-                    {
-                      mutation: setGroupSlice,
-                      variables: {
-                        slice,
-                        subscription,
-                      },
-                    }
-                  );
+                  commitMutation<setGroupSliceMutation>(environment, {
+                    mutation: setGroupSlice,
+                    variables: {
+                      slice,
+                      subscription,
+                    },
+                  });
                 },
               ],
               [
@@ -297,12 +295,19 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               ],
             ])
           }
-          subscribe={(fn) => router.subscribe(fn)}
+          subscribe={(fn) => {
+            return router.subscribe((entry, action) => {
+              sessionRef.current.selectedSamples = new Set();
+              sessionRef.current.selectedLabels = [];
+              dispatchSideEffect(entry, action, subscription);
+              fn(entry);
+            });
+          }}
         >
           {children}
         </Writer>
       )}
-    </>
+    </SessionContext.Provider>
   );
 };
 
@@ -338,51 +343,40 @@ const dispatchSideEffect = (
 
 const WRITE_HANDLERS: {
   [key: string]: (
-    router: RoutingContext<Queries>,
+    environment: IEnvironment,
     value: any,
     subscription: string
   ) => void;
 } = {
   selectedSamples: (
-    router: RoutingContext<Queries>,
+    environment,
     selected: Set<string> | DefaultValue,
     subscription: string
   ) => {
-    commitMutation<setSelectedMutation>(
-      router.get().preloadedQuery.environment,
-      {
-        mutation: setSelected,
-        variables: {
-          selected:
-            selected instanceof DefaultValue ? [] : Array.from(selected),
-          subscription,
-        },
-      }
-    );
+    commitMutation<setSelectedMutation>(environment, {
+      mutation: setSelected,
+      variables: {
+        selected: selected instanceof DefaultValue ? [] : Array.from(selected),
+        subscription,
+      },
+    });
   },
   selectedLabels: (
-    router: RoutingContext<Queries>,
+    environment,
     selectedLabels: State.SelectedLabel[] | DefaultValue,
-    subscription: string
+    subscription
   ) => {
-    commitMutation<setSelectedLabelsMutation>(
-      router.get().preloadedQuery.environment,
-      {
-        mutation: setSelectedLabels,
-        variables: {
-          selectedLabels:
-            selectedLabels instanceof DefaultValue ? [] : selectedLabels,
-          subscription,
-        },
-      }
-    );
+    commitMutation<setSelectedLabelsMutation>(environment, {
+      mutation: setSelectedLabels,
+      variables: {
+        selectedLabels:
+          selectedLabels instanceof DefaultValue ? [] : selectedLabels,
+        subscription,
+      },
+    });
   },
-  sessionSpaces: (
-    router: RoutingContext<Queries>,
-    spaces: SpaceNodeJSON,
-    subscription: string
-  ) => {
-    commitMutation<setSpacesMutation>(router.get().preloadedQuery.environment, {
+  sessionSpaces: (environment, spaces: SpaceNodeJSON, subscription) => {
+    commitMutation<setSpacesMutation>(environment, {
       mutation: setSpaces,
       variables: {
         spaces,

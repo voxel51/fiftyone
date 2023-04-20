@@ -83,10 +83,33 @@ export const getBrowserStorageEffectForKey =
     });
   };
 
-export const modal = atom<ModalSample | null>({
-  key: "modal",
-  default: null,
-});
+export const modal = (() => {
+  let modal: ModalSample | null = null;
+  return graphQLSyncFragmentAtom<datasetFragment$key, ModalSample | null>(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous?.id) {
+          modal = null;
+        }
+
+        return modal;
+      },
+      default: null,
+    },
+    {
+      key: "modal",
+      effects: [
+        ({ onSet }) => {
+          onSet((value) => {
+            modal = value;
+          });
+        },
+      ],
+    }
+  );
+})();
 
 export interface SortResults {
   count: boolean;
@@ -288,19 +311,60 @@ export const sidebarOverride = atom<string>({
   default: null,
 });
 
-export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
-  key: "extendedSelection",
-  default: { selection: null },
-});
+export const extendedSelection = (() => {
+  let selection: { selection: string[]; scope?: string } = { selection: null };
+
+  return graphQLSyncFragmentAtom<
+    datasetFragment$key,
+    { selection: string[]; scope?: string }
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous.id) {
+          selection = { selection: null };
+        }
+
+        return selection;
+      },
+      default: { selection: null },
+    },
+    {
+      key: "extendedSelection",
+    }
+  );
+})();
+
 export const extendedSelectionOverrideStage = atom<any>({
   key: "extendedSelectionOverrideStage",
   default: null,
 });
 
-export const similarityParameters = atom<State.SortBySimilarityParameters>({
-  key: "similarityParameters",
-  default: null,
-});
+export const similarityParameters = (() => {
+  let parameters: State.SortBySimilarityParameters | null = null;
+
+  return graphQLSyncFragmentAtom<
+    datasetFragment$key,
+    State.SortBySimilarityParameters | null
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous?.id) {
+          parameters = null;
+        }
+
+        return parameters;
+      },
+      default: null,
+    },
+    {
+      key: "similarityParameters",
+    }
+  );
+})();
 
 export const modalTopBarVisible = atom<boolean>({
   key: "modalTopBarVisible",
@@ -369,19 +433,21 @@ export const readOnly = sessionAtom({
   default: false,
 });
 
+export const SPACES_DEFAULT = {
+  id: "root",
+  children: [
+    {
+      id: "default-samples-node",
+      children: [],
+      type: "Samples",
+      pinned: true,
+    },
+  ],
+  type: "panel-container",
+  activeChild: "default-samples-node",
+};
+
 export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
-  default: {
-    id: "root",
-    children: [
-      {
-        id: "default-samples-node",
-        children: [],
-        type: "Samples",
-        pinned: true,
-      },
-    ],
-    type: "panel-container",
-    activeChild: "default-samples-node",
-  },
+  default: SPACES_DEFAULT,
 });

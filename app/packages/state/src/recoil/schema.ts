@@ -1,20 +1,14 @@
-import {
-  atomFamily,
-  RecoilState,
-  RecoilValueReadOnly,
-  selector,
-  selectorFamily,
-} from "recoil";
+import { RecoilState, selector, selectorFamily } from "recoil";
 
 import {
   DETECTION,
   DETECTIONS,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
-  LABELS,
-  LABELS_PATH,
   LABEL_LIST,
   LABEL_LISTS,
+  LABELS,
+  LABELS_PATH,
   LIST_FIELD,
   meetsFieldType,
   Schema,
@@ -23,10 +17,15 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 
+import { Sample } from "@fiftyone/looker/src/state";
+import {
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtomFamily,
+} from "@fiftyone/relay";
+import _ from "lodash";
 import * as atoms from "./atoms";
 import { State } from "./types";
-import _ from "lodash";
-import { Sample } from "@fiftyone/looker/src/state";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -400,10 +399,42 @@ export const labelPath = selectorFamily<string, string>({
     },
 });
 
-export const _activeFields = atomFamily<string[], { modal: boolean }>({
-  key: "_activeFields",
-  default: null,
-});
+export const _activeFields = (() => {
+  let current: string[] = null;
+  let modalCurrent: string[] = null;
+  return graphQLSyncFragmentAtomFamily<
+    datasetFragment$key,
+    null | string[],
+    { modal: boolean }
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      default: null,
+      read: (data, previous, { modal }) => {
+        if (data.id !== previous?.id) {
+          modalCurrent = null;
+          current = null;
+        }
+        return modal ? modalCurrent : current;
+      },
+    },
+    {
+      key: "_activeFields",
+      effects: ({ modal }) => [
+        ({ onSet }) => {
+          onSet((newValue) => {
+            if (modal) {
+              modalCurrent = newValue;
+            } else {
+              current = newValue;
+            }
+          });
+        },
+      ],
+    }
+  );
+})();
 
 export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",

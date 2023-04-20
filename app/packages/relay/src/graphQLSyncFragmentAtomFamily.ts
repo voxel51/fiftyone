@@ -23,7 +23,11 @@ export type GraphQLSyncFragmentSyncAtomFamilyOptions<
 > = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
-  read?: (data: KeyTypeData<T>) => K;
+  read?: (
+    data: KeyTypeData<T>,
+    previous: KeyTypeData<T> | null,
+    params: P
+  ) => K | ((current: K) => K);
   sync?: (params: P) => boolean;
   default: K;
 };
@@ -56,6 +60,7 @@ export function graphQLSyncFragmentAtomFamily<
                 let ctx: ReturnType<typeof loadContext>;
                 let parent: unknown;
                 let disposable: Disposable | undefined = undefined;
+                let previous: null | T[" $data"] = null;
                 const setter = (
                   d: null | T[" $data"],
                   int?: TransactionInterface_UNSTABLE
@@ -65,11 +70,12 @@ export function graphQLSyncFragmentAtomFamily<
                     : setSelf;
                   set(
                     fragmentOptions.read && d !== null
-                      ? (fragmentOptions.read(d) as K)
+                      ? fragmentOptions.read(d, previous, params)
                       : d === null
                       ? fragmentOptions.default
                       : (d as K)
                   );
+                  previous = d;
                 };
 
                 const run = (

@@ -13,24 +13,23 @@ import {
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { groupId, groupStatistics, Lookers, refresher } from "@fiftyone/state";
+import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { Button } from "../utils";
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
-  numItemsInSelection,
-  selectedSamplesCount,
   SwitchDiv,
   SwitcherDiv,
+  numItemsInSelection,
+  selectedSamplesCount,
   tagParameters,
   tagStatistics,
   tagStats,
@@ -305,19 +304,11 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const setAggs = useSetRecoilState(fos.refresher);
-  const setLabels = fos.useSetSelectedLabels();
-  const setSamples = fos.useSetSelected();
   const updateSample = fos.useUpdateSample();
 
   const finalize = [
-    () => setLabels([]),
-    () => setSamples([]),
-    () => setAggs((cur) => cur + 1),
-    ...[
-      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
-      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
-    ],
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
   ];
 
   return useRecoilCallback(
@@ -339,7 +330,9 @@ const useTagCallback = (
             groupData: isGroup
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
-                  slice: await snapshot.getPromise(currentSlice(modal)),
+                  slice: await snapshot.getPromise(
+                    modal ? fos.modalGroupSlice : fos.groupSlice
+                  ),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,
@@ -347,7 +340,7 @@ const useTagCallback = (
             sampleId: modal
               ? await snapshot.getPromise(fos.sidebarSampleId)
               : null,
-            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+            selectedLabels: await snapshot.getPromise(fos.selectedLabels),
             selectedSamples: await snapshot.getPromise(fos.selectedSamples),
             targetLabels,
             view: await snapshot.getPromise(fos.view),
@@ -371,8 +364,9 @@ const useTagCallback = (
         }
 
         set(fos.anyTagging, false);
-        reset(fos.selectedLabels);
-        reset(fos.selectedSamples);
+        set(fos.selectedLabels, []);
+        set(fos.selectedSamples, new Set());
+        set(fos.refresher, (cur) => cur + 1);
 
         finalize.forEach((r) => r());
       },

@@ -10,10 +10,6 @@ import {
 
 import { RelayEnvironmentKey } from "./relay";
 
-import { datasetName } from "./selectors";
-import { view } from "./view";
-import { selector, selectorFamily } from "recoil";
-import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
@@ -34,10 +30,14 @@ import {
   VALID_DISTRIBUTION_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { State } from "./types";
+import { selector, selectorFamily } from "recoil";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
+import { expandPath, field, fieldPaths, fields, labelFields } from "./schema";
+import { datasetName } from "./selectors";
+import { State } from "./types";
+import { view } from "./view";
 
 /**
  * A generic type that extracts the response type from a GraphQL query.
@@ -52,7 +52,7 @@ const extendedViewForm = selector({
     return {
       sampleIds: get(extendedSelection)?.selection,
       filters: get(filters),
-      slice: get(groupSlice(false)),
+      slice: get(groupSlice),
       mixed: get(groupStatistics(false)) === "group",
     };
   },

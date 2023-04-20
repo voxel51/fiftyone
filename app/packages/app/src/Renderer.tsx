@@ -1,7 +1,14 @@
 import { Loading, Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
-import React, { Suspense, useEffect } from "react";
-import { atom, useRecoilState } from "recoil";
+import { theme, themeConfig } from "@fiftyone/state";
+import { useColorScheme } from "@mui/material";
+import React, { Suspense, useEffect, useLayoutEffect } from "react";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { Queries, useRouterContext } from "./routing";
 import { Entry } from "./routing/RouterContext";
 
@@ -16,6 +23,20 @@ export const entry = atom<Entry<Queries> | null>({
   dangerouslyAllowMutability: true,
 });
 
+const ColorScheme = () => {
+  const { setMode } = useColorScheme();
+  const current = useRecoilValue(themeConfig);
+  const setTheme = useSetRecoilState(theme);
+  useLayoutEffect(() => {
+    if (current !== "browser") {
+      setTheme(current);
+      setMode(current);
+    }
+  }, [current]);
+
+  return null;
+};
+
 const Renderer = () => {
   const [routeEntry, setRouteEntry] = useRecoilState(entry);
   const [pending, setPending] = useRecoilState(pendingEntry);
@@ -28,6 +49,8 @@ const Renderer = () => {
       set(pendingEntry, false);
     });
   }, [router, setRouteEntry]);
+
+  useLayoutEffect(() => {}, []);
 
   useEffect(() => {
     return router.subscribe(
@@ -42,6 +65,7 @@ const Renderer = () => {
 
   return (
     <Suspense fallback={loading}>
+      <ColorScheme />
       <Route route={routeEntry} />
       {pending && <Pending />}
     </Suspense>

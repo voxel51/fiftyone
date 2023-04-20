@@ -1,3 +1,8 @@
+import {
+  graphQLSyncFragmentAtomFamily,
+  mediaFieldsFragment,
+  mediaFieldsFragment$key,
+} from "@fiftyone/relay";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { aggregationQuery } from "./aggregations";
 import {
@@ -6,10 +11,30 @@ import {
   isVideoDataset,
 } from "./selectors";
 
-export const selectedMediaField = atomFamily<string, boolean>({
-  key: "selectedMediaField",
-  default: "filepath",
-});
+export const selectedMediaField = graphQLSyncFragmentAtomFamily<
+  mediaFieldsFragment$key,
+  string,
+  boolean
+>(
+  {
+    fragments: [mediaFieldsFragment],
+    keys: ["dataset"],
+    default: "filepath",
+    read: (data, prev) => {
+      if (!data || data.name !== prev?.name)
+        return data.sampleFields
+          .map((field) => field.path)
+          .includes(data.appConfig.gridMediaField)
+          ? data.appConfig.gridMediaField
+          : "filepath";
+
+      return (cur) => cur;
+    },
+  },
+  {
+    key: "selectedMediaField",
+  }
+);
 
 export const sidebarMode = atomFamily<"all" | "best" | "fast" | null, boolean>({
   key: "sidebarMode",

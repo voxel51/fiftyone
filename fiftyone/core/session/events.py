@@ -15,6 +15,7 @@ from dacite import from_dict
 
 import eta.core.utils as etau
 
+from fiftyone.core.config import AppConfig
 import fiftyone.core.json as foj
 import fiftyone.core.state as fos
 
@@ -56,10 +57,16 @@ class Event:
             "fiftyone.core.session.events",
         )
 
+        if event_cls == Refresh:
+            data["config"] = AppConfig.from_dict(data["config"])
+
         if event_cls == StateUpdate:
             data["state"] = fos.StateDescription.from_dict(data["state"])
 
-        return from_dict(event_cls, data)
+        return from_dict(
+            event_cls,
+            data,
+        )
 
     @staticmethod
     async def from_data_async(
@@ -120,6 +127,8 @@ class ReactivateNotebookCell(Event):
 @dataclass
 class Refresh(Event):
     """Refresh event"""
+
+    config: AppConfig
 
 
 @dataclass

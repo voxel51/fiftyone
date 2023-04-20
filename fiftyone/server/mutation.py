@@ -158,6 +158,7 @@ class Mutation:
 
         result_view = None
         ds = fod.load_dataset(dataset_name)
+        state.dataset = ds
         if saved_view_slug is not None:
             try:
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
@@ -193,6 +194,7 @@ class Mutation:
         state.view = result_view
         state.view_name = result_view.name
         state.saved_view_slug = slug
+
         await dispatch_event(
             subscription,
             StateUpdate(state=state),

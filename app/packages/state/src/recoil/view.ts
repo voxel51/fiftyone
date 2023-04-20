@@ -38,6 +38,7 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
       return data?.stages || [];
     },
     default: [],
+    selectorEffect: true,
   },
   {
     key: "view",
@@ -68,6 +69,7 @@ export const viewName = graphQLSyncFragmentAtom<
     keys: ["dataset"],
     read: (data) => data.viewName,
     default: null,
+    selectorEffect: true,
   },
   {
     key: "viewName",

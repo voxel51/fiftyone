@@ -77,7 +77,6 @@ export function sessionAtom<K extends keyof Session>(
       if (newValue instanceof DefaultValue) {
         newValue = options.default;
       }
-
       setterRef(options.key, newValue);
       sessionRef[options.key] = newValue;
       set(value, newValue);

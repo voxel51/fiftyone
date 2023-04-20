@@ -11,10 +11,9 @@ const configData = graphQLSyncFragmentAtom<
   configFragment$key,
   configFragment$data
 >(
-  { fragments: [configFragment] },
+  { fragments: [configFragment], default: null },
   {
     key: "configData",
-    default: null,
   }
 );
 
@@ -33,4 +32,16 @@ export const config = selector({
 export const colorPool = selector({
   key: "colorPool",
   get: ({ get }) => get(config).colorPool,
+});
+
+export const themeConfig = selector({
+  key: "themeConfig",
+  get: ({ get }) => {
+    const current = get(config).theme;
+    if (current === "%future added value") {
+      throw new Error("unexpected theme value");
+    }
+
+    return current;
+  },
 });

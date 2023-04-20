@@ -562,7 +562,7 @@ class Session(object):
             )
 
         self._state.spaces = spaces
-        self._client.send_event(SetSpaces(spaces=spaces.to_json()))
+        self._client.send_event(SetSpaces(spaces=spaces.to_dict()))
 
     @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
@@ -663,7 +663,7 @@ class Session(object):
 
     def refresh(self) -> None:
         """Refreshes the current App window."""
-        self._client.send_event(Refresh())
+        self._client.send_event(Refresh(config=self.config))
 
     @property
     def selected(self) -> t.List[str]:
@@ -1051,6 +1051,11 @@ def _attach_listeners(session: "Session"):
         session, "_wait_closed", True
     )
     session._client.add_event_listener("close_session", on_close_session)
+
+    on_refresh: t.Callable[[Refresh], None] = lambda event: setattr(
+        session._state, "config", event.config
+    )
+    session._client.add_event_listener("refresh", on_refresh)
 
     on_state_update: t.Callable[[StateUpdate], None] = lambda event: setattr(
         session, "_state", event.state

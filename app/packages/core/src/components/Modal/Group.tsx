@@ -12,7 +12,6 @@ import {
   groupField,
   groupId,
   groupSample as groupSampleSelectorFamily,
-  groupSlice,
   hasPinnedSlice,
   pinnedSlice,
   pinnedSliceSample,
@@ -164,7 +163,7 @@ const MainSample: React.FC<{
   const hover = fos.useHoveredSample(sample);
 
   const thisSampleSlice = useSlice(sample);
-  const currentModalSlice = useRecoilValue(groupSlice(true));
+  const currentModalSlice = useRecoilValue(fos.modalGroupSlice);
   const allSlices = useRecoilValue(fos.groupSlices);
   const altSlice = useMemo(() => {
     if (

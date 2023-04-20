@@ -25,7 +25,7 @@ export default function useToClips() {
               ],
             },
           ],
-          slice: await snapshot.getPromise(groupSlice(false)),
+          slice: await snapshot.getPromise(groupSlice),
           filters: await snapshot.getPromise(filters),
           extended: await snapshot.getPromise(extendedStages),
           sampleIds: Array.from(await snapshot.getPromise(selectedSamples)),

@@ -41,7 +41,7 @@ export const pageParameters = selectorFamily<PageParameters, boolean>({
         dataset: get(fos.datasetName),
         extended: get(fos.extendedStages),
         zoom: get(fos.isPatchesView) && get(fos.cropToContent(modal)),
-        slice: get(groupSlice(false)),
+        slice: get(groupSlice) as string,
       };
     },
 });

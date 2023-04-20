@@ -8,7 +8,7 @@ const Slice: React.FC<{ value: string; className: string }> = ({ value }) => {
 };
 
 const GroupSlice: React.FC = () => {
-  const slice = useRecoilValue(groupSlice(false));
+  const slice = useRecoilValue(groupSlice);
   if (!slice) {
     throw new Error("slice not defined");
   }

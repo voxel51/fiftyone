@@ -1,27 +1,16 @@
 import { ErrorBoundary, Loading, ThemeProvider } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
-import {
-  BeforeScreenshotContext,
-  modal,
-  screenshotCallbacks,
-} from "@fiftyone/state";
-import React, { useEffect } from "react";
+import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
+import React from "react";
 import { createRoot } from "react-dom/client";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { RecoilRoot } from "recoil";
 import Network from "./Network";
 
 import "./index.css";
 import { useRouter } from "./routing";
 
 const App: React.FC = () => {
-  const isModalActive = Boolean(useRecoilValue(modal));
   const { context, environment } = useRouter();
-
-  useEffect(() => {
-    document
-      .getElementById("modal")
-      ?.classList.toggle("modalon", isModalActive);
-  }, [isModalActive]);
 
   const plugins = usePlugins();
 

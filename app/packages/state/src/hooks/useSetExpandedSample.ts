@@ -1,9 +1,9 @@
 import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
-import { groupField, groupSlice, isGroup } from "../recoil";
+import { groupField, isGroup, modalGroupSlice } from "../recoil";
 
 import * as atoms from "../recoil/atoms";
 
-export default (withGroup: boolean = true) => {
+export default (withGroup = true) => {
   const field = useRecoilValue(groupField);
   const group = useRecoilValue(isGroup);
   return useRecoilTransaction_UNSTABLE(
@@ -20,7 +20,7 @@ export default (withGroup: boolean = true) => {
           withGroup &&
           field &&
           sample.sample[field]?.name &&
-          set(groupSlice(true), sample.sample[field]?.name);
+          set(modalGroupSlice, sample.sample[field]?.name);
       },
     [group, field, withGroup]
   );

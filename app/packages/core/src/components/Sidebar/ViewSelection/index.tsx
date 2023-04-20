@@ -16,8 +16,8 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
+import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",

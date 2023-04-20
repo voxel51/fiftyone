@@ -76,10 +76,10 @@ const useSelectVisible = (
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(fos.selectedLabels);
+    const selected = await snapshot.getPromise(fos.selectedLabelMap);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
 
-    set(fos.selectedLabels, {
+    set(fos.selectedLabelMap, {
       ...selected,
       ...toLabelMap(visible || []),
     });
@@ -99,7 +99,7 @@ const useUnselectVisible = (
     const filtered = Object.entries(selected).filter(
       ([label_id]) => !visibleIds.has(label_id)
     );
-    set(fos.selectedLabels, Object.fromEntries(filtered));
+    set(fos.selectedLabelMap, Object.fromEntries(filtered));
   });
 };
 
@@ -107,7 +107,7 @@ const useClearSelectedLabels = (close) => {
   return useRecoilCallback(
     ({ set }) =>
       async () => {
-        set(fos.selectedLabels, {});
+        set(fos.selectedLabels, []);
         close();
       },
     []
@@ -149,7 +149,7 @@ const toIds = (labels: State.SelectedLabel[]) =>
 
 const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const isGroup = useRecoilValue(fos.isGroup);
-  const activeSlice = useRecoilValue(fos.groupSlice(true));
+  const activeSlice = useRecoilValue(fos.modalGroupSlice);
   const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
   const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
 

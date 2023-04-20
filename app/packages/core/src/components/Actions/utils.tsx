@@ -84,7 +84,7 @@ export const tagStatistics = selectorFamily<
           groupData: get(isGroup)
             ? {
                 id: modal ? get(groupId) : null,
-                slice: get(groupSlice(modal)),
+                slice: get(modal ? fos.modalGroupSlice : groupSlice),
                 mode: get(groupStatistics(modal)),
               }
             : null,

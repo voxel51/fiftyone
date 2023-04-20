@@ -57,6 +57,8 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.selected = selected or []
         self.selected_labels = selected_labels or []
+        if dataset is not None:
+            dataset.reload()
         self.view = (
             dataset.load_saved_view(view_name)
             if dataset is not None and view_name

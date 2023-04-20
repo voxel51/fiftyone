@@ -1,11 +1,11 @@
-import React from "react";
 import * as fos from "@fiftyone/state";
 import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
 import {
   createTheme,
   Experimental_CssVarsProvider as CssVarsProvider,
 } from "@mui/material/styles";
-import { useRecoilValue } from "recoil";
+import React from "react";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
 let theme = extendJoyTheme({
@@ -143,7 +143,8 @@ const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: Theme }>
 > = ({ children, customTheme }) => {
   if (customTheme) theme = customTheme;
-  const current = useRecoilValue(fos.theme);
+  const loadable = useRecoilValueLoadable(fos.theme);
+  const current = loadable.state === "hasValue" ? loadable.contents : "dark";
 
   return (
     <LegacyTheme.Provider value={theme.colorSchemes[current].palette}>

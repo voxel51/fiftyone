@@ -3,10 +3,11 @@ import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
 import "@fiftyone/relay";
-import { datasetQueryContext } from "@fiftyone/state";
+import { datasetQueryContext, modal } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
-import React from "react";
+import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import { Route } from "../../routing";
@@ -35,6 +36,13 @@ const DatasetPageQueryNode = graphql`
 
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
+  const isModalActive = Boolean(useRecoilValue(modal));
+
+  useEffect(() => {
+    document
+      .getElementById("modal")
+      ?.classList.toggle("modalon", isModalActive);
+  }, [isModalActive]);
 
   if (!data.dataset?.name) {
     throw new NotFoundError({ path: `/datasets/${prepared.variables.name}` });

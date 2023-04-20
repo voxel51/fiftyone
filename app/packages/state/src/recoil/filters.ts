@@ -2,19 +2,39 @@ import { atom, selectorFamily } from "recoil";
 
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 
+import {
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtom,
+} from "@fiftyone/relay";
 import { expandPath, fields } from "./schema";
-import { State } from "./types";
 import { hiddenLabelIds } from "./selectors";
+import { State } from "./types";
 
 export const modalFilters = atom<State.Filters>({
   key: "modalFilters",
   default: {},
 });
 
-export const filters = atom<State.Filters>({
-  key: "filters",
-  default: {},
-});
+export const filters = (() => {
+  let current: State.Filters = {};
+  return graphQLSyncFragmentAtom<datasetFragment$key, State.Filters>(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      default: {},
+      read: (data, previous) => {
+        if (data.id !== previous.id) {
+          current = {};
+        }
+        return current;
+      },
+    },
+    {
+      key: "filters",
+    }
+  );
+})();
 
 export const filter = selectorFamily<
   State.Filter,

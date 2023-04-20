@@ -77,6 +77,7 @@ class Client:
                                         "capture_notebook_cell",
                                         "close_session",
                                         "reactivate_notebook_cell",
+                                        "refresh",
                                         "reload_session",
                                         "select_labels",
                                         "select_samples",

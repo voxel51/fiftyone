@@ -26,6 +26,7 @@ from fiftyone.core.session.events import (
     dict_factory,
     EventType,
     ListenPayload,
+    Refresh,
     SelectLabels,
     SelectSamples,
     StateUpdate,
@@ -64,6 +65,9 @@ async def dispatch_event(
     if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
         add_screenshot(event)
         return
+
+    if isinstance(event, Refresh):
+        _state.config = event.config
 
     if isinstance(event, SelectLabels):
         _state.selected_labels = event.labels
@@ -135,7 +139,7 @@ async def add_event_listener(
 
             events = sorted(events, key=lambda event: event[0])
 
-            for (_, event) in events:
+            for _, event in events:
                 d = asdict(event, dict_factory=dict_factory)
 
                 if (

@@ -1,7 +1,7 @@
 import { Bar, useTheme } from "@fiftyone/components";
 import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { groupSlice, hasPinnedSlice } from "@fiftyone/state";
+import { hasPinnedSlice } from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useRef } from "react";
 import { useRecoilValue } from "recoil";
@@ -60,7 +60,7 @@ export const SampleBar: React.FC<{
 export const GroupBar: React.FC<{
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
-  const slice = useRecoilValue(groupSlice(true));
+  const slice = useRecoilValue(fos.modalGroupSlice);
   const hasPinned = useRecoilValue(hasPinnedSlice);
   return (
     <Bar

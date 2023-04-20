@@ -1,4 +1,5 @@
 import { Disposable } from "react-relay";
+import { KeyTypeData } from "react-relay/relay-hooks/helpers";
 import { atom, AtomOptions, TransactionInterface_UNSTABLE } from "recoil";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType } from "relay-runtime/lib/store/readInlineData";
@@ -11,8 +12,12 @@ export type GraphQLSyncFragmentAtomOptions<K> = AtomOptions<K>;
 export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
-  read?: (data: NonNullable<T[" $data"]>) => K;
+  read?: (
+    data: KeyTypeData<T>,
+    previous: KeyTypeData<T> | null
+  ) => K | ((current: K) => K);
   default: K;
+  selectorEffect?: boolean;
 };
 
 /**
@@ -27,6 +32,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
   const value = atom({
     ...options,
     effects: [
+      ...(options.effects || []),
       ({ setSelf, trigger }) => {
         if (trigger === "set") {
           return;
@@ -35,18 +41,22 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
         let ctx: ReturnType<typeof loadContext>;
         let parent: unknown;
         let disposable: Disposable | undefined = undefined;
+        let previous: null | T[" $data"] = null;
         const setter = (
           d: null | T[" $data"],
           int?: TransactionInterface_UNSTABLE
         ) => {
           const set = int ? (v: K) => int.set(value, v) : setSelf;
+
           set(
             fragmentOptions.read && d !== null
-              ? (fragmentOptions.read(d) as K)
+              ? fragmentOptions.read(d, previous)
               : d === null
               ? fragmentOptions.default
               : (d as K)
           );
+
+          previous = d;
         };
 
         const run = (
@@ -90,17 +100,20 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
           disposable?.dispose();
         };
       },
-      ...(options.effects || []),
     ],
   });
 
-  return selectorWithEffect(
-    {
-      key: `_${options.key}__setter`,
-      get: ({ get }) => get(value),
-    },
-    options.key
-  );
+  if (fragmentOptions.selectorEffect) {
+    return selectorWithEffect(
+      {
+        key: `_${options.key}__setter`,
+        get: ({ get }) => get(value),
+      },
+      options.key
+    );
+  }
+
+  return value;
 }
 
 export default graphQLSyncFragmentAtom;

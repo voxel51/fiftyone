@@ -66,7 +66,7 @@ export default function useSavedViews() {
                 sampleIds: Array.from(
                   await snapshot.getPromise(fos.selectedSamples)
                 ),
-                slice: await snapshot.getPromise(fos.groupSlice(false)),
+                slice: await snapshot.getPromise(fos.groupSlice),
                 extended: await snapshot.getPromise(fos.extendedStages),
               },
               description,
