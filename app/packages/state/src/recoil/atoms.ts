@@ -56,8 +56,8 @@ export const settingsModal = atom<{ open: boolean } | null>({
   },
 });
 
-export const visiblePaths = atom<Set<string> | null>({
-  key: "visiblePaths",
+export const selectedPaths = atom<Set<string> | null>({
+  key: "selectedPaths",
   default: new Set(),
 });
 

@@ -503,10 +503,8 @@ const InteractiveSidebar = ({
   const eligibleEntries = groupBy(entries, "path");
 
   console.log("dataset", dataset);
-  const emptySet = new Set<string>();
-  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(emptySet);
-  const [visiblePaths, setVisiblePaths] = useRecoilState<Set<string>>(
-    fos.visiblePaths
+  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
+    fos.selectedPaths
   );
   const viewStages = useRecoilValue(fos.view);
   const setView = useSetView();
@@ -537,11 +535,9 @@ const InteractiveSidebar = ({
     if (checked) {
       const diff = new Set([...selectedPaths].filter((x) => !subPaths.has(x)));
       setSelectedPaths(diff);
-      setVisiblePaths(diff);
     } else {
       const union = new Set<string>([...selectedPaths, ...subPaths]);
       setSelectedPaths(union);
-      setVisiblePaths(union);
     }
   };
 
@@ -563,7 +559,6 @@ const InteractiveSidebar = ({
           const subPaths = getSelectedSubPaths(p);
           subPaths.forEach((item: string) => ffff.add(item));
         });
-        setVisiblePaths(ffff);
       }
     }
   }, [viewStages]);
@@ -884,7 +879,6 @@ const InteractiveSidebar = ({
                   onClick={() => {
                     setSchemaModal(false);
                     setSearchTerm("");
-                    setVisiblePaths(new Set());
                     setSelectedPaths(new Set());
                     setSettingsModal({ ...settingModal, open: false });
                   }}
@@ -998,9 +992,8 @@ const InteractiveSidebar = ({
                     color: "black",
                   }}
                   onClick={() => {
-                    if (!visiblePaths.size) return;
                     const stageKwargs = [
-                      ["field_names", [...visiblePaths]],
+                      ["field_names", [...selectedPaths]],
                       ["_allow_missing", true],
                     ];
                     const stageCls = "fiftyone.core.stages.SelectFields";
@@ -1024,7 +1017,6 @@ const InteractiveSidebar = ({
                   onClick={() => {
                     setSchemaModal({ open: false });
                     setSearchTerm("");
-                    setVisiblePaths(new Set());
                     setSelectedPaths(new Set());
                   }}
                 >
@@ -1067,22 +1059,6 @@ const InteractiveSidebar = ({
               const entry = items.current[key].entry;
               if (entry.kind === fos.EntryKind.GROUP) {
                 group = entry.name;
-              }
-
-              if (entry.kind === fos.EntryKind.GROUP) {
-                if (visiblePaths.size && !visiblePaths.has(entry.name)) {
-                  return <></>;
-                }
-              }
-              if (entry.kind === fos.EntryKind.EMPTY) {
-                if (visiblePaths.size && !visiblePaths.has(entry.group)) {
-                  return <></>;
-                }
-              }
-              if (entry.kind === fos.EntryKind.PATH) {
-                if (visiblePaths.size && !visiblePaths.has(entry.path)) {
-                  return <></>;
-                }
               }
 
               const { shadow, cursor, ...springs } =
