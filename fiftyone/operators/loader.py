@@ -13,17 +13,18 @@ import yaml  # BEFORE PR: add to requirements.txt
 import importlib
 import sys
 import traceback
+import fiftyone.plugins as fop
 
 REGISTERED_MODULES = {}
 FAILED_MODULES = {}
 
 
-def register_module(filepath, mod):
+def register_module(filepath, mod, plugin_definition):
     """Registers all operators in the given module."""
     if REGISTERED_MODULES.get(filepath, None) is not None:
         unregister_module(filepath)
     try:
-        mod.register()
+        mod.register(plugin_definition)
         REGISTERED_MODULES[filepath] = mod
         if filepath in FAILED_MODULES:
             FAILED_MODULES.pop(filepath)
@@ -61,33 +62,20 @@ def list_module_errors():
 
 def load_from_dir():
     """Loads all operators from the default operator directory."""
-    plugins_dir = fo.config.plugins_dir
-
-    if not plugins_dir:
-        return []
-
-    fiftyone_plugin_yamls = find_files(
-        plugins_dir, "fiftyone", ["yml", "yaml"], 3
-    )
-    for yaml_path in fiftyone_plugin_yamls:
-        with open(yaml_path, "r") as f:
-            plugin_dict = yaml.load(f, Loader=yaml.FullLoader)
-            # not enabled, skip
-            if not plugin_dict.get("enabled", True):
-                continue
-
-        module_dir = os.path.dirname(yaml_path)
-        mod = exec_module_from_dir(module_dir)
+    plugin_definitions = fop.list_plugins()
+    for plugin_definition in plugin_definitions:
+        module_dir = plugin_definition.directory
+        exec_module_from_dir(module_dir, plugin_definition)
 
 
-def exec_module_from_dir(module_dir):
+def exec_module_from_dir(module_dir, plugin_definition):
     mod_dir = os.path.dirname(module_dir)
     mod_filepath = os.path.join(module_dir, "__init__.py")
     spec = importlib.util.spec_from_file_location(mod_dir, mod_filepath)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
-    register_module(mod_filepath, mod)
+    register_module(mod_filepath, mod, plugin_definition)
     return mod
 
 
