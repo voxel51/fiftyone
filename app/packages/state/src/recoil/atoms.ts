@@ -248,15 +248,22 @@ export const getBrowserStorageEffectForKey =
       sessionStorage?: boolean;
       valueClass?: "string" | "stringArray" | "number" | "boolean";
       prependDatasetNameInKey?: boolean;
+      useJsonSerialization?: boolean;
     } = {
       sessionStorage: false,
       valueClass: "string",
       prependDatasetNameInKey: false,
+      useJsonSerialization: false,
     }
   ): AtomEffect<T> =>
   ({ setSelf, onSet, getPromise }) => {
     (async () => {
-      const { valueClass, sessionStorage, prependDatasetNameInKey } = props;
+      const {
+        valueClass,
+        sessionStorage,
+        useJsonSerialization,
+        prependDatasetNameInKey,
+      } = props;
 
       const storage = sessionStorage
         ? window.sessionStorage
@@ -270,7 +277,9 @@ export const getBrowserStorageEffectForKey =
       const value = storage.getItem(key);
       let procesedValue;
 
-      if (valueClass === "number") {
+      if (useJsonSerialization) {
+        procesedValue = JSON.parse(value);
+      } else if (valueClass === "number") {
         procesedValue = Number(value);
       } else if (valueClass === "boolean") {
         procesedValue = value === "true";
@@ -290,7 +299,12 @@ export const getBrowserStorageEffectForKey =
         if (isReset) {
           storage.removeItem(key);
         } else {
-          storage.setItem(key, newValue);
+          storage.setItem(
+            key,
+            useJsonSerialization
+              ? JSON.stringify(newValue)
+              : (newValue as string)
+          );
         }
       });
     })();

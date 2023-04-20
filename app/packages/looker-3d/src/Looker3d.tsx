@@ -25,6 +25,7 @@ import {
   defaultPluginSettings,
 } from "./Looker3dPlugin";
 import {
+  ChooseColorSpace,
   Screenshot,
   SetPointSizeButton,
   SetViewButton,
@@ -46,6 +47,7 @@ import { PointCloudMesh } from "./renderables";
 import {
   currentActionAtom,
   currentPointSizeAtom,
+  customColorMapAtom,
   isGridOnAtom,
   isPointSizeAttenuatedAtom,
   shadeByAtom,
@@ -54,6 +56,7 @@ import {
 type View = "pov" | "top";
 
 const MODAL_TRUE = true;
+const DEFAULT_GREEN = "#00ff00";
 
 export const Looker3d = () => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
@@ -75,6 +78,7 @@ export const Looker3d = () => {
   const [activePcdSlices, setActivePcdSlices] = useRecoilState(
     fos.activePcdSlices
   );
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
   const defaultPcdSlice = useRecoilValue(fos.defaultPcdSlice);
 
   useEffect(() => {
@@ -117,11 +121,6 @@ export const Looker3d = () => {
     fetchSamples();
   }, [fetchSamples]);
 
-  // const isRgbPresent = useMemo(
-  //   () => Boolean(points.geometry.attributes?.color),
-  //   [points]
-  // );
-
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
@@ -139,13 +138,16 @@ export const Looker3d = () => {
     [onSelectLabel]
   );
 
-  const colorBy = useRecoilValue(shadeByAtom);
+  const shadeBy = useRecoilValue(shadeByAtom);
+  const [customColorMap, setCustomColorMap] =
+    useRecoilState(customColorMapAtom);
   const pointSize = useRecoilValue(currentPointSizeAtom);
   const isPointSizeAttenuated = useRecoilValue(isPointSizeAttenuatedAtom);
+  const isPointcloudDataset = useRecoilValue(fos.isPointcloudDataset);
 
   const topCameraPosition = useMemo(() => {
     if (!pointCloudBounds) {
-      return [1, 1, 10];
+      return [1, 1, 20];
     }
 
     const absMax = Math.max(
@@ -167,7 +169,7 @@ export const Looker3d = () => {
     const lastSavedCameraPosition =
       window?.localStorage.getItem(CAMERA_POSITION_KEY);
 
-    if (lastSavedCameraPosition) {
+    if (lastSavedCameraPosition?.length > 0) {
       return JSON.parse(lastSavedCameraPosition);
     }
 
@@ -319,6 +321,23 @@ export const Looker3d = () => {
     );
   }, [defaultCameraPosition]);
 
+  useEffect(() => {
+    if (isPointcloudDataset) {
+      setCustomColorMap((prev) => {
+        if (Object.hasOwn(prev, "default")) {
+          return prev;
+        }
+        return { ...(prev ?? {}), default: DEFAULT_GREEN };
+      });
+    } else {
+      const newCustomColorMap = {};
+      for (const slice of allPcdSlices) {
+        newCustomColorMap[slice] = DEFAULT_GREEN;
+      }
+      setCustomColorMap((prev) => ({ ...newCustomColorMap, ...(prev ?? {}) }));
+    }
+  }, [isPointcloudDataset, allPcdSlices, setCustomColorMap]);
+
   const hasMultiplePcdSlices = useMemo(
     () =>
       dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
@@ -343,11 +362,17 @@ export const Looker3d = () => {
           mediaUrl = fos.getSampleSrc(sample.urls[mediaField]);
         }
 
+        const customColor =
+          (customColorMap &&
+            customColorMap[isPointcloudDataset ? "default" : slice]) ??
+          "#00ff00";
+
         return (
           <PointCloudMesh
             key={slice}
             minZ={minZ}
-            shadeBy={colorBy}
+            shadeBy={shadeBy}
+            customColor={customColor}
             pointSize={pointSize}
             src={mediaUrl}
             rotation={pcRotation}
@@ -362,13 +387,15 @@ export const Looker3d = () => {
     [
       sampleMap,
       mediaField,
-      colorBy,
+      shadeBy,
       pointSize,
       pcRotation,
       minZ,
       theme,
       isPointSizeAttenuated,
       pointCloudBounds,
+      customColorMap,
+      isPointcloudDataset,
     ]
   );
 
@@ -395,6 +422,53 @@ export const Looker3d = () => {
     [coloring, getColor, pathFilter, sampleMap, selectedLabels]
   );
 
+  const [cuboidOverlays, polylineOverlays] = useMemo(() => {
+    const newCuboidOverlays = [];
+    const newPolylineOverlays = [];
+
+    for (const overlay of overlays) {
+      if (overlay._cls === "Detection") {
+        newCuboidOverlays.push(
+          <Cuboid
+            key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
+            rotation={overlayRotation}
+            itemRotation={itemRotation}
+            opacity={labelAlpha}
+            {...(overlay as unknown as CuboidProps)}
+            onClick={() => handleSelect(overlay)}
+            label={overlay}
+            tooltip={tooltip}
+            useLegacyCoordinates={settings.useLegacyCoordinates}
+          />
+        );
+      } else if (
+        overlay._cls === "Polyline" &&
+        (overlay as unknown as PolyLineProps).points3d
+      ) {
+        newPolylineOverlays.push(
+          <Polyline
+            key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
+            rotation={overlayRotation}
+            opacity={labelAlpha}
+            {...(overlay as unknown as PolyLineProps)}
+            label={overlay}
+            onClick={() => handleSelect(overlay)}
+            tooltip={tooltip}
+          />
+        );
+      }
+    }
+    return [newCuboidOverlays, newPolylineOverlays];
+  }, [
+    overlays,
+    itemRotation,
+    labelAlpha,
+    overlayRotation,
+    handleSelect,
+    tooltip,
+    settings,
+  ]);
+
   return (
     <ErrorBoundary>
       <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
@@ -407,40 +481,8 @@ export const Looker3d = () => {
             isGridOn={isGridOn}
             bounds={pointCloudBounds}
           />
-          <mesh rotation={overlayRotation}>
-            {overlays
-              .filter((o) => o._cls === "Detection")
-              .map((label, key) => (
-                <Cuboid
-                  key={`cuboid-${key}`}
-                  itemRotation={itemRotation}
-                  opacity={labelAlpha}
-                  {...(label as unknown as CuboidProps)}
-                  onClick={() => handleSelect(label)}
-                  label={label}
-                  tooltip={tooltip}
-                  useLegacyCoordinates={settings.useLegacyCoordinates}
-                />
-              ))}
-          </mesh>
-          {overlays
-            .filter(
-              (o) =>
-                o._cls === "Polyline" &&
-                (o as unknown as PolyLineProps).points3d
-            )
-            .map((label, key) => (
-              <Polyline
-                key={`polyline-${key}`}
-                rotation={overlayRotation}
-                opacity={labelAlpha}
-                {...(label as unknown as PolyLineProps)}
-                label={label}
-                onClick={() => handleSelect(label)}
-                tooltip={tooltip}
-              />
-            ))}
-
+          <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
+          {polylineOverlays}
           {filteredSamples}
         </Canvas>
         {/* {(hoveringRef.current || hovering) && ( */}
@@ -453,7 +495,7 @@ export const Looker3d = () => {
             <ActionsBar>
               <ToggleGridHelper />
               <SetPointSizeButton />
-              {/* <ChooseColorSpace isRgbPresent={isRgbPresent} /> */}
+              <ChooseColorSpace />
               <SetViewButton
                 onChangeView={onChangeView}
                 view={"top"}

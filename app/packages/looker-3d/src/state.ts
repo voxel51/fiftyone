@@ -2,7 +2,7 @@ import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom } from "recoil";
 
-export const ACTION_SHADE_BY = "colorBy";
+export const ACTION_SHADE_BY = "shadeBy";
 export const ACTION_SET_POINT_SIZE = "setPointSize";
 export const ACTION_SET_PCDS = "setPcds";
 export const ACTION_VIEW_JSON = "json";
@@ -18,12 +18,14 @@ export type Actions =
 export const SHADE_BY_INTENSITY = "intensity";
 export const SHADE_BY_HEIGHT = "height";
 export const SHADE_BY_RGB = "rgb";
+export const SHADE_BY_CUSTOM = "custom";
 export const SHADE_BY_NONE = "none";
 
 export type ShadeBy =
   | typeof SHADE_BY_INTENSITY
   | typeof SHADE_BY_HEIGHT
   | typeof SHADE_BY_RGB
+  | typeof SHADE_BY_CUSTOM
   | typeof SHADE_BY_NONE;
 
 export const ACTIONS = [
@@ -37,6 +39,7 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
   { label: "Height", value: SHADE_BY_HEIGHT },
   { label: "Intensity", value: SHADE_BY_INTENSITY },
   { label: "RGB", value: SHADE_BY_RGB },
+  { label: "Custom", value: SHADE_BY_CUSTOM },
   { label: "None", value: SHADE_BY_NONE },
 ];
 
@@ -44,6 +47,16 @@ export const shadeByAtom = atom<ShadeBy>({
   key: "shadeBy",
   default: SHADE_BY_HEIGHT,
   effects: [getBrowserStorageEffectForKey("shadeBy")],
+});
+
+export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
+  key: "customColorMap",
+  default: null,
+  effects: [
+    getBrowserStorageEffectForKey("customColorMap", {
+      useJsonSerialization: true,
+    }),
+  ],
 });
 
 export const currentActionAtom = atom<Actions>({

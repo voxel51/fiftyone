@@ -3,8 +3,15 @@ import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { computeMinMaxForColorBufferAttribute } from "../../../utils";
-import { ShadeBy } from "../../state";
 import {
+  SHADE_BY_CUSTOM,
+  SHADE_BY_HEIGHT,
+  SHADE_BY_INTENSITY,
+  SHADE_BY_RGB,
+  ShadeBy,
+} from "../../state";
+import {
+  CustomColorShader,
   Gradients,
   RgbShader,
   ShadeByHeight,
@@ -14,6 +21,7 @@ import {
 type PointCloudMeshArgs = {
   defaultShadingColor: string;
   shadeBy: ShadeBy;
+  customColor: string;
   pointSize: string;
   isPointSizeAttenuated: boolean;
   src: string;
@@ -45,6 +53,7 @@ export const PointCloudMesh = ({
   isPointSizeAttenuated,
   minZ,
   shadeBy,
+  customColor,
   pointSize,
   src,
   rotation,
@@ -85,46 +94,56 @@ export const PointCloudMesh = ({
   const pointsMaterial = useMemo(() => {
     const pointSizeNum = Number(pointSize);
 
-    if (shadeBy === "height") {
-      return (
-        <ShadeByHeight
-          gradients={ShadingGradients}
-          min={minZ}
-          max={boundingBox.max.z}
-          pointSize={pointSizeNum}
-          isPointSizeAttenuated={isPointSizeAttenuated}
-        />
-      );
-    }
+    switch (shadeBy) {
+      case SHADE_BY_HEIGHT:
+        return (
+          <ShadeByHeight
+            gradients={ShadingGradients}
+            min={minZ}
+            max={boundingBox.max.z}
+            pointSize={pointSizeNum}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+          />
+        );
 
-    if (shadeBy === "intensity") {
-      return (
-        <ShadeByIntensity
-          {...colorMinMax}
-          gradients={ShadingGradients}
-          pointSize={pointSizeNum}
-          isPointSizeAttenuated={isPointSizeAttenuated}
-        />
-      );
-    }
+      case SHADE_BY_INTENSITY:
+        return (
+          <ShadeByIntensity
+            {...colorMinMax}
+            gradients={ShadingGradients}
+            pointSize={pointSizeNum}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+          />
+        );
 
-    if (shadeBy === "rgb") {
-      return (
-        <RgbShader
-          pointSize={pointSizeNum}
-          isPointSizeAttenuated={isPointSizeAttenuated}
-        />
-      );
-    }
+      case SHADE_BY_RGB:
+        return (
+          <RgbShader
+            pointSize={pointSizeNum}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+          />
+        );
 
-    return (
-      <pointsMaterial
-        color={defaultShadingColor}
-        // 1000 and 2 are arbitrary values that seem to work well
-        size={isPointSizeAttenuated ? pointSizeNum / 1000 : pointSizeNum / 2}
-        sizeAttenuation={isPointSizeAttenuated}
-      />
-    );
+      case SHADE_BY_CUSTOM:
+        return (
+          <CustomColorShader
+            pointSize={pointSizeNum}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+            color={customColor}
+          />
+        );
+      default:
+        return (
+          <pointsMaterial
+            color={defaultShadingColor}
+            // 1000 and 2 are arbitrary values that seem to work well
+            size={
+              isPointSizeAttenuated ? pointSizeNum / 1000 : pointSizeNum / 2
+            }
+            sizeAttenuation={isPointSizeAttenuated}
+          />
+        );
+    }
   }, [
     colorMinMax,
     shadeBy,
@@ -133,11 +152,12 @@ export const PointCloudMesh = ({
     boundingBox,
     defaultShadingColor,
     isPointSizeAttenuated,
+    customColor,
   ]);
 
   return (
     <primitive
-      key={`${pointSize}-${shadeBy}-${isPointSizeAttenuated}`}
+      key={`${pointSize}-${shadeBy}-${isPointSizeAttenuated}-${customColor}`}
       scale={1}
       object={points}
       rotation={rotation}

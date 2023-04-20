@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import * as THREE from "three";
 
 export type Gradients = [number, string][];
@@ -152,6 +152,34 @@ const ShadeByIntensityShaders = {
 `,
 };
 
+const ShadeByCustomColorShaders = {
+  vertexShader: /* glsl */ `
+  uniform float max;
+  uniform float min;
+  uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
+  uniform vec3 color;
+
+  // vColor will be assigned to color for frgament shader
+  varying vec3 vColor;
+
+  void main() {
+    vColor = color;
+
+    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);    gl_Position = projectionMatrix * mvPosition;
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`,
+  fragmentShader: /* glsl */ `
+  varying vec3 vColor;
+
+  void main() {
+    gl_FragColor = vec4(vColor, 1.0);
+  }
+`,
+};
+
 export const ShadeByHeight = ({
   gradients,
   min,
@@ -218,6 +246,34 @@ export const RgbShader = ({
         },
         vertexShader: ShadeByRgbShaders.vertexShader,
         fragmentShader: ShadeByRgbShaders.fragmentShader,
+      }}
+    />
+  );
+};
+
+export const CustomColorShader = ({
+  pointSize,
+  isPointSizeAttenuated,
+  color,
+}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated"> & {
+  color: string;
+}) => {
+  const hexColorToVec3 = useMemo(() => {
+    const threeColor = new THREE.Color(color);
+    return [threeColor.r, threeColor.g, threeColor.b];
+  }, [color]);
+
+  return (
+    <shaderMaterial
+      {...{
+        scale: { value: 1 },
+        uniforms: {
+          pointSize: { value: pointSize },
+          isPointSizeAttenuated: { value: isPointSizeAttenuated },
+          color: { value: hexColorToVec3 },
+        },
+        vertexShader: ShadeByCustomColorShaders.vertexShader,
+        fragmentShader: ShadeByCustomColorShaders.fragmentShader,
       }}
     />
   );
