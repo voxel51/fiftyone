@@ -173,6 +173,7 @@ class ValidationError:
 class ValidationContext:
     def __init__(self, ctx, inputs_property):
         self.ctx = ctx
+        self.params = ctx["params"]
         self.inputs_property = inputs_property
         self._errors = []
         self.errors = self._validate()
@@ -188,57 +189,68 @@ class ValidationContext:
         self._errors.append(error)
 
     def _validate(self):
-        params = self.ctx.params
+        params = self.params
         validation_error = self.validate_property(
-            "inputs", self.inputs_property, params
+            "", self.inputs_property, params
         )
         if validation_error:
             self.add_error(validation_error)
         return self._errors
 
-    def validate_enum(self, path, property, enum, value):
+    def validate_enum(self, path, property, value):
+        enum = property.type
         if value not in enum.values:
             return ValidationError("Invalid enum value", property, path)
 
-    def validate_list(self, path, property, list, value):
+    def validate_list(self, path, property, value):
         if not isinstance(value, list):
             return ValidationError("Invalid list", property, path)
         element_type = property.type.element_type
+
         for i in range(len(value)):
             item = value[i]
             item_path = f"{path}[{i}]"
-            if isinstance(element_type, types.Enum):
-                return self.validate_enum(
-                    item_path, property, element_type, item
-                )
-            if isinstance(element_type, types.Object):
-                return self.validate_object(
-                    item_path, property, element_type, item
-                )
-            if isinstance(element_type, types.List):
-                return self.validate_list(
-                    item_path, property, element_type, item
-                )
+            item_property = types.Property(element_type)
+            validation_error = self.validate_property(
+                item_path, item_property, item
+            )
+            if validation_error is not None:
+                self.add_error(validation_error)
 
     def validate_property(self, path, property, value):
         if property.invalid:
             return ValidationError("Invalid property", property, path)
-        if property.required and value is None:
+        elif property.required and value is None:
             return ValidationError("Required property", property, path)
-        if isinstance(property.type, types.Enum):
-            return self.validate_enum(path, property, property.type, value)
-        if isinstance(property.type, types.Object):
-            return self.validate_object(path, property, property.type, value)
-        if isinstance(property.type, types.List):
-            return self.validate_list(path, property, property.type, value)
+        elif isinstance(property.type, types.Enum):
+            return self.validate_enum(path, property, value)
+        elif isinstance(property.type, types.Object):
+            return self.validate_object(path, property, value)
+        elif isinstance(property.type, types.List):
+            return self.validate_list(path, property, value)
+        else:
+            return self.validate_primitive(path, property, value)
 
-    def validate_object(self, path, parent_property, object, params):
-        if params is None:
-            return ValidationError("Invalid object", parent_property, path)
-        for name, property in object.properties.items():
-            value = params.get(name, None)
+    def validate_object(self, path, property, value):
+        propertyType = property.type
+        if value is None:
+            return ValidationError("Invalid object", property, path)
+        for name, property in propertyType.properties.items():
+            propertyValue = value.get(name, None)
             validation_error = self.validate_property(
-                path + "." + name, property, value
+                path + "." + name, property, propertyValue
             )
             if validation_error is not None:
                 self.add_error(validation_error)
+
+    def validate_primitive(self, path, property, value):
+        type_name = property.type.__class__.__name__
+        value_type = type(value)
+        if type_name == "String" and value_type != str:
+            return ValidationError("Invalid value type", property, path)
+        if type_name == "Number" and (
+            value_type != int or value_type != float
+        ):
+            return ValidationError("Invalid value type", property, path)
+        if type_name == "Boolean" and value_type != bool:
+            return ValidationError("Invalid value type", property, path)
