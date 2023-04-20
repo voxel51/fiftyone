@@ -160,6 +160,7 @@ export function operatorToIOSchema(operatorSchema, options?) {
 }
 
 export function getErrorsByPath(errors: []) {
+  if (!Array.isArray(errors)) return {};
   return errors.reduce((pathErrors, error) => {
     const { path } = error;
     if (!pathErrors[path]) pathErrors[path] = [];
