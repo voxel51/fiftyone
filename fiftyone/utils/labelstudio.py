@@ -261,9 +261,8 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             if label_info["existing_field"]:
                 predictions[label_field] = {
                     smp.id: export_label_to_label_studio(
-                        smp,
-                        label_field,
-                        label_type,
+                        smp[label_field],
+                        label_type=label_type,
                         full_result={
                             "from_name": "label",
                             "to_name": "image",
@@ -278,6 +277,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                     smp.id: _get_label_ids(smp[label_field])
                     for smp in samples.select_fields(label_field)
                 }
+
         return tasks, predictions, id_map
 
     def _upload_tasks(self, project, tasks, predictions=None):
@@ -369,11 +369,11 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             )
             if label_type == "keypoints":
                 labels = import_label_studio_annotation(
-                    latest_annotation["result"], label_type
+                    latest_annotation["result"]
                 )
             else:
                 labels = [
-                    import_label_studio_annotation(r, label_type)
+                    import_label_studio_annotation(r, label_type=label_type)
                     for r in latest_annotation.get("result", [])
                 ]
 
@@ -390,6 +390,12 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _export_to_label_studio(self, labels, label_type):
+        if label_type == "instances":
+            raise ValueError(
+                "This method does not support uploading instance "
+                "segmentations. Use upload_samples() instead"
+            )
+
         if _LABEL_TYPES[label_type]["multiple"] is None:
             return export_label_to_label_studio(labels)
 
@@ -473,10 +479,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             task_ids: list of task ids
         """
         for t_id in task_ids:
-            self._client.make_request(
-                "DELETE",
-                f"/api/tasks/{t_id}",
-            )
+            self._client.make_request("DELETE", f"/api/tasks/{t_id}")
 
     def delete_project(self, project_id):
         """Deletes the project from Label Studio.
@@ -484,10 +487,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         Args:
             project_id: project id
         """
-        self._client.make_request(
-            "DELETE",
-            f"/api/projects/{project_id}",
-        )
+        self._client.make_request("DELETE", f"/api/projects/{project_id}")
 
 
 class LabelStudioAnnotationResults(foua.AnnotationResults):
@@ -575,12 +575,16 @@ def generate_labeling_config(media, label_type, labels=None):
     return config_str
 
 
-def import_label_studio_annotation(result, label_type):
+def import_label_studio_annotation(result, label_type=None):
     """Imports an annotation from Label Studio.
 
     Args:
         result: the annotation result from Label Studio
-        label_type: the FiftyOne Label type of the annotation
+        label_type (None): the label type to use when importing the annotation.
+            This argument is only used when importing brush labels. By default,
+            these labels are imported as semantic segmentations, but you can
+            pass ``label_type="instances"`` to import them as instance
+            segmentations instead
 
     Returns:
         a :class:`fiftyone.core.labels.Label`
@@ -603,7 +607,7 @@ def import_label_studio_annotation(result, label_type):
     elif ls_type == "keypointlabels":
         label = _from_keypointlabels(result)
     elif ls_type == "brushlabels":
-        label = _from_brushlabels(result, label_type)
+        label = _from_brushlabels(result, label_type=label_type)
     elif ls_type == "number":
         label = _from_number(result)
     else:
@@ -625,21 +629,23 @@ def _update_dict(src_dict, update_dict):
     return new
 
 
-def export_label_to_label_studio(
-    sample, label_field, label_type, full_result=None
-):
+def export_label_to_label_studio(label, label_type=None, full_result=None):
     """Exports a label to the Label Studio format.
 
     Args:
         label: a :class:`fiftyone.core.labels.Label` or list of
             :class:`fiftyone.core.labels.Label` instances
+        label_type (None): the label type to use when importing the annotation.
+            This argument is only used when importing brush labels. By default,
+            these labels are imported as semantic segmentations, but you can
+            pass ``label_type="instances"`` to import them as instance
+            segmentations instead
         full_result (None): if non-empty, return the full Label Studio result
 
     Returns:
         a dictionary or a list in Label Studio format
     """
     # TODO model version and model score
-    label = sample[label_field]
     if label is None:
         result_value = {}
         ls_type = None
@@ -648,7 +654,10 @@ def export_label_to_label_studio(
         result_value, ls_type, ids = _to_classification(label)
     elif _check_type(label, fol.Detection, fol.Detections):
         if label_type == "instances":
-            size = (sample.metadata["width"], sample.metadata["height"])
+            size = (
+                full_result["original_width"],
+                full_result["original_height"],
+            )
             result_value, ls_type, ids = _to_instance(label, size)
         else:
             result_value, ls_type, ids = _to_detection(label)
@@ -859,17 +868,16 @@ def _from_keypointlabels(result):
     return keypoints
 
 
-def _from_brushlabels(result, label_type):
+def _from_brushlabels(result, label_type=None):
     label_values = result["value"]["brushlabels"]
     img = brush.decode_rle(result["value"]["rle"])
-    mask = img.reshape(
-        (result["original_height"], result["original_width"], 4)
-    )[:, :, 3]
+    shape = (result["original_height"], result["original_width"], 4)
+    mask = img.reshape(shape)[:, :, 3]
 
     label = label_values[0]
     segmentation = fol.Segmentation(label=label, mask=mask)
 
-    if label_type == "detections":
+    if label_type == "instances":
         detections = segmentation.to_detections({255: label}).detections
         return detections[0] if detections else None
 
