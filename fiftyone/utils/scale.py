@@ -428,6 +428,7 @@ def export_to_scale(
 
     # Export the labels
     labels = {}
+    anno_dict = {}
     for sample in sample_collection.iter_samples(progress=True):
         metadata = sample.metadata
 
@@ -454,8 +455,6 @@ def export_to_scale(
                 annotations, events = _to_scale_video_annotation_labels(
                     frames, frame_size, make_events=make_events
                 )
-
-            anno_dict = {}
 
             # Write annotations
             if video_labels_dir:
