@@ -254,7 +254,8 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             for _id, _mime_type, _filepath in zip(ids, mime_types, filepaths)
         ]
 
-        predictions, id_map = {}, {}
+        predictions = {}
+        id_map = {}
         for label_field, label_info in label_schema.items():
             label_type = label_info["type"]
             if label_info["existing_field"]:
@@ -714,6 +715,7 @@ def _to_classification(label):
 
 def _to_detection(label):
     ls_type = "rectanglelabels"
+
     if isinstance(label, list):
         return (
             [_to_detection(l)[0] for l in label],
@@ -742,6 +744,7 @@ def _to_detection(label):
 
 def _to_instance(label, size):
     ls_type = "brushlabels"
+
     if isinstance(label, list):
         return (
             [_to_instance(l, size)[0] for l in label],
