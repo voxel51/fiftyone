@@ -284,7 +284,7 @@ class ClipsView(fov.DatasetView):
         super().keep_fields()
 
     def reload(self):
-        """Reloads this view from the source collection in the database.
+        """Reloads the view.
 
         Note that :class:`ClipView` instances are not singletons, so any
         in-memory clips extracted from this view will not be updated by calling
@@ -298,10 +298,13 @@ class ClipsView(fov.DatasetView):
         # This assumes that calling `load_view()` when the current clips
         # dataset has been deleted will cause a new one to be generated
         #
-
         self._clips_dataset.delete()
         _view = self._clips_stage.load_view(self._source_collection)
         self._clips_dataset = _view._clips_dataset
+
+        _view = self._base_view
+        for stage in self._stages:
+            _view = _view.add_stage(stage)
 
     def _sync_source_sample(self, sample):
         if not self._classification_field:
