@@ -77,7 +77,7 @@ def _update_app_config(plugin_name, **kwargs):
     if not app_config["plugins"].get(plugin_name):
         app_config["plugins"][plugin_name] = {}
     for k, v in kwargs.items():
-        app_config["plugins"][plugin_name][k].update({k, v})
+        app_config["plugins"][plugin_name][k] = v
 
     logging.debug(
         f"Updated app config settings for `{plugin_name}:\n{app_config['plugins'][plugin_name]}"
@@ -160,7 +160,7 @@ def _list_plugins(enabled_only: bool = None) -> set[str]:
     """
     plugins = set()
     disabled = _list_disabled_plugins()
-    # python plugins must have a fiftyone.yml file at the root of the plugin
+    # plugins must have a fiftyone.yml file at the root of the directory
     for fpath in filter(
         lambda x: _is_plugin_definition_file(x),
         glob.glob(os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True),
@@ -246,6 +246,7 @@ def download_plugin(
     url: str = None,
     gh_repo: str = None,
     overwrite: bool = False,
+    disable: bool = False,
     **kwargs,
 ) -> Optional[str]:
     """Downloads a plugin into the directory specified by FIFTYONE_PLUGINS_DIR.
@@ -255,7 +256,7 @@ def download_plugin(
         name: the name of the plugin as it appears in the .yml file
         url: the URL to the plugin zip archive
         gh_repo: URL or '<user>/<repo>[/<ref>]' of the GitHub repo containing the plugin
-        enable: whether to enable the plugin in the app after downloading
+        disable: whether to disable the plugin after downloading
         overwrite: whether to force re-download and overwrite the plugin if it already exists
         github_repo: URL or '<user>/<repo>[/<ref>]' of the GitHub repo containing the plugin
 
@@ -272,13 +273,17 @@ def download_plugin(
         raise ValueError("Must provide name, url, or github_repo.")
     if etaw.is_url(download_ref) and "github" not in download_ref:
         logging.debug("Downloading from URL")
-        zipurl = download_ref
+        zip_url = download_ref
     else:
         logging.debug("Downloading from GitHub")
-        zipurl = _get_gh_download_url(download_ref)
-    if not zipurl:
+        zip_url = _get_gh_download_url(download_ref)
+    if not zip_url:
         raise ValueError("Could not determine zip download URL.")
-    extracted_dir_path = _download_and_extract_zip(zipurl, overwrite=overwrite)
+    extracted_dir_path = _download_and_extract_zip(
+        zip_url, overwrite=overwrite
+    )
+    if disable:
+        disable_plugin(name)
     return extracted_dir_path
 
 
@@ -289,19 +294,22 @@ def _get_gh_download_url(gh_repo: str) -> str:
 
 
 def _download_and_extract_zip(
-    zipurl: str,
+    zip_url: str,
     plugin_names: Optional[List[str]] = None,
     overwrite: Optional[bool] = False,
 ) -> Optional[str]:
     """Downloads and extracts a zip archive to the plugin directory.
 
     Args:
-        zipurl: the URL of the zip archive
+        zip_url: the URL of the zip archive
         plugin_names: an optional list of plugin names to extract.
             If not provided, all plugins in the archive will be extracted
         overwrite: whether to force re-download and overwrite the plugin if it already exists
     """
-    extracted_dir_name = "-".join(re.findall("\w+", zipurl))
+
+    # TODO: add support for specifying plugin names to extract
+
+    extracted_dir_name = "-".join(re.findall("\w+", zip_url))
 
     extracted_dir_path = os.path.join(
         fo.config.plugins_dir, extracted_dir_name
@@ -310,13 +318,13 @@ def _download_and_extract_zip(
         print("overwrite=", overwrite)
         if os.path.isdir(extracted_dir_path):
             print(
-                f"Plugin from {zipurl} already downloaded at {extracted_dir_path}. Skipping download."
+                f"Plugin from {zip_url} already downloaded at {extracted_dir_path}. Skipping download."
             )
             return extracted_dir_path
 
     try:
-        with urlopen(zipurl) as zipresp:
-            logging.info(f"Attempting to download plugin from {zipurl}...")
+        with urlopen(zip_url) as zipresp:
+            logging.info(f"Attempting to download plugin from {zip_url}...")
             with ZipFile(BytesIO(zipresp.read())) as zfile:
                 logging.debug(f"Files in archive: {zfile.namelist()}")
                 plugin_defs = list(
@@ -327,14 +335,14 @@ def _download_and_extract_zip(
                         f"Aborting download. Archive missing `fiftyone.yml` file."
                     )
                     return
-                # TODO: Extracting entire archive for now, but may need to
+                # TODO (followup): Extracting entire archive for now, but may need to
                 #  limit to extracting only plugin directories (with .yml files at their root)
                 zfile.extractall(extracted_dir_path)
                 print(f"Downloaded plugin to {extracted_dir_path}")
                 return extracted_dir_path
 
     except HTTPError as e:
-        raise ValueError(f"Error downloading archive at {zipurl}: \n{e}")
+        raise ValueError(f"Error downloading archive at {zip_url}: \n{e}")
 
 
 def _has_plugin_definition(plugin_files: list) -> bool:
