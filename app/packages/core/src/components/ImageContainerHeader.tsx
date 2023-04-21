@@ -12,7 +12,11 @@ import GroupSliceSelector from "./GroupSliceSelector";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup } from "@fiftyone/state";
+import {
+  groupStatistics,
+  isDynamicGroup as isDynamicGroupAtom,
+  isGroup as isGroupAtom,
+} from "@fiftyone/state";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 export const SamplesHeader = styled.div`
@@ -62,8 +66,9 @@ const Count = () => {
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
-  const group = useRecoilValue(isGroup);
-  if (group) {
+  const isGroup = useRecoilValue(isGroupAtom);
+
+  if (isGroup) {
     element = {
       plural: "groups",
       singular: "group",
@@ -109,7 +114,8 @@ const ImageContainerHeader = () => {
   const setGridZoom = useSetRecoilState(gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
-  const group = useRecoilValue(isGroup);
+  const isGroup = useRecoilValue(isGroupAtom);
+  const isDynamicGroup = useRecoilValue(isDynamicGroupAtom);
   const groupStats = useRecoilValue(groupStatistics(false));
 
   return (
@@ -125,7 +131,7 @@ const ImageContainerHeader = () => {
         >
           {groupStats === "group" ? <GroupsCount /> : <Count />}
         </Suspense>
-        {group && (
+        {isGroup && !isDynamicGroup && (
           <RightDiv>
             <GroupSliceSelector />
           </RightDiv>

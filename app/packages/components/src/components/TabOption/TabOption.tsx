@@ -41,12 +41,14 @@ export type TabOptionProps = {
   options: TabOption[];
   style?: React.CSSProperties;
   color?: string;
+  disabled?: boolean;
 };
 
 const TabOption = ({
   active,
   options,
   style: propStyle,
+  disabled,
   color,
 }: TabOptionProps) => {
   const theme = useTheme();
@@ -77,7 +79,9 @@ const TabOption = ({
     >
       {options.map(({ text, title, onClick }, i) => (
         <Tab
-          onClick={onClick}
+          onClick={() => {
+            !disabled && onClick();
+          }}
           title={title}
           style={{
             ...styles[i],

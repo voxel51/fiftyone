@@ -3,7 +3,7 @@ import {
   groupSample,
   groupSampleActive,
   mainGroup,
-} from "./Group.module.css";
+} from "./Modal.module.css";
 
 import * as fos from "@fiftyone/state";
 import {
@@ -36,6 +36,7 @@ import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import GroupList from "../Group";
 import { GroupBar, GroupSampleBar } from "./Bars";
+import { DynamicGroup } from "./DynamicGroup";
 import Looker from "./Looker";
 import { Sample3d } from "./Sample3d";
 
@@ -316,6 +317,12 @@ const DualView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
 const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
   lookerRefCallback,
 }) => {
+  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+
+  if (isDynamicGroup) {
+    return <DynamicGroup lookerRefCallback={lookerRefCallback} />;
+  }
+
   return (
     <Suspense>
       <DualView lookerRefCallback={lookerRefCallback} />

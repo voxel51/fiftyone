@@ -13,7 +13,7 @@ import {
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../Common/Checkbox";
-import style from "../Modal/Group.module.css";
+import style from "../Modal/Modal.module.css";
 import Popout from "./Popout";
 
 interface GroupMediaVisibilityProps {

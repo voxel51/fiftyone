@@ -22,6 +22,16 @@ from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
 
+import logging
+
+logging.basicConfig(
+    filename="/tmp/fiftyone.log",
+    filemode="a",
+    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+    level=logging.INFO,
+)
+
 
 @gql.type
 class MediaURL:
@@ -88,7 +98,11 @@ async def paginate_samples(
         media = root_view.group_media_types[root_view.default_group_slice]
 
     if media == fom.GROUP:
-        media = view.group_media_types[view.group_slice]
+        if view.group_slice is not None:
+            media = view.group_media_types[view.group_slice]
+        else:
+            # todo: this is a temp hack
+            media = fom.IMAGE
 
     # TODO: Remove this once we have a better way to handle large videos. This
     # is a temporary fix to reduce the $lookup overhead for sample frames on

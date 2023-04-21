@@ -31,6 +31,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { DynamicGroupAction } from "./DynamicGroupAction";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -54,7 +55,7 @@ const Loading = () => {
   return <LoadingDots text="" color={theme.text.primary} />;
 };
 
-const ActionDiv = styled.div`
+export const ActionDiv = styled.div`
   position: relative;
 `;
 
@@ -398,6 +399,7 @@ export const GridActionsRow = () => {
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <DynamicGroupAction />
     </ActionsRowDiv>
   );
 };

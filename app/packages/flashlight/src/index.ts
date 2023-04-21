@@ -35,6 +35,14 @@ export interface FlashlightConfig<K> {
   initialRequestKey: K;
   horizontal: boolean;
   options: FlashlightOptions;
+  enableKeyNavigation?: {
+    navigationCallback: (
+      itemIndexMap: Record<string, unknown>,
+      isPrev: boolean
+    ) => Promise<void>;
+    previousKey: string;
+    nextKey: string;
+  };
   onItemClick?: OnItemClick;
   onResize?: OnResize;
   onItemResize?: OnItemResize;
@@ -60,6 +68,33 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(config);
 
     document.addEventListener("visibilitychange", () => this.render());
+
+    console.log("in constructor");
+
+    if (config.enableKeyNavigation) {
+      const keyDownEventListener = (e) => {
+        if (!this.isAttached()) {
+          document.removeEventListener("keydown", keyDownEventListener);
+          return;
+        }
+
+        if (e.key === config.enableKeyNavigation.previousKey) {
+          e.preventDefault();
+          config.enableKeyNavigation.navigationCallback(
+            this.state.itemIndexMap,
+            true
+          );
+        } else if (e.key === config.enableKeyNavigation.nextKey) {
+          e.preventDefault();
+          config.enableKeyNavigation.navigationCallback(
+            this.state.itemIndexMap,
+            false
+          );
+        }
+      };
+
+      document.addEventListener("keydown", keyDownEventListener);
+    }
 
     this.resizeObserver = new ResizeObserver(
       ([

@@ -24,9 +24,9 @@ import {
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
-import { view } from "./view";
+import { dynamicGroupViewQuery, view } from "./view";
 
-type SliceName = string | undefined | null;
+export type SliceName = string | undefined | null;
 
 export const isGroup = selector<boolean>({
   key: "isGroup",
@@ -226,6 +226,26 @@ export const groupQuery = graphQLSelector<
   },
 });
 
+export const dynamicGroupQuery = graphQLSelectorFamily<
+  VariablesOf<paginateGroupQuery>,
+  string,
+  ResponseFrom<paginateGroupQuery>
+>({
+  key: "dynamicGroupQuery",
+  environment: RelayEnvironmentKey,
+  mapResponse: (response) => response,
+  query: paginateGroup,
+  variables:
+    (fieldOrExpression) =>
+    ({ get }) => {
+      return {
+        dataset: get(datasetName),
+        filter: {},
+        view: get(dynamicGroupViewQuery(fieldOrExpression)),
+      };
+    },
+});
+
 const mapSampleResponse = (response: mainSampleQuery$data) => {
   const actualRawSample = response?.sample?.sample;
 
@@ -274,6 +294,23 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
   key: "groupPaginationFragment",
   get: ({ get }) => get(groupQuery),
+});
+
+export const dynamicGroupPaginationFragment = selectorFamily<
+  paginateGroup_query$key,
+  string
+>({
+  key: "dynamicGroupPaginationFragment",
+  get:
+    (fieldOrExpression) =>
+    ({ get }) => {
+      console.log("fieldOrExpression", fieldOrExpression);
+      return get(dynamicGroupQuery(fieldOrExpression));
+    },
+  cachePolicy_UNSTABLE: {
+    eviction: "lru",
+    maxSize: 20,
+  },
 });
 
 export const activeModalSample = selectorFamily<
