@@ -246,7 +246,6 @@ def download_plugin(
     url: str = None,
     gh_repo: str = None,
     overwrite: bool = False,
-    disable: bool = False,
     **kwargs,
 ) -> Optional[str]:
     """Downloads a plugin into the directory specified by FIFTYONE_PLUGINS_DIR.
@@ -256,10 +255,8 @@ def download_plugin(
         name: the name of the plugin as it appears in the .yml file
         url: the URL to the plugin zip archive
         gh_repo: URL or '<user>/<repo>[/<ref>]' of the GitHub repo containing the plugin
-        disable: whether to disable the plugin after downloading
         overwrite: whether to force re-download and overwrite the plugin if it already exists
-        github_repo: URL or '<user>/<repo>[/<ref>]' of the GitHub repo containing the plugin
-
+        **kwargs: optional keyword arguments to pass to the plugin's `install()` method
     Returns:
         the path to the downloaded plugin
     """
@@ -282,8 +279,7 @@ def download_plugin(
     extracted_dir_path = _download_and_extract_zip(
         zip_url, overwrite=overwrite
     )
-    if disable:
-        disable_plugin(name)
+
     return extracted_dir_path
 
 
