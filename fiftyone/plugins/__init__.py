@@ -109,11 +109,13 @@ def _list_disabled_plugins():
         )
 
 
-def delete_plugin(plugin_name, dry_run=False):
+def delete_plugin(plugin_name, dry_run=False, cleanup=True):
     """Deletes a downloaded plugin from the local filesystem.
 
     Args:
         plugin_name: the name of the downloaded plugin
+        dry_run: if True, will print the files that will be deleted without actually deleting them
+        cleanup: if True, will delete the plugin directory if it is empty after deleting the plugin
     """
     plugin_dir = find_plugin(plugin_name)
     if plugin_dir:
@@ -127,8 +129,22 @@ def delete_plugin(plugin_name, dry_run=False):
             return
         shutil.rmtree(plugin_dir)
         print(f"Deleted plugin at {plugin_dir}")
+        _cleanup_plugin_dir(plugin_dir)
         return
     raise ValueError(f"Plugin directory '{plugin_dir}' does not exist.")
+
+
+def _cleanup_plugin_dir(plugin_dir: str, recursive: bool = True):
+    if plugin_dir == _PLUGIN_DIRS[0]:
+        print("Done cleaning up plugin directory.")
+        return
+    plugin_parent_dir = os.path.dirname(plugin_dir)
+    if len(glob.glob(os.path.join(plugin_parent_dir, "*"))) == 0:
+        if plugin_parent_dir != _PLUGIN_DIRS[0]:
+            shutil.rmtree(plugin_parent_dir)
+        print(f"Deleted empty directory {plugin_parent_dir}")
+    if recursive:
+        return _cleanup_plugin_dir(plugin_parent_dir, recursive=recursive)
 
 
 def list_downloaded_plugins():
@@ -304,7 +320,7 @@ def _download_and_extract_zip(
 
     # TODO: add support for specifying plugin names to extract
 
-    extracted_dir_name = "-".join(re.findall("\w+", zip_url))
+    extracted_dir_name = "-".join(re.findall(r"\w+", zip_url))
 
     extracted_dir_path = os.path.join(
         fo.config.plugins_dir, extracted_dir_name
