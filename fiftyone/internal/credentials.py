@@ -46,6 +46,7 @@ class CloudCredentialsManager(object):
         self._creds_cache = {}
         self._creds_cache_exp = datetime.utcnow()
         self._encryption_key = os.environ.get(ENCRYPTION_KEY_ENV_VAR)
+        self._refresh_credentials()
 
     @property
     def expiration_time(self):
