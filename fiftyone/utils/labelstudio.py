@@ -19,7 +19,6 @@ import webbrowser
 from bson import ObjectId
 import numpy as np
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -910,7 +909,7 @@ def _ls_tags_from_type(label_type):
 
 
 def _label_class_from_tag(label_type):
-    """Maps Label Studio parent tag to fo.Label."""
+    """Maps Label Studio parent tag to FiftyOne Label type."""
     reverse = {
         v["parent_tag"].lower(): v["label"] for v in _LABEL_TYPES.values()
     }
