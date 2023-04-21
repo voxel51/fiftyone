@@ -10,7 +10,6 @@ import logging
 import os
 import re
 import shutil
-from enum import Enum
 from io import BytesIO
 from typing import List, Optional
 from urllib.error import HTTPError
