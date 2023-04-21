@@ -634,11 +634,11 @@ def export_label_to_label_studio(label, label_type=None, full_result=None):
     Args:
         label: a :class:`fiftyone.core.labels.Label` or list of
             :class:`fiftyone.core.labels.Label` instances
-        label_type (None): the label type to use when importing the annotation.
-            This argument is only used when importing brush labels. By default,
-            these labels are imported as semantic segmentations, but you can
-            pass ``label_type="instances"`` to import them as instance
-            segmentations instead
+        label_type (None): the label type to use when exporting the annotation.
+            This argument is only used when exporting object detections. By
+            default, only the bounding boxes are exported, but you can pass
+            ``label_type="instances"`` to export them as brush labels encoding
+            the instance masks instead
         full_result (None): if non-empty, return the full Label Studio result
 
     Returns:
