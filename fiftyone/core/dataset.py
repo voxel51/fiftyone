@@ -2999,11 +2999,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops = []
             if issubclass(label_type, fol._LABEL_LIST_FIELDS):
                 array_field = field + "." + label_type._LABEL_LIST_FIELD
+                query = {array_field: {"$exists": True}}
 
                 if view_ids is not None:
                     ops.append(
                         UpdateMany(
-                            {},
+                            query,
                             {
                                 "$pull": {
                                     array_field: {"_id": {"$in": view_ids}}
@@ -3015,14 +3016,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if ids is not None:
                     ops.append(
                         UpdateMany(
-                            {}, {"$pull": {array_field: {"_id": {"$in": ids}}}}
+                            query,
+                            {"$pull": {array_field: {"_id": {"$in": ids}}}},
                         )
                     )
 
                 if tags is not None:
                     ops.append(
                         UpdateMany(
-                            {},
+                            query,
                             {
                                 "$pull": {
                                     array_field: {
