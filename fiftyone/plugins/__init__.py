@@ -270,16 +270,15 @@ def download_plugin(
     download_ref = next(ref for ref in [name, url, gh_repo] if ref is not None)
     if not download_ref:
         raise ValueError("Must provide name, url, or github_repo.")
-    if etaw.is_url(download_ref) and "github" not in url:
-        print("Downloading from URL")
-        zipurl = url
+    if etaw.is_url(download_ref) and "github" not in download_ref:
+        logging.debug("Downloading from URL")
+        zipurl = download_ref
     else:
-        print("Downloading from GitHub")
+        logging.debug("Downloading from GitHub")
         zipurl = _get_gh_download_url(download_ref)
     if not zipurl:
         raise ValueError("Could not determine zip download URL.")
     extracted_dir_path = _download_and_extract_zip(zipurl, overwrite=overwrite)
-
     return extracted_dir_path
 
 
@@ -331,7 +330,7 @@ def _download_and_extract_zip(
                 # TODO: Extracting entire archive for now, but may need to
                 #  limit to extracting only plugin directories (with .yml files at their root)
                 zfile.extractall(extracted_dir_path)
-                logging.info(f"Downloaded plugin to {extracted_dir_path}")
+                print(f"Downloaded plugin to {extracted_dir_path}")
                 return extracted_dir_path
 
     except HTTPError as e:
