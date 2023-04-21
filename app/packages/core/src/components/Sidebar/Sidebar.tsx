@@ -8,19 +8,11 @@ import React, {
 } from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
+import { Button } from "@fiftyone/components";
 
-import {
-  EMBEDDED_DOCUMENT_FIELD,
-  move,
-  VALID_PRIMITIVE_TYPES,
-} from "@fiftyone/utilities";
+import { move } from "@fiftyone/utilities";
 
-import {
-  buildSchema,
-  textFilter,
-  useEventHandler,
-  useSetView,
-} from "@fiftyone/state";
+import { buildSchema, useEventHandler, useSetView } from "@fiftyone/state";
 import { scrollbarStyles, TabOption } from "../utils";
 import { Resizable } from "re-resizable";
 import {
@@ -38,16 +30,6 @@ import { resizeHandle } from "./Sidebar.module.css";
 import CloseIcon from "@mui/icons-material/Close";
 import Checkbox from "@mui/material/Checkbox";
 import groupBy from "lodash/groupBy";
-import {
-  CheckBoxOutlineBlankRounded,
-  CheckBoxSharp,
-  PlusOne,
-  PlusOneSharp,
-  VisibilityOff,
-  VisibilityRounded,
-} from "@mui/icons-material";
-import Typography from "@mui/material/Typography";
-import { PanelTab, PanelTabs } from "@fiftyone/spaces/src/components";
 
 const MARGIN = 3;
 
@@ -64,33 +46,6 @@ const ModalWrapper = styled.div`
   justify-content: center;
   background-color: ${({ theme }) => theme.neutral.softBg};
 `;
-
-// todo: move
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-// todo: move
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          <Typography>{children}</Typography>
-        </Box>
-      )}
-    </div>
-  );
-}
 
 const fn = (
   items: InteractiveItems,
@@ -533,7 +488,7 @@ const InteractiveSidebar = ({
   const dataset = useRecoilValue(fos.dataset);
   const baseSchema = dataset ? buildSchema(dataset, true) : null;
   const [schema, setSchmea] = useState(baseSchema);
-  const [fieldsOnly, setFieldsOnly] = useState(false);
+  const [fieldsOnly, setFieldsOnly] = useState(true);
   const eligibleEntries = groupBy(entries, "path");
 
   console.log("dataset", dataset);
@@ -861,7 +816,6 @@ const InteractiveSidebar = ({
         .filter((path) => {
           // TODO
           if (fieldsOnly) {
-            console.log("path", path);
             return (
               !path?.includes(".") &&
               schema[path]?.searchField?.includes(searchTerm)
@@ -879,6 +833,7 @@ const InteractiveSidebar = ({
         })
         .map((path: string) => {
           const count = path.split(".")?.length;
+          const firstPath = path.split(".")[0];
           const isSelected = selectedPaths.has(path);
           const pathLabel = path.split(".");
           const pathLabelFinal = pathLabel[pathLabel.length - 1];
@@ -887,8 +842,7 @@ const InteractiveSidebar = ({
             schema[path].ftype === "fiftyone.core.fields.Field" ||
             path.includes(".logits") ||
             path.endsWith(".index") ||
-            path.endsWith(".bounding_box") ||
-            path.endsWith(".detections.confidence");
+            path.endsWith(".bounding_box");
 
           const disabled =
             path.endsWith(".id") ||
@@ -905,8 +859,9 @@ const InteractiveSidebar = ({
             skip,
             disabled,
           };
-        }),
-    [schema, searchTerm, selectedPaths]
+        })
+        .sort((item) => (fieldsOnly ? (item.disabled ? 1 : -1) : 0)),
+    [schema, searchTerm, selectedPaths, fieldsOnly]
   );
 
   return shown ? (
@@ -955,7 +910,9 @@ const InteractiveSidebar = ({
               event.target === wrapperRef.current && console.log("TODO")
             }
           >
-            <NewContainer style={{ ...screen, zIndex: 10001, padding: "2rem" }}>
+            <NewContainer
+              style={{ ...screen, zIndex: 10001, padding: "1.5rem" }}
+            >
               <Box
                 style={{
                   position: "relative",
@@ -965,7 +922,12 @@ const InteractiveSidebar = ({
               >
                 <h3
                   color="black"
-                  style={{ padding: 0, color: "black", margin: 0 }}
+                  style={{
+                    padding: 0,
+                    color: "black",
+                    margin: 0,
+                    width: "100%",
+                  }}
                 >
                   Schema field visibilty
                 </h3>
@@ -1085,12 +1047,13 @@ const InteractiveSidebar = ({
                     style={{
                       position: "relative",
                       display: "flex",
-                      padding: "1rem 0",
+                      padding: "1rem 0.25rem",
                     }}
                   >
-                    <button
+                    <Button
                       style={{
                         color: "black",
+                        marginRight: "0.5rem",
                       }}
                       onClick={() => {
                         const finalSelectedPaths = new Set(
@@ -1127,8 +1090,8 @@ const InteractiveSidebar = ({
                       }}
                     >
                       Add to view
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       style={{ color: "black" }}
                       onClick={() => {
                         setSchemaModal({ open: false });
@@ -1137,7 +1100,7 @@ const InteractiveSidebar = ({
                       }}
                     >
                       cancel
-                    </button>
+                    </Button>
                   </Box>
                 </Box>
               )}
