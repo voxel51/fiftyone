@@ -35,11 +35,10 @@ export interface FlashlightConfig<K> {
   initialRequestKey: K;
   horizontal: boolean;
   options: FlashlightOptions;
+  elementId?: string;
+  containerId?: string;
   enableKeyNavigation?: {
-    navigationCallback: (
-      itemIndexMap: Record<string, unknown>,
-      isPrev: boolean
-    ) => Promise<void>;
+    navigationCallback: (isPrev: boolean) => Promise<void>;
     previousKey: string;
     nextKey: string;
   };
@@ -49,10 +48,11 @@ export interface FlashlightConfig<K> {
 }
 
 export default class Flashlight<K> {
+  public container: HTMLDivElement;
+  public element: HTMLDivElement;
+  public state: State<K>;
+
   private loading = false;
-  private container: HTMLDivElement;
-  private element: HTMLDivElement;
-  private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
   private pixelsSet: boolean;
@@ -64,6 +64,7 @@ export default class Flashlight<K> {
     this.container = this.createContainer();
     this.showPixels();
     this.element = document.createElement("div");
+    config.elementId && this.element.setAttribute("id", config.elementId);
     this.element.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
@@ -80,16 +81,11 @@ export default class Flashlight<K> {
 
         if (e.key === config.enableKeyNavigation.previousKey) {
           e.preventDefault();
-          config.enableKeyNavigation.navigationCallback(
-            this.state.itemIndexMap,
-            true
-          );
+          config.enableKeyNavigation.navigationCallback(true);
+          this.container.scrollLeft -= 316;
         } else if (e.key === config.enableKeyNavigation.nextKey) {
           e.preventDefault();
-          config.enableKeyNavigation.navigationCallback(
-            this.state.itemIndexMap,
-            false
-          );
+          config.enableKeyNavigation.navigationCallback(false);
         }
       };
 
@@ -602,6 +598,9 @@ export default class Flashlight<K> {
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
     container.classList.add(flashlightContainer);
+    if (this.config.containerId) {
+      container.setAttribute("id", this.config.containerId);
+    }
     return container;
   }
 

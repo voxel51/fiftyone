@@ -21,6 +21,11 @@ import {
 } from "recoil";
 import { useDynamicGroupContext } from "../DynamicGroupContextProvider";
 
+export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =
+  "dynamic-groups-flashlight-container";
+export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
+  "dynamic-groups-flashlight-element";
+
 const process = (
   next: MutableRefObject<number>,
   store: fos.LookerStore<any>,
@@ -129,21 +134,28 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
+  const flashlightRef = useRef<Flashlight<number>>();
   selectSample.current = select;
 
   const navigationCallback = useRecoilCallback(
     ({ snapshot }) =>
-      async (itemIndexMap, isPrevious) => {
+      async (isPrevious) => {
+        const flashlight = flashlightRef.current;
+
+        if (!flashlight) {
+          return;
+        }
+
         const modalSample = await snapshot.getPromise(fos.modal);
 
         if (!modalSample) {
           return;
         }
 
-        const currentSampleIndex = itemIndexMap[modalSample?.sample._id];
-        const nextSampleId = store.indices.get(
-          isPrevious ? currentSampleIndex - 1 : currentSampleIndex + 1
-        );
+        const currentSampleIndex =
+          flashlight.itemIndexes[modalSample?.sample._id];
+        const nextSampleIndex = currentSampleIndex + (isPrevious ? -1 : 1);
+        const nextSampleId = store.indices.get(nextSampleIndex);
 
         if (!nextSampleId) {
           return;
@@ -151,6 +163,22 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
         const nextSample = store.samples.get(nextSampleId);
         nextSample && setSample(nextSample);
+
+        console.log("current sample inde is ", currentSampleIndex);
+
+        // todo: temp ideation
+        if (flashlightRef.current) {
+          const newLeft = isPrevious
+            ? flashlightRef.current?.element.scrollLeft - 325 * 3
+            : flashlightRef.current?.element.scrollLeft + 325 * 3;
+
+          nextSampleIndex !== 0 &&
+            nextSampleIndex % 3 === 0 &&
+            flashlightRef.current?.element.scroll({
+              left: newLeft,
+              behavior: "smooth",
+            });
+        }
       },
     [setSample, store.indices, store.samples]
   );
@@ -158,6 +186,8 @@ export const DynamicGroupsFlashlightWrapper = () => {
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
       horizontal: true,
+      containerId: DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID,
+      elementId: DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID,
       enableKeyNavigation: {
         navigationCallback,
         previousKey: "[",
@@ -228,6 +258,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
   useLayoutEffect(() => {
     flashlight.attach(id);
+    flashlightRef.current = flashlight;
 
     return () => flashlight.detach();
   }, [flashlight, id]);
