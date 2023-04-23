@@ -404,7 +404,7 @@ class Mutation:
         session: t.Optional[str],
         color_scheme: ColorScheme,
         save_to_app: bool = False,
-    ) -> Dataset:
+    ) -> bool:
         state = get_state()
         state.color_scheme = color_scheme
         await dispatch_event(subscription, StateUpdate(state=state))

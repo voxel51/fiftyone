@@ -341,7 +341,6 @@ class CustomizeColor:
 class AppConfig:
     color_by: ColorBy
     color_pool: t.List[str]
-    customized_colors: t.List[CustomizeColor]
     colorscale: str
     grid_zoom: int
     loop_videos: bool

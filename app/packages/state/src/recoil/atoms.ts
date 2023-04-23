@@ -9,7 +9,6 @@ import {
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
-import { sessionColorConfig } from "./config";
 import { Field } from "@fiftyone/utilities";
 
 export interface AppSample extends Sample {
@@ -122,8 +121,9 @@ export const customizeColors = atomFamily<CustomizeColor, string>({
       (path) =>
       ({ get }) => {
         // use session.config.customizedColors as default
-        const settings = get(sessionColorConfig) as unknown as CustomizeColor[];
-        return settings?.find((s) => s.field === path) ?? null;
+        // const settings = get(colorSche) as unknown as CustomizeColor[];
+        // return settings?.find((s) => s.field === path) ?? null;
+        return [];
       },
   }),
 });
@@ -134,7 +134,8 @@ export const customizeColorFields = atom<string[]>({
     key: "initialColorFields",
     get: ({ get }) => {
       // use session.config.customizedColors as default
-      return [...new Set(get(sessionColorConfig).map((s) => s.field))];
+      // return [...new Set(get(sessionColorConfig).map((s) => s.field))];
+      return [];
     },
   }),
 });

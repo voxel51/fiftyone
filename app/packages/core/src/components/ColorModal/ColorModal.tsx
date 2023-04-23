@@ -27,6 +27,7 @@ import {
   DraggableModalTitle,
   IconDiv,
   ModalWrapper,
+  Text,
 } from "./ShareStyledDiv";
 
 type Option = {

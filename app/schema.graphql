@@ -43,7 +43,6 @@ union AggregationResponses =
 type AppConfig {
   colorBy: ColorBy!
   colorPool: [String!]!
-  customizedColors: [CustomizeColor!]!
   colorscale: String!
   gridZoom: Int!
   loopVideos: Boolean!
@@ -119,17 +118,6 @@ input ColorScheme {
 
 input CountValues {
   field: String!
-}
-
-type CustomizeColor {
-  field: String!
-  useFieldColor: Boolean
-  fieldColor: String
-  attributeForColor: String
-  useOpacity: Boolean
-  attributeForOpacity: String
-  useLabelColors: Boolean
-  labelColors: [LabelSetting!]
 }
 
 type DataAggregation implements Aggregation {
@@ -289,11 +277,6 @@ scalar JSON
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
-}
-
-type LabelSetting {
-  name: String!
-  color: String!
 }
 
 enum MediaType {

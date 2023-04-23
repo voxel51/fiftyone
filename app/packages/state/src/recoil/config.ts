@@ -47,8 +47,3 @@ export const colorPool = selector({
   key: "colorPool",
   get: ({ get }) => get(config).colorPool,
 });
-
-export const sessionColorConfig = selector({
-  key: "sessionColorConfig",
-  get: ({ get }) => get(config).customizedColors,
-});
