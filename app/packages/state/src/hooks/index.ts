@@ -29,6 +29,8 @@ export { default as useSelectFlashlightSample } from "./useSelectFlashlightSampl
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";
 export { default as useSessionSpaces } from "./useSessionSpaces";
+export { default as useSessionColorScheme } from "./useSessionColorScheme";
+
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";

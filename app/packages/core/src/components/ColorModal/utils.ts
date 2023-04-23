@@ -3,11 +3,10 @@ import { CustomizeColor } from "@fiftyone/state";
 import { atom } from "recoil";
 
 import { isEmpty, xor } from "lodash";
-import styled from "styled-components";
 import { Field } from "@fiftyone/utilities";
 
 type ColorJSON = {
-  colorScheme: string[];
+  colors: string[];
   customizedColorSettings: CustomizeColor[];
 };
 

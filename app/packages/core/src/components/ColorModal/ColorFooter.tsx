@@ -35,6 +35,8 @@ const onCancel = () => {
 };
 
 const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
+  const [sessionColorPool, sessionCustomizedColors, setColorScheme] =
+    fos.useSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
@@ -63,6 +65,8 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     fos.customizeColorSelector(path!)
   );
 
+  console.info("session", sessionColorPool, sessionCustomizedColors);
+
   const onSave = () => {
     onApply();
     onCancel();
@@ -87,25 +91,25 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     if (activeColorModalField == "json") {
       if (
         typeof json !== "object" ||
-        !json?.colorScheme ||
-        !Array.isArray(json?.colorScheme) ||
+        !json?.colors ||
+        !Array.isArray(json?.colors) ||
         !json?.customizedColorSettings ||
         !Array.isArray(json?.customizedColorSettings)
       )
         return;
-      const { colorScheme, customizedColorSettings } = json;
+      const { colors, customizedColorSettings } = json;
       // update color palette
-      const validColors = colorScheme?.filter((c) => isValidColor(c));
+      const validColors = colors?.filter((c) => isValidColor(c));
       validColors.length > 0 && setColoring(validColors);
       // validate customizedColorSettings
       const validated = validateJSONSetting(
         customizedColorSettings,
         eligibleFields
       );
-      const jsonCustomizeColor = JSON.stringify(validated);
       if (validated) {
         resetCustomizeColors(validated);
         validated.forEach((update) => setCustomizeColor(update));
+        setColorScheme(validColors, validated);
       }
     }
   };
