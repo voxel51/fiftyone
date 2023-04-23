@@ -18,7 +18,7 @@ import { tempColorSetting } from "./utils";
 import Checkbox from "../Common/Checkbox";
 import OpacityAttribute from "./controls/OpacityAttribute";
 import ColorAttribute from "./controls/ColorAttribute";
-import { SectionWrapper } from "./ShareStyledDiv";
+import { SectionWrapper, Text } from "./ShareStyledDiv";
 
 type Prop = {
   field: Field;

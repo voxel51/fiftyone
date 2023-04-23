@@ -111,9 +111,9 @@ class StateDescription(etas.Serializable):
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()
 
-            if isinstance(self.color_scheme, ColorScheme):
-                d["color_scheme"] = self.color_scheme
+            d["color_scheme"] = self.color_scheme
 
+            print("state description serialize", d["color_scheme"])
             return d
 
     def attributes(self):
@@ -173,8 +173,7 @@ class StateDescription(etas.Serializable):
         if spaces is not None:
             spaces = Space.from_dict(json_util.loads(spaces))
 
-        if color_scheme is not None:
-            color_scheme = color_scheme
+        color_scheme = color_scheme
 
         return cls(
             config=config,

@@ -207,7 +207,7 @@ export namespace State {
 
   export interface ColorScheme {
     colorPool: string[];
-    customizedColors: CustomizeColor[];
+    customizedColors: JSON[];
   }
 
   export interface Description {

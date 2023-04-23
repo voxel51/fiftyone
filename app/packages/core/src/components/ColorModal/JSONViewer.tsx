@@ -50,7 +50,7 @@ const JSONViewer: React.FC = ({}) => {
       setGlobal(setting);
     }
     setData({
-      colorScheme: global?.colors,
+      colors: global?.colors,
       customizedColorSettings: fullSetting,
     });
   }, []);

@@ -24,7 +24,7 @@ from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.query import Dataset, SidebarGroup, SavedView
-from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
 
 
@@ -59,7 +59,7 @@ class SavedViewInfo:
 @gql.input
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
-    customized_color_settings: t.Optional[JSON] = None
+    customized_color_settings: t.Optional[JSONArray] = None
 
 
 @gql.type

@@ -113,7 +113,7 @@ enum ColorBy {
 
 input ColorScheme {
   colorPool: [String!] = null
-  customizedColorSettings: JSON = null
+  customizedColorSettings: JSONArray = null
 }
 
 input CountValues {
@@ -273,6 +273,8 @@ type IntValueCount {
 }
 
 scalar JSON
+
+scalar JSONArray
 
 type KeypointSkeleton {
   labels: [String!]

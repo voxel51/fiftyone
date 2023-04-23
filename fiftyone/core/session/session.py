@@ -374,11 +374,9 @@ class Session(object):
             spaces = default_spaces.copy()
 
         if color_scheme is None:
-            color_scheme = (
-                # fo.app_config.color_cheme.copy() or
-                focn.DEFAULT_COLOR_SCHEME
-            )
+            color_scheme = focn.DEFAULT_COLOR_SCHEME
 
+        print("session init stateDescription color scheme", color_scheme)
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
@@ -589,10 +587,7 @@ class Session(object):
     @update_state()
     def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
         if color_scheme is None:
-            color_scheme = (
-                # fo.app_config.color_scheme or
-                focn.DEFAULT_COLOR_SCHEME
-            )
+            color_scheme = focn.DEFAULT_COLOR_SCHEME
 
         if not isinstance(color_scheme, ColorScheme):
             raise ValueError(
