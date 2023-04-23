@@ -104,13 +104,6 @@ export const activePcdSlices = atom<string[] | null>({
   default: null,
 });
 
-// export const activePcdSliceToSampleMap = atom<{
-//   [sliceName: string]: SampleData;
-// }>({
-//   key: "activePcdSamples",
-//   default: {},
-// });
-
 export const activePcdSliceToSampleMap = selector({
   key: "activePcdSliceToSampleMap",
   get: ({ get }) => {
