@@ -17,7 +17,6 @@ import {
   AppSample,
   SampleData,
   dataset,
-  modal,
   modal as modalAtom,
   pinned3DSample,
 } from "./atoms";
@@ -108,7 +107,10 @@ export const activePcdSliceToSampleMap = selector({
   key: "activePcdSliceToSampleMap",
   get: ({ get }) => {
     const activePcdSlicesValue = get(activePcdSlices);
-    if (!activePcdSlicesValue) return {};
+    if (!activePcdSlicesValue || activePcdSlicesValue.length === 0)
+      return {
+        default: get(modalAtom),
+      };
 
     const samples = get(
       waitForAll(
@@ -291,7 +293,7 @@ const groupSampleQuery = graphQLSelectorFamily<
         filter: {
           group: {
             slice: slice ?? get(groupSlice(true)),
-            id: get(modal).sample[get(groupField)]._id,
+            id: get(modalAtom).sample[get(groupField)]._id,
           },
         },
       };
@@ -310,7 +312,7 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
       const field = get(groupField);
       const group = get(isGroup);
 
-      const sample = get(modal);
+      const sample = get(modalAtom);
 
       if (!field || !group) return sample;
 
