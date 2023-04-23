@@ -11,12 +11,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
 import { CAMERA_POSITION_KEY, Environment } from "./Environment";
@@ -31,6 +26,7 @@ import {
   SetViewButton,
   SliceSelector,
   ViewHelp,
+  ViewJSON,
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
@@ -90,36 +86,13 @@ export const Looker3d = () => {
     }
   }, [activePcdSlices, setActivePcdSlices, defaultPcdSlice]);
 
-  const [sampleMap, setSampleMap] = useRecoilState(
-    fos.activePcdSliceToSampleMap
-  );
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const fetchSamples = useRecoilCallback(
-    ({ snapshot }) =>
-      async () => {
-        const newSampleMap = {};
+  const sampleMap = useRecoilValue(fos.activePcdSliceToSampleMap);
 
-        if (activePcdSlices?.length > 0) {
-          for (const slice of activePcdSlices) {
-            const sample = await snapshot.getPromise(
-              fos.pcdSampleQueryFamily(slice)
-            );
-            newSampleMap[slice] = sample;
-          }
-        } else {
-          const sample = await snapshot.getPromise(fos.modal);
-          newSampleMap[sample.sample.filepath] = sample;
-        }
-
-        setSampleMap(newSampleMap);
-      },
-    [activePcdSlices, setSampleMap]
-  );
-
-  useEffect(() => {
-    fetchSamples();
-  }, [fetchSamples]);
+  // const sampleMapJson = useMemo(() => {
+  //   r
+  // }, [sampleMap])
 
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
@@ -485,11 +458,10 @@ export const Looker3d = () => {
           {polylineOverlays}
           {filteredSamples}
         </Canvas>
-        {/* {(hoveringRef.current || hovering) && ( */}
-        {true && (
+        {(hoveringRef.current || hovering) && (
           <ActionBarContainer
             onMouseEnter={() => (hoveringRef.current = true)}
-            // onMouseLeave={() => (hoveringRef.current = false)}
+            onMouseLeave={() => (hoveringRef.current = false)}
           >
             {hasMultiplePcdSlices && <SliceSelector />}
             <ActionsBar>
@@ -508,7 +480,7 @@ export const Looker3d = () => {
                 label={"E"}
                 hint="Ego View"
               />
-              {/* <ViewJSON jsonPanel={jsonPanel} sample={sample} /> */}
+              <ViewJSON jsonPanel={jsonPanel} sample={sampleMap} />
               <ViewHelp helpPanel={helpPanel} />
             </ActionsBar>
           </ActionBarContainer>

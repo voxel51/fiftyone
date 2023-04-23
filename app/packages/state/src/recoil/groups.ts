@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/relay";
 
 import { VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
@@ -104,11 +104,30 @@ export const activePcdSlices = atom<string[] | null>({
   default: null,
 });
 
-export const activePcdSliceToSampleMap = atom<{
-  [sliceName: string]: SampleData;
-}>({
-  key: "activePcdSamples",
-  default: {},
+// export const activePcdSliceToSampleMap = atom<{
+//   [sliceName: string]: SampleData;
+// }>({
+//   key: "activePcdSamples",
+//   default: {},
+// });
+
+export const activePcdSliceToSampleMap = selector({
+  key: "activePcdSliceToSampleMap",
+  get: ({ get }) => {
+    const activePcdSlicesValue = get(activePcdSlices);
+    if (!activePcdSlicesValue) return {};
+
+    const samples = get(
+      waitForAll(
+        activePcdSlicesValue?.map((sliceName) =>
+          pcdSampleQueryFamily(sliceName)
+        )
+      )
+    );
+    return Object.fromEntries(
+      activePcdSlicesValue.map((sliceName, i) => [sliceName, samples[i]])
+    );
+  },
 });
 
 export const currentSlice = selectorFamily<string | null, boolean>({
