@@ -15,7 +15,7 @@ const useColorScheme = () => {
   const subscription = useRecoilValue(stateSubscription);
   const [sessionColorSchemeState, setSessionColorSchemeState] =
     useRecoilState(sessionColorScheme);
-  const [commit] = useMutation<setColorSchemeMutation>(setColorScheme);
+  const [commit] = useMutation<foq.setColorSchemeMutation>(foq.setColorScheme);
   const onError = useErrorHandler();
 
   function setColorScheme(
