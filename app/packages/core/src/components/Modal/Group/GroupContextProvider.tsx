@@ -3,39 +3,34 @@ import * as fos from "@fiftyone/state";
 import React, { useContext, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
-export type DynamicGroupContext = {
+export type GroupContext = {
   lookerRefCallback: (looker: AbstractLooker) => void;
-  dynamicGroupParameters: fos.State.DynamicGroupParameters;
   groupByFieldValue: string | null;
 };
 
-const defaultOptions: DynamicGroupContext = {
+const defaultOptions: GroupContext = {
   lookerRefCallback: () => {},
-  dynamicGroupParameters: { orderBy: "", groupBy: "" },
   groupByFieldValue: null,
 };
 
-export const dynamicGroupContext =
-  React.createContext<DynamicGroupContext>(defaultOptions);
+export const groupContext = React.createContext<GroupContext>(defaultOptions);
 
-export const useDynamicGroupContext = () => useContext(dynamicGroupContext);
+export const useGroupContext = () => useContext(groupContext);
 
-interface DynamicGroupContextProviderProps {
+interface GroupContextProviderProps {
   children: React.ReactNode;
   lookerRefCallback: (looker: AbstractLooker) => void;
-  dynamicGroupParameters: fos.State.DynamicGroupParameters;
 }
 
-export const DynamicGroupContextProvider = ({
+export const GroupContextProvider = ({
   lookerRefCallback,
   children,
-  dynamicGroupParameters,
-}: DynamicGroupContextProviderProps) => {
+}: GroupContextProviderProps) => {
   const modal = useRecoilValue(fos.modal);
+  const dynamicGroupParameters = useRecoilValue(fos.dynamicGroupParameters);
 
   const groupByFieldValue = useMemo(() => {
     if (modal && dynamicGroupParameters?.groupBy) {
-      console.log("setting group value");
       return modal.sample[
         fos.getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
       ] as unknown as string;
@@ -44,14 +39,13 @@ export const DynamicGroupContextProvider = ({
   }, [modal, dynamicGroupParameters]);
 
   return (
-    <dynamicGroupContext.Provider
+    <groupContext.Provider
       value={{
         lookerRefCallback,
-        dynamicGroupParameters,
         groupByFieldValue,
       }}
     >
       {children}
-    </dynamicGroupContext.Provider>
+    </groupContext.Provider>
   );
 };

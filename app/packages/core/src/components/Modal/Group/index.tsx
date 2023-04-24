@@ -6,18 +6,16 @@ import { DynamicGroup } from "./DynamicGroup";
 import { GroupSuspense } from "./GroupSuspense";
 import { GroupView } from "./GroupView";
 
-const Group: React.FC<{ lookerRefCallback: (looker) => void }> = ({
-  lookerRefCallback,
-}) => {
+const Group = () => {
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
 
   if (isDynamicGroup) {
-    return <DynamicGroup lookerRefCallback={lookerRefCallback} />;
+    return <DynamicGroup />;
   }
 
   return (
     <GroupSuspense>
-      <GroupView lookerRefCallback={lookerRefCallback} />
+      <GroupView />
     </GroupSuspense>
   );
 };

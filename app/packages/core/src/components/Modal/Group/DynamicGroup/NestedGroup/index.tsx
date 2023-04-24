@@ -1,7 +1,8 @@
-import { useDynamicGroupContext } from "../DynamicGroupContextProvider";
+import React from "react";
+import { useGroupContext } from "../../GroupContextProvider";
 
 export const NestedGroup = () => {
-  const { lookerRefCallback } = useDynamicGroupContext();
+  const { lookerRefCallback } = useGroupContext();
 
   return <div>dynamic</div>;
 };

@@ -11,16 +11,17 @@ import React, { MutableRefObject, useMemo } from "react";
 import { ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import Looker from "../Looker";
+import { useGroupContext } from "./GroupContextProvider";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
 
 const AltGroupSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
-  lookerRefCallback?: (looker) => void;
   altSlice: string;
-}> = ({ lookerRef, lookerRefCallback, altSlice }) => {
+}> = ({ lookerRef, altSlice }) => {
   const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(altSlice));
   const clearModal = useClearModal();
   const reset = useResetRecoilState(pinned3DSample);
+  const { lookerRefCallback } = useGroupContext();
 
   const hover = fos.useHoveredSample(sample);
 
@@ -45,13 +46,13 @@ const AltGroupSample: React.FC<{
 
 export const GroupImageVideoSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | ImageLooker | undefined>;
-  lookerRefCallback?: (looker) => void;
-}> = ({ lookerRef, lookerRefCallback }) => {
+}> = ({ lookerRef }) => {
   const { sample, urls } = useRecoilValue(groupSampleSelectorFamily(null));
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(pinned3DSample);
   const reset = useResetRecoilState(pinned3DSample);
   const hover = fos.useHoveredSample(sample);
+  const { lookerRefCallback } = useGroupContext();
 
   const currentModalSlice = useRecoilValue(currentSlice(true));
   const defaultSlice = useRecoilValue(defaultGroupSlice);

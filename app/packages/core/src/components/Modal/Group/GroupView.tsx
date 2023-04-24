@@ -16,9 +16,7 @@ import { GroupSuspense } from "./GroupSuspense";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
-export const GroupView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
-  lookerRefCallback,
-}) => {
+export const GroupView = () => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
   const key = useRecoilValue(groupId);
@@ -91,10 +89,7 @@ export const GroupView: React.FC<{ lookerRefCallback?: (looker) => void }> = ({
 
             {isImageVisible ? (
               <GroupSuspense>
-                <GroupImageVideoSample
-                  lookerRef={lookerRef}
-                  lookerRefCallback={lookerRefCallback}
-                />
+                <GroupImageVideoSample lookerRef={lookerRef} />
               </GroupSuspense>
             ) : is3DVisible ? (
               <GroupSample3d />

@@ -19,7 +19,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import { useDynamicGroupContext } from "../DynamicGroupContextProvider";
+import { useGroupContext } from "../../GroupContextProvider";
 
 export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =
   "dynamic-groups-flashlight-container";
@@ -75,7 +75,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
   const id = useId();
   const pageCount = useRef(0);
 
-  const { groupByFieldValue } = useDynamicGroupContext();
+  const { groupByFieldValue } = useGroupContext();
 
   const { data, hasNext, loadNext } = usePaginationFragment(
     foq.paginateGroupPaginationFragment,

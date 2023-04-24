@@ -1,10 +1,10 @@
 import React from "react";
 import Sample from "../../Sample";
+import { useGroupContext } from "../GroupContextProvider";
 import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
-import { useDynamicGroupContext } from "./DynamicGroupContextProvider";
 
 export const UnorderedDynamicGroup = () => {
-  const { lookerRefCallback, groupByFieldValue } = useDynamicGroupContext();
+  const { lookerRefCallback, groupByFieldValue } = useGroupContext();
 
   if (!groupByFieldValue) {
     return null;

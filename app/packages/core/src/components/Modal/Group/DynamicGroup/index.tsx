@@ -1,17 +1,10 @@
-import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import styled from "styled-components";
-import { DynamicGroupContextProvider } from "./DynamicGroupContextProvider";
-import { UnorderedDynamicGroup } from "./UnorderedDynamicGroup";
 import { NestedGroup } from "./NestedGroup";
+import { UnorderedDynamicGroup } from "./UnorderedDynamicGroup";
 
-interface DynamicGroupProps {
-  lookerRefCallback: (looker: AbstractLooker) => void;
-}
-
-export const DynamicGroup = ({ lookerRefCallback }: DynamicGroupProps) => {
+export const DynamicGroup = () => {
   /**
    * check if ordered or unordered
    */
@@ -23,12 +16,9 @@ export const DynamicGroup = ({ lookerRefCallback }: DynamicGroupProps) => {
   const { orderBy } = dynamicGroupParameters;
 
   return (
-    <DynamicGroupContextProvider
-      lookerRefCallback={lookerRefCallback}
-      dynamicGroupParameters={dynamicGroupParameters}
-    >
+    <>
       {/* todo: different component for ordered dynamic group */}
       {hasGroupSlices ? <NestedGroup /> : <UnorderedDynamicGroup />}
-    </DynamicGroupContextProvider>
+    </>
   );
 };
