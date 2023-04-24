@@ -512,7 +512,20 @@ const InteractiveSidebar = ({
       for (let i = 0; i < activeLabelPaths?.length; i++) {
         const currPath = activeLabelPaths[i];
         const subPaths = getSelectedSubPaths(activeLabelPaths[i]);
-        finalPaths.push(currPath, ...subPaths);
+        // detects on parent - should refatcor this when v1
+        const currPathSplit = currPath.split(".");
+        let parentPaths = [];
+        if (currPathSplit.length > 1) {
+          console.log(
+            "currPathSplit",
+            currPathSplit[currPathSplit.length - 1],
+            currPath
+          );
+          parentPaths = [
+            currPath.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
+          ];
+        }
+        finalPaths.push(currPath, ...subPaths, ...parentPaths);
       }
       console.log("finalPaths", finalPaths);
       setSelectedPaths(new Set([...finalPaths]));
