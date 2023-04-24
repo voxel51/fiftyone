@@ -12,7 +12,12 @@ import { Button } from "@fiftyone/components";
 
 import { move } from "@fiftyone/utilities";
 
-import { buildSchema, useEventHandler, useSetView } from "@fiftyone/state";
+import {
+  buildSchema,
+  useEventHandler,
+  useSchemaSettings,
+  useSetView,
+} from "@fiftyone/state";
 import { scrollbarStyles, TabOption } from "../utils";
 import { Resizable } from "re-resizable";
 import {
@@ -30,6 +35,10 @@ import { resizeHandle } from "./Sidebar.module.css";
 import CloseIcon from "@mui/icons-material/Close";
 import Checkbox from "@mui/material/Checkbox";
 import groupBy from "lodash/groupBy";
+import {
+  TAB_OPTIONS,
+  TAG_OPTIONS_MAP,
+} from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 const MARGIN = 3;
 
@@ -476,123 +485,28 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-  const selection = useRecoilValue(fos.activeLabelFields({ modal: false }));
-  const activeLabelPaths = useRecoilValue(
-    fos.activeLabelPaths({ modal: false })
-  );
-  console.log("selectionselection", activeLabelPaths);
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const schemaModalRef = useRef<HTMLDivElement>(null);
   const modalContainer = document.getElementById("modal");
-  const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
+
+  const {
+    settingModal,
+    setSettingsModal,
+    searchTerm,
+    setSearchTerm,
+    finalSelectedPaths,
+    setSelectedTab,
+    originalSelectedPaths,
+    setSelectedPaths,
+    selectedTab,
+    fieldsOnly,
+    setFieldsOnly,
+    setView,
+    toggleSelection,
+    finalSchema,
+  } = useSchemaSettings();
+
   const { open: isSettingsModalOpen } = settingModal;
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const dataset = useRecoilValue(fos.dataset);
-  const baseSchema = dataset ? buildSchema(dataset, true) : null;
-  const [schema, setSchmea] = useState(baseSchema);
-  const [fieldsOnly, setFieldsOnly] = useState(true);
-  const eligibleEntries = groupBy(entries, "path");
-
-  const getSelectedSubPaths = (path: string) => {
-    const tmpSelected = new Set();
-    Object.keys(schema).map((currPath: string) => {
-      if (currPath.startsWith(path)) {
-        tmpSelected.add(currPath);
-      }
-    });
-    return tmpSelected;
-  };
-  console.log("dataset", dataset);
-  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
-    fos.selectedPaths
-  );
-  const [originalSelectedPaths, setOriginalSelectedPaths] =
-    useState(selectedPaths);
-  useEffect(() => {
-    console.log("selectedPaths", selectedPaths);
-    if (!originalSelectedPaths?.size && selectedPaths?.size) {
-      setOriginalSelectedPaths(selectedPaths);
-    }
-  }, [selectedPaths]);
-
-  useEffect(() => {
-    const finalPaths = [];
-    if (activeLabelPaths?.length) {
-      for (let i = 0; i < activeLabelPaths?.length; i++) {
-        const currPath = activeLabelPaths[i];
-        const subPaths = getSelectedSubPaths(activeLabelPaths[i]);
-        // detects on parent - should refatcor this when v1
-        const currPathSplit = currPath.split(".");
-        let parentPaths = [];
-        if (currPathSplit.length > 1) {
-          parentPaths = [
-            currPath.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
-          ];
-        }
-        finalPaths.push(currPath, ...subPaths, ...parentPaths);
-      }
-      setSelectedPaths(new Set([...finalPaths]));
-    }
-  }, [activeLabelPaths]);
-  const viewStages = useRecoilValue(fos.view);
-  const setView = useSetView();
-  const setSchemaModal = useSetRecoilState(fos.settingsModal);
-  const [selectedTab, setSelectedTab] = useState("selection");
-
-  const toggleSelection = (path: string, checked: boolean) => {
-    const subPaths = new Set<string>();
-    Object.keys(schema).map((currPath: string) => {
-      if (currPath.startsWith(path)) {
-        subPaths.add(currPath);
-      }
-    });
-    const currPathSplit = path.split(".");
-
-    if (checked) {
-      const diff = new Set([...selectedPaths].filter((x) => !subPaths.has(x)));
-
-      let parentPaths = [];
-      if (currPathSplit.length > 1) {
-        parentPaths = [
-          path.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
-        ];
-        diff.delete(parentPaths[0]);
-      }
-      setSelectedPaths(diff);
-    } else {
-      const union = new Set<string>([...selectedPaths, ...subPaths]);
-      let parentPaths = [];
-      if (currPathSplit.length > 1) {
-        parentPaths = [
-          path.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
-        ];
-        union.add(parentPaths[0]);
-      }
-      setSelectedPaths(union);
-    }
-  };
-
-  useEffect(() => {
-    if (viewStages?.length) {
-      const finalSelectedFields = new Set<string>();
-      for (let i = 0; i < viewStages?.length; i++) {
-        const view = viewStages[i];
-        if (view && view?.["_cls"] === "fiftyone.core.stages.SelectFields") {
-          const selectedFields = view?.["kwargs"]?.filter(
-            (item) => item[0] === "field_names"
-          )[0];
-          selectedFields[1].forEach((item) => finalSelectedFields.add(item));
-        }
-      }
-      if (finalSelectedFields.size) {
-        const ffff = new Set<string>();
-        finalSelectedFields.forEach((p: string) => {
-          const subPaths = getSelectedSubPaths(p);
-          subPaths.forEach((item: string) => ffff.add(item));
-        });
-      }
-    }
-  }, [viewStages]);
 
   if (entries instanceof Error) {
     throw entries;
@@ -845,61 +759,6 @@ const InteractiveSidebar = ({
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
 
-  const finalSchema = React.useMemo(
-    () =>
-      Object.keys(schema)
-        .sort()
-        .filter((path) => {
-          // TODO
-          if (fieldsOnly) {
-            return (
-              !path?.includes(".") &&
-              schema[path]?.searchField?.includes(searchTerm)
-            );
-          }
-          if (!searchTerm) {
-            return true;
-          } else if (
-            searchTerm &&
-            schema[path]?.searchField?.includes(searchTerm)
-          ) {
-            return true;
-          }
-          return false;
-        })
-        .map((path: string) => {
-          const count = path.split(".")?.length;
-          const isSelected = selectedPaths.has(path);
-          const pathLabel = path.split(".");
-          const pathLabelFinal = pathLabel[pathLabel.length - 1];
-          const skip =
-            schema[path].ftype === "fiftyone.core.fields.DictField" ||
-            schema[path].ftype === "fiftyone.core.fields.Field" ||
-            path.includes(".logits") ||
-            path.endsWith(".index") ||
-            path.endsWith(".bounding_box");
-
-          const disabled =
-            path.endsWith(".id") ||
-            path === "id" ||
-            path === "tags" ||
-            path === "filepath" ||
-            path === "uniqueness" ||
-            path.startsWith("metadata");
-
-          return {
-            path,
-            count,
-            isSelected,
-            pathLabelFinal,
-            skip,
-            disabled,
-          };
-        })
-        .sort((item) => (fieldsOnly ? (item.disabled ? 1 : -1) : 0)),
-    [schema, searchTerm, selectedPaths, fieldsOnly]
-  );
-
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}
@@ -941,9 +800,9 @@ const InteractiveSidebar = ({
       {modalContainer && isSettingsModalOpen && (
         <Fragment>
           <ModalWrapper
-            ref={wrapperRef}
+            ref={schemaModalRef}
             onClick={(event) =>
-              event.target === wrapperRef.current && console.log("TODO")
+              event.target === schemaModalRef.current && console.log("TODO")
             }
           >
             <NewContainer
@@ -970,7 +829,6 @@ const InteractiveSidebar = ({
                 <CloseIcon
                   color="action"
                   onClick={() => {
-                    setSchemaModal(false);
                     setSearchTerm("");
                     setSelectedPaths(originalSelectedPaths);
                     setSettingsModal({ ...settingModal, open: false });
@@ -987,7 +845,7 @@ const InteractiveSidebar = ({
               >
                 <TabOption
                   active={selectedTab}
-                  options={["selection", "search"].map((value) => {
+                  options={TAB_OPTIONS.map((value) => {
                     return {
                       text: value,
                       title: `Fiele ${value}`,
@@ -996,7 +854,7 @@ const InteractiveSidebar = ({
                   })}
                 />
               </Box>
-              {selectedTab === "search" && (
+              {selectedTab === TAG_OPTIONS_MAP.SEARCH && (
                 <Box style={{ display: "flex", position: "relative" }}>
                   <input
                     value={searchTerm}
@@ -1006,7 +864,7 @@ const InteractiveSidebar = ({
                   />
                 </Box>
               )}
-              {selectedTab === "selection" && (
+              {selectedTab === TAG_OPTIONS_MAP.SELECTION && (
                 <Box
                   display="flex"
                   flexDirection="column"
@@ -1100,21 +958,6 @@ const InteractiveSidebar = ({
                         boxShadow: "none",
                       }}
                       onClick={() => {
-                        const finalSelectedPaths = new Set(
-                          [...selectedPaths].filter((path) => {
-                            return !(
-                              schema[path].ftype ===
-                                "fiftyone.core.fields.DictField" ||
-                              schema[path].ftype ===
-                                "fiftyone.core.fields.Field" ||
-                              path.includes(".logits") ||
-                              path.endsWith(".index") ||
-                              path.endsWith(".bounding_box") ||
-                              path.endsWith(".detections.confidence")
-                            );
-                          })
-                        );
-
                         const stageKwargs = [
                           ["field_names", [...finalSelectedPaths]],
                           ["_allow_missing", true],
@@ -1138,7 +981,7 @@ const InteractiveSidebar = ({
                     <Button
                       style={{ color: "black", boxShadow: "none" }}
                       onClick={() => {
-                        setSchemaModal({ open: false });
+                        setSettingsModal({ open: false });
                         setSearchTerm("");
                         setSelectedPaths(originalSelectedPaths);
                       }}
