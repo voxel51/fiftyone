@@ -71,7 +71,7 @@ class ResolveType(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
-        result = resolve_type(registry, operator_name, data)
+        result = resolve_type(registry, operator_uri, data)
         return result.to_json()
 
 

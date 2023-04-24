@@ -70,9 +70,9 @@ const Choice = ({ onClick, choice, selected }) => {
   return (
     <ChoiceContainer onClick={onClick} selected={selected}>
       <ChoiceDescription>
-        {choice.description || choice.label}
+        {choice.label}
       </ChoiceDescription>
-      {choice.description && <ChoiceLabel>{choice.label}</ChoiceLabel>}
+      {choice.label && <ChoiceLabel>{choice.name}</ChoiceLabel>}
     </ChoiceContainer>
   );
 };
