@@ -98,17 +98,15 @@ export class Operator {
   public definition: types.ObjectType;
   constructor(
     public name: string,
-    public description: string,
-    public inputView?,
-    public outputView?
+    public description: string
   ) {
     this.definition = new types.ObjectType();
-    this.definition.defineProperty("inputs", new types.ObjectType(), {
-      view: inputView,
-    });
-    this.definition.defineProperty("outputs", new types.ObjectType(), {
-      view: inputView,
-    });
+    this.definition.defineProperty("inputs", new types.ObjectType());
+    this.definition.defineProperty("outputs", new types.ObjectType());
+  }
+  public pluginName: any;
+  get uri() {
+    return `${this.pluginName || "@voxel51"}/${this.name}`
   }
   get inputs(): types.Property {
     return this.definition.getProperty("inputs");
@@ -135,12 +133,6 @@ export class Operator {
   needsOutputResolution() {
     const outputsType = this.outputs.type as types.ObjectType;
     return outputsType.needsResolution();
-  }
-  async resolvePlacement(ctx: ExecutionContext) {
-    return null;
-  }
-  async resolvePlacementRemote(ctx: ExecutionContext) {
-
   }
   needsOutput(result: OperatorResult) {
     const outputType = this.outputs.type as types.ObjectType;
@@ -195,6 +187,7 @@ export class Operator {
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
     const operator = new Operator(json.name, json.description);
+    operator.pluginName = json.plugin_name;
     operator.definition.addProperty("inputs", types.Property.fromJSON(inputs));
     operator.definition.addProperty(
       "outputs",
@@ -219,13 +212,13 @@ export class DynamicOperator extends Operator {
 class OperatorRegistry {
   private operators: Map<string, Operator> = new Map();
   register(operator: Operator) {
-    this.operators.set(operator.name, operator);
+    this.operators.set(operator.uri, operator);
   }
-  getOperator(name: string): Operator {
-    return this.operators.get(name);
+  getOperator(uri: string): Operator {
+    return this.operators.get(uri);
   }
-  operatorExists(name: string) {
-    return this.operators.has(name);
+  operatorExists(uri: string) {
+    return this.operators.has(uri);
   }
 }
 
@@ -271,16 +264,16 @@ export async function loadOperatorsFromServer() {
   }
 }
 
-export function getLocalOrRemoteOperator(operatorName) {
+export function getLocalOrRemoteOperator(operatorURI) {
   let operator;
   let isRemote = false;
-  if (localRegistry.operatorExists(operatorName)) {
-    operator = localRegistry.getOperator(operatorName);
-  } else if (remoteRegistry.operatorExists(operatorName)) {
-    operator = remoteRegistry.getOperator(operatorName);
+  if (localRegistry.operatorExists(operatorURI)) {
+    operator = localRegistry.getOperator(operatorURI);
+  } else if (remoteRegistry.operatorExists(operatorURI)) {
+    operator = remoteRegistry.getOperator(operatorURI);
     isRemote = true;
   } else {
-    throw new Error(`Operator "${operatorName}" not found`);
+    throw new Error(`Operator "${operatorURI}" not found`);
   }
   return { operator, isRemote };
 }
@@ -342,7 +335,7 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
 }
 
 export async function resolveRemoteType(
-  operatorName,
+  operatorURI,
   ctx: ExecutionContext,
   target: "inputs" | "outputs"
 ) {
@@ -351,7 +344,7 @@ export async function resolveRemoteType(
     "POST",
     "/operators/resolve-type",
     {
-      operator_name: operatorName,
+      operator_uri: operatorURI,
       target,
       params: ctx.params,
       dataset_name: currentContext.datasetName,
@@ -396,7 +389,7 @@ export async function fetchRemotePlacements(
   const placementsAsJSON = result.placements;
 
   return placementsAsJSON.map(p => ({
-    operator: getLocalOrRemoteOperator(p.operator_name),
+    operator: getLocalOrRemoteOperator(p.operator_uri),
     placement: types.Placement.fromJSON(p.placement),
   }));
 }

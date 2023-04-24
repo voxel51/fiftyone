@@ -41,7 +41,7 @@ class OperatorRegistry:
             errors.extend(plugin_context.errors)
         return errors
 
-    def operator_exists(self, name):
+    def operator_exists(self, operator_uri):
         """Checks if the operator exists.
 
         Args:
@@ -51,12 +51,12 @@ class OperatorRegistry:
             True/False
         """
         operators = self.list_operators()
-        return name in [o.name for o in operators]
+        return operator_uri in [o.uri for o in operators]
 
-    def get_operator(self, name):
+    def get_operator(self, operator_uri):
         operators = self.list_operators()
         for operator in operators:
-            if operator.name == name:
+            if operator_uri == operator.uri:
                 return operator
     
 def register_operator(operator):

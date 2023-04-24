@@ -32,7 +32,7 @@ class ResolvePlacements(HTTPEndpoint):
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append({
-                    "operator_name": operator.name,
+                    "operator_uri": operator.uri,
                     "placement": placement.to_json(),
                 })
         return {"placements": placements}
@@ -40,17 +40,17 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        operator_name = data.get("operator_name", None)
-        if operator_name is None:
-            raise ValueError("Operator name must be provided")
+        operator_uri = data.get("operator_uri", None)
+        if operator_uri is None:
+            raise ValueError("Operator URI must be provided")
         registry = OperatorRegistry()
-        if registry.operator_exists(operator_name) is False:
+        if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_name,
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
-        result = execute_operator(operator_name, data)
+        result = execute_operator(operator_uri, data)
         json = result.to_json()
         if result.error is not None:
             print(result.error)
@@ -60,14 +60,14 @@ class ExecuteOperator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        operator_name = data.get("operator_name", None)
+        operator_uri = data.get("operator_uri", None)
         target_type = data.get("type", None)
-        if operator_name is None:
-            raise ValueError("Operator name must be provided")
+        if operator_uri is None:
+            raise ValueError("Operator URI must be provided")
         registry = OperatorRegistry()
-        if registry.operator_exists(operator_name) is False:
+        if registry.operator_exists(operator_uri) is False:
             erroDetail = {
-                "message": "Operator '%s' does not exist" % operator_name,
+                "message": "Operator '%s' does not exist" % operator_uri,
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
