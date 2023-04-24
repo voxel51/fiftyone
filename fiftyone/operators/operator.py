@@ -21,14 +21,14 @@ class Operator:
 
     def __init__(
         self,
-        name=None,
+        name,
         label=None,
         description=None,
     ):
         if name is None:
             raise ValueError("Operator name cannot be None")
-
         self.name = name
+        self.label = label or name
         self.description = description
         self.definition = Object()
         self.definition.define_property("inputs", Object(), view=Form())
@@ -94,6 +94,7 @@ class Operator:
         """Returns a JSON representation of the operator."""
         return {
             "name": self.name,
+            "label": self.label,
             "description": self.description,
             "definition": self.definition.to_json(),
             "plugin_name": self.plugin_name,

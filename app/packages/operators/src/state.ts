@@ -266,6 +266,9 @@ export function filterChoicesByQuery(query, all) {
   const sanitizedQuery = query.trim();
   if (sanitizedQuery.length === 0) return all;
   return all.filter(({ label = "", value = "", description = "" }) => {
+    value = value || "";
+    description = description || "";
+    label = label || "";
     return (
       label.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
       value.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
@@ -279,8 +282,9 @@ export const availableOperators = selector({
   get: () => {
     return listLocalAndRemoteOperators().allOperators.map((operator) => {
       return {
-        label: operator.name,
-        value: operator.name,
+        label: operator.label,
+        name: operator.name,
+        value: operator.uri,
         description: operator.description,
       };
     });
@@ -484,8 +488,12 @@ const operatorExecutionNeedsOutputState = atom({
   default: null,
 });
 
-export function useOperatorExecutor(name, handlers: any = {}) {
-  const { operator } = getLocalOrRemoteOperator(name);
+export function useOperatorExecutor(uri, handlers: any = {}) {
+  if (!uri.includes('/')) {
+    uri = `@voxel51/operators/${uri}`;
+  }
+
+  const { operator } = getLocalOrRemoteOperator(uri);
   const [isExecuting, setIsExecuting] = useRecoilState(
     operatorIsExecutingState
   );
@@ -497,7 +505,7 @@ export function useOperatorExecutor(name, handlers: any = {}) {
     operatorExecutionNeedsOutputState
   );
   const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const ctx = useExecutionContext(name);
+  const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
 
   const clear = () => {
@@ -510,7 +518,7 @@ export function useOperatorExecutor(name, handlers: any = {}) {
     (state) => async (paramOverrides) => {
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
-        currentContextSelector(name)
+        currentContextSelector(uri)
       );
 
       const ctx = new ExecutionContext(
@@ -522,7 +530,7 @@ export function useOperatorExecutor(name, handlers: any = {}) {
       try {
         ctx.hooks = hooks;
         ctx.state = state;
-        const result = await executeOperator(name, ctx);
+        const result = await executeOperator(uri, ctx);
         setResult(result.result);
         setError(result.error);
         setNeedsOutput(result.hasOutputContent());
@@ -593,7 +601,7 @@ export function useInvocationRequestExecutor({
   onSuccess,
   onError,
 }) {
-  const executor = useOperatorExecutor(queueItem.request.operatorName, {
+  const executor = useOperatorExecutor(queueItem.request.operatorURI, {
     onSuccess: () => {
       onSuccess(queueItem.id);
     },
