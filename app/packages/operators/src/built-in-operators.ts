@@ -218,8 +218,7 @@ class CloseAllPanels extends Operator {
 
 class OpenDataset extends Operator {
   constructor() {
-    const openDatasetInputView = new types.View({ label: "Winter" });
-    super("open_dataset", "Open Dataset", openDatasetInputView);
+    super("open_dataset", "Open Dataset");
     const datasetProperty = this.defineInputProperty(
       "dataset",
       new types.Enum([]),
