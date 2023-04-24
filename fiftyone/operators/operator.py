@@ -22,6 +22,7 @@ class Operator:
     def __init__(
         self,
         name=None,
+        label=None,
         description=None,
     ):
         if name is None:
@@ -32,9 +33,15 @@ class Operator:
         self.definition = Object()
         self.definition.define_property("inputs", Object(), view=Form())
         self.definition.define_property("outputs", Object())
+        self.plugin_name = None
 
     def dispose(self):
         pass
+
+    @property
+    def uri(self):
+        plugin_name = self.plugin_name or "@voxel51"
+        return "%s/%s" % (plugin_name, self.name)
 
     @property
     def inputs(self):
@@ -89,6 +96,8 @@ class Operator:
             "name": self.name,
             "description": self.description,
             "definition": self.definition.to_json(),
+            "plugin_name": self.plugin_name,
+            "uri": self.uri,
         }
 
 
