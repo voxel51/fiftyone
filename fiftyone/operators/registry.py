@@ -23,7 +23,7 @@ class OperatorRegistration:
 
 
 def list_registrations():
-    load_from_dir()
+    plugin_contexts = load_from_dir()
     all_registrations = OPERATOR_DICT.values()
     return [r for r in all_registrations if r.failed is False]
 
@@ -34,8 +34,14 @@ def list_operators():
     Returns:
         a list of operators
     """
-    registrations = list_registrations()
-    return [r.operator for r in registrations]
+    plugin_contexts = load_from_dir()
+    print(plugin_contexts)
+    operators = []
+    for plugin_context in plugin_contexts:
+        for operator in plugin_context.instances:
+            if isinstance(operator, Operator):
+                operators.append(operator)
+    return operators
 
 
 def operator_exists(name):
