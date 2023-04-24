@@ -44,7 +44,18 @@ const ColorModal = () => {
   const field = useRecoilValue(fos.activeColorField);
 
   // get all the embeddedDocfields that can be customized:
-  const customizeColorFields = useRecoilValue(
+
+  const videoFields = useRecoilValue(
+    fos.fields({
+      space: fos.State.SPACE.FRAME,
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+    })
+  )?.filter((f) =>
+    VALID_LABEL_TYPES.includes(
+      f?.embeddedDocType?.split(".")?.slice(-1)[0] ?? ""
+    )
+  );
+  const sampleFields = useRecoilValue(
     fos.fields({
       space: fos.State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,
@@ -54,6 +65,7 @@ const ColorModal = () => {
       f?.embeddedDocType?.split(".")?.slice(-1)[0] ?? ""
     )
   );
+  const customizeColorFields = [...videoFields, ...sampleFields];
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
