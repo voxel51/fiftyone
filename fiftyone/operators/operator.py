@@ -30,9 +30,11 @@ class Operator:
         self.name = name
         self.description = description
         self.definition = Object()
-
         self.definition.define_property("inputs", Object(), view=Form())
         self.definition.define_property("outputs", Object())
+
+    def dispose(self):
+        pass
 
     @property
     def inputs(self):
