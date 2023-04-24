@@ -156,14 +156,11 @@ export class Operator {
     // This can be overridden to use hooks in the execute function
     return {};
   }
-  async resolveInputRemote(ctx: ExecutionContext) {
-    return resolveRemoteType(this.name, ctx, "inputs");
-  }
   async resolveInput(ctx: ExecutionContext) {
     const inputsType = this.inputs.type as types.ObjectType;
     if (inputsType.needsResolution()) {
       if (this.isRemote) {
-        return this.resolveInputRemote(ctx);
+        return resolveRemoteType(this.name, ctx, "outputs");
       }
 
       const resolvedInputs = new types.ObjectType();
@@ -180,6 +177,10 @@ export class Operator {
     return this.inputs;
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
+    const outputsType = this.inputs.type as types.ObjectType;
+    if (outputsType.needsResolution() && this.isRemote) {
+      return resolveRemoteType(this.name, ctx, "inputs");
+    }
     return this.outputs;
   }
   async execute(ctx: ExecutionContext) {

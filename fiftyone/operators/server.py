@@ -6,28 +6,29 @@ FiftyOne operator server.
 |
 """
 
-from .registry import list_operators, operator_exists, get_operator
+from .registry import OperatorRegistry
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from fiftyone.server.decorators import route
 from .executor import execute_operator, resolve_type, resolve_placement
-from .loader import list_module_errors
 from starlette.exceptions import HTTPException
 
 
 class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
+        registry = OperatorRegistry()
         operators_as_json = [
-            operator.to_json() for operator in list_operators()
+            operator.to_json() for operator in registry.list_operators()
         ]
-        return {"operators": operators_as_json, "errors": list_module_errors()}
+        return {"operators": operators_as_json, "errors": registry.list_errors()}
 
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
+        registry = OperatorRegistry()
         placements = []
-        for operator in list_operators():
+        for operator in registry.list_operators():
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append({
@@ -42,10 +43,11 @@ class ExecuteOperator(HTTPEndpoint):
         operator_name = data.get("operator_name", None)
         if operator_name is None:
             raise ValueError("Operator name must be provided")
-        if operator_exists(operator_name) is False:
+        registry = OperatorRegistry()
+        if registry.operator_exists(operator_name) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_name,
-                "loading_errors": list_module_errors(),
+                "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
         result = execute_operator(operator_name, data)
@@ -62,13 +64,14 @@ class ResolveType(HTTPEndpoint):
         target_type = data.get("type", None)
         if operator_name is None:
             raise ValueError("Operator name must be provided")
-        if operator_exists(operator_name) is False:
+        registry = OperatorRegistry()
+        if registry.operator_exists(operator_name) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_name,
-                "loading_errors": list_module_errors(),
+                "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
-        result = resolve_type(operator_name, data)
+        result = resolve_type(registry, operator_name, data)
         return result.to_json()
 
 
