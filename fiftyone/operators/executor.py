@@ -6,8 +6,7 @@ FiftyOne operator execution.
 |
 """
 
-from .registry import list_operators, operator_exists, get_operator
-from .loader import list_module_errors
+from .registry import OperatorRegistry
 import fiftyone.server.view as fosv
 import fiftyone as fo
 import fiftyone.operators.types as types
@@ -51,10 +50,11 @@ def execute_operator(operator_name, request_params):
     Returns:
         the result of the operator
     """
-    if operator_exists(operator_name) is False:
+    registry = OperatorRegistry()
+    if registry.operator_exists(operator_name) is False:
         raise ValueError("Operator '%s' does not exist" % operator_name)
 
-    operator = get_operator(operator_name)
+    operator = registry.get_operator(operator_name)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)
@@ -74,11 +74,11 @@ def execute_operator(operator_name, request_params):
     return ExecutionResult(raw_result, executor, None)
 
 
-def resolve_type(operator_name, request_params):
-    if operator_exists(operator_name) is False:
+def resolve_type(registry, operator_name, request_params):
+    if registry.operator_exists(operator_name) is False:
         raise ValueError("Operator '%s' does not exist" % operator_name)
 
-    operator = get_operator(operator_name)
+    operator = registry.get_operator(operator_name)
     ctx = ExecutionContext(request_params)
     try:
         return operator.resolve_type(ctx, request_params.get("type", "inputs"))
@@ -141,7 +141,6 @@ class ExecutionResult:
         self.result = result
         self.executor = executor
         self.error = error
-        self.loading_errors = list_module_errors()
         self.validation_ctx = validation_ctx
 
     def to_json(self):
@@ -149,7 +148,6 @@ class ExecutionResult:
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
-            "loading_errors": self.loading_errors,
             "validation_ctx": self.validation_ctx.to_json()
             if self.validation_ctx
             else None,
