@@ -120,7 +120,6 @@ export const customizeColors = atomFamily<CustomizeColor, string>({
     get:
       (path) =>
       ({ get }) => {
-        // use session.config.customizedColors as default
         const settings = get(sessionColorScheme)
           .customizedColorSettings as unknown as CustomizeColor[];
         return settings?.find((s) => s.field === path) ?? null;
@@ -133,7 +132,6 @@ export const customizeColorFields = atom<string[]>({
   default: selector({
     key: "initialColorFields",
     get: ({ get }) => {
-      // use session.config.customizedColors as default
       return [
         ...new Set(
           get(sessionColorScheme)?.customizedColorSettings?.map(

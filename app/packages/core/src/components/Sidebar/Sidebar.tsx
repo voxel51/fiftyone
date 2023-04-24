@@ -437,13 +437,6 @@ const InteractiveSidebar = ({
     () => new Controller({ minHeight: 0 })
   );
 
-  const customizeColor = useRecoilValue(fos.customizeColorSettings);
-  const colorFields = useRecoilValue(fos.customizeColorFields);
-  const tempColor = useRecoilValue(tempColorSetting);
-  console.info(customizeColor);
-  console.info(colorFields);
-  console.info("tempColor", tempColor);
-
   if (entries instanceof Error) {
     throw entries;
   }
