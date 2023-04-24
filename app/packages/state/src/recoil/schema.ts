@@ -329,9 +329,24 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const paths = get(fieldPaths(params));
 
-      return paths.filter((path) =>
+      const flatLabelFields = paths.filter((path) =>
         LABELS.includes(get(field(path)).embeddedDocType)
       );
+
+      const dynamicLabelFields = paths
+        .filter(
+          (path) =>
+            get(field(path)).embeddedDocType ===
+            "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument"
+        )
+        .map((p) =>
+          Object.values(get(field(p)).fields)
+            .filter((f) => LABELS.includes(f.embeddedDocType))
+            .map((f) => f.path)
+        )
+        .flat(1);
+
+      return [...flatLabelFields, ...dynamicLabelFields];
     },
 });
 
