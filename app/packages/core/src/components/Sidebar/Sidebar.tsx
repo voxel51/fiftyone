@@ -506,6 +506,15 @@ const InteractiveSidebar = ({
   const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
     fos.selectedPaths
   );
+  const [originalSelectedPaths, setOriginalSelectedPaths] =
+    useState(selectedPaths);
+  useEffect(() => {
+    console.log("selectedPaths", selectedPaths);
+    if (!originalSelectedPaths?.size && selectedPaths?.size) {
+      setOriginalSelectedPaths(selectedPaths);
+    }
+  }, [selectedPaths]);
+
   useEffect(() => {
     const finalPaths = [];
     if (activeLabelPaths?.length) {
@@ -516,18 +525,12 @@ const InteractiveSidebar = ({
         const currPathSplit = currPath.split(".");
         let parentPaths = [];
         if (currPathSplit.length > 1) {
-          console.log(
-            "currPathSplit",
-            currPathSplit[currPathSplit.length - 1],
-            currPath
-          );
           parentPaths = [
             currPath.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
           ];
         }
         finalPaths.push(currPath, ...subPaths, ...parentPaths);
       }
-      console.log("finalPaths", finalPaths);
       setSelectedPaths(new Set([...finalPaths]));
     }
   }, [activeLabelPaths]);
@@ -535,24 +538,36 @@ const InteractiveSidebar = ({
   const setView = useSetView();
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const [selectedTab, setSelectedTab] = useState("selection");
-  console.log("schema", schema);
-  console.log("entries", entries);
-  console.log("eligibleEntries", eligibleEntries);
-  console.log("items", items);
-  console.log("currentView", viewStages);
 
   const toggleSelection = (path: string, checked: boolean) => {
-    const subPaths = new Set();
+    const subPaths = new Set<string>();
     Object.keys(schema).map((currPath: string) => {
       if (currPath.startsWith(path)) {
         subPaths.add(currPath);
       }
     });
+    const currPathSplit = path.split(".");
+
     if (checked) {
       const diff = new Set([...selectedPaths].filter((x) => !subPaths.has(x)));
+
+      let parentPaths = [];
+      if (currPathSplit.length > 1) {
+        parentPaths = [
+          path.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
+        ];
+        diff.delete(parentPaths[0]);
+      }
       setSelectedPaths(diff);
     } else {
       const union = new Set<string>([...selectedPaths, ...subPaths]);
+      let parentPaths = [];
+      if (currPathSplit.length > 1) {
+        parentPaths = [
+          path.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
+        ];
+        union.add(parentPaths[0]);
+      }
       setSelectedPaths(union);
     }
   };
@@ -854,7 +869,6 @@ const InteractiveSidebar = ({
         })
         .map((path: string) => {
           const count = path.split(".")?.length;
-          const firstPath = path.split(".")[0];
           const isSelected = selectedPaths.has(path);
           const pathLabel = path.split(".");
           const pathLabelFinal = pathLabel[pathLabel.length - 1];
@@ -870,6 +884,7 @@ const InteractiveSidebar = ({
             path === "id" ||
             path === "tags" ||
             path === "filepath" ||
+            path === "uniqueness" ||
             path.startsWith("metadata");
 
           return {
@@ -957,7 +972,7 @@ const InteractiveSidebar = ({
                   onClick={() => {
                     setSchemaModal(false);
                     setSearchTerm("");
-                    setSelectedPaths(new Set());
+                    setSelectedPaths(originalSelectedPaths);
                     setSettingsModal({ ...settingModal, open: false });
                   }}
                 />
@@ -1047,7 +1062,7 @@ const InteractiveSidebar = ({
                             <Checkbox
                               name={"Carousel"}
                               value={path}
-                              checked={isSelected}
+                              checked={isSelected || disabled}
                               onChange={() => {
                                 toggleSelection(path, isSelected);
                               }}
@@ -1125,7 +1140,7 @@ const InteractiveSidebar = ({
                       onClick={() => {
                         setSchemaModal({ open: false });
                         setSearchTerm("");
-                        setSelectedPaths(new Set());
+                        setSelectedPaths(originalSelectedPaths);
                       }}
                     >
                       cancel
