@@ -97,12 +97,10 @@ class PluginDefinition:
     def type(self):
         return PluginTypes.JAVASCRIPT if self.js_bundle else PluginTypes.PYTHON
 
-    def can_register(self, cls):
+    def can_register_operator(self, operator_name):
         if self.type == PluginTypes.PYTHON:
-            if issubclass(cls, Operator):
-                operator = Operator(self)
-                if operator.name in self.operators:
-                    return True
+            if operator_name in self.operators:
+                return True
         return False
 
 
