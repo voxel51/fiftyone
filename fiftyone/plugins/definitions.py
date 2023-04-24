@@ -140,24 +140,33 @@ def list_plugins():
             print("Error loading plugin metadata file: %s" % metadata_file)
             print(e)
             traceback.print_exc()
-
-    print(plugins)
-    validate_plugins(plugins)
-    return plugins
+    return validate_plugins(plugins)
 
 
 class DuplicatePluginNameError(ValueError):
+    pass
+
+class InvalidPluginDefinition(ValueError):
     pass
 
 
 def validate_plugins(plugins):
     """
     Validates the given list of PluginDefinitions.
+    Returns a list of valid PluginDefinitions.
     """
+    results = []
     names = set()
     for plugin in plugins:
+        if not plugin.name:
+            raise InvalidPluginDefinition(
+                "Plugin definition in %s is missing a name" % plugin.directory
+            )
         if plugin.name in names:
             raise DuplicatePluginNameError(
                 "Plugin name %s is not unique" % plugin.name
             )
+        else:
+            results.append(plugin)
         names.add(plugin.name)
+    return results
