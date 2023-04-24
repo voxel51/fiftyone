@@ -39,7 +39,7 @@ class PluginContext:
         try:
             instance = cls()
             if self.can_register(instance):
-                instance.plugin_definition = self.plugin_definition
+                instance.plugin_name = self.name
                 self.instances.append(instance)
             else:
                 instance.dispose()

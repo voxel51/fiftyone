@@ -74,11 +74,11 @@ def execute_operator(operator_name, request_params):
     return ExecutionResult(raw_result, executor, None)
 
 
-def resolve_type(registry, operator_name, request_params):
-    if registry.operator_exists(operator_name) is False:
-        raise ValueError("Operator '%s' does not exist" % operator_name)
+def resolve_type(registry, operator_uri, request_params):
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
 
-    operator = registry.get_operator(operator_name)
+    operator = registry.get_operator(operator_uri)
     ctx = ExecutionContext(request_params)
     try:
         return operator.resolve_type(ctx, request_params.get("type", "inputs"))
