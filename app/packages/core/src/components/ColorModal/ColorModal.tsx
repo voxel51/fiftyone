@@ -46,6 +46,7 @@ const ColorModal = () => {
   // get all the embeddedDocfields that can be customized:
   const customizeColorFields = useRecoilValue(
     fos.fields({
+      space: fos.State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,
     })
   )?.filter((f) =>
