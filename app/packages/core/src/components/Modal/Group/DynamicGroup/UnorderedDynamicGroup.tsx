@@ -1,5 +1,5 @@
 import React from "react";
-import Sample from "../Sample";
+import Sample from "../../Sample";
 import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
 import { useDynamicGroupContext } from "./DynamicGroupContextProvider";
 

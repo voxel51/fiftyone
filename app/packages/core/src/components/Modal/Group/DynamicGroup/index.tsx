@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { DynamicGroupContextProvider } from "./DynamicGroupContextProvider";
 import { UnorderedDynamicGroup } from "./UnorderedDynamicGroup";
+import { NestedGroup } from "./NestedGroup";
 
 interface DynamicGroupProps {
   lookerRefCallback: (looker: AbstractLooker) => void;
@@ -15,6 +16,7 @@ export const DynamicGroup = ({ lookerRefCallback }: DynamicGroupProps) => {
    * check if ordered or unordered
    */
   const dynamicGroupParameters = useRecoilValue(fos.dynamicGroupParameters);
+  const hasGroupSlices = useRecoilValue(fos.groupSlices)?.length > 0;
 
   if (!dynamicGroupParameters) return null;
 
@@ -25,8 +27,8 @@ export const DynamicGroup = ({ lookerRefCallback }: DynamicGroupProps) => {
       lookerRefCallback={lookerRefCallback}
       dynamicGroupParameters={dynamicGroupParameters}
     >
-      <UnorderedDynamicGroup />
-      {/* {orderBy ? null : <UnorderedDynamicGroup />} */}
+      {/* todo: different component for ordered dynamic group */}
+      {hasGroupSlices ? <NestedGroup /> : <UnorderedDynamicGroup />}
     </DynamicGroupContextProvider>
   );
 };

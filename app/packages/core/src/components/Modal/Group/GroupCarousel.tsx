@@ -242,7 +242,9 @@ const Column: React.FC = () => {
   );
 };
 
-const Group: React.FC<{ fullHeight?: boolean }> = ({ fullHeight }) => {
+export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
+  fullHeight,
+}) => {
   const [height, setHeight] = useBrowserStorage(
     "carousel-height",
     fullHeight ? 500 : 150
@@ -279,5 +281,3 @@ const Group: React.FC<{ fullHeight?: boolean }> = ({ fullHeight }) => {
     </Resizable>
   );
 };
-
-export default Group;
