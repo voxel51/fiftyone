@@ -15,7 +15,6 @@ import importlib
 import sys
 import traceback
 from enum import Enum
-from fiftyone.operators import Operator, register_operator
 
 # BEFORE PR: where should this go?
 def find_files(root_dir, filename, extensions, max_depth):
@@ -98,19 +97,20 @@ class PluginDefinition:
     def type(self):
         return PluginTypes.JAVASCRIPT if self.js_bundle else PluginTypes.PYTHON
 
-    def register(self, cls):
+    def can_register(self, cls):
         if self.type == PluginTypes.PYTHON:
             if issubclass(cls, Operator):
                 operator = Operator(self)
                 if operator.name in self.operators:
-                    register_operator(operator)
+                    return True
+        return False
 
 
 def load_plugin_definition(metadata_file):
     """Loads the plugin definition from the given metadata_file."""
     with open(metadata_file, "r") as f:
         metadata_dict = yaml.load(f, Loader=yaml.FullLoader)
-        module_dir = os.path.basename(os.path.dirname(metadata_file))
+        module_dir = os.path.dirname(metadata_file)
         definition = PluginDefinition(module_dir, metadata_dict)
         if not definition.js_bundle:
             # check if package.json exists
@@ -120,6 +120,7 @@ def load_plugin_definition(metadata_file):
                 definition.js_bundle = pkg.get("fiftyone", {}).get(
                     "script", None
                 )
+        return definition
 
 
 def list_plugins():
@@ -135,12 +136,14 @@ def list_plugins():
     plugins = []
     for metadata_file in metadata_files:
         try:
-            plugins.append(load_plugin_definition(metadata_file))
+            plugin = load_plugin_definition(metadata_file)
+            plugins.append(plugin)
         except Exception as e:
             print("Error loading plugin metadata file: %s" % metadata_file)
             print(e)
             traceback.print_exc()
 
+    print(plugins)
     validate_plugins(plugins)
     return plugins
 
