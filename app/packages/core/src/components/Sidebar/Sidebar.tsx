@@ -493,13 +493,29 @@ const InteractiveSidebar = ({
   const [fieldsOnly, setFieldsOnly] = useState(true);
   const eligibleEntries = groupBy(entries, "path");
 
+  const getSelectedSubPaths = (path: string) => {
+    const tmpSelected = new Set();
+    Object.keys(schema).map((currPath: string) => {
+      if (currPath.startsWith(path)) {
+        tmpSelected.add(currPath);
+      }
+    });
+    return tmpSelected;
+  };
   console.log("dataset", dataset);
   const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
     fos.selectedPaths
   );
   useEffect(() => {
+    const finalPaths = [];
     if (activeLabelPaths?.length) {
-      setSelectedPaths(new Set([...activeLabelPaths]));
+      for (let i = 0; i < activeLabelPaths?.length; i++) {
+        const currPath = activeLabelPaths[i];
+        const subPaths = getSelectedSubPaths(activeLabelPaths[i]);
+        finalPaths.push(currPath, ...subPaths);
+      }
+      console.log("finalPaths", finalPaths);
+      setSelectedPaths(new Set([...finalPaths]));
     }
   }, [activeLabelPaths]);
   const viewStages = useRecoilValue(fos.view);
@@ -511,16 +527,6 @@ const InteractiveSidebar = ({
   console.log("eligibleEntries", eligibleEntries);
   console.log("items", items);
   console.log("currentView", viewStages);
-
-  const getSelectedSubPaths = (path: string) => {
-    const tmpSelected = new Set();
-    Object.keys(schema).map((currPath: string) => {
-      if (currPath.startsWith(path)) {
-        tmpSelected.add(currPath);
-      }
-    });
-    return tmpSelected;
-  };
 
   const toggleSelection = (path: string, checked: boolean) => {
     const subPaths = new Set();
@@ -992,7 +998,7 @@ const InteractiveSidebar = ({
                       value={fieldsOnly}
                       checked={fieldsOnly}
                       onChange={() => setFieldsOnly(!fieldsOnly)}
-                      style={{ padding: "4px 2px" }}
+                      style={{ padding: "4px" }}
                     />
                   </Box>
                   <Box
