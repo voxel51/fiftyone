@@ -3,13 +3,13 @@ import { CallbackInterface } from "recoil";
 import * as types from "./types";
 
 class InvocationRequest {
-  constructor(public operatorName: string, public params: any = {}) {}
+  constructor(public operatorURI: string, public params: any = {}) {}
   static fromJSON(json: any) {
-    return new InvocationRequest(json.operator_name, json.params);
+    return new InvocationRequest(json.operator_uri, json.params);
   }
   toJSON() {
     return {
-      operatorName: this.operatorName,
+      operatorURI: this.operatorURI,
       params: this.params,
     };
   }
@@ -36,8 +36,8 @@ export class Executor {
       json.logs
     );
   }
-  trigger(operatorName: string, params: any = {}) {
-    this.requests.push(new InvocationRequest(operatorName, params));
+  trigger(operatorURI: string, params: any = {}) {
+    this.requests.push(new InvocationRequest(operatorURI, params));
   }
   log(message: string) {
     this.logs.push(message);
@@ -54,13 +54,13 @@ export class ExecutionContext {
   ) {
     this.state = _currentContext.state;
   }
-  trigger(operatorName: string, params: any = {}) {
+  trigger(operatorURI: string, params: any = {}) {
     if (!this.executor) {
       throw new Error(
         "Cannot trigger operator from outside of an execution context"
       );
     }
-    this.executor.requests.push(new InvocationRequest(operatorName, params));
+    this.executor.requests.push(new InvocationRequest(operatorURI, params));
   }
   log(message: string) {
     if (!this.executor) {
@@ -98,11 +98,13 @@ export class Operator {
   public definition: types.ObjectType;
   constructor(
     public name: string,
-    public description: string
+    public label?: string,
+    public description?: string,
   ) {
     this.definition = new types.ObjectType();
     this.definition.defineProperty("inputs", new types.ObjectType());
     this.definition.defineProperty("outputs", new types.ObjectType());
+    this.label = label || name;
   }
   public pluginName: any;
   get uri() {
@@ -152,7 +154,7 @@ export class Operator {
     const inputsType = this.inputs.type as types.ObjectType;
     if (inputsType.needsResolution()) {
       if (this.isRemote) {
-        return resolveRemoteType(this.name, ctx, "outputs");
+        return resolveRemoteType(this.uri, ctx, "outputs");
       }
 
       const resolvedInputs = new types.ObjectType();
@@ -171,12 +173,12 @@ export class Operator {
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
     const outputsType = this.inputs.type as types.ObjectType;
     if (outputsType.needsResolution() && this.isRemote) {
-      return resolveRemoteType(this.name, ctx, "inputs");
+      return resolveRemoteType(this.uri, ctx, "inputs");
     }
     return this.outputs;
   }
   async execute(ctx: ExecutionContext) {
-    throw new Error(`Operator ${this.name} does not implement execute`);
+    throw new Error(`Operator ${this.uri} does not implement execute`);
   }
   public isRemote: boolean = false;
   static fromRemoteJSON(json: any) {
@@ -186,7 +188,8 @@ export class Operator {
   }
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
-    const operator = new Operator(json.name, json.description);
+    const operator = new Operator(json.name, json.label, json.description);
+    console.log(operator)
     operator.pluginName = json.plugin_name;
     operator.definition.addProperty("inputs", types.Property.fromJSON(inputs));
     operator.definition.addProperty(
@@ -226,6 +229,7 @@ const localRegistry = new OperatorRegistry();
 const remoteRegistry = new OperatorRegistry();
 
 export function registerOperator(operator: Operator) {
+  operator.pluginName = "@voxel51/operators";
   localRegistry.register(operator);
 }
 
@@ -288,8 +292,8 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
-export async function executeOperator(operatorName, ctx: ExecutionContext) {
-  const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
+export async function executeOperator(operatorURI, ctx: ExecutionContext) {
+  const { operator, isRemote } = getLocalOrRemoteOperator(operatorURI);
   const currentContext = ctx._currentContext;
 
   let result;
@@ -300,7 +304,7 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
       "POST",
       "/operators/execute",
       {
-        operator_name: operatorName,
+        operator_uri: operatorURI,
         params: ctx.params,
         dataset_name: currentContext.datasetName,
         extended: currentContext.extended,
@@ -320,7 +324,7 @@ export async function executeOperator(operatorName, ctx: ExecutionContext) {
       executor = ctx.executor;
     } catch (e) {
       error = e;
-      console.error(`Error executing operator ${operatorName}:`);
+      console.error(`Error executing operator ${operatorURI}:`);
       console.error(error);
     }
   }
