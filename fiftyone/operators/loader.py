@@ -14,45 +14,54 @@ import importlib
 import sys
 import traceback
 import fiftyone.plugins as fop
+from .operator import Operator
 
-REGISTERED_MODULES = {}
-FAILED_MODULES = {}
+KNOWN_PLUGIN_CONTEXTS = {}
 
 class PluginContext:
     def __init__(self, plugin_definition):
+        self.name = plugin_definition.name
         self.plugin_definition = plugin_definition
         self.instances = []
+        self.errors = []
     
-    def register(self, cls):
-        if self.plugin_definition.can_register(cls):
-            instance = cls()
-            self.instances.append(instance)
-        else:
-            raise ValueError(self.plugin_definition.name + " cannot register " + cls.__name__)
+    def has_errors(self):
+        return len(self.errors) > 0
 
-    def unregister_all():
-        for instance in self.instances:
-            unregister(instance)
+    def can_register(self, instance):
+        if not isinstance(instance, Operator):
+            return False
+        if not self.plugin_definition.can_register_operator(instance.name):
+            return False
+        return True
+
+    def register(self, cls):
+        try:
+            instance = cls()
+            if self.can_register(instance):
+                self.instances.append(instance)
+            else:
+                instance.dispose()
+        except Exception as e:
+            self.errors.append(traceback.format_exc())
+
+    def unregister_inst(self, inst):
+        self.instances.remove(inst)
+        inst.dispose()
+
+    def dispose(self):
+        for inst in self.instances:
+            self.unregister_inst(inst)
 
 def register_module(plugin_definition, mod):
-    """Registers all operators in the given module."""
-    if REGISTERED_MODULES.get(plugin_definition.name, None) is not None:
-        unregister_module(plugin_definition)
+    pctx = PluginContext(plugin_definition)
+    KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
     try:
-        pctx = PluginContext(plugin_definition)
         mod.register(pctx)
-        REGISTERED_MODULES[plugin_definition.name] = pctx
-        if plugin_definition.name in FAILED_MODULES:
-            FAILED_MODULES.pop(plugin_definition.name)
-        return pctx
     except Exception as e:
         errors = [traceback.format_exc()]
-        try:
-            mod.unregister()
-        except Exception as ue:
-            errors.append(traceback.format_exc())
-            pass
-        FAILED_MODULES[plugin_definition.name] = errors
+        pctx.errors = errors
+    return pctx
 
 
 def unregister_module(plugin_name):
@@ -65,28 +74,27 @@ def unregister_module(plugin_name):
             pass
         del REGISTERED_MODULES[plugin_name]
 
-
-def unregister_all():
-    """Unregisters all operators."""
-    for name, pctx in REGISTERED_MODULES:
-        unregister_module(plugin_name)
-
-
-def list_module_errors():
-    """Lists the errors that occurred when loading modules."""
-    return FAILED_MODULES
-
+def dispose_all(plugin_contexts):
+    """Disposes all loaded instances."""
+    for name, pctx in plugin_contexts.items():
+        try:
+            pctx.dispose()
+        except Exception as e:
+            print("Error disposing plugin context: %s" % name)
+            print(e)
+    KNOWN_PLUGIN_CONTEXTS = {}
 
 def load_from_dir():
     """Loads all operators from the default operator directory."""
+    dispose_all(KNOWN_PLUGIN_CONTEXTS.copy())
     plugin_definitions = fop.list_plugins()
     plugin_contexts = []
     for plugin_definition in plugin_definitions:
         module_dir = plugin_definition.directory
         pctx = exec_module_from_dir(module_dir, plugin_definition)
         plugin_contexts.append(pctx)
+        KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
     return plugin_contexts
-
 
 def exec_module_from_dir(module_dir, plugin_definition):
     mod_dir = os.path.dirname(module_dir)
@@ -96,7 +104,6 @@ def exec_module_from_dir(module_dir, plugin_definition):
     sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
     return register_module(plugin_definition, mod)
-
 
 # BEFORE PR: where should this go?
 def find_files(root_dir, filename, extensions, max_depth):

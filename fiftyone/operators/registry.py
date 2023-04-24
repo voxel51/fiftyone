@@ -9,87 +9,64 @@ FiftyOne operator registry.
 from .operator import Operator
 from .loader import load_from_dir
 
-OPERATOR_DICT = {}
+BUILTIN_OPERATORS = {}
 
+class OperatorRegistry:
+    def __init__(self):
+        self.plugin_contexts = load_from_dir()
 
-class OperatorRegistration:
-    def __init__(
-        self, operator_name, operator=None, failed=False, errors=None
-    ):
-        self.operator_name = operator_name
-        self.operator = operator
-        self.failed = failed
-        self.errors = errors
+    def list_operators(self):
+        """Lists the available FiftyOne operators.
 
+        Returns:
+            a list of operators
+        """
+        plugin_contexts = self.plugin_contexts
+        operators = []
+        for plugin_context in plugin_contexts:
+            for operator in plugin_context.instances:
+                if isinstance(operator, Operator):
+                    operators.append(operator)
+        return operators + list(BUILTIN_OPERATORS.values())
 
-def list_registrations():
-    plugin_contexts = load_from_dir()
-    all_registrations = OPERATOR_DICT.values()
-    return [r for r in all_registrations if r.failed is False]
+    def list_errors(self):
+        """Lists the errors that occurred during operator loading.
 
+        Returns:
+            a list of errors
+        """
+        plugin_contexts = self.plugin_contexts
+        errors = []
+        for plugin_context in plugin_contexts:
+            errors.extend(plugin_context.errors)
+        return errors
 
-def list_operators():
-    """Lists the available FiftyOne operators.
+    def operator_exists(self, name):
+        """Checks if the operator exists.
 
-    Returns:
-        a list of operators
-    """
-    plugin_contexts = load_from_dir()
-    print(plugin_contexts)
-    operators = []
-    for plugin_context in plugin_contexts:
-        for operator in plugin_context.instances:
-            if isinstance(operator, Operator):
-                operators.append(operator)
-    return operators
+        Args:
+            name: the name of the operator
 
+        Returns:
+            True/False
+        """
+        operators = self.list_operators()
+        return name in [o.name for o in operators]
 
-def operator_exists(name):
-    """Checks if the operator exists.
+    def get_operator(self, name):
+        operators = self.list_operators()
+        for operator in operators:
+            if operator.name == name:
+                return operator
+    
+def register_operator(operator):
+    """Registers a built-in operator. For internal use only.
 
     Args:
-        name: the name of the operator
-
-    Returns:
-        True/False
+        operator: the operator to register
     """
-    registrations = list_registrations()
-    return name in [r.operator_name for r in registrations]
-
-
-def register_operator(operator):
-    OPERATOR_DICT[operator.name] = OperatorRegistration(
-        operator.name, operator=operator
-    )
-
-
-def register(cls):
-    if issubclass(cls, Operator):
-        register_operator(cls())
-        return
-    raise ValueError("Class '%s' is not known subclass" % cls)
-
-
-def unregister_operator(operator):
-    name = operator.name if operator is not None else None
-    if name:
-        remove_from_dict(OPERATOR_DICT, operator.name)
-
-
-def register_failed_operator(name, errors):
-    OPERATOR_DICT[name] = OperatorRegistration(
-        name, failed=True, errors=errors
-    )
-
-
-def get_operator(name):
-    load_from_dir()
-    registration = OPERATOR_DICT[name]
-    if registration.failed:
-        raise ValueError("Operator '%s' failed to load" % name)
-    return registration.operator
-
-
-def remove_from_dict(d, key):
-    if d is not None and key in d:
-        del d[key]
+    if operator.name in BUILTIN_OPERATORS:
+        raise ValueError(
+            "Operator '%s' already exists" % operator.name
+        )
+    BUILTIN_OPERATORS[operator.name] = operator
