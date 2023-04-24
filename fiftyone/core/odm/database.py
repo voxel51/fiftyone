@@ -6,7 +6,7 @@ Database utilities.
 |
 """
 import atexit
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from multiprocessing.pool import ThreadPool
 import os
@@ -214,9 +214,10 @@ def establish_db_conn(config):
     )
     _validate_db_version(config, _client)
 
-    # Only register cleanup method when running as internal service
     if foi.is_internal_service():
-        atexit.register(_delete_non_persistent_datasets_if_allowed)
+        atexit.register(_at_exit_internal)
+    elif config.database_uri is None or "localhost" in config.database_uri:
+        atexit.register(_at_exit_user)
 
     connect(config.database_name, **_connection_kwargs)
 
@@ -247,7 +248,15 @@ def _async_connect():
         )
 
 
-def _delete_non_persistent_datasets_if_allowed():
+def _at_exit_internal():
+    _delete_non_persistent_datasets_if_allowed(min_age=timedelta(hours=24))
+
+
+def _at_exit_user():
+    _delete_non_persistent_datasets_if_allowed()
+
+
+def _delete_non_persistent_datasets_if_allowed(**kwargs):
     """Deletes all non-persistent datasets if and only if we are the only
     client currently connected to the database.
     """
@@ -277,7 +286,7 @@ def _delete_non_persistent_datasets_if_allowed():
 
     try:
         if num_connections <= 1:
-            fod.delete_non_persistent_datasets()
+            fod._delete_non_persistent_datasets(**kwargs)
     except:
         logger.exception("Skipping automatic non-persistent dataset cleanup")
 
