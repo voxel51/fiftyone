@@ -121,9 +121,9 @@ export const customizeColors = atomFamily<CustomizeColor, string>({
       (path) =>
       ({ get }) => {
         // use session.config.customizedColors as default
-        // const settings = get(colorSche) as unknown as CustomizeColor[];
-        // return settings?.find((s) => s.field === path) ?? null;
-        return [];
+        const settings = get(sessionColorScheme)
+          .customizedColorSettings as unknown as CustomizeColor[];
+        return settings?.find((s) => s.field === path) ?? null;
       },
   }),
 });
@@ -134,8 +134,14 @@ export const customizeColorFields = atom<string[]>({
     key: "initialColorFields",
     get: ({ get }) => {
       // use session.config.customizedColors as default
-      // return [...new Set(get(sessionColorConfig).map((s) => s.field))];
-      return [];
+      return [
+        ...new Set(
+          get(sessionColorScheme)?.customizedColorSettings?.map(
+            (s) => s["field"]
+          )
+        ),
+      ];
+      // return [];
     },
   }),
 });
@@ -409,13 +415,13 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
 
 export interface ColorScheme {
   colorPool: string[];
-  customizedColors: object;
+  customizedColorSettings: object[];
 }
 
 export const sessionColorScheme = atom<ColorScheme>({
   key: "sessionColorScheme",
   default: {
     colorPool: [],
-    customizedColors: [],
+    customizedColorSettings: [],
   },
 });
