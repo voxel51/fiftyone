@@ -1,4 +1,4 @@
-import { groupSample, groupSampleActive } from "../Modal.module.css";
+import { groupSample, groupSampleActive } from "./Group.module.css";
 
 import classNames from "classnames";
 import React, {

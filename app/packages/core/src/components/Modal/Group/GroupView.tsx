@@ -1,4 +1,4 @@
-import { groupContainer, mainGroup } from "../Modal.module.css";
+import { groupContainer, mainGroup } from "./Group.module.css";
 
 import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
