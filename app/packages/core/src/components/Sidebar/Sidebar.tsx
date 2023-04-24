@@ -430,9 +430,11 @@ const Container = animated(styled.div`
 
 const NewContainer = styled(Container)`
   margin: 1rem;
-  width: 75vw;
+  min-width: 40vw;
+  max-width: 60vw;
+  height: 68vh;
+  overflow-y: auto;
   min-height: auto;
-  height: 80vh;
   background: white;
 `;
 
@@ -941,7 +943,14 @@ const InteractiveSidebar = ({
                   }}
                 />
               </Box>
-              <Box sx={{ position: "relative !important" }}>
+              <Box
+                sx={{
+                  position: "relative !important",
+                  overflow: "hidden",
+                  width: "100%",
+                  paddingTop: "0.5rem",
+                }}
+              >
                 <TabOption
                   active={selectedTab}
                   options={["selection", "search"].map((value) => {
@@ -1054,6 +1063,7 @@ const InteractiveSidebar = ({
                       style={{
                         color: "black",
                         marginRight: "0.5rem",
+                        boxShadow: "none",
                       }}
                       onClick={() => {
                         const finalSelectedPaths = new Set(
@@ -1092,7 +1102,7 @@ const InteractiveSidebar = ({
                       Add to view
                     </Button>
                     <Button
-                      style={{ color: "black" }}
+                      style={{ color: "black", boxShadow: "none" }}
                       onClick={() => {
                         setSchemaModal({ open: false });
                         setSearchTerm("");
