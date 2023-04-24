@@ -169,7 +169,7 @@ class StateDescription(etas.Serializable):
 
         spaces = d.get("spaces", None)
         color_scheme = d.get("color_scheme", None)
-
+        print("state descritption from dict", color_scheme)
         if spaces is not None:
             spaces = Space.from_dict(json_util.loads(spaces))
 

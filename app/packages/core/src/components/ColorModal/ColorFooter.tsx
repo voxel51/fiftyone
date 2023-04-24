@@ -25,15 +25,6 @@ type Prop = {
   eligibleFields: Field[];
 };
 
-const onCancel = () => {
-  return useRecoilCallback(({ set }) => async () => {
-    set(fos.activeColorField, null);
-    set(tempColorSetting, null);
-    set(tempGlobalSetting, null);
-    set(tempColorJSON, null);
-  });
-};
-
 const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   const [sessionColorPool, sessionCustomizedColors, setColorScheme] =
     fos.useSessionColorScheme();
@@ -64,8 +55,16 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   const setCustomizeColor = useSetRecoilState(
     fos.customizeColorSelector(path!)
   );
+  const fullSetting = useRecoilValue(fos.customizeColorSettings);
 
-  console.info("session", sessionColorPool, sessionCustomizedColors);
+  const onCancel = () => {
+    return useRecoilCallback(({ set }) => async () => {
+      set(fos.activeColorField, null);
+      set(tempColorSetting, null);
+      set(tempGlobalSetting, null);
+      set(tempColorJSON, null);
+    });
+  };
 
   const onSave = () => {
     onApply();
@@ -77,6 +76,15 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       // save field settings (update tempcolor by checkbox options)
       const update = updateFieldSettings(tempColor);
       setCustomizeColor(update);
+      const customizeColorSettings =
+        fullSetting.filter(
+          (s) => s.field === (activeColorModalField as Field).path
+        ).length > 0
+          ? fullSetting.map((s) =>
+              s.field === (activeColorModalField as Field).path ? update : s
+            )
+          : [...fullSetting, update];
+      setColorScheme(tempGlobalSettings.colors, customizeColorSettings);
     }
     if (activeColorModalField == "global") {
       // save global settings
@@ -87,6 +95,8 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       setAlpha(opacity);
       setMulticolorKeypoints(useMulticolorKeypoints);
       setShowSkeleton(showSkeleton);
+      // update colors
+      setColorScheme(colors, fullSetting);
     }
     if (activeColorModalField == "json") {
       if (

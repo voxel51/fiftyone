@@ -27,6 +27,8 @@ import {
   similaritySorting,
   tagging,
   theme,
+  sessionColorScheme,
+  customizeColors,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -45,7 +47,7 @@ export type StateResolver =
 
 const useStateUpdate = (ignoreSpaces = false) => {
   const { setMode } = useColorScheme();
-
+  console.info("useStateupdate");
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
       const { config, dataset, state } =
@@ -96,9 +98,10 @@ const useStateUpdate = (ignoreSpaces = false) => {
 
       if (state?.colorScheme) {
         // update colorScheme atoms here
+        console.info(state.colorScheme);
+        set(sessionColorScheme, state.colorScheme);
+        // set(customizeColors, state.colorScheme.customizedColors)
       }
-
-      console.info("state", state);
 
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
