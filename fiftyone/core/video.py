@@ -258,7 +258,7 @@ class FramesView(fov.DatasetView):
         super().keep_fields()
 
     def reload(self):
-        """Reloads this view from the source collection in the database.
+        """Reloads the view.
 
         Note that :class:`FrameView` instances are not singletons, so any
         in-memory frames extracted from this view will not be updated by
@@ -272,10 +272,13 @@ class FramesView(fov.DatasetView):
         # This assumes that calling `load_view()` when the current patches
         # dataset has been deleted will cause a new one to be generated
         #
-
         self._frames_dataset.delete()
         _view = self._frames_stage.load_view(self._source_collection)
         self._frames_dataset = _view._frames_dataset
+
+        _view = self._base_view
+        for stage in self._stages:
+            _view = _view.add_stage(stage)
 
     def _set_labels(self, field_name, sample_ids, label_docs):
         super()._set_labels(field_name, sample_ids, label_docs)

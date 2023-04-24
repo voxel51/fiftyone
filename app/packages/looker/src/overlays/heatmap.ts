@@ -230,6 +230,11 @@ export default class HeatmapOverlay<State extends BaseState>
     if (index < 0) {
       return null;
     }
+
+    if (this.label.map.data.channels > 1) {
+      return this.targets[index * this.label.map.data.channels];
+    }
+
     return this.targets[index];
   }
 }

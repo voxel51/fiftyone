@@ -281,6 +281,35 @@ class DatasetViewTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             view.name = "new_name"
 
+    @drop_datasets
+    def test_reload(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", foo="bar"),
+                fo.Sample(filepath="image2.jpg", spam="eggs"),
+                fo.Sample(filepath="image3.jpg"),
+                fo.Sample(filepath="image4.jpg"),
+                fo.Sample(filepath="image5.jpg"),
+            ]
+        )
+
+        view = dataset.take(3).sort_by("filepath").select_fields("foo")
+        sample_ids = view.values("id")
+
+        # Reloading should not cause dataset-independent view stage parameters
+        # like Take's internal random seed to be changed
+        view.reload()
+        same_sample_ids = view.values("id")
+
+        self.assertListEqual(sample_ids, same_sample_ids)
+
+        dataset.delete_sample_field("foo")
+
+        # Field `foo` no longer exists, so validation should fail on reload
+        with self.assertRaises(ValueError):
+            view.reload()
+
 
 class ViewFieldTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows
@@ -1183,15 +1212,19 @@ class SetValuesTests(unittest.TestCase):
             ["e", "d", "c", "b", "a"],
         )
 
-        dataset.set_values("predictions.int", [1, 2, 3, 4, 5], dynamic=True)
+        dataset.set_values(
+            "predictions.also_int",
+            [1, 2, 3, 4, 5],
+            dynamic=True,
+        )
 
         self.assertListEqual(
-            dataset.values("predictions.int"),
+            dataset.values("predictions.also_int"),
             [1, 2, 3, 4, 5],
         )
 
         schema = dataset.get_field_schema(flat=True)
-        self.assertIsInstance(schema["predictions.int"], fo.IntField)
+        self.assertIsInstance(schema["predictions.also_int"], fo.IntField)
 
         dataset.set_values(
             "predictions.labels",
@@ -1243,19 +1276,19 @@ class SetValuesTests(unittest.TestCase):
         )
 
         dataset.set_values(
-            "labels.classifications.int",
+            "labels.classifications.also_int",
             [[1], [2], [3], [4], [5]],
             dynamic=True,
         )
 
         self.assertListEqual(
-            dataset.values("labels.classifications.int"),
+            dataset.values("labels.classifications.also_int"),
             [[1], [2], [3], [4], [5]],
         )
 
         schema = dataset.get_field_schema(flat=True)
         self.assertIsInstance(
-            schema["labels.classifications.int"],
+            schema["labels.classifications.also_int"],
             fo.IntField,
         )
 

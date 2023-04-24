@@ -322,6 +322,11 @@ export const canEditSavedViews = atom({
   default: true,
 });
 
+export const canEditCustomColors = atom({
+  key: "canEditCustomColors",
+  default: true,
+});
+
 export const compactLayout = atom({
   key: "compactLayout",
   default: false,

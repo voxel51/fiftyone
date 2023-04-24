@@ -132,6 +132,41 @@ class GroupTests(unittest.TestCase):
         self.assertIn(dataset._frame_collection_name, collections)
 
     @drop_datasets
+    def test_group_dataset_merge_frames_init(self):
+        group = fo.Group()
+        sample = fo.Sample(
+            filepath="video.mp4",
+            sample_key="vid",
+            group=group.element("vid"),
+        )
+
+        dataset1 = fo.Dataset()
+        dataset1.add_group_field("group")
+        dataset1.add_sample_field("sample_key", fo.StringField)
+
+        dataset1.merge_samples([sample], key_field="sample_key")
+
+        self.assertEqual(dataset1.media_type, "group")
+        self.assertEqual(dataset1.group_field, "group")
+        self.assertDictEqual(dataset1.group_media_types, {"vid": "video"})
+        self.assertIsNotNone(dataset1._frame_collection)
+        self.assertIsNotNone(dataset1._frame_collection_name)
+        self.assertEqual(len(dataset1), 1)
+
+        dataset2 = fo.Dataset()
+        dataset2.add_group_field("group")
+        dataset2.add_sample_field("sample_key", fo.StringField)
+
+        dataset2.merge_samples([sample], key_fcn=lambda s: s["sample_key"])
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(dataset2.group_field, "group")
+        self.assertDictEqual(dataset2.group_media_types, {"vid": "video"})
+        self.assertIsNotNone(dataset2._frame_collection)
+        self.assertIsNotNone(dataset2._frame_collection_name)
+        self.assertEqual(len(dataset2), 1)
+
+    @drop_datasets
     def test_basics(self):
         dataset = _make_group_dataset()
 
