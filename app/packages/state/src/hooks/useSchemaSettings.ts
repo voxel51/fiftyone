@@ -18,7 +18,7 @@ export const originalSelectedPathsState = atom<Set<string>>({
 });
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: "Selection",
+  default: "Search",
 });
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
