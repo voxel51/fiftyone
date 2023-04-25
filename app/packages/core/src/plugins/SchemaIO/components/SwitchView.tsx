@@ -10,7 +10,7 @@ export default function SwitchView(props) {
       control={
         <Switch defaultChecked={data === true || schema.default === true} />
       }
-      label={<Header {...view} variant="secondary" />}
+      label={<Header {...view} />}
     />
   );
 }

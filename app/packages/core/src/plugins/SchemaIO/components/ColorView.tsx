@@ -21,7 +21,7 @@ export default function ColorView(props) {
 
   return (
     <Box>
-      <Header {...view} variant="secondary" />
+      <Header {...view} />
       <Stack direction="row" alignItems="center" spacing={1}>
         <Box
           onClick={(e) => {
