@@ -99,9 +99,7 @@ def compute_ious(
         )
 
     if isinstance(preds[0], fol.Keypoint):
-        return _compute_keypoint_similarities(
-            preds, gts, iscrowd=iscrowd, classwise=classwise
-        )
+        return _compute_keypoint_similarities(preds, gts, classwise=classwise)
 
     if use_masks:
         # @todo when tolerance is None, consider using dense masks rather than
@@ -643,32 +641,48 @@ def _compute_segment_ious(preds, gts):
     return ious
 
 
-def _compute_keypoint_similarities(preds, gts, iscrowd=None, classwise=False):
+def _compute_keypoint_similarities(preds, gts, classwise=False):
     sims = np.zeros((len(preds), len(gts)))
-
-    # @todo implement iscrowd
-    # @todo implement classwise
-    # @todo switch to OKS: https://stackoverflow.com/q/68250191
-
-    # Calculate euclidean distance of each keypoint
     for j, gt in enumerate(gts):
-        for i, pt in enumerate(preds):
-            gt_points = []
-            for x in gt["points"]:
-                gt_points.append(x)
+        for i, pred in enumerate(preds):
+            if classwise and pred.label != gt.label:
+                continue
 
-            pred_points = []
-            for y in pt["points"]:
-                pred_points.append(y)
-
-            gt_points = sum(gt_points, [])
-            pred_points = sum(pred_points, [])
-
-            sims[i, j] = 1 / (
-                1 + sp.distance.euclidean(tuple(gt_points), tuple(pred_points))
-            )
+            sims[i, j] = _compute_oks(gt, pred)
 
     return sims
+
+
+def _compute_oks(gt, pred):
+    gtp = np.array(gt.points, dtype=float)
+    predp = np.array(pred.points, dtype=float)
+
+    # Use extent of GT points as proxy for box area
+    scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
+    scale = np.maximum(0.0, np.minimum(scale, 1.0))
+
+    # If GT points are None/nan/inf: skip
+    # If pred points are None/nan/inf: use max distance
+    d = []
+    for g, p in zip(gtp, predp):
+        if not np.isfinite(g).all():
+            continue
+
+        if not np.isfinite(p).all():
+            # Max distance
+            d.append(1)
+
+        d.append(sp.distance.euclidean(g, p))
+
+    d = np.array(d)
+    n = len(d)
+
+    if n == 0:
+        return 0.0
+
+    # object keypoint similarity with kappai == 1
+    # https://cocodataset.org/#keypoints-eval
+    return np.sum(np.exp(-(d**2) / (2 * (scale**2)))) / n
 
 
 def _polylines_to_detections(polylines):
