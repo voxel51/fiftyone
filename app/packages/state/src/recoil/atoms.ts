@@ -113,36 +113,36 @@ export interface CustomizeColor {
   }[];
 }
 
-export const customizeColors = atomFamily<CustomizeColor, string>({
-  key: "customizeColors",
-  default: selectorFamily<CustomizeColor, string>({
-    key: "initialCustomizeColors",
-    get:
-      (path) =>
-      ({ get }) => {
-        const settings = get(sessionColorScheme)
-          .customizedColorSettings as unknown as CustomizeColor[];
-        return settings?.find((s) => s.field === path) ?? null;
-      },
-  }),
-});
+// export const customizeColors = atomFamily<CustomizeColor, string>({
+//   key: "customizeColors",
+//   default: selectorFamily<CustomizeColor, string>({
+//     key: "initialCustomizeColors",
+//     get:
+//       (path) =>
+//       ({ get }) => {
+//         const settings = get(sessionColorScheme)
+//           .customizedColorSettings as unknown as CustomizeColor[];
+//         return settings?.find((s) => s.field === path) ?? null;
+//       },
+//   }),
+// });
 
-export const customizeColorFields = atom<string[]>({
-  key: "customizeColorFields",
-  default: selector({
-    key: "initialColorFields",
-    get: ({ get }) => {
-      return [
-        ...new Set(
-          get(sessionColorScheme)?.customizedColorSettings?.map(
-            (s) => s["field"]
-          )
-        ),
-      ];
-      // return [];
-    },
-  }),
-});
+// export const customizeColorFields = atom<string[]>({
+//   key: "customizeColorFields",
+//   default: selector({
+//     key: "initialColorFields",
+//     get: ({ get }) => {
+//       return [
+//         ...new Set(
+//           get(sessionColorScheme)?.customizedColorSettings?.map(
+//             (s) => s["field"]
+//           )
+//         ),
+//       ];
+//       // return [];
+//     },
+//   }),
+// });
 
 export interface SortResults {
   count: boolean;
@@ -413,7 +413,7 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
 
 export interface ColorScheme {
   colorPool: string[];
-  customizedColorSettings: object[];
+  customizedColorSettings: CustomizeColor[];
 }
 
 export const sessionColorScheme = atom<ColorScheme>({

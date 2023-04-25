@@ -1,12 +1,12 @@
-import { CustomizeColor } from "@fiftyone/state";
-
-import { atom } from "recoil";
+import { atom, useRecoilCallback } from "recoil";
+import * as fos from "@fiftyone/state";
 
 import { isEmpty, xor } from "lodash";
 import { Field } from "@fiftyone/utilities";
+import { CustomizeColor } from "@fiftyone/state";
 
 type ColorJSON = {
-  colors: string[];
+  colorPool: string[];
   customizedColorSettings: CustomizeColor[];
 };
 
@@ -128,3 +128,14 @@ export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
         : undefined,
   })) as CustomizeColor[];
 };
+
+export function useCancel() {
+  const cancelCallback = useRecoilCallback(({ set }) => async () => {
+    set(fos.activeColorField, null);
+    set(tempColorSetting, null);
+    set(tempGlobalSetting, null);
+    set(tempColorJSON, null);
+  });
+
+  return cancelCallback;
+}

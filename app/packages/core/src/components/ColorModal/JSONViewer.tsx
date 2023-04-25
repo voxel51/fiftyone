@@ -4,7 +4,6 @@ import Editor from "@monaco-editor/react";
 import * as fos from "@fiftyone/state";
 
 import { tempColorJSON, tempColorSetting, tempGlobalSetting } from "./utils";
-import { customizeColorSettings } from "@fiftyone/state";
 import { ActionOption } from "../Actions/Common";
 import { useTheme } from "@fiftyone/components";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
@@ -15,7 +14,9 @@ const JSONViewer: React.FC = ({}) => {
   const theme = useTheme();
   const editorRef = useRef(null);
   const [global, setGlobal] = useRecoilState(tempGlobalSetting);
-  const fullSetting = useRecoilValue(customizeColorSettings);
+  const fullSetting = useRecoilValue(
+    fos.sessionColorScheme
+  ).customizedColorSettings;
   const [data, setData] = useRecoilState(tempColorJSON);
   const resetTempCustomizeColor = useSetRecoilState(tempColorSetting);
   const colors = useRecoilValue(fos.coloring(false)).pool as string[];
@@ -50,7 +51,7 @@ const JSONViewer: React.FC = ({}) => {
       setGlobal(setting);
     }
     setData({
-      colors: global?.colors,
+      colorPool: global?.colors,
       customizedColorSettings: fullSetting,
     });
   }, []);

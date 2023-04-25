@@ -29,7 +29,9 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const path = field.path;
   const [tempSetting, setTempSetting] = useRecoilState(tempColorSetting);
-  const fullSetting = useRecoilValue(fos.customizeColorSettings);
+  const fullSetting = useRecoilValue(
+    fos.sessionColorScheme
+  ).customizedColorSettings;
   const coloring = useRecoilValue(fos.coloring(false));
   const pool = useRecoilValue(fos.colorPalette);
   const color = getColor(pool, coloring.seed, path);
@@ -76,7 +78,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   useEffect(() => {
     if (!tempSetting || tempSetting.field !== path) {
       // check setting to see if custom setting exists
-      const setting = fullSetting.find((x) => x.field == path!);
+      const setting = fullSetting?.find((x) => x.field == path!);
       if (setting) {
         setTempSetting(setting);
       } else {
