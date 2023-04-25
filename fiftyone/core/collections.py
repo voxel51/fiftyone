@@ -3035,6 +3035,7 @@ class SampleCollection(object):
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Keypoints in :class:`fiftyone.core.labels.Keypoints` format
         -   Temporal detections in
             :class:`fiftyone.core.labels.TemporalDetections` format
 
@@ -3084,10 +3085,12 @@ class SampleCollection(object):
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
@@ -6127,8 +6130,9 @@ class SampleCollection(object):
 
         Args:
             field: the patches field, which must be of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than ``field``
                 and the default sample fields are included. Can be any of the
                 following:
@@ -6200,8 +6204,9 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than the
                 ground truth/predicted fields and the default sample fields are
                 included. Can be any of the following:

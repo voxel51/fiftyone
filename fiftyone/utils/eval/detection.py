@@ -46,6 +46,7 @@ def evaluate_detections(
     -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
         format with their ``mask`` attributes populated
     -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+    -   Keypoints in :class:`fiftyone.core.labels.Keypoints` format
     -   Temporal detections in :class:`fiftyone.core.labels.TemporalDetections`
         format
 
@@ -95,10 +96,12 @@ def evaluate_detections(
         pred_field: the name of the field containing the predicted
             :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Polylines`,
+            :class:`fiftyone.core.labels.Keypoints`,
             or :class:`fiftyone.core.labels.TemporalDetections`
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Polylines`,
+            :class:`fiftyone.core.labels.Keypoints`,
             or :class:`fiftyone.core.labels.TemporalDetections`
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, the
@@ -130,7 +133,7 @@ def evaluate_detections(
     fov.validate_collection_label_fields(
         samples,
         (pred_field, gt_field),
-        (fol.Detections, fol.Polylines, fol.TemporalDetections, fol.Keypoints),
+        (fol.Detections, fol.Polylines, fol.Keypoints, fol.TemporalDetections),
         same_type=True,
     )
 
@@ -213,11 +216,13 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)

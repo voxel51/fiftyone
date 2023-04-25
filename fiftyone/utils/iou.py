@@ -45,10 +45,14 @@ def compute_ious(
     https://cocodataset.org/#keypoints-eval.
 
     Args:
-        preds: a list of predicted :class:`fiftyone.core.labels.Detection` or
-            :class:`fiftyone.core.labels.Polyline` instances
-        gts: a list of ground truth :class:`fiftyone.core.labels.Detection` or
-            :class:`fiftyone.core.labels.Polyline` instances
+        preds: a list of predicted
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Keypoints` instances
+        gts: a list of ground truth
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Keypoints` instances
         iscrowd (None): an optional name of a boolean attribute or boolean
             function to apply to each label that determines whether a ground
             truth object is a crowd. If provided, the area of the predicted
@@ -158,11 +162,13 @@ def compute_max_ious(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         label_field: a label field of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_field (None): another label field of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         iou_attr ("max_iou"): the label attribute in which to store the max IoU
         id_attr (None): an optional attribute in which to store the label ID of
             the maximum overlapping label
@@ -271,8 +277,9 @@ def find_duplicates(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         label_field: a label field of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         iou_thresh (0.999): the IoU threshold to use to determine whether
             labels are duplicates
         method ("simple"): the duplicate removal method to use. The supported
