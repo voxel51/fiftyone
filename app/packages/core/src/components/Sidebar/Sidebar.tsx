@@ -796,7 +796,12 @@ const InteractiveSidebar = ({
             }
           >
             <NewContainer
-              style={{ ...screen, zIndex: 10001, padding: "1.5rem" }}
+              style={{
+                ...screen,
+                zIndex: 10001,
+                padding: "1.5rem",
+                backgroundColor: theme.background.level1,
+              }}
             >
               <Box
                 style={{
@@ -806,10 +811,9 @@ const InteractiveSidebar = ({
                 }}
               >
                 <h3
-                  color="black"
+                  color={theme.text.primary}
                   style={{
                     padding: 0,
-                    color: "black",
                     margin: 0,
                     width: "100%",
                   }}
@@ -817,7 +821,9 @@ const InteractiveSidebar = ({
                   Schema field visibilty
                 </h3>
                 <CloseIcon
-                  color="action"
+                  sx={{
+                    color: theme.text.primary,
+                  }}
                   onClick={() => {
                     setSearchTerm("");
                     setSelectedPaths(originalSelectedPaths);
@@ -864,7 +870,7 @@ const InteractiveSidebar = ({
                     style={{
                       position: "relative",
                       padding: "0.5rem 0",
-                      color: "black",
+                      color: theme.text.primary,
                       display: "flex",
                     }}
                   >
@@ -881,7 +887,7 @@ const InteractiveSidebar = ({
                     <Box
                       style={{
                         position: "relative",
-                        color: "black",
+                        color: theme.text.primary,
                         display: "flex",
                       }}
                     >
@@ -899,7 +905,7 @@ const InteractiveSidebar = ({
                     <Box
                       style={{
                         position: "relative",
-                        color: "black",
+                        color: theme.text.primary,
                         display: "flex",
                       }}
                     >
@@ -920,7 +926,7 @@ const InteractiveSidebar = ({
                       marginTop: "1rem",
                       overflow: "auto",
                       color: "#232323",
-                      border: "1px solid #efefef",
+                      border: `1px solid ${theme.primary.plainBorder}`,
                     }}
                   >
                     {finalSchema.map((item) => {
@@ -939,7 +945,7 @@ const InteractiveSidebar = ({
                         <Box
                           style={{
                             padding: "0.25rem 0.25rem",
-                            borderBottom: "1px solid #efefef",
+                            borderBottom: `1px solid ${theme.primary.plainBorder}`,
                             display: "flex",
                           }}
                         >
@@ -980,9 +986,11 @@ const InteractiveSidebar = ({
                   >
                     <Button
                       style={{
-                        color: "black",
+                        color: theme.text.primary,
                         marginRight: "0.5rem",
                         boxShadow: "none",
+                        padding: "0.5rem 0.5rem",
+                        borderRadius: "4px",
                       }}
                       onClick={() => {
                         const stageKwargs = [
@@ -1006,7 +1014,13 @@ const InteractiveSidebar = ({
                       Add to view
                     </Button>
                     <Button
-                      style={{ color: "black", boxShadow: "none" }}
+                      text="cancel"
+                      style={{
+                        color: theme.text.primary,
+                        boxShadow: "none",
+                        padding: "0.5rem 0.5rem",
+                        borderRadius: "4px",
+                      }}
                       onClick={() => {
                         setSettingsModal({ open: false });
                         setSearchTerm("");
