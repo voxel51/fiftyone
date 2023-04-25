@@ -1,4 +1,3 @@
-import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   Method,
@@ -101,16 +100,8 @@ export const useSortBySimilarity = (close) => {
           filters,
           extended: toSnakeCase(combinedParameters),
         });
-        const unsubscribe = subscribe((_, { set }) => {
-          set(fos.similarityParameters, combinedParameters);
-          set(fos.similaritySorting, false);
-          set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
-          set(fos.hiddenLabels, {});
-          set(fos.modal, null);
-          close();
-          unsubscribe();
-        });
-        set(fos.refreshPage, undefined);
+        set(fos.similarityParameters, combinedParameters);
+        close();
       },
     []
   );
