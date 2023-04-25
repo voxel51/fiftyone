@@ -18,13 +18,14 @@ from .operator import Operator
 
 KNOWN_PLUGIN_CONTEXTS = {}
 
+
 class PluginContext:
     def __init__(self, plugin_definition):
         self.name = plugin_definition.name
         self.plugin_definition = plugin_definition
         self.instances = []
         self.errors = []
-    
+
     def has_errors(self):
         return len(self.errors) > 0
 
@@ -54,6 +55,7 @@ class PluginContext:
         for inst in self.instances:
             self.unregister_inst(inst)
 
+
 def register_module(plugin_definition, mod):
     pctx = PluginContext(plugin_definition)
     KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
@@ -67,13 +69,15 @@ def register_module(plugin_definition, mod):
 
 def unregister_module(plugin_name):
     """Unegisters all operators in the given module."""
-    pctx = REGISTERED_MODULES.get(plugin_name, None)
+
+    pctx = KNOWN_PLUGIN_CONTEXTS.get(plugin_name, None)
     if pctx is not None:
         try:
             pctx.unregister_all()
         except Exception as e:
             pass
-        del REGISTERED_MODULES[plugin_name]
+        del KNOWN_PLUGIN_CONTEXTS[plugin_name]
+
 
 def dispose_all(plugin_contexts):
     """Disposes all loaded instances."""
@@ -84,6 +88,7 @@ def dispose_all(plugin_contexts):
             print("Error disposing plugin context: %s" % name)
             print(e)
     KNOWN_PLUGIN_CONTEXTS = {}
+
 
 def load_from_dir():
     """Loads all operators from the default operator directory."""
@@ -97,6 +102,7 @@ def load_from_dir():
         KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
     return plugin_contexts
 
+
 def exec_module_from_dir(module_dir, plugin_definition):
     mod_dir = os.path.dirname(module_dir)
     mod_filepath = os.path.join(module_dir, "__init__.py")
@@ -105,6 +111,7 @@ def exec_module_from_dir(module_dir, plugin_definition):
     sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
     return register_module(plugin_definition, mod)
+
 
 # BEFORE PR: where should this go?
 def find_files(root_dir, filename, extensions, max_depth):
