@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import Pagination from "@mui/material/Pagination";
+import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import React, { ChangeEventHandler, useCallback, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -90,17 +90,20 @@ export const GroupElementsLinkBar = () => {
 
   return (
     <BarContainer>
+      {/* note: pagination renders in contracted form when >= 10 elements */}
       <Pagination
         count={elementsCount}
         page={dynamicGroupCurrentElementIndex}
-        onChange={onPageChange}
+        onChange={onPageChange as PaginationProps["onChange"]}
         shape="rounded"
         color="primary"
         classes={{
           root: style.noRipple,
         }}
       />
+      {/* if more than 10 elements, render text input to offer random access */}
       {elementsCount >= 10 && (
+        // todo: use debounce
         <input
           className={style.currentPageInput}
           value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
