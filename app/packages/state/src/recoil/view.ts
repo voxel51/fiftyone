@@ -1,5 +1,6 @@
 import { atom, selector, selectorFamily } from "recoil";
 
+import { Stage } from "@fiftyone/utilities";
 import { State } from "./types";
 import { getSanitizedGroupByExpression } from "./utils";
 
@@ -33,8 +34,8 @@ const EVALUATION_PATCHES_VIEW = "fiftyone.core.patches.EvaluationPatchesView";
 const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
 const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
-const GROUP_BY_VIEW_STAGE = "fiftyone.core.stages.GroupBy";
-const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
+export const GROUP_BY_VIEW_STAGE = "fiftyone.core.stages.GroupBy";
+export const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
 
 enum ELEMENT_NAMES {
   CLIP = "clip",
@@ -133,6 +134,11 @@ export const isFramesView = selector<boolean>({
   },
 });
 
+export const dynamicGroupCurrentElementIndex = atom<number>({
+  key: "dynamicGroupCurrentElementIndex",
+  default: 1,
+});
+
 export const dynamicGroupParameters =
   selector<State.DynamicGroupParameters | null>({
     key: "dynamicGroupParameters",
@@ -162,7 +168,7 @@ export const isDynamicGroup = selector<boolean>({
   },
 });
 
-export const dynamicGroupViewQuery = selectorFamily<string, string>({
+export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
   key: "dynamicGroupViewQuery",
   get:
     (fieldOrExpression) =>

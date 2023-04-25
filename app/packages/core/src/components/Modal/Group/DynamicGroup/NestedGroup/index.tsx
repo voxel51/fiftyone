@@ -1,8 +1,7 @@
 import React from "react";
-import { useGroupContext } from "../../GroupContextProvider";
+import { GroupView } from "../../GroupView";
+import { GroupElementsLinkBar } from "./GroupElementsLinkBar";
 
 export const NestedGroup = () => {
-  const { lookerRefCallback } = useGroupContext();
-
-  return <div>dynamic</div>;
+  return <GroupView subBar={<GroupElementsLinkBar />} />;
 };

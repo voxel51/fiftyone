@@ -16,7 +16,11 @@ import { GroupSuspense } from "./GroupSuspense";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
-export const GroupView = () => {
+interface GroupViewProps {
+  subBar?: React.ReactNode;
+}
+
+export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
   const key = useRecoilValue(groupId);
@@ -48,6 +52,7 @@ export const GroupView = () => {
   return (
     <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
+      {subBar ?? subBar}
       <div className={mainGroup}>
         {(isCarouselVisible || isImageVisible) && (
           <Resizable

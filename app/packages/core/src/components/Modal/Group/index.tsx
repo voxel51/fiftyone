@@ -10,7 +10,11 @@ const Group = () => {
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
 
   if (isDynamicGroup) {
-    return <DynamicGroup />;
+    return (
+      <GroupSuspense>
+        <DynamicGroup />
+      </GroupSuspense>
+    );
   }
 
   return (

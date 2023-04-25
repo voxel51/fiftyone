@@ -2,7 +2,6 @@ import Flashlight, { Response } from "@fiftyone/flashlight";
 import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { dynamicGroupPaginationFragment } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -79,7 +78,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
   const { data, hasNext, loadNext } = usePaginationFragment(
     foq.paginateGroupPaginationFragment,
-    useRecoilValue(dynamicGroupPaginationFragment(groupByFieldValue!))
+    useRecoilValue(fos.dynamicGroupPaginationFragment(groupByFieldValue!))
   );
 
   // todo: support pcd

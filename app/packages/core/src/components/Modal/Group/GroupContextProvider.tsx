@@ -31,9 +31,11 @@ export const GroupContextProvider = ({
 
   const groupByFieldValue = useMemo(() => {
     if (modal && dynamicGroupParameters?.groupBy) {
-      return modal.sample[
-        fos.getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-      ] as unknown as string;
+      return String(
+        modal.sample[
+          fos.getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
+        ] as unknown
+      );
     }
     return null;
   }, [modal, dynamicGroupParameters]);

@@ -304,7 +304,6 @@ export const dynamicGroupPaginationFragment = selectorFamily<
   get:
     (fieldOrExpression) =>
     ({ get }) => {
-      console.log("fieldOrExpression", fieldOrExpression);
       return get(dynamicGroupQuery(fieldOrExpression));
     },
   cachePolicy_UNSTABLE: {
