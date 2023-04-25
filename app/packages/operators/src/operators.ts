@@ -99,7 +99,7 @@ export class Operator {
   constructor(
     public name: string,
     public label?: string,
-    public description?: string,
+    public description?: string
   ) {
     this.definition = new types.ObjectType();
     this.definition.defineProperty("inputs", new types.ObjectType());
@@ -107,8 +107,9 @@ export class Operator {
     this.label = label || name;
   }
   public pluginName: any;
+  public executeAsGenerator: boolean = false;
   get uri() {
-    return `${this.pluginName || "@voxel51"}/${this.name}`
+    return `${this.pluginName || "@voxel51"}/${this.name}`;
   }
   get inputs(): types.Property {
     return this.definition.getProperty("inputs");
@@ -154,7 +155,7 @@ export class Operator {
     const inputsType = this.inputs.type as types.ObjectType;
     if (inputsType.needsResolution()) {
       if (this.isRemote) {
-        return resolveRemoteType(this.uri, ctx, "outputs");
+        return resolveRemoteType(this.uri, ctx, "inputs");
       }
 
       const resolvedInputs = new types.ObjectType();
@@ -173,7 +174,7 @@ export class Operator {
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
     const outputsType = this.inputs.type as types.ObjectType;
     if (outputsType.needsResolution() && this.isRemote) {
-      return resolveRemoteType(this.uri, ctx, "inputs");
+      return resolveRemoteType(this.uri, ctx, "outputs");
     }
     return this.outputs;
   }
@@ -189,7 +190,7 @@ export class Operator {
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
     const operator = new Operator(json.name, json.label, json.description);
-    console.log(operator)
+    operator.executeAsGenerator = json.execute_as_generator;
     operator.pluginName = json.plugin_name;
     operator.definition.addProperty("inputs", types.Property.fromJSON(inputs));
     operator.definition.addProperty(
@@ -292,32 +293,136 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
-export async function executeOperator(operatorURI, ctx: ExecutionContext) {
+enum MessageType {
+  SUCCESS = "success",
+  ERROR = "error",
+}
+
+class ExecutionResult {
+  constructor(result) {
+    this.result = result;
+  }
+  fromJSON(json) {
+    return new ExecutionResult(json.result);
+  }
+}
+class GeneratedMessage {
+  constructor(type: MessageType, cls, body) {
+    this.type = type;
+    this.cls = cls;
+    this.body = body;
+  }
+  public type: MessageType;
+  public cls: typeof InvocationRequest | typeof ExecutionResult;
+  public body: any;
+  static fromJSON(json) {
+    let cls = null;
+    switch (json.cls) {
+      case "InvocationRequest":
+        cls = InvocationRequest;
+        break;
+      case "ExecutionResult":
+        cls = ExecutionResult;
+        break;
+    }
+    const type =
+      json.type === "SUCCESS" ? MessageType.SUCCESS : MessageType.ERROR;
+    return new GeneratedMessage(type, cls, json.body);
+  }
+}
+
+async function executeOperatorAsGenerator(
+  operator: Operator,
+  ctx: ExecutionContext
+) {
+  const currentContext = ctx._currentContext;
+  const parser = await getFetchFunction()(
+    "POST",
+    "/operators/execute/generator",
+    {
+      operator_uri: operator.uri,
+      params: ctx.params,
+      dataset_name: currentContext.datasetName,
+      extended: currentContext.extended,
+      view: currentContext.view,
+      filters: currentContext.filters,
+      selected: currentContext.selectedSamples
+        ? Array.from(currentContext.selectedSamples)
+        : [],
+    },
+    "json-stream"
+  );
+  let result = null;
+  let triggerPromises = [];
+  const onChunk = (chunk) => {
+    const message = GeneratedMessage.fromJSON(chunk);
+    if (message.cls == InvocationRequest) {
+      executeOperator(message.body.operator_uri, message.body.params);
+    } else if (message.cls == ExecutionResult) {
+      result = message.body;
+    }
+  };
+  await parser.parse(onChunk);
+  // Should we wait for all triggered operators finish execution?
+  // e.g. await Promise.all(triggerPromises)
+  return result || {};
+}
+
+export function resolveOperatorURI(operatorURI) {
+  if (operatorURI.includes("/")) return operatorURI;
+  return `@voxel51/operators/${operatorURI}`;
+}
+
+export async function executeOperator(operatorURI, params: any) {
+  operatorURI = resolveOperatorURI(operatorURI);
+  const queue = getInvocationRequestQueue();
+  const request = new InvocationRequest(operatorURI, params);
+  queue.add(request);
+}
+
+export async function executeOperatorWithContext(
+  operatorURI,
+  ctx: ExecutionContext
+) {
+  operatorURI = resolveOperatorURI(operatorURI);
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorURI);
   const currentContext = ctx._currentContext;
 
   let result;
   let error;
   let executor;
+
+  console.log(operator, operator.executeAsGenerator);
+
   if (isRemote) {
-    const serverResult = await getFetchFunction()(
-      "POST",
-      "/operators/execute",
-      {
-        operator_uri: operatorURI,
-        params: ctx.params,
-        dataset_name: currentContext.datasetName,
-        extended: currentContext.extended,
-        view: currentContext.view,
-        filters: currentContext.filters,
-        selected: currentContext.selectedSamples
-          ? Array.from(currentContext.selectedSamples)
-          : [],
+    if (operator.executeAsGenerator) {
+      try {
+        result = await executeOperatorAsGenerator(operator, ctx);
+      } catch (e) {
+        error = e;
+        console.error(`Error executing operator ${operatorURI}:`);
+        console.error(error);
       }
-    );
-    result = serverResult.result;
-    error = serverResult.error;
-    executor = serverResult.executor;
+    } else {
+      const serverResult = await getFetchFunction()(
+        "POST",
+        "/operators/execute",
+        {
+          operator_uri: operatorURI,
+          params: ctx.params,
+          dataset_name: currentContext.datasetName,
+          extended: currentContext.extended,
+          view: currentContext.view,
+          filters: currentContext.filters,
+          selected: currentContext.selectedSamples
+            ? Array.from(currentContext.selectedSamples)
+            : [],
+        }
+      );
+      result = serverResult.result;
+      error = serverResult.error;
+      executor = serverResult.executor;
+    }
   } else {
     try {
       result = await operator.execute(ctx);
@@ -368,10 +473,7 @@ export async function resolveRemoteType(
   return types.Property.fromJSON(typeAsJSON);
 }
 
-
-export async function fetchRemotePlacements(
-  ctx: ExecutionContext
-) {
+export async function fetchRemotePlacements(ctx: ExecutionContext) {
   const currentContext = ctx._currentContext;
   const result = await getFetchFunction()(
     "POST",
@@ -392,7 +494,7 @@ export async function fetchRemotePlacements(
 
   const placementsAsJSON = result.placements;
 
-  return placementsAsJSON.map(p => ({
+  return placementsAsJSON.map((p) => ({
     operator: getLocalOrRemoteOperator(p.operator_uri),
     placement: types.Placement.fromJSON(p.placement),
   }));
