@@ -17,7 +17,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from scipy.spatial import distance
+import scipy.spatial as sp
 
 from .utils3d import compute_cuboid_iou as _compute_cuboid_iou
 
@@ -40,6 +40,9 @@ def compute_ious(
 
     For polylines, IoUs are computed assuming the shapes are solid (filled),
     regardless of their ``filled`` attributes.
+
+    For keypoints, IoUs are computed via object keypoint similarity:
+    https://cocodataset.org/#keypoints-eval.
 
     Args:
         preds: a list of predicted :class:`fiftyone.core.labels.Detection` or
@@ -91,11 +94,10 @@ def compute_ious(
             preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
         )
 
-
-    if isinstance(preds[0], fol.Keypoints):
-            return _compute_keypoint_similarity(
-                preds, gts, iscrowd=iscrowd, classwise=classwise
-            )
+    if isinstance(preds[0], fol.Keypoint):
+        return _compute_keypoint_similarities(
+            preds, gts, iscrowd=iscrowd, classwise=classwise
+        )
 
     if use_masks:
         # @todo when tolerance is None, consider using dense masks rather than
@@ -172,7 +174,7 @@ def compute_max_ious(
     fov.validate_collection_label_fields(
         sample_collection,
         (label_field, other_field),
-        (fol.Detections, fol.Polylines),
+        (fol.Detections, fol.Polylines, fol.Keypoints),
         same_type=True,
     )
 
@@ -281,7 +283,9 @@ def find_duplicates(
         a list of IDs of duplicate labels
     """
     fov.validate_collection_label_fields(
-        sample_collection, label_field, (fol.Detections, fol.Polylines)
+        sample_collection,
+        label_field,
+        (fol.Detections, fol.Polylines, fol.Keypoints),
     )
 
     _label_field, is_frame_field = sample_collection._handle_frame_field(
@@ -564,28 +568,6 @@ def _compute_polyline_ious(
         return ious
 
 
-def _compute_keypoint_similarity(preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None):
-    #calculate euclidean distance of each keypoint
-    sim_score = np.zeros((len(preds), len(gts)))
-
-    for j, gt in enumerate(gts):
-        for i, pt in enumerate(preds):
-            gt_points=[]
-            pt_points=[]
-            for x in gt['points']:
-                gt_points.append(x)
-            for y in pt['points']:
-                pt_points.append(y)
-
-            gt_points=sum(gt_points, [])
-
-            pt_points=sum(pt_points, [])
-
-            sim_score[i, j] = 1/(1 + distance.euclidean(tuple(gt_points),tuple(pt_points)))
-
-    return sim_score
-
-
 def _compute_mask_ious(
     preds, gts, tolerance, error_level, iscrowd=None, classwise=False
 ):
@@ -652,6 +634,34 @@ def _compute_segment_ious(preds, gts):
             ious[i, j] = iou
 
     return ious
+
+
+def _compute_keypoint_similarities(preds, gts, iscrowd=None, classwise=False):
+    sims = np.zeros((len(preds), len(gts)))
+
+    # @todo implement iscrowd
+    # @todo implement classwise
+    # @todo switch to OKS: https://stackoverflow.com/q/68250191
+
+    # Calculate euclidean distance of each keypoint
+    for j, gt in enumerate(gts):
+        for i, pt in enumerate(preds):
+            gt_points = []
+            for x in gt["points"]:
+                gt_points.append(x)
+
+            pred_points = []
+            for y in pt["points"]:
+                pred_points.append(y)
+
+            gt_points = sum(gt_points, [])
+            pred_points = sum(pred_points, [])
+
+            sims[i, j] = 1 / (
+                1 + sp.distance.euclidean(tuple(gt_points), tuple(pred_points))
+            )
+
+    return sims
 
 
 def _polylines_to_detections(polylines):
