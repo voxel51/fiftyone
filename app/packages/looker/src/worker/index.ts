@@ -458,7 +458,7 @@ if (typeof onmessage !== "undefined") {
         resolveColor(args as ResolveColor);
         return;
       default:
-        throw new Error("unknown method");
+        break;
     }
   };
 }
