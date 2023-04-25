@@ -20,3 +20,4 @@ export function getComponent(schema) {
 }
 
 export { operatorToIOSchema } from "./operator";
+export * from "./generate-schema";
