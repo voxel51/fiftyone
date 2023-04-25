@@ -29,6 +29,8 @@ import {
   theme,
   sessionColorScheme,
   customizeColors,
+  ColorScheme,
+  ColorSetting,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -47,7 +49,6 @@ export type StateResolver =
 
 const useStateUpdate = (ignoreSpaces = false) => {
   const { setMode } = useColorScheme();
-  console.info("useStateupdate");
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
       const { config, dataset, state } =
@@ -94,13 +95,6 @@ const useStateUpdate = (ignoreSpaces = false) => {
         set(sessionSpaces, state.spaces);
       } else if (!ignoreSpaces) {
         reset(sessionSpaces);
-      }
-
-      if (state?.colorScheme) {
-        // update colorScheme atoms here
-        console.info(state.colorScheme);
-        set(sessionColorScheme, state.colorScheme);
-        // set(customizeColors, state.colorScheme.customizedColors)
       }
 
       if (dataset) {
@@ -157,6 +151,10 @@ const useStateUpdate = (ignoreSpaces = false) => {
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
+        }
+
+        if (state?.colorScheme) {
+          set(sessionColorScheme, state.colorScheme as ColorScheme);
         }
 
         set(datasetAtom, dataset);
