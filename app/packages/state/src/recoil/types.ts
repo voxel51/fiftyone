@@ -109,11 +109,6 @@ export namespace State {
     paths: string[];
   }
 
-  export interface ColorSetting {
-    colorPool: string[];
-    customizedColors: CustomizeColor[];
-  }
-
   export interface DatasetAppConfig {
     gridMediaField?: string;
     modalMediaField?: string;
@@ -205,11 +200,6 @@ export namespace State {
     labelId: string;
   }
 
-  export interface ColorScheme {
-    colorPool: string[];
-    customizedColors: JSON[];
-  }
-
   export interface Description {
     dataset: string;
     selected: string[];
@@ -220,6 +210,11 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
-    colorScheme?: ColorScheme;
+    colorScheme?: ColorSetting;
   }
+}
+
+export interface ColorSetting {
+  colorPool: string[];
+  customizedColorSettings: JSON[];
 }

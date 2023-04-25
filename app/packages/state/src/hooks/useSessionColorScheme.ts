@@ -16,19 +16,19 @@ const useSessionColorScheme = () => {
   const onError = useErrorHandler();
   const [sessionColorSchemeState, setSessionColorSchemeState] =
     useRecoilState(sessionColorScheme);
-  const { colorPool, customizedColors } = sessionColorSchemeState;
+  const { colorPool, customizedColorSettings } = sessionColorSchemeState;
 
   function setColorScheme(
     colors: string[],
-    customizedColors: CustomizeColor[]
+    customizedColorSettings: CustomizeColor[]
   ) {
     const combined = {
       colorPool: colors,
-      customizedColors: customizedColors,
+      customizedColorSettings: customizedColorSettings,
     };
     const toAPI = {
       colorPool: colors,
-      customizedColorSettings: customizedColors,
+      customizedColorSettings: customizedColorSettings,
     };
 
     setSessionColorSchemeState(combined);
@@ -45,7 +45,7 @@ const useSessionColorScheme = () => {
       })
     );
   }
-  return [colorPool, customizedColors, setColorScheme] as any[];
+  return [colorPool, customizedColorSettings, setColorScheme] as any[];
 };
 
 export default useSessionColorScheme;
