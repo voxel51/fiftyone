@@ -81,6 +81,7 @@ def unregister_module(plugin_name):
 
 def dispose_all(plugin_contexts):
     """Disposes all loaded instances."""
+    global KNOWN_PLUGIN_CONTEXTS
     for name, pctx in plugin_contexts.items():
         try:
             pctx.dispose()
