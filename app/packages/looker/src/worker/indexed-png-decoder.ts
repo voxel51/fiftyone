@@ -1,43 +1,39 @@
+export type ValidPngBitDepth = 1 | 2 | 4 | 8;
+export type ColorPalette = number[][];
+
 export const indexedPngBufferToRgb = (
-  data: Uint8Array,
-  bitDepth: 1 | 2 | 4 | 8,
-  colorPalette: number[][]
+  inputData: Uint8Array,
+  bitDepth: ValidPngBitDepth,
+  colorPalette: ColorPalette
 ) => {
   const indicesPerByte = 8 / bitDepth;
-  const numIndexes = data.length * indicesPerByte;
-  const resultSize = numIndexes * 3;
+  const numIndices = inputData.length * indicesPerByte;
+  const resultSize = numIndices * 3;
+  const newRgbArray = new Uint8Array(resultSize);
 
-  const rgbArray = new Uint8Array(resultSize);
-
-  let rgbIdx = 0;
-  let paletteIdx = 0;
-
-  const colorIndices = new Uint8Array(numIndexes);
+  let rgbOffset = 0;
 
   // Determine the initial bit mask based on the bit depth:
   const initialBitMask = ((1 << bitDepth) - 1) << (8 - bitDepth);
 
   // extract color indexes from data based on bit depth
-  for (const byte of data) {
+  for (const byte of inputData) {
     let currentBitMask = initialBitMask;
-    let bitsToShift = 8 - bitDepth;
+    let remainingBits = 8;
 
-    while (currentBitMask) {
-      colorIndices[paletteIdx++] = (byte & currentBitMask) >> bitsToShift;
+    while (remainingBits >= bitDepth) {
+      const index = (byte & currentBitMask) >> (remainingBits - bitDepth);
+      const color = colorPalette[index];
+      if (!color) {
+        throw new Error("Incorrect index of palette color");
+      }
+      newRgbArray.set(color, rgbOffset);
+      rgbOffset += 3;
+
+      remainingBits -= bitDepth;
       currentBitMask >>= bitDepth;
-      bitsToShift -= bitDepth;
     }
   }
 
-  // map color indices to rgb values
-  for (const index of colorIndices) {
-    const color = colorPalette[index];
-    if (!color) {
-      throw new Error("incorrect index of palette color");
-    }
-    rgbArray.set(color, rgbIdx);
-    rgbIdx += 3;
-  }
-
-  return rgbArray;
+  return newRgbArray;
 };
