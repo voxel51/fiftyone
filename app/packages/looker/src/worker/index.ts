@@ -19,6 +19,7 @@ import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
 import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
 import { DeserializerFactory } from "./deserializer";
+import { indexedPngBufferToRgb } from "./indexed-png-decoder";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
@@ -132,6 +133,15 @@ const imputeOverlayFromPath = async (
     overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
   } else {
     overlayData = decodePng(overlayImageBuffer);
+  }
+
+  if (overlayData.palette?.length) {
+    overlayData.data = indexedPngBufferToRgb(
+      overlayData.data,
+      overlayData.depth,
+      overlayData.palette
+    );
+    overlayData.channels = 3;
   }
 
   const width = overlayData.width;
