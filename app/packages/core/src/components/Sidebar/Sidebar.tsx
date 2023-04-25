@@ -800,7 +800,7 @@ const InteractiveSidebar = ({
                 ...screen,
                 zIndex: 10001,
                 padding: "1.5rem",
-                backgroundColor: theme.background.level1,
+                backgroundColor: theme.background.level2,
               }}
             >
               <Box
@@ -823,6 +823,7 @@ const InteractiveSidebar = ({
                 <CloseIcon
                   sx={{
                     color: theme.text.primary,
+                    cursor: "pointer",
                   }}
                   onClick={() => {
                     setSearchTerm("");
