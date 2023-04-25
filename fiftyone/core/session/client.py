@@ -126,8 +126,6 @@ class Client:
         """
         if not self._connected:
             raise RuntimeError("Client is not connected")
-        print("event", event.state)
-        pprint(event)
         self._post_event(event)
         self._dispatch_event(event)
 

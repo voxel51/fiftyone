@@ -14,6 +14,7 @@ import time
 import typing as t
 import webbrowser
 from uuid import uuid4
+from bson import json_util
 
 from fiftyone.core.colorscheme import ColorScheme
 
@@ -374,16 +375,16 @@ class Session(object):
             spaces = default_spaces.copy()
 
         if color_scheme is None:
-            color_scheme = focn.DEFAULT_COLOR_SCHEME
+            color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
 
-        print("session init stateDescription color scheme", color_scheme)
+        # print("session init stateDescription color scheme", color_scheme)
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
             spaces=spaces,
-            color_scheme=color_scheme,
+            color_scheme=None,
         )
         self._client = fosc.Client(
             address=address,
@@ -586,7 +587,6 @@ class Session(object):
     @color_scheme.setter  # type: ignore
     @update_state()
     def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
-        print("setter", color_scheme)
         if color_scheme is None:
             color_scheme = ColorScheme(
                 color_pool=focn.DEFAULT_APP_COLOR_POOL,

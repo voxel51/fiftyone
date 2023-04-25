@@ -5,15 +5,14 @@ Color Scheme configuration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine.errors import ValidationError
 from fiftyone.constants import DEFAULT_APP_COLOR_POOL
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
-from bson import json_util, ObjectId
+from bson import json_util
 import eta.core.serial as etas
 
 
-class ColorScheme:
+class ColorScheme(object):
     """Configuration of a color scheme.
 
     Args:
@@ -25,19 +24,30 @@ class ColorScheme:
         self.color_pool = color_pool or DEFAULT_APP_COLOR_POOL
         self.customized_color_settings = customized_color_settings
 
-    # def to_json(self, pretty_print=False):
-    #     """Serializes the document to a JSON string.
+    def to_dict(self):
+        d = {
+            "colorPool": self.color_pool,
+            "customizedColorSettings": self.customized_color_settings,
+        }
 
-    #     Args:
-    #         pretty_print (False): whether to render the JSON in human readable
-    #             format with newlines and indentations
+        return d
 
-    #     Returns:
-    #         a JSON string
-    #     """
-    #     if not pretty_print:
-    # return json_util.dumps(self.to_dict())
+    # TODO
+    def from_dict(self, color_scheme):
+        return {}
 
-    # d = self.to_dict(extended=True)
-    # return etas.json_to_str(d, pretty_print=pretty_print)
-    # return
+    def to_json(self, pretty_print=False):
+        """Serializes the document to a JSON string.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
+
+        Returns:
+            a JSON string
+        """
+        if not pretty_print:
+            return json_util.dumps(self.to_dict())
+
+        d = self.to_dict()
+        return etas.json_to_str(d, pretty_print=pretty_print)
