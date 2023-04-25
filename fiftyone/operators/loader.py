@@ -57,9 +57,9 @@ class PluginContext:
 
 
 def register_module(plugin_definition, mod):
-    pctx = PluginContext(plugin_definition)
-    KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
     try:
+        pctx = PluginContext(plugin_definition)
+        KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
         mod.register(pctx)
     except Exception as e:
         errors = [traceback.format_exc()]
@@ -98,15 +98,23 @@ def load_from_dir():
     plugin_contexts = []
     for plugin_definition in plugin_definitions:
         module_dir = plugin_definition.directory
-        pctx = exec_module_from_dir(module_dir, plugin_definition)
-        plugin_contexts.append(pctx)
-        KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
+        try:
+            pctx = exec_module_from_dir(module_dir, plugin_definition)
+            plugin_contexts.append(pctx)
+            KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
+        except ValueError as e:
+            print("Error loading plugin from %s" % module_dir)
+            pass
     return plugin_contexts
 
 
 def exec_module_from_dir(module_dir, plugin_definition):
     mod_dir = os.path.dirname(module_dir)
     mod_filepath = os.path.join(module_dir, "__init__.py")
+    if not os.path.isfile(mod_filepath):
+        raise ValueError(
+            f"Cannot execute module from {mod_dir}. Missing __init__.py"
+        )
     spec = importlib.util.spec_from_file_location(mod_dir, mod_filepath)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod.__name__] = mod

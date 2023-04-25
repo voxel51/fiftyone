@@ -16,6 +16,9 @@ import sys
 import traceback
 from enum import Enum
 
+import fiftyone.plugins.core as fopc
+
+
 # BEFORE PR: where should this go?
 def find_files(root_dir, filename, extensions, max_depth):
     """Returns all files matching the given pattern, up to the given depth.
@@ -81,6 +84,8 @@ class PluginTypes(Enum):
 
 class PluginDefinition:
     def __init__(self, directory, metadata):
+        if not metadata.get("name"):
+            raise ValueError("Plugin name is required")
         self.directory = directory
         self.metadata = metadata
         self.name = metadata.get("name", None)
@@ -106,45 +111,46 @@ class PluginDefinition:
 
 def load_plugin_definition(metadata_file):
     """Loads the plugin definition from the given metadata_file."""
-    with open(metadata_file, "r") as f:
-        metadata_dict = yaml.load(f, Loader=yaml.FullLoader)
-        module_dir = os.path.dirname(metadata_file)
-        definition = PluginDefinition(module_dir, metadata_dict)
-        if not definition.js_bundle:
-            # check if package.json exists
-            package_json_path = os.path.join(module_dir, "package.json")
-            if os.path.exists(package_json_path):
-                pkg = etas.read_json(package_json_path)
-                definition.js_bundle = pkg.get("fiftyone", {}).get(
-                    "script", None
-                )
-        return definition
+    try:
+        with open(metadata_file, "r") as f:
+            metadata_dict = yaml.safe_load(f)
+            module_dir = os.path.dirname(metadata_file)
+            definition = PluginDefinition(module_dir, metadata_dict)
+            if not definition.js_bundle:
+                # check if package.json exists
+                package_json_path = os.path.join(module_dir, "package.json")
+                if os.path.exists(package_json_path):
+                    pkg = etas.read_json(package_json_path)
+                    definition.js_bundle = pkg.get("fiftyone", {}).get(
+                        "script", None
+                    )
+            return definition
+    except:
+        traceback.print_exc()
+        return None
 
 
 def list_plugins():
     """
-    List all PluginDefinitions in the plugins directory.
+    List all PluginDefinitions for enabled plugins.
     """
-    plugins_dir = fo.config.plugins_dir
+    plugins = [
+        pd
+        for pd in [
+            load_plugin_definition(
+                os.path.join(p.path, PLUGIN_METADATA_FILENAME + ".yml")
+            )
+            for p in fopc._list_plugins(enabled_only=True)
+        ]
+        if pd
+    ]
 
-    if not plugins_dir:
-        return []
-
-    metadata_files = find_plugin_metadata_files()
-    plugins = []
-    for metadata_file in metadata_files:
-        try:
-            plugin = load_plugin_definition(metadata_file)
-            plugins.append(plugin)
-        except Exception as e:
-            print("Error loading plugin metadata file: %s" % metadata_file)
-            print(e)
-            traceback.print_exc()
     return validate_plugins(plugins)
 
 
 class DuplicatePluginNameError(ValueError):
     pass
+
 
 class InvalidPluginDefinition(ValueError):
     pass
