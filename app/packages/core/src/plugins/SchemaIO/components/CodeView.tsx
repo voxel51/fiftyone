@@ -25,6 +25,7 @@ export default function CodeView(props) {
       <Editor
         height={250}
         theme={mode === "dark" ? "vs-dark" : "light"}
+        value={readOnly ? data : undefined}
         defaultValue={data ?? defaultValue}
         onChange={(value) => onChange(path, value)}
         language={language}

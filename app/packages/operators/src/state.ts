@@ -12,7 +12,7 @@ import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
-  executeOperator,
+  executeOperatorWithContext,
   ExecutionContext,
   getInvocationRequestQueue,
   InvocationRequestQueue,
@@ -47,14 +47,16 @@ export const operatorPromptState = selector({
 
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
-  get: (operatorName) => ({ get }) => {
-    const promptingOperator = get(promptingOperatorState);
-    if (!promptingOperator) {
-      return {};
-    }
-    const { params } = promptingOperator;
-    return params;
-  },
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const promptingOperator = get(promptingOperatorState);
+      if (!promptingOperator) {
+        return {};
+      }
+      const { params } = promptingOperator;
+      return params;
+    },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -104,26 +106,22 @@ const globalContextSelector = selector({
 
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
-  get: (operatorName) => ({ get }) => {
-    const globalContext = get(globalContextSelector);
-    const params = get(currentOperatorParamsSelector(operatorName));
-    return {
-      ...globalContext,
-      params,
-    };
-  },
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const globalContext = get(globalContextSelector);
+      const params = get(currentOperatorParamsSelector(operatorName));
+      return {
+        ...globalContext,
+        params,
+      };
+    },
 });
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const {
-    datasetName,
-    view,
-    extended,
-    filters,
-    selectedSamples,
-    params,
-  } = curCtx;
+  const { datasetName, view, extended, filters, selectedSamples, params } =
+    curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -178,16 +176,17 @@ export const useOperatorPrompt = () => {
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => (fieldName, value) => {
-      const state = get(promptingOperatorState);
-      set(promptingOperatorState, {
-        ...state,
-        params: {
-          ...state.params,
-          [fieldName]: value,
-        },
-      });
-    }
+    ({ get, set }) =>
+      (fieldName, value) => {
+        const state = get(promptingOperatorState);
+        set(promptingOperatorState, {
+          ...state,
+          params: {
+            ...state.params,
+            [fieldName]: value,
+          },
+        });
+      }
   );
   const execute = useCallback(async () => {
     const resolved = await operator.resolveInput(ctx);
@@ -261,6 +260,41 @@ export const useOperatorPrompt = () => {
     validationErrors,
   };
 };
+
+const operatorIOState = atom({
+  key: "operatorIOState",
+  default: { visible: false },
+});
+
+export function useShowOperatorIO() {
+  const [state, setState] = useRecoilState(operatorIOState);
+  return {
+    ...state,
+    showButtons: state.hideButtons !== true && state.isInput,
+    type: state.isInput ? "input" : "output",
+    show: ({
+      schema,
+      isOutput,
+      isInput,
+      data,
+      hideButtons,
+      validationErrors,
+    }) => {
+      setState({
+        validationErrors,
+        hideButtons,
+        isInput,
+        isOutput,
+        schema,
+        data,
+        visible: true,
+      });
+    },
+    hide: () => {
+      setState({ visible: false });
+    },
+  };
+}
 
 export function filterChoicesByQuery(query, all) {
   const sanitizedQuery = query.trim();
@@ -489,7 +523,7 @@ const operatorExecutionNeedsOutputState = atom({
 });
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
-  if (!uri.includes('/')) {
+  if (!uri.includes("/")) {
     uri = `@voxel51/operators/${uri}`;
   }
 
@@ -497,7 +531,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [isExecuting, setIsExecuting] = useRecoilState(
     operatorIsExecutingState
   );
-  ``;
+
   const [error, setError] = useRecoilState(operatorExecutionErrorState);
   const [result, setResult] = useRecoilState(operatorExecutionResultState);
 
@@ -530,7 +564,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       try {
         ctx.hooks = hooks;
         ctx.state = state;
-        const result = await executeOperator(uri, ctx);
+        const result = await executeOperatorWithContext(uri, ctx);
         setResult(result.result);
         setError(result.error);
         setNeedsOutput(result.hasOutputContent());
@@ -640,15 +674,17 @@ export const operatorPlacementsSelector = selector({
 
 export const placementsForPlaceSelector = selectorFamily({
   key: "operatorsForPlaceSelector",
-  get: (place: Places) => ({ get }) => {
-    const placements = get(operatorPlacementsSelector);
-    return placements
-      .filter((p) => p.placement.place === place)
-      .map((p) => ({
-        placement: p.placement,
-        operator: p.operator.operator,
-      }));
-  },
+  get:
+    (place: Places) =>
+    ({ get }) => {
+      const placements = get(operatorPlacementsSelector);
+      return placements
+        .filter((p) => p.placement.place === place)
+        .map((p) => ({
+          placement: p.placement,
+          operator: p.operator.operator,
+        }));
+    },
 });
 
 export function useOperatorPlacements(place: Place) {
