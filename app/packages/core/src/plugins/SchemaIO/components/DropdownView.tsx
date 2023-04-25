@@ -4,8 +4,10 @@ import FieldWrapper from "./FieldWrapper";
 
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
-  const { view = {} } = schema;
+  const { view = {}, type } = schema;
   const { choices } = view;
+
+  const multiple = type === "array";
 
   const choiceLabels = choices.reduce((labels, choice) => {
     labels[choice.value] = choice.label;
@@ -15,11 +17,21 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
-        defaultValue={data ?? schema.default}
+        defaultValue={data ?? schema.default ?? (multiple ? [] : "")}
         size="small"
         fullWidth
-        renderValue={(value) => choiceLabels[value]}
+        displayEmpty
+        renderValue={(value) => {
+          if (value?.length === 0) {
+            return view?.placeholder || "";
+          }
+          if (multiple) {
+            return value.map((item) => choiceLabels[item] || item).join(", ");
+          }
+          return choiceLabels[value] || value;
+        }}
         onChange={(e) => onChange(path, e.target.value)}
+        multiple={multiple}
       >
         {choices.map(({ value, label, description, caption }) => (
           <MenuItem key="value" value={value}>

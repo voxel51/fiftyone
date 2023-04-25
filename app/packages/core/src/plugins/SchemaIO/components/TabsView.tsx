@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Tab, Tabs } from "@mui/material";
 import Header from "./Header";
-import Tooltip from "./Tooltip";
+import HelpTooltip from "./HelpTooltip";
 import RoundedTabs from "./RoundedTabs";
 
 export default function TabsView(props) {
@@ -11,7 +11,7 @@ export default function TabsView(props) {
   const [tab, setTab] = useState(data ?? (defaultValue || choices[0]?.value));
 
   useEffect(() => {
-    onChange(path, tab);
+    if (typeof onChange === "function") onChange(path, tab);
   }, [tab]);
 
   return (
@@ -37,7 +37,7 @@ export default function TabsView(props) {
               key={value}
               label={label}
               value={value}
-              icon={description && <Tooltip title={description} />}
+              icon={description && <HelpTooltip title={description} />}
               iconPosition="end"
               sx={{ minHeight: 48 }}
             />

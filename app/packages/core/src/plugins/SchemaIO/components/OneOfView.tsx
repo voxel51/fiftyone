@@ -1,7 +1,7 @@
 import { Box, Tab, Tabs } from "@mui/material";
 import React, { useState } from "react";
 import Header from "./Header";
-import Tooltip from "./Tooltip";
+import HelpTooltip from "./HelpTooltip";
 import DynamicIO from "./DynamicIO";
 
 export default function OneOfView(props) {
@@ -31,7 +31,7 @@ export default function OneOfView(props) {
               key={`${path}-${i}-tab`}
               value={i}
               label={label}
-              icon={description && <Tooltip title={description} />}
+              icon={description && <HelpTooltip title={description} />}
               iconPosition="end"
               sx={{ minHeight: 48 }}
             />

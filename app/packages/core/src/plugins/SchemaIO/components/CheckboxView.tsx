@@ -14,7 +14,7 @@ export default function CheckboxView(props) {
           onChange={(e, value) => onChange(path, value)}
         />
       }
-      label={<Header {...view} variant="secondary" />}
+      label={<Header {...view} />}
     />
   );
 }
