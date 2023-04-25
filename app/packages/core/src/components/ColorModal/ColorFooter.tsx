@@ -51,9 +51,8 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   );
   const setColoring = useSetRecoilState(fos.colorPalette);
 
-  const fullSetting = useRecoilValue(
-    fos.sessionColorScheme
-  ).customizedColorSettings;
+  const fullSetting =
+    useRecoilValue(fos.sessionColorScheme).customizedColorSettings ?? [];
 
   const onCancel = useCancel();
 
@@ -67,15 +66,15 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       // save field settings (update tempcolor by checkbox options)
       const update = updateFieldSettings(tempColor);
       const customizeColorSettings =
-        fullSetting.filter(
+        fullSetting?.filter(
           (s) => s.field === (activeColorModalField as Field).path
         ).length > 0
-          ? fullSetting.map((s) =>
+          ? fullSetting?.map((s) =>
               s.field === (activeColorModalField as Field).path ? update : s
             )
           : [...fullSetting, update];
       setSessionColorSchemeState((prev) => {
-        const newCustomizedColorSettings = prev.customizedColorSettings
+        const newCustomizedColorSettings = (prev.customizedColorSettings ?? [])
           .filter((s) => s.field !== (activeColorModalField as Field).path)
           .concat(update);
         return {
@@ -101,15 +100,15 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     if (activeColorModalField == "json") {
       if (
         typeof json !== "object" ||
-        !json?.colors ||
-        !Array.isArray(json?.colors) ||
+        !json?.colorPool ||
+        !Array.isArray(json?.colorPool) ||
         !json?.customizedColorSettings ||
         !Array.isArray(json?.customizedColorSettings)
       )
         return;
-      const { colors, customizedColorSettings } = json;
+      const { colorPool, customizedColorSettings } = json;
       // update color palette
-      const validColors = colors?.filter((c) => isValidColor(c));
+      const validColors = colorPool?.filter((c) => isValidColor(c));
       validColors.length > 0 && setColoring(validColors);
       // validate customizedColorSettings
       const validated = validateJSONSetting(

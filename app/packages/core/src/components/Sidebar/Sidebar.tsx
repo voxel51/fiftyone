@@ -14,7 +14,7 @@ import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
-import { tempColorSetting } from "../ColorModal/utils";
+
 const MARGIN = 3;
 
 const fn = (
@@ -688,6 +688,11 @@ const InteractiveSidebar = ({
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
 
+  const sessionColor = useRecoilValue(fos.sessionColorScheme);
+  const [sessionColorPool, sessionCustomizedColors, setColorScheme] =
+    fos.useSessionColorScheme();
+  console.info("sessionColorSchemeAtom", sessionColor);
+  console.info("sessionCustomizedColors", sessionCustomizedColors);
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}

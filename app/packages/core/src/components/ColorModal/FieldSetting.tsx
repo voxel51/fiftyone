@@ -32,6 +32,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const fullSetting = useRecoilValue(
     fos.sessionColorScheme
   ).customizedColorSettings;
+  const t = useRecoilValue(fos.sessionColorScheme);
   const coloring = useRecoilValue(fos.coloring(false));
   const pool = useRecoilValue(fos.colorPalette);
   const color = getColor(pool, coloring.seed, path);
@@ -51,7 +52,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       ftype: FLOAT_FIELD,
     })
   );
-
+  console.info("fullSetting", fullSetting, t);
   const onChangeFieldColor = (color) => {
     setTempSetting((prev) => ({
       ...cloneDeep(prev),
