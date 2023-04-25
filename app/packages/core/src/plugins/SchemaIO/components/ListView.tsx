@@ -1,28 +1,30 @@
-import React, { useEffect, useState } from "react";
-import { Box, Grid, IconButton } from "@mui/material";
 import { Add, Delete } from "@mui/icons-material";
-import Header from "./Header";
+import { Avatar, Box, Grid, IconButton } from "@mui/material";
+import { set } from "lodash";
+import React, { useEffect, useState } from "react";
+import Accordion from "./Accordion";
 import Button from "./Button";
-import EmptyState from "./EmptyState";
 import DynamicIO from "./DynamicIO";
+import EmptyState from "./EmptyState";
+import Header from "./Header";
 
 export default function ListView(props) {
   const { schema, onChange, path, data, errors } = props;
-  const [state, setState] = useState<string[]>(data ?? (schema.default || []));
-  const { items, view } = schema;
-  const { items: itemsView = {} } = view;
+  const { actualState, state, addItem, deleteItem, updateItem, size } =
+    useListState(data ?? schema.default ?? []);
 
+  useEffect(() => {
+    onChange(path, actualState);
+  }, [state]);
+
+  const { items, view = {} } = schema;
+  const { items: itemsView = {}, collapsible, readOnly } = view;
   const itemsSchema = {
     ...items,
     view: { ...(items?.view || {}), ...itemsView },
   };
-
   const label = view.label;
   const lowerCaseLabel = label.toLowerCase();
-
-  useEffect(() => {
-    onChange(path, state);
-  }, [state]);
 
   return (
     <Box>
@@ -30,63 +32,157 @@ export default function ListView(props) {
         {...view}
         divider
         Actions={
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => {
-              setState((state) => [...state, ""]);
-            }}
-          >
-            Add {lowerCaseLabel}
-          </Button>
+          !readOnly && (
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => addItem(getEmptyValue(schema))}
+            >
+              Add {lowerCaseLabel}
+            </Button>
+          )
         }
       />
-      <Grid container rowSpacing={1} columnSpacing={2} sx={{ px: 1 }}>
-        {state.length === 0 && (
+      <Grid container rowSpacing={1} sx={{ ml: 1 }}>
+        {size === 0 && (
           <Grid item xs={12}>
             <EmptyState label={lowerCaseLabel} />
           </Grid>
         )}
-        {state.map((item, i) => (
-          <Grid
-            container
-            item
-            xs={12}
-            key={`${path}.${i}`}
-            spacing={0.25}
-            sx={{ alignItems: "flex-start" }}
-          >
-            <Grid item xs>
-              <DynamicIO
-                schema={itemsSchema}
-                onChange={(path, value) => {
-                  setState((state) => {
-                    const updatedState = [...state];
-                    updatedState[path] = value;
-                    return updatedState;
-                  });
-                }}
-                path={i.toString()}
-                data={data?.[i]}
-                errors={errors}
-              />
-            </Grid>
-            <Grid item>
-              <IconButton
-                onClick={() => {
-                  setState((state) => {
-                    const updatedState = [...state];
-                    updatedState.splice(i, 1);
-                    return updatedState;
-                  });
-                }}
-              >
-                <Delete color="error" />
-              </IconButton>
-            </Grid>
-          </Grid>
-        ))}
+        {Object.keys(state).map((id, index) => {
+          const value = state[id];
+          const ItemComponent = collapsible
+            ? CollapsibleListItem
+            : NonCollapsibleListItem;
+
+          return (
+            <ItemComponent
+              key={`${path}.${id}`}
+              id={id}
+              path={id.toString()}
+              index={index}
+              data={value}
+              onChange={updateItem}
+              onDelete={deleteItem}
+              errors={errors}
+              schema={itemsSchema}
+              readOnly={readOnly}
+            />
+          );
+        })}
       </Grid>
     </Box>
   );
+}
+
+function CollapsibleListItem(props) {
+  const { readOnly } = props;
+
+  return (
+    <Accordion
+      defaultExpanded
+      label="Item of an array"
+      Actions={() => {
+        if (readOnly) return null;
+        return <DeleteButton {...props} />;
+      }}
+    >
+      <DynamicIO {...props} />
+    </Accordion>
+  );
+}
+
+function NonCollapsibleListItem(props) {
+  const { index, readOnly } = props;
+  return (
+    <Grid
+      container
+      item
+      xs={12}
+      spacing={0.25}
+      sx={{
+        alignItems: "flex-start",
+        marginTop: 1.5,
+        borderTop: (theme) => `1px solid ${theme.palette.divider}`,
+        "&:first-child": {
+          border: "none",
+          marginTop: 0,
+        },
+      }}
+    >
+      <Grid item>
+        <Avatar sx={{ width: 24, height: 24, mr: 1, fontSize: "1rem" }}>
+          {index}
+        </Avatar>
+      </Grid>
+      <Grid item xs>
+        <DynamicIO {...props} />
+      </Grid>
+      {!readOnly && (
+        <Grid item>
+          <DeleteButton {...props} />
+        </Grid>
+      )}
+    </Grid>
+  );
+}
+
+function DeleteButton(props) {
+  const { onDelete, id } = props;
+  return (
+    <IconButton
+      onClick={(e) => {
+        e.stopPropagation();
+        onDelete(id);
+      }}
+      sx={{ p: 0 }}
+    >
+      <Delete color="error" />
+    </IconButton>
+  );
+}
+
+function getEmptyValue(schema) {
+  const itemsType = schema?.items?.type || "string";
+  const emptyValuesByType = {
+    string: "",
+    number: 0,
+    object: {},
+    array: [],
+  };
+  return emptyValuesByType[itemsType];
+}
+
+function useListState(initialState: Array<unknown>) {
+  let initialNextId = 0;
+  const initialStateById = initialState.reduce((stateById, item) => {
+    stateById[initialNextId++] = item;
+  }, {});
+
+  const [state, setState] = useState(initialStateById);
+  const [nextId, setNextId] = useState(initialNextId);
+
+  function addItem(item) {
+    setState((state) => ({ ...state, [nextId]: item }));
+    setNextId((nextId) => nextId + 1);
+  }
+
+  function deleteItem(id) {
+    setState((state) => {
+      const updatedState = { ...state };
+      delete updatedState[id];
+      return updatedState;
+    });
+  }
+  function updateItem(path, value) {
+    setState((state) => {
+      const updatedState = { ...state };
+      set(updatedState, path, value);
+      return updatedState;
+    });
+  }
+  const size = Object.keys(state).length;
+  const actualState = Object.values(state);
+
+  return { actualState, size, state, addItem, deleteItem, updateItem };
 }

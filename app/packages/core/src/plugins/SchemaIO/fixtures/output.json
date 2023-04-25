@@ -425,7 +425,7 @@
                     "required": false,
                     "choices": null,
                     "view": {
-                        "name": "View",
+                        "name": "TableView",
                         "label": "Table",
                         "description": null,
                         "caption": null,

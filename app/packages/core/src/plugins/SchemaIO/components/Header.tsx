@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Stack, Typography, StackProps } from "@mui/material";
+import { HelpTooltip } from ".";
 
 export default function Header(props: HeaderProps) {
   // todo: support error
@@ -10,7 +11,8 @@ export default function Header(props: HeaderProps) {
     divider,
     Actions,
     sx = {},
-    variant = "primary",
+    variant = "secondary",
+    descriptionView = "inline",
     omitCaption = false,
   } = props;
 
@@ -41,10 +43,19 @@ export default function Header(props: HeaderProps) {
       }}
     >
       <Box>
-        <Typography variant={labelVariantMap[variant]} color="text.primary">
-          {label}
-        </Typography>
-        {description && (
+        <Stack>
+          <Typography
+            variant={labelVariantMap[variant]}
+            color="text.primary"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            {label}
+            {descriptionView === "tooltip" && (
+              <HelpTooltip title={description} sx={{ ml: 1 }} />
+            )}
+          </Typography>
+        </Stack>
+        {description && descriptionView === "inline" && (
           <Typography variant="body2" color="text.secondary">
             {description}
           </Typography>
@@ -69,4 +80,5 @@ export type HeaderProps = {
   sx?: StackProps["sx"];
   variant?: "primary" | "secondary" | "tertiary";
   omitCaption?: boolean;
+  descriptionView?: "inline" | "tooltip";
 };
