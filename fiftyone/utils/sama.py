@@ -28,8 +28,8 @@ def download_sama_coco_dataset_split(
     scratch_dir=None,
 ):
     """Utility that downloads full or partial data splits of the
-    `COCO dataset <https://cocodataset.org>` with annotation splits found
-    at <https://www.sama.com/sama-coco-dataset/>.
+    `COCO dataset <https://cocodataset.org>`_ with annotation splits found
+    at https://www.sama.com/sama-coco-dataset.
 
     See :ref:`this page <COCODetectionDataset-export>` for the format in which
     ``dataset_dir`` will be arranged.
@@ -79,11 +79,7 @@ def download_sama_coco_dataset_split(
         -   classes: the list of all classes
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
-
-    Notes:
-        year is fixed for Sama-COCO and represents the imaging data from 2017
     """
-
     if split not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported split '%s'; supported values are %s"
@@ -313,8 +309,6 @@ def download_sama_coco_dataset_split(
 
 
 def _merge_annotations(merge_dir, output):
-    assert os.path.isdir(merge_dir), "Must provide a valid directory"
-
     info = licenses = categories = None
     all_annotations = []
     all_images = []

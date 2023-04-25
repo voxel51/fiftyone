@@ -3398,15 +3398,17 @@ annotation data.
 Sama-COCO
 ---------
 
-Sama-COCO is a relabeling of COCO-2017 and is a large-scale object detection and segmentation dataset.
-Masks in Sama-COCO are tighter and many crowd instances have been decomposed into their components.
+Sama-COCO is a relabeling of COCO-2017 and is a large-scale object detection
+and segmentation dataset. Masks in Sama-COCO are tighter and many crowd
+instances have been decomposed into their components.
 
-This version contains images from the COCO-2017 version of the dataset, as well as annotations in the form
-of bounding boxes, and segmentation masks provided by Sama.
+This version contains images from the COCO-2017 version of the dataset, as well
+as annotations in the form of bounding boxes, and segmentation masks provided
+by Sama.
 
 **Notes**
 
--   Sama-COCO defines 91 classes but the data only uses 80 classes as per COCO-2017
+-   Sama-COCO defines 91 classes but the data only uses 80 classes (like COCO-2017)
 -   Some images from the train and validation sets don't have annotations
 -   The test set does not have annotations
 -   Sama-COCO has identical splits to COCO-2017
@@ -3430,9 +3432,9 @@ of bounding boxes, and segmentation masks provided by Sama.
 **Partial downloads**
 
 FiftyOne provides parameters that can be used to efficiently download specific
-subsets of the Sama-COCO dataset to suit your needs. When new subsets are specified,
-FiftyOne will use existing downloaded data first if possible before resorting
-to downloading additional data from the web.
+subsets of the Sama-COCO dataset to suit your needs. When new subsets are
+specified, FiftyOne will use existing downloaded data first if possible before
+resorting to downloading additional data from the web.
 
 The following parameters are available to configure a partial download of
 Sama-COCO by passing them to
