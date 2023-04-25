@@ -20,6 +20,7 @@ const GlobalSetting: React.FC = ({}) => {
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     setGlobal((s) => ({ ...cloneDeep(s), opacity: newValue as number }));
   };
+  // TODO: color update
   const colors = useRecoilValue(fos.coloring(false)).pool as string[];
   const opacity = useRecoilValue(fos.alpha(false));
   const colorBy = useRecoilValue(

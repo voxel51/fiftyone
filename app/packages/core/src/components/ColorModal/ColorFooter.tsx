@@ -15,6 +15,7 @@ import {
   tempColorSetting,
   tempGlobalSetting,
   updateFieldSettings,
+  useCancel,
   validateJSONSetting,
 } from "./utils";
 import { CustomizeColor } from "@fiftyone/state";
@@ -26,6 +27,9 @@ type Prop = {
 };
 
 const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
+  const [sessionColorSchemeState, setSessionColorSchemeState] = useRecoilState(
+    fos.sessionColorScheme
+  );
   const [sessionColorPool, sessionCustomizedColors, setColorScheme] =
     fos.useSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
@@ -34,12 +38,6 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   const [tempGlobalSettings, setTempGlobalSettings] =
     useRecoilState(tempGlobalSetting);
   const [json, setJson] = useRecoilState(tempColorJSON);
-  const customizeColorFields = useRecoilValue(fos.customizeColorFields);
-  const path =
-    typeof activeColorModalField === "string"
-      ? activeColorModalField
-      : activeColorModalField?.path;
-
   const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
   const setAlpha = useSetRecoilState(fos.alpha(false));
   const setConfigColorBy = useSetRecoilState(
@@ -52,19 +50,12 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
   );
   const setColoring = useSetRecoilState(fos.colorPalette);
-  const setCustomizeColor = useSetRecoilState(
-    fos.customizeColorSelector(path!)
-  );
-  const fullSetting = useRecoilValue(fos.customizeColorSettings);
 
-  const onCancel = () => {
-    return useRecoilCallback(({ set }) => async () => {
-      set(fos.activeColorField, null);
-      set(tempColorSetting, null);
-      set(tempGlobalSetting, null);
-      set(tempColorJSON, null);
-    });
-  };
+  const fullSetting = useRecoilValue(
+    fos.sessionColorScheme
+  ).customizedColorSettings;
+
+  const onCancel = useCancel();
 
   const onSave = () => {
     onApply();
@@ -75,7 +66,6 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     if (typeof activeColorModalField !== "string") {
       // save field settings (update tempcolor by checkbox options)
       const update = updateFieldSettings(tempColor);
-      setCustomizeColor(update);
       const customizeColorSettings =
         fullSetting.filter(
           (s) => s.field === (activeColorModalField as Field).path
@@ -84,6 +74,15 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
               s.field === (activeColorModalField as Field).path ? update : s
             )
           : [...fullSetting, update];
+      setSessionColorSchemeState((prev) => {
+        const newCustomizedColorSettings = prev.customizedColorSettings
+          .filter((s) => s.field !== (activeColorModalField as Field).path)
+          .concat(update);
+        return {
+          colorPool: prev.colorPool,
+          customizedColorSettings: newCustomizedColorSettings,
+        };
+      });
       setColorScheme(tempGlobalSettings.colors, customizeColorSettings);
     }
     if (activeColorModalField == "global") {
@@ -96,6 +95,7 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       setMulticolorKeypoints(useMulticolorKeypoints);
       setShowSkeleton(showSkeleton);
       // update colors
+      setSessionColorSchemeState((prev) => ({ ...prev, colorPool: colors }));
       setColorScheme(colors, fullSetting);
     }
     if (activeColorModalField == "json") {
@@ -117,31 +117,14 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
         eligibleFields
       );
       if (validated) {
-        resetCustomizeColors(validated);
-        validated.forEach((update) => setCustomizeColor(update));
+        setSessionColorSchemeState((prev) => ({
+          colorPool: validColors,
+          customizedColorSettings: validated ?? prev.customizedColorSettings,
+        }));
         setColorScheme(validColors, validated);
       }
     }
   };
-
-  const resetCustomizeColors =
-    useOverwriteCustomizeColors(customizeColorFields);
-
-  function useOverwriteCustomizeColors(customizeColorFields: string[]) {
-    return useRecoilCallback(({ set }) => (newValues: CustomizeColor[]) => {
-      const newKeys = newValues.map((v) => v.field);
-      customizeColorFields.forEach((key) => {
-        if (newKeys.includes(key)) {
-          set(
-            fos.customizeColorSelector(key),
-            newValues.find((v) => v.field === key)!
-          );
-        } else {
-          set(fos.customizeColorSelector(key), {});
-        }
-      });
-    });
-  }
 
   if (!activeColorModalField) return null;
 

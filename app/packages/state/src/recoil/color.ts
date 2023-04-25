@@ -14,6 +14,7 @@ import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { cloneDeep } from "lodash";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -77,9 +78,9 @@ export const pathColor = selectorFamily<
     ({ modal, path }) =>
     ({ get }) => {
       // if path exists in customizeColorFields, return the color
-      const customizeColor = get(customizeColorSettings).find(
-        (x) => x.field === path
-      );
+      const customizeColor = get(
+        atoms.sessionColorScheme
+      )?.customizedColorSettings?.find((x) => x.field === path);
       if (isValidColor(customizeColor?.fieldColor)) {
         return customizeColor.fieldColor;
       }
@@ -110,45 +111,95 @@ export const guardRecoilDefaultValue = (
   return false;
 };
 
-export const customizeColorSelector = selectorFamily<
-  atoms.CustomizeColor,
-  string
->({
-  key: "customizeColorSelector",
-  get:
-    (fieldPath) =>
-    ({ get }) =>
-      get(atoms.customizeColors(fieldPath)),
-  set:
-    (fieldPath) =>
-    ({ set, reset }, newFieldSetting) => {
-      // if newFieldSetting is DefaultValue or {}, the set method will delete the atom from the atomFamily and update customizeColorFields
-      if (
-        isEmptyObject(newFieldSetting) ||
-        newFieldSetting instanceof DefaultValue
-      ) {
-        reset(atoms.customizeColors(fieldPath));
-        set(atoms.customizeColorFields, (preValue) =>
-          preValue.filter((field) => field !== fieldPath)
-        );
-      } else {
-        // create the atom and update the customizeColorFields list
-        // do not replace newFieldSetting.field with fieldPath, because jsonEditor use dynamic path to update
-        set(atoms.customizeColors(newFieldSetting.field), newFieldSetting);
-        set(atoms.customizeColorFields, (preValue) => [
-          ...new Set([...preValue, newFieldSetting.field]),
-        ]);
-      }
-    },
-});
+// export const customizeColorSelector = selectorFamily<
+//   atoms.CustomizeColor,
+//   string
+// >({
+//   key: "customizeColorSelector",
+//   get:
+//     (fieldPath) =>
+//     ({ get }) =>
+//       get(atoms.sessionColorScheme).customizedColorSettings.find((s) => (s as field == fieldPath),
+//   set:
+//     (fieldPath) =>
+//     ({ set, reset }, newFieldSetting) => {
+//       // if newFieldSetting is DefaultValue or {}, the set method will delete the atom from the atomFamily and update customizeColorFields
+//       if (
+//         isEmptyObject(newFieldSetting) ||
+//         newFieldSetting instanceof DefaultValue
+//       ) {
+//         reset(atoms.customizeColors(fieldPath));
+//         set(atoms.customizeColorFields, (preValue) =>
+//           preValue.filter((field) => field !== fieldPath)
+//         );
+//       } else {
+//         // create the atom and update the customizeColorFields list
+//         // do not replace newFieldSetting.field with fieldPath, because jsonEditor use dynamic path to update
+//         set(atoms.customizeColors(newFieldSetting.field), newFieldSetting);
+//         set(atoms.customizeColorFields, (preValue) => [
+//           ...new Set([...preValue, newFieldSetting.field]),
+//         ]);
+//       }
+//     },
+// });
 
-export const customizeColorSettings = selector<atoms.CustomizeColor[]>({
-  key: "customizeColorSettings",
-  get: ({ get }) => {
-    const fields = get(atoms.customizeColorFields);
-    return fields.map((field) => get(customizeColorSelector(field)));
-  },
-});
+// export const customizeColorSelector = selectorFamily<
+//   atoms.CustomizeColor,
+//   string
+//   >({
+//     key: "customizeColorSelector",
+//       get:
+//         (fieldPath) =>
+//         ({ get }) =>
+//           {
+//             const customizeColorSettings = get(atoms.sessionColorScheme).customizedColorSettings
+//             const settings = customizeColorSettings as atoms.CustomizeColor[]
+//             return settings.find((s) => s.field == fieldPath)
+//           },
+//       set:
+//         (fieldPath) =>
+//         ({ set, reset }, newFieldSetting) => {
+//           // if newFieldSetting is DefaultValue or {}, the set method will delete the atom from the atomFamily and update customizeColorFields
+//           if (
+//             isEmptyObject(newFieldSetting) ||
+//             newFieldSetting instanceof DefaultValue
+//           ) {
+//             // reset(atoms.customizeColors(fieldPath));
+//             // set(atoms.customizeColorFields, (preValue) =>
+//             //   preValue.filter((field) => field !== fieldPath)
+//             // );
+//             set(atoms.sessionColorScheme, (preValue) => {
+//               const copy = cloneDeep(preValue)
+//               const index = copy.customizedColorSettings.findIndex((s) => s.field == fieldPath)
+//               if (index > 0) {
+//                 copy.customizedColorSettings = copy.customizedColorSettings.splice(index, 1)
+//               }
+//               return copy
+//             })
+//           } else {
+//             // create the atom and update the customizeColorFields list
+//             // do not replace newFieldSetting.field with fieldPath, because jsonEditor use dynamic path to update
+//             set(atoms.sessionColorScheme, (preValue) => {
+//               const copy = cloneDeep(preValue)
+//               const index = copy.customizedColorSettings.findIndex((s) => s.field == fieldPath)
+//               if (index > 0) {
+//                 copy.customizedColorSettings[index] = newFieldSetting
+//               } else {
+//                 copy.customizedColorSettings.push(newFieldSetting)
+//               }
+//               return copy
+//             })
+//           }
+//         },
+// })
+
+// export const customizeColorSettings = selector<atoms.CustomizeColor[]>({
+//   key: "customizeColorSettings",
+//   get: ({ get }) => {
+//     const fields = get(atoms.customizeColorFields);
+//     return fields.map((field) => get(customizeColorSelector(field)));
+//   },
+// });
 
 const isEmptyObject = (x) => {
   return Object.keys(x).length === 0 && x.constructor === Object;
