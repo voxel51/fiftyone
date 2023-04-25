@@ -16,11 +16,7 @@ export default function RadioView(props: RadioGroupProps) {
     <FormControl>
       {(label || description) && (
         <FormLabel sx={{ pb: 1 }}>
-          <Header
-            label={label as string}
-            description={description}
-            variant="secondary"
-          />
+          <Header label={label as string} description={description} />
         </FormLabel>
       )}
       <MUIRadioGroup
@@ -41,7 +37,6 @@ export default function RadioView(props: RadioGroupProps) {
                 label={label}
                 description={description}
                 caption={caption}
-                variant="secondary"
               />
             }
             sx={{

@@ -2,6 +2,128 @@
     "type": {
         "name": "Object",
         "properties": {
+            "pets": {
+                "type": {
+                    "name": "List",
+                    "element_type": { "name": "String" },
+                    "min_items": 1,
+                    "max_items": 5
+                },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "Dropdown",
+                    "label": "Pets",
+                    "description": null,
+                    "caption": null,
+                    "space": null,
+                    "placeholder": "Select one or more pet",
+                    "read_only": null,
+                    "choices": [
+                        {
+                            "name": "Choice",
+                            "label": "Cat",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "value": "cat"
+                        },
+                        {
+                            "name": "Choice",
+                            "label": "Dog",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "value": "dog"
+                        },
+                        {
+                            "name": "Choice",
+                            "label": "Other",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "value": "other"
+                        }
+                    ]
+                }
+            },
+            "objectArray": {
+                "type": {
+                    "name": "List",
+                    "element_type": {
+                        "name": "Object",
+                        "properties": {
+                            "first_name": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "First name",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "last_name": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Last name",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "age": {
+                                "type": {
+                                    "name": "Number",
+                                    "min": null,
+                                    "max": null,
+                                    "int": false,
+                                    "float": false
+                                },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Age",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            }
+                        },
+                        "needsResolution": false
+                    },
+                    "min_items": 1,
+                    "max_items": 5
+                },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "label": "List of objects"
+                }
+            },
             "sampleFile": {
                 "type": { "name": "String" },
                 "default": null,
@@ -252,7 +374,7 @@
                 "required": false,
                 "choices": null,
                 "view": {
-                    "name": "TupleView",
+                    "name": "TuplesView",
                     "label": "The Tuple",
                     "description": "Tuple with string as the type for first item, number for second, and boolean for third",
                     "caption": null,
@@ -367,6 +489,7 @@
                 "required": true,
                 "choices": null,
                 "view": {
+                    "name": "AutocompleteView",
                     "label": "Classes"
                 }
             },
@@ -459,6 +582,7 @@
     "view": {
         "label": "Request Annotations",
         "description": "You can request annotation using any of supported backends",
-        "caption": "Please fill out all the fields marked with asterisk"
+        "caption": "Please fill out all the fields marked with asterisk",
+        "descriptionView": "tooltip"
     }
 }
