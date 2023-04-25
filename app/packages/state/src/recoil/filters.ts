@@ -24,7 +24,7 @@ export const filters = (() => {
       keys: ["dataset"],
       default: {},
       read: (data, previous) => {
-        if (data.id !== previous.id) {
+        if (data.id !== previous?.id) {
           current = {};
         }
         return current;

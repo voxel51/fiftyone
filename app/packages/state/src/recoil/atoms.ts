@@ -11,7 +11,7 @@ import {
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
 import { StrictField } from "@fiftyone/utilities";
-import { atom, atomFamily } from "recoil";
+import { DefaultValue, atom, atomFamily } from "recoil";
 import { sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
 import { State } from "./types";
@@ -322,7 +322,7 @@ export const extendedSelection = (() => {
       fragments: [datasetFragment],
       keys: ["dataset"],
       read: (data, previous) => {
-        if (data.id !== previous.id) {
+        if (data.id !== previous?.id) {
           selection = { selection: null };
         }
 
@@ -342,6 +342,7 @@ export const extendedSelectionOverrideStage = atom<any>({
 });
 
 export const similarityParameters = (() => {
+  let update = false;
   let parameters: State.SortBySimilarityParameters | null = null;
 
   return graphQLSyncFragmentAtom<
@@ -352,13 +353,18 @@ export const similarityParameters = (() => {
       fragments: [datasetFragment],
       keys: ["dataset"],
       read: (data, previous) => {
-        if (data.id !== previous?.id) {
+        if (data.id !== previous?.id && !update) {
           parameters = null;
         }
+        update = false;
 
         return parameters;
       },
       default: null,
+      selectorEffect: (newValue) => {
+        update = true;
+        parameters = newValue instanceof DefaultValue ? null : newValue;
+      },
     },
     {
       key: "similarityParameters",

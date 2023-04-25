@@ -22,7 +22,11 @@ export function SelectorEffectContext({
 }
 
 export function selectorWithEffect<T>(
-  options: ReadOnlySelectorOptions<T>,
+  options: ReadOnlySelectorOptions<T> & {
+    set:
+      | ((newValue: Parameters<ReadWriteSelectorOptions<T>["set"]>[1]) => void)
+      | true;
+  },
   itemKey?: string
 ) {
   return selector({
@@ -33,6 +37,7 @@ export function selectorWithEffect<T>(
       if (!set) {
         throw new Error(`No setter for selector '${key}' found`);
       }
+      options.set instanceof Function && options.set(params[1]);
 
       set(...params);
     },

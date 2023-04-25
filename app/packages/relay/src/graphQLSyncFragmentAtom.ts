@@ -1,6 +1,11 @@
 import { Disposable } from "react-relay";
 import { KeyTypeData } from "react-relay/relay-hooks/helpers";
-import { atom, AtomOptions, TransactionInterface_UNSTABLE } from "recoil";
+import {
+  atom,
+  AtomOptions,
+  ReadWriteSelectorOptions,
+  TransactionInterface_UNSTABLE,
+} from "recoil";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType } from "relay-runtime/lib/store/readInlineData";
 import { selectorWithEffect } from "./selectorWithEffect";
@@ -17,7 +22,9 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
     previous: KeyTypeData<T> | null
   ) => K | ((current: K) => K);
   default: K;
-  selectorEffect?: boolean;
+  selectorEffect?:
+    | boolean
+    | ((newValue: Parameters<ReadWriteSelectorOptions<K>["set"]>[1]) => void);
 };
 
 /**
@@ -47,7 +54,6 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
           int?: TransactionInterface_UNSTABLE
         ) => {
           const set = int ? (v: K) => int.set(value, v) : setSelf;
-
           set(
             fragmentOptions.read && d !== null
               ? fragmentOptions.read(d, previous)
@@ -87,6 +93,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
               setter(update);
             });
           } catch (e) {
+            console.log(e);
             setter(null, transactionInterface);
             return undefined;
           }
@@ -108,6 +115,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
       {
         key: `_${options.key}__setter`,
         get: ({ get }) => get(value),
+        set: fragmentOptions.selectorEffect,
       },
       options.key
     );
