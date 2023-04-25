@@ -23,7 +23,7 @@ import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
-_PATCHES_TYPES = (fol.Detections, fol.Polylines)
+_PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
 _NO_MATCH_ID = ""
 
 
