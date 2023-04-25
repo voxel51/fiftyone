@@ -19,5 +19,17 @@ export function getComponent(schema) {
   return components[component] || UnsupportedView;
 }
 
+// add map,tuple,oneof support
+export function getEmptyValue(schema) {
+  const itemsType = schema?.items?.type || "string";
+  const emptyValuesByType = {
+    string: "",
+    number: 0,
+    object: {},
+    array: [],
+  };
+  return emptyValuesByType[itemsType];
+}
+
 export { operatorToIOSchema } from "./operator";
 export * from "./generate-schema";
