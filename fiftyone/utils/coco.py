@@ -1457,7 +1457,7 @@ def download_coco_dataset_split(
     scratch_dir=None,
 ):
     """Utility that downloads full or partial splits of the
-    `COCO dataset <https://cocodataset.org>`_.
+    `Sama-COCO dataset <https://cocodataset.org>`_.
 
     See :ref:`this page <COCODetectionDataset-export>` for the format in which
     ``dataset_dir`` will be arranged.

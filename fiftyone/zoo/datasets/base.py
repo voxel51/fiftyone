@@ -1204,7 +1204,6 @@ class SamaCOCODataset(FiftyOneDataset):
     -   The test set does not have annotations
     -   Sama-COCO may have some discrepancies with COCO-2017 in terms of the instances labeled
 
-    #TODO: update example usage
     Example usage::
 
         import fiftyone as fo
@@ -1217,7 +1216,7 @@ class SamaCOCODataset(FiftyOneDataset):
         #
 
         dataset = foz.load_zoo_dataset(
-            "coco-2017",
+            "sama-coco",
             split="validation",
             max_samples=50,
             shuffle=True,
@@ -1238,7 +1237,7 @@ class SamaCOCODataset(FiftyOneDataset):
         #
 
         dataset = foz.load_zoo_dataset(
-            "coco-2017",
+            "sama-coco",
             split="validation",
             label_types=["segmentations"],
             classes=["cat", "dog"],
@@ -1256,7 +1255,7 @@ class SamaCOCODataset(FiftyOneDataset):
         #
 
         dataset = foz.load_zoo_dataset(
-            "coco-2017",
+            "sama-coco",
             split="validation",
             label_types=["detections", "segmentations"],
         )
@@ -1264,10 +1263,10 @@ class SamaCOCODataset(FiftyOneDataset):
         session.dataset = dataset
 
     Dataset size
-        25.20 GB
+        25.67 GB
 
     Source
-        http://cocodataset.org/#home
+        https://www.sama.com/sama-coco-dataset/
 
     Args:
         label_types (None): a label type or list of label types to load. The
