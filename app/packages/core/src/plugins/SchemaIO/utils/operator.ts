@@ -30,6 +30,8 @@ const componentByView = {
   TagsView: "TagsView",
   KeyValueView: "KeyValueView",
   LabelValueView: "LabelValueView",
+  TuplesView: "TuplesView",
+  InferredView: "InferredView",
 };
 const typeMap = {
   ObjectType: "object",
@@ -97,7 +99,7 @@ function getSchema(property, options?) {
   const type = typeMap[typeName];
   const schema = {
     type,
-    view: getViewSchema(property),
+    view: { readOnly: options?.isOutput, ...getViewSchema(property) },
     default: defaultValue,
     required,
   };

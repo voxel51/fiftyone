@@ -10,7 +10,7 @@ export default function LabelValueView(props) {
       <Stack direction="row" spacing={1}>
         {/* todo: add description and caption */}
         <Typography color="text.secondary">{label || schema?.id}:</Typography>
-        <Typography>{data.toString()}</Typography>
+        <Typography>{data?.toString() || "No value provided"}</Typography>
       </Stack>
     </Box>
   );
