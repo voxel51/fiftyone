@@ -11,7 +11,7 @@ export default function FieldWrapper(props) {
 
   return (
     <Box>
-      <Header {...view} sx={{ pb: 1 }} variant="secondary" omitCaption />
+      <Header {...view} sx={{ pb: 1 }} omitCaption />
       {children}
       {view.caption && (
         <Typography variant="body2" color="text.tertiary" sx={{ pt: 0.5 }}>

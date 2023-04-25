@@ -7,34 +7,24 @@ import { log } from "../utils";
 
 export default function PlotlyView(props) {
   const { data, schema } = props;
-  const { view = {} } = schema;
-  const { data: viewData, config = {}, layout = {} } = view;
+  const { default: defaultData, view = {} } = schema;
+  const { config = {}, layout = {}, onSelectionChange } = view;
   const theme = useTheme();
+
+  // todo: ...
+  function handleSelectionChange(selection) {
+    // invoke operator in onSelectionChange
+    // onSelectionChange.execute(selection)
+  }
 
   return (
     <Box>
       <Header {...view} />
       <Plot
-        data={data || viewData}
+        data={data || defaultData}
         style={{ zIndex: 1 }}
-        onSelected={log}
-        // onSelected={selected => {
-        //   // if (!selected || selected?.points?.length === 0) return;
-        //   // let result = {};
-        //   // let pointIds = [];
-        //   // for (const p of selected.points) {
-        //   //   if (!result[p.fullData.name]) {
-        //   //     result[p.fullData.name] = [];
-        //   //   }
-        //   //   result[p.fullData.name].push(p.id);
-        //   //   pointIds.push(p.id);
-        //   // }
-        //   // handleSelected(pointIds);
-        // }}
-        onDeselect={log}
-        // onDeselect={() => {
-        //   // handleSelected(null);
-        // }}
+        onSelected={handleSelectionChange}
+        onDeselect={() => handleSelectionChange(null)}
         config={{
           scrollZoom: true,
           displaylogo: false,
