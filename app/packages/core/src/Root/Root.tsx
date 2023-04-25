@@ -16,6 +16,7 @@ import {
   OperatorBrowser,
   OperatorPrompt,
   OperatorInvocationRequestExecutor,
+  OperatorViewModal,
 } from "@fiftyone/operators";
 
 import {
@@ -195,6 +196,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         </div>
         <OperatorBrowser />
         <OperatorPrompt />
+        <OperatorViewModal />
         <OperatorInvocationRequestExecutor />
       </Header>
       {ReactDOM.createPortal(

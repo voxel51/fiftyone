@@ -34,6 +34,7 @@ class Operator:
         self.definition.define_property("inputs", Object(), view=Form())
         self.definition.define_property("outputs", Object())
         self.plugin_name = None
+        self.execute_as_generator = False
 
     def dispose(self):
         pass
@@ -99,6 +100,7 @@ class Operator:
             "definition": self.definition.to_json(),
             "plugin_name": self.plugin_name,
             "uri": self.uri,
+            "execute_as_generator": self.execute_as_generator,
         }
 
 

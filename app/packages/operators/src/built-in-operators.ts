@@ -19,6 +19,7 @@ import {
   OperatorResult,
 } from "./operators";
 import { CustomColors } from "./CustomColors";
+import { useShowOperatorIO } from "./state";
 
 //
 // BUILT-IN OPERATORS
@@ -550,6 +551,32 @@ class ConsoleLog extends Operator {
   }
 }
 
+class ShowOutput extends Operator {
+  constructor() {
+    super("show_output", "Show Output");
+    this.defineInputProperty("outputs", new types.ObjectType(), {
+      label: "Outputs",
+      required: true,
+    });
+    this.defineInputProperty("results", new types.ObjectType(), {
+      label: "Results",
+      required: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      io: useShowOperatorIO(),
+    };
+  }
+  async execute({ params, hooks: { io } }: ExecutionContext) {
+    io.show({
+      schema: types.Property.fromJSON(params.outputs),
+      data: params.results,
+      isOutput: true,
+    });
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     registerOperator(new CopyViewAsJSON());
@@ -577,6 +604,7 @@ export function registerBuiltInOperators() {
     registerOperator(new GetAppValue());
     registerOperator(new CustomColors());
     registerOperator(new ConsoleLog());
+    registerOperator(new ShowOutput());
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");

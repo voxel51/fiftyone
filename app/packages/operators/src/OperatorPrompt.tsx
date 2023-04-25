@@ -2,7 +2,11 @@ import { createPortal } from "react-dom";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { Button } from "@fiftyone/components";
-import { showOperatorPromptSelector, useOperatorPrompt } from "./state";
+import {
+  showOperatorPromptSelector,
+  useOperatorPrompt,
+  useShowOperatorIO,
+} from "./state";
 import * as types from "./types";
 import {
   FormControl,
@@ -102,6 +106,36 @@ function Prompting({ operatorPrompt }) {
         <Button onClick={operatorPrompt.execute}>Execute</Button>
       </ButtonsContainer>
     </Box>
+  );
+}
+
+export function OperatorViewModal() {
+  const io = useShowOperatorIO();
+  if (!io.visible) return null;
+
+  return createPortal(
+    <PromptContainer>
+      <PromptModal>
+        <Box>
+          <Box sx={{ pb: 2 }}>
+            <OperatorIO
+              schema={io.schema}
+              data={io.data || {}}
+              type={io.type}
+            />
+          </Box>
+          {/* {io.showButtons && (
+            <ButtonsContainer>
+              <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
+                Cancel
+              </Button>
+              <Button onClick={operatorPrompt.execute}>Execute</Button>
+            </ButtonsContainer>
+          )}  */}
+        </Box>
+      </PromptModal>
+    </PromptContainer>,
+    document.body
   );
 }
 
