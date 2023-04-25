@@ -9,6 +9,7 @@ import contextlib
 import logging
 
 import numpy as np
+import scipy.spatial as sp
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
@@ -16,8 +17,6 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-
-import scipy.spatial as sp
 
 from .utils3d import compute_cuboid_iou as _compute_cuboid_iou
 
