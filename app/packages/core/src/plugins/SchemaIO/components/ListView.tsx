@@ -7,6 +7,7 @@ import Button from "./Button";
 import DynamicIO from "./DynamicIO";
 import EmptyState from "./EmptyState";
 import Header from "./Header";
+import { getEmptyValue } from "../utils";
 
 export default function ListView(props) {
   const { schema, onChange, path, data, errors } = props;
@@ -67,6 +68,7 @@ export default function ListView(props) {
               errors={errors}
               schema={itemsSchema}
               readOnly={readOnly}
+              hideIndexLabel={schema?.view?.hideIndexLabel}
             />
           );
         })}
@@ -93,7 +95,7 @@ function CollapsibleListItem(props) {
 }
 
 function NonCollapsibleListItem(props) {
-  const { index, readOnly } = props;
+  const { index, readOnly, hideIndexLabel } = props;
   return (
     <Grid
       container
@@ -110,11 +112,13 @@ function NonCollapsibleListItem(props) {
         },
       }}
     >
-      <Grid item>
-        <Avatar sx={{ width: 24, height: 24, mr: 1, fontSize: "1rem" }}>
-          {index}
-        </Avatar>
-      </Grid>
+      {!hideIndexLabel && (
+        <Grid item>
+          <Avatar sx={{ width: 24, height: 24, mr: 1, fontSize: "1rem" }}>
+            {index}
+          </Avatar>
+        </Grid>
+      )}
       <Grid item xs>
         <DynamicIO {...props} />
       </Grid>
@@ -140,17 +144,6 @@ function DeleteButton(props) {
       <Delete color="error" />
     </IconButton>
   );
-}
-
-function getEmptyValue(schema) {
-  const itemsType = schema?.items?.type || "string";
-  const emptyValuesByType = {
-    string: "",
-    number: 0,
-    object: {},
-    array: [],
-  };
-  return emptyValuesByType[itemsType];
 }
 
 function useListState(initialState: Array<unknown>) {

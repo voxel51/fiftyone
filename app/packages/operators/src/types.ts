@@ -173,6 +173,16 @@ export class Tuple extends BaseType {
   }
 }
 
+export class MapType extends BaseType {
+  constructor(public keyType: ANY_TYPE, public valueType: ANY_TYPE) {
+    super();
+  }
+
+  static fromJSON({ key_type, value_type }) {
+    return new MapType(typeFromJSON(key_type), typeFromJSON(value_type));
+  }
+}
+
 type BasicView = {
   label?: string;
   description?: string;
@@ -298,11 +308,15 @@ export const TYPES = [
   Enum,
   OneOf,
   Tuple,
+  MapType,
 ];
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
   if (name === "Object") {
     return ObjectType.fromJSON(rest);
+  }
+  if (name === "Map") {
+    return MapType.fromJSON(rest);
   }
   for (const type of TYPES) {
     if (type.name === name) {
@@ -312,11 +326,13 @@ export function typeFromJSON({ name, ...rest }): ANY_TYPE {
   throw new Error(`Unknown type ${name}`);
 }
 
-
 export class Placement {
   constructor(public place: Places, public view: View = null) {}
   static fromJSON(json) {
-    return new Placement(json.place, json.view ? View.fromJSON(json.view) : null);
+    return new Placement(
+      json.place,
+      json.view ? View.fromJSON(json.view) : null
+    );
   }
 }
 
@@ -327,7 +343,7 @@ export enum Places {
   HISTOGRAM_ACTIONS = "histograms-actions",
   MAP_ACTIONS = "map-actions",
   MAP_SECONDARY_ACTIONS = "map-secondary-actions",
-  DISPLAY_OPTIONS = "display-options"
+  DISPLAY_OPTIONS = "display-options",
 }
 
 export type ANY_TYPE = String | Boolean | Number | List | Enum;
