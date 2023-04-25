@@ -2,6 +2,43 @@
     "type": {
         "name": "Object",
         "properties": {
+            "cars": {
+                "type": {
+                    "name": "Map",
+                    "key_type": { "name": "String" },
+                    "value_type": { "name": "String" }
+                },
+                "default": null,
+                "required": false,
+                "choices": null,
+                "view": {
+                    "name": "MapView",
+                    "label": "Cars",
+                    "description": null,
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "read_only": null,
+                    "key": {
+                        "name": "View",
+                        "label": "Id",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    },
+                    "value": {
+                        "name": "View",
+                        "label": "Make and model",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                }
+            },
             "pets": {
                 "type": {
                     "name": "List",
