@@ -1,24 +1,38 @@
-import { useRecoilState, atom, useRecoilValue } from "recoil";
+import { useRecoilState, atom, useRecoilValue, atomFamily } from "recoil";
 import * as fos from "@fiftyone/state";
 import { buildSchema, useSetView } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
 
 // TODO: move schemaSettings attom here
-const schemaSearchTerm = atom<string>({
+export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
   default: "",
 });
-const schemaFiledsOnly = atom<boolean>({
+export const schemaFiledsOnly = atom<boolean>({
   key: "schemaFiledsOnly",
   default: true,
 });
-const originalSelectedPathsState = atom<Set<string>>({
+export const originalSelectedPathsState = atom<Set<string>>({
   key: "originalSelectedPathsState",
   default: new Set(),
 });
-const schemaSelectedSettingsTab = atom<string>({
+export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
   default: "Selection",
+});
+export const settingsModal = atom<{ open: boolean } | null>({
+  key: "settingsModal",
+  default: {
+    open: true,
+  },
+});
+export const allFieldsCheckedState = atom<boolean>({
+  key: "allFieldsCheckedState",
+  default: true,
+});
+export const selectedPathsState = atomFamily({
+  key: "selectedPathsState",
+  default: (param: { allPaths: string[] }) => new Set([...param.allPaths]),
 });
 
 export const TAG_OPTIONS_MAP = {
@@ -32,29 +46,36 @@ export default function useSchemaSettings() {
     fos.activeLabelPaths({ modal: false })
   );
 
-  const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
+  const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
 
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
 
   const dataset = useRecoilValue(fos.dataset);
   const schema = dataset ? buildSchema(dataset, true) : null;
 
+  const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
+    allFieldsCheckedState
+  );
+
   const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
+
+  const allPaths = Object.keys(schema);
 
   const getSelectedSubPaths = useCallback(
     (path: string) => {
       const tmpSelected = new Set();
-      Object.keys(schema).map((currPath: string) => {
+      allPaths.map((currPath: string) => {
         if (currPath.startsWith(path)) {
           tmpSelected.add(currPath);
         }
       });
       return tmpSelected;
     },
-    [schema]
+    [allPaths]
   );
+  // TODO: should read from storage
   const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
-    fos.selectedPaths
+    selectedPathsState({ allPaths })
   );
   const [originalSelectedPaths, setOriginalSelectedPaths] = useRecoilState(
     originalSelectedPathsState
@@ -84,9 +105,9 @@ export default function useSchemaSettings() {
         }
         finalPaths.push(currPath, ...subPaths, ...parentPaths);
       }
-      setSelectedPaths(new Set([...finalPaths]));
+      // setSelectedPaths(new Set([...finalPaths]));
     }
-  }, [activeLabelPaths, setSelectedPaths]);
+  }, [activeLabelPaths /* setSelectedPaths */]);
 
   const viewStages = useRecoilValue(fos.view);
   const setView = useSetView();
@@ -128,6 +149,7 @@ export default function useSchemaSettings() {
         }
         setSelectedPaths(union);
       }
+      setAllFieldsChecked(false);
     },
     [schema, selectedPaths, setSelectedPaths]
   );
@@ -209,6 +231,21 @@ export default function useSchemaSettings() {
     [schema, searchTerm, selectedPaths, fieldsOnly]
   );
 
+  const setAllFieldsCheckedWra = (val) => {
+    setAllFieldsChecked(val);
+    if (val) {
+      setSelectedPaths(new Set(allPaths));
+    } else {
+      setSelectedPaths(
+        new Set(
+          finalSchema
+            .filter(({ disabled }) => !!disabled)
+            .map(({ path }) => path)
+        )
+      );
+    }
+  };
+
   const finalSelectedPaths = new Set(
     [...selectedPaths].filter((path) => {
       return !(
@@ -216,8 +253,7 @@ export default function useSchemaSettings() {
         schema[path].ftype === "fiftyone.core.fields.Field" ||
         path.includes(".logits") ||
         path.endsWith(".index") ||
-        path.endsWith(".bounding_box") ||
-        path.endsWith(".detections.confidence")
+        path.endsWith(".bounding_box")
       );
     })
   );
@@ -240,5 +276,7 @@ export default function useSchemaSettings() {
     originalSelectedPaths,
     selectedPaths,
     finalSelectedPaths,
+    allFieldsChecked,
+    setAllFieldsChecked: setAllFieldsCheckedWra,
   };
 }
