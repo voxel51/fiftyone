@@ -10,16 +10,18 @@ from .registry import OperatorRegistry
 import fiftyone.server.view as fosv
 import fiftyone as fo
 import fiftyone.operators.types as types
+from .message import GeneratedMessage, MessageType
+import types as python_types
 
 
 class InvocationRequest:
-    def __init__(self, operator_name, params={}):
-        self.operator_name = operator_name
+    def __init__(self, operator_uri, params={}):
+        self.operator_uri = operator_uri
         self.params = params
 
     def to_json(self):
         return {
-            "operator_name": self.operator_name,
+            "operator_uri": self.operator_uri,
             "params": self.params,
         }
 
@@ -30,7 +32,11 @@ class Executor:
         self._logs = logs or []
 
     def trigger(self, operator_name, params={}):
-        self._requests.append(InvocationRequest(operator_name, params))
+        inv_req = InvocationRequest(operator_name, params)
+        self._requests.append(inv_req)
+        return GeneratedMessage(
+            MessageType.SUCCESS, cls=InvocationRequest, body=inv_req
+        )
 
     def log(self, message):
         self._logs.append(message)
@@ -74,6 +80,15 @@ def execute_operator(operator_name, request_params):
     return ExecutionResult(raw_result, executor, None)
 
 
+def _is_generator(value):
+    """
+    Returns True if the given value is a generator or an async generator, False otherwise.
+    """
+    return isinstance(value, python_types.GeneratorType) or isinstance(
+        value, python_types.AsyncGeneratorType
+    )
+
+
 def resolve_type(registry, operator_uri, request_params):
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -81,7 +96,9 @@ def resolve_type(registry, operator_uri, request_params):
     operator = registry.get_operator(operator_uri)
     ctx = ExecutionContext(request_params)
     try:
-        return operator.resolve_type(ctx, request_params.get("type", "inputs"))
+        return operator.resolve_type(
+            ctx, request_params.get("target", "inputs")
+        )
     except Exception as e:
         return ExecutionResult(None, None, str(e))
 
@@ -130,7 +147,7 @@ class ExecutionContext:
     def trigger(self, operator_name, params={}):
         if self.executor is None:
             raise ValueError("No executor available")
-        self.executor.trigger(operator_name, params)
+        return self.executor.trigger(operator_name, params)
 
     def log(self, message):
         self.trigger("console_log", {"message": message})
@@ -142,6 +159,10 @@ class ExecutionResult:
         self.executor = executor
         self.error = error
         self.validation_ctx = validation_ctx
+
+    @property
+    def is_generator(self):
+        return _is_generator(self.result)
 
     def to_json(self):
         return {
