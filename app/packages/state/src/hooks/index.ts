@@ -46,3 +46,4 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSample } from "./useUpdateSample";
 export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
 export { default as useSchemaSettings } from "./useSchemaSettings";
+export { settingsModal } from "./useSchemaSettings";

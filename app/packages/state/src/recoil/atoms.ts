@@ -87,18 +87,6 @@ export const modal = atom<ModalSample | null>({
   default: null,
 });
 
-export const settingsModal = atom<{ open: boolean } | null>({
-  key: "settingsModal",
-  default: {
-    open: true,
-  },
-});
-
-export const selectedPaths = atom<Set<string> | null>({
-  key: "selectedPaths",
-  default: new Set(),
-});
-
 export interface SortResults {
   count: boolean;
   asc: boolean;

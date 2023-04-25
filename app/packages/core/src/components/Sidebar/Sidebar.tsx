@@ -4,7 +4,6 @@ import React, {
   useRef,
   useState,
   Fragment,
-  useEffect,
 } from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
@@ -12,20 +11,10 @@ import { Button } from "@fiftyone/components";
 
 import { move } from "@fiftyone/utilities";
 
-import {
-  buildSchema,
-  useEventHandler,
-  useSchemaSettings,
-  useSetView,
-} from "@fiftyone/state";
+import { useEventHandler, useSchemaSettings } from "@fiftyone/state";
 import { scrollbarStyles, TabOption } from "../utils";
 import { Resizable } from "re-resizable";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -34,7 +23,6 @@ import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
 import CloseIcon from "@mui/icons-material/Close";
 import Checkbox from "@mui/material/Checkbox";
-import groupBy from "lodash/groupBy";
 import {
   TAB_OPTIONS,
   TAG_OPTIONS_MAP,
@@ -439,9 +427,9 @@ const Container = animated(styled.div`
 
 const NewContainer = styled(Container)`
   margin: 1rem;
-  min-width: 40vw;
+  min-width: 60vw;
   max-width: 60vw;
-  height: 68vh;
+  height: 80vh;
   overflow-y: auto;
   min-height: auto;
   background: white;
@@ -504,6 +492,8 @@ const InteractiveSidebar = ({
     setView,
     toggleSelection,
     finalSchema,
+    allFieldsChecked,
+    setAllFieldsChecked,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal;
@@ -858,7 +848,7 @@ const InteractiveSidebar = ({
                 <Box style={{ display: "flex", position: "relative" }}>
                   <input
                     value={searchTerm}
-                    placeholder="search fields and/or attributes"
+                    placeholder="search by fields and attributes"
                     style={{ color: "#232323", width: "100%" }}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -873,24 +863,61 @@ const InteractiveSidebar = ({
                   <Box
                     style={{
                       position: "relative",
-                      padding: "1rem 0",
+                      padding: "0.5rem 0",
                       color: "black",
                       display: "flex",
                     }}
                   >
-                    Fields only
+                    Show attributes
                     <Checkbox
                       name={"Carousel"}
-                      value={fieldsOnly}
-                      checked={fieldsOnly}
+                      value={!fieldsOnly}
+                      checked={!fieldsOnly}
                       onChange={() => setFieldsOnly(!fieldsOnly)}
                       style={{ padding: "4px" }}
                     />
                   </Box>
+                  {!allFieldsChecked && (
+                    <Box
+                      style={{
+                        position: "relative",
+                        color: "black",
+                        display: "flex",
+                      }}
+                    >
+                      Select All
+                      <Checkbox
+                        name={"Carousel"}
+                        value={allFieldsChecked}
+                        checked={allFieldsChecked}
+                        onChange={() => setAllFieldsChecked(!allFieldsChecked)}
+                        style={{ padding: "4px" }}
+                      />
+                    </Box>
+                  )}
+                  {allFieldsChecked && (
+                    <Box
+                      style={{
+                        position: "relative",
+                        color: "black",
+                        display: "flex",
+                      }}
+                    >
+                      Deselect All
+                      <Checkbox
+                        name={"Carousel"}
+                        value={allFieldsChecked}
+                        checked={allFieldsChecked}
+                        onChange={() => setAllFieldsChecked(!allFieldsChecked)}
+                        style={{ padding: "4px" }}
+                      />
+                    </Box>
+                  )}
                   <Box
                     style={{
                       position: "relative",
                       height: "50vh",
+                      marginTop: "1rem",
                       overflow: "auto",
                       color: "#232323",
                       border: "1px solid #efefef",
@@ -920,7 +947,7 @@ const InteractiveSidebar = ({
                             <Checkbox
                               name={"Carousel"}
                               value={path}
-                              checked={isSelected || disabled}
+                              checked={isSelected}
                               onChange={() => {
                                 toggleSelection(path, isSelected);
                               }}
