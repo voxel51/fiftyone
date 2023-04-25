@@ -710,7 +710,7 @@ calculated:
 -   For instance segmentations and polygons, IoUs are computed between the
     polgyonal shapes rather than their rectangular bounding boxes
 -   For keypoint tasks,
-    `object keypoint similarity (OKS) <https://cocodataset.org/#keypoints-eval>`_
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
     is computed for each pair of objects, using the extent of the ground truth
     keypoints as a proxy for the area of the object's bounding box, and
     assuming uniform falloff (:math:`\kappa`)

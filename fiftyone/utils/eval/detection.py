@@ -53,6 +53,9 @@ def evaluate_detections(
     For spatial object detection evaluation, this method uses COCO-style
     evaluation by default.
 
+    When evaluating keypoints, "IoUs" are computed via
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+
     For temporal segment detection, this method uses ActivityNet-style
     evaluation by default.
 

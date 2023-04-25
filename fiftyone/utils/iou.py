@@ -41,8 +41,8 @@ def compute_ious(
     For polylines, IoUs are computed assuming the shapes are solid (filled),
     regardless of their ``filled`` attributes.
 
-    For keypoints, IoUs are computed via object keypoint similarity:
-    https://cocodataset.org/#keypoints-eval.
+    For keypoints, "IoUs" are computed via
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
 
     Args:
         preds: a list of predicted
@@ -648,12 +648,12 @@ def _compute_keypoint_similarities(preds, gts, classwise=False):
             if classwise and pred.label != gt.label:
                 continue
 
-            sims[i, j] = _compute_oks(gt, pred)
+            sims[i, j] = _compute_object_keypoint_similarity(gt, pred)
 
     return sims
 
 
-def _compute_oks(gt, pred):
+def _compute_object_keypoint_similarity(gt, pred):
     gtp = np.array(gt.points, dtype=float)
     predp = np.array(pred.points, dtype=float)
 
@@ -663,26 +663,28 @@ def _compute_oks(gt, pred):
 
     # If GT points are None/nan/inf: skip
     # If pred points are None/nan/inf: use max distance
-    d = []
+    dists = []
     for g, p in zip(gtp, predp):
         if not np.isfinite(g).all():
             continue
 
-        if not np.isfinite(p).all():
+        if np.isfinite(p).all():
+            d = sp.distance.euclidean(g, p)
+        else:
             # Max distance
-            d.append(1)
+            d = 1
 
-        d.append(sp.distance.euclidean(g, p))
+        dists.append(d)
 
-    d = np.array(d)
-    n = len(d)
+    dists = np.array(dists)
+    n = len(dists)
 
     if n == 0:
         return 0.0
 
-    # object keypoint similarity with kappai == 1
+    # object keypoint similarity with kappa == 1
     # https://cocodataset.org/#keypoints-eval
-    return np.sum(np.exp(-(d**2) / (2 * (scale**2)))) / n
+    return np.sum(np.exp(-(dists**2) / (2 * (scale**2)))) / n
 
 
 def _polylines_to_detections(polylines):
