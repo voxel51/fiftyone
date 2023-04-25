@@ -1,5 +1,6 @@
 import enum
 
+
 class BaseType:
     def __init__(self):
         pass
@@ -177,6 +178,19 @@ class Tuple(BaseType):
         }
 
 
+class Map(BaseType):
+    def __init__(self, key_type, value_type):
+        self.key_type = key_type
+        self.value_type = value_type
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
+            "key_type": self.key_type.to_json(),
+            "value_type": self.value_type.to_json(),
+        }
+
+
 #
 # Trigger
 #
@@ -224,8 +238,15 @@ class View:
             "read_only": self.read_only,
         }
 
+
 class Form(View):
-    def __init__(self, live=False, submit_button_label="Execute", cancel_button_label="Close", **kwargs):
+    def __init__(
+        self,
+        live=False,
+        submit_button_label="Execute",
+        cancel_button_label="Close",
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.live = live
         self.submit_button_label = submit_button_label
@@ -238,6 +259,7 @@ class Form(View):
             "submit_button_label": self.submit_button_label,
             "cancel_button_label": self.cancel_button_label,
         }
+
 
 class ReadonlyView(View):
     def __init__(self, **kwargs):
@@ -454,6 +476,7 @@ class PlotlyView(View):
             "layout": self.layout,
         }
 
+
 class Placement:
     def __init__(self, place, view=None):
         self.place = place
@@ -465,6 +488,7 @@ class Placement:
             "view": self.view.to_json() if self.view else None,
         }
 
+
 class Places(enum.Enum):
     SAMPLES_GRID_ACTIONS = "samples-grid-actions"
     SAMPLES_GRID_SECONDARY_ACTIONS = "samples-grid-secondary-actions"
@@ -473,8 +497,10 @@ class Places(enum.Enum):
     MAP_ACTIONS = "map-actions"
     MAP_SECONDARY_ACTIONS = "map-secondary-actions"
     DISPLAY_OPTIONS = "display-options"
+
     def to_json(self):
         return self.value
+
 
 class KeyValueView(View):
     def __init__(self, **kwargs):
@@ -516,4 +542,18 @@ class TableView(View):
         return {
             **super().to_json(),
             "columns": [column.to_json() for column in self.columns],
+        }
+
+
+class MapView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.key = kwargs.get("key", None)
+        self.value = kwargs.get("value", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "key": self.key.to_json() if self.key else None,
+            "value": self.value.to_json() if self.value else None,
         }

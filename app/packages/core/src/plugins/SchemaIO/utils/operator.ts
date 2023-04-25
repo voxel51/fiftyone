@@ -6,6 +6,7 @@ const componentsByType = {
   List: "ListView",
   OneOf: "OneOfView",
   Tuple: "TupleView",
+  MapType: "MapView",
 };
 const componentByView = {
   RadioGroup: "RadioView",
@@ -42,6 +43,7 @@ const typeMap = {
   List: "array",
   OneOf: "oneOf",
   Tuple: "array",
+  MapType: "object",
 };
 const unsupportedView = "UnsupportedView";
 
@@ -126,6 +128,13 @@ function getSchema(property, options?) {
     schema.items = property.type.items.map((type) =>
       getSchema({ type }, options)
     );
+  }
+
+  if (typeName === "MapType") {
+    schema.additionalProperties = getSchema({
+      type: property.type.valueType,
+      view: property?.view?.value,
+    });
   }
 
   return schema;
