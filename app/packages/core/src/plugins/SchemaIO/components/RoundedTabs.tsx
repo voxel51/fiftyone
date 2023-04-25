@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Stack, Typography } from "@mui/material";
-import Tooltip from "./Tooltip";
+import HelpTooltip from "./HelpTooltip";
 
 type RoundedTabsProps = {
   tabs: Array<{ id: string; label: string }>;
@@ -58,7 +58,7 @@ export default function RoundedTabs({
               <Typography variant="body1" color="inherit">
                 {label}
               </Typography>
-              {description && <Tooltip title={description} />}
+              {description && <HelpTooltip title={description} />}
             </Stack>
           </Box>
         );
