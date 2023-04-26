@@ -900,11 +900,13 @@ def _transform_video(
             or in_ext.lower() != out_ext.lower()
         )
 
+        move = []
+
         if (inpath == outpath) and should_reencode:
-            _inpath = inpath
-            root, ext = os.path.splitext(inpath)
-            inpath = root + "-original" + ext
-            fos.move_file(_inpath, inpath)
+            tmp_path = etau.make_unique_path(inpath, suffix="-tmp")
+            orig_path = etau.make_unique_path(inpath, suffix="-original")
+            move = [(inpath, orig_path), (tmp_path, outpath)]
+            outpath = tmp_path
 
         diff_path = inpath != outpath
 
@@ -954,6 +956,9 @@ def _transform_video(
 
         if delete_original and diff_path:
             fos.delete_file(inpath)
+
+        for from_path, to_path in move:
+            fos.move_file(from_path, to_path)
     except Exception as e:
         if not skip_failures:
             raise
