@@ -5,7 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object, Form
+from .types import Object, Form, Property
 
 
 class Operator:
@@ -26,11 +26,10 @@ class Operator:
         self.label = label or name
         self.description = description
         self.definition = Object()
-        self.definition.define_property("inputs", Object(), view=Form())
-        self.definition.define_property("outputs", Object())
         self.plugin_name = None
         self.execute_as_generator = False
         self.unlisted = kwargs.get("unlisted", False)
+        self.is_dynamic = False
 
     def dispose(self):
         pass
@@ -40,28 +39,17 @@ class Operator:
         plugin_name = self.plugin_name or "@voxel51"
         return "%s/%s" % (plugin_name, self.name)
 
-    @property
-    def inputs(self):
-        return self.definition.get_property("inputs")
-
-    @property
-    def outputs(self):
-        return self.definition.get_property("outputs")
-
-    def define_input_property(self, name, type, **kwargs):
-        return self.inputs.type.define_property(name, type, **kwargs)
-
-    def define_output_property(self, name, type, **kwargs):
-        return self.outputs.type.define_property(name, type, **kwargs)
-
-    def __eq__(self, other):
-        return type(other) == type(self) and self.name == other.name
-
-    def __copy__(self):
-        return self  # operators are singletons
-
-    def __deepcopy__(self, memo):
-        return self  # operators are singletons
+    def resolve_definition(self, resolve_dynamic, ctx):
+        definition = self.definition.clone()
+        if self.is_dynamic and not resolve_dynamic:
+            return definition
+        input_property = self.resolve_input(ctx)
+        output_property = self.resolve_output(ctx)
+        if input_property is not None:
+            definition.add_property("inputs", input_property)
+        if output_property is not None:
+            definition.add_property("outputs", output_property)
+        return definition
 
     def execute(self, ctx):
         """Executes the operator. Subclasses must implement this method."""
@@ -79,25 +67,28 @@ class Operator:
             raise ValueError("Invalid type '%s'" % type)
 
     def resolve_input(self, ctx):
-        return self.definition.get_property("inputs")
+        return None
 
     def resolve_output(self, ctx):
-        return self.definition.get_property("outputs")
+        return None
 
     def resolve_placement(self, ctx):
         return None
 
-    def to_json(self):
+    def to_json(self, ctx, resolve_dynamic=False):
         """Returns a JSON representation of the operator."""
         return {
             "name": self.name,
             "label": self.label,
             "description": self.description,
-            "definition": self.definition.to_json(),
+            "definition": self.resolve_definition(
+                resolve_dynamic, ctx
+            ).to_json(),
             "plugin_name": self.plugin_name,
             "uri": self.uri,
             "execute_as_generator": self.execute_as_generator,
             "unlisted": self.unlisted,
+            "is_dynamic": self.is_dynamic
         }
 
 
@@ -108,4 +99,4 @@ class DynamicOperator(Operator):
         description=None,
     ):
         super().__init__(name, description)
-        self.definition.get_property("inputs").type.dynamic()
+        self.is_dynamic = True

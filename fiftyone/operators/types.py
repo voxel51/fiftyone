@@ -14,7 +14,6 @@ class BaseType:
 class Object(BaseType):
     def __init__(self):
         self.properties = {}
-        self._needsResolution = False
 
     def add_property(self, name, property):
         self.properties[name] = property
@@ -58,19 +57,20 @@ class Object(BaseType):
     def list(self, name, element_type, **kwargs):
         return self.define_property(name, List(element_type), **kwargs)
 
+    def obj(self, name, **kwargs):
+        return self.define_property(name, Object(), **kwargs)
+
+    def clone(self):
+        clone = Object()
+        clone.properties = self.properties.copy()
+        return clone
+
     def to_json(self):
         # convert properties to json
         properties = {}
         for name, property in self.properties.items():
             properties[name] = property.to_json()
-        return {
-            "name": self.__class__.__name__,
-            "properties": properties,
-            "needsResolution": self._needsResolution,
-        }
-
-    def dynamic(self):
-        self._needsResolution = True
+        return {"name": self.__class__.__name__, "properties": properties}
 
 
 class Property(BaseType):
