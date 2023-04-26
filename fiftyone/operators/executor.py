@@ -112,7 +112,7 @@ def resolve_placement(operator, request_params):
 
 
 class ExecutionContext:
-    def __init__(self, execution_request_params, executor=None):
+    def __init__(self, execution_request_params={}, executor=None):
         self.request_params = execution_request_params
         self.params = execution_request_params.get("params", {})
         self.executor = executor

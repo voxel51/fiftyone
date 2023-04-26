@@ -114,37 +114,24 @@ export class Operator {
   }
   public pluginName: any;
   public executeAsGenerator: boolean = false;
+  public isDynamic: boolean = false;
   get uri() {
     return `${this.pluginName || "@voxel51"}/${this.name}`;
   }
-  get inputs(): types.Property {
-    return this.definition.getProperty("inputs");
-  }
-  get outputs(): types.Property {
-    return this.definition.getProperty("outputs");
-  }
-  defineInputProperty(name, type, options?) {
-    const inputsType = this.inputs.type as types.ObjectType;
-    return inputsType.defineProperty(name, type, options);
-  }
-  defineOutputProperty(name, type, options) {
-    const outputsType = this.outputs.type as types.ObjectType;
-    return outputsType.defineProperty(name, type, options);
-  }
-  needsUserInput() {
-    const inputsType = this.inputs.type as types.ObjectType;
-    return inputsType.properties.size > 0;
+  async needsUserInput(ctx: ExecutionContext) {
+    const inputs = await this.resolveInput(ctx);
+    return inputs && inputs.type && inputs.type.properties.size > 0;
   }
   needsResolution() {
-    const inputsType = this.inputs.type as types.ObjectType;
-    return inputsType.needsResolution();
+    return this.isDynamic;
   }
   needsOutputResolution() {
-    const outputsType = this.outputs.type as types.ObjectType;
-    return outputsType.needsResolution();
+    return this.isDynamic;
   }
-  needsOutput(result: OperatorResult) {
-    const outputType = this.outputs.type as types.ObjectType;
+  async needsOutput(ctx: ExecutionContext, result: OperatorResult) {
+    const outputs = await this.resolveOutput(ctx, result);
+    if (!outputs || !outputs.type) return false;
+    const outputType = outputs.type as types.ObjectType;
     if (outputType.properties.size > 0 && result.hasOutputContent()) {
       return true;
     }
@@ -158,31 +145,20 @@ export class Operator {
     return {};
   }
   async resolveInput(ctx: ExecutionContext) {
-    const inputsType = this.inputs.type as types.ObjectType;
-    if (inputsType.needsResolution()) {
-      if (this.isRemote) {
-        return resolveRemoteType(this.uri, ctx, "inputs");
-      }
-
-      const resolvedInputs = new types.ObjectType();
-      inputsType.properties.forEach(async (property, name) => {
-        if (property.hasResolver) {
-          const resolved = await property.resolver(property, ctx);
-          resolvedInputs.addProperty(name, resolved);
-        } else {
-          resolvedInputs.addProperty(name, property);
-        }
-      });
-      return new types.Property(resolvedInputs, { view: this.inputView });
+    if (this.isDynamic && this.isRemote) {
+      return resolveRemoteType(this.uri, ctx, "inputs");
+    } else if (this.isRemote) {
+      return this.definition.getProperty("inputs");
     }
-    return this.inputs;
+    return null;
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
-    const outputsType = this.inputs.type as types.ObjectType;
-    if (outputsType.needsResolution() && this.isRemote) {
+    if (this.isDynamic && this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "outputs");
+    } else if (this.isRemote) {
+      return this.definition.getProperty("outputs");
     }
-    return this.outputs;
+    return null;
   }
   async execute(ctx: ExecutionContext) {
     throw new Error(`Operator ${this.uri} does not implement execute`);
@@ -201,26 +177,29 @@ export class Operator {
       json.description,
       json
     );
+    operator.isDynamic = json.is_dynamic;
     operator.executeAsGenerator = json.execute_as_generator;
     operator.pluginName = json.plugin_name;
-    operator.definition.addProperty("inputs", types.Property.fromJSON(inputs));
-    operator.definition.addProperty(
-      "outputs",
-      types.Property.fromJSON(outputs)
-    );
+    if (inputs) {
+      operator.definition.addProperty(
+        "inputs",
+        types.Property.fromJSON(inputs)
+      );
+    }
+    if (outputs) {
+      operator.definition.addProperty(
+        "outputs",
+        types.Property.fromJSON(outputs)
+      );
+    }
     return operator;
   }
 }
 
 export class DynamicOperator extends Operator {
-  constructor(
-    public name: string,
-    public description: string,
-    public inputView?,
-    public outputView?
-  ) {
-    super(name, description, inputView, outputView);
-    (this.definition.getProperty("inputs").type as types.ObjectType).dynamic();
+  constructor(public name: string, public description: string) {
+    super(name, description);
+    this.isDynamic = true;
   }
 }
 
@@ -254,14 +233,11 @@ export async function loadOperatorsFromServer() {
     for (const operator of operatorInstances) {
       remoteRegistry.register(operator);
     }
-    const errorFiles = (errors && Object.keys(errors)) || [];
-    if (errorFiles.length > 0) {
-      for (const file of errorFiles) {
-        const fileErrors = errors[file];
-        console.error(`Error loading operators from ${file}:`);
-        for (const error of fileErrors) {
-          console.error(error);
-        }
+    const pyErrors = errors || [];
+    if (pyErrors.length > 0) {
+      console.error("Error loading python plugins:");
+      for (const error of pyErrors) {
+        console.error(error);
       }
     }
   } catch (e) {
@@ -480,8 +456,10 @@ export async function resolveRemoteType(
   if (typeAsJSON && typeAsJSON.error) {
     throw new Error(typeAsJSON.error);
   }
-
-  return types.Property.fromJSON(typeAsJSON);
+  if (typeAsJSON && (typeAsJSON.name || typeAsJSON.type)) {
+    return types.Property.fromJSON(typeAsJSON);
+  }
+  return null;
 }
 
 export async function fetchRemotePlacements(ctx: ExecutionContext) {
