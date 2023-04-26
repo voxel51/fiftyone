@@ -378,6 +378,7 @@ type Mutation {
     saveToApp: Boolean!
     colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
+  searchSelectFields(metaFilter: JSON): [SampleField]!
 }
 
 type NamedKeypointSkeleton {

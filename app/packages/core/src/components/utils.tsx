@@ -125,9 +125,15 @@ export type TabOptionProps = {
   active: string;
   options: TabOption[];
   color?: string;
+  overrideStyles?: { [id: string]: string };
 };
 
-export const TabOption = ({ active, options, color }: TabOptionProps) => {
+export const TabOption = ({
+  active,
+  options,
+  color,
+  overrideStyles = {},
+}: TabOptionProps) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(options.map((o) => false));
   const styles = useSprings(

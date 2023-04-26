@@ -85,7 +85,7 @@ export const removeKeys = <T>(
   );
 };
 
-interface BaseField {
+export interface BaseField {
   ftype: string;
   dbField: string | null;
   description: string | null;

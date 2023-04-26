@@ -28,10 +28,10 @@ const EXAMPLES = [
     title: 'Match fields whose description contains "foo"',
     code: "description:foo",
   },
-  {
-    title: "# Match fields whose info.created_at is less than YYYY-MM-DD",
-    code: "info.created_at:<2022-11-10",
-  },
+  // {
+  //   title: "# Match fields whose info.created_at is less than YYYY-MM-DD",
+  //   code: "info.created_at:<2022-11-10",
+  // },
 ] as Example[];
 
 export const SchemaSearchHelp = (props: Props) => {
