@@ -87,6 +87,9 @@ def _update_app_config(plugin_name, **kwargs):
             "Could not parse app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to a valid json file."
         )
         return
+    except:
+        # fail silently
+        return
 
     if app_config.get("plugins") is None:
         app_config["plugins"] = {}
@@ -112,12 +115,14 @@ def _list_disabled_plugins():
         logging.error(
             "Could not locate app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to an existing json filepath."
         )
-        return
+        return []
     except json.decoder.JSONDecodeError as e:
         logging.error(
             "Could not parse app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to a valid json file."
         )
-        return
+        return []
+    except:  # fail silently for unknown errors
+        return []
 
     if len(app_config.get("plugins", {})) > 0:
         plugins = app_config["plugins"]
