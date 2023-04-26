@@ -278,7 +278,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           let rest = 0;
           for (
             let index = 0;
-            index < (value as Array<unknown>).length;
+            index < (value as Array<unknown>)?.length;
             index++
           ) {
             const result = renderer(path, value[index]);
@@ -426,7 +426,7 @@ const getFieldAndValue = (
 
 const compareObjectArrays = (arr1, arr2) => {
   // Check if the arrays are the same length
-  if (arr1.length !== arr2.length) {
+  if (arr1?.length !== arr2?.length) {
     return false;
   }
 
