@@ -134,15 +134,3 @@ def test_find_plugin_error_duplicate_name(fiftyone_plugins_dir):
 
     with pytest.raises(ValueError):
         _ = fop.find_plugin("test-plugin1-name")
-
-
-# def test_download_plugin_success():
-#
-# def test_download_plugin_no_redownload():
-#
-# def test_download_plugin_force_redownload():
-#
-# def test_download_plugin_error_bad_url():
-#
-# def test_download_plugin_error_bad_zip():
-#
