@@ -7,7 +7,6 @@
 from .definitions import list_plugins
 from .core import *
 
-
 def list_all_plugins():
     """Wrapper for backwards compatibility. Returns a list of all plugins that have not explicitly been disabled."""
     return list_plugins()
