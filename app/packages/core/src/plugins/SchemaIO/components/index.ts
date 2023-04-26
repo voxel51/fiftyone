@@ -30,6 +30,7 @@ export { default as ObjectView } from "./ObjectView";
 export { default as OneOfView } from "./OneOfView";
 export { default as PlotlyView } from "./PlotlyView";
 export { default as PrimitiveView } from "./PrimitiveView";
+export { default as ProgressView } from "./ProgressView";
 export { default as RadioView } from "./RadioView";
 export { default as RoundedTabs } from "./RoundedTabs";
 export { default as SliderView } from "./SliderView";
