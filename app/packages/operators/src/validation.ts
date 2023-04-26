@@ -33,7 +33,9 @@ export class ValidationContext {
   private validate() {
     const { params } = this.ctx;
     this.errors = [];
-    this.validateProperty("", this.property, params);
+    if (this.property) {
+      this.validateProperty("", this.property, params);
+    }
     return this.errors;
   }
 

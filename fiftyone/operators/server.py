@@ -10,7 +10,12 @@ from .registry import OperatorRegistry
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from fiftyone.server.decorators import route
-from .executor import execute_operator, resolve_type, resolve_placement
+from .executor import (
+    execute_operator,
+    resolve_type,
+    resolve_placement,
+    ExecutionContext,
+)
 from starlette.exceptions import HTTPException
 from starlette.responses import StreamingResponse
 from .message import GeneratedMessage
@@ -20,8 +25,9 @@ class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
         registry = OperatorRegistry()
+        ctx = ExecutionContext()
         operators_as_json = [
-            operator.to_json() for operator in registry.list_operators()
+            operator.to_json(ctx) for operator in registry.list_operators()
         ]
         return {
             "operators": operators_as_json,
@@ -115,7 +121,10 @@ class ResolveType(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=erroDetail)
         result = resolve_type(registry, operator_uri, data)
-        return result.to_json()
+        if result:
+            return result.to_json()
+        else:
+            return {}
 
 
 OperatorRoutes = [

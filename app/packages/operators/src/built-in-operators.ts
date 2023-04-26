@@ -79,16 +79,19 @@ class ViewFromJSON extends Operator {
 class OpenPanel extends Operator {
   constructor() {
     super("open_panel", "Open a panel");
-    // todo: dynamically generate the list
-    this.defineInputProperty(
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    inputs.defineProperty(
       "name",
       new types.Enum(["Histograms", "Embeddings"]),
       { label: "Name of the panel", required: true }
     );
-    this.defineInputProperty("isActive", new types.Boolean(), {
+    inputs.defineProperty("isActive", new types.Boolean(), {
       label: "Auto-select on open",
       required: true,
     });
+    return new types.Property(inputs);
   }
   useHooks() {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -169,11 +172,15 @@ class ClosePanel extends Operator {
   constructor() {
     super("close_panel", "Close a panel");
     // todo: dynamically generate the list
-    this.defineInputProperty(
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    inputs.defineProperty(
       "name",
       new types.Enum(["Histograms", "Embeddings"]),
       { label: "Name of the panel", required: true }
     );
+    return new types.Property(inputs);
   }
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -220,25 +227,14 @@ class CloseAllPanels extends Operator {
 class OpenDataset extends Operator {
   constructor() {
     super("open_dataset", "Open Dataset");
-    const datasetProperty = this.defineInputProperty(
-      "dataset",
-      new types.Enum([]),
-      {
-        label: "Name of the dataset",
-        required: true,
-      }
-    );
-    datasetProperty.resolver = (property: any, ctx: ExecutionContext) => {
-      property.type = new types.Enum(ctx.hooks.availableDatasets);
-      return property;
-    };
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    inputs.str("dataset", { label: "Dataset name", required: true });
+    return new types.Property(inputs);
   }
   useHooks(): object {
-    // const useSearch = getUseSearch();
-
-    // const {values, total} = useSearch(ctx.params.dataset);
     return {
-      availableDatasets: ["quickstart", "quickstart-geo", "quickstart-groups"],
       setDataset: fos.useSetDataset(),
     };
   }
@@ -342,14 +338,6 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
 class SetSelectedSamples extends Operator {
   constructor() {
     super("set_selected_samples", "Set selected samples");
-    this.defineInputProperty("samples", new types.List(new types.SampleID()), {
-      label: "Samples",
-      required: true,
-    });
-    // this.inputs.addProperty(
-    //   "samples",
-    //   new types.Property(new types.List(new types.SampleID()), "Samples", true)
-    // );
   }
   useHooks(): {} {
     return {
@@ -361,55 +349,17 @@ class SetSelectedSamples extends Operator {
   }
 }
 
-class DynamicFormExample extends Operator {
-  constructor() {
-    super("dynamic_form_example", "Dynamic Form Example");
-    this.defineInputProperty("mode", new types.Enum(["simple", "advanced"]), {
-      label: "Mode",
-      required: true,
-      defaultValue: "simple",
-    });
-  }
-  useHooks(): { sampleId: string } {
-    const [sampleId] = useRecoilValue(fos.selectedSamples) || [];
-    return { sampleId };
-  }
-  async resolveInput(ctx: ExecutionContext) {
-    const inputs = new types.Property(new types.ObjectType());
-    const inputsType = inputs.type as types.ObjectType;
-    inputsType.defineProperty("mode", new types.Enum(["simple", "advanced"]), {
-      label: "Mode",
-      required: true,
-    });
-    inputsType.defineProperty("name", new types.String(), { label: "Name" });
-    if (ctx.params.mode === "advanced") {
-      inputsType.defineProperty("sampleId", new types.String(), {
-        label: "Sample ID",
-        required: true,
-        defaultValue: ctx.hooks.sampleId,
-      });
-      inputsType.defineProperty("threshold", new types.Number(), {
-        label: "Threshold",
-        required: true,
-      });
-      if (ctx.params.threshold > 5) {
-        inputsType.defineProperty("clamp", new types.Boolean(), {
-          label: "Clamping",
-          required: true,
-        });
-      }
-    }
-    return inputs;
-  }
-}
-
 class SetView extends Operator {
   constructor() {
     super("set_view", "Set view");
-    this.defineInputProperty("view", new types.ObjectType(), {
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    inputs.obj("view", {
       label: "View",
       required: true,
     });
+    return new types.Property(inputs);
   }
   async execute({ state, params }: ExecutionContext) {
     state.set(fos.view, params.view);
@@ -421,14 +371,6 @@ const SHOW_SAMPLES_STAGE_ID = "show_samples_stage_id";
 class ShowSamples extends Operator {
   constructor() {
     super("show_samples", "Show samples");
-    this.defineInputProperty("samples", new types.List(new types.String()), {
-      label: "Samples",
-      required: true,
-    });
-    this.defineInputProperty("use_extended_selection", new types.Boolean(), {
-      label: "Use extended selection",
-      required: true,
-    });
   }
   async execute({ state, params }: ExecutionContext) {
     if (params.use_extended_selection) {
@@ -541,10 +483,14 @@ class GetAppValue extends DynamicOperator {
 class ConsoleLog extends Operator {
   constructor() {
     super("console_log", "Console Log");
-    this.defineInputProperty("message", new types.String(), {
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    inputs.defineProperty("message", new types.String(), {
       label: "Message",
       required: true,
     });
+    return new types.Property(inputs);
   }
   async execute({ params }: ExecutionContext) {
     console.log(params.message);
@@ -554,14 +500,18 @@ class ConsoleLog extends Operator {
 class ShowOutput extends Operator {
   constructor() {
     super("show_output", "Show Output");
-    this.defineInputProperty("outputs", new types.ObjectType(), {
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    inputs.defineProperty("outputs", new types.ObjectType(), {
       label: "Outputs",
       required: true,
     });
-    this.defineInputProperty("results", new types.ObjectType(), {
+    inputs.defineProperty("results", new types.ObjectType(), {
       label: "Results",
       required: true,
     });
+    return new types.Property(inputs);
   }
   useHooks(ctx: ExecutionContext): {} {
     return {
@@ -593,7 +543,6 @@ export function registerBuiltInOperators() {
     registerOperator(new ShowSelectedSamples());
     registerOperator(new ConvertExtendedSelectionToSelectedSamples());
     registerOperator(new SetSelectedSamples());
-    registerOperator(new DynamicFormExample());
     registerOperator(new OpenPanel());
     registerOperator(new OpenAllPanels());
     registerOperator(new ClosePanel());
