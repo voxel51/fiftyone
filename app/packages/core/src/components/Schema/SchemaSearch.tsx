@@ -41,10 +41,12 @@ export const SchemaSearch = (props: Props) => {
               if (searchTerm) {
                 // convert dot notation to object
                 const split = searchTerm.split(":");
-                const checkValue = split?.[1] || "";
-                const finalSearchTerm = checkValue
+                let checkValue = split?.[1] || "";
+                let finalSearchTerm = checkValue
                   ? searchTerm.substring(0, searchTerm.indexOf(":"))
                   : searchTerm;
+                finalSearchTerm = finalSearchTerm.replace(/\s/g, "");
+                checkValue = checkValue.replace(/\s/g, "");
 
                 let props = finalSearchTerm.split(".");
                 const last = props[props.length - 1];
