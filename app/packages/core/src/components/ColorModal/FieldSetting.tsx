@@ -29,13 +29,12 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const path = field.path;
   const [tempSetting, setTempSetting] = useRecoilState(tempColorSetting);
-  const fullSetting = useRecoilValue(
-    fos.sessionColorScheme
-  ).customizedColorSettings;
-  const t = useRecoilValue(fos.sessionColorScheme);
+  const sessionColorState = useRecoilValue(fos.sessionColorScheme);
+  const fullSetting = sessionColorState.customizedColorSettings;
+  const pool = sessionColorState.colorPool;
   const coloring = useRecoilValue(fos.coloring(false));
-  const pool = useRecoilValue(fos.colorPalette);
   const color = getColor(pool, coloring.seed, path);
+  console.info(color);
   const defaultColor =
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
   const expandedPath = useRecoilValue(fos.expandPath(path!));
@@ -52,7 +51,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       ftype: FLOAT_FIELD,
     })
   );
-  console.info("fullSetting", fullSetting, t);
   const onChangeFieldColor = (color) => {
     setTempSetting((prev) => ({
       ...cloneDeep(prev),

@@ -4,6 +4,7 @@ import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { RelayEnvironmentKey } from "./relay";
+import { sessionColorScheme } from "./atoms";
 
 export type ResponseFrom<TResponse extends { response: unknown }> =
   TResponse["response"];
@@ -38,7 +39,7 @@ export const colorPalette = atom<string[]>({
   default: selector({
     key: "initial",
     get: ({ get }) => {
-      return get(colorPool) as string[];
+      return get(sessionColorScheme).colorPool || (get(colorPool) as string[]);
     },
   }),
 });
