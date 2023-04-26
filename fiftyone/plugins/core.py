@@ -136,6 +136,8 @@ def delete_plugin(plugin_name, dry_run=False, cleanup=True, limit=None):
     """
     deleted = []
     for plugin_dir in _find_plugin_paths(plugin_name):
+        if limit is not None and len(deleted) >= limit:
+            break
         if plugin_dir:
             if dry_run:
                 to_delete = glob.glob(
@@ -438,8 +440,8 @@ def _has_plugin_definition(plugin_files: list) -> bool:
     )
 
 
-def create(
-    name: str,
+def create_plugin(
+    plugin_name: str,
     from_dir: Optional[str] = None,
     from_files: Optional[list] = None,
     label: Optional[str] = None,
@@ -451,7 +453,7 @@ def create(
     If no files are specified, only a directory with a plugin definition file will be created.
 
     Args:
-        name: the name of the plugin. An error will be raised if a plugin with this name already exists unless overwrite=True
+        plugin_name: the name of the plugin. An error will be raised if a plugin with this name already exists unless overwrite=True
         from_dir: the path to the directory containing the plugin files
         from_files: a list of filepaths to include in the plugin
         overwrite: whether to overwrite the plugin directory if it already exists
@@ -461,19 +463,21 @@ def create(
     """
     if from_dir and from_files:
         raise ValueError("Cannot specify both from_dir and from_files.")
-    if name in _list_plugins_by_name(check_for_duplicates=False):
+    if plugin_name in _list_plugins_by_name(check_for_duplicates=False):
         if not overwrite:
             raise ValueError(
-                f"Plugin '{name}' already exists. Rerun `create` with overwrite=True to overwrite it."
+                f"Plugin '{plugin_name}' already exists. Rerun `create` with overwrite=True to overwrite it."
             )
         else:
-            deleted_dir = delete_plugin(name)
+            deleted_dir = delete_plugin(plugin_name)
             print(
-                f'Deleted existing plugin with name "{name}" at {deleted_dir}'
+                f'Deleted existing plugin with name "{plugin_name}" at {deleted_dir}'
             )
 
     plugin_dir = os.path.join(
-        fo.config.plugins_dir, "local", "-".join([name, str(round(time()))])
+        fo.config.plugins_dir,
+        "local",
+        "-".join([plugin_name, str(round(time()))]),
     )
     os.makedirs(plugin_dir)
     if from_dir:
@@ -486,7 +490,7 @@ def create(
                 raise ValueError(f"'{fpath}' is not a file.")
             shutil.copytree(fpath, plugin_dir)
     plugin_definition = {
-        "name": name,
+        "name": plugin_name,
         "description": description,
         "label": label,
         "fiftyone": {"version": foc.VERSION},
@@ -500,18 +504,18 @@ def create(
         with open(os.path.join(plugin_dir, "fiftyone.yml"), "a+") as yml_file:
             old_yml = yaml.load(yml_file)
             plugin_definition = defaultdict(dict, old_yml)
-            plugin_definition["name"] = name
+            plugin_definition["name"] = plugin_name
             plugin_definition["description"] = (
                 description if description else old_yml.get("description", "")
             )
             plugin_definition["label"] = (
-                label if label else _label_from_name(name)
+                label if label else _label_from_name(plugin_name)
             )
             plugin_definition["fiftyone"].update({"version": foc.VERSION})
             plugin_definition.update(**kwargs)
             yaml.dump(plugin_definition, yml_file)
 
-    print(f"Created plugin with name `{name}` at {plugin_dir}")
+    print(f"Created plugin with name `{plugin_name}` at {plugin_dir}")
     return plugin_dir
 
 
