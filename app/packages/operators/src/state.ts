@@ -320,6 +320,7 @@ export const availableOperators = selector({
         name: operator.name,
         value: operator.uri,
         description: operator.description,
+        unlisted: operator.unlisted,
       };
     });
   },
@@ -365,8 +366,9 @@ export const operatorBrowserChoices = selector({
     const allChoices = get(availableOperators);
     const query = get(operatorBrowserQueryState);
     let results = [...allChoices];
+    results = results.filter(({ unlisted }) => !unlisted);
     if (query && query.length > 0) {
-      results = filterChoicesByQuery(query, allChoices);
+      results = filterChoicesByQuery(query, results);
     }
     return sortResults(results, get(recentlyUsedOperatorsState));
   },
