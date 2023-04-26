@@ -718,11 +718,10 @@ class Session(object):
         return list(self._state.selected_labels)
 
     @selected_labels.setter  # type: ignore
-    @update_state()
     def selected_labels(self, labels: dict) -> None:
         self._state.selected_labels = list(labels) if labels else []
+        self._client.send_event(SelectLabels(self._state.selected_labels))
 
-    @update_state()
     def select_labels(
         self,
         labels: t.Optional[t.List[dict]] = None,
@@ -747,7 +746,7 @@ class Session(object):
                 ids=ids, tags=tags, fields=fields
             )
 
-        self._state.selected_labels = list(labels or [])
+        self.selected_labels = list(labels or [])
 
     @update_state()
     def clear_selected_labels(self) -> None:

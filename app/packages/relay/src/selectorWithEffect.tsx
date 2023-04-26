@@ -23,9 +23,9 @@ export function SelectorEffectContext({
 
 export function selectorWithEffect<T>(
   options: ReadOnlySelectorOptions<T> & {
-    set:
+    set?:
       | ((newValue: Parameters<ReadWriteSelectorOptions<T>["set"]>[1]) => void)
-      | true;
+      | boolean;
   },
   itemKey?: string
 ) {

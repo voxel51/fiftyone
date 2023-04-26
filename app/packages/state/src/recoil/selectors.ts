@@ -8,7 +8,6 @@ import {
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtom,
-  selectorWithEffect,
 } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
 import * as atoms from "./atoms";
@@ -512,9 +511,4 @@ export const hasSelectedSamples = selector<boolean>({
     const selected = get(atoms.selectedSamples);
     return selected.size > 0;
   },
-});
-
-export const refreshPage = selectorWithEffect({
-  key: "refreshPage",
-  get: () => undefined,
 });

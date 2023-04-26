@@ -1,6 +1,11 @@
-import { subscribe } from "@fiftyone/relay";
-import { refreshPage, refresher } from "@fiftyone/state";
+import { selectorWithEffect, subscribe } from "@fiftyone/relay";
+import { refresher } from "@fiftyone/state";
 import { useRecoilCallback } from "recoil";
+
+export const refreshPage = selectorWithEffect({
+  key: "refreshPage",
+  get: () => undefined,
+});
 
 const useRefresh = () => {
   return useRecoilCallback(

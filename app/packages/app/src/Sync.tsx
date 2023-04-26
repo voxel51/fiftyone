@@ -13,9 +13,11 @@ import {
   Setter,
   setView,
   setViewMutation,
+  subscribe,
   Writer,
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
 import {
   datasetName,
   Session,
@@ -290,6 +292,22 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               [
                 "refreshPage",
                 () => {
+                  router.load(true);
+                },
+              ],
+              [
+                "similarityParameters",
+                () => {
+                  const unsubscribe = subscribe((_, { set }) => {
+                    set(fos.similaritySorting, false);
+                    set(fos.savedLookerOptions, (cur) => ({
+                      ...cur,
+                      showJSON: false,
+                    }));
+                    set(fos.hiddenLabels, {});
+                    unsubscribe();
+                  });
+
                   router.load(true);
                 },
               ],
