@@ -66,6 +66,7 @@ export const DynamicGroupAction = () => {
     }
 
     setIsProcessing(true);
+    setOpen(false);
 
     setView((v) => [
       ...v,
@@ -82,6 +83,19 @@ export const DynamicGroupAction = () => {
       },
     ]);
   }, [canSubmitRequest, setView, groupBy, orderBy]);
+
+  const onClear = useCallback(() => {
+    setView((v) => {
+      const newView = [...v];
+      const groupByIndex = newView.findIndex(
+        (stage) => stage._cls === "fiftyone.core.stages.GroupBy"
+      );
+      if (groupByIndex !== -1) {
+        newView.splice(groupByIndex, 1);
+      }
+      return newView;
+    });
+  }, [setView]);
 
   const pillComponent = useMemo(() => {
     if (isProcessing) {
@@ -121,64 +135,82 @@ export const DynamicGroupAction = () => {
       {open && (
         <Popout modal={false}>
           <DynamicGroupContainer>
-            <PopoutSectionTitle>Group By</PopoutSectionTitle>
-            <Selector
-              inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
-              component={SelectorValueComponent}
-              containerStyle={{
-                marginLeft: "0.5rem",
-                position: "relative",
-              }}
-              onSelect={setGroupBy}
-              resultsPlacement="center"
-              overflow={true}
-              placeholder={"group by"}
-              useSearch={searchSelector}
-              value={groupBy ?? ""}
-            />
-            <TabOption
-              active={useOrdered ? "ordered" : "unordered"}
-              disabled={isProcessing}
-              options={[
-                {
-                  text: "ordered",
-                  title: "Ordered",
-                  onClick: () => setUseOrdered(true),
-                },
-                {
-                  text: "unordered",
-                  title: "Unordered",
-                  onClick: () => setUseOrdered(false),
-                },
-              ]}
-            />
-            {useOrdered && (
-              <Selector
-                inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
-                component={SelectorValueComponent}
-                containerStyle={{
-                  marginLeft: "0.5rem",
-                  position: "relative",
+            {isDynamicGroupViewStageActive ? (
+              <Button
+                style={{
+                  width: "100%",
+                  cursor: "pointer",
                 }}
-                onSelect={setOrderBy}
-                resultsPlacement="center"
-                overflow={true}
-                placeholder={"order by"}
-                useSearch={searchSelector}
-                value={orderBy ?? ""}
-              />
+                onClick={onClear}
+              >
+                Reset Dynamic Groups
+              </Button>
+            ) : (
+              <>
+                <PopoutSectionTitle>Group By</PopoutSectionTitle>
+                <Selector
+                  inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
+                  component={SelectorValueComponent}
+                  containerStyle={{
+                    marginLeft: "0.5rem",
+                    position: "relative",
+                  }}
+                  onSelect={setGroupBy}
+                  resultsPlacement="center"
+                  overflow={true}
+                  placeholder={"group by"}
+                  useSearch={searchSelector}
+                  value={groupBy ?? ""}
+                />
+                <TabOption
+                  active={useOrdered ? "ordered" : "unordered"}
+                  disabled={isProcessing}
+                  options={[
+                    {
+                      text: "ordered",
+                      title: "Ordered",
+                      onClick: () => setUseOrdered(true),
+                    },
+                    {
+                      text: "unordered",
+                      title: "Unordered",
+                      onClick: () => setUseOrdered(false),
+                    },
+                  ]}
+                />
+                {useOrdered && (
+                  <Selector
+                    inputStyle={{
+                      height: 28,
+                      width: "100%",
+                      fontSize: "medium",
+                    }}
+                    component={SelectorValueComponent}
+                    containerStyle={{
+                      marginLeft: "0.5rem",
+                      position: "relative",
+                    }}
+                    onSelect={setOrderBy}
+                    resultsPlacement="center"
+                    overflow={true}
+                    placeholder={"order by"}
+                    useSearch={searchSelector}
+                    value={orderBy ?? ""}
+                  />
+                )}
+                <Button
+                  style={{
+                    width: "100%",
+                    marginTop: "0.5rem",
+                    cursor: !canSubmitRequest ? "not-allowed" : "pointer",
+                  }}
+                  disabled={!canSubmitRequest}
+                  onClick={onSubmit}
+                >
+                  {isProcessing ? "Processing..." : "Submit"}
+                </Button>
+              </>
             )}
-            <Button
-              style={{
-                width: "100%",
-                marginTop: "0.5rem",
-                cursor: !canSubmitRequest ? "not-allowed" : "pointer",
-              }}
-              disabled={!canSubmitRequest}
-              onClick={onSubmit}
-            >
-              {isProcessing ? "Processing..." : "Submit"}
-            </Button>
           </DynamicGroupContainer>
         </Popout>
       )}
