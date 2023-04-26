@@ -19,12 +19,7 @@ class Operator:
         name (None): the name of the operator.
     """
 
-    def __init__(
-        self,
-        name,
-        label=None,
-        description=None,
-    ):
+    def __init__(self, name, label=None, description=None, **kwargs):
         if name is None:
             raise ValueError("Operator name cannot be None")
         self.name = name
@@ -35,6 +30,7 @@ class Operator:
         self.definition.define_property("outputs", Object())
         self.plugin_name = None
         self.execute_as_generator = False
+        self.unlisted = kwargs.get("unlisted", False)
 
     def dispose(self):
         pass
@@ -101,6 +97,7 @@ class Operator:
             "plugin_name": self.plugin_name,
             "uri": self.uri,
             "execute_as_generator": self.execute_as_generator,
+            "unlisted": self.unlisted,
         }
 
 

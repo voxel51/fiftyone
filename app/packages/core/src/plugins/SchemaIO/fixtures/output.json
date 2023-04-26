@@ -3,6 +3,33 @@
         "type": {
             "name": "Object",
             "properties": {
+                "plot": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Object",
+                            "properties": {},
+                            "needsResolution": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "PlotlyView",
+                        "label": "PlotX",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": true,
+                        "data": null,
+                        "config": null,
+                        "layout": null
+                    }
+                },
                 "string": {
                     "type": { "name": "String" },
                     "default": null,
@@ -475,6 +502,15 @@
         "view": null
     },
     "data": {
+        "plot": [
+            {
+                "x": [1, 2, 3],
+                "y": [2, 6, 3],
+                "type": "scatter",
+                "mode": "lines+markers",
+                "marker": { "color": "red" }
+            }
+        ],
         "string": "This is a string",
         "number": 3,
         "float": 3.3,
