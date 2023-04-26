@@ -346,6 +346,7 @@ type Mutation {
     datasetName: String = null
   ): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
+  searchSelectFields(metaFilter: JSON): [SampleField]!
 }
 
 type NamedKeypointSkeleton {

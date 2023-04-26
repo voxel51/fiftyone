@@ -9,7 +9,9 @@ from dataclasses import asdict
 import strawberry as gql
 import typing as t
 
+from fiftyone.core.state import SampleField
 import eta.core.serial as etas
+from bson import json_util
 
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
@@ -390,6 +392,29 @@ class Mutation:
         state.spaces = Space.from_dict(spaces)
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
+
+    @gql.mutation
+    async def search_select_fields(
+        self, meta_filter: t.Optional[JSON]
+    ) -> t.List[SampleField]:
+        if not meta_filter:
+            return []
+
+        state = get_state()
+        dataset = state.dataset
+        try:
+            view = dataset.select_fields(meta_field=meta_filter)
+        except Exception as e:
+            # try selecting only by field keys worst case
+            view = dataset.select_fields(meta_filter)
+
+        schema = view.get_field_schema(flat=True)
+        res = []
+        for stage in view._stages:
+            sf = stage.get_selected_fields(view, frames=False)
+            res += [schema[st] for st in sf if st in schema]
+
+        return res
 
 
 def _build_result_view(view, form):

@@ -9,7 +9,7 @@ import { TabOption } from "../utils";
 
 import useSchemaSettings, {
   TAB_OPTIONS,
-  TAG_OPTIONS_MAP,
+  TAB_OPTIONS_MAP,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 import { SchemaSearch } from "./SchemaSearch";
@@ -67,11 +67,11 @@ const SchemaSettings = (props: Props) => {
     selectedTab,
     finalSelectedPaths,
     setView,
+    setSearchResults,
+    setFieldsOnly,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
-  console.log("isSettingsModalOpen", isSettingsModalOpen);
-
   if (!isSettingsModalOpen) {
     return null;
   }
@@ -136,18 +136,27 @@ const SchemaSettings = (props: Props) => {
                   key: value,
                   text: value,
                   title: `Fiele ${value}`,
-                  onClick: () => setSelectedTab(value),
+                  onClick: () => {
+                    setSelectedTab(value);
+                    if (value === TAB_OPTIONS_MAP.SELECTION) {
+                      // reset search results
+                      // setSearchResults([...originalSelectedPaths])
+                    }
+                    if (value === TAB_OPTIONS_MAP.SEARCH) {
+                      setFieldsOnly(false);
+                    }
+                  },
                 };
               })}
             />
           </Box>
-          {selectedTab === TAG_OPTIONS_MAP.SEARCH && (
+          {selectedTab === TAB_OPTIONS_MAP.SEARCH && (
             <SchemaSearch
               setSearchTerm={setSearchTerm}
               searchTerm={searchTerm}
             />
           )}
-          {selectedTab === TAG_OPTIONS_MAP.SELECTION && <SchemaSelection />}
+          {selectedTab === TAB_OPTIONS_MAP.SELECTION && <SchemaSelection />}
           <Box
             style={{
               position: "relative",

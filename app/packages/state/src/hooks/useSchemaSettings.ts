@@ -2,13 +2,12 @@ import { useRecoilState, atom, useRecoilValue, atomFamily } from "recoil";
 import * as fos from "@fiftyone/state";
 import { buildSchema, useSetView } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
-import { StrictField } from "@fiftyone/utilities";
 
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
   default: "",
 });
-export const schemaSearchRestuls = atom<StrictField[]>({
+export const schemaSearchRestuls = atom<string[]>({
   key: "schemaSearchRestuls",
   default: [],
 });
@@ -39,12 +38,12 @@ export const selectedPathsState = atomFamily({
   default: (param: { allPaths: string[] }) => new Set([...param.allPaths]),
 });
 
-export const TAG_OPTIONS_MAP = {
+export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
   SEARCH: "Search",
 };
 
-export const TAB_OPTIONS = Object.values(TAG_OPTIONS_MAP);
+export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 export default function useSchemaSettings() {
   const activeLabelPaths = useRecoilValue(
     fos.activeLabelPaths({ modal: false })
@@ -186,7 +185,10 @@ export default function useSchemaSettings() {
       Object.keys(schema)
         .sort()
         .filter((path) => {
-          // TODO
+          // TODO: && searchResults.length
+          if (selectedTab === "Search") {
+            return searchResults.includes(path);
+          }
           if (fieldsOnly) {
             return (
               !path?.includes(".") &&
@@ -251,16 +253,20 @@ export default function useSchemaSettings() {
     }
   };
 
-  const finalSelectedPaths = new Set(
-    [...selectedPaths].filter((path) => {
-      return !(
-        schema[path].ftype === "fiftyone.core.fields.DictField" ||
-        schema[path].ftype === "fiftyone.core.fields.Field" ||
-        path.includes(".logits") ||
-        path.endsWith(".index") ||
-        path.endsWith(".bounding_box")
-      );
-    })
+  const finalSelectedPaths = useMemo(
+    () =>
+      new Set(
+        [...selectedPaths].filter((path) => {
+          return !(
+            schema[path].ftype === "fiftyone.core.fields.DictField" ||
+            schema[path].ftype === "fiftyone.core.fields.Field" ||
+            path.includes(".logits") ||
+            path.endsWith(".index") ||
+            path.endsWith(".bounding_box")
+          );
+        })
+      ),
+    [selectedPaths, schema]
   );
 
   return {
