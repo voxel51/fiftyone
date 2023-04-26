@@ -27,7 +27,6 @@ import {
   theme,
   _activeFields,
   sessionColorScheme,
-  customizeColors,
   ColorScheme,
   ColorSetting,
 } from "../recoil";
@@ -151,8 +150,9 @@ const useStateUpdate = (ignoreSpaces = false) => {
           set(sidebarGroupsDefinition(false), groups);
         }
 
-        if (state?.colorScheme) {
-          set(sessionColorScheme, state.colorScheme as ColorScheme);
+        if (state?.colorScheme && typeof state?.colorScheme === "string") {
+          const setting = JSON.parse(JSON.parse(state?.colorScheme));
+          set(sessionColorScheme, setting as ColorScheme);
         }
 
         set(datasetAtom, dataset);

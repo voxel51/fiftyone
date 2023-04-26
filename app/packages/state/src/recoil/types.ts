@@ -210,7 +210,7 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
-    colorScheme?: ColorSetting;
+    colorScheme?: ColorSetting | string;
   }
 }
 
