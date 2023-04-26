@@ -236,6 +236,7 @@ class View:
             "space": self.space,
             "placeholder": self.placeholder,
             "read_only": self.read_only,
+            **self._kwargs,
         }
 
 
