@@ -153,7 +153,11 @@ export const useOperatorPrompt = () => {
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const resolved = await operator.resolveInput(ctx);
-    setInputFields(resolved.toProps());
+    if (resolved) {
+      setInputFields(resolved.toProps());
+    } else {
+      setInputFields(null);
+    }
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
 
   useEffect(() => {
@@ -166,7 +170,11 @@ export const useOperatorPrompt = () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
     const resolved = await operator.resolveOutput(ctx, result);
-    setOutputFields(resolved.toProps());
+    if (resolved) {
+      setOutputFields(resolved.toProps());
+    } else {
+      setOutputFields(null);
+    }
   }, [ctx, operatorName, hooks, JSON.stringify(executor.result)]);
 
   useEffect(() => {
@@ -226,10 +234,18 @@ export const useOperatorPrompt = () => {
     };
   }, [onKeyDown]);
 
-  useEffect(() => {
-    if (operator && !operator.needsUserInput() && !operator.needsResolution()) {
+  const autoExec = async () => {
+    if (
+      operator &&
+      !(await operator.needsUserInput(ctx)) &&
+      !operator.needsResolution()
+    ) {
       execute();
     }
+  };
+
+  useEffect(() => {
+    autoExec();
   }, [operator]);
 
   const isExecuting = executor && executor.isExecuting;
@@ -569,7 +585,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         const result = await executeOperatorWithContext(uri, ctx);
         setResult(result.result);
         setError(result.error);
-        setNeedsOutput(result.hasOutputContent());
+        setNeedsOutput(await operator.needsOutput(ctx, result));
         handlers.onSuccess?.(result);
       } catch (e) {
         console.error("Error executing operator");
