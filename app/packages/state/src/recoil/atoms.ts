@@ -4,7 +4,6 @@ import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
 import { Field } from "@fiftyone/utilities";
-import { colorPool } from "./config";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -443,10 +442,15 @@ export interface ColorScheme {
   customizedColorSettings: CustomizeColor[];
 }
 
-export const sessionColorScheme = atom<ColorScheme>({
+export interface ColorSchemeSetting extends ColorScheme {
+  saveToApp?: boolean;
+}
+
+export const sessionColorScheme = atom<ColorSchemeSetting>({
   key: "sessionColorScheme",
   default: {
     colorPool: [],
     customizedColorSettings: [],
+    saveToApp: false,
   },
 });

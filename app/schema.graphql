@@ -116,6 +116,16 @@ input ColorScheme {
   customizedColorSettings: JSONArray = null
 }
 
+input ColorSchemeSaveFormat {
+  colorPool: [String!] = null
+  customizedColorSettings: String = null
+}
+
+type ColorSchemeStr {
+  colorPool: [String!]
+  customizedColorSettings: String
+}
+
 input CountValues {
   field: String!
 }
@@ -163,6 +173,7 @@ type DatasetAppConfig {
   modalMediaField: String
   gridMediaField: String
   spaces: JSON
+  colorScheme: ColorSchemeStr
 }
 
 type DatasetStrConnection {
@@ -360,8 +371,11 @@ type Mutation {
   setColorScheme(
     subscription: String!
     session: String
+    dataset: String!
+    stages: BSONArray!
     colorScheme: ColorScheme!
-    saveToApp: Boolean! = false
+    saveToApp: Boolean!
+    colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
 }
 

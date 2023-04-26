@@ -190,6 +190,12 @@ class SidebarGroup:
 
 
 @gql.type
+class ColorSchemeStr:
+    color_pool: t.Optional[t.List[str]] = None
+    customized_color_settings: t.Optional[str] = None
+
+
+@gql.type
 class KeypointSkeleton:
     labels: t.Optional[t.List[str]]
     edges: t.List[t.List[int]]
@@ -216,6 +222,7 @@ class DatasetAppConfig:
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
+    color_scheme: t.Optional[ColorSchemeStr]
 
 
 @gql.type

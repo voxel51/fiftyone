@@ -152,13 +152,28 @@ const useStateUpdate = (ignoreSpaces = false) => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
+        console.info("state.colorScheme", state?.colorScheme);
+        console.info("dataset.colorScheme", dataset.appConfig);
 
         if (state?.colorScheme && typeof state?.colorScheme === "string") {
-          const setting = JSON.parse(JSON.parse(state?.colorScheme));
-          if (!setting.colorPool || setting.colorPool.length == 0) {
-            setting.colorPool = cloneDeep(get(colorPool));
-          }
-          set(sessionColorScheme, setting as ColorScheme);
+          const sessionSetting = JSON.parse(JSON.parse(state?.colorScheme));
+          console.info("sessionSetting", sessionSetting);
+          set(sessionColorScheme, sessionSetting as ColorScheme);
+        } else if (dataset.appConfig?.colorScheme) {
+          const { colorPool, customizedColorSettings } =
+            dataset.appConfig?.colorScheme;
+          const datasetSetting = {
+            colorPool,
+            customizedColorSettings: JSON.parse(customizedColorSettings),
+          };
+          console.info("datasetSetting", datasetSetting);
+          set(sessionColorScheme, datasetSetting as ColorScheme);
+        } else {
+          const colors = get(colorPool);
+          set(sessionColorScheme, {
+            colorPool: colors,
+            customizedColorSettings: [],
+          } as ColorScheme);
         }
 
         set(datasetAtom, dataset);

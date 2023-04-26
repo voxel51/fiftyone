@@ -50,11 +50,11 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   const onCancel = useCancel();
 
   const onSave = () => {
-    onApply();
+    onApply(true);
     onCancel();
   };
 
-  const onApply = () => {
+  const onApply = (saveToApp: boolean = false) => {
     if (typeof activeColorModalField !== "string") {
       // save field settings (update tempcolor by checkbox options)
       const update = updateFieldSettings(tempColor);
@@ -73,9 +73,14 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
         return {
           colorPool: prev.colorPool,
           customizedColorSettings: newCustomizedColorSettings,
+          saveToApp,
         };
       });
-      setColorScheme(tempGlobalSettings.colors, customizeColorSettings);
+      setColorScheme(
+        tempGlobalSettings.colors,
+        customizeColorSettings,
+        saveToApp
+      );
     }
     if (activeColorModalField == "global") {
       // save global settings
@@ -86,9 +91,13 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       setAlpha(opacity);
       setMulticolorKeypoints(useMulticolorKeypoints);
       setShowSkeleton(showSkeleton);
-      // update colors
-      setSessionColorSchemeState((prev) => ({ ...prev, colorPool: colors }));
-      setColorScheme(colors, fullSetting);
+
+      setSessionColorSchemeState((prev) => ({
+        ...prev,
+        colorPool: colors,
+        saveToApp,
+      }));
+      setColorScheme(colors, fullSetting, saveToApp);
     }
     if (activeColorModalField == "json") {
       if (
@@ -115,8 +124,9 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       setSessionColorSchemeState({
         colorPool: newColors,
         customizedColorSettings: newCustomizedColorSettings,
+        saveToApp,
       });
-      setColorScheme(newColors, newCustomizedColorSettings);
+      setColorScheme(newColors, newCustomizedColorSettings, saveToApp);
     }
   };
 
@@ -127,11 +137,11 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       <Button
         text={"Apply"}
         title={`Apply`}
-        onClick={onApply}
+        onClick={() => onApply}
         style={BUTTON_STYLE}
       />
       <Button
-        text={"Save"}
+        text={"Save to dataset"}
         title={`Save`}
         onClick={onSave}
         style={BUTTON_STYLE}

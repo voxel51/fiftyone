@@ -10,6 +10,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 from bson import json_util
 import eta.core.serial as etas
+from fiftyone.core.odm import EmbeddedDocument
 
 
 class ColorScheme(object):
@@ -20,8 +21,8 @@ class ColorScheme(object):
         customized_color_settings: a list of dicts mapping customoized color settings, which can includes properties such as field, use_field_color, field_color, use_label_colors, label_colors
     """
 
-    def __init__(self, color_pool=None, customized_color_settings=[]):
-        self.color_pool = color_pool or DEFAULT_APP_COLOR_POOL
+    def __init__(self, color_pool=None, customized_color_settings=None):
+        self.color_pool = color_pool
         self.customized_color_settings = customized_color_settings
 
     def to_dict(self):

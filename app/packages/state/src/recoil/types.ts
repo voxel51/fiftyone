@@ -116,7 +116,7 @@ export namespace State {
     plugins?: PluginConfig;
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
-    colorSetting?: ColorSetting;
+    colorScheme?: ColorSchemeSaved;
   }
 
   /**
@@ -217,4 +217,9 @@ export namespace State {
 export interface ColorSetting {
   colorPool: string[];
   customizedColorSettings: JSON[];
+}
+
+export interface ColorSchemeSaved {
+  colorPool: string[];
+  customizedColorSettings: string;
 }

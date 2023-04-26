@@ -88,9 +88,6 @@ const getValidLabelColors = (labelColors: unknown[]) => {
   return result;
 };
 
-const isValidFieldPath = (str: string, fields: Field[]) =>
-  fields.map((f) => f.path).includes(str);
-
 // should return a valid customize color object that can be used to setCustomizeColor
 export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
   const filtered = json?.filter(

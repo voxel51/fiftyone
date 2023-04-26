@@ -102,10 +102,3 @@ export const pathColor = selectorFamily<
     eviction: "most-recent",
   },
 });
-
-export const guardRecoilDefaultValue = (
-  candidate: unknown
-): candidate is DefaultValue => {
-  if (candidate instanceof DefaultValue) return true;
-  return false;
-};
