@@ -7,22 +7,25 @@ import {
   TabOption,
 } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
-import { useOutsideClick, useSetView } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
+import { useSetView } from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../Common/Input";
-import * as fos from "@fiftyone/state";
 import { ActionDiv } from "./ActionsRow";
-import { useMachine } from "@xstate/react";
 
 const DynamicGroupContainer = styled.div`
   margin: 0.5rem 0;
   display: flex;
   flex-direction: column;
 `;
+
+const SelectorValueComponent = ({ value }) => {
+  return <>{value}</>;
+};
 
 export const DynamicGroupAction = () => {
   const [open, setOpen] = useState(false);
@@ -38,14 +41,14 @@ export const DynamicGroupAction = () => {
   const ref = useRef<HTMLDivElement>(null);
   const [measureRef] = useMeasure();
 
-  useOutsideClick(ref, () => open && setOpen(false));
-
   const onComplete = useRecoilCallback(({ set, reset }) => () => {
     setIsFieldValidated(false);
     setIsProcessing(false);
   });
 
   const setView = useSetView(true, false, onComplete);
+
+  const candidateFields = useRecoilValue(fos.dynamicGroupCandidateFields);
 
   const canSubmitRequest = useMemo(() => {
     if (isProcessing) {
@@ -90,6 +93,14 @@ export const DynamicGroupAction = () => {
 
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
 
+  const useSearchSelector = useCallback(
+    (search: string) => {
+      const values = candidateFields.filter((name) => name.includes(search));
+      return { values, total: values.length };
+    },
+    [candidateFields]
+  );
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
@@ -110,11 +121,19 @@ export const DynamicGroupAction = () => {
         <Popout modal={false}>
           <DynamicGroupContainer>
             <PopoutSectionTitle>Group By</PopoutSectionTitle>
-            <Input
-              value={groupBy}
-              disabled={isProcessing}
-              setter={setGroupBy}
-              placeholder="field name or expression"
+            <Selector
+              inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
+              component={SelectorValueComponent}
+              containerStyle={{
+                marginLeft: "0.5rem",
+                position: "relative",
+              }}
+              onSelect={setGroupBy}
+              resultsPlacement="center"
+              overflow={true}
+              placeholder={"group by"}
+              useSearch={useSearchSelector}
+              value={groupBy ?? ""}
             />
             <TabOption
               active={useOrdered ? "ordered" : "unordered"}
@@ -133,16 +152,25 @@ export const DynamicGroupAction = () => {
               ]}
             />
             {useOrdered && (
-              <Input
-                value={orderBy}
-                disabled={isProcessing}
-                setter={setOrderBy}
-                placeholder="order by field"
+              <Selector
+                inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
+                component={SelectorValueComponent}
+                containerStyle={{
+                  marginLeft: "0.5rem",
+                  position: "relative",
+                }}
+                onSelect={setOrderBy}
+                resultsPlacement="center"
+                overflow={true}
+                placeholder={"order by"}
+                useSearch={useSearchSelector}
+                value={orderBy ?? ""}
               />
             )}
             <Button
               style={{
                 width: "100%",
+                marginTop: "0.5rem",
                 cursor: !canSubmitRequest ? "not-allowed" : "pointer",
               }}
               disabled={!canSubmitRequest}
