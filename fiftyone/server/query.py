@@ -33,6 +33,7 @@ from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 import fiftyone.server.events as fose
 from fiftyone.server.metadata import MediaType
+from fiftyone.server.mutation import ColorScheme
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
     SampleFilter,
@@ -216,6 +217,7 @@ class DatasetAppConfig:
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
+    color_scheme: t.Optional[ColorScheme]
 
 
 @gql.type

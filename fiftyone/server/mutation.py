@@ -402,11 +402,20 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
+        dataset: str,
+        stages: BSONArray,
         color_scheme: ColorScheme,
         save_to_app: bool = False,
     ) -> bool:
         state = get_state()
+        view = get_view(dataset, stages=stages)
         state.color_scheme = color_scheme
+
+        if save_to_app:
+            view._dataset.app_config.color_scheme = color_scheme
+            view._dataset.save()
+            state.view = view
+
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 

@@ -6,6 +6,7 @@ Documents that track datasets and their sample schemas in the database.
 |
 """
 import eta.core.utils as etau
+from fiftyone.core.colorscheme import ColorScheme
 
 from fiftyone.core.fields import (
     BooleanField,
@@ -227,6 +228,9 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
+    color_scheme = (
+        DictField()
+    )  # TODO convert ColorScheme to EmbeddedDocument subclass
     plugins = DictField()
 
     @staticmethod
