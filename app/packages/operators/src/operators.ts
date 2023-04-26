@@ -5,7 +5,10 @@ import * as types from "./types";
 class InvocationRequest {
   constructor(public operatorURI: string, public params: any = {}) {}
   static fromJSON(json: any) {
-    return new InvocationRequest(json.operator_uri, json.params);
+    return new InvocationRequest(
+      json.operator_uri || json.operator_name,
+      json.params
+    );
   }
   toJSON() {
     return {
@@ -96,15 +99,18 @@ export class OperatorResult {
 
 export class Operator {
   public definition: types.ObjectType;
+  public unlisted: boolean;
   constructor(
     public name: string,
     public label?: string,
-    public description?: string
+    public description?: string,
+    options?: object
   ) {
     this.definition = new types.ObjectType();
     this.definition.defineProperty("inputs", new types.ObjectType());
     this.definition.defineProperty("outputs", new types.ObjectType());
     this.label = label || name;
+    this.unlisted = options?.unlisted;
   }
   public pluginName: any;
   public executeAsGenerator: boolean = false;
@@ -189,7 +195,12 @@ export class Operator {
   }
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
-    const operator = new Operator(json.name, json.label, json.description);
+    const operator = new Operator(
+      json.name,
+      json.label,
+      json.description,
+      json
+    );
     operator.executeAsGenerator = json.execute_as_generator;
     operator.pluginName = json.plugin_name;
     operator.definition.addProperty("inputs", types.Property.fromJSON(inputs));
