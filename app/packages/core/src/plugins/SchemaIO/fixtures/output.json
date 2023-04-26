@@ -3,6 +3,38 @@
         "type": {
             "name": "Object",
             "properties": {
+                "linear": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "ProgressView",
+                        "label": "Loading...",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "variant": "linear"
+                    }
+                },
+                "circular": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "ProgressView",
+                        "label": "Loading...",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "variant": "circular"
+                    }
+                },
                 "plot": {
                     "type": {
                         "name": "List",
@@ -502,6 +534,8 @@
         "view": null
     },
     "data": {
+        "linear": 0,
+        "circular": 0,
         "plot": [
             {
                 "x": [1, 2, 3],

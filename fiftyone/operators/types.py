@@ -640,3 +640,12 @@ class MapView(View):
             "key": self.key.to_json() if self.key else None,
             "value": self.value.to_json() if self.value else None,
         }
+
+
+class ProgressView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.variant = kwargs.get("variant", "linear")
+
+    def to_json(self):
+        return {**super().to_json(), "variant": self.variant}
