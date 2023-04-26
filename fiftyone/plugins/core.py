@@ -14,6 +14,7 @@ import shutil
 from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
+from time import time
 from typing import List, Optional
 from urllib.error import HTTPError
 from urllib.request import urlopen
@@ -23,6 +24,7 @@ import eta.core.web as etaw
 import yaml
 
 import fiftyone as fo
+import fiftyone.constants as foc
 import fiftyone.core.config as focc
 import fiftyone.zoo.utils.github as fozug
 
@@ -124,40 +126,50 @@ def _list_disabled_plugins():
         )
 
 
-def delete_plugin(plugin_name, dry_run=False, cleanup=True):
-    """Deletes a downloaded plugin from the local filesystem.
+def delete_plugin(plugin_name, dry_run=False, cleanup=True, limit=None):
+    """Deletes all plugins with the name matching <plugin_name> from the local filesystem.
 
     Args:
         plugin_name: the name of the downloaded plugin
         dry_run: if True, will print the files that will be deleted without actually deleting them
         cleanup: if True, will delete the plugin directory if it is empty after deleting the plugin
     """
-    plugin_dir = find_plugin(plugin_name)
-    if plugin_dir:
-        if dry_run:
-            to_delete = glob.glob(
-                os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True
-            )
-            print(
-                f"Deleting `{plugin_name}` will permanently remove the following files from the filesystem:\n {to_delete}"
-            )
-            return
-        shutil.rmtree(plugin_dir)
-        print(f"Deleted plugin at {plugin_dir}")
-        _cleanup_plugin_dir(plugin_dir)
-        return
-    raise ValueError(f"Plugin directory '{plugin_dir}' does not exist.")
+    deleted = []
+    for plugin_dir in _find_plugin_paths(plugin_name):
+        if limit is not None and len(deleted) >= limit:
+            break
+        if plugin_dir:
+            if dry_run:
+                to_delete = glob.glob(
+                    os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True
+                )
+                logging.info(
+                    f"Deleting `{plugin_name}` will permanently remove the following files from the filesystem:\n {to_delete}"
+                )
+                return
+            shutil.rmtree(plugin_dir)
+            logging.info(f"Deleted plugin at {plugin_dir}")
+            if cleanup:
+                _cleanup_plugin_dir(plugin_dir)
+        deleted.append(plugin_dir)
+    if len(deleted) > 0:
+        logging.info(
+            f"Deleted {len(deleted)} plugins with name `{plugin_name}`:{deleted}"
+        )
+        return deleted
+    logging.warning(
+        f"Nothing to delete. Plugin directory '{plugin_dir}' does not exist."
+    )
 
 
 def _cleanup_plugin_dir(plugin_dir: str, recursive: bool = True):
     if plugin_dir == _PLUGIN_DIRS[0]:
-        print("Done cleaning up plugin directory.")
         return
     plugin_parent_dir = os.path.dirname(plugin_dir)
     if len(glob.glob(os.path.join(plugin_parent_dir, "*"))) == 0:
         if plugin_parent_dir != _PLUGIN_DIRS[0]:
             shutil.rmtree(plugin_parent_dir)
-        print(f"Deleted empty directory {plugin_parent_dir}")
+        logging.info(f"Deleted empty directory {plugin_parent_dir}")
     if recursive:
         return _cleanup_plugin_dir(plugin_parent_dir, recursive=recursive)
 
@@ -255,7 +267,7 @@ def _list_plugins(enabled_only: bool = None) -> list[Optional[plugin_package]]:
     return plugins
 
 
-def find_plugin(name: str) -> Optional[str]:
+def find_plugin(name: str, check_for_duplicates: bool = True) -> Optional[str]:
     """Returns the path to the plugin directory if it exists, None otherwise.
     Raises an error if multiple paths are found.
     Args:
@@ -268,7 +280,7 @@ def find_plugin(name: str) -> Optional[str]:
     if len(plugin_dir) == 1:
         logging.debug(f"Found plugin at {plugin_dir}")
         return plugin_dir[0]
-    elif len(plugin_dir) > 1:
+    elif (len(plugin_dir) > 1) and check_for_duplicates:
         raise ValueError(
             f"Multiple plugins found with name '{name}': {plugin_dir}."
         )
@@ -386,6 +398,10 @@ def _download_and_extract_zip(
 
     try:
         with urlopen(zip_url) as zipresp:
+            if zipresp.info().get("Content-Type") != "application/zip":
+                raise ValueError(
+                    f"File at {zip_url} is not a zip archive. Aborting download."
+                )
             logging.info(f"Attempting to download plugin from {zip_url}...")
             with ZipFile(BytesIO(zipresp.read())) as zfile:
                 logging.debug(f"Files in archive: {zfile.namelist()}")
@@ -422,3 +438,89 @@ def _has_plugin_definition(plugin_files: list) -> bool:
             plugin_files,
         )
     )
+
+
+def create_plugin(
+    plugin_name: str,
+    from_dir: Optional[str] = None,
+    from_files: Optional[list] = None,
+    label: Optional[str] = None,
+    description: Optional[str] = None,
+    overwrite=False,
+    **kwargs,
+) -> None:
+    """Creates a local plugin with the given name and places it in the `<FIFTYONE_PLUGINS_DIR>/local` directory.
+    If no files are specified, only a directory with a plugin definition file will be created.
+
+    Args:
+        plugin_name: the name of the plugin. An error will be raised if a plugin with this name already exists unless overwrite=True
+        from_dir: the path to the directory containing the plugin files
+        from_files: a list of filepaths to include in the plugin
+        overwrite: whether to overwrite the plugin directory if it already exists
+        label: the display name of the plugin
+        description: a description of the plugin
+        **kwargs: optional keyword arguments to include in the plugin definition
+    """
+    if from_dir and from_files:
+        raise ValueError("Cannot specify both from_dir and from_files.")
+    if plugin_name in _list_plugins_by_name(check_for_duplicates=False):
+        if not overwrite:
+            raise ValueError(
+                f"Plugin '{plugin_name}' already exists. Rerun `create` with overwrite=True to overwrite it."
+            )
+        else:
+            deleted_dir = delete_plugin(plugin_name)
+            print(
+                f'Deleted existing plugin with name "{plugin_name}" at {deleted_dir}'
+            )
+
+    plugin_dir = os.path.join(
+        fo.config.plugins_dir,
+        "local",
+        "-".join([plugin_name, str(round(time()))]),
+    )
+    os.makedirs(plugin_dir)
+    if from_dir:
+        if not (os.path.isdir(from_dir) and os.path.exists(from_dir)):
+            raise ValueError(f"'{from_dir}' is not a directory.")
+        from_files = [os.path.join(from_dir, f) for f in os.listdir(from_dir)]
+    if from_files:
+        for fpath in from_files:
+            if not (os.path.isfile(fpath) and os.path.exists(fpath)):
+                raise ValueError(f"'{fpath}' is not a file.")
+            shutil.copytree(fpath, plugin_dir)
+    plugin_definition = {
+        "name": plugin_name,
+        "description": description,
+        "label": label,
+        "fiftyone": {"version": foc.VERSION},
+        **kwargs,
+    }
+    if "fiftyone.yml" not in os.listdir(plugin_dir):
+        yml_path = os.path.join(plugin_dir, "fiftyone.yml")
+        with open(yml_path, "w") as yml_file:
+            yaml.dump(plugin_definition, yml_file)
+    else:
+        with open(os.path.join(plugin_dir, "fiftyone.yml"), "a+") as yml_file:
+            old_yml = yaml.load(yml_file)
+            plugin_definition = defaultdict(dict, old_yml)
+            plugin_definition["name"] = plugin_name
+            plugin_definition["description"] = (
+                description if description else old_yml.get("description", "")
+            )
+            plugin_definition["label"] = (
+                label if label else _label_from_name(plugin_name)
+            )
+            plugin_definition["fiftyone"].update({"version": foc.VERSION})
+            plugin_definition.update(**kwargs)
+            yaml.dump(plugin_definition, yml_file)
+
+    print(f"Created plugin with name `{plugin_name}` at {plugin_dir}")
+    return plugin_dir
+
+
+def _label_from_name(name: str):
+    # replace non-alphanumeric characters with spaces
+    label = re.sub("[^A-Za-z0-9]+", " ", name)
+    # capitalize each word
+    return " ".join([w.capitalize() for w in label.split(" ")])
