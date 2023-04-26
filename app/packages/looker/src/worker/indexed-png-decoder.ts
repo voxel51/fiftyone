@@ -6,8 +6,9 @@ export const indexedPngBufferToRgb = (
   bitDepth: ValidPngBitDepth,
   colorPalette: ColorPalette
 ) => {
+  const inputDataLength = inputData.length;
   const indicesPerByte = 8 / bitDepth;
-  const numIndices = inputData.length * indicesPerByte;
+  const numIndices = inputDataLength * indicesPerByte;
   const resultSize = numIndices * 3;
   const newRgbArray = new Uint8Array(resultSize);
 
@@ -17,7 +18,8 @@ export const indexedPngBufferToRgb = (
   const initialBitMask = ((1 << bitDepth) - 1) << (8 - bitDepth);
 
   // extract color indexes from data based on bit depth
-  for (const byte of inputData) {
+  for (let i = 0; i < inputDataLength; i++) {
+    const byte = inputData[i];
     let currentBitMask = initialBitMask;
     let remainingBits = 8;
 
