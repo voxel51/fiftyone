@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { SchemaIOComponent } from ".";
@@ -34,6 +34,22 @@ function OperatorIO() {
   const ioSchema = operatorToIOSchema(input);
   const output = types.Property.fromJSON(outputSchema);
   const oSchema = operatorToIOSchema(output, { isOutput: true });
+  const [state, setState] = useState(data);
+
+  useEffect(() => {
+    if (mode === "output") {
+      if (state.linear < 100) {
+        setTimeout(() => {
+          setState((state) => ({ ...state, linear: state.linear + 5 }));
+        }, 500);
+      }
+      if (state.circular < 100) {
+        setTimeout(() => {
+          setState((state) => ({ ...state, circular: state.circular + 5 }));
+        }, 500);
+      }
+    }
+  }, [mode, state]);
 
   return (
     <Box sx={{ p: 4 }}>
@@ -55,7 +71,7 @@ function OperatorIO() {
         <SchemaIOComponent schema={ioSchema} onChange={log} />
       )}
       {mode === "output" && (
-        <SchemaIOComponent schema={oSchema} onChange={log} data={data} />
+        <SchemaIOComponent schema={oSchema} onChange={log} data={state} />
       )}
     </Box>
   );
