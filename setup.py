@@ -6,8 +6,12 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import os
-from pkg_resources import DistributionNotFound, get_distribution
 import re
 from setuptools import setup, find_packages
 
@@ -91,10 +95,10 @@ def choose_requirement(mains, secondary):
     for main in mains:
         try:
             name = re.split(r"[!<>=]", main)[0]
-            get_distribution(name)
+            metadata.version(name)
             chosen = main
             break
-        except DistributionNotFound:
+        except metadata.PackageNotFoundError:
             pass
 
     return str(chosen)

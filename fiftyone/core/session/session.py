@@ -7,9 +7,14 @@ Session class for interacting with the FiftyOne App.
 """
 from collections import defaultdict
 from functools import wraps
+
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import logging
-from packaging.version import Version
-import pkg_resources
+from packaging.requirements import Requirement
 import time
 import typing as t
 import webbrowser
@@ -1071,11 +1076,11 @@ def _attach_listeners(session: "Session"):
 
 
 def import_desktop() -> None:
-    """Attempts to import :mod:`fiftyone.desktop`
+    """Imports :mod:`fiftyone.desktop`.
 
     Raises:
-        RuntimeError: If matching ``fiftyone-desktop`` version is not
-        installed
+        RuntimeError: if a matching ``fiftyone-desktop`` version is not
+            installed
     """
     try:
         # pylint: disable=unused-import
@@ -1086,16 +1091,18 @@ def import_desktop() -> None:
             "desktop App"
         ) from e
 
+    fiftyone_dist = metadata.distribution("fiftyone")
+    desktop_dist = metadata.distribution("fiftyone-desktop")
+
     # Get `fiftyone-desktop` requirement for current `fiftyone` install
-    fiftyone_dist = pkg_resources.get_distribution("fiftyone")
-    requirements = fiftyone_dist.requires(extras=["desktop"])
-    desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
+    desktop_req = [
+        req
+        for req in fiftyone_dist.requires
+        if req.startswith("fiftyone-desktop")
+    ][0]
+    desktop_req = Requirement(desktop_req.split(";")[0])
 
-    desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
-
-    if not desktop_req.specifier.contains(
-        Version(desktop_dist.version).base_version
-    ):
+    if not desktop_req.specifier.contains(desktop_dist.version):
         raise RuntimeError(
             "fiftyone==%s requires fiftyone-desktop%s, but you have "
             "fiftyone-desktop==%s installed.\n"
