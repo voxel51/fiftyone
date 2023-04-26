@@ -14,7 +14,6 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import Input from "../Common/Input";
 import { ActionDiv } from "./ActionsRow";
 
 const DynamicGroupContainer = styled.div`
@@ -93,9 +92,11 @@ export const DynamicGroupAction = () => {
 
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
 
-  const useSearchSelector = useCallback(
+  const searchSelector = useCallback(
     (search: string) => {
-      const values = candidateFields.filter((name) => name.includes(search));
+      const values = candidateFields.filter((name) => {
+        return name.includes(search);
+      });
       return { values, total: values.length };
     },
     [candidateFields]
@@ -132,7 +133,7 @@ export const DynamicGroupAction = () => {
               resultsPlacement="center"
               overflow={true}
               placeholder={"group by"}
-              useSearch={useSearchSelector}
+              useSearch={searchSelector}
               value={groupBy ?? ""}
             />
             <TabOption
@@ -163,7 +164,7 @@ export const DynamicGroupAction = () => {
                 resultsPlacement="center"
                 overflow={true}
                 placeholder={"order by"}
-                useSearch={useSearchSelector}
+                useSearch={searchSelector}
                 value={orderBy ?? ""}
               />
             )}
