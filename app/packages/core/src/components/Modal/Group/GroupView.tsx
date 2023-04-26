@@ -52,7 +52,6 @@ export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
   return (
     <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
-      {subBar ?? subBar}
       <div className={mainGroup}>
         {(isCarouselVisible || isImageVisible) && (
           <Resizable
@@ -106,6 +105,7 @@ export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
 
         {!shouldSplitVertically && is3DVisible && <GroupSample3d />}
       </div>
+      {subBar ?? subBar}
     </div>
   );
 };

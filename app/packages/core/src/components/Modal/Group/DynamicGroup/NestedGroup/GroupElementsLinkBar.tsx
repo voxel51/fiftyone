@@ -1,6 +1,13 @@
+import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
-import React, { ChangeEventHandler, useCallback, useState } from "react";
+import React, {
+  ChangeEventHandler,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { usePaginationFragment } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { useGroupContext } from "../../GroupContextProvider";
@@ -16,40 +23,74 @@ const BarContainer = styled.div`
   }
 `;
 
-const IntraDynamicGroupElementLink = styled.button`
-  color: var(--joy-palette-primary-plainColor);
-  border: none;
-  background: transparent;
-  text-decoration: underline;
-  cursor: pointer;
-
-  &:hover {
-    text-decoration: none;
-  }
-`;
-
-export const GroupElementsLinkBar = () => {
+export const GroupElementsLinkBar = React.memo(() => {
+  const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
   const { groupByFieldValue } = useGroupContext();
+
+  const atomFamilyKey = `${groupBy}-${orderBy}-${groupByFieldValue!}`;
+
+  const [dynamicGroupSamplesStoreMap, setDynamicGroupSamplesStoreMap] =
+    useRecoilState(fos.dynamicGroupSamplesStoreMap(atomFamilyKey));
+
   // const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
-  // const { data, hasNext, loadNext } = usePaginationFragment(
-  //   foq.paginateGroupPaginationFragment,
-  //   useRecoilValue(fos.dynamicGroupPaginationFragment(groupByFieldValue!))
-  // );
+  const { data, hasNext, loadNext } = usePaginationFragment(
+    foq.paginateGroupPaginationFragment,
+    useRecoilValue(
+      fos.dynamicGroupPaginationFragment({
+        fieldOrExpression: groupByFieldValue!,
+      })
+    )
+  );
+
+  useEffect(() => {
+    if (!data?.samples?.edges?.length) {
+      return;
+    }
+
+    setDynamicGroupSamplesStoreMap((prev) => {
+      const newMap = new Map(prev);
+
+      for (const { cursor, node } of data.samples.edges) {
+        newMap.set(Number(cursor), node as unknown as fos.SampleData);
+      }
+
+      return newMap;
+    });
+  }, [data, setDynamicGroupSamplesStoreMap]);
+
+  const setSample = fos.useSetExpandedSample(false);
 
   const [dynamicGroupCurrentElementIndex, setDynamicGroupCurrentElementIndex] =
-    useRecoilState(fos.dynamicGroupCurrentElementIndex);
+    useRecoilState(fos.dynamicGroupCurrentElementIndex(atomFamilyKey));
 
-  const elementsCount = useRecoilValue(
-    fos.dynamicGroupsElementCount({ groupByValue: groupByFieldValue! })
-  );
+  const elementsCount = 100; //useRecoilValue( fos.dynamicGroupsElementCount({ groupByValue: groupByFieldValue! }));
 
   const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
 
+  const handleChange = useCallback(
+    (newElementIndex: number) => {
+      // subtract 1 because the index is 1-based
+      const nextSample = dynamicGroupSamplesStoreMap.get(newElementIndex - 1);
+      if (nextSample) {
+        setSample(nextSample);
+      } else {
+        // loadNext(1);
+        throw new Error("Not implemented");
+      }
+    },
+    [setSample, dynamicGroupSamplesStoreMap]
+  );
+
   const onPageChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>, newElementIndex: number) => {
+      if (newElementIndex === dynamicGroupCurrentElementIndex) {
+        return;
+      }
+
       if (newElementIndex) {
         setIsTextBoxEmpty(false);
         setDynamicGroupCurrentElementIndex(newElementIndex);
+        handleChange(newElementIndex);
       } else {
         setDynamicGroupCurrentElementIndex((prev) => {
           setIsTextBoxEmpty(false);
@@ -71,9 +112,15 @@ export const GroupElementsLinkBar = () => {
           }
           return newValueNum;
         });
+        handleChange(newElementIndex);
       }
     },
-    [setDynamicGroupCurrentElementIndex, elementsCount]
+    [
+      setDynamicGroupCurrentElementIndex,
+      handleChange,
+      dynamicGroupCurrentElementIndex,
+      elementsCount,
+    ]
   );
 
   // const samples = useMemo(() => {
@@ -112,4 +159,4 @@ export const GroupElementsLinkBar = () => {
       )}
     </BarContainer>
   );
-};
+});

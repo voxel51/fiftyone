@@ -2,6 +2,9 @@ import {
   mainSample,
   mainSampleQuery$data,
   mainSampleQuery as mainSampleQueryGraphQL,
+  paginateDynamicGroupSampleIds,
+  paginateDynamicGroupSampleIdsPageQuery,
+  paginateDynamicGroupSampleIdsQuery,
   paginateGroup,
   paginateGroupQuery,
   paginateGroup_query$key,
@@ -23,6 +26,7 @@ import {
   refresher,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
+import { fieldSchema } from "./schema";
 import { datasetName } from "./selectors";
 import { dynamicGroupViewQuery, view } from "./view";
 
@@ -226,6 +230,23 @@ export const groupQuery = graphQLSelector<
   },
 });
 
+export const dynamicGroupCandidateFields = selector<string[]>({
+  key: "dynamicGroupFields",
+  get: ({ get }) => {
+    const fieldSchemaValue = get(fieldSchema({ space: null }));
+    return Object.entries(fieldSchemaValue)
+      .filter(
+        ([_, { name, ftype }]) =>
+          name !== "filepath" &&
+          name !== "id" &&
+          (ftype === "fiftyone.core.fields.IntField" ||
+            ftype === "fiftyone.core.fields.FloatField" ||
+            ftype === "fiftyone.core.fields.StringField")
+      )
+      .map(([_, { name }]) => name);
+  },
+});
+
 export const dynamicGroupQuery = graphQLSelectorFamily<
   VariablesOf<paginateGroupQuery>,
   string,
@@ -235,6 +256,26 @@ export const dynamicGroupQuery = graphQLSelectorFamily<
   environment: RelayEnvironmentKey,
   mapResponse: (response) => response,
   query: paginateGroup,
+  variables:
+    (fieldOrExpression) =>
+    ({ get }) => {
+      return {
+        dataset: get(datasetName),
+        filter: {},
+        view: get(dynamicGroupViewQuery(fieldOrExpression)),
+      };
+    },
+});
+
+export const dynamicGroupIdsQuery = graphQLSelectorFamily<
+  VariablesOf<paginateDynamicGroupSampleIdsPageQuery>,
+  string,
+  ResponseFrom<paginateDynamicGroupSampleIdsQuery>
+>({
+  key: "dynamicGroupIdsQuery",
+  environment: RelayEnvironmentKey,
+  mapResponse: (response) => response,
+  query: paginateDynamicGroupSampleIds,
   variables:
     (fieldOrExpression) =>
     ({ get }) => {
@@ -296,14 +337,25 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
   get: ({ get }) => get(groupQuery),
 });
 
+export const dynamicGroupSamplesStoreMap = atomFamily<
+  Map<number, SampleData>,
+  string
+>({
+  key: "dynamicGroupSamplesStoreMap",
+  default: new Map<number, SampleData>(),
+});
+
 export const dynamicGroupPaginationFragment = selectorFamily<
   paginateGroup_query$key,
-  string
+  { fieldOrExpression: string; fetchIdsOnly?: boolean }
 >({
   key: "dynamicGroupPaginationFragment",
   get:
-    (fieldOrExpression) =>
+    ({ fieldOrExpression, fetchIdsOnly = false }) =>
     ({ get }) => {
+      if (fetchIdsOnly) {
+        return get(dynamicGroupIdsQuery(fieldOrExpression));
+      }
       return get(dynamicGroupQuery(fieldOrExpression));
     },
   cachePolicy_UNSTABLE: {

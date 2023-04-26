@@ -1,4 +1,4 @@
-import { atom, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 
 import { Stage } from "@fiftyone/utilities";
 import { State } from "./types";
@@ -36,6 +36,7 @@ const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
 export const GROUP_BY_VIEW_STAGE = "fiftyone.core.stages.GroupBy";
 export const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
+export const SORT_VIEW_STAGE = "fiftyone.core.stages.SortBy";
 
 enum ELEMENT_NAMES {
   CLIP = "clip",
@@ -134,7 +135,7 @@ export const isFramesView = selector<boolean>({
   },
 });
 
-export const dynamicGroupCurrentElementIndex = atom<number>({
+export const dynamicGroupCurrentElementIndex = atomFamily<number, string>({
   key: "dynamicGroupCurrentElementIndex",
   default: 1,
 });
@@ -182,7 +183,7 @@ export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
       // todo: sanitize expressions
       const groupBySanitized = getSanitizedGroupByExpression(groupBy);
 
-      return [
+      const viewStages = [
         {
           _cls: MATCH_VIEW_STAGE,
           kwargs: [
@@ -209,6 +210,18 @@ export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
           ],
         },
       ];
+
+      if (orderBy?.length) {
+        viewStages.push({
+          _cls: SORT_VIEW_STAGE,
+          kwargs: [
+            ["field_or_expr", orderBy],
+            ["reverse", false],
+          ],
+        });
+      }
+
+      return viewStages;
     },
 });
 
