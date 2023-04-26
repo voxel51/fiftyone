@@ -70,8 +70,6 @@ export default class Flashlight<K> {
 
     document.addEventListener("visibilitychange", () => this.render());
 
-    console.log("in constructor");
-
     if (config.enableKeyNavigation) {
       const keyDownEventListener = (e) => {
         if (!this.isAttached()) {

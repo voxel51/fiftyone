@@ -167,9 +167,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
         const nextSample = store.samples.get(nextSampleId);
         nextSample && setSample(nextSample);
 
-        console.log("current sample inde is ", currentSampleIndex);
-
-        // todo: temp ideation
+        // todo: very unstable, just ideating auto scroll based on quickstart groups params
         if (flashlightRef.current) {
           const newLeft = isPrevious
             ? flashlightRef.current?.element.scrollLeft - 325 * 3
@@ -193,8 +191,8 @@ export const DynamicGroupsFlashlightWrapper = () => {
       elementId: DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID,
       enableKeyNavigation: {
         navigationCallback,
-        previousKey: "[",
-        nextKey: "]",
+        previousKey: "<",
+        nextKey: ">",
       },
       initialRequestKey: 0,
       onItemClick: (next, id, items) => {
@@ -289,25 +287,6 @@ export const DynamicGroupsFlashlightWrapper = () => {
     useRecoilValue(fos.modal),
     useRecoilValue(fos.selectedSamples),
   ]);
-
-  // const groupNavigationHandler = useCallback((e: KeyboardEvent) => {
-  //   const active = document.activeElement;
-  //   if (active?.tagName === "INPUT") {
-  //     if ((active as HTMLInputElement).type === "text") {
-  //       return;
-  //     }
-  //   }
-
-  //   if (e.key === "[") {
-  //     console.log("next");
-  //     // loadNext();
-  //   } else if (e.key === "]") {
-  //     //
-  //     console.log("previous");
-  //   }
-  // }, []);
-
-  // useEventHandler(document, "keydown", groupNavigationHandler);
 
   return (
     <div

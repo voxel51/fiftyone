@@ -234,6 +234,7 @@ export const dynamicGroupCandidateFields = selector<string[]>({
   key: "dynamicGroupFields",
   get: ({ get }) => {
     const fieldSchemaValue = get(fieldSchema({ space: null }));
+
     return Object.entries(fieldSchemaValue)
       .filter(
         ([_, { name, ftype }]) =>
@@ -241,7 +242,9 @@ export const dynamicGroupCandidateFields = selector<string[]>({
           name !== "id" &&
           (ftype === "fiftyone.core.fields.IntField" ||
             ftype === "fiftyone.core.fields.FloatField" ||
-            ftype === "fiftyone.core.fields.StringField")
+            ftype === "fiftyone.core.fields.StringField" ||
+            ftype === "fiftyone.core.fields.FrameNumberField" ||
+            ftype === "fiftyone.core.fields.ObjectIdField")
       )
       .map(([_, { name }]) => name);
   },
@@ -342,6 +345,7 @@ export const dynamicGroupSamplesStoreMap = atomFamily<
   string
 >({
   key: "dynamicGroupSamplesStoreMap",
+  // todo: use map with LRU cache
   default: new Map<number, SampleData>(),
 });
 

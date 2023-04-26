@@ -17,6 +17,7 @@ const BarContainer = styled.div`
   margin: 0.5em;
   display: flex;
   align-items: center;
+  justify-content: center;
 
   & input::before {
     content: none;
@@ -63,7 +64,9 @@ export const GroupElementsLinkBar = React.memo(() => {
   const [dynamicGroupCurrentElementIndex, setDynamicGroupCurrentElementIndex] =
     useRecoilState(fos.dynamicGroupCurrentElementIndex(atomFamilyKey));
 
-  const elementsCount = 100; //useRecoilValue( fos.dynamicGroupsElementCount({ groupByValue: groupByFieldValue! }));
+  const elementsCount = useRecoilValue(
+    fos.dynamicGroupsElementCount({ groupByValue: groupByFieldValue! })
+  );
 
   const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
 
@@ -74,6 +77,7 @@ export const GroupElementsLinkBar = React.memo(() => {
       if (nextSample) {
         setSample(nextSample);
       } else {
+        // todo: load
         // loadNext(1);
         throw new Error("Not implemented");
       }
@@ -123,23 +127,13 @@ export const GroupElementsLinkBar = React.memo(() => {
     ]
   );
 
-  // const samples = useMemo(() => {
-  //   if (!data) {
-  //     return [];
-  //   }
-
-  //   const hasNext_ = hasNext;
-  //   const groupByFieldValue_ = groupByFieldValue;
-
-  //   debugger;
-  //   return [];
-  // }, [data, hasNext, groupByFieldValue]);
-
   return (
     <BarContainer>
       {/* note: pagination renders in contracted form when >= 10 elements */}
       <Pagination
         count={elementsCount}
+        siblingCount={2}
+        boundaryCount={2}
         page={dynamicGroupCurrentElementIndex}
         onChange={onPageChange as PaginationProps["onChange"]}
         shape="rounded"
