@@ -96,7 +96,6 @@ interface BaseField {
   path: string | null;
   searchField: string | null;
   visible: boolean | null;
-  isLeaf?: boolean;
 }
 
 export interface StrictField extends BaseField {

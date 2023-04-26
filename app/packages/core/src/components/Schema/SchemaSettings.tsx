@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { Box } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
-import { useTheme } from "@fiftyone/components";
+import { useTheme, Button } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
 import useSchemaSettings, {
@@ -65,6 +65,8 @@ const SchemaSettings = (props: Props) => {
     originalSelectedPaths,
     setSelectedPaths,
     selectedTab,
+    finalSelectedPaths,
+    setView,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -146,6 +148,58 @@ const SchemaSettings = (props: Props) => {
             />
           )}
           {selectedTab === TAG_OPTIONS_MAP.SELECTION && <SchemaSelection />}
+          <Box
+            style={{
+              position: "relative",
+              display: "flex",
+              padding: "1rem 0.25rem",
+            }}
+          >
+            <Button
+              style={{
+                color: theme.text.primary,
+                marginRight: "0.5rem",
+                boxShadow: "none",
+                padding: "0.25rem 0.5rem",
+                borderRadius: "4px",
+              }}
+              onClick={() => {
+                const stageKwargs = [
+                  ["field_names", [...finalSelectedPaths]],
+                  ["_allow_missing", true],
+                ];
+                const stageCls = "fiftyone.core.stages.SelectFields";
+                const stage = {
+                  _cls: stageCls,
+                  kwargs: stageKwargs,
+                } as Stage;
+                try {
+                  setView([stage]);
+                } catch (e) {
+                  console.log("error", e);
+                } finally {
+                  setSettingsModal({ open: false });
+                }
+              }}
+            >
+              Add to view
+            </Button>
+            <Button
+              style={{
+                color: theme.text.primary,
+                boxShadow: "none",
+                padding: "0.25rem 0.5rem",
+                borderRadius: "4px",
+              }}
+              onClick={() => {
+                setSettingsModal({ open: false });
+                setSearchTerm("");
+                setSelectedPaths(originalSelectedPaths);
+              }}
+            >
+              cancel
+            </Button>
+          </Box>
         </Container>
       </ModalWrapper>
     </Fragment>

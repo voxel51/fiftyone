@@ -2,11 +2,15 @@ import { useRecoilState, atom, useRecoilValue, atomFamily } from "recoil";
 import * as fos from "@fiftyone/state";
 import { buildSchema, useSetView } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
+import { StrictField } from "@fiftyone/utilities";
 
-// TODO: move schemaSettings attom here
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
   default: "",
+});
+export const schemaSearchRestuls = atom<StrictField[]>({
+  key: "schemaSearchRestuls",
+  default: [],
 });
 export const schemaFiledsOnly = atom<boolean>({
   key: "schemaFiledsOnly",
@@ -49,6 +53,7 @@ export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
 
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
+  const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
   const dataset = useRecoilValue(fos.dataset);
   const schema = dataset ? buildSchema(dataset, true) : null;
@@ -278,5 +283,7 @@ export default function useSchemaSettings() {
     finalSelectedPaths,
     allFieldsChecked,
     setAllFieldsChecked: setAllFieldsCheckedWra,
+    searchResults,
+    setSearchResults,
   };
 }
