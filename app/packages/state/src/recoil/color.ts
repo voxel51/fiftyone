@@ -20,7 +20,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(atoms.sessionColorScheme).colorPool || get(colorPalette);
+      const pool = get(colorPalette);
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,

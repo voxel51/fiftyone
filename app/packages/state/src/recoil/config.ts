@@ -39,7 +39,10 @@ export const colorPalette = atom<string[]>({
   default: selector({
     key: "initial",
     get: ({ get }) => {
-      return get(sessionColorScheme).colorPool || (get(colorPool) as string[]);
+      const sessionColors = get(sessionColorScheme).colorPool;
+      return sessionColors && sessionColors.length > 0
+        ? sessionColors
+        : (get(colorPool) as string[]);
     },
   }),
 });
