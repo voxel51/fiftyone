@@ -128,7 +128,6 @@ def mock_plugin_package_name(plugin_name, plugin_path):
 
 
 def test_find_plugin_error_duplicate_name(fiftyone_plugins_dir):
-    # with patch("fiftyone.plugins.core.plugin_package") as mock:
     plugin_name = "test-plugin1-name"
     m = mock.Mock(spec=fop.core.plugin_package(plugin_name, "path/to/plugin"))
 
