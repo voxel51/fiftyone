@@ -14,14 +14,13 @@ import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { cloneDeep } from "lodash";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPalette);
+      const pool = get(atoms.sessionColorScheme).colorPool || get(colorPalette);
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,
