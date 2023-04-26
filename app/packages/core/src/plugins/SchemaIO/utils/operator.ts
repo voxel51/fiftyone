@@ -41,6 +41,7 @@ const componentByView = {
   OneOfView: "OneOfView",
   PlotlyView: "PlotlyView",
   PrimitiveView: "PrimitiveView",
+  ProgressView: "ProgressView",
   RadioView: "RadioView",
   SliderView: "SliderView",
   SwitchView: "SwitchView",
