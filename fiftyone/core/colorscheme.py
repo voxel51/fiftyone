@@ -34,7 +34,8 @@ class ColorScheme(object):
 
     # TODO
     def from_dict(self, color_scheme):
-        return {}
+        """Construct a Color Class from a dict"""
+        return ColorScheme(color_scheme)
 
     def to_json(self, pretty_print=False):
         """Serializes the document to a JSON string.

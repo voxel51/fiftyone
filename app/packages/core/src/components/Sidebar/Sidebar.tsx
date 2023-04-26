@@ -687,12 +687,8 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
-
   const sessionColor = useRecoilValue(fos.sessionColorScheme);
-  const [sessionColorPool, sessionCustomizedColors, setColorScheme] =
-    fos.useSessionColorScheme();
-  console.info("sessionColorSchemeAtom", sessionColor);
-  console.info("sessionCustomizedColors", sessionCustomizedColors);
+  console.info(sessionColor);
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}

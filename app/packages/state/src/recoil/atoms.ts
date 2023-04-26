@@ -1,15 +1,10 @@
-import {
-  atom,
-  atomFamily,
-  selector,
-  selectorFamily,
-  useRecoilCallback,
-} from "recoil";
+import { atom, atomFamily, selector, useRecoilCallback } from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
 import { Field } from "@fiftyone/utilities";
+import { colorPool } from "./config";
 
 export interface AppSample extends Sample {
   _id: string;

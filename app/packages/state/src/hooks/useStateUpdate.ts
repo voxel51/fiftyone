@@ -28,11 +28,12 @@ import {
   _activeFields,
   sessionColorScheme,
   ColorScheme,
-  ColorSetting,
+  colorPool,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
 import { collapseFields, viewsAreEqual } from "../utils";
+import { cloneDeep } from "lodash";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -152,6 +153,9 @@ const useStateUpdate = (ignoreSpaces = false) => {
 
         if (state?.colorScheme && typeof state?.colorScheme === "string") {
           const setting = JSON.parse(JSON.parse(state?.colorScheme));
+          if (!setting.colorPool || setting.colorPool.length == 0) {
+            setting.colorPool = cloneDeep(get(colorPool));
+          }
           set(sessionColorScheme, setting as ColorScheme);
         }
 

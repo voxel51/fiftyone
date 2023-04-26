@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 
 import * as fos from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
@@ -18,7 +13,6 @@ import {
   useCancel,
   validateJSONSetting,
 } from "./utils";
-import { CustomizeColor } from "@fiftyone/state";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { ModalActionButtonContainer, BUTTON_STYLE } from "./ShareStyledDiv";
 
@@ -30,8 +24,7 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   const [sessionColorSchemeState, setSessionColorSchemeState] = useRecoilState(
     fos.sessionColorScheme
   );
-  const [sessionColorPool, sessionCustomizedColors, setColorScheme] =
-    fos.useSessionColorScheme();
+  const setColorScheme = fos.useSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
@@ -107,21 +100,23 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       )
         return;
       const { colorPool, customizedColorSettings } = json;
-      // update color palette
       const validColors = colorPool?.filter((c) => isValidColor(c));
-      validColors.length > 0 && setColoring(validColors);
-      // validate customizedColorSettings
       const validated = validateJSONSetting(
         customizedColorSettings,
         eligibleFields
       );
-      if (validated) {
-        setSessionColorSchemeState((prev) => ({
-          colorPool: validColors,
-          customizedColorSettings: validated ?? prev.customizedColorSettings,
-        }));
-        setColorScheme(validColors, validated);
-      }
+      const newColors =
+        validColors.length > 0
+          ? validColors
+          : sessionColorSchemeState.colorPool;
+      const newCustomizedColorSettings =
+        validated ?? sessionColorSchemeState.customizedColorSettings;
+      setColoring(newColors);
+      setSessionColorSchemeState({
+        colorPool: newColors,
+        customizedColorSettings: newCustomizedColorSettings,
+      });
+      setColorScheme(newColors, newCustomizedColorSettings);
     }
   };
 

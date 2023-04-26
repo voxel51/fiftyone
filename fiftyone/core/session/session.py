@@ -598,7 +598,7 @@ class Session(object):
                 "`Session.color_scheme` must be a %s or None; found %s"
                 % (ColorScheme, type(color_scheme))
             )
-
+        print("session setter", color_scheme)
         self._state.color_scheme = color_scheme
 
     @property
@@ -1092,8 +1092,8 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("close_session", on_close_session)
 
-    on_state_update: t.Callable[[StateUpdate], None] = lambda event: setattr(
-        session, "_state", event.state
+    on_state_update: t.Callable[[StateUpdate], None] = lambda event: (
+        setattr(session, "_state", event.state),
     )
     session._client.add_event_listener("state_update", on_state_update)
 
