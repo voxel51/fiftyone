@@ -30,6 +30,9 @@ export class ObjectType extends BaseType {
   getPropertyList() {
     return Array.from(this.properties.values());
   }
+  obj(name, options: any = {}) {
+    return this.defineProperty(name, new ObjectType(), options);
+  }
   str(name, options: any = {}) {
     return this.defineProperty(name, new String(), options);
   }
@@ -53,17 +56,7 @@ export class ObjectType extends BaseType {
       k,
       Property.fromJSON(v),
     ]);
-    const type = new ObjectType(new Map(entries));
-    type._needsResolution = json.needsResolution;
-    return type;
-  }
-  public _needsResolution = false;
-  needsResolution() {
-    const propertiesValues = Array.from(this.properties.values());
-    return this._needsResolution || propertiesValues.some((p) => p.hasResolver);
-  }
-  dynamic() {
-    this._needsResolution = true;
+    return new ObjectType(new Map(entries));
   }
 }
 export class Property {
@@ -73,7 +66,6 @@ export class Property {
     this.required = options?.required;
     this.choices = options?.choices;
     this.view = options?.view;
-    this._hasResolver = options?.hasResolver;
   }
   type: ANY_TYPE;
   description: string;
@@ -82,13 +74,6 @@ export class Property {
   choices: any;
   view: any;
 
-  get hasResolver() {
-    return (
-      this._hasResolver ||
-      typeof this.resolver === "function" ||
-      this.type.hasResolver
-    );
-  }
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: any) {
     return new Property(typeFromJSON(json.type), json);
