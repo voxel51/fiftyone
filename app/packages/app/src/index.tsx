@@ -13,7 +13,6 @@ const App: React.FC = () => {
   const { context, environment } = useRouter();
 
   const plugins = usePlugins();
-
   if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
   if (plugins.hasError) return <Loading>Plugin error...</Loading>;
 

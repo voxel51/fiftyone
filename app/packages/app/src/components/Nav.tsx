@@ -21,11 +21,11 @@ import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import ga from "../ga";
 import useRefresh from "../useRefresh";
-import DatasetSelector from "./DatasetSelector";
-import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
 import { NavGA$key } from "./__generated__/NavGA.graphql";
+import DatasetSelector from "./DatasetSelector";
+import Teams from "./Teams";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -122,7 +122,7 @@ const Nav: React.FC<{
     `,
     fragment
   );
-  //useGA(data);
+  useGA(data);
   const useSearch = getUseSearch(data);
 
   const [teams, setTeams] = useRecoilState(fos.appTeamsIsOpen);
