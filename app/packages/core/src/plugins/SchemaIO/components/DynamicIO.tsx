@@ -1,9 +1,11 @@
 import React, { useEffect } from "react";
 import { getComponent } from "../utils";
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 
 export default function DynamicIO(props) {
   const { schema, onChange, path, data, errors } = props;
-  const Component = getComponent(schema);
+  const customComponents = useCustomComponents();
+  const Component = getComponent(schema, customComponents);
 
   // todo: need to improve initializing default value in state
   useEffect(() => {
@@ -19,4 +21,14 @@ export default function DynamicIO(props) {
       errors={errors}
     />
   );
+}
+
+function useCustomComponents() {
+  const pluginComponents =
+    useActivePlugins(PluginComponentType.Component, {}) || [];
+
+  return pluginComponents.reduce((componentsByName, component) => {
+    componentsByName[component.name] = component.component;
+    return componentsByName;
+  }, {});
 }

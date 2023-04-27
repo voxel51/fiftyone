@@ -1,4 +1,4 @@
-const componentsByType = {
+const inputComponentsByType = {
   ObjectType: "ObjectView",
   Boolean: "CheckboxView",
   String: "FieldView",
@@ -8,7 +8,17 @@ const componentsByType = {
   Tuple: "TupleView",
   MapType: "MapView",
 };
-const componentByView = {
+const outputComponentsByType = {
+  ObjectType: "ObjectView",
+  Boolean: "LabelValueView",
+  String: "LabelValueView",
+  Number: "LabelValueView",
+  List: "ListView",
+  OneOf: "OneOfView",
+  Tuple: "TupleView",
+};
+const baseViews = ["View"];
+const viewAliases = {
   Button: "ButtonView",
   Dropdown: "DropdownView",
   Error: "AlertView",
@@ -17,42 +27,8 @@ const componentByView = {
   RadioGroup: "RadioView",
   Success: "AlertView",
   Warning: "AlertView",
-  AlertView: "AlertView",
-  AutocompleteView: "AutocompleteView",
-  ButtonView: "ButtonView",
-  CheckboxView: "CheckboxView",
-  CodeView: "CodeView",
-  ColorView: "ColorView",
-  DropdownView: "DropdownView",
-  FieldView: "FieldView",
-  FileView: "FileView",
-  HeaderView: "HeaderView",
-  HiddenView: "HiddenView",
-  ImageView: "ImageView",
-  InferredView: "InferredView",
-  JSONView: "JSONView",
-  KeyValueView: "KeyValueView",
-  LabelValueView: "LabelValueView",
-  LinkView: "LinkView",
-  ListView: "ListView",
-  LoadingView: "LoadingView",
-  MapView: "MapView",
-  ObjectView: "ObjectView",
-  OneOfView: "OneOfView",
-  PlotlyView: "PlotlyView",
-  PrimitiveView: "PrimitiveView",
-  ProgressView: "ProgressView",
-  RadioView: "RadioView",
-  SliderView: "SliderView",
-  SwitchView: "SwitchView",
-  TableView: "TableView",
-  TabsView: "TabsView",
-  TagsView: "TagsView",
-  TextFieldView: "TextFieldView",
-  TuplesView: "TuplesView",
-  UnsupportedView: "UnsupportedView",
 };
-const typeMap = {
+const operatorTypeToJSONSchemaType = {
   ObjectType: "object",
   Enum: "string",
   Boolean: "boolean",
@@ -64,16 +40,6 @@ const typeMap = {
   MapType: "object",
 };
 const unsupportedView = "UnsupportedView";
-
-const outputComponentByType = {
-  ObjectType: "ObjectView",
-  Boolean: "LabelValueView",
-  String: "LabelValueView",
-  Number: "LabelValueView",
-  List: "ListView",
-  OneOf: "OneOfView",
-  Tuple: "TupleView",
-};
 
 const primitiveOperatorTypes = ["Boolean", "String", "Number"];
 
@@ -90,14 +56,14 @@ function getComponent(property, options) {
 
 function getComponentByType(property, options) {
   const typeName = getTypeName(property);
-  const component = componentsByType[typeName];
+  const component = inputComponentsByType[typeName];
   if (options?.isOutput) return getOutputComponent(property, options);
   return component;
 }
 
 function getOutputComponent(property, options) {
   const typeName = getTypeName(property);
-  const component = outputComponentByType[typeName];
+  const component = outputComponentsByType[typeName];
   if (typeName === "List") {
     const elementTypeName = getTypeName({ type: property.type.elementType });
     const isPrimitive = primitiveOperatorTypes.includes(elementTypeName);
@@ -108,15 +74,19 @@ function getOutputComponent(property, options) {
 
 function getComponentByView(property) {
   const view = getViewSchema(property) || {};
-  const SpecifiedComponent = componentByView[view.name];
-  if (SpecifiedComponent) return SpecifiedComponent;
-  if (Array.isArray(view.choices)) return "DropdownView";
+  const viewComponentName = view.name;
+  if (viewComponentName && !baseViews.includes(viewComponentName)) {
+    return viewAliases[viewComponentName] || viewComponentName;
+  }
+  if (Array.isArray(view.choices)) {
+    return "DropdownView";
+  }
 }
 
 function getSchema(property, options?) {
   const { defaultValue, required } = property;
   const typeName = getTypeName(property);
-  const type = typeMap[typeName];
+  const type = operatorTypeToJSONSchemaType[typeName];
   const schema = {
     type,
     view: { readOnly: options?.isOutput, ...getViewSchema(property) },
@@ -196,4 +166,10 @@ export function getErrorsByPath(errors: []) {
     pathErrors[path].push(error);
     return pathErrors;
   }, {});
+}
+
+export function log(...args) {
+  console.groupCollapsed(">>>", ...args);
+  console.trace();
+  console.groupEnd();
 }
