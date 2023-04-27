@@ -14,9 +14,11 @@ export function getPath(basePath, propertyKey) {
   return computedPath;
 }
 
-export function getComponent(schema) {
+export function getComponent(schema, customComponents?: object) {
   const { component } = schema?.view || {};
-  return components[component] || UnsupportedView;
+  return (
+    customComponents?.[component] || components[component] || UnsupportedView
+  );
 }
 
 // add map,tuple,oneof support
@@ -31,5 +33,4 @@ export function getEmptyValue(schema) {
   return emptyValuesByType[itemsType];
 }
 
-export { operatorToIOSchema } from "./operator";
 export * from "./generate-schema";
