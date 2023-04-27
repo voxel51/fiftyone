@@ -33,4 +33,11 @@ export function getEmptyValue(schema) {
   return emptyValuesByType[itemsType];
 }
 
+export function getErrorsForView(props) {
+  const { errors, path } = props;
+
+  const errorsForView = errors?.[path];
+  return Array.isArray(errorsForView) ? errorsForView : [];
+}
+
 export * from "./generate-schema";

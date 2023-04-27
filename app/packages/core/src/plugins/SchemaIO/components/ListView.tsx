@@ -2,12 +2,12 @@ import { Add, Delete } from "@mui/icons-material";
 import { Avatar, Box, Grid, IconButton } from "@mui/material";
 import { set } from "lodash";
 import React, { useEffect, useState } from "react";
+import { getEmptyValue } from "../utils";
 import Accordion from "./Accordion";
 import Button from "./Button";
 import DynamicIO from "./DynamicIO";
 import EmptyState from "./EmptyState";
-import Header from "./Header";
-import { getEmptyValue } from "../utils";
+import HeaderView from "./HeaderView";
 
 export default function ListView(props) {
   const { schema, onChange, path, data, errors } = props;
@@ -29,8 +29,8 @@ export default function ListView(props) {
 
   return (
     <Box>
-      <Header
-        {...view}
+      <HeaderView
+        {...props}
         divider
         Actions={
           !readOnly && (

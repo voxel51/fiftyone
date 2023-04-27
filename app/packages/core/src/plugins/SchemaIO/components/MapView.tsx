@@ -27,9 +27,10 @@ export default function MapView(props) {
         view: { ...view, hideIndexLabel: true },
       }}
       data={getFormattedValue(data)}
-      onChange={(_, value) => {
+      onChange={(path, value) => {
         onChange(path, getActualValue(value));
       }}
+      path={path}
       errors={errors}
     />
   );
