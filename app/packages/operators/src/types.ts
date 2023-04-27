@@ -331,4 +331,10 @@ export enum Places {
   DISPLAY_OPTIONS = "display-options",
 }
 
+export class JSONView extends View {
+  static fromJSON(json) {
+    return new JSONView(json);
+  }
+}
+
 export type ANY_TYPE = String | Boolean | Number | List | Enum;
