@@ -1,8 +1,8 @@
 import { Box, Tab, Tabs } from "@mui/material";
 import React, { useState } from "react";
-import Header from "./Header";
-import HelpTooltip from "./HelpTooltip";
+import { HeaderView } from ".";
 import DynamicIO from "./DynamicIO";
+import HelpTooltip from "./HelpTooltip";
 
 export default function OneOfView(props) {
   const { schema, path, onChange, data, errors } = props;
@@ -12,7 +12,7 @@ export default function OneOfView(props) {
 
   return (
     <Box>
-      <Header {...view} />
+      <HeaderView {...props} />
       <Tabs
         value={tab}
         onChange={(e, tab) => {
