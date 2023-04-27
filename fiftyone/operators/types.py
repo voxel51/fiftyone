@@ -172,6 +172,8 @@ class Property(BaseType):
             "default": self.default,
             "required": self.required,
             "choices": self.choices,
+            "invalid": self.invalid,
+            "error_message": self.error_message,
             "view": self.view.to_json() if self.view else None,
         }
 
