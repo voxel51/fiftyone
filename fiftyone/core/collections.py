@@ -3575,7 +3575,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeBy(field, values))
 
     @view_stage
-    def exclude_fields(self, field_names, _allow_missing=False):
+    def exclude_fields(
+        self, field_names, meta_filter=None, _allow_missing=False
+    ):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -3633,7 +3635,11 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+            fos.ExcludeFields(
+                field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -5431,7 +5437,7 @@ class SampleCollection(object):
 
     @view_stage
     def select_fields(
-        self, field_names=None, _allow_missing=False, meta_filter=None
+        self, field_names=None, meta_filter=None, _allow_missing=False
     ):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
@@ -5501,7 +5507,7 @@ class SampleCollection(object):
 
             meta_filter (None): a filter expression to filter the returned fields
                 based on their metadata. This can be a string that will be matched
-                against anythin in the description or info, or a dict that will be
+                against anything in the description or info, or a dict that will be
                 matched against the info. For example, to select only fields that
                 have a description that contains the string "my description", you
                 can use ``meta_filter="my description"``. To select only fields
@@ -5512,13 +5518,12 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
 
-        return self._add_view_stage(
-            fos.SelectFields(
-                field_names,
-                _allow_missing=_allow_missing,
-                _meta_filter=meta_filter,
-            )
+        stage = fos.SelectFields(
+            field_names,
+            meta_filter=meta_filter,
+            _allow_missing=_allow_missing,
         )
+        return self._add_view_stage(stage)
 
     @view_stage
     def select_frames(self, frame_ids, omit_empty=True):

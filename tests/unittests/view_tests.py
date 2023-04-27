@@ -3146,6 +3146,223 @@ class ViewStageTests(unittest.TestCase):
         self.assertLess(base_size, total_size)
         self._select_field_teardown()
 
+    def test_select_fields_meta_filter(self):
+        self._select_field_setup()
+        dataset = self.dataset
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg", ground_truth=fo.Classification()
+                ),
+                fo.Sample(
+                    filepath="image3.jpg",
+                    field_1=1,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_1=1)]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_2=2,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        dataset.add_sample_field("field_3", ftype=fo.StringField)
+
+        field_1 = dataset.get_field("field_1")
+        field_2 = dataset.get_field("field_2")
+        field_3 = dataset.get_field("field_3")
+
+        field_1.description = "this is a unique description by joe"
+        field_2.description = "hello world test123"
+
+        field_1.info = {
+            "a": 12,
+            "b": 24,
+            "c": 36,
+            "owner": "jill",
+            "test": True,
+            "d_1": {
+                "e_2": {"f_3": "oo", "g_3": {"h_4": {"i_5": {"j_6": "nope"}}}}
+            },
+        }
+        field_2.info = {
+            "list": [1, 2, 3],
+            "owner": "joe",
+            "test": True,
+            "other": "this is a unique info value",
+            "date_created": "2020-01-01",
+        }
+        field_3.info = {"one": {"two": {"three": "test123"}}}
+
+        field_1.save()
+        field_2.save()
+        field_3.save()
+
+        # doesn't return anything on empty string
+        # view = dataset.select_fields(meta_filter="")
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" not in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # # returns everything on None
+        # view = dataset.select_fields(meta_filter=None)
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" not in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # # basic string match anywhere
+        # view = dataset.select_fields(meta_filter="unique")
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" in fields
+        # assert "field_2" in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # # basic string match in info
+        # view = dataset.select_fields(meta_filter=dict(info="2020"))
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # # specific info key: value match with some recursive checking
+        # # @note: we set the recursion limit to 1 so this will break.
+        # # view = dataset.select_fields(meta_filter={"f_3": "oo"})
+        # # fields = view.get_field_schema(flat=True)
+        # # assert "field_1" in fields
+        # # assert "field_2" not in fields
+        # # assert "field_3" not in fields
+        # # assert "ground_truth" not in fields
+        #
+        # # should bust the recursion limit (default is 1)
+        # view = dataset.select_fields(meta_filter=dict(j_6="nope"))
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" not in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # # basic string match anywhere
+        # view = dataset.select_fields(meta_filter="test123")
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" in fields
+        # assert "field_3" in fields
+        # assert "ground_truth" not in fields
+        #
+        # # match entire info with some additional selected fields
+        # view = dataset.select_fields(
+        #     ["ground_truth", "field_2"],
+        #     meta_filter=dict(one=dict(two=dict(three="test123"))),
+        # )
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" in fields
+        # assert "field_3" in fields
+        # assert "ground_truth" in fields
+        #
+        # # match entire info with no additional selected fields
+        # view = dataset.select_fields(
+        #     meta_filter=dict(one=dict(two=dict(three="test123")))
+        # )
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" not in fields
+        # assert "field_3" in fields
+        # assert "ground_truth" not in fields
+        #
+        # # match recursively located key:value
+        # # @note this will bust the recursion limit which was set to 1
+        # # view = dataset.select_fields(meta_filter=dict(three="test123"))
+        # # fields = view.get_field_schema(flat=True)
+        # # assert "field_1" not in fields
+        # # assert "field_2" not in fields
+        # # assert "field_3" in fields
+        # # assert "ground_truth" not in fields
+        #
+        # view = dataset.select_fields(
+        #     "ground_truth",
+        #     meta_filter=dict(one=dict(two=dict(three="test123"))),
+        # )
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" not in fields
+        # assert "field_3" in fields
+        # assert "ground_truth" in fields
+        #
+        # view = dataset.select_fields(meta_filter="joe")
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" in fields
+        # assert "field_2" in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # view = dataset.select_fields(meta_filter=dict(owner="joe"))
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" not in fields
+        # assert "field_2" in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+        #
+        # # match a boolean value
+        # view = dataset.select_fields(meta_filter=dict(test=True))
+        # fields = view.get_field_schema(flat=True)
+        # assert "field_1" in fields
+        # assert "field_2" in fields
+        # assert "field_3" not in fields
+        # assert "ground_truth" not in fields
+
+        # match a boolean value
+        meta_filter = {"description": "joe"}
+        view = dataset.select_fields(meta_filter=meta_filter)
+        dataset.save_view("joe_view", view=view)
+        fields = view.get_field_schema(flat=True)
+
+        assert "field_1" in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "ground_truth" not in fields
+
+        pre_length = len(view)
+
+        # add another field that would match the previous view
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_4=4,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        field_4 = dataset.get_field("field_4")
+        field_4.description = "this was added by joe as well"
+        field_4.save()
+
+        # make sure the new field comes back in the schema as well
+        view = dataset.load_saved_view("joe_view")
+        fields = view.get_field_schema(flat=True)
+        assert "field_1" in fields
+        assert "field_2" not in fields
+        assert "field_3" not in fields
+        assert "field_4" in fields
+        assert "ground_truth" not in fields
+        assert len(view) == pre_length + 1
+
+        self._select_field_teardown()
+
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
         self.assertIs(len(result), 1)

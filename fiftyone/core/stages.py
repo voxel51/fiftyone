@@ -125,21 +125,6 @@ class ViewStage(object):
         """
         return None
 
-    def get_meta_filtered_fields(self, schema):
-        """Returns a filter definition that is used to include fields in the stage
-        that have a description or info which matched the meta filter, if any.
-
-        Args:
-            sample_collection: the
-                :class:`fiftyone.core.collections.SampleCollection` to which
-                the stage is being applied
-
-        Returns:
-            a meta filter to apply to the description or info of a fields,
-            as a string or dict, or ``None`` if no meta_filter has been supplied
-        """
-        return None
-
     def get_excluded_fields(self, sample_collection, frames=False):
         """Returns a list of fields that have been excluded by the stage, if
         any.
@@ -669,9 +654,18 @@ class ExcludeFields(ViewStage):
     Args:
         field_names: a field name or iterable of field names to exclude. May
             contain ``embedded.field.name`` as well
+
+         meta_filter (None): a filter expression to select fields to exclude
+                based on their metadata. This can be a string that will be matched
+                against anything in the description or info, or a dict that will be
+                matched against the info. For example, to exclude only fields that
+                have a description that contains the string "my description", you
+                can use ``meta_filter="my description"``. To exclude only fields
+                that have a specific key in their info, you can use
+                ``meta_filter=dict(key="value")``.
     """
 
-    def __init__(self, field_names, _allow_missing=False):
+    def __init__(self, field_names, meta_filter=None, _allow_missing=False):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
@@ -679,17 +673,43 @@ class ExcludeFields(ViewStage):
 
         self._field_names = field_names
         self._allow_missing = _allow_missing
+        self._meta_filter = meta_filter
 
     @property
     def field_names(self):
         """The list of field names to exclude."""
         return self._field_names
 
-    def get_excluded_fields(self, sample_collection, frames=False):
-        if frames:
-            return self._get_excluded_frame_fields(sample_collection)
+    @property
+    def meta_filter(self):
+        """The list of field names to exclude."""
+        return self._meta_filter
 
-        return self._get_excluded_fields(sample_collection)
+    def get_excluded_fields(
+        self, sample_collection, frames=False, schema=None
+    ):
+        meta_filter = self.meta_filter
+        excluded_fields = set()
+        if meta_filter and not schema:
+            raise ValueError(
+                "Cannot filter fields by metadata without a schema"
+            )
+        if meta_filter:
+            excluded_fields.update(
+                _get_meta_filtered_fields(
+                    schema=schema, meta_filter=meta_filter
+                )
+            )
+        if frames:
+            excluded_fields.update(
+                self._get_excluded_frame_fields(sample_collection)
+            )
+        else:
+            excluded_fields.update(
+                self._get_excluded_fields(sample_collection)
+            )
+
+        return excluded_fields
 
     def _get_excluded_fields(self, sample_collection, use_db_fields=False):
         if sample_collection._contains_videos():
@@ -750,6 +770,7 @@ class ExcludeFields(ViewStage):
     def _kwargs(self):
         return [
             ["field_names", self._field_names],
+            ["meta_filter", self._meta_filter],
             ["_allow_missing", self._allow_missing],
         ]
 
@@ -760,6 +781,12 @@ class ExcludeFields(ViewStage):
                 "name": "field_names",
                 "type": "list<field>|field|list<str>|str",
                 "placeholder": "list,of,fields",
+            },
+            {
+                "name": "meta_filter",
+                "type": "NoneType|str|dict",
+                "default": "None",
+                "placeholder": "meta_filter",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
@@ -801,6 +828,124 @@ class ExcludeFields(ViewStage):
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
                 )
+
+
+def _get_meta_filtered_fields(schema, meta_filter):
+    if not meta_filter:
+        return
+
+    # meta_filter = self._meta_filter
+    if isinstance(meta_filter, str):
+        str_filter = meta_filter
+        meta_filter = {}
+    else:
+        str_filter = None
+
+    description_filter = meta_filter.pop("description", None)
+    name_filter = meta_filter.pop("name", None)
+    info_filter = meta_filter.pop("info", None)
+
+    matcher = (
+        lambda q, v: q.lower() in v.lower()
+        if isinstance(v, str)
+        else (
+            q.lower() in str(v).lower()
+            if isinstance(q, str) and isinstance(v, dict)
+            else q == v
+        )
+    )
+
+    paths = []
+
+    for path, field in schema.items():
+        is_match = True
+        # match anything anywhere
+        if str_filter is not None:
+            is_match &= _matches_field_meta(field, matcher, str_filter)
+
+        # match description only
+        if description_filter is not None:
+            is_match &= _matches_field_meta(
+                field,
+                matcher,
+                description_filter,
+                "description",
+            )
+
+        # match name only
+        if name_filter is not None:
+            is_match &= _matches_field_meta(
+                field,
+                matcher,
+                name_filter,
+                "name",
+            )
+
+        # match info only
+        if info_filter is not None:
+            is_match &= _matches_field_meta(
+                field,
+                matcher,
+                info_filter,
+                "info",
+            )
+
+        for key, val in meta_filter.items():
+            is_match &= _matches_field_meta(field, matcher, val, key)
+
+        if is_match:
+            paths.append(path)
+
+    return paths
+
+
+def _matches_field_meta(field, matcher, query, key=None):
+    if key is None:
+        matches = matcher(query, field.description)
+        if not matches:
+            matches |= matcher(query, field.name)
+        if not matches and isinstance(field.info, dict):
+            matches |= _recursive_match(field.info, matcher, query)
+        return matches
+
+    if key == "description":
+        return matcher(query, field.description)
+
+    if key == "name":
+        return matcher(query, field.name)
+
+    if key == "info":
+        return matcher(query, field.info)
+
+    if not isinstance(field.info, dict):
+        return False
+
+    return _recursive_match(field.info, matcher, query, key)
+
+
+def _recursive_match(info, matcher, query, key=None, recursion_limit=1):
+    if recursion_limit <= 0:
+        return False
+    if not key:
+        for val in info.values():
+            if isinstance(val, dict):
+                if _recursive_match(val, matcher, query, recursion_limit - 1):
+                    return True
+            elif matcher(query, val):
+                return True
+
+    if key in info:
+        if matcher(query, info[key]):
+            return True
+
+    for sub_key, sub_value in info.items():
+        if isinstance(sub_value, dict):
+            if _recursive_match(
+                sub_value, matcher, query, key, recursion_limit - 1
+            ):
+                return True
+
+    return False
 
 
 def _parse_paths(paths):
@@ -5218,10 +5363,22 @@ class SelectFields(ViewStage):
     Args:
         field_names (None): a field name or iterable of field names to select.
             May contain ``embedded.field.name`` as well
+
+        meta_filter (None): a filter expression to filter the returned fields
+                based on their metadata. This can be a string that will be matched
+                against anything in the description or info, or a dict that will be
+                matched against the info. For example, to select only fields that
+                have a description that contains the string "my description", you
+                can use ``meta_filter="my description"``. To select only fields
+                that have a specific key in their info, you can use
+                ``meta_filter=dict(key="value")``.
     """
 
     def __init__(
-        self, field_names=None, _allow_missing=False, _meta_filter=None
+        self,
+        field_names=None,
+        meta_filter=None,
+        _allow_missing=False,
     ):
         if etau.is_str(field_names):
             field_names = [field_names]
@@ -5230,7 +5387,19 @@ class SelectFields(ViewStage):
 
         self._field_names = field_names
         self._allow_missing = _allow_missing
-        self._meta_filter = _meta_filter
+        self._meta_filter = meta_filter
+
+        # this is temporary
+        # transformed = dict()
+        # if isinstance(self._meta_filter, dict):
+        #     for key, value in self._meta_filter.items():
+        #         if key == "name" or key == "description":
+        #             transformed[f"_{key}"] = value
+        #         else:
+        #             transformed[key] = value
+        #
+        #     self._meta_filter = transformed
+        # end this is temporary
 
     @property
     def field_names(self):
@@ -5240,101 +5409,48 @@ class SelectFields(ViewStage):
     @property
     def meta_filter(self):
         """The meta filters to apply, as a string or dict."""
-        return self._meta_filter or {}
+
+        # return self._meta_filter
+
+        # this is temporary
+        # transformed = dict()
+        # if isinstance(self._meta_filter, dict):
+        #     for key, value in self._meta_filter.items():
+        #         if key == "_name":
+        #             transformed["name"] = value
+        #         elif key == "_description":
+        #             transformed["description"] = value
+        #         else:
+        #             transformed[key] = value
+        #     return transformed
+        # end this is temporary
+
+        return self._meta_filter
 
     def get_selected_fields(self, sample_collection, frames=False):
+        meta_filter = self.meta_filter
+        selected_fields = set()
+        if meta_filter:
+            schema = sample_collection.get_field_schema()
+            if not schema:
+                raise ValueError(
+                    "Cannot filter fields by metadata without a schema"
+                )
+            selected_fields.update(
+                _get_meta_filtered_fields(
+                    schema=schema, meta_filter=meta_filter
+                )
+            )
         if frames:
-            return self._get_selected_frame_fields(sample_collection)
-
-        return self._get_selected_fields(sample_collection)
-
-    def get_meta_filtered_fields(self, schema):
-        if not self.meta_filter:
-            return
-
-        meta_filter = self._meta_filter
-        if isinstance(meta_filter, str):
-            str_filter = meta_filter
-            meta_filter = {}
+            selected_fields.update(
+                self._get_selected_frame_fields(sample_collection)
+            )
         else:
-            str_filter = None
+            selected_fields.update(
+                self._get_selected_fields(sample_collection)
+            )
 
-        description_filter = meta_filter.pop("description", None)
-        matcher = (
-            lambda q, v: q.lower() in v.lower()
-            if isinstance(v, str)
-            else q == v
-        )
-
-        paths = []
-
-        for path, field in schema.items():
-            is_match = True
-            if str_filter is not None:
-                is_match &= self._matches_info_or_description(
-                    field, matcher, str_filter
-                )
-
-            if description_filter is not None:
-                is_match &= self._matches_info_or_description(
-                    field,
-                    matcher,
-                    description_filter,
-                    "description",
-                )
-
-            for key, val in meta_filter.items():
-                is_match &= self._matches_info_or_description(
-                    field, matcher, val, key
-                )
-
-            if is_match:
-                paths.append(path)
-
-        return paths
-
-    def _matches_info_or_description(self, field, matcher, query, key=None):
-        if key is None:
-            matches = matcher(query, field.description)
-            if not matches and isinstance(field.info, dict):
-                matches |= self._recursive_match(field.info, matcher, query)
-            return matches
-
-        if key == "description":
-            return matcher(query, field.description)
-
-        if not isinstance(field.info, dict):
-            return False
-
-        return self._recursive_match(field.info, matcher, query, key)
-
-    def _recursive_match(
-        self, info, matcher, query, key=None, recursion_limit=5
-    ):
-        if recursion_limit <= 0:
-            return False
-        if not key:
-            for val in info.values():
-                if isinstance(val, dict):
-                    if self._recursive_match(
-                        val, matcher, query, recursion_limit - 1
-                    ):
-                        return True
-                elif matcher(query, val):
-                    return True
-
-        if key in info:
-            if matcher(query, info[key]):
-                return True
-
-        for sub_key, sub_value in info.items():
-            if isinstance(sub_value, dict):
-                if self._recursive_match(
-                    sub_value, matcher, query, key, recursion_limit - 1
-                ):
-                    return True
-
-        return False
+        return selected_fields
 
     def _get_selected_fields(self, sample_collection, use_db_fields=False):
         selected_paths = set()
@@ -5429,8 +5545,8 @@ class SelectFields(ViewStage):
     def _kwargs(self):
         return [
             ["field_names", self._field_names],
+            ["meta_filter", self._meta_filter],
             ["_allow_missing", self._allow_missing],
-            ["_meta_filter", self._meta_filter],
         ]
 
     @classmethod
@@ -5441,6 +5557,12 @@ class SelectFields(ViewStage):
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
                 "placeholder": "list,of,fields",
+            },
+            {
+                "name": "meta_filter",
+                "type": "NoneType|str|dict",
+                "default": "None",
+                "placeholder": "meta_filter",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
@@ -7779,7 +7901,6 @@ _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
 
-
 # Simple registry for the server to grab available view stages
 _STAGES = [
     Concat,
@@ -7823,7 +7944,6 @@ _STAGES = [
     ToTrajectories,
     ToFrames,
 ]
-
 
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {
