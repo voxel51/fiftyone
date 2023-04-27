@@ -494,20 +494,21 @@ def create_plugin(
             if not (os.path.isfile(fpath) and os.path.exists(fpath)):
                 raise ValueError(f"'{fpath}' is not a file.")
             shutil.copytree(fpath, plugin_dir)
-    plugin_definition = {
-        "name": plugin_name,
-        "description": description,
-        "label": label,
-        "fiftyone": {"version": foc.VERSION},
-        **kwargs,
-    }
+
     if "fiftyone.yml" not in os.listdir(plugin_dir):
         yml_path = os.path.join(plugin_dir, "fiftyone.yml")
+        plugin_definition = {
+            "name": plugin_name,
+            "description": description,
+            "label": label,
+            "fiftyone": {"version": foc.VERSION},
+            **kwargs,
+        }
         with open(yml_path, "w") as yml_file:
             yaml.dump(plugin_definition, yml_file)
     else:
         with open(os.path.join(plugin_dir, "fiftyone.yml"), "a+") as yml_file:
-            old_yml = yaml.load(yml_file)
+            old_yml = yaml.safe_load(yml_file)
             plugin_definition = defaultdict(dict, old_yml)
             plugin_definition["name"] = plugin_name
             plugin_definition["description"] = (
@@ -521,10 +522,10 @@ def create_plugin(
             yaml.dump(plugin_definition, yml_file)
 
     print(f"Created plugin with name `{plugin_name}` at {plugin_dir}")
-    return plugin_dir
+    return
 
 
-def _label_from_name(name: str):
+def _label_from_name(name: str) -> str:
     # replace non-alphanumeric characters with spaces
     label = re.sub("[^A-Za-z0-9]+", " ", name)
     # capitalize each word
