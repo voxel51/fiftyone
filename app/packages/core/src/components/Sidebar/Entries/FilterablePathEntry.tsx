@@ -1,19 +1,18 @@
-import React, { useMemo } from "react";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   VisibilityOff,
 } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
+import Color from "color";
+import React, { useMemo } from "react";
 import {
-  atomFamily,
   DefaultValue,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import Color from "color";
 
 import {
   BOOLEAN_FIELD,
@@ -44,18 +43,16 @@ import {
   StringFieldFilter,
 } from "../../Filters";
 
-import { useTheme, PillButton } from "@fiftyone/components";
+import { PillButton, useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField, pathIsExpanded } from "./utils";
-import LabelFieldFilter from "../../Filters/LabelFieldFilter";
-
-import { labelTagCounts, sampleTagCounts } from "@fiftyone/state";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,

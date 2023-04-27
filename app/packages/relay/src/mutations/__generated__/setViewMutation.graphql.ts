@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<95ae18da172744280efc1922ffd3cc4b>>
+ * @generated SignedSource<<44a9ece01eb912341b225dd34edc820a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
+export type BrainRunType = "similarity" | "visualization" | "%future added value";
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type StateForm = {
@@ -55,7 +56,7 @@ export type setViewMutation$data = {
           readonly method: string | null;
           readonly patchesField: string | null;
           readonly supportsPrompts: boolean | null;
-          readonly type: string | null;
+          readonly type: BrainRunType | null;
         } | null;
         readonly key: string;
         readonly timestamp: any | null;
