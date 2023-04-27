@@ -18,7 +18,6 @@ import {
   loadOperatorsFromServer,
   OperatorResult,
 } from "./operators";
-import { CustomColors } from "./CustomColors";
 import { useShowOperatorIO } from "./state";
 
 //
