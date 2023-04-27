@@ -2,6 +2,8 @@ import enum
 
 
 class BaseType:
+    """Base class for all types."""
+
     def __init__(self):
         pass
 
@@ -12,17 +14,46 @@ class BaseType:
 
 
 class Object(BaseType):
+    """Represents a JSON object."""
+
     def __init__(self):
         self.properties = {}
 
     def add_property(self, name, property):
+        """Adds a property to the object.
+
+        Args:
+            name: the name of the property
+            property: the property to add
+        Returns:
+            the property that was added
+        """
         self.properties[name] = property
         return property
 
     def get_property(self, name):
+        """Gets a property by name.
+
+        Args:
+            name: the name of the property
+        Returns:
+            the property, or None if not found
+        """
         return self.properties.get(name, None)
 
     def define_property(self, name, type, **kwargs):
+        """Defines a property on the object.
+
+        Args:
+            name: the name of the property
+            type: the type of the property
+            [label]: the view.label of the property
+            [description]: the view.description of the property
+            [view]: the view of the property
+
+        Returns:
+            the property that was added
+        """
         label = kwargs.get("label", None)
         description = kwargs.get("description", None)
         view = kwargs.get("view", None)
@@ -40,19 +71,63 @@ class Object(BaseType):
         return property
 
     def str(self, name, **kwargs):
+        """Defines a property on the object that is a string.
+
+        Args:
+            name: the name of the property
+            [label]: the view.label of the property
+            [description]: the view.description of the property
+            [view]: the view of the property
+        """
         return self.define_property(name, String(), **kwargs)
 
     def bool(self, name, **kwargs):
+        """Defines a property on the object that is a boolean.
+
+        Args:
+            name: the name of the property
+            [label]: the view.label of the property
+            [description]: the view.description of the property
+            [view]: the view of the property
+        """
         return self.define_property(name, Boolean(), **kwargs)
 
     def int(self, name, **kwargs):
+        """Defines a property on the object that is an integer.
+
+        Args:
+            name: the name of the property
+            [label]: the view.label of the property
+            [description]: the view.description of the property
+            [view]: the view of the property
+        """
         return self.define_property(name, Number(int=True), **kwargs)
 
     def float(self, name, **kwargs):
+        """Defines a property on the object that is a float.
+
+        Args:
+            name: the name of the property
+            [label]: the view.label of the property
+            [description]: the view.description of the property
+            [view]: the view of the property
+        """
         return self.define_property(name, Number(float=True), **kwargs)
 
-    def enum(self, name, choices, **kwargs):
-        return self.define_property(name, Enum(choices), **kwargs)
+    def enum(self, name, values, **kwargs):
+        """Defines a property on the object that is an enum.
+
+        Args:
+            name: the name of the property
+            values: a list of values that define the enum
+            [label]: the view.label of the property
+            [description]: the view.description of the property
+            [view]: the view of the property
+
+        Note:
+            The view can be a :class:`Choices`, :class:`RadioGroup`, or :class:`Dropdown`
+        """
+        return self.define_property(name, Enum(values), **kwargs)
 
     def list(self, name, element_type, **kwargs):
         return self.define_property(name, List(element_type), **kwargs)
