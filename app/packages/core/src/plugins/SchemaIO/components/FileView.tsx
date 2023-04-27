@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import React, { useState } from "react";
 import FileDrop from "./FileDrop";
-import Header from "./Header";
+import HeaderView from "./HeaderView";
 import TabsView from "./TabsView";
 import TextFieldView from "./TextFieldView";
 
@@ -13,7 +13,7 @@ export default function FileView(props) {
 
   return (
     <Box>
-      <Header {...view} />
+      <HeaderView {...props} />
       <TabsView
         schema={{
           view: {
