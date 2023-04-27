@@ -30,7 +30,7 @@ import {
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
-import React, { useRef, useState } from "react";
+import React, { MutableRefObject, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { DefaultValue, useRecoilValue } from "recoil";
@@ -314,10 +314,18 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             ])
           }
           subscribe={(fn) => {
+            let {
+              preloadedQuery: { variables: current },
+            } = router.get();
             return router.subscribe((entry, action) => {
               sessionRef.current.selectedSamples = new Set();
               sessionRef.current.selectedLabels = [];
-              dispatchSideEffect(entry, action, subscription);
+              // @ts-ignore
+              if (current.name !== entry.preloadedQuery.variables.name) {
+                sessionRef.current.sessionSpaces = fos.SPACES_DEFAULT;
+              }
+              current = entry.preloadedQuery.variables;
+              dispatchSideEffect(entry, action, subscription, sessionRef);
               fn(entry);
             });
           }}
@@ -332,7 +340,8 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 const dispatchSideEffect = (
   entry: Entry<Queries>,
   action: Action | undefined,
-  subscription: string
+  subscription: string,
+  sessionRef: MutableRefObject<Session>
 ) => {
   if (action !== "POP") {
     return;
