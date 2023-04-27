@@ -834,16 +834,17 @@ def _get_meta_filtered_fields(schema, meta_filter):
     if not meta_filter:
         return
 
-    # meta_filter = self._meta_filter
     if isinstance(meta_filter, str):
         str_filter = meta_filter
         meta_filter = {}
     else:
         str_filter = None
 
-    description_filter = meta_filter.pop("description", None)
-    name_filter = meta_filter.pop("name", None)
-    info_filter = meta_filter.pop("info", None)
+    _mf = meta_filter.copy()
+
+    description_filter = _mf.pop("description", None)
+    name_filter = _mf.pop("name", None)
+    info_filter = _mf.pop("info", None)
 
     matcher = (
         lambda q, v: q.lower() in v.lower()
@@ -5389,18 +5390,6 @@ class SelectFields(ViewStage):
         self._allow_missing = _allow_missing
         self._meta_filter = meta_filter
 
-        # this is temporary
-        # transformed = dict()
-        # if isinstance(self._meta_filter, dict):
-        #     for key, value in self._meta_filter.items():
-        #         if key == "name" or key == "description":
-        #             transformed[f"_{key}"] = value
-        #         else:
-        #             transformed[key] = value
-        #
-        #     self._meta_filter = transformed
-        # end this is temporary
-
     @property
     def field_names(self):
         """The list of field names to select."""
@@ -5409,22 +5398,6 @@ class SelectFields(ViewStage):
     @property
     def meta_filter(self):
         """The meta filters to apply, as a string or dict."""
-
-        # return self._meta_filter
-
-        # this is temporary
-        # transformed = dict()
-        # if isinstance(self._meta_filter, dict):
-        #     for key, value in self._meta_filter.items():
-        #         if key == "_name":
-        #             transformed["name"] = value
-        #         elif key == "_description":
-        #             transformed["description"] = value
-        #         else:
-        #             transformed[key] = value
-        #     return transformed
-        # end this is temporary
-
         return self._meta_filter
 
     def get_selected_fields(self, sample_collection, frames=False):
@@ -5529,6 +5502,7 @@ class SelectFields(ViewStage):
         return [{"$project": {f: True for f in selected_paths}}]
 
     def _needs_frames(self, sample_collection):
+
         if not sample_collection._contains_videos():
             return False
 

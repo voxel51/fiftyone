@@ -5518,12 +5518,13 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
 
-        stage = fos.SelectFields(
-            field_names,
-            meta_filter=meta_filter,
-            _allow_missing=_allow_missing,
+        return self._add_view_stage(
+            fos.SelectFields(
+                field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
-        return self._add_view_stage(stage)
 
     @view_stage
     def select_frames(self, frame_ids, omit_empty=True):
