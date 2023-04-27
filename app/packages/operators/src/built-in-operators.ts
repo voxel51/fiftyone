@@ -532,13 +532,37 @@ class TestOperator extends Operator {
   constructor() {
     super("test_operator", "Test an Operator");
   }
+  parseParams(rawParams: string) {
+    try {
+      return JSON.parse(rawParams);
+    } catch (e) {
+      return null;
+    }
+  }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
     const operatorNames = listLocalAndRemoteOperators().allOperators.map(
       (o) => o.name
     );
-    inputs.defineProperty("operator", new types.Enum(operatorNames));
-    inputs.defineProperty("params", new types.ObjectType(), {
+    inputs.defineProperty("operator", new types.Enum(operatorNames), {
+      label: "Operator",
+      required: true,
+      view: { name: "AutocompleteView" },
+    });
+    const parsedParams =
+      typeof ctx.params.raw_params === "string"
+        ? this.parseParams(ctx.params.raw_params)
+        : null;
+
+    if (parsedParams == null) {
+      inputs.defineProperty("warning", new types.String(), {
+        label: "Warning",
+        description: "Invalid JSON",
+        view: { name: "Warning" },
+      });
+    }
+
+    inputs.defineProperty("raw_params", new types.String(), {
       label: "Params",
       required: true,
       default: JSON.stringify({ param: "value" }, null, 2),
@@ -547,7 +571,7 @@ class TestOperator extends Operator {
     return new types.Property(inputs);
   }
   async execute({ params }: ExecutionContext) {
-    const parsedParams = JSON.parse(params.params);
+    const parsedParams = JSON.parse(params.raw_params.trim());
     executeOperator(params.operator, parsedParams);
   }
 }
