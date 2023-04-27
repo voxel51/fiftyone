@@ -1,4 +1,4 @@
-import { Link, Selector, UseSearch } from "@fiftyone/components";
+import { Selector, UseSearch } from "@fiftyone/components";
 import { datasetName } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
@@ -9,9 +9,9 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
   value,
 }) => {
   return (
-    <Link title={value} className={className}>
+    <a className={className} title={value}>
       {value}
-    </Link>
+    </a>
   );
 };
 
@@ -19,7 +19,7 @@ const DatasetSelector: React.FC<{
   useSearch: UseSearch<string>;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
-  const dataset = useRecoilValue(datasetName);
+  const dataset = useRecoilValue(datasetName) as string;
   return (
     <Selector<string>
       component={DatasetLink}
