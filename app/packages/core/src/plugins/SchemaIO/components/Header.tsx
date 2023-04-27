@@ -1,9 +1,8 @@
+import { Box, Stack, StackProps, Typography } from "@mui/material";
 import React from "react";
-import { Box, Stack, Typography, StackProps } from "@mui/material";
-import { HelpTooltip } from ".";
+import { ErrorView, HelpTooltip } from ".";
 
 export default function Header(props: HeaderProps) {
-  // todo: support error
   const {
     label,
     description,
@@ -14,6 +13,8 @@ export default function Header(props: HeaderProps) {
     variant = "secondary",
     descriptionView = "inline",
     omitCaption = false,
+    omitErrors = false,
+    errors,
   } = props;
 
   const labelVariantMap = {
@@ -65,6 +66,7 @@ export default function Header(props: HeaderProps) {
             {caption}
           </Typography>
         )}
+        {!omitErrors && <ErrorView schema={{}} data={errors} />}
       </Box>
       {Actions && <Box>{Actions}</Box>}
     </Stack>
@@ -80,5 +82,7 @@ export type HeaderProps = {
   sx?: StackProps["sx"];
   variant?: "primary" | "secondary" | "tertiary";
   omitCaption?: boolean;
+  omitErrors?: boolean;
   descriptionView?: "inline" | "tooltip";
+  errors: object;
 };

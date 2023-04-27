@@ -4,9 +4,9 @@ import { Box } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../SchemaIO";
 import { TabsView } from "../../SchemaIO/components";
-import inputSchema from "./input.json";
-import { data, schema as outputSchema } from "./output.json";
 import { log, operatorToIOSchema } from "../utils";
+import { errors as inputErrors, schema as inputSchema } from "./input.json";
+import { data, schema as outputSchema } from "./output.json";
 
 // Panel enabled only in development environment for testing and debugging SchemaIO
 if (import.meta.env.MODE === "development") {
@@ -59,7 +59,11 @@ function OperatorIO() {
         />
       </Box>
       {mode === "input" && (
-        <SchemaIOComponent schema={ioSchema} onChange={log} />
+        <SchemaIOComponent
+          schema={ioSchema}
+          onChange={log}
+          errors={inputErrors}
+        />
       )}
       {mode === "output" && (
         <SchemaIOComponent schema={oSchema} onChange={log} data={state} />

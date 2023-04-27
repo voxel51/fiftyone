@@ -1,9 +1,9 @@
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import React, { useEffect } from "react";
 import { getComponent } from "../utils";
-import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 
 export default function DynamicIO(props) {
-  const { schema, onChange, path, data, errors } = props;
+  const { schema, onChange, path } = props;
   const customComponents = useCustomComponents();
   const Component = getComponent(schema, customComponents);
 
@@ -12,15 +12,7 @@ export default function DynamicIO(props) {
     if (schema.default) onChange(path, schema.default);
   }, []);
 
-  return (
-    <Component
-      schema={schema}
-      onChange={onChange}
-      path={path}
-      data={data}
-      errors={errors}
-    />
-  );
+  return <Component {...props} />;
 }
 
 function useCustomComponents() {

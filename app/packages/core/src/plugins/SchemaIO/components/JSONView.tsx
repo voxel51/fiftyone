@@ -1,14 +1,14 @@
-import React from "react";
-import { Box } from "@mui/material";
-import Header from "./Header";
 import { CodeBlock } from "@fiftyone/components";
+import { Box } from "@mui/material";
+import React from "react";
+import { HeaderView } from ".";
 
 export default function JSONView(props) {
   const { data, schema } = props;
-  const { default: defaultValue, view = {} } = schema;
+  const { default: defaultValue } = schema;
   return (
     <Box>
-      <Header {...view} />
+      <HeaderView {...props} />
       <CodeBlock language="javascript" text={data ?? defaultValue} content />
     </Box>
   );

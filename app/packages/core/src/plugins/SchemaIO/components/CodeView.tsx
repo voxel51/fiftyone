@@ -1,7 +1,7 @@
 import Editor from "@monaco-editor/react";
 import { Box, useColorScheme } from "@mui/material";
 import React from "react";
-import Header from "./Header";
+import HeaderView from "./HeaderView";
 
 export default function CodeView(props) {
   const { mode } = useColorScheme();
@@ -21,7 +21,7 @@ export default function CodeView(props) {
           : {}),
       }}
     >
-      <Header {...view} />
+      <HeaderView {...props} />
       <Editor
         height={250}
         theme={mode === "dark" ? "vs-dark" : "light"}
