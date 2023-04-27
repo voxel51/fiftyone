@@ -1,6 +1,5 @@
 import { Box } from "@mui/material";
-import { useActivePlugins } from "@fiftyone/plugins";
-import { PluginComponentType } from "@fiftyone/plugins";
+import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
 
 export default function OperatorIO(props) {
   const componentPlugins = useActivePlugins(PluginComponentType.Component, {});
