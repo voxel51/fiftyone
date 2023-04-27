@@ -1,3 +1,4 @@
+// Auto generate SchemaIO compatible schema based on a value
 export function generateSchema(value, options?) {
   const type = getType(value);
   const label = options?.label;
