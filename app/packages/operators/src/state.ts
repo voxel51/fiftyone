@@ -196,6 +196,8 @@ export const useOperatorPrompt = () => {
   }, [operator, promptingOperator]);
   const close = () => {
     setPromptingOperator(null);
+    setInputFields(null);
+    setOutputFields(null);
     executor.clear();
   };
 
