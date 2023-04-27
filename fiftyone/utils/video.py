@@ -105,6 +105,10 @@ def reencode_videos(
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
     visualized in the FiftyOne App.
 
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
+
     By default, the re-encoding is performed via the following ``ffmpeg``
     command::
 
@@ -190,6 +194,10 @@ def transform_videos(
 ):
     """Transforms the videos in the sample collection according to the provided
     parameters using ``ffmpeg``.
+
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
 
     In addition to the size and frame rate parameters, if ``reencode == True``,
     the following basic ``ffmpeg`` command structure is used to re-encode the
@@ -856,6 +864,7 @@ def _transform_video(
         max_fps = None
 
     did_transform = False
+    tmp_path = None
 
     try:
         if (
@@ -903,9 +912,14 @@ def _transform_video(
         move = []
 
         if (inpath == outpath) and should_reencode:
-            tmp_path = etau.make_unique_path(inpath, suffix="-tmp")
-            orig_path = etau.make_unique_path(inpath, suffix="-original")
-            move = [(inpath, orig_path), (tmp_path, outpath)]
+            if not delete_original:
+                root, ext = os.path.splitext(inpath)
+                orig_path = root + "-original" + ext
+                move.append((inpath, orig_path))
+
+            root, ext = os.path.splitext(inpath)
+            tmp_path = root + "-tmp" + ext
+            move.append((tmp_path, outpath))
             outpath = tmp_path
 
         diff_path = inpath != outpath
@@ -960,6 +974,9 @@ def _transform_video(
         for from_path, to_path in move:
             fos.move_file(from_path, to_path)
     except Exception as e:
+        if tmp_path is not None and fos.isfile(tmp_path):
+            fos.delete_file(tmp_path)
+
         if not skip_failures:
             raise
 

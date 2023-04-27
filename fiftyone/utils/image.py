@@ -81,6 +81,10 @@ def reencode_images(
 ):
     """Re-encodes the images in the sample collection to the given format.
 
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
+
     .. note::
 
         This method will not update the ``metadata`` field of the collection
@@ -150,6 +154,10 @@ def transform_images(
 ):
     """Transforms the images in the sample collection according to the provided
     parameters.
+
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
 
     .. note::
 
@@ -469,17 +477,35 @@ def _transform_image(
     out_ext = os.path.splitext(outpath)[1]
 
     did_transform = False
+    tmp_path = None
 
     try:
-        if (
-            size is not None
+        should_reencode = (
+            force_reencode
+            or size is not None
             or min_size is not None
             or max_size is not None
-            or in_ext != out_ext
-            or force_reencode
-        ):
+            or in_ext.lower() != out_ext.lower()
+        )
+
+        if should_reencode:
             img = read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
+
+        move = []
+
+        if (inpath == outpath) and should_reencode:
+            if not delete_original:
+                root, ext = os.path.splitext(inpath)
+                orig_path = root + "-original" + ext
+                move.append((inpath, orig_path))
+
+            root, ext = os.path.splitext(inpath)
+            tmp_path = root + "-tmp" + ext
+            move.append((tmp_path, outpath))
+            outpath = tmp_path
+
+        diff_path = inpath != outpath
 
         if size is not None:
             if interpolation is not None:
@@ -490,15 +516,21 @@ def _transform_image(
             img = etai.resize(img, width=size[0], height=size[1], **kwargs)
             write(img, outpath)
             did_transform = True
-        elif force_reencode or (in_ext != out_ext):
+        elif should_reencode:
             write(img, outpath)
             did_transform = True
-        elif inpath != outpath:
+        elif diff_path:
             fos.copy_file(inpath, outpath)
 
-        if delete_original and inpath != outpath:
+        if delete_original and diff_path:
             fos.delete_file(inpath)
+
+        for from_path, to_path in move:
+            fos.move_file(from_path, to_path)
     except Exception as e:
+        if tmp_path is not None and fos.isfile(tmp_path):
+            fos.delete_file(tmp_path)
+
         if not skip_failures:
             raise
 
