@@ -6,10 +6,7 @@ FiftyOne operator loader.
 |
 """
 
-import fiftyone as fo
-import glob
 import os
-import yaml  # BEFORE PR: add to requirements.txt
 import importlib
 import sys
 import traceback
@@ -120,29 +117,3 @@ def exec_module_from_dir(module_dir, plugin_definition):
     sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
     return register_module(plugin_definition, mod)
-
-
-# BEFORE PR: where should this go?
-def find_files(root_dir, filename, extensions, max_depth):
-    """Returns all files matching the given pattern, up to the given depth.
-
-    Args:
-        pattern: a glob pattern
-        max_depth: the maximum depth to search
-
-    Returns:
-        a list of paths
-    """
-    if max_depth == 0:
-        return []
-
-    paths = []
-    for i in range(1, max_depth):
-        pattern_parts = [root_dir]
-        pattern_parts += list("*" * i)
-        pattern_parts += [filename]
-        pattern = os.path.join(*pattern_parts)
-        for extension in extensions:
-            paths += glob.glob(pattern + "." + extension)
-
-    return paths
