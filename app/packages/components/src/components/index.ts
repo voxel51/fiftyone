@@ -10,6 +10,7 @@ export { default as HelpPanel } from "./HelpPanel";
 export { default as IconButton } from "./IconButton";
 export * from "./Icons";
 export { default as JSONPanel } from "./JSONPanel";
+export { default as Link } from "./Link";
 export { default as Loading } from "./Loading";
 export { default as Pending } from "./Pending";
 export { default as PillButton } from "./PillButton";
