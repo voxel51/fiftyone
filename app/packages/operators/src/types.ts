@@ -65,6 +65,8 @@ export class Property {
     this.defaultValue = options?.defaultValue || options?.default;
     this.required = options?.required;
     this.choices = options?.choices;
+    this.invalid = options?.invalid;
+    this.errorMessage = options?.errorMessage;
     this.view = options?.view;
   }
   type: ANY_TYPE;
@@ -73,10 +75,13 @@ export class Property {
   defaultValue: any;
   choices: any;
   view: any;
+  invalid: boolean;
+  errorMessage: string;
 
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: any) {
-    return new Property(typeFromJSON(json.type), json);
+    const { error_message: errorMessage, type, ...rest } = json;
+    return new Property(typeFromJSON(json.type), { errorMessage, ...rest });
   }
   toProps() {
     return {
@@ -85,6 +90,8 @@ export class Property {
       required: this.required,
       choices: this.choices,
       view: this.view,
+      invalid: this.invalid,
+      errorMessage: this.errorMessage,
     };
   }
 }
