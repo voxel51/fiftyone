@@ -87,7 +87,6 @@ function ActualOperatorPrompt() {
 }
 
 function Prompting({ operatorPrompt }) {
-  console.log("Prompting", { operatorPrompt });
   return (
     <Box>
       <Box sx={{ pb: 2 }}>
