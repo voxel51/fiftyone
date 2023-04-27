@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
 import { Box, Tab, Tabs } from "@mui/material";
-import Header from "./Header";
+import React, { useEffect, useState } from "react";
+import HeaderView from "./HeaderView";
 import HelpTooltip from "./HelpTooltip";
 import RoundedTabs from "./RoundedTabs";
 
@@ -16,7 +16,7 @@ export default function TabsView(props) {
 
   return (
     <Box>
-      <Header {...view} />
+      <HeaderView {...props} />
       {variant === "rounded" && (
         <RoundedTabs
           tabs={choices.map((choice) => ({ id: choice.value, ...choice }))}

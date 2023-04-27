@@ -9,6 +9,7 @@ export { default as ColorView } from "./ColorView";
 export { default as DropdownView } from "./DropdownView";
 export { default as DynamicIO } from "./DynamicIO";
 export { default as EmptyState } from "./EmptyState";
+export { default as ErrorView } from "./ErrorView";
 export { default as FieldView } from "./FieldView";
 export { default as FieldWrapper } from "./FieldWrapper";
 export { default as FileDrop } from "./FileDrop";

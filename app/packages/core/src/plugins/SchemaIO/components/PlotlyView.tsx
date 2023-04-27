@@ -1,9 +1,8 @@
-import React from "react";
-import { Box } from "@mui/material";
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import { Box } from "@mui/material";
+import React from "react";
 import Plot from "react-plotly.js";
-import Header from "./Header";
-import { log } from "../utils";
+import { HeaderView } from ".";
 
 export default function PlotlyView(props) {
   const { data, schema } = props;
@@ -19,7 +18,7 @@ export default function PlotlyView(props) {
 
   return (
     <Box>
-      <Header {...view} />
+      <HeaderView {...props} />
       <Plot
         data={data || defaultData}
         style={{ zIndex: 1 }}
