@@ -26,7 +26,7 @@ export default function AutocompleteView(props) {
           />
         )}
         onInputChange={(e) => {
-          if (!multiple) {
+          if (!multiple && e) {
             onChange(path, e.target.value);
           }
         }}
