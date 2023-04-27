@@ -93,7 +93,6 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
               setter(update);
             });
           } catch (e) {
-            console.log(e);
             setter(null, transactionInterface);
             return undefined;
           }

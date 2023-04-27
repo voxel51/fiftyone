@@ -4,6 +4,7 @@ import { atom, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
 
 export interface Session {
+  canEditCustomColors?: boolean;
   canEditSavedViews?: boolean;
   readOnly?: boolean;
   selectedSamples?: Set<string>;

@@ -312,7 +312,7 @@ export const sidebarOverride = atom<string>({
 });
 
 export const extendedSelection = (() => {
-  let selection: { selection: string[]; scope?: string } = { selection: null };
+  let selection: { selection: string[]; scope?: string } = { selection: [] };
 
   return graphQLSyncFragmentAtom<
     datasetFragment$key,
@@ -323,12 +323,12 @@ export const extendedSelection = (() => {
       keys: ["dataset"],
       read: (data, previous) => {
         if (data.id !== previous?.id) {
-          selection = { selection: null };
+          selection = { selection: [] };
         }
 
         return selection;
       },
-      default: { selection: null },
+      default: { selection: [] },
     },
     {
       key: "extendedSelection",
