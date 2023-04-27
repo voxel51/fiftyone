@@ -83,6 +83,7 @@ export function Writer<T extends OperationType>({
   subscribe,
   setters,
 }: WriterProps<T>) {
+  // @ts-ignore
   pageQueryReader = read;
 
   const set = useRecoilTransaction_UNSTABLE(
@@ -95,6 +96,7 @@ export function Writer<T extends OperationType>({
 
   React.useEffect(() => {
     return subscribe((pageQuery) => {
+      // @ts-ignore
       pageQueryReader = () => pageQuery;
       set((transactionInterface) =>
         subscribers.forEach((cb) => cb(pageQuery, transactionInterface))
