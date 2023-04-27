@@ -15,7 +15,7 @@ const BrowserContainer = styled.form`
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  z-index: 999;
+  z-index: 99999;
 `;
 
 const BrowserModal = styled.div`
@@ -69,14 +69,11 @@ const ChoiceLabel = styled.div`
 const Choice = ({ onClick, choice, selected }) => {
   return (
     <ChoiceContainer onClick={onClick} selected={selected}>
-      <ChoiceDescription>
-        {choice.label}
-      </ChoiceDescription>
+      <ChoiceDescription>{choice.label}</ChoiceDescription>
       {choice.label && <ChoiceLabel>{choice.name}</ChoiceLabel>}
     </ChoiceContainer>
   );
 };
-
 
 const QueryDiv = styled.div`
   position: relative;
@@ -135,13 +132,15 @@ export default function OperatorBrowser() {
             />
           </QueryDiv>
           <IconsContainer>
-            {browser.hasQuery && <Close
-              onClick={() => browser.clear()}
-              style={{
-                cursor: "pointer",
-                color: theme.text.secondary,
-              }}
-            />}
+            {browser.hasQuery && (
+              <Close
+                onClick={() => browser.clear()}
+                style={{
+                  cursor: "pointer",
+                  color: theme.text.secondary,
+                }}
+              />
+            )}
             <Link
               href="https://docs.voxel51.com/user_guide/app.html#operations"
               style={{ display: "flex" }}
