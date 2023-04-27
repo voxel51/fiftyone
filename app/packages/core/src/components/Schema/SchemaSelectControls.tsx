@@ -9,8 +9,17 @@ interface Props {}
 
 export const SchemaSelectionControls = (props: Props) => {
   const theme = useTheme();
-  const { fieldsOnly, setFieldsOnly, allFieldsChecked, setAllFieldsChecked } =
-    useSchemaSettings();
+  const {
+    fieldsOnly,
+    setFieldsOnly,
+    allFieldsChecked,
+    setAllFieldsChecked,
+    selectedTab,
+    showMetadata,
+    setShowMetadata,
+    searchResults,
+  } = useSchemaSettings();
+  const isSelectionMode = selectedTab === "Selection";
 
   return (
     <Box
@@ -19,24 +28,48 @@ export const SchemaSelectionControls = (props: Props) => {
       sx={{ position: "relative !important" }}
     >
       <Box display="flex" width="100%" flexDirection="column">
-        <Box
-          style={{
-            position: "relative",
-            padding: "0.5rem 0",
-            color: theme.text.primary,
-            display: "flex",
-          }}
-        >
-          Show attributes
-          <Checkbox
-            name={"Carousel"}
-            value={!fieldsOnly}
-            checked={!fieldsOnly}
-            onChange={() => setFieldsOnly(!fieldsOnly)}
-            style={{ padding: "4px" }}
-          />
-        </Box>
-        {!allFieldsChecked && (
+        {!isSelectionMode && (
+          <Box
+            style={{
+              position: "relative",
+              padding: "0.75rem 0.5rem 0 0.5rem",
+              color: !searchResults.length
+                ? theme.text.secondary
+                : theme.text.primary,
+              display: "flex",
+            }}
+          >
+            Show metadata
+            <Checkbox
+              name={"Carousel"}
+              value={!showMetadata}
+              checked={!showMetadata}
+              onChange={() => setShowMetadata(!showMetadata)}
+              style={{ padding: "4px" }}
+              disabled={!searchResults.length}
+            />
+          </Box>
+        )}
+        {isSelectionMode && (
+          <Box
+            style={{
+              position: "relative",
+              padding: "0.5rem 0",
+              color: theme.text.primary,
+              display: "flex",
+            }}
+          >
+            Show nested fields
+            <Checkbox
+              name={"Carousel"}
+              value={!fieldsOnly}
+              checked={!fieldsOnly}
+              onChange={() => setFieldsOnly(!fieldsOnly)}
+              style={{ padding: "4px" }}
+            />
+          </Box>
+        )}
+        {!allFieldsChecked && isSelectionMode && (
           <Box
             style={{
               position: "relative",
@@ -54,7 +87,7 @@ export const SchemaSelectionControls = (props: Props) => {
             />
           </Box>
         )}
-        {allFieldsChecked && (
+        {allFieldsChecked && isSelectionMode && (
           <Box
             style={{
               position: "relative",

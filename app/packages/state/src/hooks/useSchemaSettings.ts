@@ -37,6 +37,10 @@ export const selectedPathsState = atomFamily({
   key: "selectedPathsState",
   default: (param: { allPaths: string[] }) => new Set([...param.allPaths]),
 });
+export const showMetadataState = atom({
+  key: "showMetadataState",
+  default: false,
+});
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -50,6 +54,7 @@ export default function useSchemaSettings() {
   );
 
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
+  const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
 
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
@@ -207,7 +212,7 @@ export default function useSchemaSettings() {
         })
         .map((path: string) => {
           const count = path.split(".")?.length;
-          const isSelected = selectedPaths.has(path);
+          let isSelected = selectedPaths.has(path);
           const pathLabel = path.split(".");
           const pathLabelFinal = pathLabel[pathLabel.length - 1];
           const skip =
@@ -217,13 +222,18 @@ export default function useSchemaSettings() {
             path.endsWith(".index") ||
             path.endsWith(".bounding_box");
 
-          const disabled =
+          let disabled =
             path.endsWith(".id") ||
             path === "id" ||
             path === "tags" ||
             path === "filepath" ||
             path === "uniqueness" ||
             path.startsWith("metadata");
+
+          if (selectedTab === "Search") {
+            disabled = true;
+            isSelected = true;
+          }
 
           return {
             path,
@@ -232,6 +242,9 @@ export default function useSchemaSettings() {
             pathLabelFinal,
             skip,
             disabled,
+            info: schema[path].info,
+            description: schema[path].description,
+            name: schema[path].name,
           };
         })
         .sort((item) => (fieldsOnly ? (item.disabled ? 1 : -1) : 0)),
@@ -291,5 +304,7 @@ export default function useSchemaSettings() {
     setAllFieldsChecked: setAllFieldsCheckedWra,
     searchResults,
     setSearchResults,
+    showMetadata,
+    setShowMetadata,
   };
 }

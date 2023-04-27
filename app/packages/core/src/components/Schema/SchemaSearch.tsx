@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
 import * as foq from "@fiftyone/relay";
-import get from "lodash/get";
 import { Box } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
@@ -18,8 +17,9 @@ export const SchemaSearch = (props: Props) => {
   const theme = useTheme();
   const [searchSchemaFields, isSearchingSchemaFields] =
     useMutation<foq.searchSelectFieldsMutation>(foq.searchSelectFields);
+  const [error, setError] = useState<string>("");
 
-  const { searchResults, setSearchResults } = useSchemaSettings();
+  const { setSearchResults } = useSchemaSettings();
 
   return (
     <Box
@@ -76,17 +76,20 @@ export const SchemaSearch = (props: Props) => {
                         searchSelectFields.map((ss) => ss?.path) as string[]
                       );
                     }
-                    if (err?.length) {
-                      console.error(err);
-                      // TODO: show feedback
-                    }
                   },
-                  // onerror
+                  onError: (e) => {
+                    console.error("ss", e);
+                    setError("Failed to find fields matching your search");
+                  },
                 });
+              } else {
+                setSearchResults([]);
               }
+              setError("");
             }
           }}
         />
+        {error && <Box sx={{ color: theme.danger[600] }}>{error}</Box>}
       </Box>
       <Box width="100%">
         <SchemaSelection mode="search" />
