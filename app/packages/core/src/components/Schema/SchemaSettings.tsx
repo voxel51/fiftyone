@@ -140,7 +140,8 @@ const SchemaSettings = (props: Props) => {
                     setSelectedTab(value);
                     if (value === TAB_OPTIONS_MAP.SELECTION) {
                       // reset search results
-                      // setSearchResults([...originalSelectedPaths])
+                      setSearchTerm("");
+                      setSearchResults([]);
                     }
                     if (value === TAB_OPTIONS_MAP.SEARCH) {
                       setFieldsOnly(false);
