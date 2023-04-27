@@ -17,6 +17,8 @@ import {
   registerOperator,
   loadOperatorsFromServer,
   OperatorResult,
+  listLocalAndRemoteOperators,
+  executeOperator,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 
@@ -351,6 +353,7 @@ class SetSelectedSamples extends Operator {
 class SetView extends Operator {
   constructor() {
     super("set_view", "Set view");
+    this.unlisted = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -370,6 +373,7 @@ const SHOW_SAMPLES_STAGE_ID = "show_samples_stage_id";
 class ShowSamples extends Operator {
   constructor() {
     super("show_samples", "Show samples");
+    this.unlisted = true;
   }
   async execute({ state, params }: ExecutionContext) {
     if (params.use_extended_selection) {
@@ -465,11 +469,8 @@ class GetAppValue extends DynamicOperator {
     { result }: OperatorResult
   ): Promise<types.Property> {
     const outputs = new types.ObjectType();
-
-    outputs.defineProperty("target", new types.String(), { default: "test" });
-    outputs.defineProperty("value", getTypeForValue(result.value));
-
-    return new types.Property(outputs);
+    outputs.defineProperty("value", new types.List(new types.String()));
+    return new types.Property(outputs, { view: { name: "InferredView" } });
   }
   async execute({ params, state }: ExecutionContext) {
     const target = params.target;
@@ -499,6 +500,7 @@ class ConsoleLog extends Operator {
 class ShowOutput extends Operator {
   constructor() {
     super("show_output", "Show Output");
+    this.unlisted = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -526,6 +528,30 @@ class ShowOutput extends Operator {
   }
 }
 
+class TestOperator extends Operator {
+  constructor() {
+    super("test_operator", "Test an Operator");
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.ObjectType();
+    const operatorNames = listLocalAndRemoteOperators().allOperators.map(
+      (o) => o.name
+    );
+    inputs.defineProperty("operator", new types.Enum(operatorNames));
+    inputs.defineProperty("params", new types.ObjectType(), {
+      label: "Params",
+      required: true,
+      default: JSON.stringify({ param: "value" }, null, 2),
+      view: { name: "CodeView", props: { language: "json" } },
+    });
+    return new types.Property(inputs);
+  }
+  async execute({ params }: ExecutionContext) {
+    const parsedParams = JSON.parse(params.params);
+    executeOperator(params.operator, parsedParams);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     registerOperator(new CopyViewAsJSON());
@@ -550,9 +576,9 @@ export function registerBuiltInOperators() {
     registerOperator(new ShowSamples());
     registerOperator(new ClearShowSamples());
     registerOperator(new GetAppValue());
-    registerOperator(new CustomColors());
     registerOperator(new ConsoleLog());
     registerOperator(new ShowOutput());
+    registerOperator(new TestOperator());
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");

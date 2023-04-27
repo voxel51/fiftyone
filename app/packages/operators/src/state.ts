@@ -29,22 +29,6 @@ export const promptingOperatorState = atom({
   default: null,
 });
 
-export const operatorPromptState = selector({
-  key: "operatorPromptState",
-  get: ({ get }) => {
-    const promptingOperator = get(promptingOperatorState);
-    if (!promptingOperator) {
-      return {};
-    }
-    const { operatorName, params } = promptingOperator;
-    const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
-
-    const inputFields = operator.inputs.toProps();
-    const outputFields = operator.outputs.toProps();
-    return { inputFields, outputFields, operatorName };
-  },
-});
-
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
   get:
@@ -139,10 +123,16 @@ const useExecutionContext = (operatorName, hooks = {}) => {
   return ctx;
 };
 
+const outputFieldsState = atom({
+  key: "outputFields",
+  default: null,
+});
+
 export const useOperatorPrompt = () => {
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
   );
+  const containerRef = useRef();
 
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
@@ -165,11 +155,12 @@ export const useOperatorPrompt = () => {
   }, [ctx.params]);
   const [validationErrors, setValidationErrors] = useState([]);
 
-  const [outputFields, setOutputFields] = useState();
+  const [outputFields, setOutputFields] = useRecoilState(outputFieldsState);
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
     const resolved = await operator.resolveOutput(ctx, result);
+
     if (resolved) {
       setOutputFields(resolved.toProps());
     } else {
@@ -210,17 +201,18 @@ export const useOperatorPrompt = () => {
     executor.clear();
   };
 
-  const onKeyDown = useCallback(
+  const onKeyUp = useCallback(
     (e) => {
       if (!promptingOperator) return;
       switch (e.key) {
-        case "Enter":
-          e.preventDefault();
-          execute();
-          break;
         case "Escape":
           e.preventDefault();
           close();
+          break;
+        case "Enter":
+          if (e.metaKey || e.ctrlKey) {
+            execute();
+          }
           break;
       }
     },
@@ -228,11 +220,21 @@ export const useOperatorPrompt = () => {
   );
 
   useEffect(() => {
-    document.addEventListener("keydown", onKeyDown);
+    if (!containerRef.current) return;
+    containerRef.current.addEventListener("keydown", onKeyUp);
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      if (containerRef.current)
+        containerRef.current.removeEventListener("keydown", onKeyUp);
     };
-  }, [onKeyDown]);
+  }, [onKeyUp, containerRef.current]);
+
+  const onSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      execute();
+    },
+    [execute, close, promptingOperator]
+  );
 
   const autoExec = async () => {
     if (
@@ -261,6 +263,8 @@ export const useOperatorPrompt = () => {
   if (!promptingOperator) return null;
 
   return {
+    containerRef,
+    onSubmit,
     inputFields,
     outputFields,
     promptingOperator,
@@ -454,7 +458,7 @@ export function useOperatorBrowser() {
     setSelected(getSelectedPrevAndNext().selectedPrev);
   }, [choices, selectedValue]);
 
-  const onKeyDown = useCallback(
+  const onKeyUp = useCallback(
     (e) => {
       if (e.key !== "`" && !isVisible) return;
       if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
@@ -488,11 +492,11 @@ export function useOperatorBrowser() {
   }, [setIsVisible]);
 
   useEffect(() => {
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keyup", onKeyUp);
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keyup", onKeyUp);
     };
-  }, [onKeyDown]);
+  }, [onKeyUp]);
 
   const setSelectedAndSubmit = useCallback(
     (value) => {
@@ -583,9 +587,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         ctx.hooks = hooks;
         ctx.state = state;
         const result = await executeOperatorWithContext(uri, ctx);
+        setNeedsOutput(await operator.needsOutput(ctx, result));
         setResult(result.result);
         setError(result.error);
-        setNeedsOutput(await operator.needsOutput(ctx, result));
         handlers.onSuccess?.(result);
       } catch (e) {
         console.error("Error executing operator");
