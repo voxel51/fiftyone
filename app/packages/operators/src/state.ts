@@ -123,11 +123,6 @@ const useExecutionContext = (operatorName, hooks = {}) => {
   return ctx;
 };
 
-const outputFieldsState = atom({
-  key: "outputFields",
-  default: null,
-});
-
 export const useOperatorPrompt = () => {
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
@@ -155,7 +150,7 @@ export const useOperatorPrompt = () => {
   }, [ctx.params]);
   const [validationErrors, setValidationErrors] = useState([]);
 
-  const [outputFields, setOutputFields] = useRecoilState(outputFieldsState);
+  const [outputFields, setOutputFields] = useState();
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
@@ -191,7 +186,10 @@ export const useOperatorPrompt = () => {
     const resolved = await operator.resolveInput(ctx);
     const validationContext = new ValidationContext(ctx, resolved);
     if (validationContext.invalid) {
-      setValidationErrors(validationContext.toProps().errors);
+      console.log("Execution halted due to invalid input");
+      const validationErrors = validationContext.toProps().errors;
+      console.log(validationErrors);
+      setValidationErrors(validationErrors);
       return;
     }
     executor.execute(promptingOperator.params);
