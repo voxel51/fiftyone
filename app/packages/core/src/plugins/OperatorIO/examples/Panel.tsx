@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { Box } from "@mui/material";
-import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { SchemaIOComponent } from ".";
 import { types } from "@fiftyone/operators";
-import { log, operatorToIOSchema } from "./utils";
-import { getErrorsByPath } from "./utils/operator";
-import { TabsView } from "./components";
-import inputSchema from "./fixtures/input.json";
-import { schema as outputSchema, data } from "./fixtures/output.json";
+import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import { Box } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { SchemaIOComponent } from "../../SchemaIO";
+import { TabsView } from "../../SchemaIO/components";
+import inputSchema from "./input.json";
+import { data, schema as outputSchema } from "./output.json";
+import { log, operatorToIOSchema } from "../utils";
 
 // Panel enabled only in development environment for testing and debugging SchemaIO
 if (import.meta.env.MODE === "development") {
@@ -19,14 +18,6 @@ if (import.meta.env.MODE === "development") {
     activator: () => true,
   });
 }
-
-registerComponent({
-  name: "OperatorIOComponent",
-  label: "OperatorIOComponent",
-  component: OperatorIOComponent,
-  type: PluginComponentType.Component,
-  activator: () => true,
-});
 
 function OperatorIO() {
   const [mode, setMode] = useState("input");
@@ -74,19 +65,5 @@ function OperatorIO() {
         <SchemaIOComponent schema={oSchema} onChange={log} data={state} />
       )}
     </Box>
-  );
-}
-
-function OperatorIOComponent(props) {
-  const { schema, onChange, type, data, errors } = props;
-  const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
-
-  return (
-    <SchemaIOComponent
-      schema={ioSchema}
-      onChange={onChange}
-      data={data}
-      errors={getErrorsByPath(errors)}
-    />
   );
 }
