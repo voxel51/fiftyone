@@ -690,16 +690,19 @@ class ExcludeFields(ViewStage):
     ):
         meta_filter = self.meta_filter
         excluded_fields = set()
-        if meta_filter and not schema:
-            raise ValueError(
-                "Cannot filter fields by metadata without a schema"
-            )
+
         if meta_filter:
+            schema = sample_collection.get_field_schema()
+            if not schema:
+                raise ValueError(
+                    "Cannot filter fields by metadata without a schema"
+                )
             excluded_fields.update(
                 _get_meta_filtered_fields(
                     schema=schema, meta_filter=meta_filter
                 )
             )
+
         if frames:
             excluded_fields.update(
                 self._get_excluded_frame_fields(sample_collection)
