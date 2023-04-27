@@ -123,7 +123,6 @@ export const getColorFromOptions = ({
           setting.attributeForColor?.split(".").slice(-1)[0] ?? labelDefault
             ? "label"
             : "value";
-        // TODO: what if param[key] does not exist? need to test it
         // check if this label has a assigned color, use it if it is a valid color
         const labelColor = setting.labelColors?.find(
           (l) => l.name == param[key]?.toString()

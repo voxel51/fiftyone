@@ -54,6 +54,11 @@ export const fiftyoneDefaultColorPalette = [
   "#777799",
 ];
 
+export const ACTIVE_FIELD = {
+  ["JSON"]: "json",
+  ["GLOBAL"]: "global",
+};
+
 type GlobalColorSetting = {
   colorBy: "field" | "value";
   colors: string[];
@@ -106,11 +111,11 @@ export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
       : null,
     attributeForColor: isString(input["attributeForColor"])
       ? input["attributeForColor"]
-      : null, // TODO: need to handle when it is not valid field path in looker
+      : null,
     useOpacity: isBoolean(input["useOpacity"]) ? input["useOpacity"] : false,
     attributeForOpacity: isString(input["attributeForOpacity"])
       ? input["attributeForOpacity"]
-      : null, // TODO: need to handle when it is not valid field path in looker
+      : null,
     useLabelColors: isBoolean(input["useLabelColors"])
       ? input["useLabelColors"]
       : false,

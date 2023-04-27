@@ -34,7 +34,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const pool = sessionColorState.colorPool;
   const coloring = useRecoilValue(fos.coloring(false));
   const color = getColor(pool, coloring.seed, path);
-  console.info(color);
+
   const defaultColor =
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
   const expandedPath = useRecoilValue(fos.expandPath(path!));
@@ -182,23 +182,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
             <SectionWrapper>
               {tempSetting?.useLabelColors && (
                 <AttributeColorSetting style={CHILD_STYLE} />
-              )}
-            </SectionWrapper>
-            {/* set the attribute used for opacity */}
-            <Checkbox
-              name={`Select attribute for opacity`}
-              value={Boolean(tempSetting?.useOpacity)}
-              setValue={(v: boolean) =>
-                setTempSetting((prev) => ({
-                  ...cloneDeep(prev),
-                  useOpacity: v,
-                  attributeForOpacity: v ? prev.attributeForOpacity : undefined,
-                }))
-              }
-            />
-            <SectionWrapper>
-              {tempSetting?.useOpacity && path && (
-                <OpacityAttribute fields={opacityFields} />
               )}
             </SectionWrapper>
           </form>

@@ -465,11 +465,11 @@ function sortObjectArrays(a, b) {
   const keysB = Object.keys(b).sort();
   for (let i = 0; i < keysA.length; i++) {
     const key = keysA[i];
-    const comparison = key.localeCompare(keysB[i]);
+    const comparison = key?.localeCompare(keysB[i]);
     if (comparison !== 0) {
       return comparison;
     }
-    const valueComparison = JSON.stringify(a[key]).localeCompare(
+    const valueComparison = JSON.stringify(a[key])?.localeCompare(
       JSON.stringify(b[key])
     );
     if (valueComparison !== 0) {

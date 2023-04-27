@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<44d51e965f2ec95c436e288a080f9703>>
+ * @generated SignedSource<<8c1eef9d348ec4b6f741754fd0d8c57f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type ColorScheme = {
+export type ColorSchemeInput = {
   colorPool?: ReadonlyArray<string> | null;
   customizedColorSettings?: Array | null;
 };
@@ -18,7 +18,7 @@ export type ColorSchemeSaveFormat = {
   customizedColorSettings?: string | null;
 };
 export type setColorSchemeMutation$variables = {
-  colorScheme: ColorScheme;
+  colorScheme: ColorSchemeInput;
   colorSchemeSaveFormat: ColorSchemeSaveFormat;
   dataset: string;
   saveToApp: boolean;
@@ -149,16 +149,16 @@ return {
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "d41e80c967cca3e06f4ed61ad61efe8d",
+    "cacheID": "b88d64ee59f884612798564adf95fb56",
     "id": null,
     "metadata": {},
     "name": "setColorSchemeMutation",
     "operationKind": "mutation",
-    "text": "mutation setColorSchemeMutation(\n  $subscription: String!\n  $session: String\n  $dataset: String!\n  $stages: BSONArray!\n  $colorScheme: ColorScheme!\n  $saveToApp: Boolean!\n  $colorSchemeSaveFormat: ColorSchemeSaveFormat!\n) {\n  setColorScheme(subscription: $subscription, session: $session, dataset: $dataset, stages: $stages, colorScheme: $colorScheme, saveToApp: $saveToApp, colorSchemeSaveFormat: $colorSchemeSaveFormat)\n}\n"
+    "text": "mutation setColorSchemeMutation(\n  $subscription: String!\n  $session: String\n  $dataset: String!\n  $stages: BSONArray!\n  $colorScheme: ColorSchemeInput!\n  $saveToApp: Boolean!\n  $colorSchemeSaveFormat: ColorSchemeSaveFormat!\n) {\n  setColorScheme(subscription: $subscription, session: $session, dataset: $dataset, stages: $stages, colorScheme: $colorScheme, saveToApp: $saveToApp, colorSchemeSaveFormat: $colorSchemeSaveFormat)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b0c8bd5cbf08003f2a009eae5fc6e4e5";
+(node as any).hash = "a4e0c4e7e13fb6f8c608287868181164";
 
 export default node;

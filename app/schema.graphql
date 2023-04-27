@@ -108,10 +108,10 @@ enum BrainRunType {
 enum ColorBy {
   field
   instance
-  label
+  value
 }
 
-input ColorScheme {
+input ColorSchemeInput {
   colorPool: [String!] = null
   customizedColorSettings: JSONArray = null
 }
@@ -373,7 +373,7 @@ type Mutation {
     session: String
     dataset: String!
     stages: BSONArray!
-    colorScheme: ColorScheme!
+    colorScheme: ColorSchemeInput!
     saveToApp: Boolean!
     colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!

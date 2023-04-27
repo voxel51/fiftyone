@@ -316,7 +316,7 @@ dataset_dataloader = get_dataloader_resolver(
 class ColorBy(Enum):
     field = "field"
     instance = "instance"
-    label = "label"
+    value = "value"
 
 
 @gql.enum

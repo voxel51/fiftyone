@@ -67,12 +67,6 @@ const App: React.FC = ({}) => {
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
-  // is this necessary for color modal too?
-  useEffect(() => {
-    document
-      .getElementById("colorModal")
-      ?.classList.toggle("modalon", isCustomizeColorModalActive);
-  }, [isCustomizeColorModalActive]);
 
   useEffect(() => {
     const controller = new AbortController();

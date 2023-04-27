@@ -55,7 +55,6 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         | typeof VideoLooker = ImageLooker;
 
       const mimeType = getMimeType(sample);
-      // console.info("useCreateLooker sample", sample)
 
       // checking for pcd extension instead of media_type because this also applies for group slices
       if (urls.filepath.endsWith(".pcd")) {

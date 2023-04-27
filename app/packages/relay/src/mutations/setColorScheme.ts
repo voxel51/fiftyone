@@ -8,7 +8,7 @@ export default r(graphql`
     $session: String
     $dataset: String!
     $stages: BSONArray!
-    $colorScheme: ColorScheme!
+    $colorScheme: ColorSchemeInput!
     $saveToApp: Boolean!
     $colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ) {

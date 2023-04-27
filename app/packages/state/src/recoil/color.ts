@@ -14,13 +14,14 @@ import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPalette);
+      const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,
@@ -48,7 +49,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     (modal) =>
     ({ get }) => {
       get(selectors.appConfigOption({ key: "colorBy", modal }));
-      let pool = get(colorPalette);
+      let pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
       pool = pool.length ? pool : ["#000000"];
       const seed = get(atoms.colorSeed(modal));
       return createColorGenerator(pool, seed);

@@ -377,14 +377,13 @@ class Session(object):
         if color_scheme is None:
             color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
 
-        # print("session init stateDescription color scheme", color_scheme)
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
             spaces=spaces,
-            color_scheme=None,
+            color_scheme=color_scheme,
         )
         self._client = fosc.Client(
             address=address,
@@ -592,13 +591,11 @@ class Session(object):
                 color_pool=focn.DEFAULT_APP_COLOR_POOL,
                 customized_color_settings=[],
             )
-
         if not isinstance(color_scheme, ColorScheme):
             raise ValueError(
                 "`Session.color_scheme` must be a %s or None; found %s"
                 % (ColorScheme, type(color_scheme))
             )
-        print("session setter", color_scheme)
         self._state.color_scheme = color_scheme
 
     @property
@@ -630,10 +627,7 @@ class Session(object):
         self._state.selected = []
         self._state.selected_labels = []
         self._state.spaces = default_spaces
-        self._state.color_scheme = (
-            # fo.app_config.color_scheme or
-            focn.DEFAULT_COLOR_SCHEME
-        )
+        self._state.color_scheme = None
 
     @update_state()
     def clear_dataset(self) -> None:

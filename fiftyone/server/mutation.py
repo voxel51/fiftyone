@@ -16,6 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.colorscheme import ColorScheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -62,7 +63,7 @@ class SavedViewInfo:
 
 
 @gql.input
-class ColorScheme:
+class ColorSchemeInput:
     color_pool: t.Optional[t.List[str]] = None
     customized_color_settings: t.Optional[JSONArray] = None
 
@@ -414,52 +415,27 @@ class Mutation:
         session: t.Optional[str],
         dataset: str,
         stages: BSONArray,
-        color_scheme: ColorScheme,
+        color_scheme: ColorSchemeInput,
         save_to_app: bool,
         color_scheme_save_format: ColorSchemeSaveFormat,
     ) -> bool:
         state = get_state()
         view = get_view(dataset, stages=stages)
-        state.color_scheme = color_scheme
+        state.color_scheme = ColorScheme(
+            color_pool=color_scheme.color_pool,
+            customized_color_settings=color_scheme.customized_color_settings,
+        )
 
         if save_to_app:
-            print("save_to_app", save_to_app)
-            print("view", save_to_app, view)
             view._dataset.app_config.color_scheme = foo.ColorSchemeDocument(
                 color_pool=color_scheme_save_format.color_pool,
                 customized_color_settings=color_scheme_save_format.customized_color_settings,
             )
             view._dataset.save()
-            print(view)
             state.view = view
 
-        print("state.view", state.view)
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
-
-
-def convert_list_to_object(label_colors):
-    if label_colors is None:
-        return None
-    return {lc["name"]: lc["color"] for lc in label_colors}
-
-
-def convert_color_scheme(color_scheme):
-    settings = [
-        {
-            "field_path": s.get["field"],
-            "field_color": s.get("fieldColor"),
-            "attribute_for_color": s.get("attributeForColor"),
-            "attribute_for_opacity": s.get("attributeForOpacity"),
-            "label_colors": convert_list_to_object(s.get("labelColors")),
-        }
-        for s in color_scheme.customized_color_settings
-    ]
-
-    return {
-        "color_pool": color_scheme.color_pool,
-        "customized_color_settings": settings,
-    }
 
 
 def _build_result_view(view, form):

@@ -29,7 +29,7 @@ import {
   theme,
   sessionColorScheme,
   ColorScheme,
-  colorPool,
+  colorPalette,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -156,30 +156,30 @@ const useStateUpdate = (ignoreSpaces = false) => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
-
-        if (state?.colorScheme && typeof state?.colorScheme === "string") {
-          const sessionSetting = JSON.parse(JSON.parse(state?.colorScheme));
-          console.info("sessionSetting", sessionSetting);
-          set(sessionColorScheme, sessionSetting as ColorScheme);
-        } else if (dataset.appConfig?.colorScheme) {
-          const { colorPool, customizedColorSettings } =
-            dataset.appConfig?.colorScheme;
-          const datasetSetting = {
-            colorPool,
-            customizedColorSettings: JSON.parse(customizedColorSettings),
-          };
-          console.info("datasetSetting", datasetSetting);
-          set(sessionColorScheme, datasetSetting as ColorScheme);
-        } else if (config?.colorPool) {
-          set(sessionColorScheme, {
-            colorPool: config?.colorPool,
-            customizedColorSettings: [],
-          } as ColorScheme);
-        } else {
-          set(sessionColorScheme, DEFAULT_APP_COLOR_SCHEME as ColorScheme);
-        }
         set(datasetAtom, dataset);
       }
+      let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
+      if (state?.colorScheme && typeof state?.colorScheme === "string") {
+        const parsedSetting = JSON.parse(JSON.parse(state?.colorScheme));
+        colorSetting = parsedSetting as ColorScheme;
+      } else if (dataset.appConfig?.colorScheme) {
+        console.log("dataset.appconfig", dataset.appConfig?.colorScheme);
+        const { colorPool, customizedColorSettings } =
+          dataset.appConfig?.colorScheme;
+        colorSetting = {
+          colorPool,
+          customizedColorSettings: JSON.parse(customizedColorSettings),
+        };
+      } else if (config?.colorPool) {
+        console.info("config");
+        colorSetting = {
+          colorPool: config?.colorPool ?? DEFAULT_APP_COLOR_SCHEME.colorPool,
+          customizedColorSettings: [],
+        };
+      }
+
+      console.info("colorSetting", colorSetting);
+      set(sessionColorScheme, colorSetting as ColorScheme);
 
       set(modal, null);
 

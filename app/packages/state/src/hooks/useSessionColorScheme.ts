@@ -36,14 +36,7 @@ const useSessionColorScheme = () => {
     };
 
     setSessionColorSchemeState(combined);
-    console.info(
-      subscription,
-      dataset,
-      stages,
-      combined,
-      saveFormat,
-      saveToApp
-    );
+
     return send((session) =>
       commit({
         onError,
