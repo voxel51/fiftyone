@@ -42,18 +42,23 @@ export class ValidationContext {
   // todo: oneOf, Tuple
   validateProperty(path, property, value) {
     const { type } = property;
+    const isNullish = value === undefined || value === null;
     if (property.invalid) {
       this.addError(new ValidationError("Invalid property", property, path));
-    } else if ((property.required && value === undefined) || value === null) {
-      this.addError(new ValidationError("Required property", property, path));
-    } else if (type instanceof Enum) {
-      this.validateEnum(path, property, value);
-    } else if (type instanceof ObjectType) {
-      this.validateObject(path, property, value);
-    } else if (type instanceof List) {
-      this.validateList(path, property, value);
-    } else {
-      this.validatePrimitive(path, property, value);
+    } else if (property.required) {
+      if (isNullish) {
+        this.addError(new ValidationError("Required property", property, path));
+      }
+    } else if (!isNullish) {
+      if (type instanceof Enum) {
+        this.validateEnum(path, property, value);
+      } else if (type instanceof ObjectType) {
+        this.validateObject(path, property, value);
+      } else if (type instanceof List) {
+        this.validateList(path, property, value);
+      } else if (!isNullish) {
+        this.validatePrimitive(path, property, value);
+      }
     }
   }
 
