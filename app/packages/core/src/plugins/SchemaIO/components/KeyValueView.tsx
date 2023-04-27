@@ -1,21 +1,21 @@
-import React from "react";
 import {
   Box,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableRow,
-  Paper,
 } from "@mui/material";
-import Header from "./Header";
+import React from "react";
+import { HeaderView } from ".";
 
 export default function KeyValueView(props) {
   const { path, schema, data, nested } = props;
-  const { view } = schema;
+
   return (
     <Box>
-      <Header {...view} divider />
+      <HeaderView {...props} divider />
       <TableContainer component={nested ? Box : Paper}>
         <Table>
           <TableBody>

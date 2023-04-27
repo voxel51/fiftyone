@@ -1,15 +1,15 @@
-import React from "react";
 import {
   Box,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
 } from "@mui/material";
-import Header from "./Header";
+import React from "react";
+import { HeaderView } from ".";
 import EmptyState from "./EmptyState";
 
 export default function TableView(props) {
@@ -21,7 +21,7 @@ export default function TableView(props) {
 
   return (
     <Box>
-      <Header {...view} divider />
+      <HeaderView {...props} divider />
       {dataMissing && <EmptyState>No data provided</EmptyState>}
       {!dataMissing && (
         <TableContainer component={Paper}>

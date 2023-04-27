@@ -1,16 +1,16 @@
-import React from "react";
 import { FormControlLabel, Switch } from "@mui/material";
-import Header from "./Header";
+import React from "react";
+import { HeaderView } from ".";
 
 export default function SwitchView(props) {
   const { schema, data } = props;
-  const { view = {} } = schema;
+
   return (
     <FormControlLabel
       control={
         <Switch defaultChecked={data === true || schema.default === true} />
       }
-      label={<Header {...view} />}
+      label={<HeaderView {...props} />}
     />
   );
 }
