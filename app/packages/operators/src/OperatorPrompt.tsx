@@ -69,13 +69,16 @@ function ActualOperatorPrompt() {
 
   return createPortal(
     <PromptContainer>
-      <PromptModal>
+      <PromptModal ref={operatorPrompt.containerRef}>
         {operatorPrompt.showPrompt && (
           <Prompting operatorPrompt={operatorPrompt} />
         )}
         {operatorPrompt.isExecuting && <div>Executing...</div>}
         {operatorPrompt.hasResultOrError && (
-          <Results operatorPrompt={operatorPrompt} />
+          <Results
+            operatorPrompt={operatorPrompt}
+            outputFields={operatorPrompt.outputFields}
+          />
         )}
       </PromptModal>
     </PromptContainer>,
@@ -84,20 +87,23 @@ function ActualOperatorPrompt() {
 }
 
 function Prompting({ operatorPrompt }) {
+  console.log("Prompting", { operatorPrompt });
   return (
     <Box>
       <Box sx={{ pb: 2 }}>
-        <OperatorIO
-          schema={operatorPrompt.inputFields}
-          onChange={(data) => {
-            const formData = data;
-            for (const field in formData) {
-              operatorPrompt.setFieldValue(field, formData[field]);
-            }
-          }}
-          data={operatorPrompt.promptingOperator.params}
-          errors={operatorPrompt?.validationErrors || []}
-        />
+        <form onSubmit={operatorPrompt.onSubmit}>
+          <OperatorIO
+            schema={operatorPrompt.inputFields}
+            onChange={(data) => {
+              const formData = data;
+              for (const field in formData) {
+                operatorPrompt.setFieldValue(field, formData[field]);
+              }
+            }}
+            data={operatorPrompt.promptingOperator.params}
+            errors={operatorPrompt?.validationErrors || []}
+          />
+        </form>
       </Box>
       <ButtonsContainer>
         <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
@@ -139,8 +145,9 @@ export function OperatorViewModal() {
   );
 }
 
-function Results({ operatorPrompt }) {
-  if (!operatorPrompt.outputFields) return null;
+function Results({ operatorPrompt, outputFields }) {
+  console.log({ operatorPrompt, outputFields });
+  if (!outputFields) return null;
   const { result } = operatorPrompt.executor;
   return (
     <Box>
