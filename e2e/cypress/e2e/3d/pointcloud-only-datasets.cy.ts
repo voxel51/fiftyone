@@ -16,7 +16,15 @@ describe("pointcloud only datasets", () => {
   });
 
   beforeEach(() => {
-    cy.waitForGridToBeVisible("pointcloud-only-datasets");
+    cy.visit("/");
+    cy.get("[data-cy=fo-grid]").should("be.visible");
+  });
+
+  it("should show pointcloud dataset", () => {
+    cy.location("pathname").should(
+      "equal",
+      "/datasets/pointcloud-only-datasets"
+    );
   });
 
   it("should have one looker in one flashlight section", () => {

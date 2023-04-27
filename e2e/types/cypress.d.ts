@@ -11,7 +11,6 @@ declare global {
       killFiftyoneApp(pId: number): Chainable<void>;
       consoleLog(message: string): Chainable<void>;
       waitForFiftyOneApp(timeout?: number): Chainable<void>;
-      waitForGridToBeVisible(datasetName?: string): Chainable<void>;
       waitForLookerToRender(timeout?: number): Chainable<void>;
       visualSnapshot(maybeName?: string): Chainable<void>;
 

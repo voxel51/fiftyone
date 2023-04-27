@@ -23,10 +23,6 @@ describe("quickstart-groups dataset", () => {
     return cy.waitForFiftyOneApp();
   });
 
-  beforeEach(() => {
-    cy.waitForGridToBeVisible();
-  });
-
   it("should have four lookers in two flashlight sections", () => {
     cy.get("[data-cy=flashlight-section]")
       .should("be.visible")
