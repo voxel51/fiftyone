@@ -6,13 +6,11 @@ FiftyOne Plugin Definitions.
 |
 """
 import glob
-import os
 import eta.core.serial as etas
+
 import fiftyone as fo
 import os
 import yaml  # BEFORE PR: add to requirements.txt
-import importlib
-import sys
 import traceback
 from enum import Enum
 
