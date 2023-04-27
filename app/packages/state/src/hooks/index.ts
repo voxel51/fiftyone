@@ -7,6 +7,8 @@ export {
 export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
+export { default as useClearSessionColorScheme } from "./useClearSessionColorScheme";
+export { default as useClearSavedColorScheme } from "./useClearSavedColorScheme";
 export { default as useDimensions } from "./useDimensions";
 export { default as useExpandSample } from "./useExpandSample";
 export { default as useHelpPanel } from "./useHelpPanel";

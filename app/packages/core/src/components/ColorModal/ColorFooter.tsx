@@ -14,7 +14,12 @@ import {
   validateJSONSetting,
 } from "./utils";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ModalActionButtonContainer, BUTTON_STYLE } from "./ShareStyledDiv";
+import {
+  ModalActionButtonContainer,
+  BUTTON_STYLE,
+  LONG_BUTTON_STYLE,
+  ButtonGroup,
+} from "./ShareStyledDiv";
 
 type Prop = {
   eligibleFields: Field[];
@@ -25,6 +30,8 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     fos.sessionColorScheme
   );
   const setColorScheme = fos.useSessionColorScheme();
+  const clearSessionSetting = fos.useClearSessionColorScheme();
+  const clearSavedSetting = fos.useClearSavedColorScheme();
   const activeColorModalField = useRecoilValue(fos.activeColorField);
   const tempGlobalSettings = useRecoilValue(tempGlobalSetting);
   const json = useRecoilValue(tempColorJSON);
@@ -51,6 +58,11 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     onCancel();
   };
 
+  const onClearSave = () => {
+    clearSavedSetting();
+    onCancel();
+  };
+
   const onApply = (saveToApp: boolean = false) => {
     if (typeof activeColorModalField !== "string") {
       // save field settings (update tempcolor by checkbox options)
@@ -63,6 +75,7 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
               s.field === (activeColorModalField as Field).path ? update : s
             )
           : [...fullSetting, update];
+
       setSessionColorSchemeState((prev) => {
         const newCustomizedColorSettings = (prev.customizedColorSettings ?? [])
           .filter((s) => s.field !== (activeColorModalField as Field).path)
@@ -131,24 +144,40 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
 
   return (
     <ModalActionButtonContainer>
-      <Button
-        text={"Apply"}
-        title={`Apply`}
-        onClick={() => onApply(false)}
-        style={BUTTON_STYLE}
-      />
-      <Button
-        text={"Save"}
-        title={`Save to dataset`}
-        onClick={onSave}
-        style={BUTTON_STYLE}
-      />
-      <Button
-        text={"Close"}
-        title={`Close`}
-        onClick={onCancel}
-        style={BUTTON_STYLE}
-      />
+      <ButtonGroup>
+        <Button
+          text={"Apply"}
+          title={`Apply`}
+          onClick={() => onApply(false)}
+          style={BUTTON_STYLE}
+        />
+        <Button
+          text={"Clear"}
+          title={`Clear`}
+          onClick={clearSessionSetting}
+          style={BUTTON_STYLE}
+        />
+      </ButtonGroup>
+      <ButtonGroup>
+        <Button
+          text={"Save as default"}
+          title={`Save to dataset`}
+          onClick={onSave}
+          style={LONG_BUTTON_STYLE}
+        />
+        <Button
+          text={"Clear saved"}
+          title={`Clear`}
+          onClick={onClearSave}
+          style={LONG_BUTTON_STYLE}
+        />
+        <Button
+          text={"Close"}
+          title={`Close`}
+          onClick={onCancel}
+          style={BUTTON_STYLE}
+        />
+      </ButtonGroup>
     </ModalActionButtonContainer>
   );
 };

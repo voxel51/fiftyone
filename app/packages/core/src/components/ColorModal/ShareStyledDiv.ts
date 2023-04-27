@@ -59,6 +59,11 @@ export const Text = styled.div`
   cursor: pointer;
 `;
 
+export const ButtonGroup = styled.div`
+  display: flex;
+  flex-direction: row;
+`;
+
 export const ActionDiv = styled.div`
   position: relative;
 `;
@@ -85,17 +90,23 @@ export const LabelTitle = styled.div`
 `;
 
 export const ModalActionButtonContainer = styled.div`
-  align-self: flex-end;
+  width: "100%";
   display: flex;
   flex-direction: row;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 0.5rem;
 `;
 
 export const BUTTON_STYLE: React.CSSProperties = {
   margin: "0.5rem 1rem",
   height: "2rem",
-  width: "6rem",
   flex: 1,
+  textAlign: "center",
+};
+
+export const LONG_BUTTON_STYLE: React.CSSProperties = {
+  margin: "0.5rem 1rem",
+  height: "2rem",
+  flex: 2,
   textAlign: "center",
 };
