@@ -320,11 +320,9 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 pass
 
         if update:
-            print("dispatch 1")
             await dispatch_event(payload.subscription, StateUpdate(state))
 
     elif not is_app:
-        print("dispatch 2")
         state = payload.initializer
         await dispatch_event(payload.subscription, StateUpdate(state))
 

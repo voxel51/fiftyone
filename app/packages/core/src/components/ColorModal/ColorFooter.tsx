@@ -25,13 +25,10 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     fos.sessionColorScheme
   );
   const setColorScheme = fos.useSessionColorScheme();
-  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.activeColorField
-  );
-  const [tempGlobalSettings, setTempGlobalSettings] =
-    useRecoilState(tempGlobalSetting);
-  const [json, setJson] = useRecoilState(tempColorJSON);
-  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
+  const activeColorModalField = useRecoilValue(fos.activeColorField);
+  const tempGlobalSettings = useRecoilValue(tempGlobalSetting);
+  const json = useRecoilValue(tempColorJSON);
+  const tempColor = useRecoilValue(tempColorSetting);
   const setAlpha = useSetRecoilState(fos.alpha(false));
   const setConfigColorBy = useSetRecoilState(
     fos.appConfigOption({ modal: false, key: "colorBy" })

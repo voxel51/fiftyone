@@ -29,7 +29,6 @@ import {
   theme,
   sessionColorScheme,
   ColorScheme,
-  colorPalette,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -38,7 +37,6 @@ import {
   collapseFields,
   viewsAreEqual,
 } from "../utils";
-import { cloneDeep } from "lodash";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -160,10 +158,9 @@ const useStateUpdate = (ignoreSpaces = false) => {
       }
       let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
       if (state?.colorScheme && typeof state?.colorScheme === "string") {
-        const parsedSetting = JSON.parse(JSON.parse(state?.colorScheme));
+        let parsedSetting = JSON.parse(state?.colorScheme);
         colorSetting = parsedSetting as ColorScheme;
       } else if (dataset.appConfig?.colorScheme) {
-        console.log("dataset.appconfig", dataset.appConfig?.colorScheme);
         const { colorPool, customizedColorSettings } =
           dataset.appConfig?.colorScheme;
         colorSetting = {
@@ -171,14 +168,12 @@ const useStateUpdate = (ignoreSpaces = false) => {
           customizedColorSettings: JSON.parse(customizedColorSettings),
         };
       } else if (config?.colorPool) {
-        console.info("config");
         colorSetting = {
           colorPool: config?.colorPool ?? DEFAULT_APP_COLOR_SCHEME.colorPool,
           customizedColorSettings: [],
         };
       }
 
-      console.info("colorSetting", colorSetting);
       set(sessionColorScheme, colorSetting as ColorScheme);
 
       set(modal, null);
