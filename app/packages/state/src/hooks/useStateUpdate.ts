@@ -33,7 +33,11 @@ import {
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
-import { collapseFields, viewsAreEqual } from "../utils";
+import {
+  DEFAULT_APP_COLOR_SCHEME,
+  collapseFields,
+  viewsAreEqual,
+} from "../utils";
 import { cloneDeep } from "lodash";
 
 export interface StateUpdate {
@@ -152,8 +156,6 @@ const useStateUpdate = (ignoreSpaces = false) => {
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
-        console.info("state.colorScheme", state?.colorScheme);
-        console.info("dataset.colorScheme", dataset.appConfig);
 
         if (state?.colorScheme && typeof state?.colorScheme === "string") {
           const sessionSetting = JSON.parse(JSON.parse(state?.colorScheme));
@@ -168,12 +170,13 @@ const useStateUpdate = (ignoreSpaces = false) => {
           };
           console.info("datasetSetting", datasetSetting);
           set(sessionColorScheme, datasetSetting as ColorScheme);
-        } else {
-          const colors = get(colorPool);
+        } else if (config?.colorPool) {
           set(sessionColorScheme, {
-            colorPool: colors,
+            colorPool: config?.colorPool,
             customizedColorSettings: [],
           } as ColorScheme);
+        } else {
+          set(sessionColorScheme, DEFAULT_APP_COLOR_SCHEME as ColorScheme);
         }
 
         set(datasetAtom, dataset);
