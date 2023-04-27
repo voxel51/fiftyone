@@ -2,7 +2,7 @@ import { Box, Popper, Stack, TextField } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import * as ColorPickers from "react-color";
 import { colorPicker } from "./ColorView.module.css";
-import Header from "./Header";
+import HeaderView from "./HeaderView";
 
 export default function ColorView(props) {
   const { onChange, path, schema, data } = props;
@@ -21,7 +21,7 @@ export default function ColorView(props) {
 
   return (
     <Box>
-      <Header {...view} />
+      <HeaderView {...props} />
       <Stack direction="row" alignItems="center" spacing={1}>
         <Box
           onClick={(e) => {

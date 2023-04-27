@@ -2,14 +2,14 @@ import { CodeBlock } from "@fiftyone/components";
 import { Box } from "@mui/material";
 import React, { useState } from "react";
 import Button from "./Button";
-import Header from "./Header";
+import HeaderView from "./HeaderView";
 
 export default function UnsupportedView(props) {
   const [show, setShow] = useState(false);
   return (
     <Box>
-      <Header
-        label="Unsupported view"
+      <HeaderView
+        schema={{ view: { label: "Unsupported view" } }}
         divider={show}
         Actions={
           <Button onClick={() => setShow(!show)}>
