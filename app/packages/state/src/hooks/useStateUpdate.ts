@@ -178,7 +178,6 @@ const useStateUpdate = (ignoreSpaces = false) => {
         } else {
           set(sessionColorScheme, DEFAULT_APP_COLOR_SCHEME as ColorScheme);
         }
-
         set(datasetAtom, dataset);
       }
 

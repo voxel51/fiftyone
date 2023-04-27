@@ -137,12 +137,12 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
       <Button
         text={"Apply"}
         title={`Apply`}
-        onClick={() => onApply}
+        onClick={() => onApply(false)}
         style={BUTTON_STYLE}
       />
       <Button
-        text={"Save to dataset"}
-        title={`Save`}
+        text={"Save"}
+        title={`Save to dataset`}
         onClick={onSave}
         style={BUTTON_STYLE}
       />
