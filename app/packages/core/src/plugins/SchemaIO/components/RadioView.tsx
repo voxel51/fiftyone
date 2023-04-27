@@ -1,12 +1,12 @@
-import React from "react";
 import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  Radio,
   RadioGroup as MUIRadioGroup,
+  Radio,
 } from "@mui/material";
-import Header from "./Header";
+import React from "react";
+import { HeaderView } from ".";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
@@ -16,7 +16,7 @@ export default function RadioView(props: RadioGroupProps) {
     <FormControl>
       {(label || description) && (
         <FormLabel sx={{ pb: 1 }}>
-          <Header label={label as string} description={description} />
+          <HeaderView {...props} />
         </FormLabel>
       )}
       <MUIRadioGroup
@@ -33,11 +33,7 @@ export default function RadioView(props: RadioGroupProps) {
             value={value}
             control={<Radio />}
             label={
-              <Header
-                label={label}
-                description={description}
-                caption={caption}
-              />
+              <HeaderView schema={{ view: { label, description, caption } }} />
             }
             sx={{
               alignItems: "center",

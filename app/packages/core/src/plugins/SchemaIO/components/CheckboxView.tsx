@@ -1,10 +1,9 @@
+import { Checkbox, FormControlLabel } from "@mui/material";
 import React from "react";
-import { FormControlLabel, Checkbox } from "@mui/material";
-import Header from "./Header";
+import HeaderView from "./HeaderView";
 
 export default function CheckboxView(props) {
   const { onChange, path, schema, data } = props;
-  const { view = {} } = schema;
 
   return (
     <FormControlLabel
@@ -14,7 +13,7 @@ export default function CheckboxView(props) {
           onChange={(e, value) => onChange(path, value)}
         />
       }
-      label={<Header {...view} />}
+      label={<HeaderView {...props} />}
     />
   );
 }
