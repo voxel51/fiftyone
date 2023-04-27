@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
 import { CodeBlock, useTheme } from "@fiftyone/components";
-import { fullSchema, useSchemaSettings } from "@fiftyone/state";
+import { useSchemaSettings } from "@fiftyone/state";
 import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
-import {
-  ArrowDownward,
-  ChevronLeftRounded,
-  ExpandMore,
-} from "@mui/icons-material";
-import Tooltip from "@fiftyone/components/src/components/Tooltip";
+import { ExpandMore } from "@mui/icons-material";
 
 interface Props {}
 
@@ -31,16 +26,13 @@ export const SchemaSelection = () => {
   const expandedPathsKeys = new Set(Object.keys(expandedPaths));
 
   useEffect(() => {
-    console.log("showMetadata", showMetadata);
     if (showMetadata) {
       const res = {};
       finalSchema?.forEach((entry) => {
         res[entry.path] = entry;
       });
-      console.log("here", res);
       setEpandedPaths(res);
     } else {
-      console.log("here2");
       setEpandedPaths({});
     }
   }, [showMetadata]);

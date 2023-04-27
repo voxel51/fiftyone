@@ -42,8 +42,8 @@ export const SchemaSelectionControls = (props: Props) => {
             Show metadata
             <Checkbox
               name={"Carousel"}
-              value={!showMetadata}
-              checked={!showMetadata}
+              value={showMetadata}
+              checked={showMetadata || !searchResults.length}
               onChange={() => setShowMetadata(!showMetadata)}
               style={{ padding: "4px" }}
               disabled={!searchResults.length}
