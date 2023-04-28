@@ -10,8 +10,9 @@ export default function ProgressView(props) {
   const { schema, data } = props;
   const { view = {} } = schema;
   const { label, variant = "linear" } = view;
-  const progress = parseInt(schema?.default ?? data);
 
+  const percent = parseFloat(schema?.default ?? data);
+  const progress = percent * 100;
   const progressVariant = isNaN(progress) ? "indeterminate" : "determinate";
 
   return (
@@ -34,7 +35,7 @@ export default function ProgressView(props) {
                 : {}
             }
           >
-            {progress}%
+            {Math.round(progress)}%
           </Typography>
         )}
       </Box>
