@@ -317,6 +317,11 @@ class View:
         }
 
 
+class InferredView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class Form(View):
     def __init__(
         self,
