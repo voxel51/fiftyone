@@ -206,6 +206,7 @@ class ValidationContext:
         }
 
     def add_error(self, error):
+        print(error.to_json())
         self._errors.append(error)
 
     def _validate(self):
@@ -242,14 +243,15 @@ class ValidationContext:
             return ValidationError("Invalid property", property, path)
         elif property.required and value is None:
             return ValidationError("Required property", property, path)
-        elif isinstance(property.type, types.Enum):
-            return self.validate_enum(path, property, value)
-        elif isinstance(property.type, types.Object):
-            return self.validate_object(path, property, value)
-        elif isinstance(property.type, types.List):
-            return self.validate_list(path, property, value)
-        else:
-            return self.validate_primitive(path, property, value)
+        elif value is not None:
+            if isinstance(property.type, types.Enum):
+                return self.validate_enum(path, property, value)
+            elif isinstance(property.type, types.Object):
+                return self.validate_object(path, property, value)
+            elif isinstance(property.type, types.List):
+                return self.validate_list(path, property, value)
+            else:
+                return self.validate_primitive(path, property, value)
 
     def validate_object(self, path, property, value):
         propertyType = property.type
@@ -264,12 +266,13 @@ class ValidationContext:
                 self.add_error(validation_error)
 
     def validate_primitive(self, path, property, value):
+        print(path, type(value))
         type_name = property.type.__class__.__name__
         value_type = type(value)
         if type_name == "String" and value_type != str:
             return ValidationError("Invalid value type", property, path)
         if type_name == "Number" and (
-            value_type != int or value_type != float
+            value_type != int and value_type != float
         ):
             return ValidationError("Invalid value type", property, path)
         if type_name == "Boolean" and value_type != bool:

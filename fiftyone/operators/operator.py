@@ -58,8 +58,9 @@ class Operator:
     def resolve_type(self, ctx, type):
         if type == "inputs":
             resolved_input_property = self.resolve_input(ctx)
-            if resolved_input_property.view is None:
-                resolved_input_property.view = Form()
+            # TODO support Form in UI
+            # if resolved_input_property.view is None:
+            #     resolved_input_property.view = Form()
             return resolved_input_property
         elif type == "outputs":
             return self.resolve_output(ctx)
@@ -88,7 +89,7 @@ class Operator:
             "uri": self.uri,
             "execute_as_generator": self.execute_as_generator,
             "unlisted": self.unlisted,
-            "is_dynamic": self.is_dynamic
+            "is_dynamic": self.is_dynamic,
         }
 
 
