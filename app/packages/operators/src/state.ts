@@ -128,7 +128,6 @@ export const useOperatorPrompt = () => {
     promptingOperatorState
   );
   const containerRef = useRef();
-  const resolvingInput = useRef(false);
   const resolveTypeError = useRef();
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
@@ -137,7 +136,6 @@ export const useOperatorPrompt = () => {
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
   const resolveInputFields = useCallback(async () => {
-    resolvingInput.current = true;
     ctx.hooks = hooks;
     try {
       const resolved = await operator.resolveInput(ctx);
@@ -150,12 +148,11 @@ export const useOperatorPrompt = () => {
       resolveTypeError.current = e;
       setInputFields(null);
     }
-    resolvingInput.current = false;
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
 
   useEffect(() => {
     resolveInputFields();
-  }, [ctx.params]);
+  }, [ctx.params, executor.isExecuting, executor.hasResultOrError]);
   const [validationErrors, setValidationErrors] = useState([]);
 
   const [outputFields, setOutputFields] = useState();
@@ -259,22 +256,17 @@ export const useOperatorPrompt = () => {
   }, [operator]);
 
   const isExecuting = executor && executor.isExecuting;
-  const hasResultOrError = executor && (executor.result || executor.error);
+  const hasResultOrError = executor.hasResultOrError;
   const showPrompt = inputFields && !isExecuting && !hasResultOrError;
   const executorError = executor.error;
   const resolveError = resolveTypeError.current;
 
   useEffect(() => {
-    if (
-      !resolvingInput.current &&
-      !resolveTypeError.current &&
-      !hasResultOrError &&
-      !executor.needsOutput &&
-      !inputFields
-    ) {
+    if (executor.hasExecuted && !executor.needsOutput) {
+      console.log("AUTO CLOSING");
       close();
     }
-  }, [executor.result, executor.error, executor.needsOutput, inputFields]);
+  }, [executor.hasExecuted, executor.needsOutput]);
 
   if (!promptingOperator) return null;
 
@@ -561,6 +553,10 @@ const operatorExecutionNeedsOutputState = atom({
   key: "operatorExecutionNeedsOutputState",
   default: null,
 });
+const operatorHasExecutedState = atom({
+  key: "operatorHasExecutedState",
+  default: false,
+});
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
   if (!uri.includes("/")) {
@@ -574,6 +570,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const [error, setError] = useRecoilState(operatorExecutionErrorState);
   const [result, setResult] = useRecoilState(operatorExecutionResultState);
+  const [hasExecuted, setHasExecuted] = useRecoilState(
+    operatorHasExecutedState
+  );
 
   const [needsOutput, setNeedsOutput] = useRecoilState(
     operatorExecutionNeedsOutputState
@@ -586,6 +585,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     setError(null);
     setResult(null);
     setIsExecuting(false);
+    setHasExecuted(false);
   };
 
   const execute = useRecoilCallback(
@@ -616,17 +616,20 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(null);
         handlers.onError?.(e);
       }
+      setHasExecuted(true);
       setIsExecuting(false);
     },
     [ctx]
   );
   return {
     isExecuting,
+    hasExecuted,
     execute,
     needsOutput,
     error,
     result,
     clear,
+    hasResultOrError: result || error,
   };
 }
 
