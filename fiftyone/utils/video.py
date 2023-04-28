@@ -97,6 +97,7 @@ def reencode_videos(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -147,6 +148,8 @@ def reencode_videos(
             ``output_dir`` to generate an output path for each video. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original videos after
             re-encoding. This parameter has no effect if the videos are being
             updated in-place
@@ -166,6 +169,7 @@ def reencode_videos(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -187,6 +191,7 @@ def transform_videos(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -250,6 +255,8 @@ def transform_videos(
             ``output_dir`` to generate an output path for each video. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original videos after
             re-encoding
         skip_failures (False): whether to gracefully continue without raising
@@ -274,6 +281,7 @@ def transform_videos(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -292,11 +300,11 @@ def sample_videos(
     max_size=None,
     original_frame_numbers=True,
     force_sample=False,
-    save_filepaths=False,
     media_field="filepath",
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    save_filepaths=False,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -379,8 +387,6 @@ def sample_videos(
             the frames as 1, 2, ... (False)
         force_sample (False): whether to resample videos whose sampled frames
             already exist
-        save_filepaths (False): whether to save the sampled frame paths in the
-            ``output_field`` field of each frame of the input collection
         media_field ("filepath"): the input field containing the video paths to
             sample
         output_field (None): an optional frame field in which to store the
@@ -395,6 +401,8 @@ def sample_videos(
             cause the sampled frames to be written in a nested directory
             structure within ``output_dir`` matching the shape of the input
             video's folder structure
+        save_filepaths (False): whether to save the sampled frame paths in the
+            ``output_field`` field of each frame of the input collection
         delete_originals (False): whether to delete the original videos after
             sampling
         skip_failures (False): whether to gracefully continue without raising
@@ -719,11 +727,12 @@ def _transform_videos(
     original_frame_numbers=True,
     reencode=False,
     force_reencode=False,
-    save_filepaths=False,
     media_field="filepath",
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    save_filepaths=False,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -816,7 +825,7 @@ def _transform_videos(
                 sample.save()
 
             if diff_field or outpath != inpath:
-                if not sample_frames:
+                if update_filepaths and not sample_frames:
                     sample[output_field] = outpath
                     sample.save()
 
