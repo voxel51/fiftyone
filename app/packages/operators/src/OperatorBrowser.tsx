@@ -5,6 +5,10 @@ import { scrollbarStyles } from "@fiftyone/utilities";
 import { Link } from "@mui/material";
 import { Close, Help } from "@mui/icons-material";
 import { useTheme } from "@fiftyone/components";
+import { initializationErrors } from "./operators";
+
+// todo: use plugin component
+import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 
 const BrowserContainer = styled.form`
   position: absolute;
@@ -141,6 +145,12 @@ export default function OperatorBrowser() {
                 }}
               />
             )}
+            <ErrorView
+              schema={{
+                view: { variant: "detailed", popout: true, left: true },
+              }}
+              data={initializationErrors}
+            />
             <Link
               href="https://docs.voxel51.com/user_guide/app.html#operations"
               style={{ display: "flex" }}
