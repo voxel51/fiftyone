@@ -432,7 +432,6 @@ def _transform_image(
     moves = []
 
     try:
-        same_path = inpath == outpath
         should_reencode = (
             force_reencode
             or size is not None
@@ -445,7 +444,7 @@ def _transform_image(
             img = etai.read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
 
-        if same_path and should_reencode and not delete_original:
+        if should_reencode and inpath == outpath and not delete_original:
             orig_path = etau.make_unique_path(inpath, suffix="-original")
             etau.move_file(inpath, orig_path)
             moves.append((inpath, orig_path))
@@ -463,10 +462,10 @@ def _transform_image(
         elif should_reencode:
             etai.write(img, outpath)
             did_transform = True
-        elif not same_path:
+        elif inpath != outpath:
             etau.copy_file(inpath, outpath)
 
-        if delete_original and not same_path:
+        if delete_original and inpath != outpath:
             etau.delete_file(inpath)
     except Exception as e:
         try:

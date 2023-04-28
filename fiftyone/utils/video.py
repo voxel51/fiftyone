@@ -896,7 +896,6 @@ def _transform_video(
             if "out_opts" not in kwargs:
                 kwargs["out_opts"] = []
 
-        same_path = inpath == outpath
         should_reencode = (
             force_reencode
             or fps is not None
@@ -904,7 +903,7 @@ def _transform_video(
             or in_ext.lower() != out_ext.lower()
         )
 
-        if same_path and should_reencode and not delete_original:
+        if should_reencode and inpath == outpath:
             orig_path = etau.make_unique_path(inpath, suffix="-original")
             etau.move_file(inpath, orig_path)
             moves.append((inpath, orig_path))
@@ -925,10 +924,10 @@ def _transform_video(
                 ffmpeg.run(inpath, outpath, verbose=verbose)
 
             did_transform = True
-        elif not same_path:
+        elif inpath != outpath:
             etau.copy_file(inpath, outpath)
 
-        if delete_original and not same_path:
+        if delete_original and inpath != outpath:
             etau.delete_file(inpath)
     except Exception as e:
         try:
