@@ -89,6 +89,7 @@ class ViewFromJSON extends Operator {
 class OpenPanel extends Operator {
   constructor() {
     super("open_panel", "Open a panel");
+    this.unlisted = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -181,7 +182,7 @@ class OpenAllPanels extends Operator {
 class ClosePanel extends Operator {
   constructor() {
     super("close_panel", "Close a panel");
-    // todo: dynamically generate the list
+    this.unlisted = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
