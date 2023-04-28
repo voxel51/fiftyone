@@ -65,11 +65,6 @@ def execute_operator(operator_name, request_params):
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)
-    if not isinstance(inputs, types.Property):
-        raise ValueError(
-            "Operator '%s' resolve_input() does not return a valid Property()"
-            % operator_name
-        )
 
     validation_ctx = ValidationContext(ctx, inputs)
     if validation_ctx.invalid:
@@ -196,8 +191,12 @@ class ValidationContext:
         self.params = ctx.params
         self.inputs_property = inputs_property
         self._errors = []
-        self.errors = self._validate()
-        self.invalid = len(self.errors) > 0
+        if self.inputs_property is None:
+            self.invalid = False
+            self.errors = []
+        else:
+            self.errors = self._validate()
+            self.invalid = len(self.errors) > 0
 
     def to_json(self):
         return {

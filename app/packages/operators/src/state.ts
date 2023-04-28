@@ -242,11 +242,15 @@ export const useOperatorPrompt = () => {
   );
 
   const autoExec = async () => {
-    if (
-      operator &&
-      !(await operator.needsUserInput(ctx)) &&
-      !operator.needsResolution()
-    ) {
+    const needsInput = operator && (await operator.needsUserInput(ctx));
+    const needsResolution = operator && operator.needsResolution();
+    console.log({
+      hasOperator: !!operator,
+      needsUserInput: needsInput,
+      needsResolution: needsResolution,
+    });
+    if (!needsInput && !needsResolution) {
+      console.log("AUTO EXEC");
       execute();
     }
   };
@@ -262,6 +266,10 @@ export const useOperatorPrompt = () => {
   const resolveError = resolveTypeError.current;
 
   useEffect(() => {
+    console.log({
+      "executor.hasExecuted": executor.hasExecuted,
+      "executor.needsOutput": executor.needsOutput,
+    });
     if (executor.hasExecuted && !executor.needsOutput) {
       console.log("AUTO CLOSING");
       close();
@@ -537,59 +545,35 @@ export function useOperatorBrowser() {
   };
 }
 
-const operatorIsExecutingState = atom({
-  key: "operatorIsExecutingState",
-  default: false,
-});
-const operatorExecutionErrorState = atom({
-  key: "operatorExecutionErrorState",
-  default: null,
-});
-const operatorExecutionResultState = atom({
-  key: "operatorExecutionResultState",
-  default: null,
-});
-const operatorExecutionNeedsOutputState = atom({
-  key: "operatorExecutionNeedsOutputState",
-  default: null,
-});
-const operatorHasExecutedState = atom({
-  key: "operatorHasExecutedState",
-  default: false,
-});
-
 export function useOperatorExecutor(uri, handlers: any = {}) {
   if (!uri.includes("/")) {
     uri = `@voxel51/operators/${uri}`;
   }
 
   const { operator } = getLocalOrRemoteOperator(uri);
-  const [isExecuting, setIsExecuting] = useRecoilState(
-    operatorIsExecutingState
-  );
+  const [isExecuting, setIsExecuting] = useState(false);
 
-  const [error, setError] = useRecoilState(operatorExecutionErrorState);
-  const [result, setResult] = useRecoilState(operatorExecutionResultState);
-  const [hasExecuted, setHasExecuted] = useRecoilState(
-    operatorHasExecutedState
-  );
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+  const [hasExecuted, setHasExecuted] = useState(false);
 
-  const [needsOutput, setNeedsOutput] = useRecoilState(
-    operatorExecutionNeedsOutputState
-  );
+  const [needsOutput, setNeedsOutput] = useState(false);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
 
-  const clear = () => {
+  const clear = useCallback(() => {
+    console.log("clearing executor");
+    setIsExecuting(false);
     setError(null);
     setResult(null);
-    setIsExecuting(false);
     setHasExecuted(false);
-  };
+    setNeedsOutput(false);
+  }, [setIsExecuting, setError, setResult, setHasExecuted, setNeedsOutput]);
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides) => {
+      console.log("starting execution");
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -602,6 +586,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       );
       ctx.state = state;
       try {
+        console.log("executing operator with context", ctx);
         ctx.hooks = hooks;
         ctx.state = state;
         const result = await executeOperatorWithContext(uri, ctx);
