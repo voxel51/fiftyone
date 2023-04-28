@@ -70,6 +70,10 @@ export default function OperatorPrompt() {
 
 function ActualOperatorPrompt() {
   const operatorPrompt = useOperatorPrompt();
+  const showResultOrError =
+    operatorPrompt.hasResultOrError ||
+    operatorPrompt.executorError ||
+    operatorPrompt.resolveError;
 
   return createPortal(
     <PromptContainer>
@@ -78,8 +82,8 @@ function ActualOperatorPrompt() {
           <Prompting operatorPrompt={operatorPrompt} />
         )}
         {operatorPrompt.isExecuting && <div>Executing...</div>}
-        {operatorPrompt.hasResultOrError && (
-          <Results
+        {showResultOrError && (
+          <ResultsOrError
             operatorPrompt={operatorPrompt}
             outputFields={operatorPrompt.outputFields}
           />
@@ -148,9 +152,11 @@ export function OperatorViewModal() {
   );
 }
 
-function Results({ operatorPrompt, outputFields }) {
+function ResultsOrError({ operatorPrompt, outputFields }) {
   const executorError = operatorPrompt?.executorError;
-  if (!outputFields && !executorError) return null;
+  const resolveError = operatorPrompt?.resolveError;
+  const error = resolveError || executorError;
+  if (!outputFields && !executorError && !resolveError) return null;
   const { result } = operatorPrompt.executor;
 
   return (
@@ -163,13 +169,13 @@ function Results({ operatorPrompt, outputFields }) {
           onChange={() => {}}
         />
       )}
-      {executorError && (
+      {error && (
         <ErrorView
           schema={{ view: { detailed: true } }}
           data={[
             {
               reason: "Error occurred during operator execution",
-              details: stringifyError(executorError),
+              details: stringifyError(error),
             },
           ]}
         />
