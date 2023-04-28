@@ -495,9 +495,10 @@ def _transform_image(
     out_ext = os.path.splitext(outpath)[1]
 
     did_transform = False
-    tmp_path = None
+    moves = []
 
     try:
+        same_path = inpath == outpath
         should_reencode = (
             force_reencode
             or size is not None
@@ -510,20 +511,12 @@ def _transform_image(
             img = read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
 
-        move = []
-
-        if (inpath == outpath) and should_reencode:
+        if same_path and should_reencode and not delete_original:
             root, ext = os.path.splitext(inpath)
-
-            if not delete_original:
-                orig_path = root + "-original" + ext
-                move.append((inpath, orig_path))
-
-            tmp_path = root + "-tmp" + ext
-            move.append((tmp_path, outpath))
-            outpath = tmp_path
-
-        diff_path = inpath != outpath
+            orig_path = root + "-original" + ext
+            fos.move_file(inpath, orig_path)
+            moves.append((inpath, orig_path))
+            inpath = orig_path
 
         if size is not None:
             if interpolation is not None:
@@ -537,17 +530,15 @@ def _transform_image(
         elif should_reencode:
             write(img, outpath)
             did_transform = True
-        elif diff_path:
+        elif not same_path:
             fos.copy_file(inpath, outpath)
 
-        if delete_original and diff_path:
+        if delete_original and not same_path:
             fos.delete_file(inpath)
-
-        for from_path, to_path in move:
-            fos.move_file(from_path, to_path)
     except Exception as e:
-        if tmp_path is not None and fos.isfile(tmp_path):
-            fos.delete_file(tmp_path)
+        # Undo any moves
+        for from_path, to_path in moves:
+            fos.move_file(to_path, from_path)
 
         if not skip_failures:
             raise
