@@ -218,6 +218,7 @@ class OperatorRegistry {
 
 const localRegistry = new OperatorRegistry();
 const remoteRegistry = new OperatorRegistry();
+export const initializationErrors = [];
 
 export function registerOperator(operator: Operator) {
   operator.pluginName = "@voxel51/operators";
@@ -237,10 +238,23 @@ export async function loadOperatorsFromServer() {
     if (pyErrors.length > 0) {
       console.error("Error loading python plugins:");
       for (const error of pyErrors) {
+        initializationErrors.push({
+          reason: "Error loading python plugins",
+          details: error,
+        });
         console.error(error);
       }
     }
   } catch (e) {
+    initializationErrors.push({
+      reason: "Error loading operators from server",
+      details:
+        e?.stack ||
+        e?.bodyResponse?.stack ||
+        e?.bodyResponse?.toString?.() ||
+        e?.toString?.() ||
+        "No details available",
+    });
     if (e instanceof ServerError) {
       const errorBody = e.bodyResponse;
       if (errorBody && errorBody.kind === "Server Error") {
