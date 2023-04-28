@@ -12,6 +12,7 @@ import fiftyone as fo
 import fiftyone.operators.types as types
 from .message import GeneratedMessage, MessageType
 import types as python_types
+import traceback
 
 
 class InvocationRequest:
@@ -100,7 +101,7 @@ def resolve_type(registry, operator_uri, request_params):
             ctx, request_params.get("target", "inputs")
         )
     except Exception as e:
-        return ExecutionResult(None, None, str(e))
+        return ExecutionResult(None, None, traceback.format_exc())
 
 
 def resolve_placement(operator, request_params):
