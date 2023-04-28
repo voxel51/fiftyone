@@ -933,7 +933,7 @@ def _transform_video(
     except Exception as e:
         # Undo any moves
         for from_path, to_path in moves:
-            etau.move_file(from_path, to_path)
+            etau.move_file(to_path, from_path)
 
         if not skip_failures:
             raise
