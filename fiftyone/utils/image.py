@@ -27,6 +27,7 @@ def reencode_images(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
@@ -64,6 +65,8 @@ def reencode_images(
             ``output_dir`` to generate an output path for each image. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original images after
             re-encoding. This parameter has no effect if the images are being
             updated in-place
@@ -82,6 +85,7 @@ def reencode_images(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
@@ -100,6 +104,7 @@ def transform_images(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
@@ -151,6 +156,8 @@ def transform_images(
             ``output_dir`` to generate an output path for each image. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original images if any
             transformation was applied. This parameter has no effect if the
             images are being updated in-place
@@ -173,6 +180,7 @@ def transform_images(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
@@ -235,6 +243,7 @@ def _transform_images(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
@@ -257,6 +266,7 @@ def _transform_images(
             output_field=output_field,
             output_dir=output_dir,
             rel_dir=rel_dir,
+            update_filepaths=update_filepaths,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
         )
@@ -274,6 +284,7 @@ def _transform_images(
             output_field=output_field,
             output_dir=output_dir,
             rel_dir=rel_dir,
+            update_filepaths=update_filepaths,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
         )
@@ -291,6 +302,7 @@ def _transform_images_single(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
 ):
@@ -324,7 +336,7 @@ def _transform_images_single(
                 skip_failures=skip_failures,
             )
 
-            if diff_field or outpath != inpath:
+            if update_filepaths and (diff_field or outpath != inpath):
                 sample[output_field] = outpath
                 sample.save()
 
@@ -342,6 +354,7 @@ def _transform_images_multi(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
 ):
@@ -384,10 +397,13 @@ def _transform_images_multi(
                 for sample_id, inpath, outpath, _ in pb(
                     pool.imap_unordered(_do_transform, inputs)
                 ):
-                    if diff_field or outpath != inpath:
+                    if update_filepaths and (diff_field or outpath != inpath):
                         outpaths[sample_id] = outpath
     finally:
-        sample_collection.set_values(output_field, outpaths, key_field="id")
+        if outpaths:
+            sample_collection.set_values(
+                output_field, outpaths, key_field="id"
+            )
 
 
 def _do_transform(args):
