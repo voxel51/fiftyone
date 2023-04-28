@@ -513,12 +513,12 @@ def _transform_image(
         move = []
 
         if (inpath == outpath) and should_reencode:
+            root, ext = os.path.splitext(inpath)
+
             if not delete_original:
-                root, ext = os.path.splitext(inpath)
                 orig_path = root + "-original" + ext
                 move.append((inpath, orig_path))
 
-            root, ext = os.path.splitext(inpath)
             tmp_path = root + "-tmp" + ext
             move.append((tmp_path, outpath))
             outpath = tmp_path
