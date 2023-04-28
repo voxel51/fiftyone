@@ -73,7 +73,7 @@ class CopyViewAsJSON extends Operator {
 
 class ViewFromJSON extends Operator {
   constructor() {
-    super("view_from_json", "Create view from clipboard");
+    super("view_from_clipboard", "Paste view from clipboard");
   }
   async execute({ state }: ExecutionContext) {
     const text = await navigator.clipboard.readText();
@@ -348,6 +348,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
 class SetSelectedSamples extends Operator {
   constructor() {
     super("set_selected_samples", "Set selected samples");
+    this.unlisted = true;
   }
   useHooks(): {} {
     return {
@@ -410,12 +411,8 @@ class ClearShowSamples extends Operator {
   constructor() {
     super("clear_show_samples", "Clear show samples");
   }
-  async execute({ state }: ExecutionContext) {
-    const currentView = await state.snapshot.getPromise(fos.view);
-    state.set(
-      fos.view,
-      currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID)
-    );
+  async execute(ctx: ExecutionContext) {
+    executeOperator("show_samples", { samples: [] });
   }
 }
 
