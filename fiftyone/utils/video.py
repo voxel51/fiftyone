@@ -973,9 +973,12 @@ def _transform_video(
         if delete_original and not same_path:
             fos.delete_file(inpath)
     except Exception as e:
-        # Undo any moves
-        for from_path, to_path in moves:
-            fos.move_file(to_path, from_path)
+        try:
+            # Undo any moves
+            for from_path, to_path in moves:
+                fos.move_file(to_path, from_path)
+        except:
+            pass
 
         if not skip_failures:
             raise
