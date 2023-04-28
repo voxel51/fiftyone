@@ -1,6 +1,7 @@
 import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import * as types from "./types";
+import { stringifyError } from "./utils";
 
 class InvocationRequest {
   constructor(public operatorURI: string, public params: any = {}) {}
@@ -240,7 +241,7 @@ export async function loadOperatorsFromServer() {
       for (const error of pyErrors) {
         initializationErrors.push({
           reason: "Error loading python plugins",
-          details: error,
+          details: stringifyError(error),
         });
         console.error(error);
       }
@@ -248,12 +249,7 @@ export async function loadOperatorsFromServer() {
   } catch (e) {
     initializationErrors.push({
       reason: "Error loading operators from server",
-      details:
-        e?.stack ||
-        e?.bodyResponse?.stack ||
-        e?.bodyResponse?.toString?.() ||
-        e?.toString?.() ||
-        "No details available",
+      details: stringifyError(e),
     });
     if (e instanceof ServerError) {
       const errorBody = e.bodyResponse;
@@ -392,8 +388,6 @@ export async function executeOperatorWithContext(
   let result;
   let error;
   let executor;
-
-  console.log(operator, operator.executeAsGenerator);
 
   if (isRemote) {
     if (operator.executeAsGenerator) {

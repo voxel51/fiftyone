@@ -23,6 +23,10 @@ import OperatorIO from "./OperatorIO";
 import { Box } from "@mui/material";
 import { scrollbarStyles } from "@fiftyone/utilities";
 
+// todo: use plugin component
+import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
+import { stringifyError } from "./utils";
+
 const PromptContainer = styled.div`
   position: absolute;
   top: 5rem;
@@ -145,17 +149,31 @@ export function OperatorViewModal() {
 }
 
 function Results({ operatorPrompt, outputFields }) {
-  console.log({ operatorPrompt, outputFields });
-  if (!outputFields) return null;
+  const executorError = operatorPrompt?.executorError;
+  if (!outputFields && !executorError) return null;
   const { result } = operatorPrompt.executor;
+
   return (
     <Box>
-      <OperatorIO
-        type="output"
-        data={result}
-        schema={operatorPrompt.outputFields}
-        onChange={() => {}}
-      />
+      {outputFields && (
+        <OperatorIO
+          type="output"
+          data={result}
+          schema={operatorPrompt.outputFields}
+          onChange={() => {}}
+        />
+      )}
+      {executorError && (
+        <ErrorView
+          schema={{ view: { detailed: true } }}
+          data={[
+            {
+              reason: "Error occurred during operator execution",
+              details: stringifyError(executorError),
+            },
+          ]}
+        />
+      )}
       <ButtonsContainer>
         <Button onClick={() => operatorPrompt.close()}>Close</Button>
       </ButtonsContainer>
