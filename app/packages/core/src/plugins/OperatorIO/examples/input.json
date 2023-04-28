@@ -36,7 +36,7 @@
                     ],
                     "view": {
                         "name": "ErrorView",
-                        "variant": "detailed",
+                        "detailed": true,
                         "popout": true
                     }
                 },
