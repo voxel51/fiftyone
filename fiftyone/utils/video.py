@@ -858,7 +858,7 @@ def _transform_video(
         max_fps = None
 
     did_transform = False
-    tmp_path = None
+    moves = []
 
     try:
         if (
@@ -896,6 +896,7 @@ def _transform_video(
             if "out_opts" not in kwargs:
                 kwargs["out_opts"] = []
 
+        same_path = inpath == outpath
         should_reencode = (
             force_reencode
             or fps is not None
@@ -903,18 +904,11 @@ def _transform_video(
             or in_ext.lower() != out_ext.lower()
         )
 
-        move = []
-
-        if (inpath == outpath) and should_reencode:
-            if not delete_original:
-                orig_path = etau.make_unique_path(inpath, suffix="-original")
-                move.append((inpath, orig_path))
-
-            tmp_path = etau.make_unique_path(inpath, suffix="-tmp")
-            move.append((tmp_path, outpath))
-            outpath = tmp_path
-
-        diff_path = inpath != outpath
+        if same_path and should_reencode and not delete_original:
+            orig_path = etau.make_unique_path(inpath, suffix="-original")
+            etau.move_file(inpath, orig_path)
+            moves.append((inpath, orig_path))
+            inpath = orig_path
 
         if frames is not None:
             etav.sample_select_frames(
@@ -931,17 +925,15 @@ def _transform_video(
                 ffmpeg.run(inpath, outpath, verbose=verbose)
 
             did_transform = True
-        elif diff_path:
+        elif not same_path:
             etau.copy_file(inpath, outpath)
 
-        if delete_original and diff_path:
+        if delete_original and not same_path:
             etau.delete_file(inpath)
-
-        for from_path, to_path in move:
-            etau.move_file(from_path, to_path)
     except Exception as e:
-        if tmp_path is not None and os.path.isfile(tmp_path):
-            etau.delete_file(tmp_path)
+        # Undo any moves
+        for from_path, to_path in moves:
+            etau.move_file(from_path, to_path)
 
         if not skip_failures:
             raise
