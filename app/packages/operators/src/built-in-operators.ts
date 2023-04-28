@@ -34,7 +34,16 @@ class ReloadSamples extends Operator {
     state.set(fos.refresher, refresherTick + 1);
   }
 }
-
+class ReloadDataset extends Operator {
+  constructor() {
+    super("reload_dataset", "Reload the dataset");
+  }
+  async execute({ state }: ExecutionContext) {
+    // TODO - improve this... this is a temp. workaround for the fact that
+    // there is no way to force reload just the dataset
+    window.location.reload();
+  }
+}
 class ClearSelectedSamples extends Operator {
   constructor() {
     super("clear_selected_samples", "Clear selected samples");
@@ -581,6 +590,7 @@ export function registerBuiltInOperators() {
     registerOperator(new CopyViewAsJSON());
     registerOperator(new ViewFromJSON());
     registerOperator(new ReloadSamples());
+    registerOperator(new ReloadDataset());
     registerOperator(new ClearSelectedSamples());
     registerOperator(new OpenAllPanels());
     registerOperator(new CloseAllPanels());
