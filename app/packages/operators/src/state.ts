@@ -129,6 +129,7 @@ export const useOperatorPrompt = () => {
   );
   const containerRef = useRef();
   const resolvingInput = useRef(false);
+  const resolveTypeError = useRef();
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
   const operator = getLocalOrRemoteOperator(operatorName).operator;
@@ -138,10 +139,15 @@ export const useOperatorPrompt = () => {
   const resolveInputFields = useCallback(async () => {
     resolvingInput.current = true;
     ctx.hooks = hooks;
-    const resolved = await operator.resolveInput(ctx);
-    if (resolved) {
-      setInputFields(resolved.toProps());
-    } else {
+    try {
+      const resolved = await operator.resolveInput(ctx);
+      if (resolved) {
+        setInputFields(resolved.toProps());
+      } else {
+        setInputFields(null);
+      }
+    } catch (e) {
+      resolveTypeError.current = e;
       setInputFields(null);
     }
     resolvingInput.current = false;
@@ -256,10 +262,12 @@ export const useOperatorPrompt = () => {
   const hasResultOrError = executor && (executor.result || executor.error);
   const showPrompt = inputFields && !isExecuting && !hasResultOrError;
   const executorError = executor.error;
+  const resolveError = resolveTypeError.current;
 
   useEffect(() => {
     if (
       !resolvingInput.current &&
+      !resolveTypeError.current &&
       !hasResultOrError &&
       !executor.needsOutput &&
       !inputFields
@@ -287,6 +295,7 @@ export const useOperatorPrompt = () => {
     cancel: close,
     validationErrors,
     executorError,
+    resolveError,
   };
 };
 
