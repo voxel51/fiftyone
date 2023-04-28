@@ -128,7 +128,7 @@ export const useOperatorPrompt = () => {
     promptingOperatorState
   );
   const containerRef = useRef();
-
+  const resolvingInput = useRef(false);
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
   const operator = getLocalOrRemoteOperator(operatorName).operator;
@@ -136,6 +136,7 @@ export const useOperatorPrompt = () => {
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
   const resolveInputFields = useCallback(async () => {
+    resolvingInput.current = true;
     ctx.hooks = hooks;
     const resolved = await operator.resolveInput(ctx);
     if (resolved) {
@@ -143,6 +144,7 @@ export const useOperatorPrompt = () => {
     } else {
       setInputFields(null);
     }
+    resolvingInput.current = false;
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
 
   useEffect(() => {
@@ -253,12 +255,18 @@ export const useOperatorPrompt = () => {
   const isExecuting = executor && executor.isExecuting;
   const hasResultOrError = executor && (executor.result || executor.error);
   const showPrompt = inputFields && !isExecuting && !hasResultOrError;
+  const executorError = executor.error;
 
   useEffect(() => {
-    if (hasResultOrError && !executor.needsOutput) {
+    if (
+      !resolvingInput.current &&
+      !hasResultOrError &&
+      !executor.needsOutput &&
+      !inputFields
+    ) {
       close();
     }
-  }, [executor.result, executor.error, executor.needsOutput]);
+  }, [executor.result, executor.error, executor.needsOutput, inputFields]);
 
   if (!promptingOperator) return null;
 
@@ -278,6 +286,7 @@ export const useOperatorPrompt = () => {
     close,
     cancel: close,
     validationErrors,
+    executorError,
   };
 };
 
