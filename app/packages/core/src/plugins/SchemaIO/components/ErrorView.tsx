@@ -6,7 +6,7 @@ import { Error } from "@mui/icons-material";
 export default function ErrorView(props) {
   const { schema, data } = props;
   const { view = {} } = schema;
-  const { variant, popout, left } = view;
+  const { detailed, popout, left } = view;
   const errors = [
     ...(Array.isArray(data) ? data : []),
     ...(Array.isArray(schema?.default) ? schema?.default : []),
@@ -14,7 +14,7 @@ export default function ErrorView(props) {
 
   if (errors.length === 0) return null;
 
-  if (variant === "detailed") {
+  if (detailed) {
     return <DetailedErrors errors={errors} popout={popout} left={left} />;
   }
 

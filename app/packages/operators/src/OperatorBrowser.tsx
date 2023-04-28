@@ -147,7 +147,7 @@ export default function OperatorBrowser() {
             )}
             <ErrorView
               schema={{
-                view: { variant: "detailed", popout: true, left: true },
+                view: { detailed: true, popout: true, left: true },
               }}
               data={initializationErrors}
             />
