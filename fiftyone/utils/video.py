@@ -911,7 +911,6 @@ def _transform_video(
             if "out_opts" not in kwargs:
                 kwargs["out_opts"] = []
 
-        same_path = inpath == outpath
         should_reencode = (
             force_reencode
             or fps is not None
@@ -919,7 +918,7 @@ def _transform_video(
             or in_ext.lower() != out_ext.lower()
         )
 
-        if same_path and should_reencode and not delete_original:
+        if should_reencode and inpath == outpath:
             root, ext = os.path.splitext(inpath)
             orig_path = root + "-original" + ext
             fos.move_file(inpath, orig_path)
@@ -967,10 +966,10 @@ def _transform_video(
                     ffmpeg.run(inpath, local_path, verbose=verbose)
 
             did_transform = True
-        elif not same_path:
+        elif inpath != outpath:
             fos.copy_file(inpath, outpath)
 
-        if delete_original and not same_path:
+        if delete_original and inpath != outpath:
             fos.delete_file(inpath)
     except Exception as e:
         try:
