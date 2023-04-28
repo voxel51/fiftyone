@@ -15,6 +15,31 @@
         "type": {
             "name": "Object",
             "properties": {
+                "errors": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "Object", "properties": {} }
+                    },
+                    "default": [
+                        {
+                            "reason": "This is the first error",
+                            "details": "Some error details\nLine 2"
+                        },
+                        {
+                            "reason": "This is the second error",
+                            "details": "Some error details"
+                        },
+                        {
+                            "reason": "This is the third error",
+                            "details": "Some error details"
+                        }
+                    ],
+                    "view": {
+                        "name": "ErrorView",
+                        "variant": "detailed",
+                        "popout": true
+                    }
+                },
                 "cars": {
                     "type": {
                         "name": "Map",
