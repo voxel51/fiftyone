@@ -265,7 +265,7 @@ def _list_plugins(enabled_only: bool = None) -> list[Optional[plugin_package]]:
             plugin = plugin_package(plugin_name, os.path.dirname(fpath))
             plugins.append(plugin)
 
-    if enabled_only:
+    if enabled_only and (disabled is not None):
         return [p for p in plugins if p.name not in disabled]
     elif enabled_only is False:
         return [p for p in plugins if p.name in disabled]
