@@ -652,38 +652,38 @@ class ExcludeFields(ViewStage):
         #
 
     Args:
-        field_names: a field name or iterable of field names to exclude. May
-            contain ``embedded.field.name`` as well
+        field_names (None): a field name or iterable of field names to exclude.
+            May contain ``embedded.field.name`` as well
+        meta_filter (None): a filter that dynamically excludes fields in the
+            collection's schema according to the specified rule, which can be a
+            string that will be matched against the field's ``name``,
+            ``description``, or ``info``, or a dict that restricts the search
+            to specific fields. For example:
 
-        meta_filter (None): a filter expression to filter the returned fields
-            based on their metadata. This can be a string that will be matched
-            against anything in the name, description or info, or a dict that will be
-            matched against the info.
-
-            For example, to select only fields that have a description that contains the
-            string "my description", you can use ``meta_filter={description: "my description"}``.
-
-            To select fields that have the string '2023' anywhere in the info, you can use
-            ``meta_filter={info: "2023"}``.
-
-            To select any fields that have the string '2023' anywhere in the info, name or description,
-            you can use ``meta_filter="2023"``.
-
-            To select only fields that have a specific key / value pair in their info field,
-            you can use ``meta_filter=dict(info=dict(key="value"))`` or, ``meta_filter=dict(key="value")``,
-            as passing a dict as the meta_filter parameter will only return results from the
-            info value of the fields.
+            -   Use ``meta_filter="2023"`` to exclude fields that have the
+                string "2023" anywhere in their name, description, or info
+            -   Use ``meta_filter={description: "my description"}`` to exclude
+                fields whose description contains the string "my description"
+            -   Use ``meta_filter={info: "2023"}`` to exclude fields that have
+                the string "2023" anywhere in their info
+            -   Use ``meta_filter=dict(info=dict(key="value"))`` to exclude
+                fields that have a specific key/value pair in their info field
     """
 
-    def __init__(self, field_names, meta_filter=None, _allow_missing=False):
+    def __init__(
+        self,
+        field_names=None,
+        meta_filter=None,
+        _allow_missing=False,
+    ):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
-        self._allow_missing = _allow_missing
         self._meta_filter = meta_filter
+        self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
@@ -692,21 +692,15 @@ class ExcludeFields(ViewStage):
 
     @property
     def meta_filter(self):
-        """The list of field names to exclude."""
+        """A filter that dynamically excludes fields."""
         return self._meta_filter
 
-    def get_excluded_fields(
-        self, sample_collection, frames=False, schema=None
-    ):
-        meta_filter = self.meta_filter
+    def get_excluded_fields(self, sample_collection, frames=False):
         excluded_fields = set()
 
+        meta_filter = self.meta_filter
         if meta_filter:
             schema = sample_collection.get_field_schema()
-            if not schema:
-                raise ValueError(
-                    "Cannot filter fields by metadata without a schema"
-                )
             excluded_fields.update(
                 _get_meta_filtered_fields(
                     schema=schema, meta_filter=meta_filter
@@ -792,8 +786,8 @@ class ExcludeFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<field>|field|list<str>|str",
-                "placeholder": "list,of,fields",
+                "type": "NoneType|list<field>|field|list<str>|str",
+                "placeholder": "field_names",
             },
             {
                 "name": "meta_filter",
@@ -5377,25 +5371,20 @@ class SelectFields(ViewStage):
     Args:
         field_names (None): a field name or iterable of field names to select.
             May contain ``embedded.field.name`` as well
+        meta_filter (None): a filter that dynamically selects fields in the
+            collection's schema according to the specified rule, which can be a
+            string that will be matched against the field's ``name``,
+            ``description``, or ``info``, or a dict that restricts the search
+            to specific fields. For example:
 
-        meta_filter (None): a filter expression to filter the returned fields
-            based on their metadata. This can be a string that will be matched
-            against anything in the name, description or info, or a dict that will be
-            matched against the info.
-
-            For example, to select only fields that have a description that contains the
-            string "my description", you can use ``meta_filter={description: "my description"}``.
-
-            To select fields that have the string '2023' anywhere in the info, you can use
-            ``meta_filter={info: "2023"}``.
-
-            To select any fields that have the string '2023' anywhere in the info, name or description,
-            you can use ``meta_filter="2023"``.
-
-            To select only fields that have a specific key / value pair in their info field,
-            you can use ``meta_filter=dict(info=dict(key="value"))`` or, ``meta_filter=dict(key="value")``,
-            as passing a dict as the meta_filter parameter will only return results from the
-            info value of the fields.
+            -   Use ``meta_filter="2023"`` to select fields that have the
+                string "2023" anywhere in their name, description, or info
+            -   Use ``meta_filter={description: "my description"}`` to select
+                fields whose description contains the string "my description"
+            -   Use ``meta_filter={info: "2023"}`` to select fields that have
+                the string "2023" anywhere in their info
+            -   Use ``meta_filter=dict(info=dict(key="value"))`` to select
+                fields that have a specific key/value pair in their info field
     """
 
     def __init__(
@@ -5410,8 +5399,8 @@ class SelectFields(ViewStage):
             field_names = list(field_names)
 
         self._field_names = field_names
-        self._allow_missing = _allow_missing
         self._meta_filter = meta_filter
+        self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
@@ -5420,23 +5409,21 @@ class SelectFields(ViewStage):
 
     @property
     def meta_filter(self):
-        """The meta filters to apply, as a string or dict."""
+        """A filter that dynamically selects fields."""
         return self._meta_filter
 
     def get_selected_fields(self, sample_collection, frames=False):
-        meta_filter = self.meta_filter
         selected_fields = set()
+
+        meta_filter = self._meta_filter
         if meta_filter:
             schema = sample_collection.get_field_schema()
-            if not schema:
-                raise ValueError(
-                    "Cannot filter fields by metadata without a schema"
-                )
             selected_fields.update(
                 _get_meta_filtered_fields(
                     schema=schema, meta_filter=meta_filter
                 )
             )
+
         if frames:
             selected_fields.update(
                 self._get_selected_frame_fields(sample_collection)
@@ -5525,7 +5512,6 @@ class SelectFields(ViewStage):
         return [{"$project": {f: True for f in selected_paths}}]
 
     def _needs_frames(self, sample_collection):
-
         if not sample_collection._contains_videos():
             return False
 
@@ -5553,7 +5539,7 @@ class SelectFields(ViewStage):
                 "name": "field_names",
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
-                "placeholder": "list,of,fields",
+                "placeholder": "field_names",
             },
             {
                 "name": "meta_filter",
@@ -7898,6 +7884,7 @@ _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
 
+
 # Simple registry for the server to grab available view stages
 _STAGES = [
     Concat,
@@ -7941,6 +7928,7 @@ _STAGES = [
     ToTrajectories,
     ToFrames,
 ]
+
 
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {
