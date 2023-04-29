@@ -2,6 +2,11 @@ import { ExecutionContext } from "./operators";
 
 export class BaseType {}
 
+export class Void extends BaseType {
+  static fromJSON(json: any) {
+    return new Void();
+  }
+}
 export class ObjectType extends BaseType {
   constructor(public properties: Map<string, Property> = new Map()) {
     super();
@@ -292,6 +297,7 @@ export class SampleID extends String {}
 
 // NOTE: this should always match fiftyone/operators/types.py
 export const TYPES = [
+  Void,
   ObjectType,
   String,
   Boolean,
@@ -344,4 +350,4 @@ export class JSONView extends View {
   }
 }
 
-export type ANY_TYPE = String | Boolean | Number | List | Enum;
+export type ANY_TYPE = Void | String | Boolean | Number | List | Enum;
