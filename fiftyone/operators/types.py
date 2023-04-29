@@ -13,6 +13,18 @@ class BaseType:
         }
 
 
+class Void(BaseType):
+    """Represents a void type."""
+
+    def __init__(self):
+        pass
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
+        }
+
+
 class Object(BaseType):
     """Represents a JSON object."""
 
@@ -23,10 +35,10 @@ class Object(BaseType):
         """Adds a property to the object.
 
         Args:
-            name: the name of the property
-            property: the property to add
+            name: the name of the :class:`Property`
+            property: the :class:`Property` to add
         Returns:
-            the property that was added
+            the :class:`Property` that was added
         """
         self.properties[name] = property
         return property
@@ -35,9 +47,9 @@ class Object(BaseType):
         """Gets a property by name.
 
         Args:
-            name: the name of the property
+            name: the name of the :class:`Property`
         Returns:
-            the property, or None if not found
+            the :class:`Property`, or None if not found
         """
         return self.properties.get(name, None)
 
@@ -45,14 +57,14 @@ class Object(BaseType):
         """Defines a property on the object.
 
         Args:
-            name: the name of the property
-            type: the type of the property
-            [label]: the view.label of the property
-            [description]: the view.description of the property
-            [view]: the view of the property
+            name: the name of the :class:`Property`
+            type: the type of the :class:`Property`
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
 
         Returns:
-            the property that was added
+            the :class:`Property` that was added
         """
         label = kwargs.get("label", None)
         description = kwargs.get("description", None)
@@ -74,10 +86,10 @@ class Object(BaseType):
         """Defines a property on the object that is a string.
 
         Args:
-            name: the name of the property
-            [label]: the view.label of the property
-            [description]: the view.description of the property
-            [view]: the view of the property
+            name: the name of the :class:`Property`
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
         """
         return self.define_property(name, String(), **kwargs)
 
@@ -85,10 +97,10 @@ class Object(BaseType):
         """Defines a property on the object that is a boolean.
 
         Args:
-            name: the name of the property
-            [label]: the view.label of the property
-            [description]: the view.description of the property
-            [view]: the view of the property
+            name: the name of the :class:`Property`
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
         """
         return self.define_property(name, Boolean(), **kwargs)
 
@@ -96,10 +108,10 @@ class Object(BaseType):
         """Defines a property on the object that is an integer.
 
         Args:
-            name: the name of the property
-            [label]: the view.label of the property
-            [description]: the view.description of the property
-            [view]: the view of the property
+            name: the name of the :class:`Property`
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
         """
         return self.define_property(name, Number(int=True), **kwargs)
 
@@ -107,10 +119,7 @@ class Object(BaseType):
         """Defines a property on the object that is a float.
 
         Args:
-            name: the name of the property
-            [label]: the view.label of the property
-            [description]: the view.description of the property
-            [view]: the view of the property
+            name: the name of the :class:`Property`
         """
         return self.define_property(name, Number(float=True), **kwargs)
 
@@ -118,11 +127,11 @@ class Object(BaseType):
         """Defines a property on the object that is an enum.
 
         Args:
-            name: the name of the property
+            name: the name of the :class:`Property`
             values: a list of values that define the enum
-            [label]: the view.label of the property
-            [description]: the view.description of the property
-            [view]: the view of the property
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
 
         Note:
             The view can be a :class:`Choices`, :class:`RadioGroup`, or :class:`Dropdown`
@@ -130,18 +139,65 @@ class Object(BaseType):
         return self.define_property(name, Enum(values), **kwargs)
 
     def list(self, name, element_type, **kwargs):
+        """Defines a property on the object that is a list.
+
+        Args:
+            name: the name of the :class:`Property`
+            element_type: the type of the elements in the list
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
+        """
         return self.define_property(name, List(element_type), **kwargs)
 
     def obj(self, name, **kwargs):
+        """Defines a property on the object that is an object.
+
+        Args:
+            name: the name of the :class:`Property`
+            label (None): the :class:`View`.label of the :class:`Property`
+            description (None): the :class:`View`.description of the :class:`Property`
+            view (None): the :class:`View` of the :class:`Property`
+        """
+
         return self.define_property(name, Object(), **kwargs)
 
+    def view(self, view):
+        """Defines a :class:`Void` view-only property.
+
+        Examples::
+
+            import fiftyone.operator.types as types
+
+            inputs = types.Object()
+            inputs.view(types.Notice(label="Hello World"))
+
+        Args:
+            view: the :class:`View` to define
+        """
+        return Property(Void(), view=view)
+
+    def message(self, label, **kwargs):
+        """Defines a message to display to the user.
+
+        Args:
+            label: the :class:`View`.label of the :class:`Notice`
+            description (None): the :class:`View`.description of the :class:`Notice`
+            view (None): the :class:`View` of the :class:`Notice`
+        """
+        view = kwargs.get("view", Notice())
+        if label is None:
+            view.label = label
+        return self.view(view)
+
     def clone(self):
+        """Clones the definition of the object."""
         clone = Object()
         clone.properties = self.properties.copy()
         return clone
 
     def to_json(self):
-        # convert properties to json
+        """Converts the object definition to json."""
         properties = {}
         for name, property in self.properties.items():
             properties[name] = property.to_json()
@@ -149,6 +205,43 @@ class Object(BaseType):
 
 
 class Property(BaseType):
+    """Represents a property on an :class:`Operator` :class:`Object`.
+
+    Properties are used to define the data that an :class:`Operator` can accept as input and return as output.
+
+    Properties may also define a :class:`View` that can be used to customize how the property behaves in the FiftyOne App.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        my_object = types.Object()
+        # define a string property
+        my_object.str("name", label="Name", description="The name of the object")
+
+        # define a enum property with a custom view
+        radio_group = types.RadioGroup()
+        radio_group.add_choice("car", "A Brand New Car")
+        radio_group.add_choice("truck", "A Fancy Truck")
+        my_object.enum("type", radio_group.values(), view=radio_group)
+
+    Args:
+        type: the type of the :class:`Property`
+        invalid (False): whether the :class:`Property` is invalid
+        default (None): the default value of the :class:`Property`
+        required (False): whether the :class:`Property` is required
+        error_message ("Invalid"): the error message of the :class:`Property`
+        view (None): the :class:`View` of the :class:`Property`
+
+    Attributes:
+        type: the type of the :class:`Property`
+        invalid: whether the :class:`Property` is invalid
+        default: the default value of the :class:`Property`
+        required: whether the :class:`Property` is required
+        error_message: the error message of the :class:`Property`
+        view: the :class:`View` of the :class:`Property`
+    """
+
     def __init__(self, type, **kwargs):
         self.type = type
         invalid_descendants = self.has_invalid_descendants()
@@ -179,16 +272,29 @@ class Property(BaseType):
 
 
 class String(BaseType):
+    """Represents a string."""
+
     def __init__(self):
         pass
 
 
 class Boolean(BaseType):
+    """Represents a boolean."""
+
     def __init__(self):
         pass
 
 
 class Number(BaseType):
+    """Represents a number.
+
+    Args:
+        min (None): the minimum value of the :class:`Number`
+        max (None): the maximum value of the :class:`Number`
+        int (False): whether the :class:`Number` is an integer
+        float (False): whether the :class:`Number` is a float
+    """
+
     def __init__(self, min=None, max=None, int=False, float=False):
         self.min = min
         self.max = max
@@ -206,6 +312,14 @@ class Number(BaseType):
 
 
 class List(BaseType):
+    """Represents a list.
+
+    Args:
+        element_type: the type of the elements in the :class:`List`
+        min_items (None): the minimum number of items in the :class:`List`
+        max_items (None): the maximum number of items in the :class:`List`
+    """
+
     def __init__(self, element_type, min_items=None, max_items=None):
         self.element_type = element_type
         self.min_items = min_items
@@ -221,11 +335,19 @@ class List(BaseType):
 
 
 class SampleID(String):
+    """Represents a :class:`fiftyone.core.Sample` ID."""
+
     def __init__(self):
         pass
 
 
 class Enum(BaseType):
+    """Represents an enum.
+
+    Args:
+        values: the values of the :class:`Enum`
+    """
+
     def __init__(self, values):
         self.values = values
 
@@ -234,6 +356,19 @@ class Enum(BaseType):
 
 
 class OneOf(BaseType):
+    """Represents a one-of type.
+
+    Example:
+
+        import fiftyone.operators.types as types
+
+        my_object = types.Object()
+        my_object.define_property("my_property", types.OneOf([types.String(), types.Number()])
+
+    Args:
+        types: the types of the :class:`OneOf`
+    """
+
     def __init__(self, types):
         self.types = types
 
@@ -245,6 +380,18 @@ class OneOf(BaseType):
 
 
 class Tuple(BaseType):
+    """Represents a tuple.
+
+    Example:
+
+        import fiftyone.operators.types as types
+        inputs = types.Object()
+        inputs.define_property("image", types.Tuple(types.String(), types.Number()))
+
+    Args:
+        *items: the types of the :class:`Tuple`
+    """
+
     def __init__(self, *items):
         self.items = items
 
@@ -256,6 +403,19 @@ class Tuple(BaseType):
 
 
 class Map(BaseType):
+    """Represents a map.
+
+    Example:
+
+        import fiftyone.operators.types as types
+        inputs = types.Object()
+        inputs.define_property("image", types.Map(types.String(), types.Number()))
+
+    Args:
+        key_type: the type of the keys in the :class:`Map`
+        value_type: the type of the values in the :class:`Map`
+    """
+
     def __init__(self, key_type, value_type):
         self.key_type = key_type
         self.value_type = value_type
@@ -269,29 +429,24 @@ class Map(BaseType):
 
 
 #
-# Trigger
-#
-
-
-class Trigger(BaseType):
-    def __init__(self, operator, params=None):
-        self.operator = operator
-        self.params = params
-
-    def to_json(self):
-        return {
-            "name": self.__class__.__name__,
-            "operator": self.operator,
-            "params": self.params,
-        }
-
-
-#
 # Views
 #
 
 
 class View:
+    """Represents a view of a :class:`Property`.
+
+    A ``View`` is used to define how a :class:`Property` is displayed in the FiftyOne App.
+
+    Args:
+        label (None): a label for the :class:`View`
+        description (None): a description for the :class:`View`
+        caption (None): a caption for the :class:`View`
+        space (12): An ``int`` specifying how much vertical space to allocate out of ``12``.
+        placeholder (None): string to display placeholder text
+        read_only (False): whether the :class:`View` is read-only
+    """
+
     def __init__(self, **kwargs):
         self.label = kwargs.get("label", None)
         self.description = kwargs.get("description", None)
@@ -318,6 +473,12 @@ class View:
 
 
 class InferredView(View):
+    """Represents a view of a :class:`Property` that is inferred from the data.
+
+    Note:
+        You cannot only use an ``InferredView`` for an input :class:`Property`.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -345,12 +506,23 @@ class Form(View):
 
 
 class ReadonlyView(View):
+    """An alias for :class:`View` with ``read_only=True``."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.read_only = True
 
 
 class Choice(View):
+    """Represents a choice in a :class:`Choices` :class:`View`.
+
+    Args:
+        value: the value of the choice
+        label (None): a label for the :class:`Choice`
+        description (None): a description for the :class:`Choice`
+        caption (None): a caption for the :class:`Choice`
+    """
+
     def __init__(self, value, **kwargs):
         super().__init__(**kwargs)
         self.value = value
@@ -364,19 +536,46 @@ class Choice(View):
 
 
 class Choices(View):
+    """Represents a set of choices in a :class:`View`.
+
+    Use this :class:`View` to define a set of choices for a :class:`Property` that
+    can be selected by the user and require labels and optional descriptions.
+
+    Example::
+
+        import fiftyone.operators.types as types
+
+        inputs = types.Object()
+        choices = types.Choices()
+        choices.add_choice("cat", label="Cat", description="A cat")
+        choices.add_choice("dog", label="Dog", description="A dog")
+        inputs.enum("animal", choices.values(), view=choices)
+
+        # you can also replace ``Choices`` with any class that inherits from it.
+        choices = types.RadioGroup()
+        # or
+        choices = types.Dropdown()
+
+    Args:
+        choices (None): a list of :class:`Choice` instances
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.choices = kwargs.get("choices", [])
 
     def values(self):
+        """Returns the values of the :class:`Choice` instances in this :class:`Choices`."""
         return [choice.value for choice in self.choices]
 
     def add_choice(self, value, **kwargs):
+        """Adds a :class:`Choice` to this :class:`Choices`."""
         choice = Choice(value, **kwargs)
         self.choices.append(choice)
         return choice
 
     def clone(self):
+        """Clones the :class:`Choices`."""
         clone = super().clone()
         clone.choices = [choice.clone() for choice in self.choices]
         return clone
@@ -390,6 +589,29 @@ class Choices(View):
 
 
 class RadioGroup(Choices):
+    """Represents a set of choices in a :class:`View` that are displayed as a radio group.
+
+    Examples::
+        import fiftyone.operators.types as types
+
+        inputs = types.Object()
+        choices = types.Choices()
+        choices.add_choice("cat", label="Cat", description="A cat")
+        choices.add_choice("dog", label="Dog", description="A dog")
+        inputs.enum("animal", choices.values(), view=choices)
+
+        # you can also replace ``Choices`` with any class that inherits from it.
+        choices = types.RadioGroup()
+        # or
+        choices = types.Dropdown()
+
+    Args:
+        orientation ("horizontal"): the orientation of the radio group Can be ``"horizontal"`` or ``"vertical"``.
+        label (None): a label for the :class:`RadioGroup`
+        description (None): a description for the :class:`RadioGroup`
+        caption (None): a caption for the :class:`RadioGroup`
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = kwargs.get("orientation", None)
@@ -402,11 +624,45 @@ class RadioGroup(Choices):
 
 
 class Dropdown(Choices):
+    """Represents a set of choices in a :class:`View` that are displayed as a dropdown.
+
+    Examples::
+        import fiftyone.operators.types as types
+
+        inputs = types.Object()
+        choices = types.Dropdown()
+        choices.add_choice("cat", label="Cat", description="A cat")
+        choices.add_choice("dog", label="Dog", description="A dog")
+        inputs.enum("animal", choices.values(), view=choices)
+
+    Args:
+        label (None): a label for the :class:`Dropdown`
+        description (None): a description for the :class:`Dropdown`
+        caption (None): a caption for the :class:`Dropdown`
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class Notice(View):
+    """Represents a notice in a :class:`View`.
+
+    Use this :class:`View` to display a notice to the user.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        inputs = types.Object()
+        inputs.notice("This is a notice")
+
+    Args:
+        label (None): a label for the :class:`Notice`
+        description (None): a description for the :class:`Notice`
+        caption (None): a caption for the :class:`Notice`
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -417,16 +673,37 @@ class Header(View):
 
 
 class Warning(View):
+    """Represents a warning in a :class:`View`."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class Error(View):
+    """Represents an error in a :class:`View`."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class Button(View):
+    """Represents a button in a :class:`View`.
+
+    Example:
+
+        import fiftyone.operators.types as types
+
+        inputs = types.Object()
+        inputs.view("btn", types.Button(label="Click me", operator="print_stdout", params={"message": "Hello World"}))
+
+    Args:
+        label (None): a label for the :class:`Button`
+        description (None): a description for the :class:`Button`
+        caption (None): a caption for the :class:`Button`
+        operator (None): the name of the operator to execute when the button is clicked
+        params (None): the parameters to pass to the operator
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.href = kwargs.get("href", None)
@@ -443,6 +720,24 @@ class Button(View):
 
 
 class OneOfView(View):
+    """Displays one of the given :class:`View` instances.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # allow the user to pick which type to input or display
+        inputs = types.Object()
+        choices = types.RadioGroup()
+        choices.add_choice("cat", label="Cat", description="A cat")
+        choices.add_choice("dog", label="Dog", description="A dog")
+        view = types.OneOfView(oneof=[types.Enum(choices.values()), types.String()])
+        inputs.define_property(types.OneOfView(oneof=[choices]), view=view)
+
+    Args:
+        oneof (None): a list of :class:`View` instances
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.oneof = kwargs.get("oneof", [])
@@ -455,6 +750,8 @@ class OneOfView(View):
 
 
 class ListView(View):
+    """Displays a list of :class:`View` instances."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.items = kwargs.get("items", None)
@@ -467,6 +764,8 @@ class ListView(View):
 
 
 class TupleView(View):
+    """Displays a tuple of :class:`View` instances."""
+
     def __init__(self, *itemsView, **options):
         super().__init__(**options)
         self.items = itemsView
@@ -479,6 +778,20 @@ class TupleView(View):
 
 
 class CodeView(View):
+    """Displays a code editor for the given :class:`View` instance.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # allow the user to input a python expression
+        inputs = types.Object()
+        inputs.string("src", types.CodeView(language="python"))
+
+    Args:
+        language (None): the language to use for syntax highlighting
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.language = kwargs.get("language", None)
@@ -488,6 +801,13 @@ class CodeView(View):
 
 
 class ColorView(View):
+    """Displays a color picker for the given :class:`View` instance.
+
+    Args:
+        compact (None): whether to display the color picker in compact mode
+        variant (None): the variant of the color picker. See https://casesandberg.github.io/react-color
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.compact = kwargs.get("compact", False)
@@ -502,6 +822,12 @@ class ColorView(View):
 
 
 class TabsView(Choices):
+    """Displays a tabbed view for the given :class:`View` instances.
+
+    Args:
+        variant (None): the variant of the tabs. See https://material-ui.com/components/tabs
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.variant = kwargs.get("variant", None)
@@ -511,21 +837,37 @@ class TabsView(Choices):
 
 
 class JSONView(View):
+    """Displays a JSON viewer for the given :class:`View` instance."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class AutocompleteView(Choices):
+    """Displays an autocomplete input for the given :class:`View` instance.
+
+    Note:
+        This can be used in place of :class:`Choices`
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class FileView(View):
+    """Displays a file input for the given :class:`View` instance."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class LinkView(View):
+    """Displays a link for the given :class:`View` instance.
+
+    Args:
+        href (None): the URL to link to. Defaults to the property ``value.href``.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.href = kwargs.get("href", None)
@@ -535,16 +877,31 @@ class LinkView(View):
 
 
 class HiddenView(View):
+    """Allows properties to be hidden from the user."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class LoadingView(ReadonlyView):
+    """Displays a loading indicator for the given :class:`View` instance."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class PlotlyView(View):
+    """Displays a Plotly chart for the given :class:`View` instance.
+
+    Note:
+        See https://github.com/plotly/react-plotly.js/#basic-props for documentation.
+
+    Args:
+        data (None): the chart data
+        config (None): the chart config
+        layout (None): the chart layout
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.data = kwargs.get("data", None)
@@ -586,11 +943,19 @@ class Places(enum.Enum):
 
 
 class KeyValueView(View):
+    """Displays a key-value editor for the given :class:`View` instance."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
 class Column(View):
+    """Defines a column in a :class:`TableView`.
+
+    Args:
+        key: the name of the property to use for data
+    """
+
     def __init__(self, key, **kwargs):
         super().__init__(**kwargs)
         self.key = key
@@ -604,6 +969,12 @@ class Column(View):
 
 
 class TableView(View):
+    """Displays a table for the given :class:`View` instance.
+
+    Args:
+        columns (None): a list of :class:`Column` objects to display
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.columns = kwargs.get("columns", [])
@@ -629,6 +1000,8 @@ class TableView(View):
 
 
 class MapView(View):
+    """Displays a map for the given :class:`View` instance."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.key = kwargs.get("key", None)
@@ -643,6 +1016,12 @@ class MapView(View):
 
 
 class ProgressView(View):
+    """Displays a progress bar for the given :class:`View` instance.
+
+    Args:
+        variant (None): "linear" | "circular" the variant of the progress bar.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.variant = kwargs.get("variant", "linear")
