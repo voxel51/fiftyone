@@ -44,6 +44,7 @@ INSTALL_REQUIRES = [
     "ftfy",
     "future",
     "hypercorn>=0.13.2",
+    "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
