@@ -4,7 +4,6 @@ import { Box } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
 import { useMutation } from "react-relay";
-import { useRecoilState } from "recoil";
 import { useSchemaSettings } from "@fiftyone/state";
 
 interface Props {

@@ -234,6 +234,7 @@ def extend_view(view, extended_stages):
         a :class:`fiftyone.core.view.DatasetView`
     """
     for _cls, d in extended_stages.items():
+        print("\n", _cls, d, "\n")
         kwargs = [[k, v] for k, v in d.items()]
         stage = fosg.ViewStage._from_dict({"_cls": _cls, "kwargs": kwargs})
         view = view.add_stage(stage)

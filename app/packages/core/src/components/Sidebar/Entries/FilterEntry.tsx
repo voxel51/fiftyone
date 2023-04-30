@@ -1,7 +1,7 @@
 import { textFilter } from "@fiftyone/state";
 import React, { useState } from "react";
 import { useDebounce } from "react-use";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { InputDiv } from "./utils";
 import * as fos from "@fiftyone/state";
 import { Settings } from "@mui/icons-material";
@@ -10,6 +10,8 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
   const [value, setValue] = useState(() => debouncedValue);
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
+  const extendedStages = useRecoilValue(fos.extendedStages);
+  console.log("extendedStages", extendedStages);
 
   useDebounce(
     () => {

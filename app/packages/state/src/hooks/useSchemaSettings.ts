@@ -1,7 +1,16 @@
-import { useRecoilState, atom, useRecoilValue, atomFamily } from "recoil";
+import {
+  useRecoilState,
+  atom,
+  useRecoilValue,
+  atomFamily,
+  useRecoilCallback,
+} from "recoil";
 import * as fos from "@fiftyone/state";
-import { buildSchema, useSetView } from "@fiftyone/state";
+import * as foq from "@fiftyone/relay";
+import { buildSchema, useSetView, viewStateForm } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
+import { useMutation } from "react-relay";
+import { Stage } from "@fiftyone/utilities";
 
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
@@ -42,6 +51,11 @@ export const showMetadataState = atom({
   default: false,
 });
 
+export const selectedFieldsStageState = atom<any>({
+  key: "selectedFieldsStageState",
+  default: undefined,
+});
+
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
   SEARCH: "Search",
@@ -53,8 +67,18 @@ export default function useSchemaSettings() {
     fos.activeLabelPaths({ modal: false })
   );
 
+  const send = fos.useSendEvent();
+
+  const subscription = useRecoilValue(fos.stateSubscription);
+
+  const [saveSelectedFields, isSavingSelectedFields] =
+    useMutation<foq.setSelectedFieldsMutation>(foq.setSelectedFields);
+
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
+  const [selectedFieldsStage, setSelectedFieldsStage] = useRecoilState(
+    selectedFieldsStageState
+  );
 
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
@@ -69,6 +93,42 @@ export default function useSchemaSettings() {
   const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
 
   const allPaths = Object.keys(schema);
+
+  const handleSaveSelectedFields = useRecoilCallback(
+    ({ snapshot }) =>
+      (newStage, stage) => {
+        console.log("sasadsdasd", newStage);
+        if (newStage) {
+          const form = snapshot.getLoadable(
+            viewStateForm({ modal: false })
+          ).contents;
+          console.log("handleSaveSelectedFields", form);
+          send((session) =>
+            saveSelectedFields({
+              // onError,
+              variables: {
+                form: {
+                  ...form,
+                  extended: {
+                    ...form.extended,
+                    "fiftyone.core.stages.SelectFields": newStage,
+                  },
+                },
+                subscription,
+              },
+              onCompleted: (data, err) => {
+                if (err) {
+                  console.log("handleSaveSelectedFields failed", err, data);
+                } else {
+                  setSelectedFieldsStage(stage);
+                }
+              },
+            })
+          );
+        }
+      },
+    [selectedFieldsStage, subscription]
+  );
 
   const getSelectedSubPaths = useCallback(
     (path: string) => {
@@ -172,14 +232,14 @@ export default function useSchemaSettings() {
           const selectedFields = view?.["kwargs"]?.filter(
             (item) => item[0] === "field_names"
           )[0];
-          selectedFields[1].forEach((item) => finalSelectedFields.add(item));
+          selectedFields[1]?.forEach((item) => finalSelectedFields.add(item));
         }
       }
       if (finalSelectedFields.size) {
         const ffff = new Set<string>();
         finalSelectedFields.forEach((p: string) => {
           const subPaths = getSelectedSubPaths(p);
-          subPaths.forEach((item: string) => ffff.add(item));
+          subPaths?.forEach((item: string) => ffff.add(item));
         });
       }
     }
@@ -306,5 +366,12 @@ export default function useSchemaSettings() {
     setSearchResults,
     showMetadata,
     setShowMetadata,
+    selectedFieldsStage,
+    setSelectedFieldsStage,
+    saveSelectedFields,
+    isSavingSelectedFields,
+    subscription,
+    send,
+    handleSaveSelectedFields,
   };
 }
