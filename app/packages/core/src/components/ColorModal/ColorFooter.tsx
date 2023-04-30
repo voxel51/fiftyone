@@ -30,8 +30,8 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
     fos.sessionColorScheme
   );
   const setColorScheme = fos.useSessionColorScheme();
-  const clearSessionSetting = fos.useClearSessionColorScheme();
-  const clearSavedSetting = fos.useClearSavedColorScheme();
+  const clearSetting = fos.useClearSessionColorScheme();
+
   const activeColorModalField = useRecoilValue(fos.activeColorField);
   const tempGlobalSettings = useRecoilValue(tempGlobalSetting);
   const json = useRecoilValue(tempColorJSON);
@@ -59,7 +59,7 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
   };
 
   const onClearSave = () => {
-    clearSavedSetting();
+    clearSetting(true);
     onCancel();
   };
 
@@ -154,7 +154,7 @@ const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
         <Button
           text={"Clear"}
           title={`Clear`}
-          onClick={clearSessionSetting}
+          onClick={() => clearSetting(false)}
           style={BUTTON_STYLE}
         />
       </ButtonGroup>

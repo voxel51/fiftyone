@@ -20,7 +20,7 @@ const useClearSessionColorScheme = () => {
   const dataset = useRecoilValue(datasetName);
   const stages = useRecoilValue(view);
 
-  function setColorScheme() {
+  function onClear(saveToApp: boolean) {
     const combined = {
       colorPool: DEFAULT_APP_COLOR_SCHEME.colorPool,
       customizedColorSettings: DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
@@ -37,13 +37,13 @@ const useClearSessionColorScheme = () => {
           dataset,
           stages,
           colorScheme: combined,
-          saveToApp: false,
+          saveToApp: saveToApp,
           colorSchemeSaveFormat: null,
         },
       })
     );
   }
-  return setColorScheme;
+  return onClear;
 };
 
 export default useClearSessionColorScheme;
