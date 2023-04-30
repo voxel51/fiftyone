@@ -274,6 +274,7 @@ export const resolveGroups = (
     []
   );
 
+  console.log("dataset.sampleFields", dataset.sampleFields);
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])

@@ -12,8 +12,10 @@ import useSchemaSettings, {
   TAB_OPTIONS_MAP,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
+import { viewStateForm } from "@fiftyone/state";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -66,9 +68,10 @@ const SchemaSettings = (props: Props) => {
     setSelectedPaths,
     selectedTab,
     finalSelectedPaths,
-    setView,
     setSearchResults,
     setFieldsOnly,
+    setSelectedFieldsStage,
+    handleSaveSelectedFields,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -174,21 +177,26 @@ const SchemaSettings = (props: Props) => {
                 borderRadius: "4px",
               }}
               onClick={() => {
-                const stageKwargs = [
-                  ["field_names", [...finalSelectedPaths]],
-                  ["_allow_missing", true],
-                ];
+                const stageKwargs = {
+                  field_names: [...finalSelectedPaths],
+                  _allow_missing: true,
+                };
                 const stageCls = "fiftyone.core.stages.SelectFields";
                 const stage = {
                   _cls: stageCls,
                   kwargs: stageKwargs,
                 } as Stage;
                 try {
-                  setView([stage]);
+                  // setView([stage]);
+                  console.log("[add to view] fields", finalSelectedPaths);
+                  // handleSaveSelectedFields(stageKwargs, stage)
+                  // saveSelectedFields
+                  // setSelectedFieldsStage(stage)
                 } catch (e) {
                   console.log("error", e);
                 } finally {
                   setSettingsModal({ open: false });
+                  // handleSaveSelectedFields()
                 }
               }}
             >

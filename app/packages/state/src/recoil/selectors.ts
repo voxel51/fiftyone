@@ -18,6 +18,7 @@ import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
 import { isPatchesView } from "./view";
+import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -422,12 +423,19 @@ export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
+    const selectFieldsStage = get(selectedFieldsStageState) as {
+      _cls: string;
+      kwargs: string[];
+    };
 
     return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
+      ...(selectFieldsStage
+        ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
+        : {}),
     };
   },
 });
