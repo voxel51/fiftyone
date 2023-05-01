@@ -24,6 +24,7 @@ import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { Link } from "@mui/material";
 import styled from "styled-components";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -129,6 +130,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 </PlotOption>
               </Fragment>
             )}
+            <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
         </Selectors>
         {showPlot && (
