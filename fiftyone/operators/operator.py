@@ -15,8 +15,22 @@ class Operator:
 
     FiftyOne operators contain enough information for a user interface to
     render a form or button allowing a user to execute the operation.
+
     Args:
         name (None): the name of the operator.
+        label (None): a label for the operator.
+        description (None): a description of the operator.
+
+    Attributes:
+        name: the name of the operator
+        label: a label for the operator
+        description: a description of the operator
+        definition: a read-only Object representation of the default operator definition
+        plugin_name: the name of the plugin that registered the operator
+        execute_as_generator: whether the operator should be executed as a generator
+        unlisted: whether the operator should be listed in the Operator Browser
+        is_dynamic: whether the operator inputs and outputs should be resolved when the input/output changes
+        uri: The read-only globally unique identifier for the operator in the form ``plugin_name/operator_name``.
     """
 
     def __init__(self, name, label=None, description=None, **kwargs):
@@ -32,6 +46,9 @@ class Operator:
         self.is_dynamic = False
 
     def dispose(self):
+        """Classes that inherit from Operator can override this method to
+        perform any cleanup when the operator is disposed.
+        """
         pass
 
     @property
@@ -40,11 +57,27 @@ class Operator:
         return "%s/%s" % (plugin_name, self.name)
 
     def resolve_definition(self, resolve_dynamic, ctx):
+        """Returns a resolved definition of the operator.
+
+        The resolved definition is a clone of the default definition using
+        resolve_input() and resolve_output() to resolve the inputs and output
+        :class:`Property` instances.
+
+        ``resolve_dynamic=False`` allows resolution of dynamic operators to be deferred to execution time.
+
+        If the operator ``is_dyanmic`` and ``resolve_dynamic`` is False, a clone of default definition is returned.
+
+        Args:
+            resolve_dynamic: whether to resolve dynamic inputs and outputs
+        """
+
         definition = self.definition.clone()
         if self.is_dynamic and not resolve_dynamic:
             return definition
+        # pylint: disable=assignment-from-none
         input_property = self.resolve_input(ctx)
-        output_property = self.resolve_output(ctx)
+        output_property = self.resolve_output(ctx, {})
+        # pylint: enable=assignment-from-none
         if input_property is not None:
             definition.add_property("inputs", input_property)
         if output_property is not None:
@@ -52,28 +85,70 @@ class Operator:
         return definition
 
     def execute(self, ctx):
-        """Executes the operator. Subclasses must implement this method."""
+        """Executes the operator. Subclasses must implement this method.
+
+        Args:
+            ctx: the :class:`ExecutionContext` for the execution of the operation
+        """
         raise NotImplementedError("subclass must implement execute()")
 
     def resolve_type(self, ctx, type):
+        """Returns the resolved input or output :class:`Property`.
+
+        Args:
+            ctx: the :class:`ExecutionContext` for the execution of the operation
+            type: the type of property to resolve, either "inputs" or "outputs"
+        """
         if type == "inputs":
+            # pylint: disable=assignment-from-none
             resolved_input_property = self.resolve_input(ctx)
+            # pylint: enable=assignment-from-none
             # TODO support Form in UI
             # if resolved_input_property.view is None:
             #     resolved_input_property.view = Form()
             return resolved_input_property
         elif type == "outputs":
-            return self.resolve_output(ctx)
+            return self.resolve_output(ctx, {})
         else:
             raise ValueError("Invalid type '%s'" % type)
 
     def resolve_input(self, ctx):
+        """Returns the resolved input :class:`Property`.
+
+        Subclasses can implement this method to define the inputs to the operator.
+
+        By default this method is called once when the operator is created.
+
+        If the operator is dynamic, this method is called each time the input changes.
+
+        Args:
+            ctx: the :class:`ExecutionContext` for the execution of the operation
+        """
         return None
 
-    def resolve_output(self, ctx):
+    def resolve_output(self, ctx, result):
+        """Returns the resolved output :class:`Property`.
+
+        Subclasses can implement this method to define the outputs of the operator.
+
+        By default this method is called once when the operator is created.
+
+        If the operator is dynamic, this method is called after the operator is executed.
+
+        Args:
+            ctx: the :class:`ExecutionContext` for the execution of the operation
+            result: the result of the operator execution
+        """
         return None
 
     def resolve_placement(self, ctx):
+        """Returns the resolved placement of the operator.
+
+        Subclasses can implement this method to define the placement of the operator.
+
+        Args:
+            ctx: the :class:`ExecutionContext` for the execution of the operation
+        """
         return None
 
     def to_json(self, ctx, resolve_dynamic=False):
@@ -94,6 +169,11 @@ class Operator:
 
 
 class DynamicOperator(Operator):
+    """A dynamic FiftyOne operator.
+
+    NOTE: this class will be removed.
+    """
+
     def __init__(
         self,
         name=None,
