@@ -1,4 +1,6 @@
 """
+Dataset management.
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -11,7 +13,7 @@ from fiftyone.management import users
 
 
 class DatasetPermission(enum.Enum):
-    """Dataset permission enum"""
+    """Dataset permission enum."""
 
     NO_ACCESS = "NO_ACCESS"
     VIEW = "VIEW"
@@ -95,24 +97,26 @@ _REMOVE_DATASET_USER_PERM_QUERY = """
 
 
 def get_permissions(*, dataset_name: str = None, user: str = None):
-    """
-    Convenience wrapper around get_permissions* functions. See
-        corresponding functions for their documentation. If you
-        pass in a parameter, the proper function will be called
-        to filter by the parameter.
+    """Gets the specified dataset or user permissions.
 
-        dataset_name: get_permissions_for_dataset()
-        user: get_permissions_for_user()
-        dataset_name,user: get_permissions_for_dataset_user()
+    This method is a convenience wrapper around the methods below based on
+    which arguments you provide:
+
+    -   ``dataset_name``: :func:`get_permissions_for_dataset`
+    -   ``user``: :func:`get_permissions_for_user`
+    -   ``dataset_name`` and ``user``: :func:`get_permissions_for_dataset_user`
+
+    .. note::
+
+        Only admins can retrieve this information.
 
     Args:
-        dataset_name (None): Name of the dataset
-        user (None): User to get permissions for.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
+        dataset_name (None): a dataset name
+        user (None): a user ID, email string, or
+            :class:`fiftyone.management.User` instance
 
     Returns:
-        Output of get_permissions* call corresponding to input
+        the requested user/dataset permissions
     """
     if dataset_name is None and user is None:
         raise ValueError("Must specify one or both of dataset or user")
@@ -125,18 +129,24 @@ def get_permissions(*, dataset_name: str = None, user: str = None):
 
 
 def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
-    """
-    Gets list of users that have access to a given dataset.
-        Example output:
-        [{'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
-         {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'}
+    """Gets the list of users that have access to the given dataset.
+
+    .. note::
+
+        Only admins can retrieve this information.
+
+    Example output::
+
+        [
+            {'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
+            {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'},
         ]
 
     Args:
-        dataset_name: Name of the dataset
+        dataset_name: the dataset name
 
     Returns:
-        List of user name, id, and permission level
+        a list of user info dicts
     """
     client = connection.ApiClientConnection().client
     result = client.post_graphql_request(
@@ -160,18 +170,20 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
 def get_permissions_for_dataset_user(
     dataset_name: str, user: str
 ) -> DatasetPermission:
-    """
-    Gets access permission that a given user has to a given dataset.
-        If user does not have access, returns NO_ACCESS
+    """Gets the access permission (if any) that a given user has to a given
+    dataset.
+
+    .. note::
+
+        Only admins can retrieve this information.
 
     Args:
-        dataset_name: Name of the dataset
-        user: User to get permissions for.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
+        dataset_name: the dataset name
+        user: a user ID, email string, or :class:`fiftyone.management.User`
+            instance
 
     Returns:
-        :class:`fiftyone.management.DatasetPermission`
+        :class:`DatasetPermission`
     """
     user_id = users._resolve_user_id(user)
     client = connection.ApiClientConnection().client
@@ -190,22 +202,25 @@ def get_permissions_for_dataset_user(
 
 
 def get_permissions_for_user(user: str):
-    """
-    Gets list of datasets a given user has access to,
-        and returns corresponding permission level.
+    """Gets a list of datasets a given user has access to.
 
-        Example output:
-        [{'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
-         {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'}
+    .. note::
+
+        Only admins can retrieve this information.
+
+    Example output::
+
+        [
+            {'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
+            {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'},
         ]
 
     Args:
-        user: User to get permissions for.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
+        user: a user ID, email string, or :class:`fiftyone.management.User`
+            instance
 
     Returns:
-        List of dataset name and permission for the user
+        a list of permission dicts
     """
     user_id = users._resolve_user_id(user)
 
@@ -228,18 +243,15 @@ def get_permissions_for_user(user: str):
 def set_dataset_default_permission(
     dataset_name: str, permission: DatasetPermission
 ) -> None:
-    """
-    Sets default permission for the given dataset.
-        Calling user must be an admin or a manager
-        of the dataset.
+    """Sets the default member access level for the given dataset.
+
+    .. note::
+
+        The caller must have ``Can Manage`` permissions on the dataset.
 
     Args:
-        dataset_name: Name of the dataset
-        permission: Permission to set as default for dataset.
-            Instance of :class:`fiftyone.management.DatasetPermission`.
-
-    Returns:
-        None
+        dataset_name: the dataset name
+        permission: the :class:`fiftyone.management.DatasetPermission` to set
     """
     client = connection.ApiClientConnection().client
     client.post_graphql_request(
@@ -253,21 +265,18 @@ def set_dataset_user_permission(
     user: Union[str, users.User],
     permission: DatasetPermission,
 ) -> None:
-    """
-    Sets permissions to the dataset for a particular user.
-        Calling user must be an admin or a manager
-        of the dataset.
+    """Grants the given user specific access to the given dataset at the
+    specified permission level.
+
+    .. note::
+
+        The caller must have ``Can Manage`` permissions on the dataset.
 
     Args:
-        dataset_name: Name of dataset
-        user: User to set permissions for.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
-        permission: Permission to set for given user on this dataset.
-            Instance of :class:`fiftyone.management.DatasetPermission`.
-
-    Returns:
-        None
+        dataset_name: the dataset name
+        user: a user ID, email string, or :class:`fiftyone.management.User`
+            instance
+        permission: the :class:`fiftyone.management.DatasetPermission` to grant
     """
     user_id = users._resolve_user_id(user)
 
@@ -285,21 +294,16 @@ def set_dataset_user_permission(
 def remove_dataset_user_permission(
     dataset_name: str, user: Union[str, users.User]
 ) -> None:
-    """
-    Removes specific permissions to the dataset for
-        a particular user. The user will have permissions
-        set by the dataset's default permissions now.
-        Calling user must be an admin or a manager
-        of the dataset.
+    """Removes the given user's specific access to the given dataset.
+
+    .. note::
+
+        The caller must have ``Can Manage`` permissions on the dataset.
 
     Args:
-        dataset_name: Name of dataset
-        user: User to remove permissions for.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
-
-    Returns:
-        None
+        dataset_name: the dataset name
+        user: a user ID, email string, or :class:`fiftyone.management.User`
+            instance
     """
     user_id = users._resolve_user_id(user)
 

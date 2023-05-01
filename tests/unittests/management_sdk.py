@@ -1,5 +1,5 @@
 """
-FiftyOne Label-related unit tests.
+FiftyOne Management SDK unit tests.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -145,7 +145,7 @@ class ManagementSdkTests(unittest.TestCase):
         self.client.post_graphql_request.assert_called_with(
             "query {viewer {id}}"
         )
-        print_mock.assert_called_with("API Connection Succeeded")
+        print_mock.assert_called_with("API connection succeeded")
 
     ############# API Key
 

@@ -5,19 +5,19 @@
 """
 
 
-class FiftyoneTeamsAPIError(Exception):
-    """Base Error for Teams API"""
+class FiftyOneTeamsAPIError(Exception):
+    """Base error for Teams API."""
 
 
-class APIAuthenticationError(FiftyoneTeamsAPIError):
-    """Authentication Error for Teams API"""
+class APIAuthenticationError(FiftyOneTeamsAPIError):
+    """Authentication error for Teams API."""
 
     def __init__(self):
         super().__init__("Unable to authenticate against FiftyOne API")
 
 
-class APIConnectionError(FiftyoneTeamsAPIError):
-    """Authentication Error for Teams API"""
+class APIConnectionError(FiftyOneTeamsAPIError):
+    """Authentication error for Teams API."""
 
     def __init__(self, base_url: str):
         super().__init__(f"Unable to connect to {base_url}")

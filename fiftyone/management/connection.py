@@ -1,6 +1,5 @@
 """
-Make connection to teams API client in the style of
-    fiftyone.core.odm.database
+API connection.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,7 +7,7 @@ Make connection to teams API client in the style of
 """
 import requests.exceptions
 
-import fiftyone.core.config as _foc
+import fiftyone.core.config as foc
 import fiftyone_teams_api
 
 
@@ -35,7 +34,7 @@ class ApiClientConnection(object):
     @property
     def client(self):
         if self.__client is None:
-            config = _foc.load_config()
+            config = foc.load_config()
             if not config.api_uri:
                 raise ConnectionError(
                     "Cannot connect to API without a URI specified."
@@ -51,13 +50,15 @@ class ApiClientConnection(object):
 
 
 def reload_api_connection() -> None:
-    """
-    Reloads the API connection. This is necessary if the API URI
-        or API Key are changed after the first usage of this module.
-        This should rarely be needed unless if a script is working
-        across deployments.
-        E.g.
-        ```
+    """Reloads the API connection.
+
+    This is necessary if the API URI or API key are changed after the first
+    usage of this module.
+
+    This should rarely be needed unless a script is working across deployments.
+
+    Example usage::
+
         import fiftyone.management as fom
         import fiftyone as fo
 
@@ -69,29 +70,16 @@ def reload_api_connection() -> None:
         fo.config.api_uri = "https://api.test.mycompany.org"
         fom.reload_api_connection()
         fom.whoami()
-        ```
-
-    Args:
-        None
-
-    Returns:
-        None
     """
     conn = ApiClientConnection()
     conn.reload()
 
 
 def test_api_connection():
-    """
-    Tests the API connection with progressively more intensive
-        approaches. Either raises an exception if it fails, or
-        prints "API Connection Succeeded"
+    """Tests the API connection.
 
-    Args:
-        None
-
-    Returns:
-        None
+    If the connection succeeds, a message will be printed. If the connection
+    failes, an exception will be raised.
     """
     client = ApiClientConnection().client
     try:
@@ -106,6 +94,6 @@ def test_api_connection():
                 "whoami() did not succeed"
             )
     except Exception as e:
-        raise Exception("Test API Connection Failed") from e
+        raise Exception("Test API connection failed") from e
 
-    print("API Connection Succeeded")
+    print("API connection succeeded")

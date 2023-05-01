@@ -1,4 +1,6 @@
 """
+API key management.
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -54,22 +56,21 @@ _REMOVE_API_KEY_QUERY = """
 def generate_api_key(
     key_name: str, user: Optional[Union[str, users.User]] = None
 ) -> str:
-    """
-    Generates an API key for the user.
-        Calling user must be an admin, or generating
-        an API key for their own user
+    """Generates an API key for the given user (default: current user).
+
+    .. note:
+
+        Only admins can generate keys for other users.
 
     Args:
-        key_name: Descriptive name of key
-        user (None): User to generate API Key for.
-            Either user ID or email as a string, or
-            instance of :class:`fiftyone.management.User`.
-            If None, will generate a key for calling user.
+        key_name: a descriptive name for the key
+        user (None): an optional user ID, email string, or
+            :class:`fiftyone.management.User` instance. Defaults to the current
+            user
 
     Returns:
-        API key as string
+        the API key string
     """
-
     user_id = users._resolve_user_id(user, nullable=True)
 
     client = connection.ApiClientConnection().client
@@ -84,20 +85,22 @@ def generate_api_key(
 
 
 def list_api_keys(user: Optional[Union[str, users.User]] = None):
-    """
-    Lists all api keys. Only contains name and ID, raw key is only
-        available at time of generation.
-        Calling user must be an admin or requesting keys for
-        their own user.
+    """Lists all API keys for the given user (default: current user).
+
+    The returned key objects only have their name and IDs populated; the raw
+    key is only available at time of generation.
+
+    .. note:
+
+        Only admins can request keys for other users.
 
     Args:
-        user (None): User to list API Keys for.
-            Either user ID or email as a string, or
-            instance of :class:`fiftyone.management.User`.
-            If None, will list keys for calling user.
+        user (None): an optional user ID, email string, or
+            :class:`fiftyone.management.User` instance. Defaults to the current
+            user
 
     Returns:
-        List[:class:`fiftyone.management.ApiKey`]
+        a list of :class:`fiftyone.management.ApiKey` instances
     """
     if user is None:
         user = users.whoami()
@@ -116,20 +119,17 @@ def list_api_keys(user: Optional[Union[str, users.User]] = None):
 def remove_api_key(
     key: str, user: Optional[Union[str, users.User]] = None
 ) -> None:
-    """
-    Removes API key for a user.
-        Calling user must be an admin, or removing
-        an API key from their own user
+    """Deletes the API key for the given user (default: current user).
+
+    .. note:
+
+        Only admins can delete keys for other users.
 
     Args:
-        key: The key to remove
-        user: User to remove API Key for.
-            Either user ID or email as a string, or
-            instance of :class:`fiftyone.management.User`
-            If None, will attempt to remove a key from calling user.
-
-    Returns:
-        None
+        key: the key to remove
+        user (None): an optional user ID, email string, or
+            :class:`fiftyone.management.User` instance. Defaults to the current
+            user
     """
     user_id = users._resolve_user_id(user, nullable=True)
 
