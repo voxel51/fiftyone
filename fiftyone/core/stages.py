@@ -791,7 +791,10 @@ class ExcludeFields(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices(self.field_names)
+        if self._field_names is None:
+            return None
+
+        return sample_collection._get_group_slices(self._field_names)
 
     def _kwargs(self):
         return [
@@ -5539,7 +5542,10 @@ class SelectFields(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices(self.field_names)
+        if self._field_names is None:
+            return None
+
+        return sample_collection._get_group_slices(self._field_names)
 
     def _kwargs(self):
         return [
