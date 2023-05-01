@@ -1,4 +1,6 @@
 """
+User management.
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -13,7 +15,7 @@ from fiftyone.management import util as fom_util
 
 
 class User(TypedDict):
-    """dict with information about a user"""
+    """User information dict."""
 
     id: str
     name: str
@@ -22,7 +24,7 @@ class User(TypedDict):
 
 
 class Invitation(TypedDict):
-    """dict with information about an invitation"""
+    """Invitation dict."""
 
     id: str
     created_at: datetime.datetime
@@ -33,7 +35,7 @@ class Invitation(TypedDict):
 
 
 class UserRole(enum.Enum):
-    """User role enum"""
+    """User role enum."""
 
     ADMIN = "ADMIN"
     MEMBER = "MEMBER"
@@ -121,17 +123,17 @@ _VIEWER_QUERY = """
 
 
 def get_user(user: str) -> Union[User, None]:
-    """
-    Gets information about a user
-        Calling user must be an admin or
-        requesting for their own user.
+    """Gets information about the specified user (if any).
+
+    .. note::
+
+        Only admins can retrieve information about other users.
 
     Args:
-        user: Either user ID or email as a string
+        user: a user ID or email string
 
     Returns:
-        :class:`fiftyone.management.User`
-        or None if user not found
+        :class:`User`, or ``None`` if no such user is found
     """
     client = connection.ApiClientConnection().client
 
@@ -143,14 +145,14 @@ def get_user(user: str) -> Union[User, None]:
 
 
 def list_pending_invitations() -> List[Invitation]:
-    """
-    Lists pending user invitations. Caller must be an admin
+    """Returns a list of pending user invitations.
 
-    Args:
-        None
+    .. note::
+
+        Only admins can retrieve this information.
 
     Returns:
-        List[:class:`fiftyone.management.Invitation`]
+        a list of :class:`Invitation` instances
     """
     client = connection.ApiClientConnection().client
 
@@ -163,14 +165,14 @@ def list_pending_invitations() -> List[Invitation]:
 
 
 def list_users() -> List[User]:
-    """
-    Lists all users. Caller must be an admin.
+    """Returns a list of all users.
 
-    Args:
-        None
+    .. note::
+
+        Only admins can retrieve this information.
 
     Returns:
-        List[:class:`fiftyone.management.User`]
+        a list of :class:`User` instances
     """
     client = connection.ApiClientConnection().client
     return client.post_graphql_connectioned_request(
@@ -179,16 +181,14 @@ def list_users() -> List[User]:
 
 
 def remove_user(user: Union[str, User]) -> None:
-    """
-    Removes user. Calling user must be an admin.
+    """Deletes the given user.
+
+    .. note::
+
+        Only admins can perform this action.
 
     Args:
-        user: User to remove.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
-
-    Returns:
-        None
+        user: a user ID, email string, or :class:`User` instance
     """
     user_id = _resolve_user_id(user)
 
@@ -199,16 +199,15 @@ def remove_user(user: Union[str, User]) -> None:
 
 
 def revoke_user_invitation(invitation_id: str) -> None:
-    """
-    Revokes a previously-sent invitation before it has been accepted.
-        Caller must be an admin.
+    """Revokes a previously-sent invitation if it has not been accepted.
+
+    .. note::
+
+        Only admins can perform this action.
 
     Args:
-        invitation_id (str): Invitation ID, same as return value of
-            :meth:`send_user_invitation() <fiftyone.management.send_user_invitation>`
-
-    Returns:
-        None
+        invitation_id: an invitation ID as returned by
+            :meth:`send_user_invitation`
     """
     client = connection.ApiClientConnection().client
 
@@ -219,17 +218,18 @@ def revoke_user_invitation(invitation_id: str) -> None:
 
 
 def send_user_invitation(email: str, role: UserRole) -> str:
-    """
-    Send an invitation to join the FiftyOne Teams organization,
-        to the given email address. Caller must be an admin.
+    """Sends an email invitation to join your FiftyOne Teams organization.
+
+    .. note::
+
+        Only admins can perform this action.
 
     Args:
-        email(str): Email address to send invitation to.
-        role (:class:`fiftyone.management.UserRole`):
-            Role to give this user once they accept invitation.
+        email: the email address
+        role: the :class:`UserRole` to grant the new user
 
     Returns:
-        Invitation ID as string
+        the invitation ID string
     """
     client = connection.ApiClientConnection().client
 
@@ -241,18 +241,15 @@ def send_user_invitation(email: str, role: UserRole) -> str:
 
 
 def set_user_role(user: Union[str, User], role: UserRole) -> None:
-    """
-    Set role for a given user. Calling user must be an admin.
+    """Sets the role of the given user.
+
+    .. note::
+
+        Only admins can perform this action.
 
     Args:
-        user: User to set role for.
-            Either user ID or email as a string, or an
-            instance of :class:`fiftyone.management.User`
-        role (:class:`fiftyone.management.UserRole`):
-            Role to set for given user.
-
-    Returns:
-        None
+        user: a user ID, email string, or :class:`User` instance
+        role: the :class:`UserRole` to set
     """
     user_id = _resolve_user_id(user)
 
@@ -264,14 +261,10 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
 
 
 def whoami() -> User:
-    """
-    Gets information about the calling user.
-
-    Args:
-        None
+    """Returns information about the calling user.
 
     Returns:
-        :class:`fiftyone.management.User`
+        :class:`User`
     """
     client = connection.ApiClientConnection().client
 
