@@ -281,6 +281,35 @@ class DatasetViewTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             view.name = "new_name"
 
+    @drop_datasets
+    def test_reload(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", foo="bar"),
+                fo.Sample(filepath="image2.jpg", spam="eggs"),
+                fo.Sample(filepath="image3.jpg"),
+                fo.Sample(filepath="image4.jpg"),
+                fo.Sample(filepath="image5.jpg"),
+            ]
+        )
+
+        view = dataset.take(3).sort_by("filepath").select_fields("foo")
+        sample_ids = view.values("id")
+
+        # Reloading should not cause dataset-independent view stage parameters
+        # like Take's internal random seed to be changed
+        view.reload()
+        same_sample_ids = view.values("id")
+
+        self.assertListEqual(sample_ids, same_sample_ids)
+
+        dataset.delete_sample_field("foo")
+
+        # Field `foo` no longer exists, so validation should fail on reload
+        with self.assertRaises(ValueError):
+            view.reload()
+
 
 class ViewFieldTests(unittest.TestCase):
     @skip_windows  # TODO: don't skip on Windows

@@ -23,7 +23,7 @@ import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
-_PATCHES_TYPES = (fol.Detections, fol.Polylines)
+_PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
 _NO_MATCH_ID = ""
 
 
@@ -297,7 +297,7 @@ class _PatchesView(fov.DatasetView):
         super().keep_fields()
 
     def reload(self):
-        """Reloads this view from the source collection in the database.
+        """Reloads the view.
 
         Note that :class:`PatchView` instances are not singletons, so any
         in-memory patches extracted from this view will not be updated by
@@ -311,10 +311,13 @@ class _PatchesView(fov.DatasetView):
         # This assumes that calling `load_view()` when the current patches
         # dataset has been deleted will cause a new one to be generated
         #
-
         self._patches_dataset.delete()
         _view = self._patches_stage.load_view(self._source_collection)
         self._patches_dataset = _view._patches_dataset
+
+        _view = self._base_view
+        for stage in self._stages:
+            _view = _view.add_stage(stage)
 
     def _sync_source_sample(self, sample):
         for field in self._label_fields:
@@ -546,8 +549,9 @@ def make_patches_dataset(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         field: the patches field, which must be of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_fields (None): controls whether fields other than ``field`` and
             the default sample fields are included. Can be any of the
             following:
@@ -663,8 +667,9 @@ def make_evaluation_patches_dataset(
             :class:`fiftyone.core.collections.SampleCollection`
         eval_key: an evaluation key that corresponds to the evaluation of
             ground truth/predicted fields that are of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_fields (None): controls whether fields other than the
             ground truth/predicted fields and the default sample fields are
             included. Can be any of the following:

@@ -1227,13 +1227,17 @@ class DatasetView(foc.SampleCollection):
         )
 
     def reload(self):
-        """Reloads the underlying dataset from the database.
+        """Reloads the view.
 
         Note that :class:`fiftyone.core.sample.SampleView` instances are not
         singletons, so any in-memory samples extracted from this view will not
         be updated by calling this method.
         """
         self._dataset.reload()
+
+        _view = self._base_view
+        for stage in self._stages:
+            _view = _view.add_stage(stage)
 
     def to_dict(
         self,

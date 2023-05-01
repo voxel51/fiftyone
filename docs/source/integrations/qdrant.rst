@@ -62,6 +62,7 @@ The example below demonstrates this workflow.
 
     .. code-block:: shell
 
+        docker pull qdrant/qdrant
         pip install qdrant-client
 
     Note that you can store your Qdrant credentials as described in
