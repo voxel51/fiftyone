@@ -53,15 +53,18 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
   );
   const options = fields.map((field) => ({
     value: field.path!,
-    onClick: () => {
+    onClick: (e) => {
+      e.preventDefault();
       const copy = cloneDeep(customizedColorSettings);
-      copy[index].attributeForColor = field.path!;
-      setColorScheme(colorPool, copy, false);
-      setOpen(false);
+      if (index > -1) {
+        copy[index].attributeForColor = field.path!;
+        setColorScheme(colorPool, copy, false);
+        setOpen(false);
+      }
     },
   }));
   const selected =
-    customizedColorSettings[index].attributeForColor ??
+    customizedColorSettings[index]?.attributeForColor ??
     "Please select an attribute";
 
   return (

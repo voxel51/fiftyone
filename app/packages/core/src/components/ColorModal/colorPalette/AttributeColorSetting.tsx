@@ -5,7 +5,6 @@ import { ChromePicker } from "react-color";
 import Input from "../../Common/Input";
 import * as fos from "@fiftyone/state";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { tempColorSetting } from "../utils";
 import { cloneDeep } from "lodash";
 import { Button } from "../../utils";
 import { Field } from "@fiftyone/utilities";
@@ -122,8 +121,10 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
       const idx = customizedColorSettings.findIndex(
         (s) => s.field == (activeField as Field).path
       );
-      copy[idx].labelColors = [defaultValue];
-      setColorScheme(colorPool, copy, false);
+      if (idx > -1) {
+        copy[idx].labelColors = [defaultValue];
+        setColorScheme(colorPool, copy, false);
+      }
     }
   }, [values]);
 
