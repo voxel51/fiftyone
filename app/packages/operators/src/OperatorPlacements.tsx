@@ -26,7 +26,7 @@ const componentByView = {
 function getPlacementComponent(placement: Placement) {
   const viewName = placement?.view?.name;
 
-  return componentByView[viewName];
+  return componentByView[viewName] || componentByView.Button;
 }
 
 function OperatorPlacement(props: OperatorPlacementProps) {
