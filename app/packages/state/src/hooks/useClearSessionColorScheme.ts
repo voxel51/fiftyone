@@ -25,6 +25,10 @@ const useClearSessionColorScheme = () => {
       colorPool: DEFAULT_APP_COLOR_SCHEME.colorPool,
       customizedColorSettings: DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
     };
+    const api = {
+      colorPool: DEFAULT_APP_COLOR_SCHEME.colorPool,
+      customizedColorSettings: null,
+    };
 
     setSessionColorSchemeState(combined);
 
@@ -38,7 +42,7 @@ const useClearSessionColorScheme = () => {
           stages,
           colorScheme: combined,
           saveToApp: saveToApp,
-          colorSchemeSaveFormat: null,
+          colorSchemeSaveFormat: api,
         },
       })
     );

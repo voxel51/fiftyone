@@ -159,7 +159,15 @@ const useStateUpdate = (ignoreSpaces = false) => {
       let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
       if (state?.colorScheme && typeof state?.colorScheme === "string") {
         let parsedSetting = JSON.parse(state?.colorScheme);
-        colorSetting = parsedSetting as ColorScheme;
+        if (typeof parsedSetting === "string") {
+          parsedSetting = JSON.parse(parsedSetting);
+        }
+        colorSetting = {
+          colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
+          customizedColorSettings:
+            parsedSetting["customized_color_settings"] ??
+            parsedSetting?.customizedColorSettings,
+        } as ColorScheme;
       } else if (dataset.appConfig?.colorScheme) {
         const { colorPool, customizedColorSettings } =
           dataset.appConfig?.colorScheme;

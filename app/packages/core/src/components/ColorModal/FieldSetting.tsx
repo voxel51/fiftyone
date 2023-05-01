@@ -37,7 +37,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const { colorPool, customizedColorSettings } = useRecoilValue(
     fos.sessionColorScheme
   );
-  const setting = customizedColorSettings.find((x) => x.field == path!);
+  const setting = customizedColorSettings?.find((x) => x.field == path!);
   const [state, setState] = useState({ useLabelColors: true });
 
   const { setColorScheme } = fos.useSessionColorScheme();
