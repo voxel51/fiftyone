@@ -106,6 +106,7 @@ export default function useSchemaSettings() {
     },
     [allPaths]
   );
+
   // TODO: should read from storage
   const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
     selectedPathsState({ allPaths })
@@ -240,8 +241,8 @@ export default function useSchemaSettings() {
           const pathLabel = path.split(".");
           const pathLabelFinal = pathLabel[pathLabel.length - 1];
           const skip =
-            schema[path].ftype === "fiftyone.core.fields.DictField" ||
-            schema[path].ftype === "fiftyone.core.fields.Field" ||
+            schema[path]?.ftype === "fiftyone.core.fields.DictField" ||
+            schema[path]?.ftype === "fiftyone.core.fields.Field" ||
             path.includes(".logits") ||
             path.endsWith(".index") ||
             path.endsWith(".bounding_box");

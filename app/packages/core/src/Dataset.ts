@@ -67,15 +67,6 @@ export const DatasetNodeQuery = graphql`
         description
         info
       }
-      datasetSchema {
-        ftype
-        subfield
-        embeddedDocType
-        path
-        dbField
-        description
-        info
-      }
       frameFields {
         ftype
         subfield
