@@ -17,6 +17,12 @@ KNOWN_PLUGIN_CONTEXTS = {}
 
 
 class PluginContext:
+    """Represents a the relevant information for a plugin and the python objects it creates.
+
+    Args:
+        plugin_definition: the :class:`PluginDefinition` for the plugin
+    """
+
     def __init__(self, plugin_definition):
         self.name = plugin_definition.name
         self.plugin_definition = plugin_definition
@@ -24,9 +30,22 @@ class PluginContext:
         self.errors = []
 
     def has_errors(self):
+        """Whether the plugin has errors.
+
+        Returns:
+            True if the plugin has errors, False otherwise
+        """
         return len(self.errors) > 0
 
     def can_register(self, instance):
+        """Whether the given instance can be registered.
+
+        Args:
+            instance: the instance to check
+
+        Returns:
+            True if the instance can be registered, False otherwise
+        """
         if not isinstance(instance, Operator):
             return False
         if not self.plugin_definition.can_register_operator(instance.name):
@@ -34,6 +53,11 @@ class PluginContext:
         return True
 
     def register(self, cls):
+        """Registers the given class as an instance of the plugin.
+
+        Args:
+            cls: the class to register
+        """
         try:
             instance = cls()
             if self.can_register(instance):
@@ -45,15 +69,26 @@ class PluginContext:
             self.errors.append(traceback.format_exc())
 
     def unregister_inst(self, inst):
+        """Unregisters the given instance."""
         self.instances.remove(inst)
         inst.dispose()
 
     def dispose(self):
+        """Disposes all instances."""
         for inst in self.instances:
             self.unregister_inst(inst)
 
 
 def register_module(plugin_definition, mod):
+    """Registers all operators in the given module.
+
+    Args:
+        plugin_definition: the :class:`PluginDefinition` for the plugin
+        mod: the module to register
+
+    Returns:
+        the :class:`PluginContext` for the plugin
+    """
     try:
         pctx = PluginContext(plugin_definition)
         KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
@@ -77,7 +112,7 @@ def unregister_module(plugin_name):
 
 
 def dispose_all(plugin_contexts):
-    """Disposes all loaded instances."""
+    """Disposes all given plugin_contexts."""
     global KNOWN_PLUGIN_CONTEXTS
     for name, pctx in plugin_contexts.items():
         try:
@@ -106,6 +141,15 @@ def load_from_dir():
 
 
 def exec_module_from_dir(module_dir, plugin_definition):
+    """Executes the module in the given directory and registers all operators.
+
+    Args:
+        module_dir: the directory to execute
+        plugin_definition: the :class:`PluginDefinition` for the plugin
+
+    Returns:
+        the :class:`PluginContext` for the plugin
+    """
     mod_dir = os.path.dirname(module_dir)
     mod_filepath = os.path.join(module_dir, "__init__.py")
     if not os.path.isfile(mod_filepath):
