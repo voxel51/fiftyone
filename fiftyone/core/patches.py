@@ -23,7 +23,7 @@ import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
-_PATCHES_TYPES = (fol.Detections, fol.Polylines)
+_PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
 _NO_MATCH_ID = ""
 
 
@@ -549,8 +549,9 @@ def make_patches_dataset(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         field: the patches field, which must be of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_fields (None): controls whether fields other than ``field`` and
             the default sample fields are included. Can be any of the
             following:
@@ -666,8 +667,9 @@ def make_evaluation_patches_dataset(
             :class:`fiftyone.core.collections.SampleCollection`
         eval_key: an evaluation key that corresponds to the evaluation of
             ground truth/predicted fields that are of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_fields (None): controls whether fields other than the
             ground truth/predicted fields and the default sample fields are
             included. Can be any of the following:
