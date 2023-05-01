@@ -784,12 +784,8 @@ class ExcludeFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
-        if self._field_names is None:
-            return False
-
-        return any(
-            sample_collection._is_frame_field(f) for f in self._field_names
-        )
+        # @todo consider returning True here when excluding frame fields
+        return False
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
@@ -822,10 +818,7 @@ class ExcludeFields(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        if self._allow_missing:
-            return
-
-        if self._field_names is None:
+        if self._allow_missing or self._field_names is None:
             return
 
         # Validate that all root fields exist
@@ -5539,12 +5532,8 @@ class SelectFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
-        if self._field_names is None:
-            return False
-
-        return any(
-            sample_collection._is_frame_field(f) for f in self._field_names
-        )
+        # @todo consider returning True here when selecting frame fields
+        return False
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
@@ -5582,7 +5571,7 @@ class SelectFields(ViewStage):
             return
 
         if self._field_names is not None:
-            sample_collection.validate_fields_exist(self.field_names)
+            sample_collection.validate_fields_exist(self._field_names)
 
 
 def _get_roots(path):
