@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import Editor from "@monaco-editor/react";
 import * as fos from "@fiftyone/state";
@@ -31,18 +31,23 @@ const JSONViewer: React.FC = ({}) => {
       !data?.colorPool ||
       !Array.isArray(data?.colorPool) ||
       !data?.customizedColorSettings ||
-      !Array.isArray(data?.customizedColorSettings)
+      !Array.isArray(data?.customizedColorSettings) ||
+      !data?.customizedColorSettings
     )
       return;
     const { colorPool, customizedColorSettings } = data;
     const validColors = colorPool?.filter((c) => isValidColor(c));
     const validatedSetting = validateJSONSetting(customizedColorSettings);
-    setColorScheme(validColors, validatedSetting, false);
     setData({
       colorPool: validColors,
       customizedColorSettings: validatedSetting,
     });
+    setColorScheme(validColors, validatedSetting, false);
   };
+
+  useEffect(() => {
+    setData(setting);
+  }, [setting]);
 
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>

@@ -37,7 +37,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const { colorPool, customizedColorSettings } = useRecoilValue(
     fos.sessionColorScheme
   );
-  const setting = customizedColorSettings?.find((x) => x.field == path!);
+  const setting = (customizedColorSettings ?? []).find((x) => x.field == path!);
   const [state, setState] = useState({ useLabelColors: true });
 
   const { setColorScheme } = fos.useSessionColorScheme();
@@ -63,7 +63,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     })
   );
   const onChangeFieldColor = (color) => {
-    const newSetting = cloneDeep(customizedColorSettings);
+    const newSetting = cloneDeep(customizedColorSettings ?? []);
     const index = newSetting.findIndex((x) => x.field == path!);
     newSetting[index].fieldColor = color;
     setColorScheme(colorPool, newSetting, false);
@@ -86,7 +86,10 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   // on initial load, if the tem
   useEffect(() => {
     // check setting to see if custom setting exists
-    const setting = customizedColorSettings?.find((x) => x.field == path!);
+    const setting = (customizedColorSettings ?? [])?.find(
+      (x) => x.field == path!
+    );
+    const copy = cloneDeep(customizedColorSettings) ?? [];
     if (!setting) {
       const defaultSetting = {
         field: path!,
@@ -98,7 +101,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
           )?.path ?? undefined,
         labelColors: [{ name: "", color: defaultColor }],
       } as fos.CustomizeColor;
-      const newSetting = [...customizedColorSettings, defaultSetting];
+      const newSetting = [...copy, defaultSetting];
       setColorScheme(colorPool, newSetting, false);
     }
   }, [path, customizedColorSettings]);
@@ -114,7 +117,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
             name={`Use specific color for ${field.name} field`}
             value={Boolean(setting?.useFieldColor)}
             setValue={(v: boolean) => {
-              const newSetting = cloneDeep(customizedColorSettings);
+              const newSetting = cloneDeep(customizedColorSettings ?? []);
               const index = newSetting.findIndex((x) => x.field == path!);
               newSetting[index].useFieldColor = v;
               newSetting[index].fieldColor = v
@@ -180,7 +183,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
               name={`Assign color based on selected color attribute's values`}
               value={state.useLabelColors}
               setValue={(v: boolean) => {
-                const newSetting = cloneDeep(customizedColorSettings);
+                const newSetting = cloneDeep(customizedColorSettings ?? []);
                 const index = newSetting.findIndex((x) => x.field == path!);
                 newSetting[index].labelColors = v
                   ? [{ name: "", color: defaultColor }]
