@@ -687,7 +687,7 @@ class ExcludeFields(ViewStage):
 
     @property
     def field_names(self):
-        """The list of field names to exclude."""
+        """A list of field names to exclude."""
         return self._field_names
 
     @property
@@ -696,33 +696,35 @@ class ExcludeFields(ViewStage):
         return self._meta_filter
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        excluded_fields = set()
-
-        meta_filter = self.meta_filter
-        if meta_filter:
-            schema = sample_collection.get_field_schema()
-            excluded_fields.update(
-                _get_meta_filtered_fields(
-                    schema=schema, meta_filter=meta_filter
-                )
-            )
-
         if frames:
-            excluded_fields.update(
-                self._get_excluded_frame_fields(sample_collection)
-            )
-        else:
-            excluded_fields.update(
-                self._get_excluded_fields(sample_collection)
-            )
+            return self._get_excluded_frame_fields(sample_collection)
 
-        return excluded_fields
+        return self._get_excluded_fields(sample_collection)
 
     def _get_excluded_fields(self, sample_collection, use_db_fields=False):
-        if sample_collection._contains_videos():
-            excluded_paths, _ = fou.split_frame_fields(self.field_names)
-        else:
-            excluded_paths = self.field_names
+        excluded_paths = set()
+
+        if self._field_names is not None:
+            if sample_collection._contains_videos():
+                paths, _ = fou.split_frame_fields(self._field_names)
+            else:
+                paths = self._field_names
+
+            excluded_paths.update(paths)
+
+        if self._meta_filter is not None:
+            schema = sample_collection.get_field_schema()
+            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+
+            # Cannnot exclude default fields
+            default_paths = sample_collection._get_default_sample_fields(
+                include_private=True
+            )
+            paths = set(paths) - set(default_paths)
+
+            excluded_paths.update(paths)
+
+        excluded_paths = list(excluded_paths)
 
         if use_db_fields:
             return sample_collection._handle_db_fields(excluded_paths)
@@ -735,7 +737,25 @@ class ExcludeFields(ViewStage):
         if not sample_collection._contains_videos():
             return None
 
-        _, excluded_paths = fou.split_frame_fields(self.field_names)
+        excluded_paths = set()
+
+        if self._field_names is not None:
+            _, paths = fou.split_frame_fields(self._field_names)
+            excluded_paths.update(paths)
+
+        if self._meta_filter is not None:
+            schema = sample_collection.get_frame_field_schema()
+            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+
+            # Cannnot exclude default fields
+            default_paths = sample_collection._get_default_frame_fields(
+                include_private=True
+            )
+            paths = set(paths) - set(default_paths)
+
+            excluded_paths.update(paths)
+
+        excluded_paths = list(excluded_paths)
 
         if use_db_fields:
             return sample_collection._handle_db_fields(
@@ -764,9 +784,8 @@ class ExcludeFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
-        return any(
-            sample_collection._is_frame_field(f) for f in self.field_names
-        )
+        # @todo consider returning True here when excluding frame fields
+        return False
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
@@ -799,26 +818,26 @@ class ExcludeFields(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        if self._allow_missing:
+        if self._allow_missing or self._field_names is None:
             return
 
         # Validate that all root fields exist
         # Using dataset here allows a field to be excluded multiple times
-        sample_collection._dataset.validate_fields_exist(self.field_names)
+        sample_collection._dataset.validate_fields_exist(self._field_names)
 
         if sample_collection._contains_videos():
-            paths, frame_paths = fou.split_frame_fields(self.field_names)
+            paths, frame_paths = fou.split_frame_fields(self._field_names)
         else:
-            paths = self.field_names
+            paths = self._field_names
             frame_paths = None
 
         if paths:
             defaults = set()
             for root, _paths in _parse_paths(paths).items():
-                default_fields = sample_collection._get_default_sample_fields(
+                default_paths = sample_collection._get_default_sample_fields(
                     path=root, include_private=True
                 )
-                defaults.update(_paths & set(default_fields))
+                defaults.update(_paths & set(default_paths))
 
             if defaults:
                 raise ValueError("Cannot exclude default fields %s" % defaults)
@@ -826,10 +845,10 @@ class ExcludeFields(ViewStage):
         if frame_paths:
             defaults = set()
             for root, _paths in _parse_paths(frame_paths).items():
-                default_fields = sample_collection._get_default_frame_fields(
+                default_paths = sample_collection._get_default_frame_fields(
                     path=root, include_private=True
                 )
-                defaults.update(_paths & set(default_fields))
+                defaults.update(_paths & set(default_paths))
 
             if defaults:
                 raise ValueError(
@@ -839,7 +858,7 @@ class ExcludeFields(ViewStage):
 
 def _get_meta_filtered_fields(schema, meta_filter):
     if not meta_filter:
-        return
+        return []
 
     if isinstance(meta_filter, str):
         str_filter = meta_filter
@@ -5404,8 +5423,8 @@ class SelectFields(ViewStage):
 
     @property
     def field_names(self):
-        """The list of field names to select."""
-        return self._field_names or []
+        """A list of field names to select."""
+        return self._field_names
 
     @property
     def meta_filter(self):
@@ -5413,48 +5432,40 @@ class SelectFields(ViewStage):
         return self._meta_filter
 
     def get_selected_fields(self, sample_collection, frames=False):
-        selected_fields = set()
-
-        meta_filter = self._meta_filter
-        if meta_filter:
-            schema = sample_collection.get_field_schema()
-            selected_fields.update(
-                _get_meta_filtered_fields(
-                    schema=schema, meta_filter=meta_filter
-                )
-            )
-
         if frames:
-            selected_fields.update(
-                self._get_selected_frame_fields(sample_collection)
-            )
-        else:
-            selected_fields.update(
-                self._get_selected_fields(sample_collection)
-            )
+            return self._get_selected_frame_fields(sample_collection)
 
-        return selected_fields
+        return self._get_selected_fields(sample_collection)
 
     def _get_selected_fields(self, sample_collection, use_db_fields=False):
+        contains_videos = sample_collection._contains_videos()
         selected_paths = set()
-        roots = {None}  # must always select default fields
 
-        if sample_collection._contains_videos():
-            selected_paths.add("frames")
-            paths, _ = fou.split_frame_fields(self.field_names)
-        else:
-            paths = self.field_names
+        if self._field_names is not None:
+            if contains_videos:
+                paths, _ = fou.split_frame_fields(self._field_names)
+            else:
+                paths = self._field_names
 
-        for path in paths:
-            selected_paths.add(path)
+            selected_paths.update(paths)
+
+        if self._meta_filter is not None:
+            schema = sample_collection.get_field_schema()
+            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+            selected_paths.update(paths)
+
+        roots = {None}  # None ensures default fields are always selected
+        for path in selected_paths:
             roots.update(_get_roots(path))
 
         for path in roots:
-            selected_paths.update(
-                sample_collection._get_default_sample_fields(
-                    path=path, include_private=True
-                )
+            default_paths = sample_collection._get_default_sample_fields(
+                path=path, include_private=True
             )
+            selected_paths.update(default_paths)
+
+        if contains_videos:
+            selected_paths.add("frames")
 
         _remove_path_collisions(selected_paths)
         selected_paths = list(selected_paths)
@@ -5471,19 +5482,25 @@ class SelectFields(ViewStage):
             return None
 
         selected_paths = set()
-        roots = {None}  # must always select default fields
 
-        _, paths = fou.split_frame_fields(self.field_names)
-        for path in paths:
-            selected_paths.add(path)
+        if self._field_names is not None:
+            _, paths = fou.split_frame_fields(self._field_names)
+            selected_paths.update(paths)
+
+        if self._meta_filter is not None:
+            schema = sample_collection.get_frame_field_schema()
+            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+            selected_paths.update(paths)
+
+        roots = {None}  # None ensures default fields are always selected
+        for path in selected_paths:
             roots.update(_get_roots(path))
 
         for path in roots:
-            selected_paths.update(
-                sample_collection._get_default_frame_fields(
-                    path=path, include_private=True
-                )
+            default_paths = sample_collection._get_default_frame_fields(
+                path=path, include_private=True
             )
+            selected_paths.update(default_paths)
 
         _remove_path_collisions(selected_paths)
         selected_paths = list(selected_paths)
@@ -5515,9 +5532,8 @@ class SelectFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
-        return any(
-            sample_collection._is_frame_field(f) for f in self.field_names
-        )
+        # @todo consider returning True here when selecting frame fields
+        return False
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
@@ -5554,7 +5570,8 @@ class SelectFields(ViewStage):
         if self._allow_missing:
             return
 
-        sample_collection.validate_fields_exist(self.field_names)
+        if self._field_names is not None:
+            sample_collection.validate_fields_exist(self._field_names)
 
 
 def _get_roots(path):
