@@ -477,7 +477,7 @@ class Mutation:
         state = get_state()
         dataset = state.dataset
         try:
-            view = dataset.select_fields(meta_field=meta_filter)
+            view = dataset.select_fields(meta_filter=meta_filter)
         except Exception as e:
             # try selecting only by field keys worst case
             view = dataset.select_fields(meta_filter)

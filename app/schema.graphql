@@ -379,7 +379,6 @@ type Mutation {
     colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
   searchSelectFields(metaFilter: JSON): [SampleField]!
-  setSelectedFields(subscription: String!, form: StateForm = null): Boolean!
 }
 
 type NamedKeypointSkeleton {

@@ -69,7 +69,6 @@ const SchemaSettings = (props: Props) => {
     setSearchResults,
     setFieldsOnly,
     setSelectedFieldsStage,
-    handleSaveSelectedFields,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -185,17 +184,11 @@ const SchemaSettings = (props: Props) => {
                   kwargs: stageKwargs,
                 } as Stage;
                 try {
-                  // setView([stage]);
-
-                  console.log("[add to view] fields", finalSelectedPaths);
-                  // handleSaveSelectedFields(stageKwargs, stage)
-                  // saveSelectedFields
                   setSelectedFieldsStage(stage);
                 } catch (e) {
-                  console.log("error", e);
+                  console.log("error setting selected field stages", e);
                 } finally {
                   setSettingsModal({ open: false });
-                  // handleSaveSelectedFields()
                 }
               }}
             >

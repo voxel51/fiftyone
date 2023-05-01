@@ -1,15 +1,7 @@
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { buildSchema, useSetView, viewStateForm } from "@fiftyone/state";
+import { buildSchema, useSetView } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
-import { useMutation } from "react-relay";
-import {
-  atom,
-  atomFamily,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
 
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
@@ -82,9 +74,6 @@ export default function useSchemaSettings() {
 
   const subscription = useRecoilValue(fos.stateSubscription);
 
-  const [saveSelectedFields, isSavingSelectedFields] =
-    useMutation<foq.setSelectedFieldsMutation>(foq.setSelectedFields);
-
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
   const [selectedFieldsStage, setSelectedFieldsStage] = useRecoilState(
@@ -104,40 +93,6 @@ export default function useSchemaSettings() {
   const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
 
   const allPaths = Object.keys(schema);
-
-  const handleSaveSelectedFields = useRecoilCallback(
-    ({ snapshot }) =>
-      (newStage, stage) => {
-        if (newStage) {
-          const form = snapshot.getLoadable(
-            viewStateForm({ modal: false })
-          ).contents;
-          send((session) =>
-            saveSelectedFields({
-              // onError,
-              variables: {
-                form: {
-                  ...form,
-                  extended: {
-                    ...form.extended,
-                    "fiftyone.core.stages.SelectFields": newStage,
-                  },
-                },
-                subscription,
-              },
-              onCompleted: (data, err) => {
-                if (err) {
-                  console.log("handleSaveSelectedFields failed", err, data);
-                } else {
-                  setSelectedFieldsStage(stage);
-                }
-              },
-            })
-          );
-        }
-      },
-    [selectedFieldsStage, subscription]
-  );
 
   const getSelectedSubPaths = useCallback(
     (path: string) => {
@@ -377,10 +332,7 @@ export default function useSchemaSettings() {
     setShowMetadata,
     selectedFieldsStage,
     setSelectedFieldsStage,
-    saveSelectedFields,
-    isSavingSelectedFields,
     subscription,
     send,
-    handleSaveSelectedFields,
   };
 }
