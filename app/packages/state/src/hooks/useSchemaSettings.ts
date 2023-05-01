@@ -1,16 +1,15 @@
-import {
-  useRecoilState,
-  atom,
-  useRecoilValue,
-  atomFamily,
-  useRecoilCallback,
-} from "recoil";
-import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 import { buildSchema, useSetView, viewStateForm } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
 import { useMutation } from "react-relay";
-import { Stage } from "@fiftyone/utilities";
+import {
+  atom,
+  atomFamily,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
@@ -54,6 +53,18 @@ export const showMetadataState = atom({
 export const selectedFieldsStageState = atom<any>({
   key: "selectedFieldsStageState",
   default: undefined,
+  effects: [
+    ({ onSet }) => {
+      onSet((value) => {
+        const context = fos.getContext();
+        value &&
+          context.history.replace(
+            `${context.history.location.pathname}${context.history.location.search}`,
+            { ...context.history.location.state, selectedFieldsStage: value }
+          );
+      });
+    },
+  ],
 });
 
 export const TAB_OPTIONS_MAP = {
@@ -97,12 +108,10 @@ export default function useSchemaSettings() {
   const handleSaveSelectedFields = useRecoilCallback(
     ({ snapshot }) =>
       (newStage, stage) => {
-        console.log("sasadsdasd", newStage);
         if (newStage) {
           const form = snapshot.getLoadable(
             viewStateForm({ modal: false })
           ).contents;
-          console.log("handleSaveSelectedFields", form);
           send((session) =>
             saveSelectedFields({
               // onError,

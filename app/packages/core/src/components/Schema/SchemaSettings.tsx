@@ -1,10 +1,10 @@
 import React, { Fragment, useRef } from "react";
 import styled from "styled-components";
 
-import { Box } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { Box } from "@mui/material";
 
-import { useTheme, Button } from "@fiftyone/components";
+import { Button, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
 import useSchemaSettings, {
@@ -12,10 +12,8 @@ import useSchemaSettings, {
   TAB_OPTIONS_MAP,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
-import { viewStateForm } from "@fiftyone/state";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useRecoilCallback, useRecoilValue } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -188,10 +186,11 @@ const SchemaSettings = (props: Props) => {
                 } as Stage;
                 try {
                   // setView([stage]);
+
                   console.log("[add to view] fields", finalSelectedPaths);
                   // handleSaveSelectedFields(stageKwargs, stage)
                   // saveSelectedFields
-                  // setSelectedFieldsStage(stage)
+                  setSelectedFieldsStage(stage);
                 } catch (e) {
                   console.log("error", e);
                 } finally {
