@@ -71,7 +71,6 @@ class FiftyOneConfig(EnvConfig):
         self.api_key = self.parse_string(
             d, "api_key", env_var="FIFTYONE_API_KEY", default=None
         )
-
         self.api_uri = self.parse_string(
             d, "api_uri", env_var="FIFTYONE_API_URI", default=None
         )
