@@ -784,8 +784,13 @@ class ExcludeFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
-        # @todo consider returning True here when excluding frame fields
-        return False
+        if self._field_names is None:
+            return False
+
+        # @todo consider `meta_filter` here too?
+        return any(
+            sample_collection._is_frame_field(f) for f in self._field_names
+        )
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
@@ -5535,8 +5540,13 @@ class SelectFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
-        # @todo consider returning True here when selecting frame fields
-        return False
+        if self._field_names is None:
+            return False
+
+        # @todo consider `meta_filter` here too?
+        return any(
+            sample_collection._is_frame_field(f) for f in self._field_names
+        )
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
