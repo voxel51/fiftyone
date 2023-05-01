@@ -61,7 +61,8 @@ class ExecuteOperator(HTTPEndpoint):
         registry = OperatorRegistry()
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
-                "message": "Operator '%s' does not exist" % operator_name,
+                "message": "Operator '%s' does not exist" % operator_uri
+                or "None",
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
@@ -89,7 +90,8 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         registry = OperatorRegistry()
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
-                "message": "Operator '%s' does not exist" % operator_name,
+                "message": "Operator '%s' does not exist" % operator_uri
+                or "None",
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
