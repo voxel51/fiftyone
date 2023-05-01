@@ -76,7 +76,7 @@ class Operator:
             return definition
         # pylint: disable=assignment-from-none
         input_property = self.resolve_input(ctx)
-        output_property = self.resolve_output(ctx, {})
+        output_property = self.resolve_output(ctx)
         # pylint: enable=assignment-from-none
         if input_property is not None:
             definition.add_property("inputs", input_property)
@@ -108,7 +108,7 @@ class Operator:
             #     resolved_input_property.view = Form()
             return resolved_input_property
         elif type == "outputs":
-            return self.resolve_output(ctx, {})
+            return self.resolve_output(ctx)
         else:
             raise ValueError("Invalid type '%s'" % type)
 
@@ -126,7 +126,7 @@ class Operator:
         """
         return None
 
-    def resolve_output(self, ctx, result):
+    def resolve_output(self, ctx):
         """Returns the resolved output :class:`Property`.
 
         Subclasses can implement this method to define the outputs of the operator.
@@ -137,7 +137,6 @@ class Operator:
 
         Args:
             ctx: the :class:`ExecutionContext` for the execution of the operation
-            result: the result of the operator execution
         """
         return None
 
