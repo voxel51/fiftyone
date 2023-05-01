@@ -14,7 +14,7 @@ from fiftyone.management import users
 from fiftyone.management import util as fom_util
 
 
-class ApiKey(TypedDict):
+class APIKey(TypedDict):
     """dict with information about a user"""
 
     id: str
@@ -73,7 +73,7 @@ def generate_api_key(
     """
     user_id = users._resolve_user_id(user, nullable=True)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     data = client.post_graphql_request(
         query=_GENERATE_API_KEY_QUERY,
         variables={
@@ -100,13 +100,13 @@ def list_api_keys(user: Optional[Union[str, users.User]] = None):
             user
 
     Returns:
-        a list of :class:`fiftyone.management.ApiKey` instances
+        a list of :class:`APIKey` instances
     """
     if user is None:
         user = users.whoami()
     user_id = users._resolve_user_id(user)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     data = client.post_graphql_request(
         query=_LIST_API_KEYS_QUERY, variables={"userId": user_id}
     )
@@ -133,7 +133,7 @@ def remove_api_key(
     """
     user_id = users._resolve_user_id(user, nullable=True)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_REMOVE_API_KEY_QUERY,
         variables={

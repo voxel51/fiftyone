@@ -135,7 +135,7 @@ def get_user(user: str) -> Union[User, None]:
     Returns:
         :class:`User`, or ``None`` if no such user is found
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(
         query=_GET_USER_QUERY,
@@ -154,7 +154,7 @@ def list_pending_invitations() -> List[Invitation]:
     Returns:
         a list of :class:`Invitation` instances
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(query=_LIST_PENDING_INVITATIONS_QUERY)
     invitations = data["invitations"]
@@ -174,7 +174,7 @@ def list_users() -> List[User]:
     Returns:
         a list of :class:`User` instances
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     return client.post_graphql_connectioned_request(
         _LIST_USERS_QUERY, "usersConnection"
     )
@@ -192,7 +192,7 @@ def remove_user(user: Union[str, User]) -> None:
     """
     user_id = _resolve_user_id(user)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_REMOVE_USER_QUERY, variables={"userId": user_id}
     )
@@ -209,7 +209,7 @@ def revoke_user_invitation(invitation_id: str) -> None:
         invitation_id: an invitation ID as returned by
             :meth:`send_user_invitation`
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
 
     client.post_graphql_request(
         query=_REVOKE_INVITATION_QUERY,
@@ -231,7 +231,7 @@ def send_user_invitation(email: str, role: UserRole) -> str:
     Returns:
         the invitation ID string
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(
         query=_SEND_INVITATION_QUERY,
@@ -253,7 +253,7 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
     """
     user_id = _resolve_user_id(user)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_SET_USER_ROLE_QUERY,
         variables={"userId": user_id, "role": role.value},
@@ -266,7 +266,7 @@ def whoami() -> User:
     Returns:
         :class:`User`
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(query=_VIEWER_QUERY)
     return data["viewer"]

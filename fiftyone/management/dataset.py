@@ -148,7 +148,7 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
     Returns:
         a list of user info dicts
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     result = client.post_graphql_request(
         query=_GET_PERMISSIONS_FOR_DATASET_QUERY,
         variables={"dataset": dataset_name},
@@ -186,7 +186,7 @@ def get_permissions_for_dataset_user(
         :class:`DatasetPermission`
     """
     user_id = users._resolve_user_id(user)
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     result = client.post_graphql_request(
         query=_GET_PERMISSIONS_FOR_DATASET_USER_QUERY,
         variables={"userId": user_id, "dataset": dataset_name},
@@ -224,7 +224,7 @@ def get_permissions_for_user(user: str):
     """
     user_id = users._resolve_user_id(user)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     dataset_permissions = client.post_graphql_connectioned_request(
         query=_GET_PERMISSIONS_FOR_USER_QUERY,
         variables={"userId": user_id},
@@ -253,7 +253,7 @@ def set_dataset_default_permission(
         dataset_name: the dataset name
         permission: the :class:`fiftyone.management.DatasetPermission` to set
     """
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_SET_DATASET_DEFAULT_PERM_QUERY,
         variables={"identifier": dataset_name, "permission": permission.value},
@@ -280,7 +280,7 @@ def set_dataset_user_permission(
     """
     user_id = users._resolve_user_id(user)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_SET_DATASET_USER_PERM_QUERY,
         variables={
@@ -307,7 +307,7 @@ def remove_dataset_user_permission(
     """
     user_id = users._resolve_user_id(user)
 
-    client = connection.ApiClientConnection().client
+    client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_REMOVE_DATASET_USER_PERM_QUERY,
         variables={

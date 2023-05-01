@@ -11,7 +11,7 @@ import fiftyone.core.config as foc
 import fiftyone_teams_api
 
 
-class ApiClientConnection(object):
+class APIClientConnection(object):
     instance = None
 
     def __init__(self):
@@ -23,7 +23,7 @@ class ApiClientConnection(object):
 
     def __new__(cls):
         if not hasattr(cls, "instance") or getattr(cls, "instance") is None:
-            cls.instance = super(ApiClientConnection, cls).__new__(cls)
+            cls.instance = super(APIClientConnection, cls).__new__(cls)
         return cls.instance
 
     def reload(self):
@@ -71,7 +71,7 @@ def reload_api_connection() -> None:
         fom.reload_api_connection()
         fom.whoami()
     """
-    conn = ApiClientConnection()
+    conn = APIClientConnection()
     conn.reload()
 
 
@@ -81,7 +81,7 @@ def test_api_connection():
     If the connection succeeds, a message will be printed. If the connection
     failes, an exception will be raised.
     """
-    client = ApiClientConnection().client
+    client = APIClientConnection().client
     try:
         status = client.get("health").json().get("status")
         if status != "available":
