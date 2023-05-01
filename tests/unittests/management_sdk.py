@@ -20,8 +20,8 @@ class ManagementSdkConnectionTests(unittest.TestCase):
     API_URI = "https://apis.r.us"
 
     def setUp(self) -> None:
-        conn = fom.connection.ApiClientConnection()
-        conn._ApiClientConnection__client = None
+        conn = fom.connection.APIClientConnection()
+        conn._APIClientConnection__client = None
 
         os.environ["FIFTYONE_API_KEY"] = self.API_KEY
         os.environ["FIFTYONE_API_URI"] = self.API_URI
@@ -32,7 +32,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
 
     @mock.patch("fiftyone.management.connection.fiftyone_teams_api")
     def test_singleton(self, api_mock):
-        instance1 = fom.connection.ApiClientConnection()
+        instance1 = fom.connection.APIClientConnection()
 
         api_mock.Client.assert_not_called()
         instance1.client.get()
@@ -40,7 +40,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
         api_mock.reset_mock()
 
         # Make sure instances are equal but client not reinitialized
-        instance2 = fom.connection.ApiClientConnection()
+        instance2 = fom.connection.APIClientConnection()
         instance2.client.get()
         api_mock.Client.assert_not_called()
 
@@ -48,7 +48,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
 
     @mock.patch("fiftyone.management.connection.fiftyone_teams_api")
     def test_reload(self, api_mock):
-        conn = fom.connection.ApiClientConnection()
+        conn = fom.connection.APIClientConnection()
         conn.client.get()
 
         new_uri = self.API_URI + "/new"
@@ -64,7 +64,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
 
     @staticmethod
     def _get_client_only():
-        fom.connection.ApiClientConnection().client.get()
+        fom.connection.APIClientConnection().client.get()
 
     def test_no_apikey(self):
         del os.environ["FIFTYONE_API_KEY"]
@@ -95,11 +95,11 @@ class ManagementSdkTests(unittest.TestCase):
         super(ManagementSdkTests, cls).setUpClass()
         cls.client = mock.MagicMock()
         cls.patcher = mock.patch(
-            "fiftyone.management.connection.ApiClientConnection"
+            "fiftyone.management.connection.APIClientConnection"
         )
         cls.patcher.start()
 
-        fom.connection.ApiClientConnection.return_value.client = cls.client
+        fom.connection.APIClientConnection.return_value.client = cls.client
         cls._original_resolve_user = fom.users._resolve_user_id
         fom.users._resolve_user_id = mock.Mock()
         cls.resolve_user = fom.users._resolve_user_id
@@ -115,7 +115,7 @@ class ManagementSdkTests(unittest.TestCase):
     ############# Connection
     def test_reload_api_connection(self):
         fom.reload_api_connection()
-        fom.connection.ApiClientConnection.return_value.reload.assert_called()
+        fom.connection.APIClientConnection.return_value.reload.assert_called()
 
     @mock.patch("fiftyone.management.connection.print")
     def test_test_api_connection(self, print_mock):
@@ -184,7 +184,7 @@ class ManagementSdkTests(unittest.TestCase):
             "user": {"apiKeys": api_keys}
         }
         expected = [
-            fom.api_key.ApiKey(
+            fom.api_key.APIKey(
                 id=ak["id"], name=ak["name"], created_at=ak["createdAt"]
             )
             for ak in api_keys
