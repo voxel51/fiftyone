@@ -1,5 +1,6 @@
 import {
   mainSample,
+  mainSampleQuery$data,
   mainSampleQuery as mainSampleQueryGraphQL,
   paginateGroup,
   paginateGroupQuery,
@@ -19,6 +20,7 @@ import {
   dataset,
   modal as modalAtom,
   pinned3DSample,
+  refresher,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -140,6 +142,21 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     },
 });
 
+export const currentSlices = selectorFamily<string[] | null, boolean>({
+  key: "currentSlice",
+  get:
+    (modal) =>
+    ({ get }) => {
+      if (!get(isGroup)) return null;
+
+      if (modal && get(pinned3DSample)) {
+        return get(activePcdSlices);
+      }
+
+      return [get(groupSlice(modal)) || get(defaultGroupSlice)];
+    },
+});
+
 export const activeSliceDescriptorLabel = selector<string>({
   key: "activeSliceDescriptorLabel",
   get: ({ get }) => {
@@ -197,16 +214,17 @@ export const groupQuery = graphQLSelector<
     return {
       dataset: get(datasetName),
       view: get(view),
+      index: get(refresher),
       filter: {
         group: {
-          id: sample[group]._id,
+          id: sample[group]._id as string,
         },
       },
     };
   },
 });
 
-const mapSampleResponse = (response) => {
+const mapSampleResponse = (response: mainSampleQuery$data) => {
   const actualRawSample = response?.sample?.sample;
 
   // This value may be a string that needs to be deserialized
@@ -239,10 +257,11 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
       return {
         dataset: get(datasetName),
         view: get(view),
+        index: get(refresher),
         filter: {
           group: {
             id: groupIdValue,
-            slice: pcdSlice,
+            slices: [pcdSlice],
           },
         },
       };
@@ -278,7 +297,7 @@ export const activeModalSample = selectorFamily<
 const groupSampleQuery = graphQLSelectorFamily<
   VariablesOf<mainSampleQueryGraphQL>,
   SliceName,
-  ResponseFrom<mainSampleQueryGraphQL>
+  ResponseFrom<mainSampleQueryGraphQL>["sample"]
 >({
   environment: RelayEnvironmentKey,
   key: "mainSampleQuery",
@@ -290,10 +309,11 @@ const groupSampleQuery = graphQLSelectorFamily<
       return {
         view: get(view),
         dataset: get(dataset).name,
+        index: get(refresher),
         filter: {
           group: {
-            slice: slice ?? get(groupSlice(true)),
-            id: get(modalAtom).sample[get(groupField)]._id,
+            slices: [slice ?? get(groupSlice(true))],
+            id: get(modalAtom)?.sample[get(groupField)]._id as string,
           },
         },
       };

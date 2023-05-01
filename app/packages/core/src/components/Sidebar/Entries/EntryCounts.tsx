@@ -48,20 +48,20 @@ export const PathEntryCounts = ({
     },
     [modal, path]
   );
-  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
 
+  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
   if (shown.state === "hasError") {
     throw shown.contents;
   }
 
   return shown.state === "loading" ? (
     <LoadingDots text="" />
-  ) : shown.contents ? (
+  ) : (
     <SuspenseEntryCounts
       countAtom={getAtom(false)}
       subcountAtom={getAtom(true)}
     />
-  ) : null;
+  );
 };
 
 const labelTagCount = selectorFamily<

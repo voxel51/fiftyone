@@ -18,6 +18,7 @@ export { default as useLookerStore } from "./useLookerStore";
 export * from "./useOnSelectLabel";
 export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
+export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
 export {
   default as useRouter,
   getCurrentEnvironment,
@@ -43,5 +44,4 @@ export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useToPatches } from "./useToPatches";
-export { default as useUpdateSample } from "./useUpdateSample";
-export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
+export { default as useUpdateSamples } from "./useUpdateSamples";
