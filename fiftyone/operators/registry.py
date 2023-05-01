@@ -11,6 +11,7 @@ from .loader import load_from_dir
 
 BUILTIN_OPERATORS = {}
 
+
 class OperatorRegistry:
     def __init__(self):
         self.plugin_contexts = load_from_dir()
@@ -45,10 +46,10 @@ class OperatorRegistry:
         """Checks if the operator exists.
 
         Args:
-            name: the name of the operator
+            operator_uri: the URI of the operator
 
         Returns:
-            True/False
+            ``True`` if the operator exists, ``False`` otherwise
         """
         operators = self.list_operators()
         return operator_uri in [o.uri for o in operators]
@@ -58,7 +59,8 @@ class OperatorRegistry:
         for operator in operators:
             if operator_uri == operator.uri:
                 return operator
-    
+
+
 def register_operator(operator):
     """Registers a built-in operator. For internal use only.
 
@@ -66,7 +68,5 @@ def register_operator(operator):
         operator: the operator to register
     """
     if operator.name in BUILTIN_OPERATORS:
-        raise ValueError(
-            "Operator '%s' already exists" % operator.name
-        )
+        raise ValueError("Operator '%s' already exists" % operator.name)
     BUILTIN_OPERATORS[operator.name] = operator
