@@ -207,7 +207,7 @@ const SchemaSettings = (props: Props) => {
                 setSelectedPaths(originalSelectedPaths);
               }}
             >
-              cancel
+              Cancel
             </Button>
           </Box>
         </Container>

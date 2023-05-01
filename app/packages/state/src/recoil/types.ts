@@ -138,7 +138,6 @@ export namespace State {
     mediaType: MediaType;
     name: string;
     sampleFields: StrictField[];
-    datasetSchema: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton?: KeypointSkeleton;

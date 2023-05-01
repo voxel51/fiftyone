@@ -499,7 +499,7 @@ export const persistSidebarGroups = (
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
-  { modal: boolean; loading: boolean; filtered?: boolean; dataset?: any }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarEntries",
   get:
