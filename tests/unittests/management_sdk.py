@@ -145,7 +145,7 @@ class ManagementSdkTests(unittest.TestCase):
         self.client.post_graphql_request.assert_called_with(
             "query {viewer {id}}"
         )
-        print_mock.assert_called_with("API Connection Succeeded")
+        print_mock.assert_called_with("API connection succeeded")
 
     ############# API Key
 
