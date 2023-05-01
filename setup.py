@@ -78,6 +78,7 @@ INSTALL_REQUIRES = [
     "google-cloud-storage>=1.36",
     "pysftp",
     "schedule",
+    "websocket-client==1.4.2",
     "yarl",
     "wcmatch",
     # internal packages
