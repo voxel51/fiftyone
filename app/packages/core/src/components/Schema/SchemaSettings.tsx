@@ -192,7 +192,23 @@ const SchemaSettings = (props: Props) => {
                 }
               }}
             >
-              Add to view
+              Apply
+            </Button>
+            <Button
+              style={{
+                color: theme.text.primary,
+                boxShadow: "none",
+                padding: "0.25rem 0.5rem",
+                borderRadius: "4px",
+                marginRight: "0.5rem",
+              }}
+              onClick={() => {
+                setSettingsModal({ open: false });
+                setSearchTerm("");
+                setSelectedPaths(originalSelectedPaths);
+              }}
+            >
+              Cancel
             </Button>
             <Button
               style={{
@@ -205,9 +221,10 @@ const SchemaSettings = (props: Props) => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedPaths(originalSelectedPaths);
+                setSelectedFieldsStage(null);
               }}
             >
-              Cancel
+              Clear
             </Button>
           </Box>
         </Container>
