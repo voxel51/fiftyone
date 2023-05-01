@@ -4,5 +4,5 @@ export { default as OperatorInvocationRequestExecutor } from "./OperatorInvocati
 export { registerOperator, Operator } from "./operators";
 export { useOperatorExecutor, useOperatorPlacements } from "./state";
 export { loadOperators } from "./built-in-operators";
-export { default as OperatorPlacement } from "./OperatorPlacement";
+export { default as OperatorPlacements } from "./OperatorPlacements";
 export * as types from "./types";
