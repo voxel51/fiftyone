@@ -394,35 +394,6 @@ class Mutation:
         return True
 
     @gql.mutation
-    async def set_selected_fields(
-        self,
-        subscription: str,
-        form: t.Optional[StateForm] = None,
-    ) -> bool:
-        state = get_state()
-        print("\nset_selected_fields\n", form, state.view)
-
-        dataset_name = state.dataset.name if state.dataset else None
-        print("result_view 0", dataset_name)
-        result_view = None
-        if dataset_name:
-            result_view = get_view(
-                dataset_name,
-                stages=state.view if state.view else None,
-                filters=form.filters if form else None,
-                extended_stages=form.extended if form else None,
-            )
-
-        print("result_view 1", result_view)
-        result_view = _build_result_view(result_view, form)
-        # state.view = result_view
-
-        print("result_view", result_view)
-
-        # await dispatch_event(subscription, StateUpdate(state=state))
-        return True
-
-    @gql.mutation
     async def search_select_fields(
         self, meta_filter: t.Optional[JSON]
     ) -> t.List[SampleField]:
@@ -432,7 +403,7 @@ class Mutation:
         state = get_state()
         dataset = state.dataset
         try:
-            view = dataset.select_fields(meta_field=meta_filter)
+            view = dataset.select_fields(meta_filter=meta_filter)
         except Exception as e:
             # try selecting only by field keys worst case
             view = dataset.select_fields(meta_filter)
