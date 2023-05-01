@@ -1,9 +1,7 @@
 import os
-from unittest.mock import patch
 
 import fiftyone as fo
 import pytest
-import tempfile
 import json
 import yaml
 from unittest import mock
@@ -124,7 +122,7 @@ def mock_plugin_package_name(plugin_name, plugin_path):
         plugin_name = "test-plugin1-name"
     if not plugin_path:
         plugin_path = "path/to/plugin"
-    return fop.plugin_package(plugin_name, plugin_path)
+    return fop.core.plugin_package(plugin_name, plugin_path)
 
 
 def test_find_plugin_error_duplicate_name(fiftyone_plugins_dir):
