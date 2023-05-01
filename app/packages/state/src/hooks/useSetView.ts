@@ -8,10 +8,10 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
+import * as fos from "../";
 import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import useSendEvent from "./useSendEvent";
-import * as fos from "../";
 
 export const stateProxy = atom<object>({
   key: "stateProxy",
@@ -98,6 +98,7 @@ const useSetView = (
                     savedViews: savedViews,
                     spaces,
                   },
+                  selectedFieldsStage: null,
                   variables: {
                     view: savedViewSlug ? value : viewResponse,
                     dataset: dataset.name,

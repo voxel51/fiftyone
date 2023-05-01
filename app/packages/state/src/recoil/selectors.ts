@@ -9,6 +9,7 @@ import {
 } from "@fiftyone/looker/src/overlays/util";
 import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
@@ -18,7 +19,6 @@ import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
 import { isPatchesView } from "./view";
-import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 
 export const datasetName = selector<string>({
   key: "datasetName",
