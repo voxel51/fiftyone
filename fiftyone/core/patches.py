@@ -315,9 +315,7 @@ class _PatchesView(fov.DatasetView):
         _view = self._patches_stage.load_view(self._source_collection)
         self._patches_dataset = _view._patches_dataset
 
-        _view = self._base_view
-        for stage in self._stages:
-            _view = _view.add_stage(stage)
+        super().reload()
 
     def _sync_source_sample(self, sample):
         for field in self._label_fields:
