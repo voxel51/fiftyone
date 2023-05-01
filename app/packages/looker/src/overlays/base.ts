@@ -102,10 +102,10 @@ export abstract class CoordinateOverlay<
     switch (coloring.by) {
       case "field":
         // check if the field has a customized color, use it if it is a valid color
-        const fieldColor = customizeColorSetting.find(
-          (s) => s.field === this.field
-        )?.fieldColor;
-        if (fieldColor && isValidColor(fieldColor)) {
+        const field = customizeColorSetting.find((s) => s.field === this.field);
+        const useFieldColor = field?.useFieldColor;
+        const fieldColor = field?.fieldColor;
+        if (useFieldColor && fieldColor && isValidColor(fieldColor)) {
           return fieldColor;
         }
 
@@ -130,6 +130,9 @@ export abstract class CoordinateOverlay<
 
           if (isValidColor(labelColor)) {
             return labelColor;
+          } else {
+            // fallback to use label as default attribute
+            key = "label";
           }
         } else {
           key = "label";

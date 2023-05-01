@@ -1,67 +1,55 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import Editor from "@monaco-editor/react";
 import * as fos from "@fiftyone/state";
 
-import { tempColorJSON, tempColorSetting, tempGlobalSetting } from "./utils";
 import { ActionOption } from "../Actions/Common";
 import { useTheme } from "@fiftyone/components";
-import { SORT_BY_SIMILARITY } from "../../utils/links";
+import { COLOR_SCHEME } from "../../utils/links";
 import { SectionWrapper } from "./ShareStyledDiv";
+import { Button } from "../utils";
+import { setColorScheme } from "@fiftyone/relay";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { validateJSONSetting } from "./utils";
 
 const JSONViewer: React.FC = ({}) => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const [global, setGlobal] = useRecoilState(tempGlobalSetting);
   const setting = useRecoilValue(fos.sessionColorScheme);
-  const fullSetting = setting.customizedColorSettings ?? [];
-  const [data, setData] = useRecoilState(tempColorJSON);
-  const resetTempCustomizeColor = useSetRecoilState(tempColorSetting);
-  const colors = useRecoilValue(fos.coloring(false)).pool as string[];
-  const opacity = useRecoilValue(fos.alpha(false));
-  const colorBy = useRecoilValue(
-    fos.appConfigOption({ key: "colorBy", modal: false })
-  );
-  const useMulticolorKeypoints = useRecoilValue(
-    fos.appConfigOption({ key: "multicolorKeypoints", modal: false })
-  );
-  const showSkeleton = useRecoilValue(
-    fos.appConfigOption({ key: "showSkeletons", modal: false })
-  );
+  const { setColorScheme } = fos.useSessionColorScheme();
+  const [data, setData] = useState(setting);
 
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
   };
 
-  useEffect(() => {
-    // reset the other temp settings as tab changes, otherwise could cause field setting tab not to show the most updated setting
-    resetTempCustomizeColor(null);
-    // if globalSetting is not initialized, set global
-    if (!global) {
-      const setting = {
-        colorBy,
-        colors,
-        opacity,
-        useMulticolorKeypoints,
-        showSkeleton,
-      };
-      setGlobal(setting);
-    }
+  const onApply = () => {
+    if (
+      typeof data !== "object" ||
+      !data?.colorPool ||
+      !Array.isArray(data?.colorPool) ||
+      !data?.customizedColorSettings ||
+      !Array.isArray(data?.customizedColorSettings)
+    )
+      return;
+    const { colorPool, customizedColorSettings } = data;
+    const validColors = colorPool?.filter((c) => isValidColor(c));
+    const validatedSetting = validateJSONSetting(customizedColorSettings);
+    setColorScheme(validColors, validatedSetting, false);
     setData({
-      colorPool: global?.colors,
-      customizedColorSettings: fullSetting,
+      colorPool: validColors,
+      customizedColorSettings: validatedSetting,
     });
-  }, []);
+  };
 
-  if (!global) return null;
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
         You can use the JSON editor to customize the color settings.
         <ActionOption
-          href={SORT_BY_SIMILARITY}
+          href={COLOR_SCHEME}
           text={"Read more"}
           title={"How to set customized color schema?"}
           style={{
@@ -79,11 +67,18 @@ const JSONViewer: React.FC = ({}) => {
         theme={themeMode == "dark" ? "vs-dark" : "vs-light"}
         value={JSON.stringify(data, null, 4)}
         width={"100%"}
-        height={"calc(100% - 60px)"}
+        height={"calc(100% - 110px)"}
         wrapperProps={{ padding: 0 }}
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
+      <div style={{ width: "200px", margin: "0.5rem 1rem" }}>
+        <Button
+          text="Apply color scheme to session"
+          title="Validate color scheme JSON and apply to session color scheme setting"
+          onClick={onApply}
+        />
+      </div>
     </div>
   );
 };

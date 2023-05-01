@@ -293,7 +293,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {field.embeddedDocType && !isModal && canEdit && (
+        {field.embeddedDocType && !isModal && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}

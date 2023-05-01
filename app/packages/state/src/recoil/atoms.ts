@@ -60,9 +60,7 @@ export interface CustomizeColor {
   useFieldColor: boolean;
   fieldColor?: string;
   attributeForColor?: string; // must be string field, int field, or boolean field
-  useOpacity: boolean;
-  attributeForOpacity?: string; // must be float field
-  useLabelColors: boolean;
+  // attributeForOpacity?: string; // must be float field
   labelColors?: {
     name: string;
     color: string;

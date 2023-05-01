@@ -93,7 +93,7 @@ export const ModalActionButtonContainer = styled.div`
   width: "100%";
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0.5rem;
 `;
 
@@ -109,4 +109,31 @@ export const LONG_BUTTON_STYLE: React.CSSProperties = {
   height: "2rem",
   flex: 2,
   textAlign: "center",
+};
+
+export const FieldTextField = styled.div`
+  margin-top: 2rem;
+`;
+
+export const FieldColorSquare = styled.div<{ color: string }>`
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin: 5px;
+  cursor: pointer;
+  background-color: ${(props) => props.color || "#ddd"};
+  display: "inline-block";
+`;
+
+export const PickerWrapper = styled.div<{ visible: boolean }>`
+  position: absolute;
+  top: 60px;
+  left: 0;
+  z-index: 10001;
+  visibility: ${(props) => (props.visible ? "visible" : "hidden")};
+`;
+
+export const FieldCHILD_STYLE = {
+  marginLeft: "2rem",
+  marginTop: "-0.25rem",
 };

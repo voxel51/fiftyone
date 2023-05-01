@@ -5,27 +5,6 @@ import { isEmpty, xor } from "lodash";
 import { Field } from "@fiftyone/utilities";
 import { CustomizeColor } from "@fiftyone/state";
 
-type ColorJSON = {
-  colorPool: string[];
-  customizedColorSettings: CustomizeColor[];
-};
-
-// atoms for temporary saving color settings of Field, Global, and Json tabs on the color modal
-export const tempColorSetting = atom<CustomizeColor>({
-  key: "tempAttributeColorSetting",
-  default: {},
-});
-
-export const tempGlobalSetting = atom<GlobalColorSetting>({
-  key: "tempGlobalSetting",
-  default: {},
-});
-
-export const tempColorJSON = atom<ColorJSON>({
-  key: "tempColorJSON",
-  default: {},
-});
-
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their website Color Universal Design (CUD). This palette is a “Set of colors that is unambiguous both to colorblinds and non-colorblinds”.
 // https://jfly.uni-koeln.de/color/
 export const colorBlindFriendlyPalette = [
@@ -59,26 +38,9 @@ export const ACTIVE_FIELD = {
   ["GLOBAL"]: "global",
 };
 
-type GlobalColorSetting = {
-  colorBy: "field" | "value";
-  colors: string[];
-  opacity: number;
-  useMulticolorKeypoints: boolean;
-  showSkeleton: boolean;
-};
-
+// disregard the order
 export const isSameArray = (a: any[], b: any[]) => {
   return isEmpty(xor(a, b));
-};
-
-export const updateFieldSettings = (tempColor) => {
-  const { useLabelColors, useOpacity } = tempColor;
-  return {
-    ...tempColor,
-    labelColors: useLabelColors ? tempColor.labelColors : undefined,
-    attributeForOpacity: useOpacity ? tempColor.attributeForOpacity : undefined,
-    fieldColor: tempColor.useFieldColor ? tempColor.fieldColor : undefined,
-  };
 };
 
 export const isString = (v: unknown) => typeof v === "string";
@@ -86,15 +48,13 @@ export const isObject = (v: unknown) => typeof v === "object" && v != null;
 export const isBoolean = (v: unknown) => typeof v === "boolean";
 
 const getValidLabelColors = (labelColors: unknown[]) => {
-  const result = labelColors?.filter((x) => {
+  return labelColors?.filter((x) => {
     return x && isObject(x) && isString(x["name"]) && isString(x["color"]);
   }) as { name: string; color: string }[];
-
-  return result;
 };
 
 // should return a valid customize color object that can be used to setCustomizeColor
-export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
+export const validateJSONSetting = (json: unknown[]) => {
   const filtered = json?.filter(
     (s) => s && isObject(s) && isString(s["field"])
   ) as {}[];
@@ -104,36 +64,15 @@ export const validateJSONSetting = (json: unknown[], fields: Field[]) => {
     useFieldColor: isBoolean(input["useFieldColor"])
       ? input["useFieldColor"]
       : false,
-    fieldColor: (
-      isBoolean(input["useFieldColor"]) ? input["useFieldColor"] : false
-    )
-      ? input["fieldColor"]
-      : null,
+    fieldColor: input["fieldColor"] ?? null,
     attributeForColor: isString(input["attributeForColor"])
       ? input["attributeForColor"]
       : null,
-    useOpacity: isBoolean(input["useOpacity"]) ? input["useOpacity"] : false,
     attributeForOpacity: isString(input["attributeForOpacity"])
       ? input["attributeForOpacity"]
       : null,
-    useLabelColors: isBoolean(input["useLabelColors"])
-      ? input["useLabelColors"]
-      : false,
-    labelColors:
-      (isBoolean(input["useLabelColors"]) ? input["useLabelColors"] : false) &&
-      Array.isArray(input["labelColors"])
-        ? getValidLabelColors(input["labelColors"])
-        : undefined,
+    labelColors: Array.isArray(input["labelColors"])
+      ? getValidLabelColors(input["labelColors"])
+      : null,
   })) as CustomizeColor[];
 };
-
-export function useCancel() {
-  const cancelCallback = useRecoilCallback(({ set }) => async () => {
-    set(fos.activeColorField, null);
-    set(tempColorSetting, null);
-    set(tempGlobalSetting, null);
-    set(tempColorJSON, null);
-  });
-
-  return cancelCallback;
-}

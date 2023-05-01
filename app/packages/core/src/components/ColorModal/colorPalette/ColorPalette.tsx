@@ -23,12 +23,10 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const [tempColor, setTempColor] = useRecoilState(tempGlobalSetting);
-  const colors = tempColor.colors;
+  const { computedSessionColorScheme, setColorScheme } =
+    fos.useSessionColorScheme();
+  const colors = computedSessionColorScheme.colorPool;
 
-  const currentColorPalette = useRecoilValue(fos.coloring(false))
-    .pool as string[];
-  const hasChange = !isSameArray(colors, currentColorPalette);
   const isUsingColorBlindOption = isSameArray(
     colors,
     colorBlindFriendlyPalette
@@ -44,28 +42,41 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  if (!colors) return null;
   const handleColorChange = (color: any) => {
     if (activeIndex !== null && color) {
       const newColors = colors ? [...colors] : [];
       newColors[activeIndex] = color.hex;
-      setTempColor((prev) => ({ ...prev, colors: newColors }));
       setActiveIndex(null);
       setShowPicker(false);
+      setColorScheme(
+        newColors,
+        computedSessionColorScheme.customizedColorSettings,
+        false
+      );
     }
   };
 
   const handleColorDelete = (index: number) => {
     const newColors = colors ? [...colors] : [];
     newColors.splice(index, 1);
-    setTempColor((prev) => ({ ...prev, colors: newColors }));
+    setColorScheme(
+      newColors,
+      computedSessionColorScheme.customizedColorSettings,
+      false
+    );
   };
 
   const handleColorAdd = () => {
     if (colors?.length < maxColors) {
-      setTempColor((prev) => ({ ...prev, colors: [...colors, ""] }));
+      setColorScheme(
+        [...colors, "#fff"],
+        computedSessionColorScheme.customizedColorSettings,
+        false
+      );
     }
   };
+
+  if (!colors) return null;
 
   return (
     <div style={style}>
@@ -118,22 +129,17 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
         )}
       </ColorPaletteContainer>
 
-      {hasChange && (
-        <Checkbox
-          name={"Revert to current setting"}
-          value={!hasChange}
-          setValue={(v) =>
-            v && setTempColor((s) => ({ ...s, colors: currentColorPalette }))
-          }
-        />
-      )}
       {!isUsingFiftyoneClassic && (
         <Checkbox
           name={"Use fiftyone classic option"}
           value={isUsingFiftyoneClassic}
           setValue={(v) =>
             v &&
-            setTempColor((s) => ({ ...s, colors: fiftyoneDefaultColorPalette }))
+            setColorScheme(
+              fiftyoneDefaultColorPalette,
+              computedSessionColorScheme.customizedColorSettings,
+              false
+            )
           }
         />
       )}
@@ -143,7 +149,11 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           value={isUsingColorBlindOption}
           setValue={(v) =>
             v &&
-            setTempColor((s) => ({ ...s, colors: colorBlindFriendlyPalette }))
+            setColorScheme(
+              colorBlindFriendlyPalette,
+              computedSessionColorScheme.customizedColorSettings,
+              false
+            )
           }
         />
       )}

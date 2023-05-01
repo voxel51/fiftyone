@@ -113,7 +113,7 @@ export const getColorFromOptions = ({
       if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
         return fieldColor;
       }
-      // default setting:
+      // fall back on default setting:
       return getColor(coloring.pool, coloring.seed, path);
     case "value":
     default:
@@ -128,7 +128,7 @@ export const getColorFromOptions = ({
           (l) => l.name == param[key]?.toString()
         )?.color;
 
-        if (setting.useLabelColors && isValidColor(labelColor)) {
+        if (isValidColor(labelColor)) {
           return labelColor;
         }
       } else {

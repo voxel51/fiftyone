@@ -9,8 +9,15 @@ import {
   VisibilityOff,
   Wallpaper,
   Search,
+  ColorLens,
 } from "@mui/icons-material";
-import React, { MutableRefObject, useCallback, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import {
   selector,
@@ -267,6 +274,37 @@ const Options = ({ modal }) => {
   );
 };
 
+const Colors = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+
+  const onOpen = () => {
+    setOpen(!open);
+    setActiveField("global");
+  };
+
+  useEffect(() => {
+    if (activeField) {
+      !open && setOpen(true);
+    } else {
+      open && setOpen(false);
+    }
+  }, [Boolean(activeField)]);
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<ColorLens />}
+        open={open}
+        onClick={onOpen}
+        highlight={open}
+        title={"Color settings"}
+      />
+    </ActionDiv>
+  );
+};
+
 const Hidden = () => {
   const [hiddenObjects, setHiddenObjects] = useRecoilState(fos.hiddenLabels);
   const count = Object.keys(hiddenObjects).length;
@@ -393,6 +431,7 @@ export const GridActionsRow = () => {
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
       <Options modal={false} />
+      <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
       {!isVideo && <Similarity modal={false} />}

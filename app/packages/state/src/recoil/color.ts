@@ -3,10 +3,12 @@ import { DefaultValue, selector, selectorFamily } from "recoil";
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   getColor,
   hexToRgb,
   RGB,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
@@ -15,6 +17,7 @@ import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
+import { State } from "./types";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -81,7 +84,10 @@ export const pathColor = selectorFamily<
       const customizeColor = get(
         atoms.sessionColorScheme
       )?.customizedColorSettings?.find((x) => x.field === path);
-      if (isValidColor(customizeColor?.fieldColor)) {
+      if (
+        customizeColor?.useFieldColor &&
+        isValidColor(customizeColor?.fieldColor)
+      ) {
         return customizeColor.fieldColor;
       }
 
@@ -101,5 +107,29 @@ export const pathColor = selectorFamily<
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const eligibleFieldsToCustomizeColor = selector({
+  key: "eligibleFieldsToCustomizeColor",
+  get: ({ get }) => {
+    const videoFields = get(
+      schemaAtoms.fields({
+        space: State.SPACE.FRAME,
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      })
+    );
+    const sampleFields = get(
+      schemaAtoms.fields({
+        space: State.SPACE.SAMPLE,
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      })
+    );
+    const fields = [...videoFields, ...sampleFields].filter((f) =>
+      VALID_LABEL_TYPES.includes(
+        f?.embeddedDocType?.split(".").slice(-1)[0] ?? ""
+      )
+    );
+    return fields;
   },
 });

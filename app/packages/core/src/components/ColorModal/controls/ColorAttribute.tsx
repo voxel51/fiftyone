@@ -1,16 +1,16 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import useMeasure from "react-use-measure";
 import styled from "styled-components";
 import { cloneDeep } from "lodash";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 
+import * as fos from "@fiftyone/state";
 import { Tooltip, useTheme } from "@fiftyone/components/src/components";
 import { useOutsideClick } from "@fiftyone/state";
 import { Popout } from "@fiftyone/components/src/components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
-import { tempColorSetting } from "../utils";
 import { Field } from "@fiftyone/utilities";
 
 const ActionDiv = styled.div`
@@ -43,19 +43,26 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
-  const [tempSetting, setTempSetting] = useRecoilState(tempColorSetting);
+  const { setColorScheme } = fos.useSessionColorScheme();
+  const activeField = useRecoilValue(fos.activeColorField) as Field;
+  const { colorPool, customizedColorSettings } = useRecoilValue(
+    fos.sessionColorScheme
+  );
+  const index = customizedColorSettings.findIndex(
+    (s) => s.field == activeField.path
+  );
   const options = fields.map((field) => ({
     value: field.path!,
     onClick: () => {
-      setTempSetting((s) => ({
-        ...cloneDeep(s),
-        attributeForColor: field.path!,
-      }));
+      const copy = cloneDeep(customizedColorSettings);
+      copy[index].attributeForColor = field.path!;
+      setColorScheme(colorPool, copy, false);
       setOpen(false);
     },
   }));
   const selected =
-    tempSetting?.attributeForColor ?? "Please select an attribute";
+    customizedColorSettings[index].attributeForColor ??
+    "Please select an attribute";
 
   return (
     <div>

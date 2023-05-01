@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import DeleteIcon from "@material-ui/icons/Delete";
 import { ChromePicker } from "react-color";
@@ -8,6 +8,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { tempColorSetting } from "../utils";
 import { cloneDeep } from "lodash";
 import { Button } from "../../utils";
+import { Field } from "@fiftyone/utilities";
 
 const RowContainer = styled.div`
   display: flex;
@@ -50,57 +51,83 @@ type ColorPickerRowProps = {
 
 const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
-  const coloring = useRecoilValue(fos.coloring(false));
+  const activeField = useRecoilValue(fos.activeColorField);
+  const { colorPool, customizedColorSettings } = useRecoilValue(
+    fos.sessionColorScheme
+  );
+  const { setColorScheme } = fos.useSessionColorScheme();
+  const setting = customizedColorSettings.find(
+    (s) => s.field == (activeField as Field).path
+  );
+
+  const newSetting = cloneDeep(customizedColorSettings);
+  const index = customizedColorSettings.findIndex(
+    (s) => s.field == (activeField as Field).path
+  );
+
   const defaultValue = {
     name: "",
-    color: coloring.pool[Math.floor(Math.random() * coloring.pool.length)],
+    color: colorPool[Math.floor(Math.random() * colorPool.length)],
   };
-  const [tempColor, setTempColor] = useRecoilState(tempColorSetting);
-  const values = tempColor.labelColors;
+
+  const values = setting?.labelColors;
 
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
 
   const handleAdd = () => {
-    setTempColor((prev) => ({
-      ...cloneDeep(prev),
-      labelColors: prev.labelColors
-        ? [...cloneDeep(prev.labelColors), defaultValue]
-        : [defaultValue],
-    }));
+    newSetting[index].labelColors = setting?.labelColors
+      ? [...setting.labelColors, defaultValue]
+      : [defaultValue];
+    setColorScheme(colorPool, newSetting, false);
     setShowPicker([...showPicker, false]);
   };
 
-  const handleDelete = (index: number) => {
-    const newValues = values ? [...cloneDeep(values)] : [];
-    newValues.splice(index, 1);
-    setTempColor((prev) => ({ ...cloneDeep(prev), labelColors: newValues }));
+  const handleDelete = (colorIdx: number) => {
+    const labelValues = values ? [...cloneDeep(values)] : [];
+    newSetting[index].labelColors = [
+      ...labelValues.slice(0, colorIdx),
+      ...labelValues.slice(colorIdx + 1),
+    ];
+    setColorScheme(colorPool, newSetting, false);
   };
 
-  const hanldeColorChange = (color: any, index: number) => {
-    const newColor = color?.hex;
-    setShowPicker((prev) => prev.map((_, i) => (i === index ? false : _)));
-    setTempColor((p) => {
-      const prev = cloneDeep(p);
-      const newValues = prev.labelColors ? [...prev.labelColors] : [];
-      newValues[index].color = newColor;
-      return { ...cloneDeep(prev), labelColors: newValues };
-    });
+  const hanldeColorChange = (color: any, colorIdx: number) => {
+    setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
+    const labelValues = values ? [...cloneDeep(values)] : [];
+    labelValues[colorIdx].color = color?.hex;
+    newSetting[index].labelColors = labelValues;
+    setColorScheme(colorPool, newSetting, false);
   };
-
-  if (!values) return null;
 
   const handleChange = (
-    index: number,
+    changeIdx: number,
     key: "name" | "color",
     value: string
   ) => {
-    const newValues = cloneDeep(values);
-    newValues[index][key] = value;
-    setTempColor((prev) => ({ ...cloneDeep(prev), labelColors: newValues }));
+    const copy = cloneDeep(customizedColorSettings);
+    const idx = customizedColorSettings.findIndex(
+      (s) => s.field == (activeField as Field).path
+    );
+    const current = cloneDeep(copy[idx].labelColors!);
+    current[changeIdx][key] = value;
+    newSetting[idx].labelColors = current;
+    setColorScheme(colorPool, newSetting, false);
   };
 
+  useEffect(() => {
+    if (!values) {
+      const copy = cloneDeep(customizedColorSettings);
+      const idx = customizedColorSettings.findIndex(
+        (s) => s.field == (activeField as Field).path
+      );
+      copy[idx].labelColors = [defaultValue];
+      setColorScheme(colorPool, copy, false);
+    }
+  }, [values]);
+
+  if (!values) return null;
   return (
     <div style={style}>
       {values.map((value, index) => (
