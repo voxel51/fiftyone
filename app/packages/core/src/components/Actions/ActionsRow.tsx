@@ -9,7 +9,7 @@ import {
   VisibilityOff,
   Wallpaper,
   Search,
-  List
+  List,
 } from "@mui/icons-material";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
@@ -32,9 +32,8 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { useOperatorBrowser, useOperatorPlacements } from "@fiftyone/operators/src/state";
-import {types, OperatorPlacement} from '@fiftyone/operators'
-import { Button } from "@mui/material";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import { types, OperatorPlacements } from "@fiftyone/operators";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -401,15 +400,12 @@ export const BrowseOperations = () => {
         title={"Browse operations"}
       />
     </ActionDiv>
-  )
-}
+  );
+};
 
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
-  // const {placements} = useOperatorPlacements(types.Places.SAMPLES_GRID_ACTIONS)
-
-  // console.log({placements})
 
   return (
     <ActionsRowDiv>
@@ -421,9 +417,7 @@ export const GridActionsRow = () => {
       <SaveFilters />
       <Selected modal={false} />
       <BrowseOperations />
-      {/* {placements.map(({placement, operator}) => (
-        <OperatorPlacement placement={placement} operator={operator}  />
-      ))} */}
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
     </ActionsRowDiv>
   );
 };
@@ -451,6 +445,7 @@ export const ModalActionsRow = ({
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+      <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

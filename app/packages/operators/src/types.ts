@@ -185,15 +185,23 @@ type BasicView = {
   description?: string;
   caption?: string;
   space?: number;
+  name?: string;
 };
 export class View extends BaseType {
   constructor(public options: BasicView = {}) {
     super();
+    this.label = options.label;
+    this.description = options.description;
+    this.caption = options.caption;
+    this.space = options.space;
+    this.name = options.name; // todo: should infer based on class like types.py
+    this.options = options;
   }
   label?: string;
   description?: string;
   caption?: string;
   space?: number;
+  name?: string;
   static fromJSON(json: BasicView) {
     return new View(json);
   }
@@ -337,6 +345,7 @@ export class Placement {
 export enum Places {
   SAMPLES_GRID_ACTIONS = "samples-grid-actions",
   SAMPLES_GRID_SECONDARY_ACTIONS = "samples-grid-secondary-actions",
+  SAMPLES_VIEWER_ACTIONS = "samples-viewer-actions",
   EMBEDDINGS_ACTIONS = "embeddings-actions",
   HISTOGRAM_ACTIONS = "histograms-actions",
   MAP_ACTIONS = "map-actions",
