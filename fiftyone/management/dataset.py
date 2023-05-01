@@ -139,7 +139,7 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
 
         [
             {'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
-            {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'}
+            {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'},
         ]
 
     Args:
