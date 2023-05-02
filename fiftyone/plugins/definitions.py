@@ -75,11 +75,6 @@ def find_plugin_metadata_files():
     return normal_locations + node_modules_locations + yarn_packages_locations
 
 
-class PluginTypes(Enum):
-    JAVASCRIPT = "javascript"
-    PYTHON = "python"
-
-
 class PluginDefinition:
     def __init__(self, directory, metadata):
         if not metadata.get("name"):
@@ -95,16 +90,84 @@ class PluginDefinition:
         )
         self.operators = metadata.get("operators", [])
         self.js_bundle = metadata.get("js_bundle", None)
+        self.py_entry = metadata.get("py_entry", None)
+        self.js_bundle_exists = False
+        self.py_entry_exists = False
+        self._load()
 
     @property
-    def type(self):
-        return PluginTypes.JAVASCRIPT if self.js_bundle else PluginTypes.PYTHON
+    def package_json_path(self):
+        return os.path.join(self.directory, "package.json")
+
+    @property
+    def js_bundle_path(self):
+        if self.js_bundle:
+            return os.path.join(self.directory, self.js_bundle)
+        return None
+
+    @property
+    def py_entry_path(self):
+        if self.py_entry:
+            return os.path.join(self.directory, self.py_entry)
+        return None
+
+    def _load(self):
+        if not self.js_bundle:
+            # check if package.json exists
+            if os.path.exists(self.package_json_path):
+                pkg = etas.read_json(self.package_json_path)
+                self.js_bundle = pkg.get("fiftyone", {}).get("script", None)
+        if not self.py_entry:
+            # check if __init__.py exists
+            init_py_path = os.path.join(self.directory, "__init__.py")
+            if os.path.exists(init_py_path):
+                self.py_entry = "__init__.py"
+
+        if self.js_bundle:
+            self.js_bundle_exists = os.path.exists(self.js_bundle_path)
+        if self.py_entry:
+            self.py_entry_exists = os.path.exists(self.py_entry_path)
+
+    @property
+    def server_path(self):
+        return "/" + os.path.join(
+            "plugins", os.path.relpath(self.directory, fo.config.plugins_dir)
+        )
+
+    @property
+    def js_bundle_server_path(self):
+        if self.has_js:
+            return os.path.join(self.server_path, self.js_bundle)
 
     def can_register_operator(self, operator_name):
-        if self.type == PluginTypes.PYTHON:
+        if self.has_py:
             if operator_name in self.operators:
                 return True
         return False
+
+    @property
+    def has_py(self):
+        return self.py_entry is not None and self.py_entry_exists
+
+    @property
+    def has_js(self):
+        return self.js_bundle is not None and self.js_bundle_exists
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "version": self.version,
+            "license": self.license,
+            "description": self.description,
+            "fiftyone_compatibility": self.fiftyone_compatibility,
+            "operators": self.operators or [],
+            "js_bundle": self.js_bundle,
+            "py_entry": self.py_entry,
+            "js_bundle_exists": self.js_bundle_exists,
+            "js_bundle_server_path": self.js_bundle_server_path,
+            "has_py": self.has_py,
+            "has_js": self.has_js,
+        }
 
 
 def load_plugin_definition(metadata_file):
@@ -114,14 +177,6 @@ def load_plugin_definition(metadata_file):
             metadata_dict = yaml.safe_load(f)
             module_dir = os.path.dirname(metadata_file)
             definition = PluginDefinition(module_dir, metadata_dict)
-            if not definition.js_bundle:
-                # check if package.json exists
-                package_json_path = os.path.join(module_dir, "package.json")
-                if os.path.exists(package_json_path):
-                    pkg = etas.read_json(package_json_path)
-                    definition.js_bundle = pkg.get("fiftyone", {}).get(
-                        "script", None
-                    )
             return definition
     except:
         traceback.print_exc()
