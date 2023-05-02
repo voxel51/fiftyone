@@ -319,7 +319,6 @@ const useSlicesData = <T extends unknown>(path: string) => {
   slices.forEach((slice) => {
     let sliceData = data[slice].sample;
 
-    path === "list" && console.log(sliceData);
     for (let index = 0; index < keys.length; index++) {
       if (!sliceData) {
         break;
