@@ -809,7 +809,7 @@ def _transform_videos(
                         _frames = range(
                             1, sample.metadata.total_frame_count + 1
                         )
-                    except Exception as e:
+                    except BaseException as e:
                         if not skip_failures:
                             raise
 
@@ -971,7 +971,7 @@ def _transform_video(
 
         if delete_original and inpath != outpath:
             fos.delete_file(inpath)
-    except Exception as e:
+    except BaseException as e:
         try:
             # Undo any moves
             for from_path, to_path in moves:
