@@ -880,9 +880,16 @@ def _get_meta_filtered_fields(schema, meta_filter):
     name_filter = _mf.pop("name", None)
     info_filter = _mf.pop("info", None)
 
+    for key, val in meta_filter.items():
+        if "." in key:
+            if not info_filter:
+                info_filter = {}
+            base, leaf = key.split(".", 1)
+            info_filter[leaf] = val
+
     matcher = (
         lambda q, v: q.lower() in v.lower()
-        if isinstance(v, str)
+        if isinstance(v, str) and isinstance(q, str)
         else (
             q.lower() in str(v).lower()
             if isinstance(q, str) and isinstance(v, dict)
@@ -893,43 +900,33 @@ def _get_meta_filtered_fields(schema, meta_filter):
     paths = []
 
     for path, field in schema.items():
-        is_match = True
         # match anything anywhere
-        if str_filter is not None:
-            is_match &= _matches_field_meta(field, matcher, str_filter)
+        if str_filter is not None and _matches_field_meta(
+            field, matcher, str_filter
+        ):
+            paths.append(path)
 
         # match description only
-        if description_filter is not None:
-            is_match &= _matches_field_meta(
-                field,
-                matcher,
-                description_filter,
-                "description",
-            )
+        if description_filter is not None and _matches_field_meta(
+            field, matcher, description_filter, "description"
+        ):
+            paths.append(path)
 
         # match name only
-        if name_filter is not None:
-            is_match &= _matches_field_meta(
-                field,
-                matcher,
-                name_filter,
-                "name",
-            )
+        if name_filter is not None and _matches_field_meta(
+            field, matcher, name_filter, "name"
+        ):
+            paths.append(path)
 
         # match info only
-        if info_filter is not None:
-            is_match &= _matches_field_meta(
-                field,
-                matcher,
-                info_filter,
-                "info",
-            )
+        if info_filter is not None and _matches_field_meta(
+            field, matcher, info_filter, "info"
+        ):
+            paths.append(path)
 
         for key, val in meta_filter.items():
-            is_match &= _matches_field_meta(field, matcher, val, key)
-
-        if is_match:
-            paths.append(path)
+            if _matches_field_meta(field, matcher, val, key):
+                paths.append(path)
 
     return paths
 
@@ -949,8 +946,13 @@ def _matches_field_meta(field, matcher, query, key=None):
     if key == "name":
         return matcher(query, field.name)
 
-    if key == "info":
-        return matcher(query, field.info)
+    if key == "info" and field.info is not None:
+        matches = matcher(query, field.info)
+        # else fall through to the recursive match
+        if not matches and isinstance(query, dict):
+            for k, v in query.items():
+                matches |= _recursive_match(field.info, matcher, v, k)
+        return matches
 
     if not isinstance(field.info, dict):
         return False
@@ -7917,7 +7919,6 @@ _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
 
-
 # Simple registry for the server to grab available view stages
 _STAGES = [
     Concat,
@@ -7961,7 +7962,6 @@ _STAGES = [
     ToTrajectories,
     ToFrames,
 ]
-
 
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {

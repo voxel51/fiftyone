@@ -3444,7 +3444,6 @@ class ViewStageTests(unittest.TestCase):
         self.assertNotIn("field_3", fields)
         self.assertNotIn("ground_truth", fields)
 
-        # should bust the recursion limit (default is 1)
         view = dataset.select_fields(meta_filter=dict(j_6="nope"))
         fields = view.get_field_schema(flat=True)
         self.assertNotIn("field_1", fields)
@@ -3499,6 +3498,13 @@ class ViewStageTests(unittest.TestCase):
         self.assertNotIn("ground_truth", fields)
 
         view = dataset.select_fields(meta_filter=dict(owner="joe"))
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter={"info.owner": "joe"})
         fields = view.get_field_schema(flat=True)
         self.assertNotIn("field_1", fields)
         self.assertIn("field_2", fields)
