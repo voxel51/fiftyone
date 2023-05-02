@@ -22,6 +22,15 @@ class DatasetPermission(enum.Enum):
     MANAGE = "MANAGE"
 
 
+_DELETE_DATASET_USER_PERM_QUERY = """
+    mutation($identifier: String!, $userId: String!) {
+      removeDatasetUserPermission(
+            datasetIdentifier: $identifier
+            userId: $userId
+        ) { id }
+    }
+"""
+
 _GET_PERMISSIONS_FOR_DATASET_QUERY = """
     query ($dataset: String!){
         dataset(identifier: $dataset) {
@@ -86,14 +95,31 @@ _SET_DATASET_USER_PERM_QUERY = """
     }
 """
 
-_REMOVE_DATASET_USER_PERM_QUERY = """
-    mutation($identifier: String!, $userId: String!) {
-      removeDatasetUserPermission(
-            datasetIdentifier: $identifier
-            userId: $userId
-        ) { id }
-    }
-"""
+
+def delete_dataset_user_permission(
+    dataset_name: str, user: Union[str, users.User]
+) -> None:
+    """Removes the given user's specific access to the given dataset.
+
+    .. note::
+
+        The caller must have ``Can Manage`` permissions on the dataset.
+
+    Args:
+        dataset_name: the dataset name
+        user: a user ID, email string, or :class:`fiftyone.management.User`
+            instance
+    """
+    user_id = users._resolve_user_id(user)
+
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_DELETE_DATASET_USER_PERM_QUERY,
+        variables={
+            "identifier": dataset_name,
+            "userId": user_id,
+        },
+    )
 
 
 def get_permissions(*, dataset_name: str = None, user: str = None):
@@ -287,31 +313,5 @@ def set_dataset_user_permission(
             "identifier": dataset_name,
             "userId": user_id,
             "permission": permission.value,
-        },
-    )
-
-
-def remove_dataset_user_permission(
-    dataset_name: str, user: Union[str, users.User]
-) -> None:
-    """Removes the given user's specific access to the given dataset.
-
-    .. note::
-
-        The caller must have ``Can Manage`` permissions on the dataset.
-
-    Args:
-        dataset_name: the dataset name
-        user: a user ID, email string, or :class:`fiftyone.management.User`
-            instance
-    """
-    user_id = users._resolve_user_id(user)
-
-    client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_REMOVE_DATASET_USER_PERM_QUERY,
-        variables={
-            "identifier": dataset_name,
-            "userId": user_id,
         },
     )

@@ -6,6 +6,7 @@ Plugin management.
 |
 """
 import json
+import os
 from typing import List, TypedDict
 
 from fiftyone.management import connection
@@ -64,16 +65,18 @@ fragment pluginFrag on Plugin {
 """
 )
 
-_CREATE_PLUGIN_QUERY = (
-    _PLUGIN_FRAGMENT
-    + """
-    mutation($token: String!) {
-        createPlugin(fileUploadToken: $token) {
-            ...pluginFrag
-        }
-    }
+
+_DELETE_PLUGIN_QUERY = """
+mutation($name: String!) {
+    removePlugin(name: $name)
+}
 """
-)
+
+_DOWNLOAD_PLUGIN_QUERY = """
+mutation ($name: String!){
+    downloadPlugin(name: $name)
+}
+"""
 
 _GET_PLUGIN_QUERY = (
     _PLUGIN_FRAGMENT
@@ -97,17 +100,11 @@ _LIST_PLUGINS_QUERY = (
     """
 )
 
-_REMOVE_PLUGIN_QUERY = """
-mutation {
-    removePlugin(pluginName: "myPlugin")
-}
-"""
-
-_UPGRADE_PLUGIN_QUERY = (
+_UPLOAD_PLUGIN_QUERY = (
     _PLUGIN_FRAGMENT
     + """
-    mutation($name: String, $token: String) {
-        upgradePlugin(pluginName: $name, fileUploadToken: $token) {
+    mutation($token: String!, $overwrite: Boolean!) {
+        uploadPlugin(fileUploadToken: $token, overwrite: $overwrite) {
             ...pluginFrag
         }
     }
@@ -115,28 +112,7 @@ _UPGRADE_PLUGIN_QUERY = (
 )
 
 
-def create_plugin(plugin_zip_file_path: str) -> None:
-    """Creates a plugin given path to plugin zip file.
-
-    .. note:
-
-        Only admins can create plugins.
-
-    Args:
-        plugin_zip_file_path: a path to plugin .zip file
-    """
-    client = connection.APIClientConnection().client
-
-    with open(plugin_zip_file_path, "rb") as f:
-        json_content = json.loads(client.post_file("file", f))
-    upload_token = json_content["file_token"]
-
-    client.post_graphql_request(
-        query=_CREATE_PLUGIN_QUERY, variables={"token": upload_token}
-    )
-
-
-def get_plugin(plugin_name: str) -> Plugin:
+def get_plugin_info(plugin_name: str) -> Plugin:
     """Gets information about the specified plugin (if any).
 
     Args:
@@ -163,7 +139,22 @@ def list_plugins() -> List[Plugin]:
     return client.post_graphql_request(query=_LIST_PLUGINS_QUERY)
 
 
-def remove_plugin(plugin_name: str) -> None:
+def download_plugin(plugin_name: str, download_dir: str) -> str:
+    client = connection.APIClientConnection().client
+    return_value = client.post_graphql_request(
+        query=_DOWNLOAD_PLUGIN_QUERY, variables={"name": plugin_name}
+    )
+
+    file_token = return_value["downloadPlugin"]
+    resp = client.get(f"file/{file_token}")
+    out_path = os.path.join(download_dir, file_token)
+    with open(out_path, "wb") as outfile:
+        outfile.write(resp.content)
+
+    return out_path
+
+
+def delete_plugin(plugin_name: str) -> None:
     """Deletes the given plugin.
 
     .. note::
@@ -176,23 +167,20 @@ def remove_plugin(plugin_name: str) -> None:
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
-        query=_REMOVE_PLUGIN_QUERY, variables={"pluginName": plugin_name}
+        query=_DELETE_PLUGIN_QUERY, variables={"name": plugin_name}
     )
 
 
-def upgrade_plugin(plugin_name: str, plugin_zip_file_path: str) -> None:
-    """Upgrades a given plugin given a path to plugin zip file.
-
-    If the name declared in `fiftyone.yml` inside the zip file doesn't
-    match `plugin_name`, the plugin will be renamed.
+def upload_plugin(plugin_zip_file_path: str, overwrite: bool = False) -> None:
+    """Uploads a plugin to Teams system, given local path to plugin zip file.
 
     .. note:
 
-        Only admins can upgrade plugins.
+        Only admins can upload plugins.
 
     Args:
-        plugin_name: name of plugin to upgrade
         plugin_zip_file_path: a path to plugin .zip file
+        overwrite (False): overwrites an existing plugin with same name if True
     """
     client = connection.APIClientConnection().client
 
@@ -201,6 +189,6 @@ def upgrade_plugin(plugin_name: str, plugin_zip_file_path: str) -> None:
     upload_token = json_content["file_token"]
 
     client.post_graphql_request(
-        query=_UPGRADE_PLUGIN_QUERY,
-        variables={"name": plugin_name, "token": upload_token},
+        query=_UPLOAD_PLUGIN_QUERY,
+        variables={"token": upload_token, "overwrite": overwrite},
     )

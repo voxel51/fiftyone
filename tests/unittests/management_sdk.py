@@ -208,12 +208,12 @@ class ManagementSdkTests(unittest.TestCase):
                 )
                 self.assertEqual(return_keys, expected)
 
-    def test_remove_api_key(self):
-        fom.remove_api_key(self.KEY_ID, self.USER)
+    def test_delete_api_key(self):
+        fom.delete_api_key(self.KEY_ID, self.USER)
 
         self.resolve_user.assert_called_with(self.USER, nullable=True)
         self.client.post_graphql_request.assert_called_with(
-            query=fom.api_key._REMOVE_API_KEY_QUERY,
+            query=fom.api_key._DELETE_API_KEY_QUERY,
             variables={
                 "key": self.KEY_ID,
                 "userId": self.resolve_user.return_value,
@@ -346,11 +346,11 @@ class ManagementSdkTests(unittest.TestCase):
             },
         )
 
-    def test_remove_dataset_user_permission(self):
-        fom.remove_dataset_user_permission(self.DATASET_NAME, self.USER)
+    def test_delete_dataset_user_permission(self):
+        fom.delete_dataset_user_permission(self.DATASET_NAME, self.USER)
         self.resolve_user.assert_called_with(self.USER)
         self.client.post_graphql_request.assert_called_with(
-            query=fom.dataset._REMOVE_DATASET_USER_PERM_QUERY,
+            query=fom.dataset._DELETE_DATASET_USER_PERM_QUERY,
             variables={
                 "identifier": self.DATASET_NAME,
                 "userId": self.resolve_user.return_value,
@@ -436,19 +436,19 @@ class ManagementSdkTests(unittest.TestCase):
         )
         self.assertEqual(return_users, users)
 
-    def test_remove_user(self):
-        fom.remove_user(self.USER)
+    def test_delete_user(self):
+        fom.delete_user(self.USER)
         self.resolve_user.assert_called_with(self.USER)
         self.client.post_graphql_request.assert_called_with(
-            query=fom.users._REMOVE_USER_QUERY,
+            query=fom.users._DELETE_USER_QUERY,
             variables={"userId": self.resolve_user.return_value},
         )
 
-    def test_revoke_user_invitation(self):
+    def test_delete_user_invitation(self):
         invitation_id = "1234567890"
-        fom.revoke_user_invitation(invitation_id)
+        fom.delete_user_invitation(invitation_id)
         self.client.post_graphql_request.assert_called_with(
-            query=fom.users._REVOKE_INVITATION_QUERY,
+            query=fom.users._DELETE_INVITATION_QUERY,
             variables={"invitationId": invitation_id},
         )
 

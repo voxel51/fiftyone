@@ -44,6 +44,18 @@ class UserRole(enum.Enum):
     GUEST = "GUEST"
 
 
+_DELETE_INVITATION_QUERY = """
+    mutation($invitationId: String!) {
+      revokeUserInvitation(invitationId: $invitationId)
+    }
+"""
+
+_DELETE_USER_QUERY = """
+    mutation($userId: String!) {
+      removeUser(userId: $userId)
+    }
+"""
+
 _GET_USER_QUERY = """
     query ($userId: String!) {
         user(id: $userId) {
@@ -87,18 +99,6 @@ _LIST_USERS_QUERY = """
     }
 """
 
-_REMOVE_USER_QUERY = """
-    mutation($userId: String!) {
-      removeUser(userId: $userId)
-    }
-"""
-
-_REVOKE_INVITATION_QUERY = """
-    mutation($invitationId: String!) {
-      revokeUserInvitation(invitationId: $invitationId)
-    }
-"""
-
 _SEND_INVITATION_QUERY = """
     mutation($email: String!, $role: UserRole!) {
       sendUserInvitation(email: $email, role: $role) { id }
@@ -121,6 +121,43 @@ _VIEWER_QUERY = """
         }
     }
 """
+
+
+def delete_user(user: Union[str, User]) -> None:
+    """Deletes the given user.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        user: a user ID, email string, or :class:`User` instance
+    """
+    user_id = _resolve_user_id(user)
+
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_DELETE_USER_QUERY, variables={"userId": user_id}
+    )
+
+
+def delete_user_invitation(invitation_id: str) -> None:
+    """Deletes/revokes a previously-sent invitation if it has not been accepted.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        invitation_id: an invitation ID as returned by
+            :meth:`send_user_invitation`
+    """
+    client = connection.APIClientConnection().client
+
+    client.post_graphql_request(
+        query=_DELETE_INVITATION_QUERY,
+        variables={"invitationId": invitation_id},
+    )
 
 
 def get_user(user: str) -> Union[User, None]:
@@ -178,43 +215,6 @@ def list_users() -> List[User]:
     client = connection.APIClientConnection().client
     return client.post_graphql_connectioned_request(
         _LIST_USERS_QUERY, "usersConnection"
-    )
-
-
-def remove_user(user: Union[str, User]) -> None:
-    """Deletes the given user.
-
-    .. note::
-
-        Only admins can perform this action.
-
-    Args:
-        user: a user ID, email string, or :class:`User` instance
-    """
-    user_id = _resolve_user_id(user)
-
-    client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_REMOVE_USER_QUERY, variables={"userId": user_id}
-    )
-
-
-def revoke_user_invitation(invitation_id: str) -> None:
-    """Revokes a previously-sent invitation if it has not been accepted.
-
-    .. note::
-
-        Only admins can perform this action.
-
-    Args:
-        invitation_id: an invitation ID as returned by
-            :meth:`send_user_invitation`
-    """
-    client = connection.APIClientConnection().client
-
-    client.post_graphql_request(
-        query=_REVOKE_INVITATION_QUERY,
-        variables={"invitationId": invitation_id},
     )
 
 
