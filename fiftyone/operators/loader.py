@@ -130,13 +130,14 @@ def load_from_dir():
     plugin_contexts = []
     for plugin_definition in plugin_definitions:
         module_dir = plugin_definition.directory
-        try:
-            pctx = exec_module_from_dir(module_dir, plugin_definition)
-            plugin_contexts.append(pctx)
-            KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
-        except ValueError as e:
-            print("Error loading plugin from %s" % module_dir)
-            pass
+        if plugin_definition.has_py:
+            try:
+                pctx = exec_module_from_dir(module_dir, plugin_definition)
+                plugin_contexts.append(pctx)
+                KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
+            except ValueError as e:
+                print("Error loading plugin from %s" % module_dir)
+                pass
     return plugin_contexts
 
 
