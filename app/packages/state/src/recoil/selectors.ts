@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/looker/src/overlays/util";
 import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
-import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
+import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
