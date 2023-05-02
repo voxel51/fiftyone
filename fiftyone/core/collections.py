@@ -3643,9 +3643,8 @@ class SampleCollection(object):
                     "my description"
                 -   Use ``meta_filter={info: "2023"}`` to exclude fields that
                     have the string "2023" anywhere in their info
-                -   Use ``meta_filter=dict(info=dict(key="value"))`` to exclude
-                    fields that have a specific key/value pair in their info
-                    field
+                -   Use ``meta_filter={"info.key": "value"}}`` to exclude
+                    fields that have a specific key/value pair in their info field.
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5533,9 +5532,8 @@ class SampleCollection(object):
                     "my description"
                 -   Use ``meta_filter={info: "2023"}`` to select fields that
                     have the string "2023" anywhere in their info
-                -   Use ``meta_filter=dict(info=dict(key="value"))`` to select
-                    fields that have a specific key/value pair in their info
-                    field
+                -   Use ``meta_filter={"info.key": "value"}}`` to select
+                    fields that have a specific key/value pair in their info field.
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
