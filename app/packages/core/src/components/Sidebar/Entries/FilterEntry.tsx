@@ -51,19 +51,16 @@ const Filter = ({ modal }: { modal: boolean }) => {
       />
       <Box display="flex" alignItems="center">
         {selectedFieldsStage && (
-          <Tooltip
-            text="Clear schema field selection"
-            placement="bottom-center"
-          >
+          <Tooltip text="Clear field selection" placement="bottom-center">
             <ClearAll
               onClick={() => {
                 resetSelectedFieldStages();
                 setRevertSelectedPaths(!revertSelectedPaths);
               }}
               sx={{
-                color: theme.text.primary,
-                background: theme.voxel[500],
+                color: theme.text.secondary,
                 borderRadius: "50%",
+                marginRight: "4px",
               }}
             />
           </Tooltip>
@@ -74,7 +71,10 @@ const Filter = ({ modal }: { modal: boolean }) => {
               open: true,
             })
           }
-          sx={{ color: theme.text.secondary }}
+          sx={{
+            color: theme.text.tertiary,
+            "&:hover": { color: theme.text.primary },
+          }}
         />
       </Box>
     </InputDiv>
