@@ -4,7 +4,7 @@ name: Test e2e
 on:
   push:
     branches:
-      - e2e-ci
+      - e2e-ci*
 
 jobs:
   test-e2e:
@@ -28,6 +28,10 @@ jobs:
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: pip install -r requirements/github.txt
@@ -43,7 +47,17 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          set -x
+          FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
           yarn install
           yarn start
         working-directory: ./e2e
+      - name: Upload videos
+        uses: actions/upload-artifact@v2
+        with:
+          name: videos
+          path: e2e/cypress/videos
+      - name: Upload snapshots
+        uses: actions/upload-artifact@v2
+        with:
+          name: snapshots
+          path: e2e/cypress/snapshots/actual
