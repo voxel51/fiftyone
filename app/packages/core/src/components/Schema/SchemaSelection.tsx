@@ -69,6 +69,7 @@ export const SchemaSelection = () => {
                   borderBottom: `1px solid ${theme.primary.plainBorder}`,
                   display: "flex",
                   flexDirection: "column",
+                  background: theme.background.body,
                 }}
                 key={path}
               >

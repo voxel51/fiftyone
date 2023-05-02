@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import * as foq from "@fiftyone/relay";
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { Tooltip, useTheme } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
 import { useMutation } from "react-relay";
@@ -23,7 +23,12 @@ export const SchemaSearch = (props: Props) => {
 
   return (
     <Box
-      style={{ display: "flex", position: "relative", flexDirection: "column" }}
+      style={{
+        display: "flex",
+        position: "relative",
+        flexDirection: "column",
+        marginTop: "1rem",
+      }}
     >
       <Box width="100%" paddingTop="0.5rem">
         <input
@@ -91,33 +96,44 @@ export const SchemaSearch = (props: Props) => {
             }
           }}
         />
-        <Tooltip text="Hit Enter to see results!" placement="right-end">
+        <Tooltip text="Hit Enter to see results!" placement="bottom-center">
           <Box
             style={{
-              zIndex: "9999",
+              zIndex: 1600,
               display: "flex",
               position: "absolute",
               right: "33px",
-              top: "14px",
-              background: theme.background.level1,
+              top: "16px",
+              background: theme.background.level2,
               padding: "1px 4px",
               borderRadius: "4px",
             }}
           >
-            Enter &crarr;
+            <Typography
+              variant="body1"
+              component="span"
+              sx={{ color: theme.text.tertiary }}
+            >
+              Enter &crarr;
+            </Typography>
           </Box>
         </Tooltip>
         <Box
-          style={{
+          sx={{
             zIndex: "9999",
             display: "flex",
             position: "absolute",
             right: "3px",
             top: "17px",
             padding: "1px 4px",
-            borderRadius: "4px",
             cursor: "pointer",
             opacity: searchTerm ? 1 : 0.3,
+            background: theme.background.level1,
+            borderRadius: "50%",
+
+            "&:hover": {
+              background: theme.background.level2,
+            },
           }}
           onClick={() => {
             setSearchResults([]);

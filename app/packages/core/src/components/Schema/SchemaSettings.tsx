@@ -2,7 +2,7 @@ import React, { Fragment, useRef } from "react";
 import styled from "styled-components";
 
 import CloseIcon from "@mui/icons-material/Close";
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 import { Button, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
@@ -95,16 +95,16 @@ const SchemaSettings = () => {
               justifyContent: "space-between",
             }}
           >
-            <h3
+            <Typography
+              component="h1"
               color={theme.text.primary}
+              fontSize="1.5rem"
               style={{
-                padding: 0,
-                margin: 0,
                 width: "100%",
               }}
             >
-              Schema field visibilty
-            </h3>
+              Schema fields
+            </Typography>
             <CloseIcon
               sx={{
                 color: theme.text.primary,

@@ -26,7 +26,7 @@ export const schemaSelectedSettingsTab = atom<string>({
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
   default: {
-    open: false,
+    open: true,
   },
 });
 export const allFieldsCheckedState = atom<boolean>({

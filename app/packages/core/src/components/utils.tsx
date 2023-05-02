@@ -125,7 +125,6 @@ export type TabOptionProps = {
   active: string;
   options: TabOption[];
   color?: string;
-  overrideStyles?: { [id: string]: string };
 };
 
 export const TabOption = ({
