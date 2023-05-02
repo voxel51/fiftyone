@@ -45,7 +45,10 @@ async def load_view(
         dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         if view_name:
-            return dataset.load_saved_view(view_name)
+            view = dataset.load_saved_view(view_name)
+            if serialized_view:
+                for stage in serialized_view:
+                    view.add_stage(fosg.ViewStage._from_dict(stage))
         else:
             view = get_view(
                 dataset_name,

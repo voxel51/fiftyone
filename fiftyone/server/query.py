@@ -23,6 +23,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
+import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
@@ -494,6 +495,9 @@ async def serialize_dataset(
             doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
             view = dataset.load_saved_view(doc.name)
             view_name = view.name
+            if serialized_view:
+                for stage in serialized_view:
+                    view.add_stage(fosg.ViewStage._from_dict(stage))
         except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
