@@ -71,31 +71,52 @@ export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
 }
 
-type PluginDescription = {
-  scriptPath: string;
+async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
+  const result = await getFetchFunction()("GET", "/plugins");
+  if (result && result.plugins) {
+    return result.plugins.map((p) => new PluginDefinition(p));
+  }
+  throw new Error("Failed to fetch plugins metadata");
+}
+
+class PluginDefinition {
   name: string;
-};
-type PluginSetting = {
-  [settingName: string]: any;
-  enabled?: boolean;
-};
-type PluginSettings = { [pluginName: string]: PluginSetting };
-type PluginFetchResult = {
-  plugins: PluginDescription[];
-  settings?: PluginSettings;
-};
-async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
-  return getFetchFunction()("GET", "/plugins");
+  version: string;
+  license: string;
+  description: string;
+  fiftyone_compatibility: string;
+  operators: string[];
+  jsBundle: string | null;
+  pyEntry: string | null;
+  jsBundleExists: boolean;
+  jsBundleServerPath: string | null;
+  hasPy: boolean;
+  hasJS: boolean;
+
+  constructor(json: any) {
+    this.name = json.name;
+    this.version = json.version;
+    this.license = json.license;
+    this.description = json.description;
+    this.fiftyone_compatibility = json.fiftyone_compatibility;
+    this.operators = json.operators;
+    this.jsBundle = json.js_bundle;
+    this.pyEntry = json.py_entry;
+    this.jsBundleExists = json.js_bundle_exists;
+    this.jsBundleServerPath = json.js_bundle_server_path;
+    this.hasPy = json.has_py;
+    this.hasJS = json.has_js;
+  }
 }
 
 let _settings = null;
 export async function loadPlugins() {
   await foo.loadOperators();
-  const { plugins, settings } = await fetchPluginsMetadata();
-  window.__fo_plugin_settings__ = settings;
-  for (const { scriptPath, name } of plugins) {
-    const pluginSetting = settings && settings[name];
-    if (!pluginSetting || pluginSetting.enabled !== false) {
+  const plugins = await fetchPluginsMetadata();
+  for (const plugin of plugins) {
+    if (plugin.hasJS) {
+      const name = plugin.name;
+      const scriptPath = plugin.jsBundleServerPath;
       if (usingRegistry().hasScript(name)) {
         console.log(`Plugin "${name}": already loaded`);
         continue;
