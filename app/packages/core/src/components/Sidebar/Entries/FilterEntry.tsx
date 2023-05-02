@@ -60,7 +60,11 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 resetSelectedFieldStages();
                 setRevertSelectedPaths(!revertSelectedPaths);
               }}
-              sx={{ color: theme.text.secondary }}
+              sx={{
+                color: theme.text.primary,
+                background: theme.voxel[500],
+                borderRadius: "50%",
+              }}
             />
           </Tooltip>
         )}
