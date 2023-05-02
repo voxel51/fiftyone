@@ -56,15 +56,7 @@ const GroupSample: React.FC<
     onMouseEnter: MouseEventHandler;
     onMouseLeave: MouseEventHandler;
   }>
-> = ({
-  children,
-  onClick,
-  pinned,
-  sampleId,
-  slice,
-  onMouseEnter,
-  onMouseLeave,
-}) => {
+> = ({ children, onClick, pinned, sampleId, onMouseEnter, onMouseLeave }) => {
   const [hovering, setHovering] = useState(false);
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);

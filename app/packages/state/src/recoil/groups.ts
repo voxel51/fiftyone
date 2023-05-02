@@ -135,7 +135,9 @@ export const currentSlice = selectorFamily<string | null, boolean>({
       if (!get(isGroup)) return null;
 
       if (modal && get(pinned3DSample)) {
-        return get(defaultPcdSlice);
+        const current = get(currentSlices(true));
+
+        return current?.length === 1 ? current[0] : get(defaultPcdSlice);
       }
 
       return get(groupSlice(modal)) || get(defaultGroupSlice);

@@ -173,7 +173,11 @@ const ListValueEntry = ({
           <span key="path">{OVERRIDE[path] ?? path}</span>
           <span key="value">
             <Suspense fallback={<LoadingDots text="" />}>
-              <LengthLoadable path={path} />
+              {slices ? (
+                <SlicesLengthLoadable path={path} />
+              ) : (
+                <LengthLoadable path={path} />
+              )}
             </Suspense>
           </span>
           <Arrow
@@ -206,6 +210,12 @@ const ListValueEntry = ({
   );
 };
 
+const SlicesLengthLoadable = ({ path }: { path: string }) => {
+  const data = useSlicesData<any[]>(path);
+
+  return <>{Object.entries(data).filter(([_, v]) => v).length || 0}</>;
+};
+
 const LengthLoadable = ({ path }: { path: string }) => {
   const data = useData<any[]>(path);
   return <>{data?.length || 0}</>;
@@ -231,7 +241,6 @@ const ListLoadable = ({ path }: { path: string }) => {
 
 const SlicesListLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<(string | number | null)[]>(path);
-  console.log(values);
   const theme = useTheme();
   return (
     <>
@@ -349,7 +358,6 @@ const useData = <T extends unknown>(path: string): T => {
   const activeSlice = useRecoilValue(fos.currentSlice(true));
 
   let data = useRecoilValue(fos.activeModalSample(activeSlice));
-
   let field = useRecoilValue(fos.field(keys[0]));
 
   for (let index = 0; index < keys.length; index++) {
