@@ -4,8 +4,12 @@
 |
 """
 import os
+<<<<<<< HEAD
 from typing import Any, Dict, Mapping, Optional
 from typing_extensions import Literal
+=======
+from typing import Any, BinaryIO, Dict, Mapping, Optional
+>>>>>>> 31b2ac1f1 (plugin management sdk)
 
 import backoff
 import requests
@@ -56,6 +60,14 @@ class Client:
         """Make post request"""
         response = self.__request("POST", url_path, data=payload)
 
+        return response.content
+
+    def post_file(self, url_path: str, file: BinaryIO):
+        response = self.__request(
+            "POST",
+            url_path,
+            files={"file": (file.name, file, "application/octet-stream")},
+        )
         return response.content
 
     def post_json(self, url_path: str, payload: Dict[str, Any]) -> Any:
@@ -127,6 +139,9 @@ class Client:
         response = self._session.request(
             method, url=url, timeout=self._timeout, **request_kwargs
         )
+
+        if response.status_code == 400:
+            raise errors.APIBadRequestError(response.text)
 
         if response.status_code == 401:
             raise errors.APIAuthenticationError
