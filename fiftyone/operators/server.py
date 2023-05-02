@@ -21,6 +21,7 @@ from starlette.responses import StreamingResponse
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 
+
 class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
@@ -105,7 +106,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
                 headers={
                     "Cache-Control": "no-cache, no-transform",
                     "X-Accel-Buffering": "no",
-                }
+                },
             )
         else:
             json = execution_result.to_json()
