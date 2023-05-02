@@ -264,7 +264,6 @@ export default function useSchemaSettings() {
             path === "id" ||
             path === "tags" ||
             path === "filepath" ||
-            path === "uniqueness" ||
             path.startsWith("metadata");
 
           if (selectedTab === "Search") {
