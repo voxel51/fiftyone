@@ -49,24 +49,6 @@ export const modal = atom<ModalSample | null>({
   default: null,
 });
 
-// the active field for customize color modal
-export const activeColorField = atom<Field | "global" | "json" | null>({
-  key: "activeColorField",
-  default: null,
-});
-
-export interface CustomizeColor {
-  field: string;
-  useFieldColor: boolean;
-  fieldColor?: string;
-  attributeForColor?: string; // must be string field, int field, or boolean field
-  // attributeForOpacity?: string; // must be float field
-  labelColors?: {
-    name: string;
-    color: string;
-  }[];
-}
-
 export interface SortResults {
   count: boolean;
   asc: boolean;
@@ -404,14 +386,16 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
   },
 });
 
-export interface ColorScheme {
-  colorPool: string[];
-  customizedColorSettings: CustomizeColor[];
-}
+// the active field for customize color modal
+export const activeColorField = atom<Field | "global" | "json" | null>({
+  key: "activeColorField",
+  default: null,
+});
 
-export interface ColorSchemeSetting extends ColorScheme {
-  saveToApp?: boolean;
-}
+export const isUsingSessionColorScheme = atom<boolean>({
+  key: "isUsingSessionColorScheme",
+  default: false,
+});
 
 export const sessionColorScheme = atom<ColorSchemeSetting>({
   key: "sessionColorScheme",

@@ -106,8 +106,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     }
   }, [path, customizedColorSettings]);
 
-  console.info("coloring", customizedColorSettings);
-
   return (
     <div style={{ margin: "1rem" }}>
       {coloring.by == "field" && (

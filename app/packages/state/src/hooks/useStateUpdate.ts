@@ -29,6 +29,8 @@ import {
   theme,
   sessionColorScheme,
   ColorScheme,
+  activeColorField,
+  isUsingSessionColorScheme,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -99,6 +101,26 @@ const useStateUpdate = (ignoreSpaces = false) => {
         reset(sessionSpaces);
       }
 
+      let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
+      if (state?.colorScheme && typeof state?.colorScheme === "string") {
+        let parsedSetting = JSON.parse(state?.colorScheme);
+        if (typeof parsedSetting === "string") {
+          parsedSetting = JSON.parse(parsedSetting);
+        }
+        colorSetting = {
+          colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
+          customizedColorSettings:
+            parsedSetting["customized_color_settings"] ??
+            parsedSetting?.customizedColorSettings,
+        } as ColorScheme;
+        set(sessionColorScheme, colorSetting);
+        set(isUsingSessionColorScheme, true);
+      } else if (!ignoreSpaces) {
+        reset(activeColorField);
+        reset(isUsingSessionColorScheme);
+        set(sessionColorScheme, colorSetting);
+      }
+
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
@@ -156,33 +178,6 @@ const useStateUpdate = (ignoreSpaces = false) => {
         }
         set(datasetAtom, dataset);
       }
-      let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
-      if (state?.colorScheme && typeof state?.colorScheme === "string") {
-        let parsedSetting = JSON.parse(state?.colorScheme);
-        if (typeof parsedSetting === "string") {
-          parsedSetting = JSON.parse(parsedSetting);
-        }
-        colorSetting = {
-          colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
-          customizedColorSettings:
-            parsedSetting["customized_color_settings"] ??
-            parsedSetting?.customizedColorSettings,
-        } as ColorScheme;
-      } else if (dataset.appConfig?.colorScheme) {
-        const { colorPool, customizedColorSettings } =
-          dataset.appConfig?.colorScheme;
-        colorSetting = {
-          colorPool,
-          customizedColorSettings: JSON.parse(customizedColorSettings),
-        };
-      } else if (config?.colorPool) {
-        colorSetting = {
-          colorPool: config?.colorPool ?? DEFAULT_APP_COLOR_SCHEME.colorPool,
-          customizedColorSettings: [],
-        };
-      }
-
-      set(sessionColorScheme, colorSetting as ColorScheme);
 
       set(modal, null);
 

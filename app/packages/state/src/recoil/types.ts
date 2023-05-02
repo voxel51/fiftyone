@@ -1,6 +1,5 @@
 import { StrictField } from "@fiftyone/utilities";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { CustomizeColor } from "./atoms";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -210,16 +209,31 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
-    colorScheme?: ColorSetting | string;
+    colorScheme?: ColorScheme | string;
   }
-}
-
-export interface ColorSetting {
-  colorPool: string[];
-  customizedColorSettings: JSON[];
 }
 
 export interface ColorSchemeSaved {
   colorPool: string[];
   customizedColorSettings: string;
+}
+
+export interface CustomizeColor {
+  field: string;
+  useFieldColor: boolean;
+  fieldColor?: string;
+  attributeForColor?: string; // must be string field, int field, or boolean field
+  labelColors?: {
+    name: string;
+    color: string;
+  }[];
+}
+
+export interface ColorScheme {
+  colorPool: string[];
+  customizedColorSettings: CustomizeColor[];
+}
+
+export interface ColorSchemeSetting extends ColorScheme {
+  saveToApp?: boolean;
 }
