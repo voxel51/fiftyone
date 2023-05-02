@@ -28,6 +28,7 @@ import { useShowOperatorIO } from "./state";
 class ReloadSamples extends Operator {
   constructor() {
     super("reload_samples", "Reload samples from the dataset");
+    this._builtIn = true;
   }
   async execute({ state }: ExecutionContext) {
     const refresherTick = await state.snapshot.getPromise(fos.refresher);
@@ -37,6 +38,7 @@ class ReloadSamples extends Operator {
 class ReloadDataset extends Operator {
   constructor() {
     super("reload_dataset", "Reload the dataset");
+    this._builtIn = true;
   }
   async execute({ state }: ExecutionContext) {
     // TODO - improve this... this is a temp. workaround for the fact that
@@ -63,6 +65,7 @@ class ClearSelectedSamples extends Operator {
 class CopyViewAsJSON extends Operator {
   constructor() {
     super("copy_view_as_json", "Copy view as JSON");
+    this._builtIn = true;
   }
   async execute({ state }: ExecutionContext) {
     const view = await state.snapshot.getPromise(fos.view);
@@ -74,6 +77,7 @@ class CopyViewAsJSON extends Operator {
 class ViewFromJSON extends Operator {
   constructor() {
     super("view_from_clipboard", "Paste view from clipboard");
+    this._builtIn = true;
   }
   async execute({ state }: ExecutionContext) {
     const text = await navigator.clipboard.readText();
@@ -90,6 +94,7 @@ class OpenPanel extends Operator {
   constructor() {
     super("open_panel", "Open a panel");
     this.unlisted = true;
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -137,6 +142,7 @@ class OpenPanel extends Operator {
 class OpenAllPanels extends Operator {
   constructor() {
     super("open_all_panel", "Open all panels");
+    this._builtIn = true;
   }
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -183,6 +189,7 @@ class ClosePanel extends Operator {
   constructor() {
     super("close_panel", "Close a panel");
     this.unlisted = true;
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -218,6 +225,7 @@ class ClosePanel extends Operator {
 class CloseAllPanels extends Operator {
   constructor() {
     super("close_all_panel", "Close all panels");
+    this._builtIn = true;
   }
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -238,6 +246,7 @@ class CloseAllPanels extends Operator {
 class OpenDataset extends Operator {
   constructor() {
     super("open_dataset", "Open Dataset");
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -257,6 +266,7 @@ class OpenDataset extends Operator {
 class ClearView extends Operator {
   constructor() {
     super("clear_view", "Clear view bar");
+    this._builtIn = true;
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.view);
@@ -274,6 +284,7 @@ class ClearSidebarFilters extends Operator {
 class ClearAllStages extends Operator {
   constructor() {
     super("clear_all_stages", "Clear all selections, filters, and view");
+    this._builtIn = true;
   }
   useHooks(): {} {
     return {
@@ -293,6 +304,7 @@ class ClearAllStages extends Operator {
 class RefreshColors extends Operator {
   constructor() {
     super("refresh_colors", "Refresh colors");
+    this._builtIn = true;
   }
   async execute({ state }: ExecutionContext) {
     const modal = await state.snapshot.getPromise(fos.modal);
@@ -304,6 +316,7 @@ class RefreshColors extends Operator {
 class ShowSelectedSamples extends Operator {
   constructor() {
     super("show_selected_samples", "Show selected samples");
+    this._builtIn = true;
   }
   useHooks(): {} {
     return {
@@ -327,6 +340,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
       "convert_extended_selection_to_selected_samples",
       "Convert extended selection to selected samples"
     );
+    this._builtIn = true;
   }
   useHooks(): {} {
     return {
@@ -350,6 +364,7 @@ class SetSelectedSamples extends Operator {
   constructor() {
     super("set_selected_samples", "Set selected samples");
     this.unlisted = true;
+    this._builtIn = true;
   }
   useHooks(): {} {
     return {
@@ -365,6 +380,7 @@ class SetView extends Operator {
   constructor() {
     super("set_view", "Set view");
     this.unlisted = true;
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -385,6 +401,7 @@ class ShowSamples extends Operator {
   constructor() {
     super("show_samples", "Show samples");
     this.unlisted = true;
+    this._builtIn = true;
   }
   async execute({ state, params }: ExecutionContext) {
     if (params.use_extended_selection) {
@@ -411,6 +428,7 @@ class ShowSamples extends Operator {
 class ClearShowSamples extends Operator {
   constructor() {
     super("clear_show_samples", "Clear show samples");
+    this._builtIn = true;
   }
   async execute(ctx: ExecutionContext) {
     executeOperator("show_samples", { samples: [] });
@@ -459,6 +477,7 @@ function getTypeForValue(value: any) {
 class GetAppValue extends DynamicOperator {
   constructor() {
     super("get_app_value", "Get App Value");
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -490,6 +509,7 @@ class GetAppValue extends DynamicOperator {
 class ConsoleLog extends Operator {
   constructor() {
     super("console_log", "Console Log");
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -508,6 +528,7 @@ class ShowOutput extends Operator {
   constructor() {
     super("show_output", "Show Output");
     this.unlisted = true;
+    this._builtIn = true;
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -538,6 +559,7 @@ class ShowOutput extends Operator {
 class TestOperator extends Operator {
   constructor() {
     super("test_operator", "Test an Operator");
+    this._builtIn = true;
   }
   parseParams(rawParams: string) {
     try {
