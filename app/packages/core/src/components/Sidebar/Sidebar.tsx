@@ -244,6 +244,7 @@ const isDisabledEntry = (
   excludeGroups: boolean = false
 ) => {
   if (entry.kind === fos.EntryKind.PATH) {
+    console.log("here", entry);
     return (
       entry.path.startsWith("tags.") ||
       entry.path.startsWith("_label_tags.") ||

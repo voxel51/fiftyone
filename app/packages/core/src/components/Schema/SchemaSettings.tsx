@@ -47,11 +47,9 @@ const Container = styled.div`
   background: white;
 `;
 
-interface Props {
-  test?: boolean;
-}
+interface Props {}
 
-const SchemaSettings = (props: Props) => {
+const SchemaSettings = () => {
   const theme = useTheme();
 
   const schemaModalRef = useRef<HTMLDivElement>(null);
@@ -80,9 +78,7 @@ const SchemaSettings = (props: Props) => {
     <Fragment>
       <ModalWrapper
         ref={schemaModalRef}
-        onClick={(event) =>
-          event.target === schemaModalRef.current && console.log("TODO")
-        }
+        onClick={(event) => event.target === schemaModalRef.current}
       >
         <Container
           style={{
