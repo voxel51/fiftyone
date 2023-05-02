@@ -467,7 +467,7 @@ def _transform_image(
 
         if delete_original and inpath != outpath:
             etau.delete_file(inpath)
-    except Exception as e:
+    except BaseException as e:
         try:
             # Undo any moves
             for from_path, to_path in moves:
