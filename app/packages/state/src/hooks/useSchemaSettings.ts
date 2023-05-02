@@ -41,6 +41,10 @@ export const showMetadataState = atom({
   key: "showMetadataState",
   default: false,
 });
+export const revertSelectedPathsState = atom({
+  key: "revertSelectedPathsState",
+  default: false,
+});
 
 export const selectedFieldsStageState = atom<any>({
   key: "selectedFieldsStageState",
@@ -49,11 +53,13 @@ export const selectedFieldsStageState = atom<any>({
     ({ onSet }) => {
       onSet((value) => {
         const context = fos.getContext();
-        value &&
-          context.history.replace(
-            `${context.history.location.pathname}${context.history.location.search}`,
-            { ...context.history.location.state, selectedFieldsStage: value }
-          );
+        context.history.replace(
+          `${context.history.location.pathname}${context.history.location.search}`,
+          {
+            ...context.history.location.state,
+            selectedFieldsStage: value || null,
+          }
+        );
       });
     },
   ],
@@ -209,6 +215,12 @@ export default function useSchemaSettings() {
       }
     }
   }, [viewStages]);
+
+  useEffect(() => {
+    if (allPaths.length) {
+      setSelectedPaths(new Set(allPaths));
+    }
+  }, [revertSelectedPathsState]);
 
   const finalSchema = useMemo(
     () =>

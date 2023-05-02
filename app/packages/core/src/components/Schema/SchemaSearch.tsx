@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import * as foq from "@fiftyone/relay";
 import { Box } from "@mui/material";
-import { useTheme } from "@fiftyone/components";
+import { Tooltip, useTheme } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
 import { useMutation } from "react-relay";
-import { useSchemaSettings } from "@fiftyone/state";
+import { noneAtom, useSchemaSettings } from "@fiftyone/state";
+import { Clear, ClearAll } from "@mui/icons-material";
 
 interface Props {
   searchTerm?: string;
@@ -31,8 +32,10 @@ export const SchemaSearch = (props: Props) => {
           style={{
             color: theme.text.secondary,
             width: "100%",
-            border: `1px solid ${theme.primary.plainBorder}`,
+            border: `1px solid ${theme.divider}`,
             padding: "0.5rem 0.75rem",
+            background: theme.background.level1,
+            outline: "none",
           }}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => {
@@ -88,6 +91,42 @@ export const SchemaSearch = (props: Props) => {
             }
           }}
         />
+        <Tooltip text="Hit Enter to see results!" placement="right-end">
+          <Box
+            style={{
+              zIndex: "9999",
+              display: "flex",
+              position: "absolute",
+              right: "33px",
+              top: "14px",
+              background: theme.background.level1,
+              padding: "1px 4px",
+              borderRadius: "4px",
+            }}
+          >
+            Enter &crarr;
+          </Box>
+        </Tooltip>
+        <Box
+          style={{
+            zIndex: "9999",
+            display: "flex",
+            position: "absolute",
+            right: "3px",
+            top: "17px",
+            padding: "1px 4px",
+            borderRadius: "4px",
+            cursor: "pointer",
+            opacity: searchTerm ? 1 : 0.3,
+          }}
+          onClick={() => {
+            setSearchResults([]);
+            setSearchTerm("");
+            setError("");
+          }}
+        >
+          <Clear />
+        </Box>
         {error && <Box sx={{ color: theme.danger[600] }}>{error}</Box>}
       </Box>
       <Box width="100%">
