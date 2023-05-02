@@ -47,7 +47,7 @@ export const SchemaSelection = () => {
       <Box
         style={{
           position: "relative",
-          height: "50vh",
+          height: "45vh",
           marginTop: "1rem",
           overflow: "auto",
           color: "#232323",
@@ -69,7 +69,10 @@ export const SchemaSelection = () => {
                   borderBottom: `1px solid ${theme.primary.plainBorder}`,
                   display: "flex",
                   flexDirection: "column",
-                  background: theme.background.body,
+                  background:
+                    theme.mode === "light"
+                      ? theme.background.level2
+                      : theme.background.body,
                 }}
                 key={path}
               >

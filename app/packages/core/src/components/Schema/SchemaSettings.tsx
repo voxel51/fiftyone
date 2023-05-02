@@ -39,8 +39,7 @@ const Container = styled.div`
   }
 
   margin: 1rem;
-  min-width: 60vw;
-  max-width: 60vw;
+  width: 750px;
   height: 80vh;
   overflow-y: auto;
   min-height: auto;
