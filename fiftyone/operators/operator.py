@@ -44,6 +44,7 @@ class Operator:
         self.execute_as_generator = False
         self.unlisted = kwargs.get("unlisted", False)
         self.is_dynamic = False
+        self._built_in = False
 
     def dispose(self):
         """Classes that inherit from Operator can override this method to
@@ -164,6 +165,7 @@ class Operator:
             "execute_as_generator": self.execute_as_generator,
             "unlisted": self.unlisted,
             "is_dynamic": self.is_dynamic,
+            "_built_in": self._built_in,
         }
 
 
