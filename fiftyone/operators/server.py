@@ -19,12 +19,12 @@ from .executor import (
 from starlette.exceptions import HTTPException
 from starlette.responses import StreamingResponse
 from .message import GeneratedMessage
-
+from .permissions import PermissionedOperatorRegistry
 
 class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
-        registry = OperatorRegistry()
+        registry = PermissionedOperatorRegistry.from_list_request(request)
         ctx = ExecutionContext()
         operators_as_json = [
             operator.to_json(ctx) for operator in registry.list_operators()
@@ -38,7 +38,7 @@ class ListOperators(HTTPEndpoint):
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        registry = OperatorRegistry()
+        registry = PermissionedOperatorRegistry.from_exec_request(request)
         placements = []
         for operator in registry.list_operators():
             placement = resolve_placement(operator, data)
@@ -58,7 +58,7 @@ class ExecuteOperator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = OperatorRegistry()
+        registry = PermissionedOperatorRegistry.from_exec_request(request)
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -87,7 +87,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = OperatorRegistry()
+        registry = PermissionedOperatorRegistry.from_exec_request(request)
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -115,7 +115,7 @@ class ResolveType(HTTPEndpoint):
         target_type = data.get("type", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = OperatorRegistry()
+        registry = PermissionedOperatorRegistry.from_exec_request(request)
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri,
