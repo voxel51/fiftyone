@@ -115,6 +115,7 @@ class ResolveType(HTTPEndpoint):
         target_type = data.get("type", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
+        # TODO - look into optimizing this
         registry = OperatorRegistry()
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {

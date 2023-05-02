@@ -112,10 +112,12 @@ export class Operator {
     this.definition.defineProperty("outputs", new types.ObjectType());
     this.label = label || name;
     this.unlisted = options?.unlisted;
+    this._builtIn = options?._built_in;
   }
   public pluginName: any;
   public executeAsGenerator: boolean = false;
   public isDynamic: boolean = false;
+  public _builtIn: boolean = false;
   get uri() {
     return `${this.pluginName || "@voxel51"}/${this.name}`;
   }

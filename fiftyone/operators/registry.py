@@ -8,8 +8,7 @@ FiftyOne operator registry.
 
 from .operator import Operator
 from .loader import load_from_dir
-
-BUILTIN_OPERATORS = {}
+from .built_in import BUILTIN_OPERATORS
 
 
 class OperatorRegistry:
@@ -28,7 +27,7 @@ class OperatorRegistry:
             for operator in plugin_context.instances:
                 if isinstance(operator, Operator):
                     operators.append(operator)
-        return operators + list(BUILTIN_OPERATORS.values())
+        return operators + BUILTIN_OPERATORS
 
     def list_errors(self):
         """Lists the errors that occurred during operator loading.
