@@ -117,12 +117,11 @@ export const useTagText = (modal: boolean) => {
 export const useEntries = (
   modal: boolean
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
-  const ds = useRecoilValue(dataset);
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loading: false, filtered: true, dataset: ds })
+    sidebarEntries({ modal, loading: false, filtered: true })
   );
   const loadingEntries = useRecoilValue(
-    sidebarEntries({ modal, loading: true, filtered: true, dataset: ds })
+    sidebarEntries({ modal, loading: true, filtered: true })
   );
 
   return [
@@ -274,7 +273,6 @@ export const resolveGroups = (
     []
   );
 
-  console.log("dataset.sampleFields", dataset.sampleFields);
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
@@ -347,14 +345,15 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean; dataset?: any }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true, dataset = null }) =>
+    ({ modal, loading, filtered = true }) =>
     ({ get }) => {
-      const schema = dataset ? buildSchema(dataset, true) : null;
-      const f = get(textFilter(modal)).split("=")[0];
+      const ds = get(dataset);
+      const f = get(textFilter(modal));
+      const schema = dataset ? buildSchema(ds, true) : null;
 
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({

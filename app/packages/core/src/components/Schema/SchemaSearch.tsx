@@ -130,7 +130,7 @@ export const SchemaSearch = (props: Props) => {
         {error && <Box sx={{ color: theme.danger[600] }}>{error}</Box>}
       </Box>
       <Box width="100%">
-        <SchemaSelection mode="search" />
+        <SchemaSelection />
       </Box>
     </Box>
   );

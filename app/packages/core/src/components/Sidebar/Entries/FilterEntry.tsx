@@ -15,9 +15,10 @@ import {
   revertSelectedPathsState,
   selectedFieldsStageState,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
-import { Tooltip } from "@fiftyone/components";
+import { Tooltip, useTheme } from "@fiftyone/components";
 
 const Filter = ({ modal }: { modal: boolean }) => {
+  const theme = useTheme();
   const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
   const [value, setValue] = useState(() => debouncedValue);
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
@@ -59,7 +60,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 resetSelectedFieldStages();
                 setRevertSelectedPaths(!revertSelectedPaths);
               }}
-              color="action"
+              sx={{ color: theme.text.secondary }}
             />
           </Tooltip>
         )}
@@ -69,7 +70,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
               open: true,
             })
           }
-          color="action"
+          sx={{ color: theme.text.secondary }}
         />
       </Box>
     </InputDiv>
