@@ -114,15 +114,10 @@ async def paginate_samples(
     if media == fom.VIDEO:
         pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
 
-    try:
-        samples = await foo.aggregate(
-            foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            pipeline,
-        ).to_list(first + 1)
-    except Exception as e:
-        for p in pipeline:
-            print(p)
-        raise e
+    samples = await foo.aggregate(
+        foo.get_async_db_conn()[view._dataset._sample_collection_name],
+        pipeline,
+    ).to_list(first + 1)
 
     more = False
     if len(samples) > first:

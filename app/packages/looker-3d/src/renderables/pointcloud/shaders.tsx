@@ -154,8 +154,6 @@ const ShadeByIntensityShaders = {
 
 const ShadeByCustomColorShaders = {
   vertexShader: /* glsl */ `
-  uniform float max;
-  uniform float min;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
   uniform vec3 color;
