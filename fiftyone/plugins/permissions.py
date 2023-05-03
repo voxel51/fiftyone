@@ -85,7 +85,7 @@ class RemoteOperatorDefinition:
     @classmethod
     def from_json(cls, json):
         return RemoteOperatorDefinition(
-            plugin_name=json.get("pluginPackage", None),
+            plugin_name=json.get("pluginName", None),
             name=json["name"],
             uri=json["uri"],
             enabled=json.get("enabled", False),
@@ -148,7 +148,7 @@ query ListAvailableOperators($datasetIds: [String!], $onlyEnabled: Boolean) {
     operators(datasetIds: $datasetIds, onlyEnabled: $onlyEnabled) {
         name
         enabled
-        pluginPackage
+        pluginName
         uri
     }
 }
