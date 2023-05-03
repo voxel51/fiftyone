@@ -16,5 +16,5 @@ a.iconLink {
 
 a.iconLink svg {
   outline: none;
-  color: var(--mui-palette-text-primary);
+  color: var(--fo-palette-text-primary);
 }

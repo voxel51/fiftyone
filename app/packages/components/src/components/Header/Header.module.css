@@ -1,5 +1,5 @@
 .header {
-  background-color: var(--mui-palette-background-header);
+  background-color: var(--fo-palette-background-header);
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
@@ -30,7 +30,7 @@
 }
 
 .fiftyone {
-  color: var(--mui-palette-text-primary);
+  color: var(--fo-palette-text-primary);
   font-weight: bold;
   font-size: 1.8rem;
   align-items: center;
@@ -42,7 +42,7 @@
   font-weight: bold;
   padding-left: 1rem;
   border-left-width: 1px;
-  border-color: var(--mui-palette-primary-plainBorder);
+  border-color: var(--fo-palette-primary-plainBorder);
   border-left-style: solid;
 }
 
