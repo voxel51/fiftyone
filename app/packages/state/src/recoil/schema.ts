@@ -21,6 +21,7 @@ import {
   StrictField,
   VALID_PRIMITIVE_TYPES,
   withPath,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
@@ -94,7 +95,6 @@ export const buildSchema = (
   flat: boolean = false
 ): Schema => {
   let schema = dataset.sampleFields.reduce(schemaReduce, {});
-
   if (flat) {
     return buildFlatExtendedSchema(
       dataset.sampleFields.reduce(schemaReduce, {})
@@ -332,9 +332,22 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const paths = get(fieldPaths(params));
 
-      return paths.filter((path) =>
+      const flatLabelFields = paths.filter((path) =>
         LABELS.includes(get(field(path)).embeddedDocType)
       );
+      const dynamicLabelFields = paths
+        .filter(
+          (path) =>
+            get(field(path)).embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD
+        )
+        .map((p) =>
+          Object.values(get(field(p)).fields)
+            .filter((f) => LABELS.includes(f.embeddedDocType))
+            .map((f) => f.path)
+        )
+        .flat(1);
+
+      return [...flatLabelFields, ...dynamicLabelFields];
     },
 });
 

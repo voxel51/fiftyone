@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -244,17 +245,21 @@ const useData = <T extends unknown>(path: string): T => {
 
   let field = useRecoilValue(fos.field(keys[0]));
 
-  for (let index = 0; index < keys.length; index++) {
-    if (!data) {
-      break;
-    }
+  if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]).join(", ");
+  } else {
+    for (let index = 0; index < keys.length; index++) {
+      if (!data) {
+        break;
+      }
 
-    const key = keys[index];
+      const key = keys[index];
 
-    data = data[field?.dbField || key];
+      data = data[field?.dbField || key];
 
-    if (keys[index + 1]) {
-      field = field?.fields[keys[index + 1]];
+      if (keys[index + 1]) {
+        field = field?.fields[keys[index + 1]];
+      }
     }
   }
 

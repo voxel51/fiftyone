@@ -102,7 +102,7 @@ const SchemaSettings = () => {
                 width: "100%",
               }}
             >
-              Schema fields
+              Field visibility
             </Typography>
             <CloseIcon
               sx={{
@@ -134,11 +134,10 @@ const SchemaSettings = () => {
                   onClick: () => {
                     setSelectedTab(value);
                     if (value === TAB_OPTIONS_MAP.SELECTION) {
-                      // reset search results
                       setSearchTerm("");
                       setSearchResults([]);
                     }
-                    if (value === TAB_OPTIONS_MAP.SEARCH) {
+                    if (value === TAB_OPTIONS_MAP.FILTER_RULE) {
                       setFieldsOnly(false);
                     }
                   },
@@ -146,7 +145,7 @@ const SchemaSettings = () => {
               })}
             />
           </Box>
-          {selectedTab === TAB_OPTIONS_MAP.SEARCH && (
+          {selectedTab === TAB_OPTIONS_MAP.FILTER_RULE && (
             <SchemaSearch
               setSearchTerm={setSearchTerm}
               searchTerm={searchTerm}
@@ -155,9 +154,12 @@ const SchemaSettings = () => {
           {selectedTab === TAB_OPTIONS_MAP.SELECTION && <SchemaSelection />}
           <Box
             style={{
-              position: "relative",
+              position: "absolute",
               display: "flex",
-              padding: "1rem 0.25rem",
+              padding: "1rem 1.5rem",
+              bottom: 0,
+              background: theme.background.level2,
+              left: 0,
             }}
           >
             <Button
@@ -195,22 +197,6 @@ const SchemaSettings = () => {
                 boxShadow: "none",
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
-                marginRight: "0.5rem",
-              }}
-              onClick={() => {
-                setSettingsModal({ open: false });
-                setSearchTerm("");
-                setSelectedPaths(originalSelectedPaths);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              style={{
-                color: theme.text.primary,
-                boxShadow: "none",
-                padding: "0.25rem 0.5rem",
-                borderRadius: "4px",
               }}
               onClick={() => {
                 setSettingsModal({ open: false });
@@ -219,7 +205,7 @@ const SchemaSettings = () => {
                 setSelectedFieldsStage(null);
               }}
             >
-              Clear
+              Reset
             </Button>
           </Box>
         </Container>

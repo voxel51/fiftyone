@@ -9,6 +9,7 @@ import {
 } from "recoil";
 import {
   DICT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -22,12 +23,14 @@ import {
 
 import * as aggregationAtoms from "./aggregations";
 import {
+  buildFlatExtendedSchema,
   buildSchema,
   field,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
+  schemaReduce,
 } from "./schema";
 
 import { State } from "./types";
@@ -37,7 +40,7 @@ import { isLargeVideo } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import { getCurrentEnvironment } from "../hooks/useRouter";
-import { dataset } from "./atoms";
+import { dataset, dataset } from "./atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -354,6 +357,7 @@ export const sidebarGroups = selectorFamily<
       const ds = get(dataset);
       const f = get(textFilter(modal));
       const schema = dataset ? buildSchema(ds, true) : null;
+      console.log("schema", schema);
 
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
@@ -603,33 +607,19 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
-    paths = [
-      ...paths,
-      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
-        (path) => !get(field(path)).subfield
-      ),
-    ];
-
-    get(
-      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
-    ).forEach(({ fields, name: prefix }) => {
-      Object.values(fields)
-        .filter(
-          ({ ftype, subfield }) =>
-            ftype === DICT_FIELD ||
-            subfield === DICT_FIELD ||
-            (ftype === LIST_FIELD && !subfield)
-        )
-        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
-    });
+    const ds = get(dataset);
+    const schema = buildFlatExtendedSchema(
+      ds?.sampleFields?.reduce(schemaReduce, {})
+    );
+    const paths = Object.keys(schema)
+      ?.filter((fieldPath) => schema[fieldPath]?.ftype === DICT_FIELD)
+      .map((fieldPath) => fieldPath);
 
     get(fields({ space: State.SPACE.FRAME })).forEach(
       ({ name, embeddedDocType }) => {
         if (LABELS.includes(embeddedDocType)) {
           return;
         }
-
         paths.push(`frames.${name}`);
       }
     );

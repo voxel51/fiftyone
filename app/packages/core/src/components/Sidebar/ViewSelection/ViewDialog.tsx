@@ -118,7 +118,6 @@ export default function ViewDialog(props: Props) {
   const extendedViewExists =
     useRecoilValue(shouldToggleBookMarkIconOnSelector) ||
     !!extendedStagesExists;
-  console.log("extendedViewExists", extendedViewExists);
 
   const {
     handleDeleteView,
