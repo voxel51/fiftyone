@@ -345,13 +345,17 @@ article.pytorch-article .reference.download.internal {
   padding: 0 10px;
 }
 
+#octocat {
+  margin-top: 0.6rem;
+}
+
 .nav__main .fa-header-icon {
   font-size: 25px;
 }
 
 .nav__dropdown__menu {
   z-index: 201;
-  min-width: 9.5rem;
+  min-width: 10rem;
   height: fit-content;
   margin-top: -1.5rem;
   padding: 0.7rem;

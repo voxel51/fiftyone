@@ -48,22 +48,28 @@
     <div id="nav__main__items">
 
       <div class="nav__item nav__dropdown">
-        <div class="nav__dropdown__trigger">FiftyOne</div>
+        <div class="nav__dropdown__trigger">Products</div>
         <div class="nav__item nav__dropdown__menu has-arrows">
           <div class="arrow-up--light-primary arrow-left20"></div>
           <ul>
             <li><a href="{{link_fiftyone}}">Open Source</a>
             <li><a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
+            <li><a href="{{link_usecases}}">Use Cases</a>
+            <li><a href="{{link_success_stories}}">Success Stories</a>
           </ul>
         </div>
       </div>
 
-      <div class="nav__item">
-        <a href="{{link_usecases}}">Use Cases</a>
-      </div>
-
-      <div class="nav__item">
-        <a href="{{link_voxel51_blog}}">Blog</a>
+      <div class="nav__item nav__dropdown">
+        <div class="nav__dropdown__trigger">Learn</div>
+        <div class="nav__item nav__dropdown__menu has-arrows">
+          <div class="arrow-up--light-primary arrow-left20"></div>
+          <ul>
+            <li><a href="{{link_voxel51_slack}}">Community Slack</a>
+            <li><a href="{{link_voxel51_blog}}">Blog</a>
+            <li><a href="{{link_events}}">Events</a>
+          </ul>
+        </div>
       </div>
 
       <div class="nav__item">
@@ -77,6 +83,7 @@
           <ul>
             <li><a href="{{link_ourstory}}">About Us</a>
             <li><a href="{{link_voxel51_jobs}}">Careers</a>
+            <li><a href="{{link_talk_to_sales}}">Talk to Sales</a>
           </ul>
         </div>
       </div>
@@ -85,37 +92,24 @@
         <a href="{{link_voxel51_github}}fiftyone">GitHub</a>
       </div>
 
-      <div class="nav__item mobile_only">
-        <a href="{{link_voxel51_slack}}">Slack</a>
-      </div>
-
-
       <div class="nav__item desktop_only" id="octocat">
-        <a href="{{link_voxel51_github}}fiftyone">
-          <i class="fa-brands fa-github">
-          </i>
-        </a>
-        &nbsp;
-        <a href="{{link_voxel51_slack}}">
-          <i class="fa-brands fa-slack">
-          </i>
-        </a>
+        <!-- https://buttons.github.io -->
+        <a
+          class="github-button"
+          href="https://github.com/voxel51/fiftyone"
+          data-color-scheme="no-preference: dark_high_contrast; light: dark_high_contrast; dark: dark_high_contrast;"
+          data-size="large"
+          data-show-count="true"
+          aria-label="Star voxel51/fiftyone on GitHub"
+        >Star</a>
       </div>
-
-      <!--
-      <div class="nav__item nav__item--brand" id="try-fiftyone">
-        <a class="button-secondary" href="{{link_fiftyone_quickstart}}"
-          >Try FiftyOne!</a
-        >
-      </div>
-      -->
 
       <div class="nav__item full_nav_only">
         <a
           class="button-primary"
-          href="https://voxel51.com/get-fiftyone-teams"
+          href="{{link_workshop}}"
           target="_blank"
-          >Have a team?</a
+          >Schedule a workshop</a
         >
       </div>
 
@@ -137,9 +131,8 @@ endblock %} {% block custom_footer %}
 
     <div class="footer__address">
       {{address_main_line1}}<br />
-      {{address_main_line2}}
-      <br />
-      <br />
+      {{address_main_line2}}<br />
+      {{phone_main}}<br />
       <a href="mailto:{{email_info}}">{{email_info}}</a>
     </div>
 
@@ -155,6 +148,7 @@ endblock %} {% block custom_footer %}
         <a href="{{link_fiftyone}}">FiftyOne</a>
         <a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
         <a href="{{link_usecases}}">Use Cases</a>
+        <a href="{{link_success_stories}}">Success Stories</a>
       </div>
       <div class="footer__links--col3">
         <p class="nav__item--brand">Resources</p>
@@ -163,7 +157,7 @@ endblock %} {% block custom_footer %}
         <a href="{{link_voxel51_github}}">GitHub</a>
         <a href="{{link_voxel51_slack}}">Slack</a>
         <a href="{{link_ourstory}}">About Us</a>
-
+        <a href="{{link_events}}">Events</a>
         <a href="{{link_voxel51_jobs}}">Careers</a>
         <a href="{{link_press}}">Press</a>
       </div>
@@ -207,6 +201,9 @@ endblock %} {% block custom_footer %}
     </div>
   </div>
 </footer>
+
+<!-- https://buttons.github.io -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
 
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script

@@ -7,7 +7,7 @@ FiftyOne Server extensions
 """
 import traceback
 
-from strawberry.exceptions import StrawberryException
+from graphql import GraphQLError
 from strawberry.extensions import Extension
 from strawberry.utils.await_maybe import AwaitableOrValue
 
@@ -15,12 +15,11 @@ from fiftyone.server.context import Context
 
 
 class EndSession(Extension):
-    async def on_execute(self) -> AwaitableOrValue[None]:
-        yield
+    async def on_request_end(self) -> AwaitableOrValue[None]:
         result = self.execution_context.result
         if getattr(result, "errors", None):
             result.errors = [
-                StrawberryException(
+                GraphQLError(
                     extensions={
                         "stack": traceback.format_tb(error.__traceback__)
                     },

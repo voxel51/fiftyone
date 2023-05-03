@@ -6962,8 +6962,9 @@ class ToPatches(ViewStage):
 
     Args:
         field: the patches field, which must be of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         config (None): an optional dict of keyword arguments for
             :meth:`fiftyone.core.patches.make_patches_dataset` specifying how
             to perform the conversion
@@ -7105,8 +7106,9 @@ class ToEvaluationPatches(ViewStage):
     Args:
         eval_key: an evaluation key that corresponds to the evaluation of
             ground truth/predicted fields that are of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines, or
+            :class:`fiftyone.core.labels.Keypoints`
         config (None): an optional dict of keyword arguments for
             :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
             specifying how to perform the conversion

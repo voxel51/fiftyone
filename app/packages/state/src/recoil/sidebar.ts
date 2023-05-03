@@ -277,7 +277,14 @@ export const resolveGroups = (
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
     .forEach((name) => {
       const fieldPaths = (fields[name].fields || [])
-        .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
+        .reduce(
+          fieldsReducer([
+            ...VALID_PRIMITIVE_TYPES,
+            EMBEDDED_DOCUMENT_FIELD,
+            LIST_FIELD,
+          ]),
+          []
+        )
         .map((subfield) => `${name}.${subfield}`)
         .filter((path) => !present.has(path));
 
