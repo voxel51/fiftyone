@@ -1918,7 +1918,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_hub_model",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_torch_hub_raw_model",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2",
                         "model": "dinov2_vits14"
@@ -1929,7 +1929,7 @@
             },
             "requirements": {
                 "packages": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_hub_requirements",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_torch_hub_requirements",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2"
                     }
@@ -1952,7 +1952,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_hub_model",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_torch_hub_raw_model",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2",
                         "model": "dinov2_vitb14"
@@ -1963,7 +1963,7 @@
             },
             "requirements": {
                 "packages": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_hub_requirements",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_torch_hub_requirements",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2"
                     }
@@ -1986,7 +1986,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_hub_model",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_torch_hub_raw_model",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2",
                         "model": "dinov2_vitl14"
@@ -1997,7 +1997,7 @@
             },
             "requirements": {
                 "packages": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_hub_requirements",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_torch_hub_requirements",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2"
                     }
@@ -2020,7 +2020,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_hub_model",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.load_torch_hub_raw_model",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2",
                         "model": "dinov2_vitg14"
@@ -2031,7 +2031,7 @@
             },
             "requirements": {
                 "packages": {
-                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_hub_requirements",
+                    "entrypoint_fcn": "fiftyone.zoo.models.torch.find_torch_hub_requirements",
                     "entrypoint_args": {
                         "repo_or_dir": "facebookresearch/dinov2"
                     }
