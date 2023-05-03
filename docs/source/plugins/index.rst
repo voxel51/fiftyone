@@ -369,6 +369,8 @@ Hello world Operator - JS
                 "hello_world",
                 "Hello World"
             );
+            // You must provide your plugin name to ensure the uniqueness of this operator.uri
+            this.pluginName = "@fiftyone/example-plugin";
         }
 
         resolveInput(ctx: foo.ExecutionContext) {
