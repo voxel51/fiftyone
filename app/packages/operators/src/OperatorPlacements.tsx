@@ -87,11 +87,11 @@ type OperatorPlacementProps = {
 // todo: consolidate and move to component
 const SquareButton = styled(Link)`
   display: flex;
-  color: var(--mui-palette-primary-plainColor);
+  color: var(--fo-palette-primary-plainColor);
   align-items: center;
   cursor: pointer;
-  border-bottom: 1px var(--mui-palette-primary-plainColor) solid;
-  background: var(--mui-palette-neutral-softBg);
+  border-bottom: 1px var(--fo-palette-primary-plainColor) solid;
+  background: var(--fo-palette-neutral-softBg);
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   padding: 9px 3.5px;

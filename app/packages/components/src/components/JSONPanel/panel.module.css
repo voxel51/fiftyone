@@ -5,10 +5,10 @@
 .lookerPanel {
   line-height: 1;
   font-weight: bold;
-  color: var(--mui-palette-text-secondary);
-  background-color: var(--mui-palette-background-level2);
-  border: 1px solid var(--mui-palette-primary-plainBorder);
-  box-shadow: 0 8px 15px 0 var(--mui-palette-neutral-softBg);
+  color: var(--fo-palette-text-secondary);
+  background-color: var(--fo-palette-background-level2);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
   border-radius: 3px;
   overflow: auto;
   scrollbar-width: none;
@@ -21,7 +21,7 @@
   display: flex;
   padding: 1rem;
   align-items: center;
-  background-color: var(--mui-palette-background-level2);
+  background-color: var(--fo-palette-background-level2);
   width: 60%;
 }
 
@@ -29,13 +29,13 @@
   padding: 0.25rem 0.5rem;
   width: 100%;
   border-radius: 4px;
-  color: var(--mui-palette-text-secondary);
-  border: 1px solid var(--mui-palette-primary-plainBorder);
-  background-color: var(--mui-palette-background-level1);
+  color: var(--fo-palette-text-secondary);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  background-color: var(--fo-palette-background-level1);
 }
 
 .searchInput:focus {
-  border: 1px solid var(--mui-palette-primary-softBorder);
+  border: 1px solid var(--fo-palette-primary-softBorder);
   outline: none;
 }
 
@@ -46,11 +46,11 @@
 }
 
 .copyBtnClass {
-  color: var(--mui-palette-primary-plainColor);
+  color: var(--fo-palette-primary-plainColor);
 }
 
 .copyBtnClass:hover {
-  color: var(--mui-palette-primary-plainColor);
+  color: var(--fo-palette-primary-plainColor);
 }
 
 .lookerPanel::-webkit-scrollbar {
