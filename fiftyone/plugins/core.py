@@ -29,7 +29,7 @@ import fiftyone.core.config as focc
 import fiftyone.zoo.utils.github as fozug
 
 logger = logging.getLogger(__name__)
-_PLUGIN_DEFINITION_FILE_PATTERN = r"/?fiftyone\.y*ml$"
+_PLUGIN_DEFINITION_FILE_PATTERN = r"/?fiftyone\.ya?ml$"
 _PLUGIN_DIRS = [fo.config.plugins_dir]
 
 
@@ -245,7 +245,7 @@ def _list_plugins(enabled_only: bool = None) -> list[Optional[plugin_package]]:
         return []
     plugins = []
     disabled = _list_disabled_plugins()
-    # plugins must have a fiftyone.yml file at the root of the directory
+    # plugin directory must have a fiftyone.yml file defining the plugin
     for fpath in filter(
         lambda x: _is_plugin_definition_file(x),
         glob.glob(os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True),
@@ -494,33 +494,27 @@ def create_plugin(
             if not (os.path.isfile(fpath) and os.path.exists(fpath)):
                 raise ValueError(f"'{fpath}' is not a file.")
             shutil.copytree(fpath, plugin_dir)
-
-    if "fiftyone.yml" not in os.listdir(plugin_dir):
+    yml_path = next(
+        _iter_plugin_definition_files(os.listdir(plugin_dir)), None
+    )
+    plugin_definition = {
+        "name": plugin_name,
+        "description": description,
+        "label": label,
+        "fiftyone": {"version": foc.VERSION},
+        **kwargs,
+    }
+    if not yml_path:
         yml_path = os.path.join(plugin_dir, "fiftyone.yml")
-        plugin_definition = {
-            "name": plugin_name,
-            "description": description,
-            "label": label,
-            "fiftyone": {"version": foc.VERSION},
-            **kwargs,
-        }
-        with open(yml_path, "w") as yml_file:
-            yaml.dump(plugin_definition, yml_file)
     else:
-        with open(os.path.join(plugin_dir, "fiftyone.yml"), "a+") as yml_file:
+        with open(yml_path, "r") as yml_file:
             old_yml = yaml.safe_load(yml_file)
-            plugin_definition = defaultdict(dict, old_yml)
-            plugin_definition["name"] = plugin_name
-            plugin_definition["description"] = (
-                description if description else old_yml.get("description", "")
-            )
-            plugin_definition["label"] = (
-                label if label else _label_from_name(plugin_name)
-            )
-            plugin_definition["fiftyone"].update({"version": foc.VERSION})
-            plugin_definition.update(**kwargs)
-            yaml.dump(plugin_definition, yml_file)
+            # add any missing and overwrite existing fields with the values
+            # from the new plugin definition
+            plugin_definition = old_yml | plugin_definition
 
+    with open(yml_path, "w") as yml_file:
+        yaml.dump(plugin_definition, yml_file)
     print(f"Created plugin with name `{plugin_name}` at {plugin_dir}")
     return
 
