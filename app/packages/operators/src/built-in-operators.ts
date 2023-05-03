@@ -12,7 +12,7 @@ import copyToClipboard from "copy-to-clipboard";
 import { useOperatorExecutor } from ".";
 import {
   Operator,
-  DynamicOperator,
+  OperatorConfig,
   ExecutionContext,
   registerOperator,
   loadOperatorsFromServer,
@@ -26,9 +26,11 @@ import { useShowOperatorIO } from "./state";
 // BUILT-IN OPERATORS
 //
 class ReloadSamples extends Operator {
-  constructor() {
-    super("reload_samples", "Reload samples from the dataset");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "reload_samples",
+      label: "Reload samples from the dataset",
+    });
   }
   async execute({ state }: ExecutionContext) {
     const refresherTick = await state.snapshot.getPromise(fos.refresher);
@@ -36,9 +38,11 @@ class ReloadSamples extends Operator {
   }
 }
 class ReloadDataset extends Operator {
-  constructor() {
-    super("reload_dataset", "Reload the dataset");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "reload_dataset",
+      label: "Reload the dataset",
+    });
   }
   async execute({ state }: ExecutionContext) {
     // TODO - improve this... this is a temp. workaround for the fact that
@@ -47,8 +51,11 @@ class ReloadDataset extends Operator {
   }
 }
 class ClearSelectedSamples extends Operator {
-  constructor() {
-    super("clear_selected_samples", "Clear selected samples");
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_selected_samples",
+      label: "Clear selected samples",
+    });
   }
   useHooks() {
     return {
@@ -63,9 +70,11 @@ class ClearSelectedSamples extends Operator {
 }
 
 class CopyViewAsJSON extends Operator {
-  constructor() {
-    super("copy_view_as_json", "Copy view as JSON");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "copy_view_as_json",
+      label: "Copy view as JSON",
+    });
   }
   async execute({ state }: ExecutionContext) {
     const view = await state.snapshot.getPromise(fos.view);
@@ -75,9 +84,11 @@ class CopyViewAsJSON extends Operator {
 }
 
 class ViewFromJSON extends Operator {
-  constructor() {
-    super("view_from_clipboard", "Paste view from clipboard");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "view_from_clipboard",
+      label: "Paste view from clipboard",
+    });
   }
   async execute({ state }: ExecutionContext) {
     const text = await navigator.clipboard.readText();
@@ -91,10 +102,12 @@ class ViewFromJSON extends Operator {
 }
 
 class OpenPanel extends Operator {
-  constructor() {
-    super("open_panel", "Open a panel");
-    this.unlisted = true;
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "open_panel",
+      label: "Open a panel",
+      unlisted: true,
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -140,9 +153,11 @@ class OpenPanel extends Operator {
 }
 
 class OpenAllPanels extends Operator {
-  constructor() {
-    super("open_all_panel", "Open all panels");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "open_all_panel",
+      label: "Open all panels",
+    });
   }
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -163,9 +178,6 @@ class OpenAllPanels extends Operator {
 }
 
 // class FindSpace extends Operator {
-//   constructor() {
-//     super("find_space", "Find space");
-//   }
 //   findFirstPanelContainer(node: SpaceNode): SpaceNode {
 //     if (node.isPanelContainer()) {
 //       return node;
@@ -186,10 +198,11 @@ class OpenAllPanels extends Operator {
 // }
 
 class ClosePanel extends Operator {
-  constructor() {
-    super("close_panel", "Close a panel");
-    this.unlisted = true;
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "close_panel",
+      label: "Close a panel",
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -223,9 +236,11 @@ class ClosePanel extends Operator {
 }
 
 class CloseAllPanels extends Operator {
-  constructor() {
-    super("close_all_panel", "Close all panels");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "close_all_panel",
+      label: "Close all panels",
+    });
   }
   useHooks(): object {
     const { FIFTYONE_SPACE_ID } = fos.constants;
@@ -244,9 +259,11 @@ class CloseAllPanels extends Operator {
 }
 
 class OpenDataset extends Operator {
-  constructor() {
-    super("open_dataset", "Open Dataset");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "open_dataset",
+      label: "Open Dataset",
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -264,17 +281,22 @@ class OpenDataset extends Operator {
 }
 
 class ClearView extends Operator {
-  constructor() {
-    super("clear_view", "Clear view bar");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_view",
+      label: "Clear view bar",
+    });
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.view);
   }
 }
 class ClearSidebarFilters extends Operator {
-  constructor() {
-    super("clear_sidebar_filters", "Clear sidebar filters");
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_sidebar_filters",
+      label: "Clear sidebar filters",
+    });
   }
   async execute({ state }: ExecutionContext) {
     state.reset(fos.filters);
@@ -282,9 +304,11 @@ class ClearSidebarFilters extends Operator {
 }
 
 class ClearAllStages extends Operator {
-  constructor() {
-    super("clear_all_stages", "Clear all selections, filters, and view");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_all_stages",
+      label: "Clear all selections, filters, and view",
+    });
   }
   useHooks(): {} {
     return {
@@ -302,9 +326,11 @@ class ClearAllStages extends Operator {
 }
 
 class RefreshColors extends Operator {
-  constructor() {
-    super("refresh_colors", "Refresh colors");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "refresh_colors",
+      label: "Refresh colors",
+    });
   }
   async execute({ state }: ExecutionContext) {
     const modal = await state.snapshot.getPromise(fos.modal);
@@ -314,9 +340,11 @@ class RefreshColors extends Operator {
 }
 
 class ShowSelectedSamples extends Operator {
-  constructor() {
-    super("show_selected_samples", "Show selected samples");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "show_selected_samples",
+      label: "Show selected samples",
+    });
   }
   useHooks(): {} {
     return {
@@ -335,12 +363,11 @@ class ShowSelectedSamples extends Operator {
 }
 
 class ConvertExtendedSelectionToSelectedSamples extends Operator {
-  constructor() {
-    super(
-      "convert_extended_selection_to_selected_samples",
-      "Convert extended selection to selected samples"
-    );
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "convert_extended_selection_to_selected_samples",
+      label: "Convert extended selection to selected samples",
+    });
   }
   useHooks(): {} {
     return {
@@ -361,10 +388,12 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
 
 // an operator that sets selected samples based on ctx.params
 class SetSelectedSamples extends Operator {
-  constructor() {
-    super("set_selected_samples", "Set selected samples");
-    this.unlisted = true;
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_selected_samples",
+      label: "Set selected samples",
+      unlisted: true,
+    });
   }
   useHooks(): {} {
     return {
@@ -377,10 +406,12 @@ class SetSelectedSamples extends Operator {
 }
 
 class SetView extends Operator {
-  constructor() {
-    super("set_view", "Set view");
-    this.unlisted = true;
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_view",
+      label: "Set view",
+      unlisted: true,
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -398,10 +429,12 @@ class SetView extends Operator {
 const SHOW_SAMPLES_STAGE_ID = "show_samples_stage_id";
 
 class ShowSamples extends Operator {
-  constructor() {
-    super("show_samples", "Show samples");
-    this.unlisted = true;
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "show_samples",
+      label: "Show samples",
+      unlisted: true,
+    });
   }
   async execute({ state, params }: ExecutionContext) {
     if (params.use_extended_selection) {
@@ -426,9 +459,11 @@ class ShowSamples extends Operator {
 }
 
 class ClearShowSamples extends Operator {
-  constructor() {
-    super("clear_show_samples", "Clear show samples");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_show_samples",
+      label: "Clear show samples",
+    });
   }
   async execute(ctx: ExecutionContext) {
     executeOperator("show_samples", { samples: [] });
@@ -474,10 +509,13 @@ function getTypeForValue(value: any) {
       return type;
   }
 }
-class GetAppValue extends DynamicOperator {
-  constructor() {
-    super("get_app_value", "Get App Value");
-    this._builtIn = true;
+class GetAppValue extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "get_app_value",
+      label: "Get App Value",
+      dynamic: true,
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -507,9 +545,11 @@ class GetAppValue extends DynamicOperator {
 }
 
 class ConsoleLog extends Operator {
-  constructor() {
-    super("console_log", "Console Log");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "console_log",
+      label: "Console Log",
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -525,10 +565,12 @@ class ConsoleLog extends Operator {
 }
 
 class ShowOutput extends Operator {
-  constructor() {
-    super("show_output", "Show Output");
-    this.unlisted = true;
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "show_output",
+      label: "Show Output",
+      unlisted: true,
+    });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.ObjectType();
@@ -557,9 +599,11 @@ class ShowOutput extends Operator {
 }
 
 class TestOperator extends Operator {
-  constructor() {
-    super("test_operator", "Test an Operator");
-    this._builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "test_operator",
+      label: "Test an Operator",
+    });
   }
   parseParams(rawParams: string) {
     try {
@@ -607,32 +651,32 @@ class TestOperator extends Operator {
 
 export function registerBuiltInOperators() {
   try {
-    registerOperator(new CopyViewAsJSON());
-    registerOperator(new ViewFromJSON());
-    registerOperator(new ReloadSamples());
-    registerOperator(new ReloadDataset());
-    registerOperator(new ClearSelectedSamples());
-    registerOperator(new OpenAllPanels());
-    registerOperator(new CloseAllPanels());
-    registerOperator(new OpenDataset());
-    registerOperator(new ClearView());
-    registerOperator(new ClearSidebarFilters());
-    registerOperator(new ClearAllStages());
-    registerOperator(new RefreshColors());
-    registerOperator(new ShowSelectedSamples());
-    registerOperator(new ConvertExtendedSelectionToSelectedSamples());
-    registerOperator(new SetSelectedSamples());
-    registerOperator(new OpenPanel());
-    registerOperator(new OpenAllPanels());
-    registerOperator(new ClosePanel());
-    registerOperator(new CloseAllPanels());
-    registerOperator(new SetView());
-    registerOperator(new ShowSamples());
-    registerOperator(new ClearShowSamples());
-    registerOperator(new GetAppValue());
-    registerOperator(new ConsoleLog());
-    registerOperator(new ShowOutput());
-    registerOperator(new TestOperator());
+    registerOperator(CopyViewAsJSON);
+    registerOperator(ViewFromJSON);
+    registerOperator(ReloadSamples);
+    registerOperator(ReloadDataset);
+    registerOperator(ClearSelectedSamples);
+    registerOperator(OpenAllPanels);
+    registerOperator(CloseAllPanels);
+    registerOperator(OpenDataset);
+    registerOperator(ClearView);
+    registerOperator(ClearSidebarFilters);
+    registerOperator(ClearAllStages);
+    registerOperator(RefreshColors);
+    registerOperator(ShowSelectedSamples);
+    registerOperator(ConvertExtendedSelectionToSelectedSamples);
+    registerOperator(SetSelectedSamples);
+    registerOperator(OpenPanel);
+    registerOperator(OpenAllPanels);
+    registerOperator(ClosePanel);
+    registerOperator(CloseAllPanels);
+    registerOperator(SetView);
+    registerOperator(ShowSamples);
+    registerOperator(ClearShowSamples);
+    registerOperator(GetAppValue);
+    registerOperator(ConsoleLog);
+    registerOperator(ShowOutput);
+    registerOperator(TestOperator);
     // registerOperator(new FindSpace());
   } catch (e) {
     console.error("Error registering built-in operators");

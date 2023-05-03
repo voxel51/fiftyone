@@ -63,9 +63,8 @@ class PluginContext:
             if self.can_register(instance):
                 instance.plugin_name = self.name
                 self.instances.append(instance)
-            else:
-                instance.dispose()
         except Exception as e:
+            print(f"{cls.__name__} could not be registered!")
             self.errors.append(traceback.format_exc())
 
     def unregister_inst(self, inst):
