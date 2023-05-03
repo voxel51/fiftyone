@@ -61,7 +61,7 @@ class Operator:
 
     def __init__(self, _built_in=False):
         self._built_in = _built_in
-        self.plugin_name = None
+        self.plugin_name = "@voxel51/operators" if _built_in else None
         self.definition = Object()
         self.definition.define_property("inputs", Object())
         self.definition.define_property("outputs", Object())
@@ -73,8 +73,7 @@ class Operator:
     @property
     def uri(self):
         """The unique identifier of the operator. ``plugin_name/operator_name``."""
-        plugin_name = self.plugin_name or "@voxel51"
-        return "%s/%s" % (plugin_name, self.name)
+        return "%s/%s" % (self.plugin_name, self.name)
 
     @property
     def config(self):
@@ -184,4 +183,5 @@ class Operator:
             ).to_json(),
             "plugin_name": self.plugin_name,
             "_built_in": self._built_in,
+            "uri": self.uri,
         }
