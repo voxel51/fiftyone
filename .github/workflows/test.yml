@@ -40,12 +40,12 @@ jobs:
           - windows-latest
         python:
           - 3.8
-          - 3.10
+          - "3.10"
         exclude:
           - os: windows-latest
             python: 3.8
           - os: windows-latest
-            python: 3.10
+            python: "3.10"
     defaults:
       run:
         shell: bash
