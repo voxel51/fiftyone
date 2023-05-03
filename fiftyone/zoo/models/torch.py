@@ -25,8 +25,45 @@ import torchvision
 logger = logging.getLogger(__name__)
 
 
+def load_hub_image_model(repo_or_dir, model, **kwargs):
+    """Loads an image model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
+    :class:`fiftyone.utils.torch.TorchImageModel`.
+
+    Example usage::
+
+        import fiftyone.zoo.models.torch as fozmt
+
+        model = fozmt.load_hub_image_model(
+            "facebookresearch/dinov2",
+            "dinov2_vits14",
+            image_patch_size=14,
+            embeddings_layer="head",
+        )
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        model: see :attr:`torch:torch.hub.load`
+        **kwargs: additional parameters for
+            :class:`fiftyone.utils.torch.TorchImageModelConfig`
+
+    Returns:
+        a :class:`fiftyone.utils.torch.TorchImageModel`
+    """
+    d = {
+        "entrypoint_fcn": load_hub_model,
+        "entrypoint_args": {
+            "repo_or_dir": repo_or_dir,
+            "model": model,
+        },
+    }
+    d.update(**kwargs)
+    config = fout.TorchImageModelConfig(d)
+    return fout.TorchImageModel(config)
+
+
 def load_hub_model(**kwargs):
-    """Loads a model from `PyTorch Hub <https://pytorch.org/hub>`_.
+    """Loads a raw model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
+    :class:`torch:torch.nn.Module`.
 
     Args:
         **kwargs: keyword arguments for :attr:`torch:torch.hub.load`
