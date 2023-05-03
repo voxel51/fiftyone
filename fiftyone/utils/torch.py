@@ -99,7 +99,7 @@ class TorchImageModelConfig(foc.Config):
             function that loads the model
         entrypoint_args (None): a dictionary of arguments for
             ``entrypoint_fcn``
-        output_processor_cls: a string like
+        output_processor_cls (None): a string like
             ``"fifytone.utils.torch.ClassifierOutputProcessor"`` specifying the
             :class:`fifytone.utils.torch.OutputProcessor` to use
         output_processor_args (None): a dictionary of arguments for
@@ -130,6 +130,9 @@ class TorchImageModelConfig(foc.Config):
             images during preprocessing
         image_dim (None): resize the smaller input dimension to this value
             during preprocessing
+        image_patch_size (None): crop the input images during preprocessing, if
+            necessary, so that the image dimensions are a multiple of this
+            patch size
         image_mean (None): a 3-array of mean values in ``[0, 1]`` for
             preprocessing the input images
         image_std (None): a 3-array of std values in ``[0, 1]`` for
@@ -153,7 +156,7 @@ class TorchImageModelConfig(foc.Config):
             d, "entrypoint_args", default=None
         )
         self.output_processor_cls = self.parse_string(
-            d, "output_processor_cls"
+            d, "output_processor_cls", default=None
         )
         self.output_processor_args = self.parse_dict(
             d, "output_processor_args", default=None
@@ -184,6 +187,9 @@ class TorchImageModelConfig(foc.Config):
         )
         self.image_size = self.parse_array(d, "image_size", default=None)
         self.image_dim = self.parse_number(d, "image_dim", default=None)
+        self.image_patch_size = self.parse_number(
+            d, "image_patch_size", default=None
+        )
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
         self.embeddings_layer = self.parse_string(
@@ -401,6 +407,9 @@ class TorchImageModel(
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
 
+        if self._output_processor is None:
+            return output
+
         return self._output_processor(
             output, frame_size, confidence_thresh=self.config.confidence_thresh
         )
@@ -448,6 +457,8 @@ class TorchImageModel(
             transforms.append(torchvision.transforms.Resize(config.image_size))
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
+        elif config.image_patch_size:
+            transforms.append(PatchSize(config.image_patch_size))
         else:
             if config.image_min_size:
                 transforms.append(MinResize(config.image_min_size))
@@ -504,6 +515,9 @@ class TorchImageModel(
         pass
 
     def _build_output_processor(self, config):
+        if config.output_processor_cls is None:
+            return
+
         output_processor_cls = etau.get_class(config.output_processor_cls)
         kwargs = config.output_processor_args or {}
         return output_processor_cls(classes=self._classes, **kwargs)
@@ -610,6 +624,32 @@ class MaxResize(object):
         alpha = min(maxh / h, maxw / w)
         size = (int(round(alpha * h)), int(round(alpha * w)))
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
+
+
+class PatchSize(object):
+    """Transform that center crops the PIL image or torch Tensor, if necessary,
+    so that its dimensions are multiples of the specified patch size.
+
+    Args:
+        patch_size: the patch size
+    """
+
+    def __init__(self, patch_size):
+        self.patch_size = patch_size
+
+    def __call__(self, pil_image_or_tensor):
+        if isinstance(pil_image_or_tensor, torch.Tensor):
+            h, w = list(pil_image_or_tensor.size())[-2:]
+        else:
+            w, h = pil_image_or_tensor.size
+
+        hh = (h // self.patch_size) * self.patch_size
+        ww = (w // self.patch_size) * self.patch_size
+
+        if hh != h or ww != w:
+            return F.center_crop(pil_image_or_tensor, (hh, ww))
+
+        return pil_image_or_tensor
 
 
 class SaveLayerTensor(object):

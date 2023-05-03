@@ -16,7 +16,20 @@ import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
+import torch
 import torchvision
+
+
+def load_hub_model(**kwargs):
+    """Loads a model from `PyTorch Hub <https://pytorch.org/hub>`_.
+
+    Args:
+        **kwargs: keyword arguments for :attr:`torch:torch.hub.load`
+
+    Returns:
+        a :class:`torch:torch.nn.Module`
+    """
+    return torch.hub.load(**kwargs)
 
 
 class TorchvisionImageModelConfig(
