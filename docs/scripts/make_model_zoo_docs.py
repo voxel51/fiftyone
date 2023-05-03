@@ -120,11 +120,15 @@ _MODEL_TEMPLATE = """
 
     # Full automatic segmentations
     dataset.apply_model(model, label_field="auto")
-{% else %}
-    dataset.apply_model(model, label_field="predictions")
-{% endif %}
 
     session = fo.launch_app(dataset)
+{% elif 'dinov2' in name %}
+    embeddings = dataset.compute_embeddings(model)
+{% else %}
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+{% endif %}
 
 {% if 'clip' in tags %}
     #
