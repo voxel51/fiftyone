@@ -25,7 +25,7 @@ import torchvision
 logger = logging.getLogger(__name__)
 
 
-def load_hub_image_model(repo_or_dir, model, **kwargs):
+def load_torch_hub_image_model(repo_or_dir, model, **kwargs):
     """Loads an image model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
     :class:`fiftyone.utils.torch.TorchImageModel`.
 
@@ -33,7 +33,7 @@ def load_hub_image_model(repo_or_dir, model, **kwargs):
 
         import fiftyone.zoo.models.torch as fozmt
 
-        model = fozmt.load_hub_image_model(
+        model = fozmt.load_torch_hub_image_model(
             "facebookresearch/dinov2",
             "dinov2_vits14",
             image_patch_size=14,
@@ -50,7 +50,7 @@ def load_hub_image_model(repo_or_dir, model, **kwargs):
         a :class:`fiftyone.utils.torch.TorchImageModel`
     """
     d = {
-        "entrypoint_fcn": load_hub_model,
+        "entrypoint_fcn": load_torch_hub_raw_model,
         "entrypoint_args": {
             "repo_or_dir": repo_or_dir,
             "model": model,
@@ -61,7 +61,7 @@ def load_hub_image_model(repo_or_dir, model, **kwargs):
     return fout.TorchImageModel(config)
 
 
-def load_hub_model(**kwargs):
+def load_torch_hub_raw_model(**kwargs):
     """Loads a raw model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
     :class:`torch:torch.nn.Module`.
 
@@ -74,7 +74,7 @@ def load_hub_model(**kwargs):
     return torch.hub.load(**kwargs)
 
 
-def find_hub_requirements(repo_or_dir, source="github"):
+def find_torch_hub_requirements(repo_or_dir, source="github"):
     """Locates the ``requirements.txt`` file on disk associated with a
     downloaded `PyTorch Hub <https://pytorch.org/hub>`_ model.
 
@@ -100,7 +100,7 @@ def find_hub_requirements(repo_or_dir, source="github"):
     return os.path.join(model_dir, "requirements.txt")
 
 
-def load_hub_requirements(repo_or_dir, source="github"):
+def load_torch_hub_requirements(repo_or_dir, source="github"):
     """Loads the package requirements from the ``requirements.txt`` file on
     disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
     model.
@@ -112,7 +112,7 @@ def load_hub_requirements(repo_or_dir, source="github"):
     Returns:
         a list of requirement strings
     """
-    requirements_path = find_hub_requirements(repo_or_dir, source=source)
+    requirements_path = find_torch_hub_requirements(repo_or_dir, source=source)
     if not os.path.isfile(requirements_path):
         logger.warning("No requirements.txt file found for '%s'", repo_or_dir)
         return []
