@@ -39,13 +39,13 @@ jobs:
           - ubuntu-20.04
           - windows-latest
         python:
-          - 3.7
-          - 3.9
+          - 3.8
+          - 3.10
         exclude:
           - os: windows-latest
-            python: 3.7
+            python: 3.8
           - os: windows-latest
-            python: 3.9
+            python: 3.10
     defaults:
       run:
         shell: bash
