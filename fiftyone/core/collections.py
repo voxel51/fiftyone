@@ -3633,18 +3633,27 @@ class SampleCollection(object):
             meta_filter (None): a filter that dynamically excludes fields in
                 the collection's schema according to the specified rule, which
                 can be a string that will be matched against the field's
-                ``name``, ``description``, or ``info``, or a dict that
+                ``name``, ``description``, ``info``, or ``type`` or a dict that
                 restricts the search to specific fields. For example:
 
-                -   Use ``meta_filter="2023"`` to exclude fields that have the
-                    string "2023" anywhere in their name, description, or info
-                -   Use ``meta_filter={description: "my description"}`` to
+                -   to include all nested fields in the meta filtering,
+                    add the key value pair "include_nested_fields": True
+                    to the meta_filter dict, e.g.
+                    ``meta_filter={"include_nested_fields": True, "name": "foo"}``
+                -   Use ``meta_filter={"any": "2023"}`` to exclude fields that have the
+                    string "2023" anywhere in their name, description, or info.
+                    Alternatively, use ``meta_filter="2023" as shorthand for searching
+                    in any field.
+                -   Use ``meta_filter={"description": "my description"}`` to
                     exclude fields whose description contains the string
                     "my description"
-                -   Use ``meta_filter={info: "2023"}`` to exclude fields that
+                -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
                     have the string "2023" anywhere in their info
                 -   Use ``meta_filter={"info.key": "value"}}`` to exclude
                     fields that have a specific key/value pair in their info field.
+                -   Use ``meta_filter={"type": fo.StringField}`` to exclude all fields
+                    of the StringField type. A string can also be used to specify the
+                    type, e.g. ``meta_filter={"type": "StringField"}``.
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5519,21 +5528,30 @@ class SampleCollection(object):
         Args:
             field_names (None): a field name or iterable of field names to
                 select. May contain ``embedded.field.name`` as well
-            meta_filter (None): a filter that dynamically selects fields in the
-                collection's schema according to the specified rule, which can
-                be a string that will be matched against the field's ``name``,
-                ``description``, or ``info``, or a dict that restricts the
-                search to specific fields. For example:
+            meta_filter (None): a filter that dynamically selects fields in
+            the collection's schema according to the specified rule, which
+            can be a string that will be matched against the field's
+            ``name``, ``description``, ``info``, or ``type`` or a dict that
+            restricts the search to specific fields. For example:
 
-                -   Use ``meta_filter="2023"`` to select fields that have the
-                    string "2023" anywhere in their name, description, or info
-                -   Use ``meta_filter={description: "my description"}`` to
-                    select fields whose description contains the string
-                    "my description"
-                -   Use ``meta_filter={info: "2023"}`` to select fields that
-                    have the string "2023" anywhere in their info
-                -   Use ``meta_filter={"info.key": "value"}}`` to select
-                    fields that have a specific key/value pair in their info field.
+            -   to include all nested fields in the meta filtering,
+                add the key value pair "include_nested_fields": True
+                to the meta_filter dict, e.g.
+                ``meta_filter={"include_nested_fields": True, "name": "foo"}``
+            -   Use ``meta_filter={"any": "2023"}`` to select fields that have the
+                string "2023" anywhere in their name, description, or info.
+                Alternatively, use ``meta_filter="2023" as shorthand for searching
+                in any field.
+            -   Use ``meta_filter={"description": "my description"}`` to
+                select fields whose description contains the string
+                "my description".
+            -   Use ``meta_filter={"info": "2023"}`` to select fields that
+                have the string "2023" anywhere in their info.
+            -   Use ``meta_filter={"info.key": "value"}}`` to select
+                fields that have a specific key/value pair in their info field.
+            -   Use ``meta_filter={"type": fo.StringField}`` to select all fields
+                of the StringField type. A string to specify the type, e.g.
+                ``meta_filter={"type": "StringField"}``.
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
