@@ -94,12 +94,14 @@ class TorchImageModelConfig(foc.Config):
     """Configuration for running a :class:`TorchImageModel`.
 
     Args:
-        entrypoint_fcn: a fully-qualified function string like
+        entrypoint_fcn: a function or string like
             ``"torchvision.models.inception_v3"`` specifying the entrypoint
             function that loads the model
         entrypoint_args (None): a dictionary of arguments for
             ``entrypoint_fcn``
-        output_processor_cls (None): a string like
+        output_processor (None): an
+            :class:`fifytone.utils.torch.OutputProcessor` instance to use
+        output_processor_cls (None): a class or string like
             ``"fifytone.utils.torch.ClassifierOutputProcessor"`` specifying the
             :class:`fifytone.utils.torch.OutputProcessor` to use
         output_processor_args (None): a dictionary of arguments for
@@ -151,11 +153,14 @@ class TorchImageModelConfig(foc.Config):
     """
 
     def __init__(self, d):
-        self.entrypoint_fcn = self.parse_string(d, "entrypoint_fcn")
+        self.entrypoint_fcn = self.parse_raw(d, "entrypoint_fcn")
         self.entrypoint_args = self.parse_dict(
             d, "entrypoint_args", default=None
         )
-        self.output_processor_cls = self.parse_string(
+        self.output_processor = self.parse_raw(
+            d, "output_processor", default=None
+        )
+        self.output_processor_cls = self.parse_raw(
             d, "output_processor_cls", default=None
         )
         self.output_processor_args = self.parse_dict(
@@ -404,11 +409,11 @@ class TorchImageModel(
         if self._output_processor is None:
             return output
 
-        if self.has_logits:
-            self._output_processor.store_logits = self.store_logits
-
         if self._output_processor is None:
             return output
+
+        if self.has_logits:
+            self._output_processor.store_logits = self.store_logits
 
         return self._output_processor(
             output, frame_size, confidence_thresh=self.config.confidence_thresh
@@ -507,18 +512,29 @@ class TorchImageModel(
         pass
 
     def _load_network(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
+        entrypoint_fcn = config.entrypoint_fcn
+
+        if etau.is_str(entrypoint_fcn):
+            entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
         kwargs = config.entrypoint_args or {}
-        return entrypoint(**kwargs)
+        return entrypoint_fcn(**kwargs)
 
     def _load_state_dict(self, model, config):
         pass
 
     def _build_output_processor(self, config):
-        if config.output_processor_cls is None:
+        if config.output_processor is not None:
+            return config.output_processor
+
+        output_processor_cls = config.output_processor_cls
+
+        if output_processor_cls is None:
             return
 
-        output_processor_cls = etau.get_class(config.output_processor_cls)
+        if etau.is_str(output_processor_cls):
+            output_processor_cls = etau.get_class(output_processor_cls)
+
         kwargs = config.output_processor_args or {}
         return output_processor_cls(classes=self._classes, **kwargs)
 

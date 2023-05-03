@@ -96,12 +96,14 @@ class TorchvisionImageModelConfig(
     """Configuration for running a :class:`TorchvisionImageModel`.
 
     Args:
-        entrypoint_fcn: a fully-qualified function string like
+        entrypoint_fcn: a function or string like
             ``"torchvision.models.inception_v3"`` specifying the entrypoint
             function that loads the model
         entrypoint_args (None): a dictionary of arguments for
             ``entrypoint_fcn``
-        output_processor_cls: a string like
+        output_processor (None): an
+            :class:`fifytone.utils.torch.OutputProcessor` instance to use
+        output_processor_cls (None): a class or string like
             ``"fifytone.utils.torch.ClassifierOutputProcessor"`` specifying the
             :class:`fifytone.utils.torch.OutputProcessor` to use
         output_processor_args (None): a dictionary of arguments for
@@ -163,7 +165,11 @@ class TorchvisionImageModel(fout.TorchImageModel):
         config.download_model_if_necessary()
 
     def _load_network(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
+        entrypoint_fcn = config.entrypoint_fcn
+
+        if etau.is_str(entrypoint_fcn):
+            entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
         kwargs = config.entrypoint_args or {}
 
         # pretrained=True was used instead of weights in torchvision < 0.13
@@ -175,11 +181,11 @@ class TorchvisionImageModel(fout.TorchImageModel):
         model_dir = fo.config.model_zoo_dir
 
         monkey_patcher = _make_load_state_dict_from_url_monkey_patcher(
-            entrypoint, model_dir
+            entrypoint_fcn, model_dir
         )
         with monkey_patcher:
             # Builds net and loads state dict from `model_dir`
-            model = entrypoint(**kwargs)
+            model = entrypoint_fcn(**kwargs)
 
         return model
 
