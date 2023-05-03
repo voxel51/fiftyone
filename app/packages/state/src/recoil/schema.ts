@@ -118,10 +118,13 @@ export const buildSchema = (
   return schema;
 };
 
-export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
+export const fieldSchema = selectorFamily<
+  Schema,
+  { space: State.SPACE; flat?: boolean }
+>({
   key: "fieldSchema",
   get:
-    ({ space }) =>
+    ({ space, flat = false }) =>
     ({ get }) => {
       const dataset = get(atoms.dataset);
 
@@ -129,11 +132,18 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
         return {};
       }
 
-      const fields = (
+      if (flat) {
+        return buildFlatExtendedSchema(
+          (space === State.SPACE.FRAME
+            ? dataset.frameFields
+            : dataset.sampleFields
+          ).reduce(schemaReduce, {})
+        );
+      }
+
+      return (
         space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
       ).reduce(schemaReduce, {});
-
-      return fields;
     },
 });
 
@@ -213,12 +223,12 @@ export const fieldPaths = selectorFamily<
       }
 
       const sampleLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE }))
+        get(fieldSchema({ space: State.SPACE.SAMPLE, flat: true }))
       )
         .filter((l) => !l.startsWith("_"))
         .sort();
       const frameLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.FRAME }))
+        get(fieldSchema({ space: State.SPACE.FRAME, flat: true }))
       )
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
