@@ -70,8 +70,8 @@ const Arrow = styled.span<{ isRight?: boolean }>`
   bottom: 40vh;
   width: 3rem;
   height: 3rem;
-  background-color: var(--mui-palette-background-button);
-  box-shadow: 0 1px 3px var(--mui-palette-custom-shadowDark);
+  background-color: var(--fo-palette-background-button);
+  box-shadow: 0 1px 3px var(--fo-palette-custom-shadowDark);
   border-radius: 3px;
   opacity: 0.6;
   transition: opacity 0.15s ease-in-out;

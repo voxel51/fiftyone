@@ -14,7 +14,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 1.4rem;
-  color: var(--mui-palette-text-primary);
+  color: var(--fo-palette-text-primary);
   font-weight: bold;
 }
 
@@ -48,7 +48,7 @@
   display: flex;
   justify-content: space-between;
   text-overflow: ellipsis;
-  color: var(--mui-palette-text-primary);
+  color: var(--fo-palette-text-primary);
 }
 
 .contentHeading > div {
