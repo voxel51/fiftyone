@@ -265,6 +265,8 @@ export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
 export const DICT_FIELD = "fiftyone.core.fields.DictField";
 export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
+export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
+  "fiftyone.core.fields.DynamicEmbeddedDocumentField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";

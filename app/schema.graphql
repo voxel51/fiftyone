@@ -150,7 +150,7 @@ type Dataset {
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
-  datasetSchema: [SampleField!]!
+  viewFields: [SampleField!]!
   frameFields: [SampleField!]
   brainMethods: [BrainRun!]
   evaluations: [EvaluationRun!]

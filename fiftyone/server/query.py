@@ -518,6 +518,11 @@ async def serialize_dataset(
             if view.media_type != data.media_type:
                 data.media_type = view.media_type
 
+            data.view_fields = serialize_fields(
+                view.get_field_schema(flat=True)
+            )
+            print("view's schema: ", data.view_fields)
+
             collection = view
 
         data.sample_fields = serialize_fields(

@@ -150,6 +150,7 @@ export namespace State {
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
     viewCls: string;
+    viewFields: StrictField[]; // sample && frame fields in the current view
   }
 
   /**

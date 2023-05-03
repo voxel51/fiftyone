@@ -3,6 +3,13 @@ import { buildSchema, useSetView } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
 import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
 
+export const TAB_OPTIONS_MAP = {
+  SELECTION: "Selection",
+  FILTER_RULE: "FilterRule",
+};
+
+export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
+
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
   default: "",
@@ -21,12 +28,12 @@ export const originalSelectedPathsState = atom<Set<string>>({
 });
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: "Search",
+  default: TAB_OPTIONS_MAP.FILTER_RULE,
 });
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
   default: {
-    open: true,
+    open: false,
   },
 });
 export const allFieldsCheckedState = atom<boolean>({
@@ -65,12 +72,6 @@ export const selectedFieldsStageState = atom<any>({
   ],
 });
 
-export const TAB_OPTIONS_MAP = {
-  SELECTION: "Selection",
-  SEARCH: "Search",
-};
-
-export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 export default function useSchemaSettings() {
   const activeLabelPaths = useRecoilValue(
     fos.activeLabelPaths({ modal: false })
@@ -91,6 +92,7 @@ export default function useSchemaSettings() {
 
   const dataset = useRecoilValue(fos.dataset);
   const schema = dataset ? buildSchema(dataset, true) : null;
+  console.log("schema", schema);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
@@ -228,7 +230,7 @@ export default function useSchemaSettings() {
         .sort()
         .filter((path) => {
           // TODO: && searchResults.length
-          if (selectedTab === "Search") {
+          if (selectedTab === TAB_OPTIONS_MAP.FILTER_RULE) {
             return searchResults.includes(path);
           }
           if (fieldsOnly) {

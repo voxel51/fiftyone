@@ -4,6 +4,7 @@ import { Box } from "@mui/material";
 import Checkbox from "@mui/material/Checkbox";
 import { useTheme } from "@fiftyone/components";
 import { useSchemaSettings } from "@fiftyone/state";
+import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 interface Props {}
 
@@ -19,7 +20,7 @@ export const SchemaSelectionControls = (props: Props) => {
     setShowMetadata,
     searchResults,
   } = useSchemaSettings();
-  const isSelectionMode = selectedTab === "Selection";
+  const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
 
   return (
     <Box
@@ -28,7 +29,7 @@ export const SchemaSelectionControls = (props: Props) => {
       sx={{ position: "relative !important" }}
     >
       <Box display="flex" width="100%" flexDirection="column">
-        {!isSelectionMode && (
+        {isFilterRuleMode && (
           <Box
             style={{
               position: "relative",
@@ -50,7 +51,7 @@ export const SchemaSelectionControls = (props: Props) => {
             />
           </Box>
         )}
-        {isSelectionMode && (
+        {!isFilterRuleMode && (
           <Box
             style={{
               position: "relative",
@@ -69,7 +70,7 @@ export const SchemaSelectionControls = (props: Props) => {
             />
           </Box>
         )}
-        {!allFieldsChecked && isSelectionMode && (
+        {!allFieldsChecked && !isFilterRuleMode && (
           <Box
             style={{
               position: "relative",
@@ -87,7 +88,7 @@ export const SchemaSelectionControls = (props: Props) => {
             />
           </Box>
         )}
-        {allFieldsChecked && isSelectionMode && (
+        {allFieldsChecked && !isFilterRuleMode && (
           <Box
             style={{
               position: "relative",

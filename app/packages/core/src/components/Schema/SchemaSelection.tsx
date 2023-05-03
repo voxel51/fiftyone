@@ -7,6 +7,7 @@ import { useSchemaSettings } from "@fiftyone/state";
 import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
 import { ExpandMore } from "@mui/icons-material";
+import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 interface Props {}
 
@@ -19,9 +20,9 @@ export const SchemaSelection = () => {
     selectedTab,
     showMetadata,
   } = useSchemaSettings();
-  const isSearchMode = selectedTab === "Search";
+  const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
   const [expandedPaths, setEpandedPaths] = useState({});
-  const showSearchHelp = isSearchMode && !searchResults?.length;
+  const showSearchHelp = isFilterRuleMode && !searchResults?.length;
   const showSelection = !showSearchHelp;
   const expandedPathsKeys = new Set(Object.keys(expandedPaths));
 
@@ -103,7 +104,7 @@ export const SchemaSelection = () => {
                       {pathLabelFinal}
                     </Box>
                   </Box>
-                  {isSearchMode && (
+                  {isFilterRuleMode && (
                     <Box
                       display="flex"
                       alignItems="center"
