@@ -6,7 +6,9 @@ FiftyOne Zoo models provided by :mod:`torchvision:torchvision.models`.
 |
 """
 import inspect
+import logging
 from packaging import version
+import os
 
 import eta.core.utils as etau
 
@@ -20,6 +22,9 @@ import torch
 import torchvision
 
 
+logger = logging.getLogger(__name__)
+
+
 def load_hub_model(**kwargs):
     """Loads a model from `PyTorch Hub <https://pytorch.org/hub>`_.
 
@@ -30,6 +35,59 @@ def load_hub_model(**kwargs):
         a :class:`torch:torch.nn.Module`
     """
     return torch.hub.load(**kwargs)
+
+
+def find_hub_requirements(repo_or_dir, source="github"):
+    """Locates the ``requirements.txt`` file on disk associated with a
+    downloaded `PyTorch Hub <https://pytorch.org/hub>`_ model.
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+
+    Returns:
+        the path to the requirements file on disk
+    """
+    if source == "github":
+        model_dir = torch.hub._get_cache_or_reload(
+            repo_or_dir,
+            False,
+            True,
+            "",
+            verbose=False,
+            skip_validation=True,
+        )
+    else:
+        model_dir = repo_or_dir
+
+    return os.path.join(model_dir, "requirements.txt")
+
+
+def load_hub_requirements(repo_or_dir, source="github"):
+    """Loads the package requirements from the ``requirements.txt`` file on
+    disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
+    model.
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+
+    Returns:
+        a list of requirement strings
+    """
+    requirements_path = find_hub_requirements(repo_or_dir, source=source)
+    if not os.path.isfile(requirements_path):
+        logger.warning("No requirements.txt file found for '%s'", repo_or_dir)
+        return []
+
+    requirements = []
+    with open(requirements_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                requirements.append(line)
+
+    return requirements
 
 
 class TorchvisionImageModelConfig(
