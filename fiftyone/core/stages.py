@@ -30,6 +30,7 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
+from fiftyone.core.fields import EmbeddedDocumentField
 
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
@@ -713,9 +714,14 @@ class ExcludeFields(ViewStage):
             excluded_paths.update(paths)
 
         if self._meta_filter is not None:
-            schema = sample_collection.get_field_schema()
+            flat = False
+            if (
+                isinstance(self._meta_filter, dict)
+                and "include_nested_fields" in self._meta_filter
+            ):
+                flat = self._meta_filter["include_nested_fields"]
+            schema = sample_collection.get_field_schema(flat=flat)
             paths = _get_meta_filtered_fields(schema, self._meta_filter)
-
             # Cannnot exclude default fields
             default_paths = sample_collection._get_default_sample_fields(
                 include_private=True
@@ -876,9 +882,12 @@ def _get_meta_filtered_fields(schema, meta_filter):
 
     _mf = meta_filter.copy()
 
+    if not str_filter and isinstance(_mf, dict):
+        str_filter = _mf.pop("any", None)
     description_filter = _mf.pop("description", None)
     name_filter = _mf.pop("name", None)
     info_filter = _mf.pop("info", None)
+    type_filter = _mf.pop("type", None)
 
     for key, val in meta_filter.items():
         if "." in key:
@@ -894,6 +903,22 @@ def _get_meta_filtered_fields(schema, meta_filter):
             q.lower() in str(v).lower()
             if isinstance(q, str) and isinstance(v, dict)
             else q == v
+        )
+    )
+
+    type_matcher = (
+        lambda query, field: (
+            type(field.document_type).__name__ == query
+            or field.document_type.__name__ == query
+            if isinstance(field, EmbeddedDocumentField)
+            else type(field).__name__ == query
+        )
+        if isinstance(query, str)
+        else (
+            isinstance(field.document_type, query)
+            or field.document_type == query
+            if isinstance(field, EmbeddedDocumentField)
+            else isinstance(field, query)
         )
     )
 
@@ -924,6 +949,12 @@ def _get_meta_filtered_fields(schema, meta_filter):
         ):
             paths.append(path)
 
+        # match type only
+        if type_filter is not None and _matches_field_meta(
+            field, type_matcher, type_filter, "type"
+        ):
+            paths.append(path)
+
         for key, val in meta_filter.items():
             if _matches_field_meta(field, matcher, val, key):
                 paths.append(path)
@@ -945,6 +976,9 @@ def _matches_field_meta(field, matcher, query, key=None):
 
     if key == "name":
         return matcher(query, field.name)
+
+    if key == "type":
+        return matcher(query, field)
 
     if key == "info" and field.info is not None:
         matches = matcher(query, field.info)
@@ -5460,7 +5494,13 @@ class SelectFields(ViewStage):
             selected_paths.update(paths)
 
         if self._meta_filter is not None:
-            schema = sample_collection.get_field_schema()
+            flat = False
+            if (
+                isinstance(self._meta_filter, dict)
+                and "include_nested_fields" in self._meta_filter
+            ):
+                flat = self._meta_filter["include_nested_fields"]
+            schema = sample_collection.get_field_schema(flat=flat)
             paths = _get_meta_filtered_fields(schema, self._meta_filter)
             selected_paths.update(paths)
 

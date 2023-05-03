@@ -20,6 +20,8 @@ import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
 
+from fiftyone.core.labels import Classification, Classifications
+
 from decorators import drop_datasets, skip_windows
 
 
@@ -3380,11 +3382,40 @@ class ViewStageTests(unittest.TestCase):
                 ),
             ]
         )
+
+        sample4 = fo.Sample(
+            filepath="image5.jpg",
+            field_parent=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="rabbit"),
+                    fo.Classification(label="squirrel", fluffy=True),
+                    fo.Classification(label="frog"),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample4)
+
         dataset.add_sample_field("field_3", ftype=fo.StringField)
+        dataset.add_sample_field("field_string", ftype=fo.StringField)
+        dataset.add_sample_field("field_array", ftype=fo.ArrayField)
+        dataset.add_sample_field("field_boolean", ftype=fo.BooleanField)
+        dataset.add_sample_field("field_classes", ftype=fo.ClassesField)
+        dataset.add_sample_field("field_date", ftype=fo.DateField)
+        dataset.add_sample_field("field_dict", ftype=fo.DictField)
 
         field_1 = dataset.get_field("field_1")
         field_2 = dataset.get_field("field_2")
         field_3 = dataset.get_field("field_3")
+
+        field_child = dataset.get_field("field_parent.classifications.label")
+        field_child.description = "this is a child field that should return when including nested fields"
+        field_child.info = {"isChild": True}
+        field_child.save()
+        # field_parent.add_field({"name": "field_child_1", "ftype": fo.IntField})
+        # field_parent.add_field({"name": "field_child_2", "ftype": fo.StringField})
+        # field_parent.add_field({"name": "field_child_3", "ftype": fo.BooleanField})
+        # field_parent.save()
 
         field_1.description = "this is a unique description by joe"
         field_2.description = "hello world test123"
@@ -3433,6 +3464,81 @@ class ViewStageTests(unittest.TestCase):
         fields = view.get_field_schema(flat=True)
         self.assertIn("field_1", fields)
         self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # basic string match anywhere
+        view = dataset.select_fields(meta_filter={"any": "unique"})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # search in nested fields
+        view = dataset.select_fields(
+            meta_filter={"info.isChild": True, "include_nested_fields": True}
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_parent.classifications.label", fields)
+        self.assertIn("field_parent.classifications", fields)
+        self.assertIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter={"info.isChild": True})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_parent.classifications.label", fields)
+        self.assertNotIn("field_parent.classifications", fields)
+        self.assertNotIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # finds fields based on type
+        view = dataset.select_fields(meta_filter={"type": fo.BooleanField})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_boolean", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # finds fields based on type as string
+        view = dataset.select_fields(meta_filter={"type": "BooleanField"})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_boolean", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # finds fields based on EmbeddedDocumentField.document-type
+        view = dataset.select_fields(meta_filter={"type": Classification})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # finds fields based on EmbeddedDocumentField.document-type as string
+        view = dataset.select_fields(meta_filter={"type": "Classification"})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter={"type": Classifications})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
         self.assertNotIn("field_3", fields)
         self.assertNotIn("ground_truth", fields)
 
