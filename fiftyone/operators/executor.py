@@ -95,6 +95,7 @@ def execute_operator(operator_name, request_params):
         raw_result = operator.execute(ctx)
     except Exception as e:
         return ExecutionResult(None, executor, str(e))
+
     return ExecutionResult(raw_result, executor, None)
 
 
