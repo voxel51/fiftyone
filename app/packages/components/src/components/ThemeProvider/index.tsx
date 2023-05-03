@@ -8,6 +8,7 @@ import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
 let theme = extendMuiTheme({
+  cssVarPrefix: "fo",
   typography: {
     fontFamily: "Palanquin, sans-serif",
   },
