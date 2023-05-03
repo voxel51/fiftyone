@@ -130,6 +130,7 @@ export class Operator {
   public definition: types.ObjectType;
   public unlisted: boolean;
   constructor(
+    public pluginName: string,
     public _builtIn: boolean = false,
     public _config: OperatorConfig = null
   ) {
@@ -138,7 +139,6 @@ export class Operator {
     this.definition.defineProperty("inputs", new types.ObjectType());
     this.definition.defineProperty("outputs", new types.ObjectType());
   }
-  public pluginName: any;
 
   get config(): OperatorConfig {
     return this._config;
@@ -206,8 +206,7 @@ export class Operator {
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
     const config = OperatorConfig.fromJSON(json.config);
-    const operator = new Operator(json.is_builtin, config);
-    operator.pluginName = json.plugin_name;
+    const operator = new Operator(json.plugin_name, json.is_builtin, config);
     if (inputs) {
       operator.definition.addProperty(
         "inputs",
@@ -241,15 +240,16 @@ const localRegistry = new OperatorRegistry();
 const remoteRegistry = new OperatorRegistry();
 export const initializationErrors = [];
 
-export function registerOperator(OperatorType: typeof Operator) {
-  const operator = new OperatorType();
-  if (!operator.pluginName) operator.pluginName = "@voxel51/operators";
+export function registerOperator(
+  OperatorType: typeof Operator,
+  pluginName: string
+) {
+  const operator = new OperatorType(pluginName);
   localRegistry.register(operator);
 }
 
 export function _registerBuiltInOperator(OperatorType: typeof Operator) {
-  const operator = new OperatorType(true);
-  operator.pluginName = "@voxel51/operators";
+  const operator = new OperatorType("@voxel51/operators", true);
   localRegistry.register(operator);
 }
 
