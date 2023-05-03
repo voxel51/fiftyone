@@ -98,26 +98,57 @@ export class OperatorResult {
   }
 }
 
+export type OperatorConfigOptions = {
+  name: string;
+  label?: string;
+  description?: string;
+  executeAsGenerator?: boolean;
+  dynamic?: boolean;
+  unlisted?: boolean;
+};
+export class OperatorConfig {
+  public name: string;
+  public label: string;
+  public description: string;
+  public executeAsGenerator: boolean;
+  public dynamic: boolean;
+  public unlisted: boolean;
+  constructor(options: OperatorConfigOptions) {
+    this.name = options.name;
+    this.label = options.label || options.name;
+    this.description = options.description;
+    this.executeAsGenerator = options.executeAsGenerator || false;
+    this.dynamic = options.dynamic || false;
+    this.unlisted = options.unlisted || false;
+  }
+  static fromJSON(json) {
+    return new OperatorConfig(json);
+  }
+}
+
 export class Operator {
   public definition: types.ObjectType;
   public unlisted: boolean;
   constructor(
-    public name: string,
-    public label?: string,
-    public description?: string,
-    options?: object
+    public _builtIn: boolean = false,
+    public _config: OperatorConfig = null
   ) {
+    this._config = _config;
     this.definition = new types.ObjectType();
     this.definition.defineProperty("inputs", new types.ObjectType());
     this.definition.defineProperty("outputs", new types.ObjectType());
-    this.label = label || name;
-    this.unlisted = options?.unlisted;
-    this._builtIn = options?._built_in;
   }
   public pluginName: any;
-  public executeAsGenerator: boolean = false;
-  public isDynamic: boolean = false;
-  public _builtIn: boolean = false;
+
+  get config(): OperatorConfig {
+    return this._config;
+  }
+  get name(): string {
+    return this.config.name;
+  }
+  get label(): string {
+    return this.config.label;
+  }
   get uri() {
     return `${this.pluginName || "@voxel51"}/${this.name}`;
   }
@@ -126,10 +157,10 @@ export class Operator {
     return inputs && inputs.type && inputs.type.properties.size > 0;
   }
   needsResolution() {
-    return this.isDynamic;
+    return this.config.dynamic;
   }
   needsOutputResolution() {
-    return this.isDynamic;
+    return this.config.dynamic;
   }
   async needsOutput(ctx: ExecutionContext, result: OperatorResult) {
     const outputs = await this.resolveOutput(ctx, result);
@@ -148,7 +179,7 @@ export class Operator {
     return {};
   }
   async resolveInput(ctx: ExecutionContext) {
-    if (this.isDynamic && this.isRemote) {
+    if (this.config.dynamic && this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "inputs");
     } else if (this.isRemote) {
       return this.definition.getProperty("inputs");
@@ -156,7 +187,7 @@ export class Operator {
     return null;
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
-    if (this.isDynamic && this.isRemote) {
+    if (this.config.dynamic && this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "outputs");
     } else if (this.isRemote) {
       return this.definition.getProperty("outputs");
@@ -174,14 +205,8 @@ export class Operator {
   }
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
-    const operator = new Operator(
-      json.name,
-      json.label,
-      json.description,
-      json
-    );
-    operator.isDynamic = json.is_dynamic;
-    operator.executeAsGenerator = json.execute_as_generator;
+    const config = OperatorConfig.fromJSON(json.config);
+    const operator = new Operator(json.is_builtin, config);
     operator.pluginName = json.plugin_name;
     if (inputs) {
       operator.definition.addProperty(
@@ -196,13 +221,6 @@ export class Operator {
       );
     }
     return operator;
-  }
-}
-
-export class DynamicOperator extends Operator {
-  constructor(public name: string, public description: string) {
-    super(name, description);
-    this.isDynamic = true;
   }
 }
 
@@ -223,7 +241,14 @@ const localRegistry = new OperatorRegistry();
 const remoteRegistry = new OperatorRegistry();
 export const initializationErrors = [];
 
-export function registerOperator(operator: Operator) {
+export function registerOperator(OperatorType: typeof Operator) {
+  const operator = new OperatorType();
+  if (!operator.pluginName) operator.pluginName = "@voxel51/operators";
+  localRegistry.register(operator);
+}
+
+export function _registerBuiltInOperator(OperatorType: typeof Operator) {
+  const operator = new OperatorType(true);
   operator.pluginName = "@voxel51/operators";
   localRegistry.register(operator);
 }
