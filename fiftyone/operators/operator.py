@@ -8,6 +8,45 @@ FiftyOne operators.
 from .types import Object, Form, Property
 
 
+class OperatorConfig:
+    """A configuration for an operator.
+
+    Args:
+        name: the name of the operator
+        label (name): a label for the operator
+        description (None): a description of the operator
+        execute_as_generator (False): whether the operator should be executed as a generator
+        unlisted (False): whether the operator should be listed in the Operator Browser
+        dynamic (False): whether the operator inputs and outputs should be resolved when the input/output changes
+    """
+
+    def __init__(
+        self,
+        name,
+        label=None,
+        description=None,
+        dynamic=False,
+        execute_as_generator=False,
+        unlisted=False,
+    ):
+        self.name = name
+        self.label = label or name
+        self.description = description
+        self.execute_as_generator = execute_as_generator
+        self.unlisted = unlisted
+        self.dynamic = dynamic
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "label": self.label,
+            "description": self.description,
+            "execute_as_generator": self.execute_as_generator,
+            "unlisted": self.unlisted,
+            "dynamic": self.dynamic,
+        }
+
+
 class Operator:
     """A FiftyOne operator.
 
@@ -17,45 +56,30 @@ class Operator:
     render a form or button allowing a user to execute the operation.
 
     Args:
-        name (None): the name of the operator.
-        label (None): a label for the operator.
-        description (None): a description of the operator.
-
-    Attributes:
-        name: the name of the operator
-        label: a label for the operator
-        description: a description of the operator
-        definition: a read-only Object representation of the default operator definition
-        plugin_name: the name of the plugin that registered the operator
-        execute_as_generator: whether the operator should be executed as a generator
-        unlisted: whether the operator should be listed in the Operator Browser
-        is_dynamic: whether the operator inputs and outputs should be resolved when the input/output changes
-        uri: The read-only globally unique identifier for the operator in the form ``plugin_name/operator_name``.
+        _built_in (False): for internal use only
     """
 
-    def __init__(self, name, label=None, description=None, **kwargs):
-        if name is None:
-            raise ValueError("Operator name cannot be None")
-        self.name = name
-        self.label = label or name
-        self.description = description
-        self.definition = Object()
+    def __init__(self, _built_in=False):
+        self._built_in = _built_in
         self.plugin_name = None
-        self.execute_as_generator = False
-        self.unlisted = kwargs.get("unlisted", False)
-        self.is_dynamic = False
-        self._built_in = False
+        self.definition = Object()
+        self.definition.define_property("inputs", Object())
+        self.definition.define_property("outputs", Object())
 
-    def dispose(self):
-        """Classes that inherit from Operator can override this method to
-        perform any cleanup when the operator is disposed.
-        """
-        pass
+    @property
+    def name(self):
+        return self.config.name
 
     @property
     def uri(self):
+        """The unique identifier of the operator. ``plugin_name/operator_name``."""
         plugin_name = self.plugin_name or "@voxel51"
         return "%s/%s" % (plugin_name, self.name)
+
+    @property
+    def config(self):
+        """The :class:`OperatorConfig` for the operator."""
+        raise NotImplementedError("subclass must implement config")
 
     def resolve_definition(self, resolve_dynamic, ctx):
         """Returns a resolved definition of the operator.
@@ -73,7 +97,7 @@ class Operator:
         """
 
         definition = self.definition.clone()
-        if self.is_dynamic and not resolve_dynamic:
+        if self.config.dynamic and not resolve_dynamic:
             return definition
         # pylint: disable=assignment-from-none
         input_property = self.resolve_input(ctx)
@@ -154,31 +178,10 @@ class Operator:
     def to_json(self, ctx, resolve_dynamic=False):
         """Returns a JSON representation of the operator."""
         return {
-            "name": self.name,
-            "label": self.label,
-            "description": self.description,
+            "config": self.config.to_json(),
             "definition": self.resolve_definition(
                 resolve_dynamic, ctx
             ).to_json(),
             "plugin_name": self.plugin_name,
-            "uri": self.uri,
-            "execute_as_generator": self.execute_as_generator,
-            "unlisted": self.unlisted,
-            "is_dynamic": self.is_dynamic,
             "_built_in": self._built_in,
         }
-
-
-class DynamicOperator(Operator):
-    """A dynamic FiftyOne operator.
-
-    NOTE: this class will be removed.
-    """
-
-    def __init__(
-        self,
-        name=None,
-        description=None,
-    ):
-        super().__init__(name, description)
-        self.is_dynamic = True

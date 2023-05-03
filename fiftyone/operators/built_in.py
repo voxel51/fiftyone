@@ -4,12 +4,12 @@ import fiftyone as fo
 
 
 class CloneSelectedSamples(foo.Operator):
-    def __init__(self):
-        super().__init__(
-            "clone_selected_samples",
-            "Clone Selected Samples",
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="clone_selected_samples",
+            label="Clone Selected Samples",
         )
-        self._built_in = True
 
     def resolve_input(self, ctx):
         inputs = types.Object()
@@ -56,13 +56,13 @@ class CloneSelectedSamples(foo.Operator):
 
 
 class CloneSampleField(foo.Operator):
-    def __init__(self):
-        super().__init__(
-            "clone_sample_field",
-            "Clone a Sample Field",
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="clone_sample_field",
+            label="Clone a Sample Field",
+            dynamic=True,
         )
-        self.is_dynamic = True
-        self._built_in = True
 
     def resolve_input(self, ctx):
         field_name = ctx.params.get("field_name", None)
@@ -118,13 +118,13 @@ class CloneSampleField(foo.Operator):
 
 
 class RenameSampleField(foo.Operator):
-    def __init__(self):
-        super().__init__(
-            "rename_sample_field",
-            "Rename a Sample Field",
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="rename_sample_field",
+            label="Rename a Sample Field",
+            dynamic=True,
         )
-        self.is_dynamic = True
-        self._built_in = True
 
     def resolve_input(self, ctx):
         inputs = types.Object()
@@ -177,13 +177,13 @@ class RenameSampleField(foo.Operator):
 
 
 class DeleteSelectedSamples(foo.Operator):
-    def __init__(self):
-        super().__init__(
-            "delete_selected_samples",
-            "Delete Selected Samples",
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="delete_selected_samples",
+            label="Delete Selected Samples",
+            dynamic=True,
         )
-        self.is_dynamic = True
-        self._built_in = True
 
     def resolve_input(self, ctx):
         inputs = types.Object()
@@ -231,10 +231,11 @@ class DeleteSelectedSamples(foo.Operator):
 
 
 class PrintStdout(foo.Operator):
-    def __init__(self):
-        super().__init__(
-            "print_stdout",
-            "Print to Stdout",
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="print_stdout",
+            label="Print to Stdout",
         )
 
     def resolve_input(self, ctx):
@@ -248,9 +249,9 @@ class PrintStdout(foo.Operator):
 
 
 BUILTIN_OPERATORS = [
-    CloneSelectedSamples(),
-    CloneSampleField(),
-    RenameSampleField(),
-    DeleteSelectedSamples(),
-    PrintStdout(),
+    CloneSelectedSamples(_built_in=True),
+    CloneSampleField(_built_in=True),
+    RenameSampleField(_built_in=True),
+    DeleteSelectedSamples(_built_in=True),
+    PrintStdout(_built_in=True),
 ]
