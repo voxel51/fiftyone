@@ -6,6 +6,7 @@ FiftyOne operator permissions.
 |
 """
 from enum import Enum
+import os
 import requests
 
 
@@ -162,10 +163,12 @@ query ListAvailablePlugins {
 }
 """
 
+_API_URL = os.environ.get("API_URL", "http://localhost:8000")
+
 
 def get_available_operators(token, dataset_ids=None, only_enabled=True):
     result = make_request(
-        "http://localhost:8000/graphql/v1",
+        f"{_API_URL}/graphql/v1",
         token,
         _AVAIL_OPERATORS_QUERY,
         variables={"datasetIds": dataset_ids, "onlyEnabled": only_enabled},
@@ -175,6 +178,6 @@ def get_available_operators(token, dataset_ids=None, only_enabled=True):
 
 def get_available_plugins(token):
     result = make_request(
-        "http://localhost:8000/graphql/v1", token, _AVAIL_PLUGINS_QUERY
+        f"{_API_URL}/graphql/v1", token, _AVAIL_PLUGINS_QUERY
     )
     return result.get("data", {}).get("plugins", [])
