@@ -118,7 +118,7 @@ export abstract class CoordinateOverlay<
           (s) => s.field === this.field
         );
         if (setting) {
-          key = setting.attributeForColor?.split(".").slice(-1)[0] ?? "label";
+          key = setting.attributeForColor ?? "label";
           pool = setting.colors?.every((c) => isValidColor(c))
             ? setting.colors
             : coloring.pool;

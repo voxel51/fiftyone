@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import Editor from "@monaco-editor/react";
 import * as fos from "@fiftyone/state";
 
@@ -8,7 +8,6 @@ import { useTheme } from "@fiftyone/components";
 import { COLOR_SCHEME } from "../../utils/links";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { Button } from "../utils";
-import { setColorScheme } from "@fiftyone/relay";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { validateJSONSetting } from "./utils";
 

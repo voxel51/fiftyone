@@ -7,11 +7,7 @@ import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDown
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 
 import * as fos from "@fiftyone/state";
-import {
-  EMBEDDED_DOCUMENT_FIELD,
-  Field,
-  VALID_LABEL_TYPES,
-} from "@fiftyone/utilities";
+import { Field } from "@fiftyone/utilities";
 import { Popout, Tooltip } from "@fiftyone/components";
 import Item from "../Filters/categoricalFilter/filterOption/FilterItem";
 import GlobalSetting from "./GlobalSetting";
@@ -132,7 +128,10 @@ const ColorModal = () => {
             <Container height={height} width={width} minWidth={minWidth}>
               <DraggableModalTitle className="draggable-colorModal-handle">
                 <ColorModalTitle />
-                <CloseIcon onClick={() => setActiveColorModalField(null)} />
+                <CloseIcon
+                  onClick={() => setActiveColorModalField(null)}
+                  style={{ margin: "4px" }}
+                />
               </DraggableModalTitle>
               <DraggableContent
                 height={height}
@@ -145,7 +144,7 @@ const ColorModal = () => {
                   <FieldSetting field={activeColorModalField as Field} />
                 )}
               </DraggableContent>
-              <ColorFooter eligibleFields={customizeColorFields} />
+              <ColorFooter />
             </Container>
           </Draggable>
         </ModalWrapper>

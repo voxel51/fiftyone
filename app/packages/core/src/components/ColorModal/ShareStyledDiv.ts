@@ -95,20 +95,21 @@ export const ModalActionButtonContainer = styled.div`
   flex-direction: row;
   justify-content: flex-end;
   padding: 0.5rem;
+  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
 `;
 
 export const BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.5rem 1rem",
+  margin: "4px",
   height: "2rem",
   flex: 1,
   textAlign: "center",
 };
 
 export const LONG_BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.5rem 1rem",
+  margin: "4px",
   height: "2rem",
-  flex: 2,
   textAlign: "center",
+  flex: 1,
 };
 
 export const FieldTextField = styled.div`

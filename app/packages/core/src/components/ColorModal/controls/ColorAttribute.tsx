@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import useMeasure from "react-use-measure";
 import styled from "styled-components";
 import { cloneDeep } from "lodash";
@@ -52,12 +52,12 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
     (s) => s.field == activeField.path
   );
   const options = fields.map((field) => ({
-    value: field.path!,
+    value: field.path?.slice(-1),
     onClick: (e) => {
       e.preventDefault();
       const copy = cloneDeep(customizedColorSettings);
       if (index > -1) {
-        copy[index].attributeForColor = field.path!;
+        copy[index].attributeForColor = field.path?.slice(-1);
         setColorScheme(colorPool, copy, false);
         setOpen(false);
       }

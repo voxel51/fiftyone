@@ -119,10 +119,7 @@ export const getColorFromOptions = ({
     default:
       const setting = customizeColorSetting.find((s) => s.field === path);
       if (setting) {
-        key =
-          setting.attributeForColor?.split(".").slice(-1)[0] ?? labelDefault
-            ? "label"
-            : "value";
+        key = setting.attributeForColor ?? labelDefault ? "label" : "value";
         // check if this label has a assigned color, use it if it is a valid color
         const labelColor = setting.labelColors?.find(
           (l) => l.name == param[key]?.toString()

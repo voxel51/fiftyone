@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import styled from "styled-components";
+import { useRecoilValue } from "recoil";
 import { TwitterPicker } from "react-color";
 import { cloneDeep } from "lodash";
 import * as fos from "@fiftyone/state";
@@ -15,15 +14,15 @@ import {
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
 import Checkbox from "../Common/Checkbox";
-import OpacityAttribute from "./controls/OpacityAttribute";
+
 import ColorAttribute from "./controls/ColorAttribute";
+import ShuffleColor from "./controls/RefreshColor";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
   FieldTextField,
   PickerWrapper,
   SectionWrapper,
-  Text,
 } from "./ShareStyledDiv";
 
 type Prop = {
@@ -56,12 +55,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     })
   ).filter((field) => field.dbField !== "tags");
 
-  const opacityFields = useRecoilValue(
-    fos.fields({
-      path: expandedPath,
-      ftype: FLOAT_FIELD,
-    })
-  );
   const onChangeFieldColor = (color) => {
     const newSetting = cloneDeep(customizedColorSettings ?? []);
     const index = newSetting.findIndex((x) => x.field == path!);
@@ -95,10 +88,11 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         field: path!,
         useFieldColor: false,
         fieldColor: color,
-        attributeForColor:
-          colorFields.find(
-            (f) => f.path?.includes("label") || f.name == "label"
-          )?.path ?? undefined,
+        attributeForColor: colorFields.some(
+          (f) => f.path?.includes("label") || f.name == "label"
+        )
+          ? "label"
+          : undefined,
         labelColors: [{ name: "", color: defaultColor }],
       } as fos.CustomizeColor;
       const newSetting = [...copy, defaultSetting];
@@ -111,6 +105,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       {coloring.by == "field" && (
         <div>
           <FieldTextField>Settings for color by field</FieldTextField>
+          <ShuffleColor />
           <Checkbox
             name={`Use specific color for ${field.name} field`}
             value={Boolean(setting?.useFieldColor)}

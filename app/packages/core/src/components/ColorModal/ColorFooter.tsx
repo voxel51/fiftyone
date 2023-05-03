@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
@@ -11,11 +11,7 @@ import {
   ButtonGroup,
 } from "./ShareStyledDiv";
 
-type Prop = {
-  eligibleFields: Field[];
-};
-
-const ColorFooter: React.FC<Prop> = ({ eligibleFields }) => {
+const ColorFooter: React.FC = () => {
   const setting = useRecoilValue(fos.sessionColorScheme);
   const canEdit = useRecoilValue(fos.canEditCustomColors);
   const { setColorScheme } = fos.useSessionColorScheme();
