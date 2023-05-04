@@ -392,12 +392,12 @@ export const GridActionsRow = () => {
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
-      <Options modal={false} />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <Options modal={false} />
     </ActionsRowDiv>
   );
 };
@@ -423,9 +423,9 @@ export const ModalActionsRow = ({
       <Selected modal={true} lookerRef={lookerRef} />
       {!isVideo && <Similarity modal={true} />}
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
-      <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
       <ToggleSidebar modal={true} />
+      <Options modal={true} />
     </ActionsRowDiv>
   );
 };

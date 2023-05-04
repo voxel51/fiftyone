@@ -51,7 +51,7 @@ interface Props {}
 const SchemaSettings = () => {
   const theme = useTheme();
 
-  const schemaModalRef = useRef<HTMLDivElement>(null);
+  const schemaModalWrapperRef = useRef<HTMLDivElement>(null);
 
   const {
     settingModal,
@@ -73,11 +73,28 @@ const SchemaSettings = () => {
     return null;
   }
 
+  const closeModal = (params: { resetStage: boolean }) => {
+    const { resetStage } = params;
+    setSettingsModal({ ...settingModal, open: false });
+    setSearchTerm("");
+    setSelectedPaths(originalSelectedPaths);
+    if (resetStage) {
+      setSelectedFieldsStage(null);
+    }
+  };
+
   return (
     <Fragment>
       <ModalWrapper
-        ref={schemaModalRef}
-        onClick={(event) => event.target === schemaModalRef.current}
+        ref={schemaModalWrapperRef}
+        onClick={(event) => {
+          const clickedOutsideModal =
+            event.target === schemaModalWrapperRef.current;
+          if (clickedOutsideModal) {
+            closeModal({ resetStage: false });
+          }
+          return clickedOutsideModal;
+        }}
       >
         <Container
           style={{
@@ -109,11 +126,7 @@ const SchemaSettings = () => {
                 color: theme.text.primary,
                 cursor: "pointer",
               }}
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedPaths(originalSelectedPaths);
-                setSettingsModal({ ...settingModal, open: false });
-              }}
+              onClick={() => closeModal({ resetStage: false })}
             />
           </Box>
           <Box
@@ -198,12 +211,7 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
-              onClick={() => {
-                setSettingsModal({ open: false });
-                setSearchTerm("");
-                setSelectedPaths(originalSelectedPaths);
-                setSelectedFieldsStage(null);
-              }}
+              onClick={() => closeModal({ resetStage: true })}
             >
               Reset
             </Button>
