@@ -52,7 +52,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
 
 const Loading = () => {
   const theme = useTheme();
-  return <LoadingDots text="" color={theme.text.primary} />;
+  return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
 
 export const ActionDiv = styled.div`

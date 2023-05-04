@@ -16,7 +16,7 @@ import { useGroupContext } from "../../GroupContextProvider";
 import { GroupSuspense } from "../../GroupSuspense";
 import style from "./GroupElementsLinkBar.module.css";
 
-const BarContainer = styled.div`
+const RootContainer = styled.div`
   margin: 0.5em;
   display: flex;
   align-items: center;
@@ -25,6 +25,11 @@ const BarContainer = styled.div`
   & input::before {
     content: none;
   }
+`;
+
+const BarContainer = styled.div`
+  display: flex;
+  width: 100%;
 `;
 
 export const GroupElementsLinkBar = () => {
@@ -69,7 +74,6 @@ export const GroupElementsLinkBar = () => {
     );
   }
 
-  // return suspense
   return null;
 };
 
@@ -202,8 +206,8 @@ const GroupElementsLinkBarImpl: React.FC<{
   );
 
   return (
-    <BarContainer>
-      <div style={{ display: "flex", width: "100%" }}>
+    <RootContainer>
+      <BarContainer>
         <Pagination
           count={elementsCount}
           siblingCount={2}
@@ -225,12 +229,10 @@ const GroupElementsLinkBarImpl: React.FC<{
             disabled={isProcessingPageChange}
           />
         )}
-      </div>
+      </BarContainer>
       {isProcessingPageChange && (
-        <div style={{ flexShrink: 3 }}>
-          <LoadingDots text="" />
-        </div>
+        <LoadingDots text="" style={{ flexShrink: 3 }} />
       )}
-    </BarContainer>
+    </RootContainer>
   );
 });

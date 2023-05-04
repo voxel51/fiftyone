@@ -126,7 +126,7 @@ const Section = ({
   };
 
   if (!items) {
-    return <LoadingDots text="" color={theme.text.secondary} />;
+    return <LoadingDots text="" style={{ color: theme.text.secondary }} />;
   }
 
   const hasChanges = Object.keys(changes).length > 0;
@@ -138,7 +138,7 @@ const Section = ({
     <>
       <TaggingContainerInput>
         {isLoading ? (
-          <LoadingDots text="" color={theme.text.secondary} />
+          <LoadingDots text="" style={{ color: theme.text.secondary }} />
         ) : (
           <TaggingInput
             placeholder={
@@ -447,7 +447,7 @@ const SuspenseLoading = () => {
   const theme = useTheme();
   return (
     <TaggingContainerInput>
-      <LoadingDots text="Loading" color={theme.text.secondary} />
+      <LoadingDots text="Loading" style={{ color: theme.text.secondary }} />
     </TaggingContainerInput>
   );
 };
