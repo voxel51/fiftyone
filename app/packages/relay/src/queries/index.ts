@@ -6,9 +6,7 @@ export * from "./__generated__/mainSampleQuery.graphql";
 export * from "./__generated__/paginateGroup_query.graphql";
 export * from "./__generated__/paginateGroupPageQuery.graphql";
 export * from "./__generated__/paginateGroupQuery.graphql";
-export * from "./__generated__/paginateDynamicGroupSampleIdsQuery.graphql";
-export * from "./__generated__/paginateDynamicGroupSampleIds_query.graphql";
-export * from "./__generated__/paginateDynamicGroupSampleIdsPageQuery.graphql";
+export * from "./__generated__/paginateDynamicGroupSamplesQuery.graphql";
 export * from "./__generated__/pcdSampleQuery.graphql";
 
 export { default as aggregation } from "./aggregations";
@@ -20,8 +18,5 @@ export {
   default as paginateGroup,
   paginateGroupPaginationFragment,
 } from "./paginateGroup";
-export {
-  default as paginateDynamicGroupSampleIds,
-  paginateDynamicGroupSampleIdsFragment,
-} from "./paginateDynamicGroupSampleIds";
+export { default as paginateDynamicGroupSamples } from "./paginateDynamicGroupSamples";
 export { default as pcdSample } from "./pcdSample";

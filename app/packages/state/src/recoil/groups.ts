@@ -2,9 +2,6 @@ import {
   mainSample,
   mainSampleQuery$data,
   mainSampleQuery as mainSampleQueryGraphQL,
-  paginateDynamicGroupSampleIds,
-  paginateDynamicGroupSampleIdsPageQuery,
-  paginateDynamicGroupSampleIdsQuery,
   paginateGroup,
   paginateGroupQuery,
   paginateGroup_query$key,
@@ -250,7 +247,7 @@ export const dynamicGroupCandidateFields = selector<string[]>({
   },
 });
 
-export const dynamicGroupQuery = graphQLSelectorFamily<
+export const dynamicGroupPaginationQuery = graphQLSelectorFamily<
   VariablesOf<paginateGroupQuery>,
   string,
   ResponseFrom<paginateGroupQuery>
@@ -259,26 +256,6 @@ export const dynamicGroupQuery = graphQLSelectorFamily<
   environment: RelayEnvironmentKey,
   mapResponse: (response) => response,
   query: paginateGroup,
-  variables:
-    (fieldOrExpression) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        filter: {},
-        view: get(dynamicGroupViewQuery(fieldOrExpression)),
-      };
-    },
-});
-
-export const dynamicGroupIdsQuery = graphQLSelectorFamily<
-  VariablesOf<paginateDynamicGroupSampleIdsPageQuery>,
-  string,
-  ResponseFrom<paginateDynamicGroupSampleIdsQuery>
->({
-  key: "dynamicGroupIdsQuery",
-  environment: RelayEnvironmentKey,
-  mapResponse: (response) => response,
-  query: paginateDynamicGroupSampleIds,
   variables:
     (fieldOrExpression) =>
     ({ get }) => {
@@ -351,16 +328,13 @@ export const dynamicGroupSamplesStoreMap = atomFamily<
 
 export const dynamicGroupPaginationFragment = selectorFamily<
   paginateGroup_query$key,
-  { fieldOrExpression: string; fetchIdsOnly?: boolean }
+  { fieldOrExpression: string }
 >({
   key: "dynamicGroupPaginationFragment",
   get:
-    ({ fieldOrExpression, fetchIdsOnly = false }) =>
+    ({ fieldOrExpression }) =>
     ({ get }) => {
-      if (fetchIdsOnly) {
-        return get(dynamicGroupIdsQuery(fieldOrExpression));
-      }
-      return get(dynamicGroupQuery(fieldOrExpression));
+      return get(dynamicGroupPaginationQuery(fieldOrExpression));
     },
   cachePolicy_UNSTABLE: {
     eviction: "lru",

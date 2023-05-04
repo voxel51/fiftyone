@@ -1,43 +1,58 @@
+import resolve from "@fiftyone/relay/src/resolve";
 import { graphql } from "react-relay";
 
-import r from "../resolve";
-
-export default r(graphql`
-  query paginateDynamicGroupSampleIdsQuery(
+export default resolve(graphql`
+  query paginateGroupQuery(
     $count: Int = 20
     $cursor: String = null
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!
   ) {
-    ...paginateDynamicGroupSampleIds_query
-  }
-`);
-
-export const paginateDynamicGroupSampleIdsFragment = r(graphql`
-  fragment paginateDynamicGroupSampleIds_query on Query
-  @refetchable(queryName: "paginateDynamicGroupSampleIdsPageQuery") {
     samples(
       dataset: $dataset
       view: $view
       first: $count
       after: $cursor
       filter: $filter
-    ) @connection(key: "PaginateDynamicGroupSampleIdsQuery_samples") {
+    ) {
       total
       edges {
         cursor
         node {
+          __typename
           ... on ImageSample {
             id
+            aspectRatio
+            sample
+            urls {
+              field
+              url
+            }
           }
           ... on PointCloudSample {
             id
+            sample
+            urls {
+              field
+              url
+            }
           }
           ... on VideoSample {
             id
+            aspectRatio
+            frameRate
+            sample
+            urls {
+              field
+              url
+            }
           }
         }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
       }
     }
   }
