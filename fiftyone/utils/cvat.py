@@ -4202,15 +4202,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         while not job_ids:
             url = self.jobs_url(task_id)
             if self._server_version >= version.Version("2.4"):
-                jobs = self._get_paginated_results(url)
-                job_ids = [j["id"] for j in jobs]
+                job_resp_json = self._get_paginated_results(url)
             else:
                 job_resp = self.get(url)
                 job_resp_json = job_resp.json()
                 if "results" in job_resp_json:
                     job_resp_json = job_resp_json["results"]
 
-                job_ids = [j["id"] for j in job_resp_json]
+            job_ids = [j["id"] for j in job_resp_json]
+
             time.sleep(1)
 
         if job_assignees is not None:
