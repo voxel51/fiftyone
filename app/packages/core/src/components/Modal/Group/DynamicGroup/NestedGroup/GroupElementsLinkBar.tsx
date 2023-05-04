@@ -1,6 +1,8 @@
-import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import React, {
   useCallback,
@@ -15,8 +17,10 @@ import styled from "styled-components";
 import { useGroupContext } from "../../GroupContextProvider";
 import { GroupSuspense } from "../../GroupSuspense";
 import style from "./GroupElementsLinkBar.module.css";
+import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
 
-const RootContainer = styled.div`
+const BarContainer = styled.div`
+  width: 100%;
   margin: 0.5em;
   display: flex;
   align-items: center;
@@ -25,11 +29,6 @@ const RootContainer = styled.div`
   & input::before {
     content: none;
   }
-`;
-
-const BarContainer = styled.div`
-  display: flex;
-  width: 100%;
 `;
 
 export const GroupElementsLinkBar = () => {
@@ -134,8 +133,6 @@ const GroupElementsLinkBarImpl: React.FC<{
       // load a couple of previous samples for extra padding so that previous is just as fast
       loadDynamicGroupSamples(deferredDynamicGroupCurrentElementIndex - 5);
     }
-
-    setIsProcessingPageChange(false);
   }, [
     dynamicGroupSamplesStoreMap,
     loadDynamicGroupSamples,
@@ -149,7 +146,6 @@ const GroupElementsLinkBarImpl: React.FC<{
 
   const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
   const textBoxRef = useRef<HTMLInputElement>(null);
-  const [isProcessingPageChange, setIsProcessingPageChange] = useState(false);
 
   const onPageChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>, newElementIndex: number) => {
@@ -157,7 +153,6 @@ const GroupElementsLinkBarImpl: React.FC<{
         return;
       }
 
-      setIsProcessingPageChange(true);
       setIsTextBoxEmpty(false);
 
       if (newElementIndex) {
@@ -167,7 +162,6 @@ const GroupElementsLinkBarImpl: React.FC<{
 
         if (newValue === "") {
           setIsTextBoxEmpty(true);
-          setIsProcessingPageChange(false);
           return;
         }
 
@@ -175,7 +169,6 @@ const GroupElementsLinkBarImpl: React.FC<{
 
         if (isNaN(newValueNum)) {
           setIsTextBoxEmpty(true);
-          setIsProcessingPageChange(false);
           return;
         }
 
@@ -189,7 +182,6 @@ const GroupElementsLinkBarImpl: React.FC<{
 
         if (newElementIndex === deferredDynamicGroupCurrentElementIndex) {
           setIsTextBoxEmpty(false);
-          setIsProcessingPageChange(false);
         }
         setDynamicGroupCurrentElementIndex(newElementIndex);
 
@@ -206,33 +198,41 @@ const GroupElementsLinkBarImpl: React.FC<{
   );
 
   return (
-    <RootContainer>
-      <BarContainer>
-        <Pagination
-          count={elementsCount}
-          siblingCount={2}
-          page={dynamicGroupCurrentElementIndex}
-          onChange={onPageChange as PaginationProps["onChange"]}
-          shape="rounded"
-          color="primary"
-          classes={{
-            root: style.noRipple,
-          }}
-        />
+    <BarContainer>
+      <Pagination
+        count={elementsCount}
+        siblingCount={1}
+        boundaryCount={2}
+        page={dynamicGroupCurrentElementIndex}
+        onChange={onPageChange as PaginationProps["onChange"]}
+        shape="rounded"
+        color="primary"
+        classes={{
+          root: style.noRipple,
+        }}
+        renderItem={(item) => {
+          return (
+            <PaginationItem
+              components={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+              component={PaginationComponentWithTooltip}
+              atomFamilyKey={atomFamilyKey}
+              // hack because page is not being forwarded as-is for some reason
+              currentPage={item.page}
+              isButton={item.type !== "page"}
+              {...item}
+            />
+          );
+        }}
+      />
 
-        {elementsCount >= 10 && (
-          <input
-            ref={textBoxRef}
-            className={style.currentPageInput}
-            value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
-            onChange={onPageChange}
-            disabled={isProcessingPageChange}
-          />
-        )}
-      </BarContainer>
-      {isProcessingPageChange && (
-        <LoadingDots text="" style={{ flexShrink: 3 }} />
+      {elementsCount >= 10 && (
+        <input
+          ref={textBoxRef}
+          className={style.currentPageInput}
+          value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
+          onChange={onPageChange}
+        />
       )}
-    </RootContainer>
+    </BarContainer>
   );
 });
