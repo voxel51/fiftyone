@@ -64,8 +64,11 @@ jobs:
       - name: Build app
         run: make app
 
-      - name: Build python
-        run: make python -o app
+      - name: Install fiftyone
+        run: pip install .
+
+      # - name: Build python
+      #   run: make python -o app
 
       - name: Configure
         id: test_config
