@@ -3720,7 +3720,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.post,
             self.login_url,
             print_error_info=False,
-            data={"username": username, "password": password},
+            json={"username": username, "password": password},
         )
 
         if "csrftoken" in response.cookies:
