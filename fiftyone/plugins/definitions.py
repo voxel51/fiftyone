@@ -46,7 +46,7 @@ def find_files(root_dir, filename, extensions, max_depth):
 MAX_PLUGIN_SEARCH_DEPTH = 3
 PLUGIN_METADATA_FILENAME = "fiftyone"
 PLUGIN_METADATA_EXTENSIONS = ["yml", "yaml"]
-REQUIRED_PLUGIN_METADATA_KEYS = ["name", "author"]
+REQUIRED_PLUGIN_METADATA_KEYS = ["name"]
 
 
 def find_plugin_metadata_files():
