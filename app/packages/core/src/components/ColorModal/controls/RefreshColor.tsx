@@ -11,7 +11,7 @@ const ShuffleColor: React.FC = () => {
       <Button
         text={
           <span style={{ display: "flex", justifyContent: "center" }}>
-            Refresh colors{" "}
+            Shuffle all field colors{" "}
             <Autorenew
               style={{
                 marginLeft: "0.25rem",
@@ -27,6 +27,8 @@ const ShuffleColor: React.FC = () => {
           height: "2rem",
           borderRadius: 0,
           textAlign: "center",
+          flex: 1,
+          width: "200px",
         }}
       ></Button>
     </>

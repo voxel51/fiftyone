@@ -80,15 +80,11 @@ export const pathColor = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
-      // if path exists in customizeColorFields, return the color
-      const customizeColor = get(
+      const setting = get(
         atoms.sessionColorScheme
       )?.customizedColorSettings?.find((x) => x.field === path);
-      if (
-        customizeColor?.useFieldColor &&
-        isValidColor(customizeColor?.fieldColor)
-      ) {
-        return customizeColor.fieldColor;
+      if (setting?.useFieldColor && isValidColor(setting?.fieldColor)) {
+        return setting.fieldColor;
       }
 
       const map = get(colorMap(modal));

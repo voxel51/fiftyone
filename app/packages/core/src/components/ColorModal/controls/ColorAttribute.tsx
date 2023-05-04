@@ -51,18 +51,20 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
   const index = customizedColorSettings.findIndex(
     (s) => s.field == activeField.path
   );
+
   const options = fields.map((field) => ({
-    value: field.path?.slice(-1),
+    value: field.path?.split(".").slice(-1),
     onClick: (e) => {
       e.preventDefault();
       const copy = cloneDeep(customizedColorSettings);
       if (index > -1) {
-        copy[index].attributeForColor = field.path?.slice(-1);
+        copy[index].attributeForColor = field.path?.split(".").slice(-1);
         setColorScheme(colorPool, copy, false);
         setOpen(false);
       }
     },
   }));
+
   const selected =
     customizedColorSettings[index]?.attributeForColor ??
     "Please select an attribute";
@@ -91,7 +93,10 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
           </SelectButton>
         </Tooltip>
         {open && (
-          <Popout style={{ padding: 0, position: "relative" }} bounds={bounds}>
+          <Popout
+            style={{ padding: 0, position: "relative", zIndex: 1000000001 }}
+            bounds={bounds}
+          >
             {options.map((option: Option) => (
               <Item key={option.value} {...option} />
             ))}

@@ -13,6 +13,7 @@ import {
   LabelTitle,
   SectionWrapper,
 } from "./ShareStyledDiv";
+import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting: React.FC = ({}) => {
   const { props } = fos.useSessionColorScheme();
@@ -32,6 +33,7 @@ const GlobalSetting: React.FC = ({}) => {
             setValue={(mode) => props.setColorBy(mode)}
           />
         </SectionWrapper>
+        {props.colorBy === "field" && <ShuffleColor />}
         <LabelTitle>Color Pool</LabelTitle>
         <SectionWrapper>
           <ColorPalette />

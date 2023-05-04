@@ -17,6 +17,7 @@ import Checkbox from "../Common/Checkbox";
 
 import ColorAttribute from "./controls/ColorAttribute";
 import ShuffleColor from "./controls/RefreshColor";
+import ModeControl from "./controls/ModeControl";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
@@ -102,9 +103,9 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
 
   return (
     <div style={{ margin: "1rem" }}>
+      <ModeControl />
       {coloring.by == "field" && (
         <div>
-          <FieldTextField>Settings for color by field</FieldTextField>
           <ShuffleColor />
           <Checkbox
             name={`Use specific color for ${field.name} field`}
@@ -165,7 +166,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       )}
       {coloring.by == "value" && (
         <div>
-          <FieldTextField>Settings for color by value</FieldTextField>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
           >

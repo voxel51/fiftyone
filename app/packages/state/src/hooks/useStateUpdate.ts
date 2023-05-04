@@ -114,8 +114,10 @@ const useStateUpdate = (ignoreSpaces = false) => {
             parsedSetting?.customizedColorSettings,
         } as ColorScheme;
         set(sessionColorScheme, colorSetting);
+        console.log("set IsUsingSessionColorScheme to true");
         set(isUsingSessionColorScheme, true);
       } else if (!ignoreSpaces) {
+        console.log("isIgnoreSpaces", ignoreSpaces);
         reset(activeColorField);
         reset(isUsingSessionColorScheme);
         set(sessionColorScheme, colorSetting);

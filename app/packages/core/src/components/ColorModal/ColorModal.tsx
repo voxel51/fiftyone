@@ -82,9 +82,9 @@ const ColorModal = () => {
     return activeColorModalField?.path ?? "";
   }, [activeColorModalField]);
 
-  const height = activeColorModalField == "json" ? "80vh" : "60vh";
-  const width = activeColorModalField == "json" ? "80vw" : "50vw";
-  const minWidth = activeColorModalField == "json" ? "600px" : "500px";
+  const height = "80vh";
+  const width = "80vw";
+  const minWidth = "600px";
 
   const ColorModalTitle = () => {
     return (
@@ -106,7 +106,7 @@ const ColorModal = () => {
           </Text>
         </Tooltip>
         {open && (
-          <Popout style={{ padding: 0, position: "relative" }} bounds={bounds}>
+          <Popout style={{ padding: 0, zIndex: 1000000001 }} bounds={bounds}>
             {options.map((option: Option) => (
               <Item key={option.value} {...option} />
             ))}

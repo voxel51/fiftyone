@@ -263,7 +263,7 @@ function FieldInfoExpanded({
   const [isCollapsed, setIsCollapsed] = useState(
     descTooLong || tooManyInfoKeys
   );
-  const canEdit = useRecoilValue(canEditCustomColors);
+
   const setIsCustomizingColor = useSetRecoilState(activeColorField);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
@@ -273,12 +273,14 @@ function FieldInfoExpanded({
     el.current.style.left = left + "px";
   };
   const colorSettings = useRecoilValue(coloring(false));
+
   const isModal = useRecoilValue(fos.modal);
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
     setIsCustomizingColor(field);
   };
+  console.info(field, field.path);
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);

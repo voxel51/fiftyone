@@ -19,7 +19,7 @@ const RowContainer = styled.div`
 const AddContainer = styled.div`
   display: flex;
   justify-content: start;
-  alight-items: center;
+  align-items: center;
   margin-bottom: 0.5rem;
 `;
 

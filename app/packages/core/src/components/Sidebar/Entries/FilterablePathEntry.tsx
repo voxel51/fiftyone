@@ -48,11 +48,11 @@ import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField, pathIsExpanded } from "./utils";
+import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,

@@ -1,5 +1,4 @@
 import React, { useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import DeleteIcon from "@material-ui/icons/Delete";
 import AddIcon from "@material-ui/icons/Add";
@@ -10,7 +9,6 @@ import {
   colorBlindFriendlyPalette,
   fiftyoneDefaultColorPalette,
   isSameArray,
-  tempGlobalSetting,
 } from "../utils";
 import Checkbox from "../../Common/Checkbox";
 

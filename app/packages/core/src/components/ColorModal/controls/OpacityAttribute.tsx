@@ -1,18 +1,17 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import useMeasure from "react-use-measure";
 import styled from "styled-components";
 import { cloneDeep } from "lodash";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 
+import * as fos from "@fiftyone/state";
 import { Tooltip, useTheme } from "@fiftyone/components/src/components";
 import { useOutsideClick } from "@fiftyone/state";
 import { Popout } from "@fiftyone/components/src/components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
-import { tempColorSetting } from "../utils";
 import { Field } from "@fiftyone/utilities";
-import { CHILD_STYLE } from "../FieldSetting";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -43,25 +42,22 @@ const OpacityAttribute: React.FC<Prop> = ({ fields }) => {
   const [open, setOpen] = React.useState(false);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-
-  const [tempSetting, setTempSetting] = useRecoilState(tempColorSetting);
+  const field = useRecoilValue(fos.activeColorField) as Field;
+  const setting = useRecoilValue(
+    fos.sessionColorScheme
+  )?.customizedColorSettings?.find((f) => f.field === field.path);
 
   const options = fields.map((field) => ({
     value: field.path!,
     onClick: () => {
-      setTempSetting((s) => ({
-        ...cloneDeep(s),
-        attributeForOpacity: field.path!,
-      }));
       setOpen(false);
     },
   }));
 
-  const selected =
-    tempSetting?.attributeForOpacity ?? "Please select an attribute";
+  const selected = setting?.attributeForOpacity ?? "Please select an attribute";
 
   return (
-    <div style={CHILD_STYLE}>
+    <div>
       <ActionDiv ref={ref}>
         <Tooltip
           text={"You can select an FloatField to use for opacity"}

@@ -125,7 +125,7 @@ export abstract class CoordinateOverlay<
           // check if this label has a assigned color, use it if it is a valid color
 
           const labelColor = setting.labelColors?.find(
-            (l) => l.name == this.label[key].toString()
+            (l) => l.name == this.label[key]?.toString()
           )?.color;
 
           if (isValidColor(labelColor)) {
