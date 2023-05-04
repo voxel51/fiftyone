@@ -73,22 +73,36 @@ def disable_plugin(plugin_name):
 
 
 def _update_app_config(plugin_name, **kwargs):
-    """Updates the app config settings for a plugin using using a dict."""
+    """Updates the app config settings for a plugin using a dict."""
     try:
-        with open(focc.locate_app_config(), "r") as f:
+        app_config_path = focc.locate_app_config()
+        with open(app_config_path, "a+") as f:
             app_config = json.load(f)
     except OSError as e:
-        logging.error(
-            "Could not locate app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to an existing json filepath."
-        )
-        return
+        # app config file doesn't exist at specified location so create an empty dict and continue
+        app_config = {}
     except json.decoder.JSONDecodeError as e:
-        logging.error(
-            "Could not parse app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to a valid json file."
-        )
-        return
-    except:
-        # fail silently
+        if (
+            os.path.exists(focc.locate_app_config())
+            and os.path.getsize(focc.locate_app_config()) > 0
+        ):
+            # app config file exists but is invalid json so fail silently
+            if "enabled" in kwargs and kwargs["enabled"] == True:
+                # if the user is trying to enable a plugin and the app config file is invalid
+                # then we can assume that the plugin is already enabled
+                return
+            # TODO: Just log for now, but figure out how to handle if the user is trying to disable a plugin and the app config file is invalid...
+            logging.debug(
+                "Could not parse app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to a valid json file and try again."
+            )
+            return
+        else:
+            # app config file doesn't exist or is empty so create an empty dict and continue
+            app_config = {}
+
+    except Exception as e:
+        # shouldn't get here, but log and fail silently
+        logging.debug(f"Uncaught error when loading app config file: {e}.")
         return
 
     if app_config.get("plugins") is None:
@@ -101,7 +115,7 @@ def _update_app_config(plugin_name, **kwargs):
     logging.debug(
         f"Updated app config settings for `{plugin_name}:\n{app_config['plugins'][plugin_name]}"
     )
-    with open(focc.locate_app_config(), "w") as f:
+    with open(focc.locate_app_config(), "w+") as f:
         json.dump(app_config, f, indent=4)
     return
 
@@ -112,12 +126,12 @@ def _list_disabled_plugins():
         with open(focc.locate_app_config(), "r") as f:
             app_config = json.load(f)
     except OSError as e:
-        logging.error(
+        logging.debug(
             "Could not locate app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to an existing json filepath."
         )
         return []
     except json.decoder.JSONDecodeError as e:
-        logging.error(
+        logging.debug(
             "Could not parse app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to a valid json file."
         )
         return []
@@ -153,7 +167,7 @@ def delete_plugin(plugin_name, dry_run=False, cleanup=True, limit=None):
                 )
                 return
             shutil.rmtree(plugin_dir)
-            logging.info(f"Deleted plugin at {plugin_dir}")
+            logging.debug(f"Deleted plugin at {plugin_dir}")
             if cleanup:
                 _cleanup_plugin_dir(plugin_dir)
         deleted.append(plugin_dir)
@@ -162,7 +176,7 @@ def delete_plugin(plugin_name, dry_run=False, cleanup=True, limit=None):
             f"Deleted {len(deleted)} plugins with name `{plugin_name}`:{deleted}"
         )
         return deleted
-    logging.warning(
+    logging.info(
         f"Nothing to delete. Plugin directory '{plugin_dir}' does not exist."
     )
 
@@ -174,7 +188,7 @@ def _cleanup_plugin_dir(plugin_dir: str, recursive: bool = True):
     if len(glob.glob(os.path.join(plugin_parent_dir, "*"))) == 0:
         if plugin_parent_dir != _PLUGIN_DIRS[0]:
             shutil.rmtree(plugin_parent_dir)
-        logging.info(f"Deleted empty directory {plugin_parent_dir}")
+        logging.debug(f"Deleted empty directory {plugin_parent_dir}")
     if recursive:
         return _cleanup_plugin_dir(plugin_parent_dir, recursive=recursive)
 
