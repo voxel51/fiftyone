@@ -3598,7 +3598,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def labels_url(self, task_id):
-        # server_version (2,4) only
+        # server_version >= 2,4 only
         return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
 
     def jobs_url(self, task_id):
