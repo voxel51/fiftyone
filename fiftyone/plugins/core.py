@@ -124,17 +124,8 @@ def _list_disabled_plugins():
     try:
         with open(focc.locate_app_config(), "r") as f:
             app_config = json.load(f)
-    except OSError as e:
-        logging.debug(
-            "Could not locate app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to an existing json filepath."
-        )
-        return []
-    except json.decoder.JSONDecodeError as e:
-        logging.debug(
-            "Could not parse app config file. Please ensure that the `FIFTYONE_APP_CONFIG_PATH` is pointing to a valid json file."
-        )
-        return []
-    except:  # fail silently for unknown errors
+    except:
+        # no plugins have been disabled if the app config file doesn't exist or is invalid
         return []
 
     if len(app_config.get("plugins", {})) > 0:
