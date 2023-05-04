@@ -6,15 +6,16 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import math
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import math
 import multiprocessing
 import multiprocessing.dummy
 import os
+import time
 import warnings
 import webbrowser
 
@@ -4188,6 +4189,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
+        except Exception as e:
+            raise e
         finally:
             for f in open_files:
                 f.close()
@@ -4208,6 +4211,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     job_resp_json = job_resp_json["results"]
 
                 job_ids = [j["id"] for j in job_resp_json]
+            time.sleep(1)
 
         if job_assignees is not None:
             num_assignees = len(job_assignees)
