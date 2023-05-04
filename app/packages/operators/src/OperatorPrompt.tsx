@@ -26,6 +26,7 @@ import { scrollbarStyles } from "@fiftyone/utilities";
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import { stringifyError } from "./utils";
+import BaseStylesProvider from "./BaseStylesProvider";
 
 const PromptContainer = styled.div`
   position: absolute;
@@ -62,7 +63,11 @@ const ButtonsContainer = styled.div`
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
   if (show) {
-    return <ActualOperatorPrompt />;
+    return (
+      <BaseStylesProvider>
+        <ActualOperatorPrompt />
+      </BaseStylesProvider>
+    );
   } else {
     return null;
   }
@@ -127,17 +132,18 @@ export function OperatorViewModal() {
   if (!io.visible) return null;
 
   return createPortal(
-    <PromptContainer>
-      <PromptModal>
-        <Box>
-          <Box sx={{ pb: 2 }}>
-            <OperatorIO
-              schema={io.schema}
-              data={io.data || {}}
-              type={io.type}
-            />
-          </Box>
-          {/* {io.showButtons && (
+    <BaseStylesProvider>
+      <PromptContainer>
+        <PromptModal>
+          <Box>
+            <Box sx={{ pb: 2 }}>
+              <OperatorIO
+                schema={io.schema}
+                data={io.data || {}}
+                type={io.type}
+              />
+            </Box>
+            {/* {io.showButtons && (
             <ButtonsContainer>
               <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
                 Cancel
@@ -145,9 +151,10 @@ export function OperatorViewModal() {
               <Button onClick={operatorPrompt.execute}>Execute</Button>
             </ButtonsContainer>
           )}  */}
-        </Box>
-      </PromptModal>
-    </PromptContainer>,
+          </Box>
+        </PromptModal>
+      </PromptContainer>
+    </BaseStylesProvider>,
     document.body
   );
 }
