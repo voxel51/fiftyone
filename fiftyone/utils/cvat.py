@@ -4197,9 +4197,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # repeat a few times before jobs show up
         job_ids = []
         while not job_ids:
-            print("testing upload")
             url = self.jobs_url(task_id)
-            if self._server_version >= version.Version("2.3"):
+            if self._server_version >= version.Version("2.4"):
                 jobs = self._get_paginated_results(url)
                 job_ids = [j["id"] for j in jobs]
             else:
