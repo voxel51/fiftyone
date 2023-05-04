@@ -161,7 +161,7 @@ class PluginDefinition:
         missing_metadata_keys = [
             k
             for k in REQUIRED_PLUGIN_METADATA_KEYS
-            if k not in self._metadata.keys()
+            if not self._metadata.get(k, None)
         ]
         if len(missing_metadata_keys) > 0:
             raise ValueError(
