@@ -76,15 +76,15 @@ def _update_app_config(plugin_name, **kwargs):
     """Updates the app config settings for a plugin using a dict."""
     try:
         app_config_path = focc.locate_app_config()
-        with open(app_config_path, "a+") as f:
+        with open(app_config_path, "r") as f:
             app_config = json.load(f)
     except OSError as e:
         # app config file doesn't exist at specified location so create an empty dict and continue
         app_config = {}
     except json.decoder.JSONDecodeError as e:
         if (
-            os.path.exists(focc.locate_app_config())
-            and os.path.getsize(focc.locate_app_config()) > 0
+            os.path.exists(app_config_path)
+            and os.path.getsize(app_config_path) > 0
         ):
             # app config file exists but is invalid json so fail silently
             if "enabled" in kwargs and kwargs["enabled"] == True:
@@ -99,7 +99,6 @@ def _update_app_config(plugin_name, **kwargs):
         else:
             # app config file doesn't exist or is empty so create an empty dict and continue
             app_config = {}
-
     except Exception as e:
         # shouldn't get here, but log and fail silently
         logging.debug(f"Uncaught error when loading app config file: {e}.")
@@ -115,7 +114,7 @@ def _update_app_config(plugin_name, **kwargs):
     logging.debug(
         f"Updated app config settings for `{plugin_name}:\n{app_config['plugins'][plugin_name]}"
     )
-    with open(focc.locate_app_config(), "w+") as f:
+    with open(app_config_path, "w+") as f:
         json.dump(app_config, f, indent=4)
     return
 
