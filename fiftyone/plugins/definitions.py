@@ -149,7 +149,7 @@ class PluginDefinition:
         py_entry = self._metadata.get("py_entry", None)
         path = self._get_fullpath(py_entry)
         if not path:
-            # check if __init__.py exists
+            # check for __init__.py if none specified
             py_entry = "__init__.py"
             path = self._get_fullpath(py_entry)
         if path:
