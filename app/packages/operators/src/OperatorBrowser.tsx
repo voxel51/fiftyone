@@ -9,6 +9,7 @@ import { initializationErrors } from "./operators";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
+import BaseStylesProvider from "./BaseStylesProvider";
 
 const BrowserContainer = styled.form`
   position: absolute;
@@ -31,7 +32,7 @@ const BrowserModal = styled.div`
 
 const ResultsContainer = styled.div`
   margin-top: 1rem;
-  max-height: calc(100% - 48px);
+  max-height: calc(100% - 64px);
   overflow: auto;
   ${scrollbarStyles}
 `;
@@ -125,53 +126,58 @@ export default function OperatorBrowser() {
     return null;
   }
   return createPortal(
-    <BrowserContainer onSubmit={browser.onSubmit} onKeyDown={browser.onKeyDown}>
-      <BrowserModal>
-        <TopBarDiv>
-          <QueryDiv>
-            <QueryInput
-              autoFocus
-              placeholder="Search operations by name..."
-              onChange={(e) => browser.onChangeQuery(e.target.value)}
-            />
-          </QueryDiv>
-          <IconsContainer>
-            {browser.hasQuery && (
-              <Close
-                onClick={() => browser.clear()}
-                style={{
-                  cursor: "pointer",
-                  color: theme.text.secondary,
-                }}
+    <BaseStylesProvider>
+      <BrowserContainer
+        onSubmit={browser.onSubmit}
+        onKeyDown={browser.onKeyDown}
+      >
+        <BrowserModal>
+          <TopBarDiv>
+            <QueryDiv>
+              <QueryInput
+                autoFocus
+                placeholder="Search operations by name..."
+                onChange={(e) => browser.onChangeQuery(e.target.value)}
               />
-            )}
-            <ErrorView
-              schema={{
-                view: { detailed: true, popout: true, left: true },
-              }}
-              data={initializationErrors}
-            />
-            <Link
-              href="https://docs.voxel51.com/user_guide/app.html#operations"
-              style={{ display: "flex" }}
-              target="_blank"
-            >
-              <Help style={{ color: theme.text.secondary }} />
-            </Link>
-          </IconsContainer>
-        </TopBarDiv>
-        <ResultsContainer>
-          {browser.choices.map((choice) => (
-            <Choice
-              onClick={() => browser.setSelectedAndSubmit(choice.value)}
-              key={choice.value}
-              choice={choice}
-              selected={choice.value === browser.selectedValue}
-            />
-          ))}
-        </ResultsContainer>
-      </BrowserModal>
-    </BrowserContainer>,
+            </QueryDiv>
+            <IconsContainer>
+              {browser.hasQuery && (
+                <Close
+                  onClick={() => browser.clear()}
+                  style={{
+                    cursor: "pointer",
+                    color: theme.text.secondary,
+                  }}
+                />
+              )}
+              <ErrorView
+                schema={{
+                  view: { detailed: true, popout: true, left: true },
+                }}
+                data={initializationErrors}
+              />
+              <Link
+                href="https://docs.voxel51.com/user_guide/app.html#operations"
+                style={{ display: "flex" }}
+                target="_blank"
+              >
+                <Help style={{ color: theme.text.secondary }} />
+              </Link>
+            </IconsContainer>
+          </TopBarDiv>
+          <ResultsContainer>
+            {browser.choices.map((choice) => (
+              <Choice
+                onClick={() => browser.setSelectedAndSubmit(choice.value)}
+                key={choice.value}
+                choice={choice}
+                selected={choice.value === browser.selectedValue}
+              />
+            ))}
+          </ResultsContainer>
+        </BrowserModal>
+      </BrowserContainer>
+    </BaseStylesProvider>,
     document.body
   );
 }
