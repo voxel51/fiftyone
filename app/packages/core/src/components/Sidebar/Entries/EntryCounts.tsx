@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { selectorFamily, useRecoilValueLoadable } from "recoil";
 
 import * as fos from "@fiftyone/state";
@@ -57,10 +57,12 @@ export const PathEntryCounts = ({
   return shown.state === "loading" ? (
     <LoadingDots text="" />
   ) : (
-    <SuspenseEntryCounts
-      countAtom={getAtom(false)}
-      subcountAtom={getAtom(true)}
-    />
+    typeof shown.contents === "number" && (
+      <SuspenseEntryCounts
+        countAtom={getAtom(false)}
+        subcountAtom={getAtom(true)}
+      />
+    )
   );
 };
 
