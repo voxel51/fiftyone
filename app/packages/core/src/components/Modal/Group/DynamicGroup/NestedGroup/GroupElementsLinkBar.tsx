@@ -1,7 +1,5 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import React, {
@@ -232,7 +230,6 @@ const GroupElementsLinkBarImpl: React.FC<{
         renderItem={(item) => {
           return (
             <PaginationItem
-              components={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
               component={PaginationComponentWithTooltip}
               atomFamilyKey={atomFamilyKey}
               // hack because page is not being forwarded as-is for some reason
