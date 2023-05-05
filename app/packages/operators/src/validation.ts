@@ -1,4 +1,4 @@
-import { Enum, List, ObjectType } from "./types";
+import { Enum, List, Object } from "./types";
 
 export class ValidationError {
   constructor(public reason, public property, public path) {}
@@ -50,7 +50,7 @@ export class ValidationContext {
     } else if (!isNullish) {
       if (type instanceof Enum) {
         this.validateEnum(path, property, value);
-      } else if (type instanceof ObjectType) {
+      } else if (type instanceof Object) {
         this.validateObject(path, property, value);
       } else if (type instanceof List) {
         this.validateList(path, property, value);
@@ -92,7 +92,7 @@ export class ValidationContext {
   }
 
   validatePrimitive(path, property, value) {
-    const propType = property.type.constructor.name.toLowerCase();
+    const propType = operatorTypeToNativeType[property.type.constructor.name];
     if (typeof value !== propType) {
       return this.addError(
         new ValidationError("Invalid value type", property, path)
@@ -104,3 +104,9 @@ export class ValidationContext {
 function getPath(prefix, path) {
   return prefix ? prefix + "." + path : path;
 }
+
+const operatorTypeToNativeType = {
+  OperatorString: "string",
+  OperatorBoolean: "boolean",
+  OperatorNumber: "number",
+};
