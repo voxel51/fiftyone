@@ -7,7 +7,7 @@ export class Void extends BaseType {
     return new Void();
   }
 }
-export class ObjectType extends BaseType {
+class OperatorObject extends BaseType {
   constructor(public properties: Map<string, Property> = new Map()) {
     super();
   }
@@ -36,7 +36,7 @@ export class ObjectType extends BaseType {
     return Array.from(this.properties.values());
   }
   obj(name, options: any = {}) {
-    return this.defineProperty(name, new ObjectType(), options);
+    return this.defineProperty(name, new OperatorObject(), options);
   }
   str(name, options: any = {}) {
     return this.defineProperty(name, new String(), options);
@@ -61,9 +61,10 @@ export class ObjectType extends BaseType {
       k,
       Property.fromJSON(v),
     ]);
-    return new ObjectType(new Map(entries));
+    return new OperatorObject(new Map(entries));
   }
 }
+export { OperatorObject as Object };
 export class Property {
   constructor(type: ANY_TYPE, options?) {
     this.type = type;
@@ -101,21 +102,23 @@ export class Property {
   }
 }
 
-export class String extends BaseType {
+class OperatorString extends BaseType {
   static fromJSON(json: any) {
     const Type = this;
     const type = new Type();
     return type;
   }
 }
-export class Boolean extends BaseType {
+export { OperatorString as String };
+class OperatorBoolean extends BaseType {
   static fromJSON(json: any) {
     const Type = this;
     const type = new Type();
     return type;
   }
 }
-export class Number extends BaseType {
+export { OperatorBoolean as Boolean };
+class OperatorNumber extends BaseType {
   constructor(
     options: { min?: number; max?: number; int?: boolean; float?: boolean } = {}
   ) {
@@ -130,9 +133,10 @@ export class Number extends BaseType {
   int: boolean;
   float: boolean;
   static fromJSON(json: any) {
-    return new Number(json);
+    return new OperatorNumber(json);
   }
 }
+export { OperatorNumber as Number };
 export class List extends BaseType {
   constructor(public elementType: ANY_TYPE) {
     super();
@@ -177,15 +181,16 @@ export class Tuple extends BaseType {
   }
 }
 
-export class MapType extends BaseType {
+class OperatorMap extends BaseType {
   constructor(public keyType: ANY_TYPE, public valueType: ANY_TYPE) {
     super();
   }
 
   static fromJSON({ key_type, value_type }) {
-    return new MapType(typeFromJSON(key_type), typeFromJSON(value_type));
+    return new OperatorMap(typeFromJSON(key_type), typeFromJSON(value_type));
   }
 }
+export { OperatorMap as Map };
 
 /**
  * Trigger
@@ -350,14 +355,16 @@ export class Warning extends View {
     return new Warning(json);
   }
 }
-export class Error extends View {
+class ErrorView extends View {
   constructor(options: ViewProps = {}) {
     super(options);
+    this.name = "Error";
   }
   static fromJSON(json) {
-    return new Error(json);
+    return new ErrorView(json);
   }
 }
+export { ErrorView as Error };
 export class Button extends View {
   operator: string;
   params: object;
@@ -577,22 +584,22 @@ export enum Places {
   DISPLAY_OPTIONS = "display-options",
 }
 
-// NOTE: this should always match fiftyone/operators/types.py
-export const TYPES = [
+// NOTE: keys should always match fiftyone/operators/types.py
+const TYPES = {
   Void,
-  ObjectType,
-  String,
-  Boolean,
-  Number,
+  Object: OperatorObject,
+  String: OperatorString,
+  Boolean: OperatorBoolean,
+  Number: OperatorNumber,
   List,
   Enum,
   OneOf,
   Tuple,
-  MapType,
-];
+  Map: OperatorMap,
+};
 
 // NOTE: this should always match fiftyone/operators/types.py
-const Views = {
+const VIEWS = {
   View,
   InferredView,
   Form,
@@ -604,7 +611,7 @@ const Views = {
   Notice,
   Header,
   Warning,
-  Error,
+  Error: ErrorView,
   Button,
   OneOfView,
   ListView,
@@ -626,29 +633,36 @@ const Views = {
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
-  if (name === "Object") {
-    return ObjectType.fromJSON(rest);
-  }
-  if (name === "Map") {
-    return MapType.fromJSON(rest);
-  }
-  for (const type of TYPES) {
-    if (type.name === name) {
-      return type.fromJSON(rest);
-    }
-  }
+  const TypeClass = TYPES[name];
+  if (TypeClass) return TypeClass.fromJSON(rest);
   throw new Error(`Unknown type ${name}`);
 }
 
 export function viewFromJSON(json) {
   const { name } = json;
-  const ViewClass = Views[name];
+  const ViewClass = VIEWS[name];
   if (!ViewClass) throw new Error(`Unknown view ${name}`);
   return ViewClass.fromJSON(json);
 }
 
-export type ANY_TYPE = Void | String | Boolean | Number | List | Enum;
-
+/**
+ * - `OperatorObject` is exported as `Object`
+ * - `OperatorString` is exported as `String`
+ * - `OperatorBoolean` is exported as `Boolean`
+ * - `OperatorNumber` is exported as `Number`
+ * - `OperatorMap` is exported as `Map`
+ */
+export type ANY_TYPE =
+  | Void
+  | OperatorObject
+  | OperatorString
+  | OperatorBoolean
+  | OperatorNumber
+  | List
+  | Enum
+  | OneOf
+  | Tuple
+  | OperatorMap;
 export type ViewOrientation = "horizontal" | "vertical";
 export type ViewPropertyTypes =
   | string
@@ -658,7 +672,6 @@ export type ViewPropertyTypes =
   | View
   | object
   | ViewOrientation;
-
 type ChoicesOptions = ViewProps & {
   choices: Choice[];
 };

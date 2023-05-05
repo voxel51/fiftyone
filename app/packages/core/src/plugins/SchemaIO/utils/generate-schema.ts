@@ -61,7 +61,7 @@ export function generateSchema(value, options?) {
 
 function getType(value) {
   if (value !== undefined || value !== null)
-    return value.constructor.name.toLowerCase();
+    return Array.isArray(value) ? "array" : typeof value;
 }
 
 function getDominantType(array) {
