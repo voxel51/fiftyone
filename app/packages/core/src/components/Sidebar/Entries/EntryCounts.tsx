@@ -53,7 +53,6 @@ export const PathEntryCounts = ({
   if (shown.state === "hasError") {
     throw shown.contents;
   }
-  modal && console.log(path, shown);
 
   return shown.state === "loading" ? (
     <LoadingDots text="" />
