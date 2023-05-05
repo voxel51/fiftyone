@@ -1,7 +1,7 @@
 import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 
 import {
@@ -20,7 +20,7 @@ interface GroupMediaVisibilityProps {
   modal: boolean;
 }
 
-const TITLE = "Toggle Media";
+const TITLE = "Toggle media";
 
 const Container = styled.div`
   position: relative;
