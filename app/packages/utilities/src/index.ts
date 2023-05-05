@@ -274,6 +274,7 @@ export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
+export const JUST_FIELD = "fiftyone.core.fields.Field";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 

@@ -1,7 +1,11 @@
 import * as fos from "@fiftyone/state";
 import { buildSchema, useSetView } from "@fiftyone/state";
 import { useCallback, useEffect, useMemo } from "react";
+import { useRefetchableFragment } from "react-relay";
 import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
+import * as foq from "@fiftyone/relay";
+import { DICT_FIELD, JUST_FIELD } from "@fiftyone/utilities";
+import { keyBy } from "lodash";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -29,6 +33,10 @@ export const originalSelectedPathsState = atom<Set<string>>({
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
   default: TAB_OPTIONS_MAP.FILTER_RULE,
+});
+export const schemaForViewStagesState = atom<string[]>({
+  key: "schemaForViewStages",
+  default: [],
 });
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
@@ -87,12 +95,15 @@ export default function useSchemaSettings() {
     selectedFieldsStageState
   );
 
+  const [schemaForViewStages, setSchemaForViewStages] = useRecoilState(
+    schemaForViewStagesState
+  );
+
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
   const dataset = useRecoilValue(fos.dataset);
   const schema = dataset ? buildSchema(dataset, true) : null;
-  console.log("schema", schema);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
@@ -101,6 +112,119 @@ export default function useSchemaSettings() {
   const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
 
   const allPaths = Object.keys(schema);
+  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
+    selectedPathsState({ allPaths })
+  );
+  const vStages = useRecoilValue(fos.view);
+  const [data, refetch] = useRefetchableFragment<
+    foq.viewSchemaFragmentQuery,
+    foq.viewSchemaFragmentQuery$data
+  >(foq.viewSchema, null);
+
+  useEffect(() => {
+    refetch(
+      { name: dataset?.name, viewStages: vStages || [] },
+      {
+        fetchPolicy: "network-only",
+        onComplete: (err) => {
+          if (err) {
+            console.log("failed to fetch view schema", err);
+          }
+        },
+      }
+    );
+  }, [refetch, vStages]);
+  const viewSchema = keyBy(data?.schemaForViewStages, "path");
+  const [selectedTab, setSelectedTab] = useRecoilState(
+    schemaSelectedSettingsTab
+  );
+
+  useEffect(() => {
+    if (selectedTab === TAB_OPTIONS_MAP.SELECTION) {
+      setSearchResults([]);
+    }
+  }, [selectedTab]);
+
+  const finalSchema = useMemo(
+    () =>
+      Object.keys(viewSchema)
+        ?.sort()
+        ?.filter((path) => {
+          if (selectedTab === TAB_OPTIONS_MAP.FILTER_RULE) {
+            return searchResults.includes(path);
+          }
+          return true;
+        })
+        ?.map((path: string) => {
+          const pathLabel = path.split(".");
+          const count = pathLabel?.length;
+          const pathLabelFinal = pathLabel[pathLabel.length - 1];
+          let isSelected = selectedPaths.has(path);
+
+          const skip =
+            viewSchema?.[path]?.ftype === DICT_FIELD ||
+            viewSchema?.[path]?.ftype === JUST_FIELD ||
+            path.includes(".logits") ||
+            path.endsWith(".index") ||
+            path.endsWith(".bounding_box");
+
+          let disabled =
+            path.endsWith(".id") ||
+            path === "id" ||
+            path === "tags" ||
+            path === "filepath" ||
+            path.startsWith("metadata");
+
+          if (selectedTab === "Search") {
+            disabled = true;
+            isSelected = true;
+          }
+
+          if (!schema?.[path]) {
+            return {
+              path,
+              count,
+              isSelected,
+              pathLabelFinal,
+              skip,
+              disabled,
+              info: viewSchema?.[path].info,
+              description: viewSchema?.[path].description,
+              name: viewSchema?.[path].name || pathLabelFinal,
+            };
+          }
+
+          return {
+            path,
+            count,
+            isSelected,
+            pathLabelFinal,
+            skip,
+            disabled,
+            info: schema[path].info,
+            description: schema[path].description,
+            name: schema[path].name,
+          };
+        }),
+    [
+      schema,
+      searchTerm,
+      selectedPaths,
+      fieldsOnly,
+      viewSchema,
+      selectedTab,
+      searchResults,
+    ]
+  );
+
+  const finalSchemaForView = useMemo(() => {
+    return finalSchema
+      ?.filter((val) => {
+        return fieldsOnly ? !val.path.includes(".") : true;
+      })
+      .sort((item) => (fieldsOnly ? (item.disabled ? 1 : -1) : 0));
+  }, [finalSchema]);
+  const finalSchemaDict = keyBy(finalSchema, "path");
 
   const getSelectedSubPaths = useCallback(
     (path: string) => {
@@ -115,10 +239,6 @@ export default function useSchemaSettings() {
     [allPaths]
   );
 
-  // TODO: should read from storage
-  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
-    selectedPathsState({ allPaths })
-  );
   const [originalSelectedPaths, setOriginalSelectedPaths] = useRecoilState(
     originalSelectedPathsState
   );
@@ -147,20 +267,15 @@ export default function useSchemaSettings() {
         }
         finalPaths.push(currPath, ...subPaths, ...parentPaths);
       }
-      // setSelectedPaths(new Set([...finalPaths]));
     }
-  }, [activeLabelPaths /* setSelectedPaths */]);
+  }, [activeLabelPaths]);
 
-  const viewStages = useRecoilValue(fos.view);
   const setView = useSetView();
-  const [selectedTab, setSelectedTab] = useRecoilState(
-    schemaSelectedSettingsTab
-  );
 
   const toggleSelection = useCallback(
     (path: string, checked: boolean) => {
       const subPaths = new Set<string>();
-      Object.keys(schema).map((currPath: string) => {
+      Object.keys(viewSchema).map((currPath: string) => {
         if (currPath.startsWith(path)) {
           subPaths.add(currPath);
         }
@@ -181,7 +296,15 @@ export default function useSchemaSettings() {
         }
         setSelectedPaths(diff);
       } else {
-        const union = new Set<string>([...selectedPaths, ...subPaths]);
+        const union = new Set<string>(
+          [...selectedPaths, ...subPaths].filter((ppath) => {
+            return (
+              !finalSchemaDict?.[ppath]?.disabled &&
+              !finalSchemaDict?.[ppath]?.skip
+            );
+          })
+        );
+
         let parentPaths = [];
         if (currPathSplit.length > 1) {
           parentPaths = [
@@ -193,30 +316,8 @@ export default function useSchemaSettings() {
       }
       setAllFieldsChecked(false);
     },
-    [schema, selectedPaths, setSelectedPaths]
+    [viewSchema, selectedPaths, setSelectedPaths, schema, finalSchemaDict]
   );
-
-  useEffect(() => {
-    if (viewStages?.length) {
-      const finalSelectedFields = new Set<string>();
-      for (let i = 0; i < viewStages?.length; i++) {
-        const view = viewStages[i];
-        if (view && view?.["_cls"] === "fiftyone.core.stages.SelectFields") {
-          const selectedFields = view?.["kwargs"]?.filter(
-            (item) => item[0] === "field_names"
-          )[0];
-          selectedFields[1]?.forEach((item) => finalSelectedFields.add(item));
-        }
-      }
-      if (finalSelectedFields.size) {
-        const ffff = new Set<string>();
-        finalSelectedFields.forEach((p: string) => {
-          const subPaths = getSelectedSubPaths(p);
-          subPaths?.forEach((item: string) => ffff.add(item));
-        });
-      }
-    }
-  }, [viewStages]);
 
   useEffect(() => {
     if (allPaths.length) {
@@ -224,75 +325,11 @@ export default function useSchemaSettings() {
     }
   }, [revertSelectedPathsState]);
 
-  const finalSchema = useMemo(
-    () =>
-      Object.keys(schema)
-        .sort()
-        .filter((path) => {
-          // TODO: && searchResults.length
-          if (selectedTab === TAB_OPTIONS_MAP.FILTER_RULE) {
-            return searchResults.includes(path);
-          }
-          if (fieldsOnly) {
-            return (
-              !path?.includes(".") &&
-              schema[path]?.searchField?.includes(searchTerm)
-            );
-          }
-          if (!searchTerm) {
-            return true;
-          } else if (
-            searchTerm &&
-            schema[path]?.searchField?.includes(searchTerm)
-          ) {
-            return true;
-          }
-          return false;
-        })
-        .map((path: string) => {
-          const count = path.split(".")?.length;
-          let isSelected = selectedPaths.has(path);
-          const pathLabel = path.split(".");
-          const pathLabelFinal = pathLabel[pathLabel.length - 1];
-          const skip =
-            schema[path]?.ftype === "fiftyone.core.fields.DictField" ||
-            schema[path]?.ftype === "fiftyone.core.fields.Field" ||
-            path.includes(".logits") ||
-            path.endsWith(".index") ||
-            path.endsWith(".bounding_box");
-
-          let disabled =
-            path.endsWith(".id") ||
-            path === "id" ||
-            path === "tags" ||
-            path === "filepath" ||
-            path.startsWith("metadata");
-
-          if (selectedTab === "Search") {
-            disabled = true;
-            isSelected = true;
-          }
-
-          return {
-            path,
-            count,
-            isSelected,
-            pathLabelFinal,
-            skip,
-            disabled,
-            info: schema[path].info,
-            description: schema[path].description,
-            name: schema[path].name,
-          };
-        })
-        .sort((item) => (fieldsOnly ? (item.disabled ? 1 : -1) : 0)),
-    [schema, searchTerm, selectedPaths, fieldsOnly]
-  );
-
+  const finalSchemaPaths = finalSchema.map((pp) => pp.path);
   const setAllFieldsCheckedWra = (val) => {
     setAllFieldsChecked(val);
     if (val) {
-      setSelectedPaths(new Set(allPaths));
+      setSelectedPaths(new Set(finalSchemaPaths));
     } else {
       setSelectedPaths(
         new Set(
@@ -307,17 +344,19 @@ export default function useSchemaSettings() {
   const finalSelectedPaths = useMemo(
     () =>
       new Set(
-        [...selectedPaths].filter((path) => {
-          return !(
-            schema[path].ftype === "fiftyone.core.fields.DictField" ||
-            schema[path].ftype === "fiftyone.core.fields.Field" ||
-            path.includes(".logits") ||
-            path.endsWith(".index") ||
-            path.endsWith(".bounding_box")
-          );
-        })
+        [...(searchResults.length ? searchResults : selectedPaths)].filter(
+          (path) => {
+            return !(
+              schema?.[path]?.ftype === DICT_FIELD ||
+              schema?.[path]?.ftype === JUST_FIELD ||
+              path.includes(".logits") ||
+              path.endsWith(".index") ||
+              path.endsWith(".bounding_box")
+            );
+          }
+        )
       ),
-    [selectedPaths, schema]
+    [selectedPaths, schema, searchResults]
   );
 
   return {
@@ -334,6 +373,7 @@ export default function useSchemaSettings() {
     setView,
     toggleSelection,
     finalSchema,
+    finalSchemaForView,
     setSelectedPaths,
     originalSelectedPaths,
     selectedPaths,
@@ -348,5 +388,8 @@ export default function useSchemaSettings() {
     setSelectedFieldsStage,
     subscription,
     send,
+    schemaForViewStages,
+    setSchemaForViewStages,
+    dataset,
   };
 }

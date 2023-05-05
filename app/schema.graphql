@@ -150,7 +150,6 @@ type Dataset {
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
-  viewFields: [SampleField!]!
   frameFields: [SampleField!]
   brainMethods: [BrainRun!]
   evaluations: [EvaluationRun!]
@@ -436,6 +435,10 @@ type Query {
   uid: String!
   version: String!
   savedViews(datasetName: String!): [SavedView!]
+  schemaForViewStages(
+    datasetName: String!
+    viewStages: BSONArray!
+  ): [SampleField!]
 }
 
 type RootAggregation implements Aggregation {

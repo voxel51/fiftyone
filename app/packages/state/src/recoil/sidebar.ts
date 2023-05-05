@@ -354,21 +354,14 @@ export const sidebarGroups = selectorFamily<
   get:
     ({ modal, loading, filtered = true }) =>
     ({ get }) => {
-      const ds = get(dataset);
       const f = get(textFilter(modal));
-      const schema = dataset ? buildSchema(ds, true) : null;
-      console.log("schema", schema);
 
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
 
           paths: filtered
-            ? paths.filter(
-                (path) =>
-                  get(pathIsShown(path)) &&
-                  (path.includes(f) || schema?.[path]?.searchField?.includes(f))
-              )
+            ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
             : paths,
         }))
         .filter(

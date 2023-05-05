@@ -241,7 +241,7 @@ class Dataset:
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
-    dataset_schema: t.List[SampleField]
+    view_schema: t.List[SampleField]
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.Optional[t.List[BrainRun]]
     evaluations: t.Optional[t.List[EvaluationRun]]
@@ -278,7 +278,7 @@ class Dataset:
         ]
         flat = _flatten_fields([], doc.get("sample_fields", []))
         doc["sample_fields"] = flat
-        doc["dataset_schema"] = flat
+        doc["view_schema"] = doc.get("view_schema", [])
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
@@ -460,6 +460,23 @@ class Query(fosa.AggregateQuery):
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
 
+    @gql.field
+    def schema_for_view_stages(
+        self, dataset_name: str, view_stages: BSONArray
+    ) -> t.List[SampleField]:
+        try:
+            ds = fod.load_dataset(dataset_name)
+            if view_stages:
+                view = fov.DatasetView._build(ds, view_stages or [])
+
+                for stage in view_stages:
+                    view.add_stage(fosg.ViewStage._from_dict(stage))
+
+                return serialize_fields(view.get_field_schema(flat=True))
+            return serialize_fields(ds.get_field_schema(flat=True))
+        except Exception as e:
+            return serialize_fields(ds.get_field_schema(flat=True))
+
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
@@ -518,18 +535,14 @@ async def serialize_dataset(
             if view.media_type != data.media_type:
                 data.media_type = view.media_type
 
-            data.view_fields = serialize_fields(
+            data.view_schema = serialize_fields(
                 view.get_field_schema(flat=True)
             )
-            print("view's schema: ", data.view_fields)
 
             collection = view
 
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)
-        )
-        data.dataset_schema = serialize_fields(
-            dataset.get_field_schema(flat=True)
         )
 
         data.frame_fields = serialize_fields(

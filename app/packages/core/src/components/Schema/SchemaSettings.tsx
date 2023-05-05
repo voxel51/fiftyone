@@ -1,5 +1,7 @@
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useEffect, useRef } from "react";
 import styled from "styled-components";
+
+import * as fos from "@fiftyone/state";
 
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
@@ -14,6 +16,7 @@ import useSchemaSettings, {
 
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
+import { graphql } from "react-relay";
 
 const ModalWrapper = styled.div`
   position: fixed;

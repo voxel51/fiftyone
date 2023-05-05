@@ -16,6 +16,7 @@ export const SchemaSelection = () => {
   const {
     toggleSelection,
     finalSchema,
+    finalSchemaForView,
     searchResults,
     selectedTab,
     showMetadata,
@@ -57,7 +58,7 @@ export const SchemaSelection = () => {
       >
         {showSearchHelp && <SchemaSearchHelp />}
         {showSelection &&
-          finalSchema.map((item) => {
+          finalSchemaForView.map((item) => {
             const { path, count, isSelected, pathLabelFinal, skip, disabled } =
               item;
 
