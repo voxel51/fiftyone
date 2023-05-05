@@ -13,6 +13,7 @@ from unittest import mock
 import bson
 
 import fiftyone.management as fom
+import fiftyone.management.util as fom_util
 
 
 class ManagementSdkConnectionTests(unittest.TestCase):
@@ -80,8 +81,12 @@ class ManagementSdkTests(unittest.TestCase):
     EMAIL = "user@company.com"
     KEY_NAME = "key_name"
     KEY_ID = "123456abcdef"
-    PERMISSION = mock.Mock()
-    ROLE = mock.Mock()
+    PERMISSION = fom.DatasetPermission.MANAGE
+    PERMISSION_STR = PERMISSION.value
+    PLUGIN_NAME = "super-cool-plugin"
+    PLUGIN_OPERATOR_NAME = "op-op"
+    ROLE = fom.UserRole.ADMIN
+    ROLE_STR = ROLE.value
     USER = mock.Mock()
 
     client = None
@@ -323,27 +328,40 @@ class ManagementSdkTests(unittest.TestCase):
         ]
 
     def test_set_dataset_default_permission(self):
-        fom.set_dataset_default_permission(self.DATASET_NAME, self.PERMISSION)
-        self.client.post_graphql_request.assert_called_with(
-            query=fom.dataset._SET_DATASET_DEFAULT_PERM_QUERY,
-            variables={
-                "identifier": self.DATASET_NAME,
-                "permission": self.PERMISSION.value,
-            },
+        for perm in (self.PERMISSION, self.PERMISSION_STR):
+            fom.set_dataset_default_permission(self.DATASET_NAME, perm)
+            self.client.post_graphql_request.assert_called_with(
+                query=fom.dataset._SET_DATASET_DEFAULT_PERM_QUERY,
+                variables={
+                    "identifier": self.DATASET_NAME,
+                    "permission": self.PERMISSION_STR,
+                },
+            )
+        self.assertRaises(
+            ValueError,
+            fom.set_dataset_default_permission,
+            self.DATASET_NAME,
+            "invalid",
         )
 
     def test_set_dataset_user_permission(self):
-        fom.set_dataset_user_permission(
-            self.DATASET_NAME, self.USER, self.PERMISSION
-        )
-        self.resolve_user.assert_called_with(self.USER)
-        self.client.post_graphql_request.assert_called_with(
-            query=fom.dataset._SET_DATASET_USER_PERM_QUERY,
-            variables={
-                "identifier": self.DATASET_NAME,
-                "userId": self.resolve_user.return_value,
-                "permission": self.PERMISSION.value,
-            },
+        for perm in (self.PERMISSION, self.PERMISSION_STR):
+            fom.set_dataset_user_permission(self.DATASET_NAME, self.USER, perm)
+            self.resolve_user.assert_called_with(self.USER)
+            self.client.post_graphql_request.assert_called_with(
+                query=fom.dataset._SET_DATASET_USER_PERM_QUERY,
+                variables={
+                    "identifier": self.DATASET_NAME,
+                    "userId": self.resolve_user.return_value,
+                    "permission": self.PERMISSION_STR,
+                },
+            )
+        self.assertRaises(
+            ValueError,
+            fom.set_dataset_user_permission,
+            self.DATASET_NAME,
+            self.USER,
+            "invalid",
         )
 
     def test_delete_dataset_user_permission(self):
@@ -355,6 +373,186 @@ class ManagementSdkTests(unittest.TestCase):
                 "identifier": self.DATASET_NAME,
                 "userId": self.resolve_user.return_value,
             },
+        )
+
+    ######################### Plugin
+    def test_delete_plugin(self):
+        fom.delete_plugin(self.PLUGIN_NAME)
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._DELETE_PLUGIN_QUERY,
+            variables={"name": self.PLUGIN_NAME},
+        )
+
+    @mock.patch("fiftyone.management.plugin.open")
+    def test_download_plugin(self, open_mock):
+        download_dir = "/path/to/local/"
+        file_token = "download_12345.zip"
+        self.client.post_graphql_request.return_value = {
+            "downloadPlugin": file_token
+        }
+
+        local_path = fom.download_plugin(self.PLUGIN_NAME, download_dir)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._DOWNLOAD_PLUGIN_QUERY,
+            variables={"name": self.PLUGIN_NAME},
+        )
+
+        self.assertEqual(
+            self.client.post_graphql_request.return_value["downloadPlugin"],
+            file_token,
+        )
+        self.client.get.assert_called_with(f"file/{file_token}")
+        content = self.client.get.return_value.content
+
+        open_mock.assert_called_with(local_path, "wb")
+        opened_file = open_mock.return_value.__enter__.return_value
+        opened_file.write.assert_called_with(content)
+
+    def test_get_plugin_info(self):
+        plugin = {
+            "name": self.PLUGIN_NAME,
+            "description": "plugin description",
+            "version": "1.2.1",
+            "fiftyoneVersion": "~0.21.1",
+            "enabled": True,
+            "operators": [
+                {
+                    "name": "operator1",
+                    "enabled": True,
+                    "permission": {
+                        "minimumRole": "MEMBER",
+                        "minimumDatasetPermission": "EDIT",
+                    },
+                }
+            ],
+        }
+        expected = fom_util.camel_to_snake_value(plugin)
+
+        self.client.post_graphql_request.return_value = {"plugin": plugin}
+
+        self.assertEqual(fom.get_plugin_info(self.PLUGIN_NAME), expected)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._GET_PLUGIN_INFO_QUERY,
+            variables={"pluginName": self.PLUGIN_NAME},
+        )
+
+    def test_list_plugins(self):
+        plugins = [
+            {
+                "name": self.PLUGIN_NAME,
+                "description": "plugin description",
+                "version": "1.2.1",
+                "fiftyoneVersion": "~0.21.1",
+                "enabled": True,
+                "operators": [
+                    {
+                        "name": "operator1",
+                        "enabled": True,
+                        "permission": {
+                            "minimumRole": "MEMBER",
+                            "minimumDatasetPermission": "EDIT",
+                        },
+                    }
+                ],
+            },
+            {
+                "name": "plugin2",
+                "description": "another plugin",
+                "version": "blah",
+                "fiftyoneVersion": "5.1.2",
+                "operators": None,
+            },
+        ]
+        expected = fom_util.camel_to_snake_value(plugins)
+        self.client.post_graphql_request.return_value = {"plugins": plugins}
+
+        include_builtin = mock.Mock()
+
+        self.assertEqual(fom.list_plugins(include_builtin), expected)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._LIST_PLUGINS_QUERY,
+            variables={"includeBuiltin": include_builtin},
+        )
+
+    def test_set_plugin_enabled(self):
+        enabled = mock.Mock()
+        fom.set_plugin_enabled(self.PLUGIN_NAME, enabled)
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._SET_PLUGIN_ENABLED_QUERY,
+            variables={"pluginName": self.PLUGIN_NAME, "enabled": enabled},
+        )
+
+    def test_set_plugin_operator_enabled(self):
+        enabled = mock.Mock()
+        fom.set_plugin_operator_enabled(
+            self.PLUGIN_NAME, self.PLUGIN_OPERATOR_NAME, enabled
+        )
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._UPDATE_PLUGIN_OPERATOR_QUERY,
+            variables={
+                "pluginName": self.PLUGIN_NAME,
+                "operatorName": self.PLUGIN_OPERATOR_NAME,
+                "enabled": enabled,
+            },
+        )
+
+    def test_set_plugin_operator_permissions(self):
+        fom.set_plugin_operator_permissions(
+            self.PLUGIN_NAME,
+            self.PLUGIN_OPERATOR_NAME,
+            fom.UserRole.ADMIN,
+            fom.DatasetPermission.MANAGE,
+        )
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._UPDATE_PLUGIN_OPERATOR_QUERY,
+            variables={
+                "pluginName": self.PLUGIN_NAME,
+                "operatorName": self.PLUGIN_OPERATOR_NAME,
+                "minRole": fom.UserRole.ADMIN.value,
+                "minDatasetPerm": fom.DatasetPermission.MANAGE.value,
+            },
+        )
+
+        self.assertRaises(
+            ValueError,
+            fom.set_plugin_operator_permissions,
+            self.PLUGIN_NAME,
+            self.PLUGIN_OPERATOR_NAME,
+            minimum_role="invalid",
+        )
+        self.assertRaises(
+            ValueError,
+            fom.set_plugin_operator_permissions,
+            self.PLUGIN_NAME,
+            self.PLUGIN_OPERATOR_NAME,
+            minimum_dataset_permission="invalid",
+        )
+
+    @mock.patch("fiftyone.management.plugin.open")
+    def test_upload_plugin(self, open_mock):
+        plugin_path = "/path/to/plugin.zip"
+        file_token = "upload1234.zip"
+        overwrite = mock.Mock()
+        self.client.post_file.return_value = (
+            f'{{"file_token": "{file_token}"}}'
+        )
+
+        return_value = fom.upload_plugin(plugin_path, overwrite)
+
+        open_mock.assert_called_with(plugin_path, "rb")
+        opened_file = open_mock.return_value.__enter__.return_value
+        self.client.post_file.assert_called_with("file", opened_file)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.plugin._UPLOAD_PLUGIN_QUERY,
+            variables={"token": file_token, "overwrite": overwrite},
+        )
+        self.assertEqual(
+            return_value,
+            self.client.post_graphql_request.return_value["uploadPlugin"],
         )
 
     ######################### Users
@@ -453,27 +651,41 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     def test_send_user_invitation(self):
-        invitation_id = fom.send_user_invitation(self.EMAIL, self.ROLE)
-        self.client.post_graphql_request.assert_called_with(
-            query=fom.users._SEND_INVITATION_QUERY,
-            variables={"email": self.EMAIL, "role": self.ROLE.value},
-        )
-        assert (
-            invitation_id
-            == self.client.post_graphql_request.return_value[
-                "sendUserInvitation"
-            ]["id"]
+        for role in (self.ROLE, self.ROLE_STR):
+            invitation_id = fom.send_user_invitation(self.EMAIL, role)
+            self.client.post_graphql_request.assert_called_with(
+                query=fom.users._SEND_INVITATION_QUERY,
+                variables={"email": self.EMAIL, "role": self.ROLE_STR},
+            )
+            assert (
+                invitation_id
+                == self.client.post_graphql_request.return_value[
+                    "sendUserInvitation"
+                ]["id"]
+            )
+        self.assertRaises(
+            ValueError,
+            fom.send_user_invitation,
+            self.EMAIL,
+            "invalid",
         )
 
     def test_set_user_role(self):
-        fom.set_user_role(self.USER, self.ROLE)
-        self.resolve_user.assert_called_with(self.USER)
-        self.client.post_graphql_request.assert_called_with(
-            query=fom.users._SET_USER_ROLE_QUERY,
-            variables={
-                "userId": self.resolve_user.return_value,
-                "role": self.ROLE.value,
-            },
+        for role in (self.ROLE, self.ROLE_STR):
+            fom.set_user_role(self.USER, role)
+            self.resolve_user.assert_called_with(self.USER)
+            self.client.post_graphql_request.assert_called_with(
+                query=fom.users._SET_USER_ROLE_QUERY,
+                variables={
+                    "userId": self.resolve_user.return_value,
+                    "role": self.ROLE_STR,
+                },
+            )
+        self.assertRaises(
+            ValueError,
+            fom.set_user_role,
+            self.USER,
+            "invalid",
         )
 
     def test_whoami(self):
@@ -551,3 +763,31 @@ class ManagementSdkTests(unittest.TestCase):
                         resolve_user_id(email, nullable=False), email
                     )
                     get_user_mock.assert_not_called()
+
+    ############# Utils
+    def test_camel_to_snake(self):
+        for pre, post in [
+            ("inviteeRole", "invitee_role"),
+            ("test123", "test123"),
+            ("threeWordResponse", "three_word_response"),
+        ]:
+            self.assertEqual(fom_util.camel_to_snake(pre), post)
+
+    def test_camel_to_snake_value(self):
+        for pre, post in [
+            ("sameSame", "sameSame"),
+            ({"inviteeRole": "theInvitee"}, {"invitee_role": "theInvitee"}),
+            (
+                [{"inviteeRole": "theInvitee"}],
+                [{"invitee_role": "theInvitee"}],
+            ),
+            (
+                {"outerKey": {"innerKey": [{"subInnerKey": "innerValue"}]}},
+                {
+                    "outer_key": {
+                        "inner_key": [{"sub_inner_key": "innerValue"}]
+                    }
+                },
+            ),
+        ]:
+            self.assertEqual(fom_util.camel_to_snake_value(pre), post)
