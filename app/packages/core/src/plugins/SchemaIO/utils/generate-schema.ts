@@ -1,11 +1,12 @@
 // Auto generate SchemaIO compatible schema based on a value
+// todo: add support for OneOfView, TupleView, and MapView
 export function generateSchema(value, options?) {
   const type = getType(value);
-  const label = options?.label;
+  const { label, readOnly } = options;
   if (type === "array") {
     const dominantType = getDominantType(value);
     const isValueTable = isTable(value);
-    if (isValueTable) {
+    if (isValueTable && readOnly) {
       return {
         type,
         view: {
@@ -15,7 +16,7 @@ export function generateSchema(value, options?) {
           readOnly: true,
         },
       };
-    } else if (primitives.includes(dominantType)) {
+    } else if (primitives.includes(dominantType) && readOnly) {
       return {
         type,
         view: {
@@ -28,11 +29,11 @@ export function generateSchema(value, options?) {
       const [firstItemKey] = Object.keys(value);
       return {
         type,
-        items: generateSchema(value[firstItemKey]),
+        items: generateSchema(value[firstItemKey], { readOnly }),
         view: {
           label,
           component: "ListView",
-          readOnly: true,
+          readOnly,
         },
       };
     }
@@ -40,12 +41,13 @@ export function generateSchema(value, options?) {
     return {
       type,
       properties: Object.keys(value).reduce((obj, key) => {
-        obj[key] = generateSchema(value[key], { label: key });
+        obj[key] = generateSchema(value[key], { label: key, readOnly });
         return obj;
       }, {}),
       view: {
         label,
         component: "ObjectView",
+        readOnly,
       },
     };
   } else {
@@ -53,7 +55,12 @@ export function generateSchema(value, options?) {
       type,
       view: {
         label,
-        component: "LabelValueView",
+        component: readOnly
+          ? "LabelValueView"
+          : type === "boolean"
+          ? "CheckboxView"
+          : "FieldView",
+        readOnly,
       },
     };
   }
