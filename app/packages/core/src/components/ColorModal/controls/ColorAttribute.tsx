@@ -12,6 +12,7 @@ import { useOutsideClick } from "@fiftyone/state";
 import { Popout } from "@fiftyone/components/src/components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
 import { Field } from "@fiftyone/utilities";
+import PopoutDiv from "@fiftyone/components/src/components/Popout/PopoutDiv";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -93,19 +94,11 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
           </SelectButton>
         </Tooltip>
         {open && (
-          <Popout
-            style={{
-              padding: 0,
-              position: "relative",
-              zIndex: 1000000001,
-              opacity: 1,
-            }}
-            bounds={bounds}
-          >
+          <PopoutDiv style={{ zIndex: 1000000001, opacity: 1, width: "100%" }}>
             {options.map((option: Option) => (
               <Item key={option.value} {...option} />
             ))}
-          </Popout>
+          </PopoutDiv>
         )}
       </ActionDiv>
     </div>

@@ -25,6 +25,7 @@ import {
   ModalWrapper,
   Text,
 } from "./ShareStyledDiv";
+import PopoutDiv from "@fiftyone/components/src/components/Popout/PopoutDiv";
 
 type Option = {
   value: string;
@@ -106,14 +107,11 @@ const ColorModal = () => {
           </Text>
         </Tooltip>
         {open && (
-          <Popout
-            style={{ padding: 0, zIndex: 1000000001, opacity: 1 }}
-            bounds={bounds}
-          >
+          <PopoutDiv style={{ zIndex: 1000000001, right: "unset", opacity: 1 }}>
             {options.map((option: Option) => (
               <Item key={option.value} {...option} />
             ))}
-          </Popout>
+          </PopoutDiv>
         )}
       </ActionDiv>
     );
