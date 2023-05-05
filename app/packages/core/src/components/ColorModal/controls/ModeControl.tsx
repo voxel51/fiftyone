@@ -49,10 +49,8 @@ const ModeControl: React.FC = () => {
   const theme = useTheme();
 
   const toggleSwitch = (ev) => {
-    console.info("ev", ev.target.checked);
     props.setColorBy(ev.target.checked ? "value" : "field");
   };
-  console.info(checked, theme);
   return (
     <ModeControlContainer>
       <>

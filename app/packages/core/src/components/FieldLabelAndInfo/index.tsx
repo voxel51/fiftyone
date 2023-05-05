@@ -280,7 +280,6 @@ function FieldInfoExpanded({
     // open the color customization modal based on colorBy status
     setIsCustomizingColor(field);
   };
-  console.info(field, field.path);
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);

@@ -34,7 +34,6 @@ function Dataset() {
 
   useEffect(() => {
     if (!isUsingSessionColorScheme && datasetColorScheme) {
-      console.info("dataset.appConfig", datasetColorScheme);
       const colorPool =
         datasetColorScheme.colorPool?.length > 0
           ? datasetColorScheme.colorPool
@@ -42,7 +41,6 @@ function Dataset() {
       const customizedColorSettings =
         JSON.parse(datasetColorScheme.customizedColorSettings) ??
         fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
-      console.info(colorPool, customizedColorSettings);
       setSessionColor({
         colorPool,
         customizedColorSettings,

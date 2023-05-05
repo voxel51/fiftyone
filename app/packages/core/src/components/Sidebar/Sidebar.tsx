@@ -14,7 +14,6 @@ import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
-import { Diversity1 } from "@mui/icons-material";
 
 const MARGIN = 3;
 
@@ -691,7 +690,6 @@ const InteractiveSidebar = ({
 
   const s = useRecoilValue(fos.sessionColorScheme);
   const isUsing = useRecoilValue(fos.isUsingSessionColorScheme);
-  console.info("atom", s, isUsing);
 
   return shown ? (
     <Resizable
