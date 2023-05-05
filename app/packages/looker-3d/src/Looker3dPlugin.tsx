@@ -17,5 +17,7 @@ typeof window !== "undefined" &&
     name: "Looker3d",
     component: Looker3d,
     type: PluginComponentType.Visualizer,
-    activator: ({ sample }) => sample && sample.filepath.endsWith(".pcd"),
+    activator: ({ dataset }) =>
+      dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
+      undefined,
   });

@@ -5,6 +5,9 @@ import {
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import {
+  State,
+  _activeFields,
+  activePcdSlices,
   dataset as datasetAtom,
   extendedSelection,
   filters,
@@ -22,10 +25,8 @@ import {
   sidebarMode,
   similarityParameters,
   similaritySorting,
-  State,
   tagging,
   theme,
-  _activeFields,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -142,6 +143,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
           );
           reset(extendedSelection);
           reset(filters);
+          reset(activePcdSlices);
         }
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {

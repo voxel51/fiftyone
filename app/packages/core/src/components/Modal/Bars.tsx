@@ -1,9 +1,8 @@
 import { Bar, useTheme } from "@fiftyone/components";
 import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { currentSlice, hasPinnedSlice } from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
-import React, { MutableRefObject, useRef } from "react";
+import React, { MutableRefObject, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
@@ -60,8 +59,20 @@ export const SampleBar: React.FC<{
 export const GroupBar: React.FC<{
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
-  const slice = useRecoilValue(currentSlice(true));
-  const hasPinned = useRecoilValue(hasPinnedSlice);
+  const activeSliceDescriptorLabel = useRecoilValue(
+    fos.activeSliceDescriptorLabel
+  );
+
+  const pinnedSliceLabel = useMemo(() => {
+    if (
+      activeSliceDescriptorLabel.includes(" and ") ||
+      activeSliceDescriptorLabel.includes(" point-clouds ")
+    ) {
+      return `${activeSliceDescriptorLabel} are pinned`;
+    } else {
+      return `${activeSliceDescriptorLabel} is pinned`;
+    }
+  }, [activeSliceDescriptorLabel]);
   return (
     <Bar
       style={{
@@ -79,21 +90,19 @@ export const GroupBar: React.FC<{
           fontSize: "1.2rem",
         }}
       >
-        {hasPinned && (
-          <div
-            data-cy="pinned-slice-bar-description"
-            style={{
-              color: "var(--joy-palette-text-primary)",
-              display: "flex",
-              fontWeight: "bold",
-              alignItems: "center",
-              columnGap: "0.25rem",
-            }}
-          >
-            <Pin />
-            {slice} is pinned
-          </div>
-        )}
+        <div
+          data-cy="pinned-slice-bar-description"
+          style={{
+            color: "var(--joy-palette-text-primary)",
+            display: "flex",
+            fontWeight: "bold",
+            alignItems: "center",
+            columnGap: "0.25rem",
+          }}
+        >
+          <Pin />
+          {pinnedSliceLabel}
+        </div>
       </div>
       <ModalActionsRow lookerRef={lookerRef} isGroup />
     </Bar>
@@ -103,9 +112,12 @@ export const GroupBar: React.FC<{
 export const GroupSampleBar: React.FC<{
   pinned: boolean;
   sampleId: string;
-  slice: string;
   hoveringRef: MutableRefObject<boolean>;
-}> = ({ hoveringRef, pinned, sampleId, slice }) => {
+}> = ({ hoveringRef, pinned, sampleId }) => {
+  const activeSliceDescriptorLabel = useRecoilValue(
+    fos.activeSliceDescriptorLabel
+  );
+
   return (
     <SelectableBar hoveringRef={hoveringRef} sampleId={sampleId}>
       {pinned && (
@@ -119,7 +131,7 @@ export const GroupSampleBar: React.FC<{
             columnGap: "0.25rem",
           }}
         >
-          {slice}
+          {activeSliceDescriptorLabel}
           <Pin />
         </div>
       )}
