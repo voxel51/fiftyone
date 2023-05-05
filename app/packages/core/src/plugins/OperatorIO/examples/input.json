@@ -1,4 +1,28 @@
 {
+    "simpleSchema": {
+        "type": { "name": "Object", "properties": {} },
+        "default": {
+            "string": "string",
+            "number": 1,
+            "boolean": true,
+            "object": {
+                "stringProp": "string",
+                "numberProp": 1,
+                "booleanProp": true
+            },
+            "arrayOfStrings": ["string"],
+            "arrayOfNumbers": [1],
+            "arrayOfBoolean": [true],
+            "arrayOfObject": [
+                {
+                    "stringProp": "string",
+                    "numberProp": 1,
+                    "booleanProp": true
+                }
+            ]
+        },
+        "view": { "name": "InferredView", "label": "Default value based form" }
+    },
     "errors": {
         "media_field": [
             { "reason": "Field is required" },
