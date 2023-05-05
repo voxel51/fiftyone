@@ -18,6 +18,7 @@ class OperatorConfig:
         execute_as_generator (False): whether the operator should be executed as a generator
         unlisted (False): whether the operator should be listed in the Operator Browser
         dynamic (False): whether the operator inputs and outputs should be resolved when the input/output changes
+        on_startup (False): whether the operator should be executed on startup
     """
 
     def __init__(
@@ -28,6 +29,7 @@ class OperatorConfig:
         dynamic=False,
         execute_as_generator=False,
         unlisted=False,
+        on_startup=False,
     ):
         self.name = name
         self.label = label or name
@@ -35,6 +37,7 @@ class OperatorConfig:
         self.execute_as_generator = execute_as_generator
         self.unlisted = unlisted
         self.dynamic = dynamic
+        self.on_startup = on_startup
 
     def to_json(self):
         return {
@@ -44,6 +47,7 @@ class OperatorConfig:
             "execute_as_generator": self.execute_as_generator,
             "unlisted": self.unlisted,
             "dynamic": self.dynamic,
+            "on_startup": self.on_startup,
         }
 
 
