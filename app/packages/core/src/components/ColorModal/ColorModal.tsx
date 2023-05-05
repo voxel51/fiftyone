@@ -106,7 +106,10 @@ const ColorModal = () => {
           </Text>
         </Tooltip>
         {open && (
-          <Popout style={{ padding: 0, zIndex: 1000000001 }} bounds={bounds}>
+          <Popout
+            style={{ padding: 0, zIndex: 1000000001, opacity: 1 }}
+            bounds={bounds}
+          >
             {options.map((option: Option) => (
               <Item key={option.value} {...option} />
             ))}

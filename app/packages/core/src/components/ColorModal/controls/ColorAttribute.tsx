@@ -94,7 +94,12 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
         </Tooltip>
         {open && (
           <Popout
-            style={{ padding: 0, position: "relative", zIndex: 1000000001 }}
+            style={{
+              padding: 0,
+              position: "relative",
+              zIndex: 1000000001,
+              opacity: 1,
+            }}
             bounds={bounds}
           >
             {options.map((option: Option) => (
