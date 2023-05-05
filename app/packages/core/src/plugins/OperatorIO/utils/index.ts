@@ -1,15 +1,17 @@
+import { types } from "@fiftyone/operators";
+
 const inputComponentsByType = {
-  ObjectType: "ObjectView",
+  Object: "ObjectView",
   Boolean: "CheckboxView",
   String: "FieldView",
   Number: "FieldView",
   List: "ListView",
   OneOf: "OneOfView",
   Tuple: "TupleView",
-  MapType: "MapView",
+  Map: "MapView",
 };
 const outputComponentsByType = {
-  ObjectType: "ObjectView",
+  Object: "ObjectView",
   Boolean: "LabelValueView",
   String: "LabelValueView",
   Number: "LabelValueView",
@@ -29,7 +31,7 @@ const viewAliases = {
   Warning: "AlertView",
 };
 const operatorTypeToJSONSchemaType = {
-  ObjectType: "object",
+  Object: "object",
   Enum: "string",
   Boolean: "boolean",
   String: "string",
@@ -37,7 +39,7 @@ const operatorTypeToJSONSchemaType = {
   List: "array",
   OneOf: "oneOf",
   Tuple: "array",
-  MapType: "object",
+  Map: "object",
 };
 const unsupportedView = "UnsupportedView";
 
@@ -45,7 +47,9 @@ const primitiveOperatorTypes = ["Boolean", "String", "Number"];
 
 function getTypeName(property) {
   const { type } = property;
-  return type.constructor.name;
+  for (const typeName in types) {
+    if (type.constructor === types[typeName]) return typeName;
+  }
 }
 
 function getComponent(property, options) {
@@ -96,7 +100,7 @@ function getSchema(property, options?) {
   const component = getComponent(property, options);
   schema.view.component = component;
 
-  if (typeName === "ObjectType") {
+  if (typeName === "Object") {
     schema.properties = getPropertiesSchema(property, options);
   }
 
@@ -118,7 +122,7 @@ function getSchema(property, options?) {
     );
   }
 
-  if (typeName === "MapType") {
+  if (typeName === "Map") {
     schema.additionalProperties = getSchema({
       type: property.type.valueType,
       view: property?.view?.value,
