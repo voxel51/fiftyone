@@ -319,7 +319,6 @@ const SampleModal = () => {
               )}
             </ErrorBoundary>
           </ContentColumn>
-          {/* <Sidebar render={() => ({children: null, disabled: false})} modal={true} /> */}
           <Sidebar render={renderEntry} modal={true} />
         </Container>
       </ModalWrapper>

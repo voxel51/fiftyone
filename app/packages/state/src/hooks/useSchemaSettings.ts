@@ -60,6 +60,10 @@ export const revertSelectedPathsState = atom({
   key: "revertSelectedPathsState",
   default: false,
 });
+export const affectedPathCountState = atom({
+  key: "affectedPathCountState",
+  default: 0,
+});
 
 export const selectedFieldsStageState = atom<any>({
   key: "selectedFieldsStageState",
@@ -107,6 +111,10 @@ export default function useSchemaSettings() {
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
+  );
+
+  const [affectedPathCount, setAffectedPathCount] = useRecoilState(
+    affectedPathCountState
   );
 
   const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
@@ -359,6 +367,13 @@ export default function useSchemaSettings() {
     [selectedPaths, schema, searchResults]
   );
 
+  useEffect(() => {
+    const diff = Object.keys(viewSchema).length - Object.keys(schema).length;
+    if (diff) {
+      setAffectedPathCount(diff);
+    }
+  }, [viewSchema, schema, setAffectedPathCount]);
+
   return {
     activeLabelPaths,
     settingModal,
@@ -391,5 +406,6 @@ export default function useSchemaSettings() {
     schemaForViewStages,
     setSchemaForViewStages,
     dataset,
+    affectedPathCount,
   };
 }

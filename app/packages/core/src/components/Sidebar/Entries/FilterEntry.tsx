@@ -9,9 +9,10 @@ import {
 } from "recoil";
 import { InputDiv } from "./utils";
 import * as fos from "@fiftyone/state";
-import { ClearAll, Settings } from "@mui/icons-material";
-import { Box } from "@mui/material";
+import { Settings, VisibilityOff } from "@mui/icons-material";
+import { Badge, Box, Chip, Typography } from "@mui/material";
 import {
+  affectedPathCountState,
   revertSelectedPathsState,
   selectedFieldsStageState,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
@@ -29,6 +30,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const [revertSelectedPaths, setRevertSelectedPaths] = useRecoilState(
     revertSelectedPathsState
   );
+  const affectedPathCount = useRecoilValue(affectedPathCountState);
 
   useDebounce(
     () => {
@@ -52,30 +54,54 @@ const Filter = ({ modal }: { modal: boolean }) => {
       <Box display="flex" alignItems="center">
         {selectedFieldsStage && (
           <Tooltip text="Clear field selection" placement="bottom-center">
-            <ClearAll
-              onClick={() => {
-                resetSelectedFieldStages();
-                setRevertSelectedPaths(!revertSelectedPaths);
-              }}
+            <Box
               sx={{
-                color: theme.text.secondary,
-                borderRadius: "50%",
-                marginRight: "4px",
+                minWidth: "50px",
+                maxWidth: "100px",
+                background: theme.background.level1,
+                borderRadius: "25px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
-            />
+            >
+              {affectedPathCount > 0 && (
+                <Typography
+                  sx={{ color: theme.text.secondary }}
+                  style={{ marginRight: "0.25rem" }}
+                >
+                  {affectedPathCount}
+                </Typography>
+              )}
+              <VisibilityOff
+                onClick={() => {
+                  resetSelectedFieldStages();
+                  setRevertSelectedPaths(!revertSelectedPaths);
+                }}
+                sx={{
+                  color: theme.text.secondary,
+                  borderRadius: "50%",
+                  fontSize: "1.5rem",
+                  marginRight: "0.25rem",
+                  "&:hover": { color: theme.text.primary },
+                }}
+              />
+            </Box>
           </Tooltip>
         )}
-        <Settings
-          onClick={() =>
-            setSchemaModal({
-              open: true,
-            })
-          }
-          sx={{
-            color: theme.text.tertiary,
-            "&:hover": { color: theme.text.primary },
-          }}
-        />
+        <Tooltip text="Change field visibility" placement="bottom-center">
+          <Settings
+            onClick={() =>
+              setSchemaModal({
+                open: true,
+              })
+            }
+            sx={{
+              color: theme.text.tertiary,
+              "&:hover": { color: theme.text.primary },
+            }}
+          />
+        </Tooltip>
       </Box>
     </InputDiv>
   );
