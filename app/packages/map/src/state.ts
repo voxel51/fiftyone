@@ -1,4 +1,9 @@
-import { dataset, extendedSelection, theme } from "@fiftyone/state";
+import {
+  dataset,
+  extendedSelection,
+  getBrowserStorageEffectForKey,
+  theme,
+} from "@fiftyone/state";
 import { atom, selector } from "recoil";
 import { SELECTION_SCOPE } from "./constants";
 
@@ -81,4 +86,9 @@ const defaultMapStyle = selector<string>({
 export const mapStyle = atom<string>({
   key: "@fiftyone/map/state.mapStyle",
   default: defaultMapStyle,
+  effects: [
+    getBrowserStorageEffectForKey("@fiftyone/map/state.style", {
+      sessionStorage: true,
+    }),
+  ],
 });
