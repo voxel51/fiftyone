@@ -21,10 +21,10 @@ import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import {
+  Lookers,
   currentSlice,
   groupId,
   groupStatistics,
-  Lookers,
   refresher,
 } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
@@ -33,10 +33,10 @@ import { Button } from "../utils";
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
-  numItemsInSelection,
-  selectedSamplesCount,
   SwitchDiv,
   SwitcherDiv,
+  numItemsInSelection,
+  selectedSamplesCount,
   tagParameters,
   tagStatistics,
   tagStats,
@@ -314,7 +314,7 @@ const useTagCallback = (
   const setAggs = useSetRecoilState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
-  const updateSample = fos.useUpdateSample();
+  const updateSamples = fos.useUpdateSamples();
 
   const finalize = [
     () => setLabels([]),
@@ -331,7 +331,7 @@ const useTagCallback = (
       async ({ changes }) => {
         const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
         const isGroup = await snapshot.getPromise(fos.isGroup);
-
+        const slice = await snapshot.getPromise(currentSlice(modal));
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
@@ -345,7 +345,7 @@ const useTagCallback = (
             groupData: isGroup
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
-                  slice: await snapshot.getPromise(currentSlice(modal)),
+                  slices: slice ? [slice] : [],
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,
@@ -363,8 +363,17 @@ const useTagCallback = (
         });
         set(refresher, (i) => i + 1);
 
-        if (samples) {
+        if (!modal) {
+          const ids = new Set<string>();
+          fos.stores.forEach((store) => {
+            store.samples.forEach((sample) => {
+              ids.add(sample.sample._id);
+            });
+          });
+          updateSamples(Array.from(ids).map((id) => [id, undefined]));
+        } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
+          updateSamples(samples.map((sample) => [sample._id, sample]));
           samples.forEach((sample) => {
             if (modalData.sample._id === sample._id) {
               set(fos.modal, { ...modalData, sample });
@@ -372,7 +381,6 @@ const useTagCallback = (
                 lookerRef.current &&
                 lookerRef.current.updateSample(sample);
             }
-            updateSample(sample);
           });
         }
 
@@ -382,7 +390,7 @@ const useTagCallback = (
 
         finalize.forEach((r) => r());
       },
-    [modal, targetLabels, lookerRef, updateSample]
+    [modal, targetLabels, lookerRef, updateSamples]
   );
 };
 

@@ -39,10 +39,7 @@ def get_tag_view(
         view = fov.make_optimized_select_view(view, sample_ids)
 
     if view.media_type == fom.GROUP:
-        if labels or (
-            sample_filter.group.id and not sample_filter.group.slice
-        ):
-            view = view.select_group_slices(_allow_mixed=True)
+        view = view.select_group_slices(_allow_mixed=True)
 
     if target_labels:
         if labels:
