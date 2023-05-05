@@ -150,6 +150,7 @@ function useListState(initialState: Array<unknown>) {
   let initialNextId = 0;
   const initialStateById = initialState.reduce((stateById, item) => {
     stateById[initialNextId++] = item;
+    return stateById;
   }, {});
 
   const [state, setState] = useState(initialStateById);

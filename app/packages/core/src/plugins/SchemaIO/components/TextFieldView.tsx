@@ -1,7 +1,6 @@
 import React from "react";
 import { TextField } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
-import { log } from "../utils";
 
 export default function TextFieldView(props) {
   const { schema, onChange, path, data } = props;
@@ -15,7 +14,10 @@ export default function TextFieldView(props) {
         fullWidth
         placeholder={view.placeholder}
         type={type}
-        onChange={(e) => onChange(path, e.target.value)}
+        onChange={(e) => {
+          const value = e.target.value;
+          onChange(path, type === "number" ? parseFloat(value) : value);
+        }}
       />
     </FieldWrapper>
   );
