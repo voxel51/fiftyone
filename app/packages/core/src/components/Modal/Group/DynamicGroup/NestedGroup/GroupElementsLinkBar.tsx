@@ -197,6 +197,25 @@ const GroupElementsLinkBarImpl: React.FC<{
     ]
   );
 
+  const keyNavigationHandler = useRecoilCallback(
+    () => (e: KeyboardEvent) => {
+      if (e.key === "<") {
+        e.preventDefault();
+        setDynamicGroupCurrentElementIndex((prev) =>
+          prev <= 1 ? prev : prev - 1
+        );
+      } else if (e.key === ">") {
+        e.preventDefault();
+        setDynamicGroupCurrentElementIndex((prev) =>
+          prev >= elementsCount ? prev : prev + 1
+        );
+      }
+    },
+    [elementsCount, setDynamicGroupCurrentElementIndex]
+  );
+
+  fos.useEventHandler(document, "keydown", keyNavigationHandler);
+
   return (
     <BarContainer>
       <Pagination

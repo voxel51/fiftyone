@@ -5,37 +5,40 @@ import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
 export const PaginationComponentWithTooltip = React.memo(
-  (
-    props: PaginationItemProps & {
-      atomFamilyKey: string;
-      currentPage: number | null;
-      isButton: boolean;
-    }
-  ) => {
-    const { atomFamilyKey, isButton, currentPage, ...otherProps } = props;
+  React.forwardRef(
+    (
+      props: PaginationItemProps & {
+        atomFamilyKey: string;
+        currentPage: number | null;
+        isButton: boolean;
+      },
+      ref: React.Ref<HTMLDivElement>
+    ) => {
+      const { atomFamilyKey, isButton, currentPage, ...otherProps } = props;
 
-    const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
-    const dynamicGroupSamplesStoreMap = useRecoilValue(
-      fos.dynamicGroupSamplesStoreMap(atomFamilyKey)
-    );
+      const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
+      const dynamicGroupSamplesStoreMap = useRecoilValue(
+        fos.dynamicGroupSamplesStoreMap(atomFamilyKey)
+      );
 
-    const tooltipText = useMemo(() => {
-      if (!orderBy || isButton) {
-        return null;
+      const tooltipText = useMemo(() => {
+        if (!orderBy || isButton) {
+          return null;
+        }
+
+        const sample = dynamicGroupSamplesStoreMap.get(currentPage! - 1);
+        return `${orderBy}: ${sample?.sample[orderBy] ?? "click to load"}`;
+      }, [dynamicGroupSamplesStoreMap, isButton, orderBy, currentPage]);
+
+      if (tooltipText) {
+        return (
+          <Tooltip text={tooltipText} placement="top-center">
+            <div ref={ref} {...otherProps} />
+          </Tooltip>
+        );
       }
 
-      const sample = dynamicGroupSamplesStoreMap.get(currentPage! - 1);
-      return `${orderBy}: ${sample?.sample[orderBy] ?? "click to load"}`;
-    }, [dynamicGroupSamplesStoreMap, isButton, orderBy, currentPage]);
-
-    if (tooltipText) {
-      return (
-        <Tooltip text={tooltipText} placement="top-center">
-          <div {...otherProps} />
-        </Tooltip>
-      );
+      return <div ref={ref} {...otherProps} />;
     }
-
-    return <div {...otherProps} />;
-  }
+  )
 );
