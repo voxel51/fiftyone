@@ -1,32 +1,20 @@
-import { createPortal } from "react-dom";
-import { useEffect } from "react";
-import styled from "styled-components";
 import { Button } from "@fiftyone/components";
+import { scrollbarStyles } from "@fiftyone/utilities";
+import { Box } from "@mui/material";
+import { createPortal } from "react-dom";
+import { useRecoilValue } from "recoil";
+import styled from "styled-components";
+import OperatorIO from "./OperatorIO";
 import {
   showOperatorPromptSelector,
   useOperatorPrompt,
   useShowOperatorIO,
 } from "./state";
-import * as types from "./types";
-import {
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  InputLabel,
-  MenuItem,
-  Radio,
-  RadioGroup,
-  Select,
-} from "@mui/material";
-import { useRecoilValue } from "recoil";
-import OperatorIO from "./OperatorIO";
-import { Box } from "@mui/material";
-import { scrollbarStyles } from "@fiftyone/utilities";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
-import { stringifyError } from "./utils";
 import BaseStylesProvider from "./BaseStylesProvider";
+import { stringifyError } from "./utils";
 
 const PromptContainer = styled.div`
   position: absolute;
@@ -50,10 +38,6 @@ const PromptModal = styled.div`
   overflow: auto;
   ${scrollbarStyles}
 `;
-
-const Form = styled.div``;
-
-const FieldContainer = styled.div``;
 
 const ButtonsContainer = styled.div`
   display: flex;
@@ -191,192 +175,5 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
         <Button onClick={() => operatorPrompt.close()}>Close</Button>
       </ButtonsContainer>
     </Box>
-  );
-}
-
-function Field({ field, defaultValue, readOnly, onChange }) {
-  return (
-    <FieldContainer>
-      <GenericFieldValue {...{ defaultValue, field, readOnly, onChange }} />
-    </FieldContainer>
-  );
-}
-
-function getComponentForType(type: types.ANY_TYPE) {
-  const TYPE = types.TYPES.find((t) => type instanceof t);
-  switch (TYPE) {
-    case types.String:
-      return TextInput;
-    case types.Number:
-      return NumberInput;
-    case types.Boolean:
-      return Checkbox;
-    case types.Enum:
-      return Emum;
-    case types.List:
-      return List;
-    default:
-      null;
-  }
-}
-
-function GenericFieldValue(props) {
-  const { field } = props;
-  const Component = getComponentForType(field.type);
-  if (!Component)
-    return (
-      <h4>
-        No component for {field.name} ({field.type.name})
-      </h4>
-    );
-
-  return <Component {...props} />;
-}
-
-const Label = styled.label`
-  display: block;
-  margin: 0 0 0.5rem 0.5rem;
-`;
-
-const StyledInput = styled.input<{ error?: string }>`
-  width: 100%;
-  margin: 0 0 1rem 0;
-  border-radius: 4px;
-  border: 1px solid
-    ${({ theme, error }) =>
-      error ? theme.error.main : theme.primary.plainBorder};
-  padding: 0.5rem;
-  color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level3};
-  font-family: "Palanquin", sans-serif;
-
-  &:focus {
-    border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-    outline: none;
-  }
-`;
-
-function TextInput({ field, defaultValue, readOnly, onChange }) {
-  return (
-    <>
-      <Label>{field.label}</Label>
-      <StyledInput
-        autoFocus
-        error={field.error}
-        type="text"
-        defaultValue={defaultValue || field.default}
-        readOnly={readOnly}
-        onChange={onChange}
-      />
-    </>
-  );
-}
-
-function NumberInput({ field, onChange, defaultValue, readOnly }) {
-  return (
-    <>
-      <Label>{field.label}</Label>
-      <StyledInput
-        autoFocus
-        error={field.error}
-        type="number"
-        defaultValue={defaultValue || field.default}
-        readOnly={readOnly}
-        onChange={onChange}
-      />
-    </>
-  );
-}
-
-const CheckboxContainer = styled.div`
-  display: flex;
-  input {
-    width: auto;
-    position: relative;
-    top: 6px;
-  }
-`;
-
-function Checkbox({ field, onChange, defaultValue, readOnly }) {
-  return (
-    <CheckboxContainer>
-      <StyledInput
-        autoFocus
-        error={field.error}
-        type="checkbox"
-        defaultChecked={defaultValue || field.default}
-        readOnly={readOnly}
-        onChange={onChange}
-      />
-      <Label>{field.label}</Label>
-    </CheckboxContainer>
-  );
-}
-
-function Emum({ field, onChange, defaultValue, readOnly }) {
-  const [value, setValue] = React.useState(defaultValue || field.default);
-
-  useEffect(() => {
-    if (onChange) onChange({ target: { value } });
-  }, [value]);
-  if (field.type.values.length < 6) {
-    return (
-      <FormControl component="fieldset" style={{ marginBottom: "1rem" }}>
-        <FormLabel component="legend">{field.label}</FormLabel>
-        <RadioGroup
-          row
-          aria-label="gender"
-          name={field.name}
-          value={value}
-          onChange={(e, newValue) => setValue(newValue)}
-        >
-          {field.type.values.map((v) => (
-            <FormControlLabel value={v} control={<Radio />} label={v} />
-          ))}
-        </RadioGroup>
-      </FormControl>
-    );
-  } else {
-    return (
-      <FormControl fullWidth style={{ marginBottom: "1rem" }}>
-        <InputLabel>{field.label}</InputLabel>
-        <Select
-          labelId={field.name}
-          value={value}
-          label={field.label}
-          onChange={(e) => setValue(e.target.value)}
-        >
-          {field.type.values.map((v) => (
-            <MenuItem value={v}>{v}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-    );
-  }
-}
-
-function List({ field, onChange, defaultValue, readOnly }) {
-  const [value, setValue] = React.useState(field.default || []);
-
-  function setByIndex(index, newValue) {
-    setValue((oldValue) => {
-      const newValue = [...oldValue];
-      newValue[index] = newValue;
-      return newValue;
-    });
-  }
-
-  useEffect(() => {
-    if (onChange) onChange({ target: { value } });
-  }, [value]);
-
-  return (
-    <FormControl component="fieldset" style={{ marginBottom: "1rem" }}>
-      <FormLabel component="legend">{field.label}</FormLabel>
-      <GenericFieldValue
-        field={{ ...field, type: field.type.elementType }}
-        onChange={(e) => setByIndex(0, e.target.value)}
-      />
-    </FormControl>
   );
 }
