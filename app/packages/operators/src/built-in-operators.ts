@@ -110,7 +110,7 @@ class OpenPanel extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     inputs.defineProperty(
       "name",
       new types.Enum(["Histograms", "Embeddings"]),
@@ -205,7 +205,7 @@ class ClosePanel extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     inputs.defineProperty(
       "name",
       new types.Enum(["Histograms", "Embeddings"]),
@@ -266,7 +266,7 @@ class OpenDataset extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     inputs.str("dataset", { label: "Dataset name", required: true });
     return new types.Property(inputs);
   }
@@ -414,7 +414,7 @@ class SetView extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     inputs.obj("view", {
       label: "View",
       required: true,
@@ -502,7 +502,7 @@ function getTypeForValue(value: any) {
           return new types.List(new types.String());
         }
       }
-      const type = new types.ObjectType();
+      const type = new types.Object();
       Object.entries(value).forEach(([k, v]) => {
         type.defineProperty(k, getTypeForValue(v));
       });
@@ -518,7 +518,7 @@ class GetAppValue extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     const values = Object.entries(fos)
       .filter(([k, v]) => {
         return isAtomOrSelector(v);
@@ -532,7 +532,7 @@ class GetAppValue extends Operator {
     ctx: ExecutionContext,
     { result }: OperatorResult
   ): Promise<types.Property> {
-    const outputs = new types.ObjectType();
+    const outputs = new types.Object();
     outputs.defineProperty("value", new types.List(new types.String()));
     return new types.Property(outputs, { view: { name: "InferredView" } });
   }
@@ -552,7 +552,7 @@ class ConsoleLog extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     inputs.defineProperty("message", new types.String(), {
       label: "Message",
       required: true,
@@ -573,12 +573,12 @@ class ShowOutput extends Operator {
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
-    inputs.defineProperty("outputs", new types.ObjectType(), {
+    const inputs = new types.Object();
+    inputs.defineProperty("outputs", new types.Object(), {
       label: "Outputs",
       required: true,
     });
-    inputs.defineProperty("results", new types.ObjectType(), {
+    inputs.defineProperty("results", new types.Object(), {
       label: "Results",
       required: true,
     });
@@ -613,7 +613,7 @@ class TestOperator extends Operator {
     }
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.ObjectType();
+    const inputs = new types.Object();
     const operatorNames = listLocalAndRemoteOperators().allOperators.map(
       (o) => o.name
     );

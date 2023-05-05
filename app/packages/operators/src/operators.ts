@@ -127,7 +127,7 @@ export class OperatorConfig {
 }
 
 export class Operator {
-  public definition: types.ObjectType;
+  public definition: types.Object;
   public unlisted: boolean;
   constructor(
     public pluginName: string,
@@ -135,9 +135,9 @@ export class Operator {
     public _config: OperatorConfig = null
   ) {
     this._config = _config;
-    this.definition = new types.ObjectType();
-    this.definition.defineProperty("inputs", new types.ObjectType());
-    this.definition.defineProperty("outputs", new types.ObjectType());
+    this.definition = new types.Object();
+    this.definition.defineProperty("inputs", new types.Object());
+    this.definition.defineProperty("outputs", new types.Object());
   }
 
   get config(): OperatorConfig {
@@ -165,7 +165,7 @@ export class Operator {
   async needsOutput(ctx: ExecutionContext, result: OperatorResult) {
     const outputs = await this.resolveOutput(ctx, result);
     if (!outputs || !outputs.type) return false;
-    const outputType = outputs.type as types.ObjectType;
+    const outputType = outputs.type as types.Object;
     if (outputType.properties.size > 0 && result.hasOutputContent()) {
       return true;
     }
@@ -523,12 +523,8 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
     placement: types.Placement.fromJSON(p.placement),
   }));
 }
-
-// a queue that stores the invocation requests for all operator results
 // and allows for the execution of the requests in order of arrival
 // and removing the requests that have been completed
-// or marking the requests as failed
-// the queue should allow changes to observed via a simple subscription mechanism
 
 enum QueueItemStatus {
   Pending,
