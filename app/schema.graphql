@@ -27,7 +27,7 @@ input AggregationForm {
   mixed: Boolean!
   paths: [String!]!
   sampleIds: [ID!]!
-  slice: String
+  slices: [String!]
   view: BSONArray!
   viewName: String = null
 }
@@ -95,9 +95,14 @@ type BrainRunConfig implements RunConfig {
   method: String
   patchesField: String
   supportsPrompts: Boolean
-  type: String
+  type: BrainRunType
   maxK: Int
   supportsLeastSimilarity: Boolean
+}
+
+enum BrainRunType {
+  similarity
+  visualization
 }
 
 enum ColorBy {
@@ -225,7 +230,7 @@ type Group {
 
 input GroupElementFilter {
   id: String = null
-  slice: String = null
+  slices: [String!] = null
 }
 
 input HistogramValues {
@@ -392,7 +397,12 @@ type Query {
     after: String = null
     filter: SampleFilter = null
   ): SampleItemStrConnection!
-  sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
+  sample(
+    dataset: String!
+    view: BSONArray!
+    filter: SampleFilter!
+    index: Int = null
+  ): SampleItem
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -424,6 +434,7 @@ interface Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type SampleField {
@@ -462,6 +473,8 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
+  id: String
+  datasetId: String
   name: String
   description: String
   color: String
@@ -470,8 +483,6 @@ type SavedView {
   createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
-  id: String
-  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }

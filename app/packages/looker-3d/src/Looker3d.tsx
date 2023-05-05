@@ -1,9 +1,8 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { AppSample as Sample } from "@fiftyone/state";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
-import { Canvas, useLoader } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
 import React, {
   useCallback,
@@ -12,10 +11,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import * as recoil from "recoil";
-import { Box3, Object3D, PerspectiveCamera, Vector3 } from "three";
-import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
+import { CAMERA_POSITION_KEY, Environment } from "./Environment";
+import {
+  Looker3dPluginSettings,
+  defaultPluginSettings,
+} from "./Looker3dPlugin";
 import {
   ChooseColorSpace,
   Screenshot,
@@ -27,24 +30,20 @@ import {
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
-import { Environment } from "./Environment";
 import { useHotkey, usePathFilter } from "./hooks";
-import {
-  defaultPluginSettings,
-  Looker3dPluginSettings,
-} from "./Looker3dPlugin";
 import {
   Cuboid,
   CuboidProps,
-  load3dOverlays,
   OverlayLabel,
-  Polyline,
   PolyLineProps,
+  Polyline,
+  load3dOverlays,
 } from "./overlays";
 import { PointCloudMesh } from "./renderables";
 import {
   currentActionAtom,
   currentPointSizeAtom,
+  customColorMapAtom,
   isGridOnAtom,
   isPointSizeAttenuatedAtom,
   shadeByAtom,
@@ -52,84 +51,53 @@ import {
 
 type View = "pov" | "top";
 
-export type Looker3dProps = {
-  api: {
-    dataset: fos.State.Dataset;
-    mediaField: string;
-    mediaFieldValue: string;
-    src: string;
-    sample: Sample;
-  };
-};
+const MODAL_TRUE = true;
+const DEFAULT_GREEN = "#00ff00";
 
-export const Looker3d = (props: Looker3dProps) => {
-  const mediaFieldValue = props?.api?.mediaFieldValue;
-  const mediaField = props?.api?.mediaField;
-
-  if (!mediaFieldValue) {
-    return <Loading>No value provided for &quot;{mediaField}&quot;.</Loading>;
-  }
-
-  return (
-    <ErrorBoundary>
-      <Looker3dCore {...props} />
-    </ErrorBoundary>
-  );
-};
-
-const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
+export const Looker3d = () => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings
   );
 
-  console.log(settings);
-
-  const modal = true;
-  const points = useLoader(PCDLoader, src);
-  const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
+  const selectedLabels = useRecoilValue(fos.selectedLabels);
+  const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
-  const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
+  const labelAlpha = useRecoilValue(fos.alpha(MODAL_TRUE));
   const onSelectLabel = fos.useOnSelectLabel();
-  const cameraRef = React.useRef();
+  const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const getColor = recoil.useRecoilValue(fos.colorMap(true));
+  const getColor = useRecoilValue(fos.colorMap(true));
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
-  const { coloring } = recoil.useRecoilValue(
-    fos.lookerOptions({ withFilter: true, modal })
+  const { coloring } = useRecoilValue(
+    fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE })
   );
+  const [activePcdSlices, setActivePcdSlices] = useRecoilState(
+    fos.activePcdSlices
+  );
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
+  const defaultPcdSlice = useRecoilValue(fos.defaultPcdSlice);
 
-  const isRgbPresent = useMemo(
-    () => Boolean(points.geometry.attributes?.color),
-    [points]
-  );
+  useEffect(() => {
+    if (
+      (!activePcdSlices || activePcdSlices.length === 0) &&
+      defaultPcdSlice?.length > 0
+    ) {
+      setActivePcdSlices([defaultPcdSlice]);
+    }
+  }, [activePcdSlices, setActivePcdSlices, defaultPcdSlice]);
+
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+
+  const sampleMap = useRecoilValue(fos.activePcdSliceToSampleMap);
+
+  // const sampleMapJson = useMemo(() => {
+  //   r
+  // }, [sampleMap])
 
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
-
-  const overlays = useMemo(
-    () =>
-      load3dOverlays(sample, selectedLabels)
-        .map((l) => {
-          const path = l.path.join(".");
-          let color: string;
-          switch (coloring.by) {
-            case "field":
-              color = getColor(path);
-              break;
-            case "instance":
-              color = getColor(l._id);
-              break;
-            default:
-              color = getColor(l.label);
-              break;
-          }
-          return { ...l, color, id: l._id };
-        })
-        .filter((l) => pathFilter(l.path.join("."), l)),
-    [coloring, getColor, pathFilter, sample, selectedLabels]
-  );
 
   const handleSelect = useCallback(
     (label: OverlayLabel) => {
@@ -137,18 +105,58 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
         detail: {
           id: label._id,
           field: label.path[label.path.length - 1],
-          sampleId: sample._id,
+          sampleId: label.sampleId,
         },
       });
     },
-    [onSelectLabel, sample]
+    [onSelectLabel]
   );
 
-  const colorBy = recoil.useRecoilValue(shadeByAtom);
-  const pointSize = recoil.useRecoilValue(currentPointSizeAtom);
-  const isPointSizeAttenuated = recoil.useRecoilValue(
-    isPointSizeAttenuatedAtom
-  );
+  const shadeBy = useRecoilValue(shadeByAtom);
+  const [customColorMap, setCustomColorMap] =
+    useRecoilState(customColorMapAtom);
+  const pointSize = useRecoilValue(currentPointSizeAtom);
+  const isPointSizeAttenuated = useRecoilValue(isPointSizeAttenuatedAtom);
+  const isPointcloudDataset = useRecoilValue(fos.isPointcloudDataset);
+
+  const topCameraPosition = useMemo(() => {
+    if (!pointCloudBounds) {
+      return [1, 1, 20];
+    }
+
+    const absMax = Math.max(
+      pointCloudBounds.max?.x,
+      pointCloudBounds.max?.y,
+      pointCloudBounds.max?.z
+    );
+
+    const upVectorNormalized = new Vector3(...settings.defaultUp).normalize();
+
+    // we want the camera to be along the up vector
+    // the scaling factor determines by how much
+    const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
+    const upVectorScaled = upVectorNormalized.multiplyScalar(scalingFactor);
+    return [upVectorScaled.x, upVectorScaled.y, upVectorScaled.z];
+  }, [pointCloudBounds, settings]);
+
+  const defaultCameraPosition = useMemo(() => {
+    const lastSavedCameraPosition =
+      window?.localStorage.getItem(CAMERA_POSITION_KEY);
+
+    if (lastSavedCameraPosition?.length > 0) {
+      return JSON.parse(lastSavedCameraPosition);
+    }
+
+    if (settings.defaultCameraPosition) {
+      return [
+        settings.defaultCameraPosition.x,
+        settings.defaultCameraPosition.y,
+        settings.defaultCameraPosition.z,
+      ];
+    } else {
+      return topCameraPosition;
+    }
+  }, [topCameraPosition, settings]);
 
   const onChangeView = useCallback(
     (view: View) => {
@@ -166,35 +174,11 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
 
         switch (view) {
           case "top":
-            if (settings.defaultCameraPosition) {
-              camera.position.set(
-                settings.defaultCameraPosition.x,
-                settings.defaultCameraPosition.y,
-                settings.defaultCameraPosition.z
-              );
-            } else {
-              const absMax = Math.max(
-                pointCloudBounds.max?.x,
-                pointCloudBounds.max?.y,
-                pointCloudBounds.max?.z
-              );
-
-              const upVectorNormalized = new Vector3(
-                ...settings.defaultUp
-              ).normalize();
-
-              // we want the camera to be along the up vector
-              // the scaling factor determines by how much
-              const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
-              const upVectorScaled =
-                upVectorNormalized.multiplyScalar(scalingFactor);
-
-              camera.position.set(
-                upVectorScaled.x,
-                upVectorScaled.y,
-                upVectorScaled.z
-              );
-            }
+            camera.position.set(
+              topCameraPosition[0],
+              topCameraPosition[1],
+              topCameraPosition[2]
+            );
             break;
           case "pov":
             // todo: account for non-z up here
@@ -209,7 +193,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
         );
       }
     },
-    [cameraRef, controlsRef, settings, pointCloudBounds]
+    [topCameraPosition]
   );
 
   const jsonPanel = fos.useJSONPanel();
@@ -233,7 +217,7 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
   );
 
   const [hovering, setHovering] = useState(false);
-  const setAction = recoil.useSetRecoilState(currentActionAtom);
+  const setAction = useSetRecoilState(currentActionAtom);
 
   const timeout = useRef<NodeJS.Timeout>(null);
 
@@ -293,8 +277,40 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
   );
 
   useEffect(() => {
-    onChangeView("top");
-  }, [onChangeView, cameraRef, controlsRef]);
+    const currentCameraPosition = cameraRef.current?.position;
+
+    if (
+      !currentCameraPosition ||
+      (currentCameraPosition.x === defaultCameraPosition[0] &&
+        currentCameraPosition.y === defaultCameraPosition[1] &&
+        currentCameraPosition.z === defaultCameraPosition[2])
+    ) {
+      return;
+    }
+
+    cameraRef.current.position.set(
+      defaultCameraPosition[0],
+      defaultCameraPosition[1],
+      defaultCameraPosition[2]
+    );
+  }, [defaultCameraPosition]);
+
+  useEffect(() => {
+    if (isPointcloudDataset) {
+      setCustomColorMap((prev) => {
+        if (Object.hasOwn(prev, "default")) {
+          return prev;
+        }
+        return { ...(prev ?? {}), default: DEFAULT_GREEN };
+      });
+    } else {
+      const newCustomColorMap = {};
+      for (const slice of allPcdSlices) {
+        newCustomColorMap[slice] = DEFAULT_GREEN;
+      }
+      setCustomColorMap((prev) => ({ ...newCustomColorMap, ...(prev ?? {}) }));
+    }
+  }, [isPointcloudDataset, allPcdSlices, setCustomColorMap]);
 
   const hasMultiplePcdSlices = useMemo(
     () =>
@@ -305,92 +321,173 @@ const Looker3dCore = ({ api: { sample, src, dataset } }: Looker3dProps) => {
 
   const theme = useTheme();
 
-  const isGridOn = recoil.useRecoilValue(isGridOnAtom);
+  const isGridOn = useRecoilValue(isGridOnAtom);
+
+  const filteredSamples = useMemo(
+    () =>
+      Object.entries(sampleMap).map(([slice, sample]) => {
+        let mediaUrl;
+
+        if (Array.isArray(sample.urls)) {
+          mediaUrl = fos.getSampleSrc(
+            sample.urls.find((u) => u.field === mediaField).url
+          );
+        } else {
+          mediaUrl = fos.getSampleSrc(sample.urls[mediaField]);
+        }
+
+        const customColor =
+          (customColorMap &&
+            customColorMap[isPointcloudDataset ? "default" : slice]) ??
+          "#00ff00";
+
+        return (
+          <PointCloudMesh
+            key={slice}
+            minZ={minZ}
+            shadeBy={shadeBy}
+            customColor={customColor}
+            pointSize={pointSize}
+            src={mediaUrl}
+            rotation={pcRotation}
+            onLoad={(boundingBox) => {
+              if (!pointCloudBounds) setPointCloudBounds(boundingBox);
+            }}
+            defaultShadingColor={theme.text.primary}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+          />
+        );
+      }),
+    [
+      sampleMap,
+      mediaField,
+      shadeBy,
+      pointSize,
+      pcRotation,
+      minZ,
+      theme,
+      isPointSizeAttenuated,
+      pointCloudBounds,
+      customColorMap,
+      isPointcloudDataset,
+    ]
+  );
+
+  const overlays = useMemo(
+    () =>
+      load3dOverlays(sampleMap, selectedLabels)
+        .map((l) => {
+          const path = l.path.join(".");
+          let color: string;
+          switch (coloring.by) {
+            case "field":
+              color = getColor(path);
+              break;
+            case "instance":
+              color = getColor(l._id);
+              break;
+            default:
+              color = getColor(l.label);
+              break;
+          }
+          return { ...l, color, id: l._id };
+        })
+        .filter((l) => pathFilter(l.path.join("."), l)),
+    [coloring, getColor, pathFilter, sampleMap, selectedLabels]
+  );
+
+  const [cuboidOverlays, polylineOverlays] = useMemo(() => {
+    const newCuboidOverlays = [];
+    const newPolylineOverlays = [];
+
+    for (const overlay of overlays) {
+      if (overlay._cls === "Detection") {
+        newCuboidOverlays.push(
+          <Cuboid
+            key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
+            rotation={overlayRotation}
+            itemRotation={itemRotation}
+            opacity={labelAlpha}
+            {...(overlay as unknown as CuboidProps)}
+            onClick={() => handleSelect(overlay)}
+            label={overlay}
+            tooltip={tooltip}
+            useLegacyCoordinates={settings.useLegacyCoordinates}
+          />
+        );
+      } else if (
+        overlay._cls === "Polyline" &&
+        (overlay as unknown as PolyLineProps).points3d
+      ) {
+        newPolylineOverlays.push(
+          <Polyline
+            key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
+            rotation={overlayRotation}
+            opacity={labelAlpha}
+            {...(overlay as unknown as PolyLineProps)}
+            label={overlay}
+            onClick={() => handleSelect(overlay)}
+            tooltip={tooltip}
+          />
+        );
+      }
+    }
+    return [newCuboidOverlays, newPolylineOverlays];
+  }, [
+    overlays,
+    itemRotation,
+    labelAlpha,
+    overlayRotation,
+    handleSelect,
+    tooltip,
+    settings,
+  ]);
 
   return (
-    <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
-      <Canvas onClick={() => setAction(null)} data-cy="looker3d">
-        <Screenshot />
-        <Environment
-          controlsRef={controlsRef}
-          cameraRef={cameraRef}
-          settings={settings}
-          isGridOn={isGridOn}
-          bounds={pointCloudBounds}
-        />
-        <mesh rotation={overlayRotation}>
-          {overlays
-            .filter((o) => o._cls === "Detection")
-            .map((label, key) => (
-              <Cuboid
-                key={`cuboid-${key}`}
-                itemRotation={itemRotation}
-                opacity={labelAlpha}
-                {...(label as unknown as CuboidProps)}
-                onClick={() => handleSelect(label)}
-                label={label}
-                tooltip={tooltip}
-                useLegacyCoordinates={settings.useLegacyCoordinates}
+    <ErrorBoundary>
+      <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
+        <Canvas onClick={() => setAction(null)} data-cy="looker3d">
+          <Screenshot />
+          <Environment
+            controlsRef={controlsRef}
+            cameraRef={cameraRef}
+            settings={settings}
+            isGridOn={isGridOn}
+            bounds={pointCloudBounds}
+          />
+          <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
+          {polylineOverlays}
+          {filteredSamples}
+        </Canvas>
+        {(hoveringRef.current || hovering) && (
+          <ActionBarContainer
+            onMouseEnter={() => (hoveringRef.current = true)}
+            onMouseLeave={() => (hoveringRef.current = false)}
+          >
+            {hasMultiplePcdSlices && <SliceSelector />}
+            <ActionsBar>
+              <ToggleGridHelper />
+              <SetPointSizeButton />
+              <ChooseColorSpace />
+              <SetViewButton
+                onChangeView={onChangeView}
+                view={"top"}
+                label={"T"}
+                hint="Top View"
               />
-            ))}
-        </mesh>
-        {overlays
-          .filter(
-            (o) =>
-              o._cls === "Polyline" && (o as unknown as PolyLineProps).points3d
-          )
-          .map((label, key) => (
-            <Polyline
-              key={`polyline-${key}`}
-              rotation={overlayRotation}
-              opacity={labelAlpha}
-              {...(label as unknown as PolyLineProps)}
-              label={label}
-              onClick={() => handleSelect(label)}
-              tooltip={tooltip}
-            />
-          ))}
-        <PointCloudMesh
-          minZ={minZ}
-          shadeBy={colorBy}
-          pointSize={pointSize}
-          points={points}
-          rotation={pcRotation}
-          onLoad={(boundingBox) => {
-            setPointCloudBounds(boundingBox);
-          }}
-          defaultShadingColor={theme.text.primary}
-          isPointSizeAttenuated={isPointSizeAttenuated}
-        />
-      </Canvas>
-      {(hoveringRef.current || hovering) && (
-        <ActionBarContainer
-          onMouseEnter={() => (hoveringRef.current = true)}
-          onMouseLeave={() => (hoveringRef.current = false)}
-        >
-          {hasMultiplePcdSlices && <SliceSelector dataset={dataset} />}
-          <ActionsBar>
-            <ToggleGridHelper />
-            <SetPointSizeButton />
-            <ChooseColorSpace isRgbPresent={isRgbPresent} />
-            <SetViewButton
-              onChangeView={onChangeView}
-              view={"top"}
-              label={"T"}
-              hint="Top View"
-            />
-            <SetViewButton
-              onChangeView={onChangeView}
-              view={"pov"}
-              label={"E"}
-              hint="Ego View"
-            />
-            <ViewJSON jsonPanel={jsonPanel} sample={sample} />
-            <ViewHelp helpPanel={helpPanel} />
-          </ActionsBar>
-        </ActionBarContainer>
-      )}
-    </Container>
+              <SetViewButton
+                onChangeView={onChangeView}
+                view={"pov"}
+                label={"E"}
+                hint="Ego View"
+              />
+              <ViewJSON jsonPanel={jsonPanel} sample={sampleMap} />
+              <ViewHelp helpPanel={helpPanel} />
+            </ActionsBar>
+          </ActionBarContainer>
+        )}
+      </Container>
+    </ErrorBoundary>
   );
 };
 

@@ -408,10 +408,10 @@ def _create_media_urls(
         if path not in cache:
             cache[path] = path
 
-        if opm_filepath == field:
+        if use_opm and opm_filepath == field:
             filepath_source = path
             filepath = path
-        elif not opm_filepath and field == "filepath":
+        elif field == "filepath":
             filepath_source = path
             filepath = path
 

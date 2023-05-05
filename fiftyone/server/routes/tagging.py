@@ -33,7 +33,7 @@ class Tagging(HTTPEndpoint):
         label_fields = data.get("label_fields", [])
         hidden_labels = data.get("hidden_labels", None)
         extended = data.get("extended", None)
-        slice = data.get("slice", None)
+        slices = data.get("slices", None)
         group_id = data.get("group_id", None)
         view = fost.get_tag_view(
             dataset,
@@ -44,7 +44,7 @@ class Tagging(HTTPEndpoint):
             labels=labels,
             hidden_labels=hidden_labels,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(id=group_id, slice=slice)
+                group=GroupElementFilter(id=group_id, slices=slices)
             ),
             sample_ids=sample_ids,
             target_labels=target_labels,
