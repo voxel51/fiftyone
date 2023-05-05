@@ -41,6 +41,7 @@ export class Executor {
     );
   }
   trigger(operatorURI: string, params: any = {}) {
+    operatorURI = resolveOperatorURI(operatorURI);
     this.requests.push(new InvocationRequest(operatorURI, params));
   }
   log(message: string) {
@@ -105,6 +106,7 @@ export type OperatorConfigOptions = {
   executeAsGenerator?: boolean;
   dynamic?: boolean;
   unlisted?: boolean;
+  onStartup?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -113,6 +115,7 @@ export class OperatorConfig {
   public executeAsGenerator: boolean;
   public dynamic: boolean;
   public unlisted: boolean;
+  public onStartup: boolean;
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -120,9 +123,18 @@ export class OperatorConfig {
     this.executeAsGenerator = options.executeAsGenerator || false;
     this.dynamic = options.dynamic || false;
     this.unlisted = options.unlisted || false;
+    this.onStartup = options.onStartup || false;
   }
   static fromJSON(json) {
-    return new OperatorConfig(json);
+    return new OperatorConfig({
+      name: json.name,
+      label: json.label,
+      description: json.description,
+      executeAsGenerator: json.execute_as_generator,
+      dynamic: json.dynamic,
+      unlisted: json.unlisted,
+      onStartup: json.on_startup,
+    });
   }
 }
 
@@ -150,7 +162,7 @@ export class Operator {
     return this.config.label;
   }
   get uri() {
-    return `${this.pluginName || "@voxel51"}/${this.name}`;
+    return `${this.pluginName || "@voxel51/operators"}/${this.name}`;
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
@@ -206,7 +218,7 @@ export class Operator {
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
     const config = OperatorConfig.fromJSON(json.config);
-    const operator = new Operator(json.plugin_name, json.is_builtin, config);
+    const operator = new Operator(json.plugin_name, json._built_in, config);
     if (inputs) {
       operator.definition.addProperty(
         "inputs",
@@ -317,6 +329,17 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
+export async function executeStartupOperators() {
+  const { allOperators } = listLocalAndRemoteOperators();
+  console.log(allOperators.map((o) => o.uri));
+  const startupOperators = allOperators.filter(
+    (o) => o.config.onStartup === true
+  );
+  for (const operator of startupOperators) {
+    executeOperator(operator.uri);
+  }
+}
+
 enum MessageType {
   SUCCESS = "success",
   ERROR = "error",
@@ -397,7 +420,7 @@ export function resolveOperatorURI(operatorURI) {
   return `@voxel51/operators/${operatorURI}`;
 }
 
-export async function executeOperator(operatorURI, params: any) {
+export async function executeOperator(operatorURI, params: any = {}) {
   operatorURI = resolveOperatorURI(operatorURI);
   const queue = getInvocationRequestQueue();
   const request = new InvocationRequest(operatorURI, params);
@@ -417,7 +440,7 @@ export async function executeOperatorWithContext(
   let executor;
 
   if (isRemote) {
-    if (operator.executeAsGenerator) {
+    if (operator.config.executeAsGenerator) {
       try {
         result = await executeOperatorAsGenerator(operator, ctx);
       } catch (e) {

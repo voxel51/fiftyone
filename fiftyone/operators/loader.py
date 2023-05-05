@@ -70,7 +70,6 @@ class PluginContext:
     def unregister_inst(self, inst):
         """Unregisters the given instance."""
         self.instances.remove(inst)
-        inst.dispose()
 
     def dispose(self):
         """Disposes all instances."""
