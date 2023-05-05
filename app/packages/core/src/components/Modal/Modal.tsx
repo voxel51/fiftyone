@@ -113,7 +113,7 @@ const SampleModal = () => {
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
-            !isLabelTag && !isLabel && !isOther && !isTag;
+            !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
           return {
             children: (
               <>
@@ -132,7 +132,7 @@ const SampleModal = () => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
-                    disabled={isOther || isLabelTag}
+                    disabled={isOther || isLabelTag || isTag}
                     key={key}
                     trigger={trigger}
                   />
