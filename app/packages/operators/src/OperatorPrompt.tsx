@@ -10,6 +10,7 @@ import {
   useOperatorPrompt,
   useShowOperatorIO,
 } from "./state";
+import { scrollable } from "@fiftyone/components";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
@@ -34,7 +35,7 @@ const PromptModal = styled.div`
   min-width: 50%;
   width: auto;
   padding: 1rem;
-  max-height: calc(80vh);
+  max-height: 80vh;
   overflow: auto;
   ${scrollbarStyles}
 `;
@@ -85,8 +86,11 @@ function ActualOperatorPrompt() {
 
 function Prompting({ operatorPrompt }) {
   return (
-    <Box>
-      <Box sx={{ pb: 2 }}>
+    <Box sx={{ height: "100%" }}>
+      <Box
+        sx={{ pb: 2, maxHeight: "calc(100% - 32px)", overflow: "auto" }}
+        className={scrollable}
+      >
         <form onSubmit={operatorPrompt.onSubmit}>
           <OperatorIO
             schema={operatorPrompt.inputFields}
