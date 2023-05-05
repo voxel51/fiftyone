@@ -44,6 +44,22 @@ class UserRole(enum.Enum):
     GUEST = "GUEST"
 
 
+def _validate_user_role(
+    candidate_user_role: Union[str, UserRole, None], nullable: bool = False
+) -> Optional[str]:
+    if candidate_user_role is None and nullable:
+        return None
+
+    if isinstance(candidate_user_role, UserRole):
+        return candidate_user_role.value
+    elif isinstance(candidate_user_role, str):
+        try:
+            return UserRole[candidate_user_role].value
+        except KeyError:
+            ...
+    raise ValueError(f"Invalid user role {candidate_user_role}")
+
+
 _DELETE_INVITATION_QUERY = """
     mutation($invitationId: String!) {
       revokeUserInvitation(invitationId: $invitationId)
@@ -232,11 +248,12 @@ def send_user_invitation(email: str, role: UserRole) -> str:
     Returns:
         the invitation ID string
     """
+    role_str = _validate_user_role(role)
     client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(
         query=_SEND_INVITATION_QUERY,
-        variables={"email": email, "role": role.value},
+        variables={"email": email, "role": role_str},
     )
     return data["sendUserInvitation"]["id"]
 
@@ -252,12 +269,13 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
         user: a user ID, email string, or :class:`User` instance
         role: the :class:`UserRole` to set
     """
+    role_str = _validate_user_role(role)
     user_id = _resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_SET_USER_ROLE_QUERY,
-        variables={"userId": user_id, "role": role.value},
+        variables={"userId": user_id, "role": role_str},
     )
 
 

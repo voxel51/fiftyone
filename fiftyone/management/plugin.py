@@ -7,11 +7,12 @@ Plugin management.
 """
 import json
 import os
-from typing import List, TypedDict
+from typing import List, Optional, TypedDict
 
 from fiftyone.management import connection
 from fiftyone.management import dataset
 from fiftyone.management import users
+from fiftyone.management import util
 
 
 class OperatorPermission(TypedDict):
@@ -78,7 +79,7 @@ mutation ($name: String!){
 }
 """
 
-_GET_PLUGIN_QUERY = (
+_GET_PLUGIN_INFO_QUERY = (
     _PLUGIN_FRAGMENT
     + """
     query($pluginName: String!) {
@@ -92,13 +93,40 @@ _GET_PLUGIN_QUERY = (
 _LIST_PLUGINS_QUERY = (
     _PLUGIN_FRAGMENT
     + """
-    query {
-        plugins {
+    query($includeBuiltin: Boolean!) {
+        plugins(includeBuiltin: $includeBuiltin) {
             ...pluginFrag
         }
     }
     """
 )
+
+_SET_PLUGIN_ENABLED_QUERY = """
+    mutation($pluginName: String!, $enabled: Boolean) {
+        updatePlugin(name: $pluginName, enabled: $enabled)
+        {enabled}
+    }
+"""
+
+_UPDATE_PLUGIN_OPERATOR_QUERY = """
+    mutation(
+            $pluginName: String!,
+            $operatorName: String!,
+            $enabled: Boolean
+            $minRole: UserRole,
+            $minDatasetPerm: DatasetPermission)
+    {
+        updatePlugin(name: $pluginName, operatorSettings: {
+            name: $operatorName
+            enabled: $enabled
+            permission: {
+                minimumRole: $minRole
+                minimumDatasetPermission: $minDatasetPerm
+            }
+        }) {}
+    }
+"""
+
 
 _UPLOAD_PLUGIN_QUERY = (
     _PLUGIN_FRAGMENT
@@ -110,48 +138,6 @@ _UPLOAD_PLUGIN_QUERY = (
     }
 """
 )
-
-
-def get_plugin_info(plugin_name: str) -> Plugin:
-    """Gets information about the specified plugin (if any).
-
-    Args:
-        plugin_name: plugin name string
-
-    Returns:
-        :class:`Plugin`, or ``None`` if no such plugin is found
-    """
-    client = connection.APIClientConnection().client
-
-    return client.post_graphql_request(
-        query=_GET_PLUGIN_QUERY, variables={"pluginName": plugin_name}
-    )
-
-
-def list_plugins() -> List[Plugin]:
-    """Returns a list of all installed plugins
-
-    Returns:
-        a list of :class:`Plugin` instances
-    """
-    client = connection.APIClientConnection().client
-
-    return client.post_graphql_request(query=_LIST_PLUGINS_QUERY)
-
-
-def download_plugin(plugin_name: str, download_dir: str) -> str:
-    client = connection.APIClientConnection().client
-    return_value = client.post_graphql_request(
-        query=_DOWNLOAD_PLUGIN_QUERY, variables={"name": plugin_name}
-    )
-
-    file_token = return_value["downloadPlugin"]
-    resp = client.get(f"file/{file_token}")
-    out_path = os.path.join(download_dir, file_token)
-    with open(out_path, "wb") as outfile:
-        outfile.write(resp.content)
-
-    return out_path
 
 
 def delete_plugin(plugin_name: str) -> None:
@@ -171,8 +157,158 @@ def delete_plugin(plugin_name: str) -> None:
     )
 
 
-def upload_plugin(plugin_zip_file_path: str, overwrite: bool = False) -> None:
-    """Uploads a plugin to Teams system, given local path to plugin zip file.
+def download_plugin(plugin_name: str, download_dir: str) -> str:
+    client = connection.APIClientConnection().client
+    return_value = client.post_graphql_request(
+        query=_DOWNLOAD_PLUGIN_QUERY, variables={"name": plugin_name}
+    )
+
+    file_token = return_value["downloadPlugin"]
+    resp = client.get(f"file/{file_token}")
+    out_path = os.path.join(download_dir.rstrip("/"), file_token)
+    with open(out_path, "wb") as outfile:
+        outfile.write(resp.content)
+
+    return out_path
+
+
+def get_plugin_info(plugin_name: str) -> Plugin:
+    """Gets information about the specified plugin (if any).
+
+    Args:
+        plugin_name: plugin name string
+
+    Returns:
+        :class:`Plugin`, or ``None`` if no such plugin is found
+    """
+    client = connection.APIClientConnection().client
+
+    plugin = client.post_graphql_request(
+        query=_GET_PLUGIN_INFO_QUERY, variables={"pluginName": plugin_name}
+    )["plugin"]
+    return util.camel_to_snake_value(plugin)
+
+
+def list_plugins(include_builtin: bool = False) -> List[Plugin]:
+    """Returns a list of all installed plugins
+
+    Args:
+        include_builtin (False): a bool specifying to include
+            builtin plugin/operators
+
+    Returns:
+        a list of :class:`Plugin` instances
+    """
+    client = connection.APIClientConnection().client
+
+    plugins = client.post_graphql_request(
+        query=_LIST_PLUGINS_QUERY,
+        variables={"includeBuiltin": include_builtin},
+    )["plugins"]
+    return util.camel_to_snake_value(plugins)
+
+
+def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:
+    """Sets enabled status of the given plugin.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        plugin_name: a plugin name string
+        enabled: a bool specifying what to set enabled status to
+    """
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_SET_PLUGIN_ENABLED_QUERY,
+        variables={"pluginName": plugin_name, "enabled": enabled},
+    )
+
+
+def set_plugin_operator_enabled(
+    plugin_name: str, operator_name: str, enabled: bool
+) -> None:
+    """Sets enabled status of the given plugin operator.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        plugin_name: a plugin name string
+        operator_name: a string specifying name of operator within given plugin
+        enabled: a bool specifying what to set operator enabled status to
+    """
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_UPDATE_PLUGIN_OPERATOR_QUERY,
+        variables={
+            "pluginName": plugin_name,
+            "operatorName": operator_name,
+            "enabled": enabled,
+        },
+    )
+
+
+def set_plugin_operator_permissions(
+    plugin_name: str,
+    operator_name: str,
+    minimum_role: Optional[users.UserRole] = None,
+    minimum_dataset_permission: Optional[dataset.DatasetPermission] = None,
+):
+    """Sets permission levels of the given plugin operator.
+    At least one of ``minimum_role`` and ``minimum_dataset_permission``
+    must be set.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        plugin_name: a plugin name string
+        operator_name: a string specifying name of operator within given plugin
+        minimum_role (None): an optional :class:`fiftyone.management.DatasetPermission`
+            instance. Defaults to None which means don't update the field.
+        minimum_dataset_permission (None): an optional
+            :class:`fiftyone.management.DatasetPermission`
+            instance. Defaults to None which means don't update the field.
+    """
+    if not any((minimum_role, minimum_dataset_permission)):
+        raise ValueError(
+            "Must specify minimum_role and/or minimum_dataset_permission"
+        )
+
+    minimum_role_str = users._validate_user_role(minimum_role, nullable=True)
+    minimum_dataset_permission_str = dataset._validate_dataset_permission(
+        minimum_dataset_permission, nullable=True
+    )
+
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_UPDATE_PLUGIN_OPERATOR_QUERY,
+        variables={
+            "pluginName": plugin_name,
+            "operatorName": operator_name,
+            "minRole": minimum_role_str,
+            "minDatasetPerm": minimum_dataset_permission_str,
+        },
+    )
+
+
+def upload_plugin(
+    plugin_zip_file_path: str, overwrite: bool = False
+) -> Plugin:
+    """Uploads a local path plugin to the FiftyOne Teams shared plugin system.
+
+    Local path plugin must be in zip format with valid `fiftyone.yml` at the
+    root or within a single common root folder.
+
+    E.g.,
+        my_plugin/
+        my_plugin/fiftyone.yml
+        my_plugin/__init__.py
+        my_plugin/data.txt
 
     .. note:
 
@@ -188,7 +324,7 @@ def upload_plugin(plugin_zip_file_path: str, overwrite: bool = False) -> None:
         json_content = json.loads(client.post_file("file", f))
     upload_token = json_content["file_token"]
 
-    client.post_graphql_request(
+    return client.post_graphql_request(
         query=_UPLOAD_PLUGIN_QUERY,
         variables={"token": upload_token, "overwrite": overwrite},
-    )
+    )["uploadPlugin"]

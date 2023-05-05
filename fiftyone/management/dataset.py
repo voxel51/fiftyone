@@ -22,6 +22,25 @@ class DatasetPermission(enum.Enum):
     MANAGE = "MANAGE"
 
 
+def _validate_dataset_permission(
+    candidate_dataset_permission: Union[None, str, DatasetPermission],
+    nullable: bool = False,
+) -> Union[str, None]:
+    if candidate_dataset_permission is None and nullable:
+        return None
+
+    if isinstance(candidate_dataset_permission, DatasetPermission):
+        return candidate_dataset_permission.value
+    elif isinstance(candidate_dataset_permission, str):
+        try:
+            return DatasetPermission[candidate_dataset_permission].value
+        except KeyError:
+            ...
+    raise ValueError(
+        f"Invalid dataset permission {candidate_dataset_permission}"
+    )
+
+
 _DELETE_DATASET_USER_PERM_QUERY = """
     mutation($identifier: String!, $userId: String!) {
       removeDatasetUserPermission(
@@ -279,10 +298,11 @@ def set_dataset_default_permission(
         dataset_name: the dataset name
         permission: the :class:`fiftyone.management.DatasetPermission` to set
     """
+    perm_str = _validate_dataset_permission(permission)
     client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_SET_DATASET_DEFAULT_PERM_QUERY,
-        variables={"identifier": dataset_name, "permission": permission.value},
+        variables={"identifier": dataset_name, "permission": perm_str},
     )
 
 
@@ -304,6 +324,7 @@ def set_dataset_user_permission(
             instance
         permission: the :class:`fiftyone.management.DatasetPermission` to grant
     """
+    perm_str = _validate_dataset_permission(permission)
     user_id = users._resolve_user_id(user)
 
     client = connection.APIClientConnection().client
@@ -312,6 +333,6 @@ def set_dataset_user_permission(
         variables={
             "identifier": dataset_name,
             "userId": user_id,
-            "permission": permission.value,
+            "permission": perm_str,
         },
     )
