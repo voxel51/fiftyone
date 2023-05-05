@@ -51,6 +51,7 @@ export const getBrowserStorageEffectForKey =
     props: {
       sessionStorage?: boolean;
       valueClass?: "string" | "number" | "boolean";
+      map?: (value: unknown) => unknown;
     } = { sessionStorage: false, valueClass: "string" }
   ) =>
   ({ setSelf, onSet }) => {
@@ -74,7 +75,10 @@ export const getBrowserStorageEffectForKey =
     if (value != null) setSelf(procesedValue);
 
     onSet((newValue, _oldValue, isReset) => {
-      if (isReset) {
+      if (props.map) {
+        newValue = props.map(newValue);
+      }
+      if (isReset || newValue === undefined) {
         storage.removeItem(key);
       } else {
         storage.setItem(key, newValue);

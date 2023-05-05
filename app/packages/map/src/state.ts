@@ -89,6 +89,8 @@ export const mapStyle = atom<string>({
   effects: [
     getBrowserStorageEffectForKey("@fiftyone/map/state.style", {
       sessionStorage: true,
+      map: (newValue: string) =>
+        ["Dark", "Light"].includes(newValue) ? undefined : newValue,
     }),
   ],
 });
