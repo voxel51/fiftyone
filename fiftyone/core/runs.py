@@ -582,7 +582,7 @@ class Run(Configurable):
 
         run_doc = cls._get_run_doc(samples, key)
 
-        if not run_doc.results:
+        if not run_doc or not run_doc.results:
             return None
 
         # Load run config
