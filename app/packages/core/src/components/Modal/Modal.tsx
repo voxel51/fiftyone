@@ -113,7 +113,7 @@ const SampleModal = () => {
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
-            !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
+            !isLabelTag && !isLabel && !isOther && !isTag;
           return {
             children: (
               <>
