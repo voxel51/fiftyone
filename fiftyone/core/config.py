@@ -418,7 +418,7 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        supported_color_bys = {"field", "instance", "label"}
+        supported_color_bys = {"field", "value"}
         default_color_by = "field"
         if self.color_by not in supported_color_bys:
             logger.warning(

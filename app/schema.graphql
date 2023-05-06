@@ -108,7 +108,22 @@ enum BrainRunType {
 enum ColorBy {
   field
   instance
-  label
+  value
+}
+
+input ColorSchemeInput {
+  colorPool: [String!] = null
+  customizedColorSettings: JSONArray = null
+}
+
+input ColorSchemeSaveFormat {
+  colorPool: [String!] = null
+  customizedColorSettings: String = null
+}
+
+type ColorSchemeStr {
+  colorPool: [String!]
+  customizedColorSettings: String
 }
 
 input CountValues {
@@ -158,6 +173,7 @@ type DatasetAppConfig {
   modalMediaField: String
   gridMediaField: String
   spaces: JSON
+  colorScheme: ColorSchemeStr
 }
 
 type DatasetStrConnection {
@@ -269,6 +285,8 @@ type IntValueCount {
 
 scalar JSON
 
+scalar JSONArray
+
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
@@ -350,6 +368,15 @@ type Mutation {
     datasetName: String = null
   ): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
+  setColorScheme(
+    subscription: String!
+    session: String
+    dataset: String!
+    stages: BSONArray!
+    colorScheme: ColorSchemeInput!
+    saveToApp: Boolean!
+    colorSchemeSaveFormat: ColorSchemeSaveFormat!
+  ): Boolean!
 }
 
 type NamedKeypointSkeleton {
@@ -378,7 +405,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
+  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset!
   datasets(
     search: String
     first: Int = 200
