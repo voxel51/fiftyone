@@ -167,11 +167,11 @@ export default function useSchemaSettings() {
   >(foq.viewSchema, null);
 
   useEffect(() => {
-    if (dataset?.name) {
+    if (dataset?.name && vStages?.length) {
       refetch(
         { name: dataset?.name, viewStages: vStages || [] },
         {
-          fetchPolicy: "network-only",
+          fetchPolicy: "store-and-network",
           onComplete: (err) => {
             if (err) {
               console.log("failed to fetch view schema", err);
@@ -180,7 +180,7 @@ export default function useSchemaSettings() {
         }
       );
     }
-  }, [refetch, vStages]);
+  }, [vStages]);
   const viewSchema = keyBy(data?.schemaForViewStages, "path");
   const setViewSchema = useSetRecoilState(viewSchemaState);
   useEffect(() => {
@@ -193,11 +193,11 @@ export default function useSchemaSettings() {
     schemaSelectedSettingsTab
   );
 
-  useEffect(() => {
-    if (selectedTab === TAB_OPTIONS_MAP.SELECTION) {
-      setFieldsOnly(true);
-    }
-  }, [selectedTab]);
+  // useEffect(() => {
+  //   if (selectedTab === TAB_OPTIONS_MAP.SELECTION) {
+  //     setFieldsOnly(true);
+  //   }
+  // }, [selectedTab]);
 
   const [finalSchema] = useMemo(() => {
     if (dataset.mediaType === "video") {
@@ -316,12 +316,12 @@ export default function useSchemaSettings() {
     [selectedPaths, viewPaths]
   );
 
-  // Reset will cause this effect
-  useEffect(() => {
-    if (allPaths.length) {
-      setSelectedPaths(new Set(allPaths));
-    }
-  }, [revertSelectedPathsState]);
+  // // Reset will cause this effect
+  // useEffect(() => {
+  //   if (allPaths.length) {
+  //     setSelectedPaths(new Set(allPaths));
+  //   }
+  // }, [revertSelectedPathsState]);
 
   // select and unselect all
   const setAllFieldsCheckedWrapper = useCallback(
@@ -336,14 +336,14 @@ export default function useSchemaSettings() {
   );
 
   // updates the affected fields count
-  useEffect(() => {
-    if (viewSchema && schema) {
-      const diff = Object.keys(viewSchema).length - Object.keys(schema).length;
-      if (diff !== affectedPathCount && diff >= 0) {
-        setAffectedPathCount(diff);
-      }
-    }
-  }, [viewSchema, schema]);
+  // useEffect(() => {
+  //   if (viewSchema && schema) {
+  //     const diff = Object.keys(viewSchema).length - Object.keys(schema).length;
+  //     if (diff !== affectedPathCount && diff >= 0) {
+  //       setAffectedPathCount(diff);
+  //     }
+  //   }
+  // }, [viewSchema, schema]);
 
   return {
     settingModal,

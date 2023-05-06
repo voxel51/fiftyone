@@ -51,58 +51,60 @@ const Filter = ({ modal }: { modal: boolean }) => {
         }}
         style={{ textTransform: "unset" }}
       />
-      <Box display="flex" alignItems="center">
-        {selectedFieldsStage && affectedPathCount > 0 && (
-          <Tooltip text="Clear field selection" placement="bottom-center">
-            <Box
-              sx={{
-                minWidth: "50px",
-                maxWidth: "100px",
-                background: theme.background.level1,
-                borderRadius: "25px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              onClick={() => {
-                resetSelectedFieldStages();
-                setRevertSelectedPaths(!revertSelectedPaths);
-              }}
-            >
-              {affectedPathCount > 0 && (
-                <Typography
-                  sx={{ color: theme.text.secondary }}
-                  style={{ marginRight: "0.25rem" }}
-                >
-                  {affectedPathCount}
-                </Typography>
-              )}
-              <VisibilityOff
+      {!modal && (
+        <Box display="flex" alignItems="center">
+          {selectedFieldsStage && affectedPathCount > 0 && (
+            <Tooltip text="Clear field selection" placement="bottom-center">
+              <Box
                 sx={{
-                  color: theme.text.secondary,
-                  borderRadius: "50%",
-                  fontSize: "1.5rem",
-                  marginRight: "0.25rem",
-                  "&:hover": { color: theme.text.primary },
+                  minWidth: "50px",
+                  maxWidth: "100px",
+                  background: theme.background.level1,
+                  borderRadius: "25px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-              />
-            </Box>
+                onClick={() => {
+                  resetSelectedFieldStages();
+                  setRevertSelectedPaths(!revertSelectedPaths);
+                }}
+              >
+                {affectedPathCount > 0 && (
+                  <Typography
+                    sx={{ color: theme.text.secondary }}
+                    style={{ marginRight: "0.25rem" }}
+                  >
+                    {affectedPathCount}
+                  </Typography>
+                )}
+                <VisibilityOff
+                  sx={{
+                    color: theme.text.secondary,
+                    borderRadius: "50%",
+                    fontSize: "1.5rem",
+                    marginRight: "0.25rem",
+                    "&:hover": { color: theme.text.primary },
+                  }}
+                />
+              </Box>
+            </Tooltip>
+          )}
+          <Tooltip text="Change field visibility" placement="bottom-center">
+            <Settings
+              onClick={() =>
+                setSchemaModal({
+                  open: true,
+                })
+              }
+              sx={{
+                color: theme.text.tertiary,
+                "&:hover": { color: theme.text.primary },
+              }}
+            />
           </Tooltip>
-        )}
-        <Tooltip text="Change field visibility" placement="bottom-center">
-          <Settings
-            onClick={() =>
-              setSchemaModal({
-                open: true,
-              })
-            }
-            sx={{
-              color: theme.text.tertiary,
-              "&:hover": { color: theme.text.primary },
-            }}
-          />
-        </Tooltip>
-      </Box>
+        </Box>
+      )}
     </InputDiv>
   );
 };
