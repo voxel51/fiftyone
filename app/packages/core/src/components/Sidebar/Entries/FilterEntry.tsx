@@ -64,6 +64,10 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 alignItems: "center",
                 justifyContent: "center",
               }}
+              onClick={() => {
+                resetSelectedFieldStages();
+                setRevertSelectedPaths(!revertSelectedPaths);
+              }}
             >
               {affectedPathCount > 0 && (
                 <Typography
@@ -74,10 +78,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 </Typography>
               )}
               <VisibilityOff
-                onClick={() => {
-                  resetSelectedFieldStages();
-                  setRevertSelectedPaths(!revertSelectedPaths);
-                }}
                 sx={{
                   color: theme.text.secondary,
                   borderRadius: "50%",

@@ -236,20 +236,6 @@ export default function useSchemaSettings() {
         const skip = skipFiled(path, viewSchema[path].ftype);
         let disabled = disabledField(path, viewSchema?.[path]?.ftype);
 
-        if (!schema?.[path]) {
-          return {
-            path,
-            count,
-            isSelected: isSelected || disabled,
-            pathLabelFinal,
-            skip,
-            disabled,
-            info: viewSchema[path].info,
-            description: viewSchema[path].description,
-            name: viewSchema[path].name || pathLabelFinal,
-          };
-        }
-
         return {
           path,
           count,
