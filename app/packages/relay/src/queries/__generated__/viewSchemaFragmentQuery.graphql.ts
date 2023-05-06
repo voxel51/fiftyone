@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c528c6af3406f64cd78c9c6f05f154f4>>
+ * @generated SignedSource<<396bf154fff49eeb66955d8d3633f2a3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -103,6 +103,13 @@ return {
             "kind": "ScalarField",
             "name": "description",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "subfield",
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -110,16 +117,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f49ee74851c69ba66e9f44a401f97ca7",
+    "cacheID": "7d37b0615de67c61c580bc74fd72bd91",
     "id": null,
     "metadata": {},
     "name": "viewSchemaFragmentQuery",
     "operationKind": "query",
-    "text": "query viewSchemaFragmentQuery(\n  $name: String!\n  $viewStages: BSONArray!\n) {\n  ...viewSchemaFragment\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $viewStages) {\n    path\n    ftype\n    info\n    description\n  }\n}\n"
+    "text": "query viewSchemaFragmentQuery(\n  $name: String!\n  $viewStages: BSONArray!\n) {\n  ...viewSchemaFragment\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $viewStages) {\n    path\n    ftype\n    info\n    description\n    subfield\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "673bea7343f270036bcba960c14919f8";
+(node as any).hash = "b4bad82699d83a881a85521f1be83721";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<73c38044628c610da2804345b4b55160>>
+ * @generated SignedSource<<a0fc5a3af0cf4acb1eaf4aa70b31bae6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type viewSchemaFragment$data = {
     readonly ftype: string;
     readonly info: object | null;
     readonly path: string;
+    readonly subfield: string | null;
   }> | null;
   readonly " $fragmentType": "viewSchemaFragment";
 };
@@ -93,6 +94,13 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "description",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "subfield",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -102,6 +110,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "673bea7343f270036bcba960c14919f8";
+(node as any).hash = "b4bad82699d83a881a85521f1be83721";
 
 export default node;

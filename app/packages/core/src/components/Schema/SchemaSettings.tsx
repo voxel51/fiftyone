@@ -62,7 +62,6 @@ const SchemaSettings = () => {
     searchTerm,
     setSearchTerm,
     setSelectedTab,
-    setSelectedPaths,
     selectedTab,
     selectedPaths,
     setSearchResults,

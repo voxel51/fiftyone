@@ -107,7 +107,7 @@ export const buildSchema = (
     };
   }
 
-  if (flat && !(dataset.frameFields && dataset.frameFields.length)) {
+  if (flat) {
     return buildFlatExtendedSchema(
       dataset.sampleFields.reduce(schemaReduce, {})
     );

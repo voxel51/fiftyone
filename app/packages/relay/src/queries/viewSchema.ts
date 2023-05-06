@@ -10,6 +10,7 @@ export default r(graphql`
       ftype
       info
       description
+      subfield
     }
   }
 `);

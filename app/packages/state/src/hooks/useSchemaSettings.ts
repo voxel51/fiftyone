@@ -10,7 +10,13 @@ import {
   useSetRecoilState,
 } from "recoil";
 import * as foq from "@fiftyone/relay";
-import { DICT_FIELD, JUST_FIELD, OBJECT_ID_FIELD } from "@fiftyone/utilities";
+import {
+  DICT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
+  FRAME_NUMBER_FIELD,
+  JUST_FIELD,
+  OBJECT_ID_FIELD,
+} from "@fiftyone/utilities";
 import { keyBy } from "lodash";
 
 export const TAB_OPTIONS_MAP = {
@@ -33,9 +39,10 @@ const disabledField = (path: string, ftype: string) => {
   return (
     path === "tags" ||
     path === "filepath" ||
-    ftype === OBJECT_ID_FIELD ||
+    (ftype === OBJECT_ID_FIELD && path === "id") ||
     path.startsWith("metadata") ||
-    path.endsWith("frames.frame_number")
+    path.endsWith("frames.frame_number") ||
+    ftype === FRAME_NUMBER_FIELD
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -85,19 +92,30 @@ export const selectedPathsState = atomFamily({
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPaths) => {
         const viewSchema = await getPromise(viewSchemaState);
+        const schema = await getPromise(schemaState);
+        console.log("selecting paths state", viewSchema, schema);
 
         const greenPaths = [...newPaths].filter(
           (path) =>
             !!path &&
-            viewSchema?.[path]?.ftype &&
+            (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
             !skipFiled(path, viewSchema[path].ftype) &&
             !disabledField(path, viewSchema[path].ftype)
         );
-        setSelf(new Set(greenPaths));
+        // # TODO
+        if (greenPaths.length) {
+          console.log("selecting paths state", greenPaths);
+          setSelf(new Set(greenPaths));
+        }
       });
     },
   ],
 });
+export const schemaState = atom({
+  key: "schemaState",
+  default: [],
+});
+
 export const viewSchemaState = atom({
   key: "viewSchemaState",
   default: null,
@@ -143,7 +161,13 @@ export default function useSchemaSettings() {
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
   const dataset = useRecoilValue(fos.dataset);
-  const schema = dataset ? buildSchema(dataset, true) : null;
+  const [schema, setSchema] = useRecoilState(schemaState);
+  useEffect(() => {
+    if (dataset) {
+      setSchema(dataset ? buildSchema(dataset, true) : []);
+    }
+  }, [dataset]);
+  console.log("schemaschema", schema);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
@@ -155,11 +179,7 @@ export default function useSchemaSettings() {
 
   const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
 
-  const allPaths = Object.keys(schema);
-  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
-    selectedPathsState({ allPaths })
-  );
-
+  const allPaths = schema ? Object.keys(schema) : [];
   const vStages = useRecoilValue(fos.view);
   const [data, refetch] = useRefetchableFragment<
     foq.viewSchemaFragmentQuery,
@@ -193,6 +213,17 @@ export default function useSchemaSettings() {
     schemaSelectedSettingsTab
   );
 
+  const vPaths = Object.keys(viewSchema);
+  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
+    selectedPathsState({ allPaths: [] })
+  );
+
+  useEffect(() => {
+    if (allPaths || vPaths) {
+      selectedPathsState({ allPaths: [...new Set([...allPaths, ...vPaths])] });
+    }
+  }, []);
+
   useEffect(() => {
     if (selectedTab === TAB_OPTIONS_MAP.SELECTION) {
       setFieldsOnly(true);
@@ -200,25 +231,25 @@ export default function useSchemaSettings() {
   }, [selectedTab]);
 
   const [finalSchema] = useMemo(() => {
+    let tmpSchema = {};
     if (dataset.mediaType === "video") {
       Object.keys(viewSchema).forEach((fieldPath) => {
-        viewSchema[`frames.${fieldPath}`] = {
-          ...viewSchema[fieldPath],
-          path: `frames.${fieldPath}`,
-        };
+        tmpSchema[`frames.${fieldPath}`] = viewSchema[fieldPath];
       });
       Object.keys(schema).forEach((fieldPath) => {
-        if (fieldPath === "frames") return;
-        viewSchema[fieldPath] = {
-          ...schema[fieldPath],
-          path: fieldPath,
-        };
+        tmpSchema[fieldPath] = schema[fieldPath];
       });
+    } else {
+      tmpSchema = viewSchema;
     }
 
-    const resSchema = Object.keys(viewSchema)
+    tmpSchema = keyBy(tmpSchema, "path");
+    console.log("tmpSchema", tmpSchema);
+    console.log("selectedPaths", selectedPaths);
+    const resSchema = Object.keys(tmpSchema)
       .sort()
       .filter((path) => {
+        if (path === "undefined") return false;
         if (selectedTab === TAB_OPTIONS_MAP.FILTER_RULE) {
           return searchResults.includes(path);
         }
@@ -233,8 +264,9 @@ export default function useSchemaSettings() {
             : pathLabel[pathLabel.length - 1];
         let isSelected = selectedPaths.has(path);
 
-        const skip = skipFiled(path, viewSchema[path].ftype);
-        let disabled = disabledField(path, viewSchema?.[path]?.ftype);
+        const ftype = tmpSchema[path].ftype;
+        const skip = skipFiled(path, ftype);
+        const disabled = disabledField(path, ftype);
 
         return {
           path,
@@ -243,9 +275,9 @@ export default function useSchemaSettings() {
           pathLabelFinal,
           skip,
           disabled,
-          info: viewSchema[path].info,
-          description: viewSchema[path].description,
-          name: viewSchema[path].name,
+          info: tmpSchema[path].info,
+          description: tmpSchema[path].description,
+          name: tmpSchema[path].name,
         };
       })
       .filter((val) => {
@@ -255,6 +287,7 @@ export default function useSchemaSettings() {
         fieldsOnly ? (item.disabled ? 1 : -1) : item.path > item2.path ? 1 : -1
       );
 
+    console.log("resSchema", resSchema);
     return [resSchema];
   }, [
     schema,
@@ -319,20 +352,26 @@ export default function useSchemaSettings() {
   // Reset will cause this effect
   useEffect(() => {
     if (allPaths.length) {
-      setSelectedPaths(new Set(allPaths));
+      setSelectedPaths(new Set([...allPaths, ...vPaths]));
     }
   }, [revertSelectedPathsState]);
 
   // select and unselect all
   const setAllFieldsCheckedWrapper = useCallback(
     (val) => {
-      setAllFieldsChecked(val);
-      const newSelectedPaths = new Set(
-        val ? finalSchema.map((pp) => pp.path) : []
-      );
-      setSelectedPaths(newSelectedPaths);
+      if (allPaths?.length) {
+        setAllFieldsChecked(val);
+        console.log("finalSchemafinalSchemafinalSchema", finalSchema);
+        const allThePaths = finalSchema.map((ff) => ff.path);
+
+        console.log("allThePaths", allThePaths);
+        const newSelectedPaths = new Set(val ? allThePaths : []);
+
+        console.log("asd", newSelectedPaths);
+        setSelectedPaths(newSelectedPaths);
+      }
     },
-    [finalSchema]
+    [finalSchema, allPaths, vPaths]
   );
 
   // updates the affected fields count
