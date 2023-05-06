@@ -688,9 +688,6 @@ const InteractiveSidebar = ({
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
 
-  const s = useRecoilValue(fos.sessionColorScheme);
-  const isUsing = useRecoilValue(fos.isUsingSessionColorScheme);
-
   return shown ? (
     <Resizable
       size={{ height: "100%", width }}

@@ -80,9 +80,14 @@ export const pathColor = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
+      // video path tweak
+      const adjustedPath = path.startsWith("frames.")
+        ? path.slice("frames.".length)
+        : path;
       const setting = get(
         atoms.sessionColorScheme
-      )?.customizedColorSettings?.find((x) => x.field === path);
+      )?.customizedColorSettings?.find((x) => x.field === adjustedPath);
+
       if (setting?.useFieldColor && isValidColor(setting?.fieldColor)) {
         return setting.fieldColor;
       }
@@ -115,6 +120,7 @@ export const eligibleFieldsToCustomizeColor = selector({
         ftype: EMBEDDED_DOCUMENT_FIELD,
       })
     );
+    console.info(videoFields);
     const sampleFields = get(
       schemaAtoms.fields({
         space: State.SPACE.SAMPLE,
