@@ -69,8 +69,6 @@ export const buildFlatExtendedSchema = (schema: Schema): Schema => {
     const ff = fieldsQueue.shift();
     const ffNest = ff?.fields;
     const fieldPath = ff?.path;
-    const desc = ff?.description;
-    const info = ff?.info;
 
     if (ffNest) {
       for (const fNested in ffNest) {
@@ -80,9 +78,6 @@ export const buildFlatExtendedSchema = (schema: Schema): Schema => {
 
     flatSchema[fieldPath] = {
       ...ff,
-      // add fields to be FE/client-side filterable - stay conservative
-      searchField:
-        ff.path + (desc ? desc : "") + (info ? JSON.stringify(info) : ""),
       visible: false,
     };
   }
@@ -95,24 +90,27 @@ export const buildSchema = (
   flat: boolean = false
 ): Schema => {
   let schema = dataset.sampleFields.reduce(schemaReduce, {});
-  if (flat) {
-    return buildFlatExtendedSchema(
-      dataset.sampleFields.reduce(schemaReduce, {})
-    );
-  }
 
   // TODO: mixed datasets - test video
   if (dataset.frameFields && dataset.frameFields.length) {
     schema.frames = {
       ftype: LIST_FIELD,
       name: "frames",
-      fields: dataset.frameFields.reduce(schemaReduce, {}),
+      fields: buildFlatExtendedSchema(
+        dataset.frameFields.reduce(schemaReduce, {})
+      ),
       dbField: null,
       description: null,
       info: null,
       embeddedDocType: null,
       subfield: "Frame",
     };
+  }
+
+  if (flat && !(dataset.frameFields && dataset.frameFields.length)) {
+    return buildFlatExtendedSchema(
+      dataset.sampleFields.reduce(schemaReduce, {})
+    );
   }
 
   return schema;

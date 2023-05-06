@@ -16,7 +16,6 @@ export const SchemaSelection = () => {
   const {
     toggleSelection,
     finalSchema,
-    finalSchemaForView,
     searchResults,
     selectedTab,
     showMetadata,
@@ -58,7 +57,7 @@ export const SchemaSelection = () => {
       >
         {showSearchHelp && <SchemaSearchHelp />}
         {showSelection &&
-          finalSchemaForView.map((item) => {
+          finalSchema?.map((item) => {
             const { path, count, isSelected, pathLabelFinal, skip, disabled } =
               item;
 
@@ -137,11 +136,6 @@ export const SchemaSelection = () => {
                 <Box>
                   {expandedPathsKeys.has(path) && (
                     <Box>
-                      <CodeBlock
-                        showLineNumbers={false}
-                        text={`name: ${expandedPaths[path]?.name}`}
-                        fontSize={12}
-                      />
                       <CodeBlock
                         showLineNumbers={false}
                         text={`info: ${JSON.stringify(

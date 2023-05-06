@@ -127,12 +127,7 @@ export type TabOptionProps = {
   color?: string;
 };
 
-export const TabOption = ({
-  active,
-  options,
-  color,
-  overrideStyles = {},
-}: TabOptionProps) => {
+export const TabOption = ({ active, options, color }: TabOptionProps) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(options.map((o) => false));
   const styles = useSprings(
@@ -165,6 +160,7 @@ export const TabOption = ({
           style={{
             ...styles[i],
             cursor: text === active ? "default" : "pointer",
+            color: theme.text.primary,
           }}
           onMouseEnter={() =>
             setHovering(hovering.map((_, j) => (j === i ? true : _)))

@@ -79,6 +79,10 @@ export const SchemaSearch = (props: Props) => {
                   onCompleted: (data, err) => {
                     if (data) {
                       const { searchSelectFields = [] } = data;
+                      console.log(
+                        "search reds",
+                        searchSelectFields.map((ss) => ss?.path) as string[]
+                      );
                       setSearchResults(
                         searchSelectFields.map((ss) => ss?.path) as string[]
                       );

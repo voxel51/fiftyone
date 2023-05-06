@@ -62,11 +62,11 @@ const SchemaSettings = () => {
     searchTerm,
     setSearchTerm,
     setSelectedTab,
-    originalSelectedPaths,
     setSelectedPaths,
     selectedTab,
-    finalSelectedPaths,
+    selectedPaths,
     setSearchResults,
+    searchResults,
     setFieldsOnly,
     setSelectedFieldsStage,
   } = useSchemaSettings();
@@ -114,7 +114,6 @@ const SchemaSettings = () => {
               }}
               onClick={() => {
                 setSearchTerm("");
-                setSelectedPaths(originalSelectedPaths);
                 setSettingsModal({ ...settingModal, open: false });
               }}
             />
@@ -174,15 +173,23 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
+                const initialFieldNames = searchResults.length
+                  ? searchResults.filter((pp) => selectedPaths.has(pp))
+                  : [...selectedPaths];
+
+                console.log(
+                  "selectedPaths",
+                  initialFieldNames.filter((pp) => !!pp)
+                );
                 const stageKwargs = {
-                  field_names: [...finalSelectedPaths],
+                  field_names: initialFieldNames.filter((pp) => !!pp),
                   _allow_missing: true,
                 };
                 const stageCls = "fiftyone.core.stages.SelectFields";
                 const stage = {
                   _cls: stageCls,
                   kwargs: stageKwargs,
-                } as Stage;
+                };
                 try {
                   setSelectedFieldsStage(stage);
                 } catch (e) {
@@ -204,7 +211,6 @@ const SchemaSettings = () => {
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
-                setSelectedPaths(originalSelectedPaths);
                 setSelectedFieldsStage(null);
               }}
             >

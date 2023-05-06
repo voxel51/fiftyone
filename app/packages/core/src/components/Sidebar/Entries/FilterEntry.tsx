@@ -10,7 +10,7 @@ import {
 import { InputDiv } from "./utils";
 import * as fos from "@fiftyone/state";
 import { Settings, VisibilityOff } from "@mui/icons-material";
-import { Badge, Box, Chip, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import {
   affectedPathCountState,
   revertSelectedPathsState,
@@ -52,7 +52,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
         style={{ textTransform: "unset" }}
       />
       <Box display="flex" alignItems="center">
-        {selectedFieldsStage && (
+        {selectedFieldsStage && affectedPathCount > 0 && (
           <Tooltip text="Clear field selection" placement="bottom-center">
             <Box
               sx={{

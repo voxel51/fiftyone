@@ -94,7 +94,6 @@ export interface BaseField {
   embeddedDocType: string | null;
   subfield: string | null;
   path: string | null;
-  searchField: string | null;
   visible: boolean | null;
 }
 
