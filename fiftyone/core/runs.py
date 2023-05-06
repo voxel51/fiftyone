@@ -16,6 +16,7 @@ import eta.core.utils as etau
 
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
+import fiftyone.core.odm.database as food
 from fiftyone.core.odm.runs import RunDocument
 
 
@@ -700,7 +701,8 @@ class Run(Configurable):
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
         """
-        run_doc = cls._get_run_doc(samples, key)
+        dataset = samples._root_dataset
+        run_doc = cls._get_run_doc(samples, key, patch=False)
 
         try:
             # Execute cleanup() method
@@ -715,8 +717,6 @@ class Run(Configurable):
                 str(e),
             )
 
-        dataset = samples._root_dataset
-
         # Delete run from dataset
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
@@ -725,11 +725,13 @@ class Run(Configurable):
         if run_results is not None:
             run_results._key = None
 
-        # Must manually delete run result, which is stored via GridFS
-        if run_doc.results:
-            run_doc.results.delete()
+        if run_doc:
+            # Must manually delete run result, which is stored via GridFS
+            if run_doc.results:
+                run_doc.results.delete()
 
-        run_doc.delete()
+            run_doc.delete()
+
         dataset.save()
 
     @classmethod
@@ -743,14 +745,38 @@ class Run(Configurable):
             cls.delete_run(samples, key)
 
     @classmethod
-    def _get_run_doc(cls, samples, key):
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+    def _get_run_doc(cls, samples, key, patch=True):
+        dataset = samples._root_dataset
+        runs_field = cls._runs_field()
+        run_str = cls._run_str()
+        run_docs = getattr(dataset._doc, runs_field)
         run_doc = run_docs.get(key, None)
+
         if run_doc is None:
-            raise ValueError(
-                "Dataset has no %s key '%s'" % (cls._run_str(), key)
-            )
+            raise ValueError("Dataset has no %s key '%s'" % (run_str, key))
+
+        #
+        # When mongoengine encounters a FileField that contains an ObjectId
+        # with no matching document, `run_doc` will be a falsey `DBRef`.
+        #
+        # We're not currently sure why this happens... but we've observed that
+        # ObjectIDs in `dataset_doc` can somehow get out of sync with their
+        # corresponding run documents. `_patch_runs()` attempts to patch this
+        # on-the-fly, if possible.
+        #
+        if not run_doc and patch:
+            try:
+                food._patch_runs(dataset.name, runs_field, run_str)
+            except Exception as e:
+                logger.warning("Failed to patch %ss: %s", run_str, e)
+
+            dataset.reload()
+            run_doc = cls._get_run_doc(samples, key, patch=False)
+
+            if not run_doc:
+                raise ValueError(
+                    "Failed to find %s doc for key '%s'" % (run_str, key)
+                )
 
         return run_doc
 
