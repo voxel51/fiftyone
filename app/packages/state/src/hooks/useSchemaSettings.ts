@@ -167,7 +167,7 @@ export default function useSchemaSettings() {
   >(foq.viewSchema, null);
 
   useEffect(() => {
-    if (dataset?.name && vStages?.length) {
+    if (dataset?.name) {
       refetch(
         { name: dataset?.name, viewStages: vStages || [] },
         {
