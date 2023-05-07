@@ -28,6 +28,7 @@ import {
   PickerWrapper,
   SectionWrapper,
 } from "./ShareStyledDiv";
+import { Divider } from "@mui/material";
 
 type Prop = {
   field: Field;
@@ -111,10 +112,11 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   }, [path, customizedColorSettings]);
 
   return (
-    <div style={{ margin: "1rem" }}>
+    <div>
       <ModeControl />
+      <Divider />
       {coloring.by == "field" && (
-        <div style={{ margin: "1rem" }}>
+        <div style={{ margin: "1rem", width: "100%" }}>
           <ShuffleColor />
           <Checkbox
             name={`Use specific color for ${field.name} field`}

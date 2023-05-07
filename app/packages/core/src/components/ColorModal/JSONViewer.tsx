@@ -64,6 +64,13 @@ const JSONViewer: React.FC = ({}) => {
           }}
           svgStyles={{ height: "1rem", marginTop: 7.5 }}
         />
+        <div style={{ width: "200px", margin: "0.25rem" }}>
+          <Button
+            text="Apply color scheme to session"
+            title="Validate color scheme JSON and apply to session color scheme setting"
+            onClick={onApply}
+          />
+        </div>
       </SectionWrapper>
 
       <Editor
@@ -76,13 +83,6 @@ const JSONViewer: React.FC = ({}) => {
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
-      <div style={{ width: "200px", margin: "0.5rem 1rem" }}>
-        <Button
-          text="Apply color scheme to session"
-          title="Validate color scheme JSON and apply to session color scheme setting"
-          onClick={onApply}
-        />
-      </div>
     </div>
   );
 };
