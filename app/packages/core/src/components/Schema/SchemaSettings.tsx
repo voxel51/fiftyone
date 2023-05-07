@@ -68,8 +68,11 @@ const SchemaSettings = () => {
     searchResults,
     setFieldsOnly,
     setSelectedFieldsStage,
+    mediatType,
+    finalSchema,
   } = useSchemaSettings();
 
+  console.log("dko sou", finalSchema);
   const { open: isSettingsModalOpen } = settingModal || {};
   if (!isSettingsModalOpen) {
     return null;
@@ -113,6 +116,7 @@ const SchemaSettings = () => {
               }}
               onClick={() => {
                 setSearchTerm("");
+                setSearchResults([]);
                 setSettingsModal({ ...settingModal, open: false });
               }}
             />
@@ -172,9 +176,15 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
-                const initialFieldNames = searchResults.length
+                let initialFieldNames = searchResults.length
                   ? searchResults.filter((pp) => selectedPaths.has(pp))
                   : [...selectedPaths];
+
+                if (mediatType === "video") {
+                  initialFieldNames = initialFieldNames.map(
+                    (pp) => `frames.${pp}`
+                  );
+                }
 
                 console.log(
                   "selectedPaths",

@@ -15,6 +15,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   FRAME_NUMBER_FIELD,
   JUST_FIELD,
+  LIST_FIELD,
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
 import { keyBy } from "lodash";
@@ -35,14 +36,15 @@ const skipFiled = (path: string, ftype: string) => {
     path.endsWith(".bounding_box")
   );
 };
-const disabledField = (path: string, ftype: string) => {
+const disabledField = (path: string, ftype: string, subfield: string) => {
   return (
     path === "tags" ||
     path === "filepath" ||
     (ftype === OBJECT_ID_FIELD && path === "id") ||
     path.startsWith("metadata") ||
     path.endsWith("frames.frame_number") ||
-    ftype === FRAME_NUMBER_FIELD
+    ftype === FRAME_NUMBER_FIELD ||
+    (ftype === LIST_FIELD && subfield === EMBEDDED_DOCUMENT_FIELD)
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -74,12 +76,15 @@ export const schemaSearchRestuls = atom<string[]>({
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPaths) => {
         const viewSchema = await getPromise(viewSchemaState);
+        const schema = await getPromise(schemaState);
+
         const greenPaths = [...newPaths].filter(
           (path) =>
             path &&
-            viewSchema?.[path]?.ftype &&
+            (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
             !skipFiled(path, viewSchema[path].ftype)
         );
+        console.log("search res", newPaths, greenPaths);
         setSelf(greenPaths);
       });
     },
@@ -93,20 +98,29 @@ export const selectedPathsState = atomFamily({
       onSet(async (newPaths) => {
         const viewSchema = await getPromise(viewSchemaState);
         const schema = await getPromise(schemaState);
-        console.log("selecting paths state", viewSchema, schema);
 
         const greenPaths = [...newPaths].filter(
           (path) =>
             !!path &&
-            (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
-            !skipFiled(path, viewSchema[path].ftype) &&
-            !disabledField(path, viewSchema[path].ftype)
+            // (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
+            !skipFiled(
+              path,
+              viewSchema?.[path]?.ftype || schema?.[path]?.ftype
+            ) &&
+            !disabledField(
+              path,
+              viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
+              viewSchema?.[path]?.subfield || schema?.[path]?.subfield
+            )
         );
+
+        console.log("greenPaths", greenPaths);
+        console.log("selecting paths state", viewSchema, schema, newPaths);
         // # TODO
-        if (greenPaths.length) {
-          console.log("selecting paths state", greenPaths);
-          setSelf(new Set(greenPaths));
-        }
+        // if (greenPaths.length) {
+        console.log("selecting paths state", greenPaths);
+        setSelf(new Set(greenPaths));
+        // }
       });
     },
   ],
@@ -139,24 +153,30 @@ export const selectedFieldsStageState = atom<any>({
   effects: [
     ({ onSet }) => {
       onSet((value) => {
-        const context = fos.getContext();
-        context.history.replace(
-          `${context.history.location.pathname}${context.history.location.search}`,
-          {
-            ...context.history.location.state,
-            selectedFieldsStage: value || null,
-          }
-        );
+        try {
+          const context = fos.getContext();
+          context.history.replace(
+            `${context.history.location.pathname}${context.history.location.search}`,
+            {
+              ...context.history.location.state,
+              selectedFieldsStage: value || null,
+            }
+          );
+        } catch (e) {
+          console.error("failed to select field stage", value);
+        }
       });
     },
   ],
 });
 
 export default function useSchemaSettings() {
+  const revertSelectedPaths = useRecoilValue(revertSelectedPathsState);
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
   const setSelectedFieldsStage = useSetRecoilState(selectedFieldsStageState);
 
+  const setViewSchema = useSetRecoilState(viewSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
@@ -202,7 +222,8 @@ export default function useSchemaSettings() {
     }
   }, [vStages]);
   const viewSchema = keyBy(data?.schemaForViewStages, "path");
-  const setViewSchema = useSetRecoilState(viewSchemaState);
+  const vPaths = Object.keys(viewSchema);
+
   useEffect(() => {
     if (viewSchema) {
       setViewSchema(viewSchema);
@@ -213,16 +234,9 @@ export default function useSchemaSettings() {
     schemaSelectedSettingsTab
   );
 
-  const vPaths = Object.keys(viewSchema);
   const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
     selectedPathsState({ allPaths: [] })
   );
-
-  useEffect(() => {
-    if (allPaths || vPaths) {
-      selectedPathsState({ allPaths: [...new Set([...allPaths, ...vPaths])] });
-    }
-  }, []);
 
   useEffect(() => {
     if (selectedTab === TAB_OPTIONS_MAP.SELECTION) {
@@ -266,7 +280,7 @@ export default function useSchemaSettings() {
 
         const ftype = tmpSchema[path].ftype;
         const skip = skipFiled(path, ftype);
-        const disabled = disabledField(path, ftype);
+        const disabled = disabledField(path, ftype, tmpSchema[path].subfield);
 
         return {
           path,
@@ -323,6 +337,13 @@ export default function useSchemaSettings() {
     []
   );
 
+  console.log("viewPaths", viewPaths, Object.keys(schema));
+  useEffect(() => {
+    if (viewPaths.length && !selectedPaths.size) {
+      setSelectedPaths(new Set([...viewPaths, ...Object.keys(schema)]));
+    }
+  }, [schema]);
+
   // toggle field selection
   const toggleSelection = useCallback(
     (path: string, checked: boolean) => {
@@ -352,22 +373,21 @@ export default function useSchemaSettings() {
   // Reset will cause this effect
   useEffect(() => {
     if (allPaths.length) {
-      setSelectedPaths(new Set([...allPaths, ...vPaths]));
+      console.log("allPathsallPaths", allPaths);
+      console.log("allPathsallPathsvPathsvPathsvPaths", vPaths);
+      // setSelectedPaths(new Set([...allPaths, ...vPaths]));
     }
-  }, [revertSelectedPathsState]);
+  }, [revertSelectedPaths]);
 
   // select and unselect all
   const setAllFieldsCheckedWrapper = useCallback(
     (val) => {
       if (allPaths?.length) {
         setAllFieldsChecked(val);
-        console.log("finalSchemafinalSchemafinalSchema", finalSchema);
+        console.log("finalSchema", finalSchema);
         const allThePaths = finalSchema.map((ff) => ff.path);
-
-        console.log("allThePaths", allThePaths);
         const newSelectedPaths = new Set(val ? allThePaths : []);
-
-        console.log("asd", newSelectedPaths);
+        console.log("newSelectedPaths", newSelectedPaths);
         setSelectedPaths(newSelectedPaths);
       }
     },
@@ -405,5 +425,6 @@ export default function useSchemaSettings() {
     setShowMetadata,
     setSelectedFieldsStage,
     affectedPathCount,
+    mediatType: dataset.mediaType,
   };
 }

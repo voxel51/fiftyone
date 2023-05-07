@@ -480,13 +480,22 @@ class Mutation:
             view = dataset.select_fields(meta_filter=meta_filter)
         except Exception as e:
             # try selecting only by field keys worst case
-            view = dataset.select_fields(meta_filter)
+            try:
+                view = dataset.select_fields(meta_filter)
+            except Exception as e:
+                print("failed to search select fields", e)
+                view = dataset
 
-        schema = view.get_field_schema(flat=True)
         res = []
-        for stage in view._stages:
-            sf = stage.get_selected_fields(view, frames=False)
-            res += [schema[st] for st in sf if st in schema]
+        try:
+            schema = view.get_field_schema(flat=True)
+            has_frames = dataset.media_type == "video"
+            for stage in view._stages:
+                sf = stage.get_selected_fields(view, frames=has_frames)
+                res += [schema[st] for st in sf if st in schema]
+        except Exception as e:
+            print("failed to get_selected_fields", e)
+            res = []
 
         return res
 

@@ -241,7 +241,6 @@ class Dataset:
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
-    view_schema: t.List[SampleField]
     frame_fields: t.Optional[t.List[SampleField]]
     brain_methods: t.Optional[t.List[BrainRun]]
     evaluations: t.Optional[t.List[EvaluationRun]]
@@ -278,7 +277,6 @@ class Dataset:
         ]
         flat = _flatten_fields([], doc.get("sample_fields", []))
         doc["sample_fields"] = flat
-        doc["view_schema"] = doc.get("view_schema", [])
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
@@ -550,10 +548,6 @@ async def serialize_dataset(
 
             if view.media_type != data.media_type:
                 data.media_type = view.media_type
-
-            data.view_schema = serialize_fields(
-                view.get_field_schema(flat=True)
-            )
 
             collection = view
 

@@ -15,6 +15,7 @@ import {
   affectedPathCountState,
   revertSelectedPathsState,
   selectedFieldsStageState,
+  selectedPathsState,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import { Tooltip, useTheme } from "@fiftyone/components";
 
@@ -26,6 +27,9 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const selectedFieldsStage = useRecoilValue(selectedFieldsStageState);
   const resetSelectedFieldStages = useResetRecoilState(
     selectedFieldsStageState
+  );
+  const resetSelectedPaths = useResetRecoilState(
+    selectedPathsState({ allPaths: [] })
   );
   const [revertSelectedPaths, setRevertSelectedPaths] = useRecoilState(
     revertSelectedPathsState
@@ -68,11 +72,13 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 onClick={() => {
                   resetSelectedFieldStages();
                   setRevertSelectedPaths(!revertSelectedPaths);
+                  resetSelectedPaths();
                 }}
               >
                 {affectedPathCount > 0 && (
                   <Typography
-                    sx={{ color: theme.text.secondary }}
+                    fontSize={"0.75rem"}
+                    sx={{ color: theme.text.tertiary }}
                     style={{ marginRight: "0.25rem" }}
                   >
                     {affectedPathCount}

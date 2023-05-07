@@ -93,15 +93,6 @@ class StateDescription(etas.Serializable):
                     if d.get("view_name") is not None:
                         d["saved_view_slug"] = fou.to_slug(self.view.name)
 
-                if self.view is not None:
-                    d["view_schema"] = serialize_fields(
-                        self.view.get_field_schema(flat=True)
-                    )
-                else:
-                    d["view_schema"] = self.dataset.view().get_field_schema(
-                        flat=True
-                    )
-
                 d["sample_fields"] = serialize_fields(
                     collection.get_field_schema(flat=True)
                 )
