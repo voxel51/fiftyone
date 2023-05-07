@@ -17,7 +17,7 @@ const SidebarList: React.FC = () => {
   const theme = useTheme();
   const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
 
-  const [width, setWidth] = useState(300);
+  const [width, setWidth] = useState(200);
   const stableGroup = [{ paths: ["global", "json"], name: "general" }];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
@@ -50,7 +50,7 @@ const SidebarList: React.FC = () => {
   return (
     <Resizable
       size={{ height: "100%", width }}
-      minWidth={230}
+      minWidth={200}
       maxWidth={600}
       enable={{
         top: false,
@@ -66,7 +66,7 @@ const SidebarList: React.FC = () => {
         console.info("d", d);
         setWidth(width + d);
         // reset sidebar width on double click
-        if (e.detail === 2) setWidth(300);
+        if (e.detail === 2) setWidth(200);
       }}
       handleStyles={{
         ["right"]: { right: 0, width: 4 },
