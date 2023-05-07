@@ -29,7 +29,11 @@ import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 
-import { getColorFromOptions, prettify } from "./util";
+import {
+  getColorFromOptions,
+  getColorFromOptionsPrimitives,
+  prettify,
+} from "./util";
 
 import { lookerTags } from "./tags.module.css";
 
@@ -95,11 +99,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [INT_FIELD]: (path, value: number) => {
@@ -108,11 +113,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [DATE_FIELD]: (path, value: { datetime: number }) => {
@@ -121,11 +127,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value.datetime : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [DATE_TIME_FIELD]: (path, value: { datetime: number }) => {
@@ -134,11 +141,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value.datetime : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [FLOAT_FIELD]: (path: string, value: number) => {
@@ -147,11 +155,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${value}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [FRAME_NUMBER_FIELD]: (path, value: number) => {
@@ -160,11 +169,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
@@ -172,33 +182,36 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         return {
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? v : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [OBJECT_ID_FIELD]: (path, value: string) => {
         return {
           value,
           title: `${path}: ${value}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [STRING_FIELD]: (path, value: string) => {
         return {
           value,
           title: `${path}: ${value}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "value" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
     };

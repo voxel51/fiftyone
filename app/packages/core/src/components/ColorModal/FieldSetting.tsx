@@ -9,7 +9,10 @@ import {
   FLOAT_FIELD,
   getColor,
   INT_FIELD,
+  NOT_VISIBLE_LIST,
   STRING_FIELD,
+  VALID_KEYPOINTS,
+  VALID_MASK_TYPES,
 } from "@fiftyone/utilities";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import Input from "../Common/Input";
@@ -48,6 +51,12 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
   const expandedPath = useRecoilValue(fos.expandPath(path!));
   const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
+
+  const isMaskType =
+    field.embeddedDocType &&
+    VALID_MASK_TYPES.some((x) => field.embeddedDocType?.includes(x));
+  const isNoShowType = NOT_VISIBLE_LIST.some((t) => field?.ftype?.includes(t));
+  const isTypeSupported = !isMaskType && !isNoShowType;
 
   const colorFields = useRecoilValue(
     fos.fields({
@@ -105,7 +114,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     <div style={{ margin: "1rem" }}>
       <ModeControl />
       {coloring.by == "field" && (
-        <div>
+        <div style={{ margin: "1rem" }}>
           <ShuffleColor />
           <Checkbox
             name={`Use specific color for ${field.name} field`}
@@ -164,13 +173,15 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
           )}
         </div>
       )}
-      {coloring.by == "value" && (
+      {coloring.by == "value" && isTypeSupported && (
         <div>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
           >
             {/* set the attribute used for color */}
-            {path && <ColorAttribute fields={colorFields} />}
+            {path && field.embeddedDocType && (
+              <ColorAttribute fields={colorFields} />
+            )}
             {/* set attribute value - color */}
             <Checkbox
               name={`Assign color based on selected color attribute's values`}
@@ -189,6 +200,12 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
               <AttributeColorSetting style={FieldCHILD_STYLE} />
             </SectionWrapper>
           </form>
+        </div>
+      )}
+
+      {coloring.by == "value" && !isTypeSupported && (
+        <div>
+          Color by attribute is not supported for this field type at the moment.
         </div>
       )}
     </div>
