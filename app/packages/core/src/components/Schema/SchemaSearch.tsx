@@ -52,8 +52,8 @@ export const SchemaSearch = (props: Props) => {
                 let finalSearchTerm = checkValue
                   ? searchTerm.substring(0, searchTerm.indexOf(":"))
                   : searchTerm;
-                finalSearchTerm = finalSearchTerm.replace(/\s/g, "");
-                checkValue = checkValue.replace(/\s/g, "");
+                finalSearchTerm = finalSearchTerm.trim();
+                checkValue = checkValue.trim();
 
                 let props = finalSearchTerm.split(".");
                 const last = props[props.length - 1];
