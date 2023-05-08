@@ -331,9 +331,7 @@ export function listLocalAndRemoteOperators() {
 }
 
 export async function executeStartupOperators() {
-  return;
   const { allOperators } = listLocalAndRemoteOperators();
-  console.log(allOperators.map((o) => o.uri));
   const startupOperators = allOperators.filter(
     (o) => o.config.onStartup === true
   );
