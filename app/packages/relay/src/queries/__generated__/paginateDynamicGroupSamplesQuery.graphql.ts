@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c2e7424d0d34c191d5182cafeb342f95>>
+ * @generated SignedSource<<74b2325fb34d783930cf6e182f29e0e8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type SampleFilter = {
 };
 export type GroupElementFilter = {
   id?: string | null;
-  slice?: string | null;
+  slices?: ReadonlyArray<string> | null;
 };
 export type paginateDynamicGroupSamplesQuery$variables = {
   count?: number | null;
