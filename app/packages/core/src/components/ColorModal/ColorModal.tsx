@@ -19,6 +19,7 @@ import {
 } from "./ShareStyledDiv";
 
 import SidebarList from "./SidebarList";
+import { ACTIVE_FIELD } from "./utils";
 
 const ColorModal = () => {
   const ref = React.useRef<HTMLDivElement>();
@@ -42,7 +43,7 @@ const ColorModal = () => {
           <Draggable bounds="parent" handle=".draggable-colorModal-handle">
             <Container>
               <DraggableModalTitle className="draggable-colorModal-handle">
-                <div style={{ margin: "4px" }}>Color Scheme</div>
+                <div style={{ margin: "4px" }}>Edit color scheme</div>
                 <CloseIcon
                   onClick={() => setActiveColorModalField(null)}
                   style={{ margin: "4px" }}
@@ -51,8 +52,8 @@ const ColorModal = () => {
               <DraggableContent>
                 <SidebarList />
                 <Display>
-                  {field === "global" && <GlobalSetting />}
-                  {field === "json" && <JSONViewer />}
+                  {field === ACTIVE_FIELD.global && <GlobalSetting />}
+                  {field === ACTIVE_FIELD.json && <JSONViewer />}
                   {typeof field !== "string" && field && (
                     <FieldSetting field={activeColorModalField as Field} />
                   )}

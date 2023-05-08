@@ -1,5 +1,5 @@
-import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import * as fos from "@fiftyone/state";
+import { Button } from "../../utils";
 import React from "react";
 import styled from "styled-components";
 
@@ -7,63 +7,34 @@ export const ModeControlContainer = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
+  margin-bottom: 0.5rem;
 `;
 
-export const SwitchContainer = styled.label`
-  position: relative;
-  display: inline-block;
-  width: 30px;
-  height: 15px;
-  margin: auto 4px;
-`;
-
-export const Slider = styled.span<{ checked: boolean }>`
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: ${({ checked, theme }) =>
-    checked ? theme.voxel["500"] : theme.neutral["200"]};
-  transition: 0.4s;
-  border-radius: 12px;
-
-  &:before {
-    position: absolute;
-    content: "";
-    height: 10px;
-    width: 10px;
-    left: ${({ checked }) => (checked ? "calc(100% - 14px)" : "4px")};
-    bottom: 2px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
-  }
+const Text = styled.div`
+  font-size: 1.2rem;
+  margin: auto 0.5rem;
 `;
 
 const ModeControl: React.FC = () => {
   const { props } = fos.useSessionColorScheme();
-  const checked = Boolean(props.colorBy === "value");
-  const theme = useTheme();
 
-  const toggleSwitch = (ev) => {
-    props.setColorBy(ev.target.checked ? "value" : "field");
-  };
   return (
     <ModeControlContainer>
       <>
-        use color by field
-        <SwitchContainer onClick={toggleSwitch}>
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={toggleSwitch}
-            style={{ display: "none" }}
-          />
-          <Slider checked={checked} theme={theme} />
-        </SwitchContainer>
-        value
+        <Text>Color by </Text>
+        <Button
+          text={props.colorBy}
+          title={`toggle between color by value or color by field mode`}
+          onClick={() =>
+            props.setColorBy(props.colorBy === "value" ? "field" : "value")
+          }
+          style={{
+            textAlign: "center",
+            width: 80,
+            display: "inline-block",
+            marginTop: 0,
+          }}
+        />
       </>
     </ModeControlContainer>
   );

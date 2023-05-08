@@ -39,6 +39,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -282,7 +283,7 @@ const Colors = () => {
 
   const onOpen = () => {
     setOpen(!open);
-    setActiveField("global");
+    setActiveField(ACTIVE_FIELD.global);
   };
 
   useEffect(() => {

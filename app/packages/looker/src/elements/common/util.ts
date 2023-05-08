@@ -142,7 +142,7 @@ export const getColorFromOptions = ({
 type PrimitiveParam = {
   coloring: Coloring;
   path: string;
-  value: string | number | boolean;
+  value: string | number | boolean | { datetime: number };
   customizeColorSetting: CustomizeColor[];
 };
 export const getColorFromOptionsPrimitives = ({

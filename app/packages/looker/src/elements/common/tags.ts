@@ -48,6 +48,7 @@ const LABEL_LISTS = [withPath(LABELS_PATH, CLASSIFICATIONS)];
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
+  private colorPool: string[];
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
@@ -79,6 +80,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
         this.colorByValue === (coloring.by === "value") &&
+        arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         this.colorSeed === coloring.seed) ||
       !sample
@@ -352,6 +354,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
+    this.colorPool = coloring.pool as string[];
 
     elements.forEach(({ value, color, title }) => {
       const div = document.createElement("div");

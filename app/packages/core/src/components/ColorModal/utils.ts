@@ -33,8 +33,8 @@ export const fiftyoneDefaultColorPalette = [
 ];
 
 export const ACTIVE_FIELD = {
-  ["JSON"]: "json",
-  ["GLOBAL"]: "global",
+  ["json"]: "JSON editor",
+  ["global"]: "Global settings",
 };
 
 // disregard the order
@@ -90,4 +90,21 @@ export const validateJSONSetting = (json: unknown[]) => {
     const hasLabelColors = x.labelColors && x.labelColors.length > 0;
     return hasFieldSetting || hasAttributeColor || hasLabelColors;
   }) as CustomizeColor[];
+};
+
+type ColorSchemeStr = {
+  colorPool: string[];
+  customizedColorSettings: string;
+};
+
+export const isDefaultSetting = (savedSetting: ColorSchemeStr) => {
+  return (
+    isSameArray(
+      savedSetting.colorPool,
+      fos.DEFAULT_APP_COLOR_SCHEME.colorPool
+    ) &&
+    (savedSetting.customizedColorSettings ==
+      JSON.stringify(fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings) ||
+      !savedSetting.customizedColorSettings)
+  );
 };

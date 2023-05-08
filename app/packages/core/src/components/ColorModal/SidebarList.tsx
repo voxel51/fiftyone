@@ -11,13 +11,16 @@ import { Resizable } from "re-resizable";
 import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
+import { ACTIVE_FIELD } from "./utils";
 
 const SidebarList: React.FC = () => {
   const theme = useTheme();
   const activeField = useRecoilValue(fos.activeColorField);
 
   const [width, setWidth] = useState(200);
-  const stableGroup = [{ paths: ["global", "json"], name: "general" }];
+  const stableGroup = [
+    { paths: [ACTIVE_FIELD.global, ACTIVE_FIELD.json], name: "general" },
+  ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
   ).filter((g) => g.name !== "tags");
@@ -32,7 +35,7 @@ const SidebarList: React.FC = () => {
   const onSelectField = useRecoilCallback(
     ({ set, snapshot }) =>
       async (path: string) => {
-        if (path === "global" || path === "json") {
+        if ([ACTIVE_FIELD.global, ACTIVE_FIELD.json].includes(path)) {
           set(fos.activeColorField, path);
         } else {
           const field = await snapshot.getPromise(fos.field(path));
@@ -42,9 +45,9 @@ const SidebarList: React.FC = () => {
     []
   );
 
-  const getCurrentField = (activeField: Field | "global" | "json" | null) => {
-    if (activeField === "global") return "global";
-    if (activeField === "json") return "json";
+  const getCurrentField = (activeField) => {
+    if (activeField === ACTIVE_FIELD.global) return ACTIVE_FIELD.global;
+    if (activeField === ACTIVE_FIELD.json) return ACTIVE_FIELD.json;
     return activeField?.path;
   };
   return (

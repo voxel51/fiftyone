@@ -111,7 +111,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       <Divider />
       {coloring.by == "field" && (
         <div style={{ margin: "1rem", width: "100%" }}>
-          <ShuffleColor />
           <Checkbox
             name={`Use specific color for ${field.name} field`}
             value={Boolean(setting?.useFieldColor)}
