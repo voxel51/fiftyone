@@ -99,7 +99,14 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         execution_result = execute_operator(operator_uri, data)
         if execution_result.is_generator:
             generator = create_response_generator(execution_result.result)
-            return StreamingResponse(generator, media_type="application/json")
+            return StreamingResponse(
+                generator,
+                media_type="application/json",
+                headers={
+                    "Cache-Control": "no-cache, no-transform",
+                    "X-Accel-Buffering": "no",
+                },
+            )
         else:
             json = execution_result.to_json()
             if execution_result.error is not None:
