@@ -322,7 +322,7 @@ class Mutation:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
         if dataset.has_saved_view(view_name):
-            deleted_view_id = dataset.delete_saved_view(view_name)
+            deleted_view_id = dataset._delete_saved_view(view_name)
         else:
             raise ValueError(
                 "Attempting to delete non-existent saved view: %s",
