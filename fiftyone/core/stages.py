@@ -657,28 +657,24 @@ class ExcludeFields(ViewStage):
             May contain ``embedded.field.name`` as well
         meta_filter (None): a filter that dynamically excludes fields in
             the collection's schema according to the specified rule, which
-            can be a string that will be matched against the field's
-            ``name``, ``description``, ``info``, or ``type`` or a dict that
-            restricts the search to specific fields. For example:
+            can be matched against the field's ``name``, ``type``,
+            ``description``, and/or ``info``. For example:
 
-            -   to include all nested fields in the meta filtering,
-                add the key value pair "include_nested_fields": True
-                to the meta_filter dict, e.g.
-                ``meta_filter={"include_nested_fields": True, "name": "foo"}``
-            -   Use ``meta_filter={"any": "2023"}`` to exclude fields that have the
-                string "2023" anywhere in their name, description, or info.
-                Alternatively, use ``meta_filter="2023" as shorthand for searching
-                in any field.
+            -   Use ``meta_filter="2023"`` or ``meta_filter={"any": "2023"}``
+                to exclude fields that have the string "2023" anywhere in their
+                name, type, description, or info
+            -   Use ``meta_filter={"type": "StringField"}`` or
+                ``meta_filter={"type": "Classification"}`` to exclude all
+                string or classification fields, respectively
             -   Use ``meta_filter={"description": "my description"}`` to
                 exclude fields whose description contains the string
                 "my description"
             -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
                 have the string "2023" anywhere in their info
             -   Use ``meta_filter={"info.key": "value"}}`` to exclude
-                fields that have a specific key/value pair in their info field.
-            -   Use ``meta_filter={"type": fo.StringField}`` to exclude all fields
-                of the StringField type. A string can also be used to specify the
-                type, e.g. ``meta_filter={"type": "StringField"}``.
+                fields that have a specific key/value pair in their info
+            -   Include ``meta_filter={"include_nested_fields": True, ...}`` in
+                your meta filter to include all nested fields in the filter
     """
 
     def __init__(
@@ -5454,29 +5450,24 @@ class SelectFields(ViewStage):
             May contain ``embedded.field.name`` as well
         meta_filter (None): a filter that dynamically selects fields in
             the collection's schema according to the specified rule, which
-            can be a string that will be matched against the field's
-            ``name``, ``description``, ``info``, or ``type`` or a dict that
-            restricts the search to specific fields. For example:
+            can be matched against the field's ``name``, ``type``,
+            ``description``, and/or ``info``. For example:
 
-            -   to include all nested fields in the meta filtering,
-                add the key value pair "include_nested_fields": True
-                to the meta_filter dict, e.g.
-                ``meta_filter={"include_nested_fields": True, "name": "foo"}``
-            -   Use ``meta_filter={"any": "2023"}`` to select fields that have the
-                string "2023" anywhere in their name, description, or info.
-                Alternatively, use ``meta_filter="2023" as shorthand for searching
-                in any field.
+            -   Use ``meta_filter="2023"`` or ``meta_filter={"any": "2023"}``
+                to select fields that have the string "2023" anywhere in their
+                name, type, description, or info
+            -   Use ``meta_filter={"type": "StringField"}`` or
+                ``meta_filter={"type": "Classification"}`` to select all string
+                or classification fields, respectively
             -   Use ``meta_filter={"description": "my description"}`` to
                 select fields whose description contains the string
-                "my description".
+                "my description"
             -   Use ``meta_filter={"info": "2023"}`` to select fields that
-                have the string "2023" anywhere in their info.
+                have the string "2023" anywhere in their info
             -   Use ``meta_filter={"info.key": "value"}}`` to select
-                fields that have a specific key/value pair in their info field.
-            -   Use ``meta_filter={"type": fo.StringField}`` to select all fields
-                of the StringField type. A string to specify the type, e.g.
-                ``meta_filter={"type": "StringField"}``.
-
+                fields that have a specific key/value pair in their info
+            -   Include ``meta_filter={"include_nested_fields": True, ...}`` in
+                your meta filter to include all nested fields in the filter
     """
 
     def __init__(
