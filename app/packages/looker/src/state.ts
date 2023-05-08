@@ -10,7 +10,7 @@ import { AppError, Schema, Stage } from "@fiftyone/utilities";
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
-  by: "field" | "instance" | "label";
+  by: "field" | "instance" | "value";
   pool: readonly string[];
   scale: RGB[];
   seed: number;
@@ -20,6 +20,18 @@ export interface Coloring {
   };
   points: boolean;
   targets: string[];
+}
+export interface CustomizeColor {
+  field: string;
+  fieldColor?: string;
+  useFieldColor: boolean;
+  attributeForColor?: string;
+  // attributeForOpacity?: string;
+  colors?: string[];
+  labelColors?: {
+    name: string;
+    color: string;
+  }[];
 }
 
 export type OrthogrpahicProjectionMetadata = {
@@ -120,6 +132,7 @@ interface BaseOptions {
   activePaths: string[];
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   selectedLabels: string[];
   showConfidence: boolean;
   showControls: boolean;
@@ -330,6 +343,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     defaultMaskTargets: null,
     targets: ["#000000"],
   },
+  customizeColorSetting: [],
   smoothMasks: true,
   fullscreen: false,
   zoomPad: 0.2,

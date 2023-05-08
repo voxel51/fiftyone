@@ -547,10 +547,10 @@ async def _create_media_urls(
 
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
-        if opm_filepath == field:
+        if use_opm and opm_filepath == field:
             filepath_source = url
             filepath = path
-        elif not opm_filepath and field == "filepath":
+        elif field == "filepath":
             filepath_source = url
             filepath = path
 

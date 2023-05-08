@@ -16,6 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.colorscheme import ColorScheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -23,8 +24,13 @@ import fiftyone.core.view as fov
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.inputs import SelectedLabel
-from fiftyone.server.query import Dataset, SidebarGroup, SavedView
-from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.query import (
+    Dataset,
+    SidebarGroup,
+    SavedView,
+    ColorSchemeStr,
+)
+from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
 
 
@@ -54,6 +60,17 @@ class SavedViewInfo:
     name: t.Optional[str] = None
     description: t.Optional[str] = None
     color: t.Optional[str] = None
+
+
+@gql.input
+class ColorSchemeInput:
+    color_pool: t.Optional[t.List[str]] = None
+    customized_color_settings: t.Optional[JSONArray] = None
+
+
+@gql.input
+class ColorSchemeSaveFormat(ColorSchemeStr):
+    pass
 
 
 @gql.type
@@ -314,7 +331,7 @@ class Mutation:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
         if dataset.has_saved_view(view_name):
-            deleted_view_id = dataset.delete_saved_view(view_name)
+            deleted_view_id = dataset._delete_saved_view(view_name)
         else:
             raise ValueError(
                 "Attempting to delete non-existent saved view: %s",
@@ -397,6 +414,35 @@ class Mutation:
     ) -> bool:
         state = get_state()
         state.spaces = Space.from_dict(spaces)
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_color_scheme(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        dataset: str,
+        stages: BSONArray,
+        color_scheme: ColorSchemeInput,
+        save_to_app: bool,
+        color_scheme_save_format: ColorSchemeSaveFormat,
+    ) -> bool:
+        state = get_state()
+        view = get_view(dataset, stages=stages)
+        state.color_scheme = ColorScheme(
+            color_pool=color_scheme.color_pool,
+            customized_color_settings=color_scheme.customized_color_settings,
+        )
+
+        if save_to_app:
+            view._dataset.app_config.color_scheme = foo.ColorSchemeDocument(
+                color_pool=color_scheme_save_format.color_pool,
+                customized_color_settings=color_scheme_save_format.customized_color_settings,
+            )
+            view._dataset.save()
+            state.view = view
+
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 

@@ -17,11 +17,13 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
+
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.core.spaces import Space
+from fiftyone.core.colorscheme import ColorScheme
 from fiftyone.server.scalars import JSON
 
 
@@ -48,6 +50,7 @@ class StateDescription(etas.Serializable):
         dataset=None,
         selected=None,
         selected_labels=None,
+        color_scheme=None,
         spaces=None,
         view=None,
         view_name=None,
@@ -62,6 +65,7 @@ class StateDescription(etas.Serializable):
             else view
         )
         self.spaces = spaces
+        self.color_scheme = color_scheme
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -106,6 +110,9 @@ class StateDescription(etas.Serializable):
 
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()
+
+            if isinstance(self.color_scheme, ColorScheme):
+                d["color_scheme"] = self.color_scheme.to_json()
 
             return d
 
@@ -159,6 +166,10 @@ class StateDescription(etas.Serializable):
         fo.config.timezone = d.get("config", {}).get("timezone", None)
 
         spaces = d.get("spaces", None)
+        color_scheme = d.get("color_scheme", None)
+
+        if color_scheme:
+            color_scheme = json_util.dumps(color_scheme)
 
         if spaces is not None:
             spaces = Space.from_dict(json_util.loads(spaces))
@@ -170,6 +181,7 @@ class StateDescription(etas.Serializable):
             selected_labels=d.get("selected_labels", []),
             view=view,
             spaces=spaces,
+            color_scheme=color_scheme,
         )
 
 

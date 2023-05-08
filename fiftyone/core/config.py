@@ -425,7 +425,7 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        supported_color_bys = {"field", "instance", "label"}
+        supported_color_bys = {"field", "value"}
         default_color_by = "field"
         if self.color_by not in supported_color_bys:
             logger.warning(
@@ -682,24 +682,15 @@ def locate_config():
     The default location is ``~/.fiftyone/config.json``, but you can override
     this path by setting the ``FIFTYONE_CONFIG_PATH`` environment variable.
 
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
+    Note that a config file may not actually exist on disk.
 
     Returns:
         the path to the :class:`FiftyOneConfig` on disk
-
-    Raises:
-        OSError: if the config path has been customized but the file does not
-            exist on disk
     """
     if "FIFTYONE_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_CONFIG_PATH"]
 
 
 def locate_app_config():
@@ -709,24 +700,15 @@ def locate_app_config():
     override this path by setting the ``FIFTYONE_APP_CONFIG_PATH`` environment
     variable.
 
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
+    Note that the file may not actually exist.
 
     Returns:
         the path to the :class:`AppConfig` on disk
-
-    Raises:
-        OSError: if the App config path has been customized but the file does
-            not exist on disk
     """
     if "FIFTYONE_APP_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_APP_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_APP_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("App config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_APP_CONFIG_PATH"]
 
 
 def locate_annotation_config():
@@ -736,24 +718,15 @@ def locate_annotation_config():
     override this path by setting the ``FIFTYONE_ANNOTATION_CONFIG_PATH``
     environment variable.
 
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
+    Note that a config file may not actually exist on disk.
 
     Returns:
         the path to the :class:`AnnotationConfig` on disk
-
-    Raises:
-        OSError: if the annotation config path has been customized but the file
-            does not exist on disk
     """
     if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Annotation config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
 
 
 def locate_media_cache_config():
