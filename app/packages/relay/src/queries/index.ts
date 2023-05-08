@@ -7,7 +7,6 @@ export * from "./__generated__/paginateGroup_query.graphql";
 export * from "./__generated__/paginateGroupPageQuery.graphql";
 export * from "./__generated__/paginateGroupQuery.graphql";
 export * from "./__generated__/pcdSampleQuery.graphql";
-export * from "./__generated__/pinnedSampleQuery.graphql";
 export * from "./__generated__/viewSchemaFragment.graphql";
 export * from "./__generated__/viewSchemaFragmentQuery.graphql";
 
@@ -21,5 +20,4 @@ export {
   paginateGroupPaginationFragment,
 } from "./paginateGroup";
 export { default as pcdSample } from "./pcdSample";
-export { default as pinnedSample } from "./pinnedSample";
 export { default as viewSchema } from "./viewSchema";
