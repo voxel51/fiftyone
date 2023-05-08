@@ -50,3 +50,4 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as useSchemaSettings } from "./useSchemaSettings";
 export { settingsModal } from "./useSchemaSettings";
+export { default as withSuspense } from "./withSuspense";
