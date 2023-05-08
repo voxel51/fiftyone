@@ -205,7 +205,7 @@ def _is_plugin_definition_file(path):
 
 def _list_plugins_by_name(
     enabled_only: bool = None, check_for_duplicates=True
-) -> list[str]:
+) -> List[Optional[str]]:
     """Returns a list of plugins.
 
     Args:
@@ -238,7 +238,7 @@ def _list_plugins_by_name(
     return [p.name for p in plugins]
 
 
-def _list_plugins(enabled_only: bool = None) -> list[Optional[plugin_package]]:
+def _list_plugins(enabled_only: bool = None) -> List[Optional[plugin_package]]:
     """Returns a list of plugins.
     If enabled_only == True, only returns enabled plugins.
     If enabled_only == False, only returns disabled plugins.
