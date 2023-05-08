@@ -528,7 +528,7 @@ async def serialize_dataset(
             view_name = view.name
             if serialized_view:
                 for stage in serialized_view:
-                    view.add_stage(fosg.ViewStage._from_dict(stage))
+                    view = view.add_stage(fosg.ViewStage._from_dict(stage))
         except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
