@@ -1,14 +1,11 @@
+import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-
-import * as fos from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
-
 import { Button } from "../utils";
 import {
-  ModalActionButtonContainer,
-  LONG_BUTTON_STYLE,
   ButtonGroup,
+  LONG_BUTTON_STYLE,
+  ModalActionButtonContainer,
 } from "./ShareStyledDiv";
 
 const ColorFooter: React.FC = () => {

@@ -1,11 +1,10 @@
-import { atom, useRecoilCallback } from "recoil";
-import * as fos from "@fiftyone/state";
-
-import { isEmpty, xor } from "lodash";
-import { Field } from "@fiftyone/utilities";
 import { CustomizeColor } from "@fiftyone/state";
+import { isEmpty, xor } from "lodash";
 
-// Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their website Color Universal Design (CUD). This palette is a “Set of colors that is unambiguous both to colorblinds and non-colorblinds”.
+// Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
+// website Color Universal Design (CUD). This palette is a “Set of colors that
+// is unambiguous both to colorblinds and non-colorblinds”.
+//
 // https://jfly.uni-koeln.de/color/
 export const colorBlindFriendlyPalette = [
   "#E69F00", // orange

@@ -1,21 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { Field } from "@fiftyone/utilities";
+import ExpandLess from "@mui/icons-material/ExpandLess";
+import ExpandMore from "@mui/icons-material/ExpandMore";
+import Collapse from "@mui/material/Collapse";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import Collapse from "@mui/material/Collapse";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
 import { Resizable } from "re-resizable";
-
-import * as fos from "@fiftyone/state";
-import { useTheme } from "@fiftyone/components";
-import { Field } from "@fiftyone/utilities";
+import React, { useState } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 
 const SidebarList: React.FC = () => {
   const theme = useTheme();
-  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+  const activeField = useRecoilValue(fos.activeColorField);
 
   const [width, setWidth] = useState(200);
   const stableGroup = [{ paths: ["global", "json"], name: "general" }];
@@ -33,7 +32,7 @@ const SidebarList: React.FC = () => {
   const onSelectField = useRecoilCallback(
     ({ set, snapshot }) =>
       async (path: string) => {
-        if (["global", "json"].includes(path)) {
+        if (path === "global" || path === "json") {
           set(fos.activeColorField, path);
         } else {
           const field = await snapshot.getPromise(fos.field(path));

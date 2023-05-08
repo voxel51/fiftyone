@@ -1,8 +1,7 @@
+import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import * as fos from "@fiftyone/state";
 import React from "react";
 import styled from "styled-components";
-
-import * as fos from "@fiftyone/state";
-import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 
 export const ModeControlContainer = styled.div`
   display: flex;

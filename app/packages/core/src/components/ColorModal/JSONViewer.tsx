@@ -1,14 +1,13 @@
+import { useTheme } from "@fiftyone/components";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import * as fos from "@fiftyone/state";
+import Editor from "@monaco-editor/react";
 import React, { useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
-import Editor from "@monaco-editor/react";
-import * as fos from "@fiftyone/state";
-
-import { ActionOption } from "../Actions/Common";
-import { useTheme } from "@fiftyone/components";
 import { COLOR_SCHEME } from "../../utils/links";
-import { SectionWrapper } from "./ShareStyledDiv";
+import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
 
 const JSONViewer: React.FC = ({}) => {

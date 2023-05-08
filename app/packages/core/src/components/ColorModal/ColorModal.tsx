@@ -1,21 +1,15 @@
-import React, { Fragment, useMemo, useRef } from "react";
-import Draggable from "react-draggable";
-import ReactDOM from "react-dom";
-import { useRecoilState, useRecoilValue } from "recoil";
-import CloseIcon from "@mui/icons-material/Close";
-import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
-
 import * as fos from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
-import { Popout, Tooltip } from "@fiftyone/components";
-import Item from "../Filters/categoricalFilter/filterOption/FilterItem";
-import GlobalSetting from "./GlobalSetting";
-import FieldSetting from "./FieldSetting";
 import { useOutsideClick } from "@fiftyone/state";
-import useMeasure from "react-use-measure";
-import JSONViewer from "./JSONViewer";
+import { Field } from "@fiftyone/utilities";
+import CloseIcon from "@mui/icons-material/Close";
+import React, { Fragment, useRef } from "react";
+import ReactDOM from "react-dom";
+import Draggable from "react-draggable";
+import { useRecoilState, useRecoilValue } from "recoil";
 import ColorFooter from "./ColorFooter";
+import FieldSetting from "./FieldSetting";
+import GlobalSetting from "./GlobalSetting";
+import JSONViewer from "./JSONViewer";
 import {
   Container,
   Display,
@@ -30,7 +24,6 @@ const ColorModal = () => {
   const ref = React.useRef<HTMLDivElement>();
   const [open, setOpen] = React.useState(false);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
   const field = useRecoilValue(fos.activeColorField);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
