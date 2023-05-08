@@ -214,11 +214,7 @@ class ConfigCommand(Command):
     def execute(parser, args):
         if args.locate:
             config_path = focg.locate_config()
-            if os.path.isfile(config_path):
-                print(config_path)
-            else:
-                print("No config file found at '%s'" % config_path)
-
+            print(config_path)
             return
 
         if args.field:
@@ -1019,14 +1015,7 @@ class AnnotationConfigCommand(Command):
     def execute(parser, args):
         if args.locate:
             annotation_config_path = focg.locate_annotation_config()
-            if os.path.isfile(annotation_config_path):
-                print(annotation_config_path)
-            else:
-                print(
-                    "No annotation config file found at '%s'"
-                    % annotation_config_path
-                )
-
+            print(annotation_config_path)
             return
 
         if args.field:
@@ -1222,11 +1211,7 @@ class AppConfigCommand(Command):
     def execute(parser, args):
         if args.locate:
             app_config_path = focg.locate_app_config()
-            if os.path.isfile(app_config_path):
-                print(app_config_path)
-            else:
-                print("No App config file found at '%s'" % app_config_path)
-
+            print(app_config_path)
             return
 
         if args.field:
@@ -1717,11 +1702,7 @@ class BrainConfigCommand(Command):
     def execute(parser, args):
         if args.locate:
             brain_config_path = fobc.locate_brain_config()
-            if os.path.isfile(brain_config_path):
-                print(brain_config_path)
-            else:
-                print("No brain config file found at '%s'" % brain_config_path)
-
+            print(brain_config_path)
             return
 
         if args.field:

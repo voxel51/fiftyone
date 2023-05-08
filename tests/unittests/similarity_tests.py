@@ -99,19 +99,32 @@ class SimilarityTests(unittest.TestCase):
         query_id = dataset.first().id
 
         view1 = dataset.sort_by_similarity(query_id)
-        view2 = dataset.sort_by_similarity(query_id, reverse=True)
+        values1 = view1.values("id")
 
-        self.assertEqual(
-            view1.values("id"), list(reversed(view2.values("id")))
-        )
+        view2 = dataset.sort_by_similarity(query_id, reverse=True)
+        values2 = view2.values("id")
+
+        self.assertListEqual(values2, values1[::-1])
 
         view3 = dataset.sort_by_similarity(query_id, k=4)
+        values3 = view3.values("id")
 
-        self.assertEqual(len(view3), 4)
+        self.assertListEqual(values3, values1[:4])
 
         view4 = dataset.sort_by_similarity(query_id, brain_key="img_sim")
+        values4 = view4.values("id")
 
-        self.assertEqual(view1.values("id"), view4.values("id"))
+        self.assertListEqual(values4, values1)
+
+        view5 = view4.limit(2)
+        values5 = view5.values("id")
+
+        self.assertListEqual(values5, values1[:2])
+
+        view5.reload()
+        values5 = view5.values("id")
+
+        self.assertListEqual(values5, values1[:2])
 
     @drop_datasets
     def test_object_similarity(self):
@@ -163,19 +176,32 @@ class SimilarityTests(unittest.TestCase):
         patches = dataset.to_patches("ground_truth")
 
         view1 = patches.sort_by_similarity(query_id)
-        view2 = patches.sort_by_similarity(query_id, reverse=True)
+        values1 = view1.values("id")
 
-        self.assertEqual(
-            view1.values("id"), list(reversed(view2.values("id")))
-        )
+        view2 = patches.sort_by_similarity(query_id, reverse=True)
+        values2 = view2.values("id")
+
+        self.assertListEqual(values2, values1[::-1])
 
         view3 = patches.sort_by_similarity(query_id, k=4)
+        values3 = view3.values("id")
 
-        self.assertEqual(len(view3), 4)
+        self.assertListEqual(values3, values1[:4])
 
         view4 = patches.sort_by_similarity(query_id, brain_key="obj_sim")
+        values4 = view4.values("id")
 
-        self.assertEqual(view1.values("id"), view4.values("id"))
+        self.assertEqual(values4, values1)
+
+        view5 = view4.limit(2)
+        values5 = view5.values("id")
+
+        self.assertListEqual(values5, values1[:2])
+
+        view5.reload()
+        values5 = view5.values("id")
+
+        self.assertListEqual(values5, values1[:2])
 
 
 if __name__ == "__main__":

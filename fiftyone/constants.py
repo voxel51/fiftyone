@@ -82,6 +82,11 @@ DEFAULT_APP_COLOR_POOL = [
     "#777799",
 ]
 
+DEFAULT_COLOR_SCHEME = {
+    "color_pool": DEFAULT_APP_COLOR_POOL,
+    "customized_color_settings": [],
+}
+
 # MongoDB setup
 try:
     from fiftyone.db import FIFTYONE_DB_BIN_DIR

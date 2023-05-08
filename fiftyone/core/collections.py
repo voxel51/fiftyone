@@ -3250,11 +3250,15 @@ class SampleCollection(object):
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Keypoints in :class:`fiftyone.core.labels.Keypoints` format
         -   Temporal detections in
             :class:`fiftyone.core.labels.TemporalDetections` format
 
         For spatial object detection evaluation, this method uses COCO-style
         evaluation by default.
+
+        When evaluating keypoints, "IoUs" are computed via
+        `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
 
         For temporal segment detection, this method uses ActivityNet-style
         evaluation by default.
@@ -3299,10 +3303,12 @@ class SampleCollection(object):
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
@@ -3790,7 +3796,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeBy(field, values))
 
     @view_stage
-    def exclude_fields(self, field_names, _allow_missing=False):
+    def exclude_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -3841,14 +3849,40 @@ class SampleCollection(object):
             view = dataset.exclude_fields("predictions.mood")
 
         Args:
-            field_names: a field name or iterable of field names to exclude.
-                May contain ``embedded.field.name`` as well
+            field_names (None): a field name or iterable of field names to
+                exclude. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically excludes fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to exclude fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to exclude all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    exclude fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to exclude
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+            fos.ExcludeFields(
+                field_names=field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -5645,7 +5679,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_fields(self, field_names=None, _allow_missing=False):
+    def select_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
 
@@ -5711,12 +5747,38 @@ class SampleCollection(object):
         Args:
             field_names (None): a field name or iterable of field names to
                 select. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically selects fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to select fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to select all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    select fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to select fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to select
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectFields(field_names, _allow_missing=_allow_missing)
+            fos.SelectFields(
+                field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -6342,8 +6404,9 @@ class SampleCollection(object):
 
         Args:
             field: the patches field, which must be of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than ``field``
                 and the default sample fields are included. Can be any of the
                 following:
@@ -6415,8 +6478,9 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than the
                 ground truth/predicted fields and the default sample fields are
                 included. Can be any of the following:

@@ -1,8 +1,10 @@
-import { modal } from "@fiftyone/state";
-import React from "react";
-import { useRecoilValue } from "recoil";
+import { activeColorField, modal } from "@fiftyone/state";
+import React, { useEffect } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
+import * as fos from "@fiftyone/state";
 
+import ColorModal from "./ColorModal/ColorModal";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
 
@@ -23,10 +25,33 @@ const Body = styled.div`
 
 function Dataset() {
   const isModalActive = Boolean(useRecoilValue(modal));
+  const isCustomizeColorModalActive = useRecoilValue(activeColorField);
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+
+  useEffect(() => {
+    if (!isUsingSessionColorScheme && datasetColorScheme) {
+      const colorPool =
+        datasetColorScheme.colorPool?.length > 0
+          ? datasetColorScheme.colorPool
+          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const customizedColorSettings =
+        JSON.parse(datasetColorScheme.customizedColorSettings) ??
+        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
+      setSessionColor({
+        colorPool,
+        customizedColorSettings,
+      });
+    }
+  }, [isUsingSessionColorScheme, datasetColorScheme]);
 
   return (
     <>
       {isModalActive && <Modal />}
+      {isCustomizeColorModalActive && <ColorModal />}
       <Container>
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />

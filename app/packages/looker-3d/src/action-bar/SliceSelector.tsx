@@ -1,74 +1,96 @@
-import { Selector } from "@fiftyone/components";
-import { SelectorProps } from "@fiftyone/components/src/components/Selector/Selector";
+import { PopoutSectionTitle } from "@fiftyone/components";
+import { Checkbox } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { ActionItem } from "../containers";
+import { ACTION_SET_PCDS, currentActionAtom } from "../state";
+import { ActionPopOver } from "./shared";
 
-interface SliceSelectorProps {
-  dataset: fos.State.Dataset;
-}
+export const SliceSelector = () => {
+  const activePcdSlices = useRecoilValue(fos.activePcdSlices);
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
+  const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
-const SliceSelectorComponent = ({
-  value,
-  className,
-}: {
-  value: string;
-  className: string;
-}) => {
-  return <div className={className}>{value}</div>;
-};
+  const activeSlicesLabel = useMemo(() => {
+    if (!activePcdSlices || activePcdSlices.length === 0) {
+      return "";
+    }
 
-export const SliceSelector = ({ dataset }: SliceSelectorProps) => {
-  const [pinnedSlice, setPinnedSlice] = useRecoilState(fos.pinnedSlice);
+    if (activePcdSlices.length === 1) {
+      return `${activePcdSlices[0]} selected`;
+    }
+    if (activePcdSlices.length === 2) {
+      return activePcdSlices.join(" and ");
+    }
+    if (activePcdSlices.length === allPcdSlices.length) {
+      return "All pcds selected";
+    }
+    return `${activePcdSlices.length} point-clouds selected`;
+  }, [activePcdSlices, allPcdSlices]);
 
-  const allPointCloudSlices = useMemo(
-    () =>
-      dataset.groupMediaTypes
-        .filter((g) => g.mediaType === "point_cloud")
-        .map((g) => g.name),
-    [dataset]
-  );
+  const handleActionClick = useCallback(() => {
+    if (currentAction === ACTION_SET_PCDS) {
+      setAction(null);
+    } else {
+      setAction(ACTION_SET_PCDS);
+    }
+  }, [setAction, currentAction]);
 
-  const handleChangePinnedSlice = useCallback(
-    (newSlice: string) => {
-      if (newSlice !== pinnedSlice) {
-        setPinnedSlice(newSlice);
-      }
-    },
-    [pinnedSlice, setPinnedSlice]
-  );
-
-  const useSearch: SelectorProps<string>["useSearch"] = useCallback(
-    (search: string) => {
-      const searchResults = allPointCloudSlices.filter((slice) =>
-        slice.includes(search)
-      );
-
-      return {
-        values: searchResults,
-        total: searchResults.length,
-      };
-    },
-    [allPointCloudSlices]
-  );
+  if (!activePcdSlices || activePcdSlices.length === 0) {
+    return null;
+  }
 
   return (
-    <Selector<string>
-      overflow
-      value={pinnedSlice}
-      onSelect={handleChangePinnedSlice}
-      placeholder="Select pcd"
-      inputStyle={{
-        height: 30,
-        maxWidth: 120,
-        userSelect: "none",
-      }}
-      containerStyle={{
-        userSelect: "none",
-      }}
-      useSearch={useSearch}
-      resultsPlacement="top-center"
-      component={SliceSelectorComponent}
-    />
+    <>
+      <ActionItem title="Select pcds">
+        <div onClick={handleActionClick}>{activeSlicesLabel}</div>
+      </ActionItem>
+
+      {currentAction === ACTION_SET_PCDS && <PcdsSelector />}
+    </>
+  );
+};
+
+const PcdsSelector = () => {
+  const [activePcdSlices, setActivePcdSlices] = useRecoilState(
+    fos.activePcdSlices
+  );
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
+
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+  fos.useOutsideClick(ref, () => isSelectorOpen && setIsSelectorOpen(false));
+
+  if (allPcdSlices.length === 0) {
+    return null;
+  }
+
+  return (
+    <ActionPopOver>
+      <PopoutSectionTitle>Select pcds</PopoutSectionTitle>
+      <div>
+        {allPcdSlices.map((slice) => {
+          return (
+            <Checkbox
+              name={slice}
+              key={slice}
+              value={activePcdSlices.includes(slice)}
+              muted={
+                activePcdSlices.includes(slice) && activePcdSlices.length === 1
+              }
+              setValue={(value) => {
+                setActivePcdSlices(
+                  value
+                    ? [...activePcdSlices, slice]
+                    : activePcdSlices.filter((s) => s !== slice)
+                );
+              }}
+            />
+          );
+        })}
+      </div>
+    </ActionPopOver>
   );
 };

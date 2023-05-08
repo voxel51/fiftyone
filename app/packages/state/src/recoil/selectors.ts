@@ -104,6 +104,7 @@ export const appConfigDefault = selectorFamily<
     eviction: "most-recent",
   },
 });
+
 export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {
     key: "appConfigOptions",

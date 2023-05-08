@@ -24,6 +24,8 @@ from fiftyone.core.fields import (
 )
 import fiftyone.core.utils as fou
 
+# import fiftyone.core.colorscheme as foc
+
 from .document import Document
 from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
@@ -145,6 +147,18 @@ class SidebarGroupDocument(EmbeddedDocument):
     expanded = BooleanField(default=None)
 
 
+class ColorSchemeDocument(EmbeddedDocument):
+    """Description of a color scheme in the App.
+    Args:
+
+    """
+
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+    color_pool = ListField(StringField(), default=[])
+    customized_color_settings = StringField(null=True)
+
+
 class KeypointSkeleton(EmbeddedDocument):
     """Description of a keypoint skeleton.
 
@@ -207,6 +221,7 @@ class DatasetAppConfig(EmbeddedDocument):
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
+        color_scheme (None): an optional :class:`ColorScheme` of the color settings, with color pool and customized color settings for embedded documnet field
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -227,6 +242,8 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
+    color_scheme = EmbeddedDocumentField(ColorSchemeDocument, default=None)
+
     plugins = DictField()
 
     @staticmethod

@@ -25,6 +25,7 @@ import fiftyone.utils.kinetics as fouk
 import fiftyone.utils.kitti as foukt
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.openimages as fouo
+import fiftyone.utils.sama as fous
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
@@ -1148,6 +1149,205 @@ class COCO2017Dataset(FiftyOneDataset):
             dataset_dir,
             split,
             year="2017",
+            label_types=self.label_types,
+            classes=self.classes,
+            image_ids=self.image_ids,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            raw_dir=self._get_raw_dir(dataset_dir),
+            scratch_dir=scratch_dir,
+        )
+
+        dataset_type = fot.COCODetectionDataset()
+
+        if not downloaded:
+            num_samples = None
+
+        return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
+
+
+class SamaCOCODataset(FiftyOneDataset):
+    """Sama-COCO is a large-scale object detection, segmentation, and captioning
+    dataset based on COCO2017. It is a relabeling of the original training and
+    validation sets with tighter polygons and more individually annotated crowds.
+
+    This version contains images, bounding boxes and segmentations
+    for Sama's version of the 2017 version of the dataset.
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``label_types``,
+        ``classes``, and ``max_samples`` parameters
+    -   You can specify specific images to load via the ``image_ids`` parameter
+
+    See :ref:`this page <dataset-zoo-sama-coco>` for more information about
+    partial downloads of this dataset.
+
+    Full split stats:
+
+    -   Train split: 118,287 images
+    -   Test split: 40,670 images
+    -   Validation split: 5,000 images
+
+    Notes:
+
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   Sama-COCO may have some discrepancies with COCO-2017 in terms of the instances labeled
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # Load 50 random samples from the validation split
+        #
+        # By default, only detections are loaded
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "sama-coco",
+            split="validation",
+            max_samples=50,
+            shuffle=True,
+        )
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Load segmentations for 25 samples from the validation split that
+        # contain cats and dogs
+        #
+        # Images that contain all `classes` will be prioritized first, followed
+        # by images that contain at least one of the required `classes`. If
+        # there are not enough images matching `classes` in the split to meet
+        # `max_samples`, only the available images will be loaded.
+        #
+        # Images will only be downloaded if necessary
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "sama-coco",
+            split="validation",
+            label_types=["segmentations"],
+            classes=["cat", "dog"],
+            max_samples=25,
+        )
+
+        session.dataset = dataset
+
+        #
+        # Download the entire validation split and load both detections and
+        # segmentations
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "sama-coco",
+            split="validation",
+            label_types=["detections", "segmentations"],
+        )
+
+        session.dataset = dataset
+
+    Dataset size
+        25.67 GB
+
+    Source
+        https://www.sama.com/sama-coco-dataset/
+
+    Args:
+        label_types (None): a label type or list of label types to load. The
+            supported values are ``("detections", "segmentations")``. By
+            default, only "detections" are loaded
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``label_types`` and/or ``classes`` are also specified, first
+            priority will be given to samples that contain all of the specified
+            label types and/or classes, followed by samples that contain at
+            least one of the specified labels types or classes. The actual
+            number of samples loaded may be less than this maximum value if the
+            dataset does not contain sufficient samples matching your
+            requirements. By default, all matching samples are loaded
+    """
+
+    def __init__(
+        self,
+        label_types=None,
+        classes=None,
+        image_ids=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        if label_types is None:
+            label_types = ["detections"]
+
+        self.label_types = label_types
+        self.classes = classes
+        self.image_ids = image_ids
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "sama-coco"
+
+    @property
+    def tags(self):
+        return ("image", "detection", "segmentation")
+
+    @property
+    def supported_splits(self):
+        return ("train", "validation", "test")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    @property
+    def importer_kwargs(self):
+        return {"label_types": self.label_types}
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        (
+            num_samples,
+            classes,
+            downloaded,
+        ) = fous.download_sama_coco_dataset_split(
+            dataset_dir,
+            split,
             label_types=self.label_types,
             classes=self.classes,
             image_ids=self.image_ids,
@@ -3053,6 +3253,7 @@ AVAILABLE_DATASETS = {
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "quickstart-groups": QuickstartGroupsDataset,
+    "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }
 

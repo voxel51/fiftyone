@@ -25,11 +25,13 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)

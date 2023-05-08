@@ -45,6 +45,7 @@ from .dataset import (
     DatasetAppConfig,
     DatasetDocument,
     SidebarGroupDocument,
+    ColorSchemeDocument,
 )
 from .document import (
     Document,

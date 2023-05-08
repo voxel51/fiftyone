@@ -1,6 +1,6 @@
 """
 Utilities for working with annotations in
-`Scale AI format <https://docs.scale.com/reference#annotation>`_.
+`Scale AI format <https://docs.scale.com/reference/introduction>`_.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -40,10 +40,10 @@ def import_from_scale(
     This method supports importing annotations from the following Scale API
     endpoints:
 
-    -   `General Image Annotation <https://docs.scale.com/reference#general-image-annotation>`_
-    -   `Semantic Segmentation Annotation <https://docs.scale.com/reference#semantic-segmentation-annotation>`_
-    -   `General Video Annotation <https://docs.scale.com/reference#general-video-annotation>`_
-    -   `Video Playback <https://docs.scale.com/reference#video-playback>`_
+    -   `General Image Annotation <https://docs.scale.com/reference/general-image-annotation>`_
+    -   `Semantic Segmentation Annotation <https://docs.scale.com/reference/semantic-segmentation-annotation>`_
+    -   `General Video Annotation <https://docs.scale.com/reference/general-video-annotation>`_
+    -   `Video Playback <https://docs.scale.com/reference/video-playback>`_
 
     The ``scale_id_field`` of the FiftyOne samples are used to associate
     samples with their corresponding Scale task IDs.
@@ -79,14 +79,14 @@ def import_from_scale(
 
     The contents of the ``response`` field should be as follows:
 
-    -   `General Image Annotation <https://docs.scale.com/reference#general-image-annotation>`_::
+    -   `General Image Annotation <https://docs.scale.com/reference/general-image-annotation>`_::
 
             {
                 "annotations": [...]
                 "global_attributes": {...}
             }
 
-    -   `Semantic Segmentation Annotation <https://docs.scale.com/reference#semantic-segmentation-annotation>`_::
+    -   `Semantic Segmentation Annotation <https://docs.scale.com/reference/semantic-segmentation-annotation>`_::
 
             {
                 "annotations": {
@@ -104,7 +104,7 @@ def import_from_scale(
         case the mask is downloaded from the web, or the path to the mask on
         disk.
 
-    -   `General Video Annotation <https://docs.scale.com/reference#general-video-annotation>`_::
+    -   `General Video Annotation <https://docs.scale.com/reference/general-video-annotation>`_::
 
             {
                 "annotations": {
@@ -149,7 +149,7 @@ def import_from_scale(
                 "events": [...]
             }
 
-    -   `Video Playback <https://docs.scale.com/reference#video-playback>`_::
+    -   `Video Playback <https://docs.scale.com/reference/video-playback>`_::
 
             {
                 "annotations": {
@@ -259,9 +259,9 @@ def export_to_scale(
     This function is useful for generating pre-annotations that can be provided
     to Scale AI via the ``hypothesis`` parameter of the following endpoints:
 
-    -   `General Image Annotation <https://docs.scale.com/reference#general-image-annotation>`_
-    -   `General Video Annotation <https://docs.scale.com/reference#general-video-annotation>`_
-    -   `Video Playback <https://docs.scale.com/reference#video-playback>`_
+    -   `General Image Annotation <https://docs.scale.com/reference/general-image-annotation>`_
+    -   `General Video Annotation <https://docs.scale.com/reference/general-video-annotation>`_
+    -   `Video Playback <https://docs.scale.com/reference/video-playback>`_
 
     The output ``json_path`` will be a JSON file in the following format::
 
@@ -305,7 +305,7 @@ def export_to_scale(
             ...
 
     When ``video_playback == False``, the per-sample JSON files are written in
-    `General Video Annotation format <https://docs.scale.com/reference#general-video-annotation>`_::
+    `General Video Annotation format <https://docs.scale.com/reference/general-video-annotation>`_::
 
         [
             {
@@ -323,7 +323,7 @@ def export_to_scale(
     of the video.
 
     When ``video_playback == True``, the per-sample JSON files are written in
-    `Video Playback format <https://docs.scale.com/reference#video-playback>`_::
+    `Video Playback format <https://docs.scale.com/reference/video-playback>`_::
 
         {
             "annotations": {...}
@@ -351,7 +351,7 @@ def export_to_scale(
             ...
 
     where each per-sample JSON file contains the
-    `events in the video <https://docs.scale.com/reference#events>`_::
+    `events in the video <https://docs.scale.com/reference/events>`_::
 
         {
             "events": [...]
@@ -367,9 +367,9 @@ def export_to_scale(
             events. Only applicable for video datasets
         video_playback (False): whether to export video labels in a suitable
             format for use with the
-            `Video Playback <https://docs.scale.com/reference#video-playback>`_ task.
+            `Video Playback <https://docs.scale.com/reference/video-playback>`_ task.
             By default, video labels are exported for in a suitable format for
-            the `General Video Annotation <https://docs.scale.com/reference#general-video-annotation>`_
+            the `General Video Annotation <https://docs.scale.com/reference/general-video-annotation>`_
             task. Only applicable for video datasets
         label_field (None): optional label field(s) to export. Can be any of
             the following:
@@ -436,6 +436,7 @@ def export_to_scale(
 
     # Export the labels
     labels = {}
+    anno_dict = {}
     for sample in sample_collection.iter_samples(progress=True):
         metadata = sample.metadata
 
@@ -462,8 +463,6 @@ def export_to_scale(
                 annotations, events = _to_scale_video_annotation_labels(
                     frames, frame_size, make_events=make_events
                 )
-
-            anno_dict = {}
 
             # Write annotations
             if video_labels_dir:
@@ -566,7 +565,7 @@ def _get_frame_labels(sample, frame_label_fields):
     return frames
 
 
-# https://docs.scale.com/reference#general-image-annotation
+# https://docs.scale.com/reference/general-image-annotation
 def _to_scale_image_labels(labels_dict, frame_size):
     annotations = []
     global_attributes = {}
@@ -595,7 +594,7 @@ def _to_scale_image_labels(labels_dict, frame_size):
     return anno_dict
 
 
-# https://docs.scale.com/reference#general-video-annotation
+# https://docs.scale.com/reference/general-video-annotation
 def _to_scale_video_annotation_labels(frames, frame_size, make_events=False):
     in_progress_events = {}
     events = []
@@ -618,7 +617,7 @@ def _to_scale_video_annotation_labels(frames, frame_size, make_events=False):
     return annotations, {"events": events}
 
 
-# https://docs.scale.com/reference#video-playback
+# https://docs.scale.com/reference/video-playback
 def _to_scale_video_playback_labels(frames, frame_size, make_events=False):
     in_progress_events = {}
     events = []
@@ -705,7 +704,7 @@ def _finalize_events(events, frame_number, in_progress_events):
             del in_progress_events[event_label]
 
 
-# https://docs.scale.com/reference#events
+# https://docs.scale.com/reference/events
 def _make_event(label, start, end):
     if end == start:
         return {
@@ -722,7 +721,7 @@ def _make_event(label, start, end):
     }
 
 
-# https://docs.scale.com/reference#video-playback
+# https://docs.scale.com/reference/video-playback
 def _init_video_box(label):
     return {
         "label": label,
@@ -731,7 +730,7 @@ def _init_video_box(label):
     }
 
 
-# https://docs.scale.com/reference#video-playback
+# https://docs.scale.com/reference/video-playback
 def _make_video_box_frame(detection, frame_number, frame_size):
     x, y, w, h = detection.bounding_box
     width, height = frame_size
@@ -750,12 +749,12 @@ def _make_video_box_frame(detection, frame_number, frame_size):
     return frame_dict
 
 
-# https://docs.scale.com/reference#global-attributes
+# https://docs.scale.com/reference/global-attributes
 def _to_classification(name, label):
     return {name: label.label}
 
 
-# https://docs.scale.com/reference#attributes-overview
+# https://docs.scale.com/reference/attributes-overview
 def _get_attributes(label):
     attrs = {}
     for name, value in label.iter_attributes():
@@ -768,7 +767,7 @@ def _get_attributes(label):
     return attrs
 
 
-# https://docs.scale.com/reference#boxes
+# https://docs.scale.com/reference/boxes
 def _to_detections(label, frame_size):
     if isinstance(label, fol.Detections):
         detections = label.detections
@@ -789,8 +788,8 @@ def _to_detections(label, frame_size):
     return annos
 
 
-# https://docs.scale.com/reference#polygons
-# https://docs.scale.com/reference#line
+# https://docs.scale.com/reference/polygons
+# https://docs.scale.com/reference/line
 def _to_polylines(label, frame_size):
     if isinstance(label, fol.Polylines):
         polylines = label.polylines
@@ -812,7 +811,7 @@ def _to_polylines(label, frame_size):
     return annos
 
 
-# https://docs.scale.com/reference#points
+# https://docs.scale.com/reference/points
 def _to_points(label, frame_size):
     if isinstance(label, fol.Keypoints):
         keypoints = label.keypoints
@@ -878,7 +877,7 @@ def _parse_video_labels(task_labels, metadata):
     return _parse_video_annotation_labels(annos, events, metadata, task=task)
 
 
-# https://docs.scale.com/reference#general-video-annotation
+# https://docs.scale.com/reference/general-video-annotation
 def _parse_video_annotation_labels(annos, events, metadata, task=None):
     if annos is not None:
         annos = annos.get("annotations", [])
@@ -945,7 +944,7 @@ def _get_frame_numbers(task, metadata):
     )
 
 
-# https://docs.scale.com/reference#video-playback
+# https://docs.scale.com/reference/video-playback
 def _parse_video_playback_labels(annos, events, metadata):
     frames = defaultdict(dict)
 
@@ -1022,7 +1021,7 @@ def _parse_video_playback_objects(frames, annotations, metadata):
         )
 
 
-# https://docs.scale.com/reference#general-image-annotation
+# https://docs.scale.com/reference/general-image-annotation
 def _parse_image_labels(anno_dict, frame_size):
     labels = {}
 
@@ -1140,7 +1139,7 @@ def _parse_point(vertex, frame_size):
     return (vertex["x"] / width, vertex["y"] / height)
 
 
-# https://docs.scale.com/reference#segmentannotation-callback-format
+# https://docs.scale.com/reference/segmentannotation-callback-format
 def _parse_mask(anno_dict):
     indexed_image_uri = anno_dict["annotations"]["combined"]["indexedImage"]
     mask = foui.read(indexed_image_uri)
