@@ -23,6 +23,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
+import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
@@ -190,6 +191,12 @@ class SidebarGroup:
 
 
 @gql.type
+class ColorSchemeStr:
+    color_pool: t.Optional[t.List[str]] = None
+    customized_color_settings: t.Optional[str] = None
+
+
+@gql.type
 class KeypointSkeleton:
     labels: t.Optional[t.List[str]]
     edges: t.List[t.List[int]]
@@ -216,6 +223,7 @@ class DatasetAppConfig:
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
+    color_scheme: t.Optional[ColorSchemeStr]
 
 
 @gql.type
@@ -267,9 +275,9 @@ class Dataset:
             NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
-        doc["sample_fields"] = _flatten_fields(
-            [], doc.get("sample_fields", [])
-        )
+        flat = _flatten_fields([], doc.get("sample_fields", []))
+        doc["sample_fields"] = flat
+
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
@@ -309,7 +317,7 @@ dataset_dataloader = get_dataloader_resolver(
 class ColorBy(Enum):
     field = "field"
     instance = "instance"
-    label = "label"
+    value = "value"
 
 
 @gql.enum
@@ -317,6 +325,24 @@ class Theme(Enum):
     browser = "browser"
     dark = "dark"
     light = "light"
+
+
+@gql.type
+class LabelSetting:
+    name: str
+    color: str
+
+
+@gql.type
+class CustomizeColor:
+    field: str
+    use_field_color: t.Optional[bool]
+    field_color: t.Optional[str]
+    attribute_for_color: t.Optional[str]
+    use_opacity: t.Optional[bool]
+    attribute_for_Opacity: t.Optional[str]
+    use_label_colors: t.Optional[bool]
+    label_colors: t.Optional[t.List[LabelSetting]]
 
 
 @gql.type
@@ -432,6 +458,39 @@ class Query(fosa.AggregateQuery):
             SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
         ]
 
+    @gql.field
+    def schema_for_view_stages(
+        self, dataset_name: str, view_stages: BSONArray
+    ) -> t.List[SampleField]:
+        ds = fod.load_dataset(dataset_name)
+        try:
+            if view_stages:
+                view = fov.DatasetView._build(ds, view_stages or [])
+
+                for stage in view_stages:
+                    view.add_stage(fosg.ViewStage._from_dict(stage))
+
+                base_schema = serialize_fields(
+                    view.get_field_schema(flat=True)
+                )
+                if ds.media_type == fom.VIDEO:
+                    # return base_schema + serialize_fields(view.get_frame_field_schema(flat=True))
+                    return serialize_fields(
+                        view.get_frame_field_schema(flat=True)
+                    )
+
+                return base_schema
+
+            base_schema = serialize_fields(ds.get_field_schema(flat=True))
+            if ds.media_type == fom.VIDEO:
+                # return base_schema + serialize_fields(ds.get_frame_field_schema(flat=True))
+                return serialize_fields(ds.get_frame_field_schema(flat=True))
+
+            return base_schema
+        except Exception as e:
+            print("failed to get schema for view stages", str(e))
+            return []
+
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
@@ -467,6 +526,9 @@ async def serialize_dataset(
             doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
             view = dataset.load_saved_view(doc.name)
             view_name = view.name
+            if serialized_view:
+                for stage in serialized_view:
+                    view = view.add_stage(fosg.ViewStage._from_dict(stage))
         except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
@@ -492,6 +554,7 @@ async def serialize_dataset(
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)
         )
+
         data.frame_fields = serialize_fields(
             collection.get_frame_field_schema(flat=True)
         )

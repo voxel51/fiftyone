@@ -3491,13 +3491,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             name: the name of a saved view
         """
-        view_doc = self._get_saved_view_doc(name, pop=True)
-        deleted_id = view_doc.id
-
-        view_doc.delete()
-        self.save()
-
-        return str(deleted_id)
+        self._delete_saved_view(name)
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
@@ -3506,6 +3500,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.saved_views = []
         self.save()
+
+    def _delete_saved_view(self, name):
+        view_doc = self._get_saved_view_doc(name, pop=True)
+        if view_doc:
+            view_id = str(view_doc.id)
+            view_doc.delete()
+        else:
+            view_id = None
+
+        self.save()
+
+        return view_id
 
     def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None

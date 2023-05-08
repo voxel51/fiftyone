@@ -1,16 +1,23 @@
 import {
   Bookmark,
   Check,
+  ColorLens,
   FlipToBack,
   KeyboardArrowLeft,
   KeyboardArrowRight,
   LocalOffer,
+  Search,
   Settings,
   VisibilityOff,
   Wallpaper,
-  Search,
 } from "@mui/icons-material";
-import React, { MutableRefObject, useCallback, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import {
   selector,
@@ -25,13 +32,13 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { DynamicGroupAction } from "./DynamicGroupAction";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -268,6 +275,37 @@ const Options = ({ modal }) => {
   );
 };
 
+const Colors = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+
+  const onOpen = () => {
+    setOpen(!open);
+    setActiveField("global");
+  };
+
+  useEffect(() => {
+    if (activeField) {
+      !open && setOpen(true);
+    } else {
+      open && setOpen(false);
+    }
+  }, [Boolean(activeField)]);
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<ColorLens />}
+        open={open}
+        onClick={onOpen}
+        highlight={open}
+        title={"Color settings"}
+      />
+    </ActionDiv>
+  );
+};
+
 const Hidden = () => {
   const [hiddenObjects, setHiddenObjects] = useRecoilState(fos.hiddenLabels);
   const count = Object.keys(hiddenObjects).length;
@@ -393,13 +431,14 @@ export const GridActionsRow = () => {
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
-      <Options modal={false} />
+      <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
       <DynamicGroupAction />
+      <Options modal={false} />
     </ActionsRowDiv>
   );
 };

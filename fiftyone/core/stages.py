@@ -30,6 +30,7 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
+from fiftyone.core.fields import EmbeddedDocumentField
 
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
@@ -683,23 +684,54 @@ class ExcludeFields(ViewStage):
         #
 
     Args:
-        field_names: a field name or iterable of field names to exclude. May
-            contain ``embedded.field.name`` as well
+        field_names (None): a field name or iterable of field names to exclude.
+            May contain ``embedded.field.name`` as well
+        meta_filter (None): a filter that dynamically excludes fields in
+            the collection's schema according to the specified rule, which
+            can be matched against the field's ``name``, ``type``,
+            ``description``, and/or ``info``. For example:
+
+            -   Use ``meta_filter="2023"`` or ``meta_filter={"any": "2023"}``
+                to exclude fields that have the string "2023" anywhere in their
+                name, type, description, or info
+            -   Use ``meta_filter={"type": "StringField"}`` or
+                ``meta_filter={"type": "Classification"}`` to exclude all
+                string or classification fields, respectively
+            -   Use ``meta_filter={"description": "my description"}`` to
+                exclude fields whose description contains the string
+                "my description"
+            -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
+                have the string "2023" anywhere in their info
+            -   Use ``meta_filter={"info.key": "value"}}`` to exclude
+                fields that have a specific key/value pair in their info
+            -   Include ``meta_filter={"include_nested_fields": True, ...}`` in
+                your meta filter to include all nested fields in the filter
     """
 
-    def __init__(self, field_names, _allow_missing=False):
+    def __init__(
+        self,
+        field_names=None,
+        meta_filter=None,
+        _allow_missing=False,
+    ):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
+        self._meta_filter = meta_filter
         self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
-        """The list of field names to exclude."""
+        """A list of field names to exclude."""
         return self._field_names
+
+    @property
+    def meta_filter(self):
+        """A filter that dynamically excludes fields."""
+        return self._meta_filter
 
     def get_excluded_fields(self, sample_collection, frames=False):
         if frames:
@@ -708,10 +740,30 @@ class ExcludeFields(ViewStage):
         return self._get_excluded_fields(sample_collection)
 
     def _get_excluded_fields(self, sample_collection, use_db_fields=False):
-        if sample_collection._contains_videos():
-            excluded_paths, _ = fou.split_frame_fields(self.field_names)
-        else:
-            excluded_paths = self.field_names
+        excluded_paths = set()
+
+        if self._field_names is not None:
+            if sample_collection._contains_videos():
+                paths, _ = fou.split_frame_fields(self._field_names)
+            else:
+                paths = self._field_names
+
+            excluded_paths.update(paths)
+
+        if self._meta_filter is not None:
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter
+            )
+
+            # Cannnot exclude default fields
+            default_paths = sample_collection._get_default_sample_fields(
+                include_private=True
+            )
+            paths = set(paths) - set(default_paths)
+
+            excluded_paths.update(paths)
+
+        excluded_paths = list(excluded_paths)
 
         if use_db_fields:
             return sample_collection._handle_db_fields(excluded_paths)
@@ -724,7 +776,26 @@ class ExcludeFields(ViewStage):
         if not sample_collection._contains_videos():
             return None
 
-        _, excluded_paths = fou.split_frame_fields(self.field_names)
+        excluded_paths = set()
+
+        if self._field_names is not None:
+            _, paths = fou.split_frame_fields(self._field_names)
+            excluded_paths.update(paths)
+
+        if self._meta_filter is not None:
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter, frames=True
+            )
+
+            # Cannnot exclude default fields
+            default_paths = sample_collection._get_default_frame_fields(
+                include_private=True
+            )
+            paths = set(paths) - set(default_paths)
+
+            excluded_paths.update(paths)
+
+        excluded_paths = list(excluded_paths)
 
         if use_db_fields:
             return sample_collection._handle_db_fields(
@@ -753,19 +824,27 @@ class ExcludeFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
+        if self._field_names is None:
+            return False
+
+        # @todo consider `meta_filter` here too?
         return any(
-            sample_collection._is_frame_field(f) for f in self.field_names
+            sample_collection._is_frame_field(f) for f in self._field_names
         )
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices(self.field_names)
+        if self._field_names is None:
+            return None
+
+        return sample_collection._get_group_slices(self._field_names)
 
     def _kwargs(self):
         return [
             ["field_names", self._field_names],
+            ["meta_filter", self._meta_filter],
             ["_allow_missing", self._allow_missing],
         ]
 
@@ -774,33 +853,39 @@ class ExcludeFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<field>|field|list<str>|str",
-                "placeholder": "list,of,fields",
+                "type": "NoneType|list<field>|field|list<str>|str",
+                "placeholder": "field_names",
+            },
+            {
+                "name": "meta_filter",
+                "type": "NoneType|str|json",
+                "default": "None",
+                "placeholder": "meta_filter",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
 
     def validate(self, sample_collection):
-        if self._allow_missing:
+        if self._allow_missing or self._field_names is None:
             return
 
         # Validate that all root fields exist
         # Using dataset here allows a field to be excluded multiple times
-        sample_collection._dataset.validate_fields_exist(self.field_names)
+        sample_collection._dataset.validate_fields_exist(self._field_names)
 
         if sample_collection._contains_videos():
-            paths, frame_paths = fou.split_frame_fields(self.field_names)
+            paths, frame_paths = fou.split_frame_fields(self._field_names)
         else:
-            paths = self.field_names
+            paths = self._field_names
             frame_paths = None
 
         if paths:
             defaults = set()
             for root, _paths in _parse_paths(paths).items():
-                default_fields = sample_collection._get_default_sample_fields(
+                default_paths = sample_collection._get_default_sample_fields(
                     path=root, include_private=True
                 )
-                defaults.update(_paths & set(default_fields))
+                defaults.update(_paths & set(default_paths))
 
             if defaults:
                 raise ValueError("Cannot exclude default fields %s" % defaults)
@@ -808,15 +893,175 @@ class ExcludeFields(ViewStage):
         if frame_paths:
             defaults = set()
             for root, _paths in _parse_paths(frame_paths).items():
-                default_fields = sample_collection._get_default_frame_fields(
+                default_paths = sample_collection._get_default_frame_fields(
                     path=root, include_private=True
                 )
-                defaults.update(_paths & set(default_fields))
+                defaults.update(_paths & set(default_paths))
 
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
                 )
+
+
+def _get_meta_filtered_fields(sample_collection, meta_filter, frames=False):
+    if not meta_filter:
+        return []
+
+    if isinstance(meta_filter, dict):
+        flat = meta_filter.get("include_nested_fields", False)
+    else:
+        flat = False
+
+    if frames:
+        schema = sample_collection.get_frame_field_schema(flat=flat)
+    else:
+        schema = sample_collection.get_field_schema(flat=flat)
+
+    if isinstance(meta_filter, str):
+        str_filter = meta_filter
+        meta_filter = {}
+    else:
+        str_filter = None
+
+    _mf = meta_filter.copy()
+
+    if not str_filter and isinstance(_mf, dict):
+        str_filter = _mf.pop("any", None)
+
+    description_filter = _mf.pop("description", None)
+    name_filter = _mf.pop("name", None)
+    info_filter = _mf.pop("info", None)
+    type_filter = _mf.pop("type", None)
+
+    for key, val in meta_filter.items():
+        if "." in key:
+            if not info_filter:
+                info_filter = {}
+            base, leaf = key.split(".", 1)
+            info_filter[leaf] = val
+
+    matcher = (
+        lambda q, v: q.lower() in v.lower()
+        if isinstance(v, str) and isinstance(q, str)
+        else (
+            q.lower() in str(v).lower()
+            if isinstance(q, str) and isinstance(v, dict)
+            else q == v
+        )
+    )
+
+    type_matcher = (
+        lambda query, field: (
+            type(field.document_type).__name__ == query
+            or field.document_type.__name__ == query
+            if isinstance(field, EmbeddedDocumentField)
+            else type(field).__name__ == query
+        )
+        if isinstance(query, str)
+        else (
+            isinstance(field.document_type, query)
+            or field.document_type == query
+            if isinstance(field, EmbeddedDocumentField)
+            else isinstance(field, query)
+        )
+    )
+
+    paths = []
+
+    for path, field in schema.items():
+        # match anything anywhere
+        if str_filter is not None and _matches_field_meta(
+            field, matcher, str_filter
+        ):
+            paths.append(path)
+
+        # match description only
+        if description_filter is not None and _matches_field_meta(
+            field, matcher, description_filter, "description"
+        ):
+            paths.append(path)
+
+        # match name only
+        if name_filter is not None and _matches_field_meta(
+            field, matcher, name_filter, "name"
+        ):
+            paths.append(path)
+
+        # match info only
+        if info_filter is not None and _matches_field_meta(
+            field, matcher, info_filter, "info"
+        ):
+            paths.append(path)
+
+        # match type only
+        if type_filter is not None and _matches_field_meta(
+            field, type_matcher, type_filter, "type"
+        ):
+            paths.append(path)
+
+        for key, val in meta_filter.items():
+            if _matches_field_meta(field, matcher, val, key):
+                paths.append(path)
+
+    return paths
+
+
+def _matches_field_meta(field, matcher, query, key=None):
+    if key is None:
+        matches = matcher(query, field.description)
+        if not matches:
+            matches |= matcher(query, field.name)
+        if not matches and isinstance(field.info, dict):
+            matches |= _recursive_match(field.info, matcher, query)
+        return matches
+
+    if key == "description":
+        return matcher(query, field.description)
+
+    if key == "name":
+        return matcher(query, field.name)
+
+    if key == "type":
+        return matcher(query, field)
+
+    if key == "info" and field.info is not None:
+        matches = matcher(query, field.info)
+        # else fall through to the recursive match
+        if not matches and isinstance(query, dict):
+            for k, v in query.items():
+                matches |= _recursive_match(field.info, matcher, v, k)
+        return matches
+
+    if not isinstance(field.info, dict):
+        return False
+
+    return _recursive_match(field.info, matcher, query, key)
+
+
+def _recursive_match(info, matcher, query, key=None, recursion_limit=1):
+    if recursion_limit <= 0:
+        return False
+    if not key:
+        for val in info.values():
+            if isinstance(val, dict):
+                if _recursive_match(val, matcher, query, recursion_limit - 1):
+                    return True
+            elif matcher(query, val):
+                return True
+
+    if key in info:
+        if matcher(query, info[key]):
+            return True
+
+    for sub_key, sub_value in info.items():
+        if isinstance(sub_value, dict):
+            if _recursive_match(
+                sub_value, matcher, query, key, recursion_limit - 1
+            ):
+                return True
+
+    return False
 
 
 def _parse_paths(paths):
@@ -5498,21 +5743,52 @@ class SelectFields(ViewStage):
     Args:
         field_names (None): a field name or iterable of field names to select.
             May contain ``embedded.field.name`` as well
+        meta_filter (None): a filter that dynamically selects fields in
+            the collection's schema according to the specified rule, which
+            can be matched against the field's ``name``, ``type``,
+            ``description``, and/or ``info``. For example:
+
+            -   Use ``meta_filter="2023"`` or ``meta_filter={"any": "2023"}``
+                to select fields that have the string "2023" anywhere in their
+                name, type, description, or info
+            -   Use ``meta_filter={"type": "StringField"}`` or
+                ``meta_filter={"type": "Classification"}`` to select all string
+                or classification fields, respectively
+            -   Use ``meta_filter={"description": "my description"}`` to
+                select fields whose description contains the string
+                "my description"
+            -   Use ``meta_filter={"info": "2023"}`` to select fields that
+                have the string "2023" anywhere in their info
+            -   Use ``meta_filter={"info.key": "value"}}`` to select
+                fields that have a specific key/value pair in their info
+            -   Include ``meta_filter={"include_nested_fields": True, ...}`` in
+                your meta filter to include all nested fields in the filter
     """
 
-    def __init__(self, field_names=None, _allow_missing=False):
+    def __init__(
+        self,
+        field_names=None,
+        meta_filter=None,
+        _allow_missing=False,
+    ):
         if etau.is_str(field_names):
             field_names = [field_names]
         elif field_names is not None:
             field_names = list(field_names)
 
         self._field_names = field_names
+        self._meta_filter = meta_filter
         self._allow_missing = _allow_missing
 
     @property
     def field_names(self):
-        """The list of field names to select."""
-        return self._field_names or []
+        """A list of field names to select."""
+        return self._field_names
+
+    @property
+    def meta_filter(self):
+        """A filter that dynamically selects fields."""
+        return self._meta_filter
 
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
@@ -5521,25 +5797,35 @@ class SelectFields(ViewStage):
         return self._get_selected_fields(sample_collection)
 
     def _get_selected_fields(self, sample_collection, use_db_fields=False):
+        contains_videos = sample_collection._contains_videos()
         selected_paths = set()
-        roots = {None}  # must always select default fields
 
-        if sample_collection._contains_videos():
-            selected_paths.add("frames")
-            paths, _ = fou.split_frame_fields(self.field_names)
-        else:
-            paths = self.field_names
+        if self._field_names is not None:
+            if contains_videos:
+                paths, _ = fou.split_frame_fields(self._field_names)
+            else:
+                paths = self._field_names
 
-        for path in paths:
-            selected_paths.add(path)
+            selected_paths.update(paths)
+
+        if self._meta_filter is not None:
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter
+            )
+            selected_paths.update(paths)
+
+        roots = {None}  # None ensures default fields are always selected
+        for path in selected_paths:
             roots.update(_get_roots(path))
 
         for path in roots:
-            selected_paths.update(
-                sample_collection._get_default_sample_fields(
-                    path=path, include_private=True
-                )
+            default_paths = sample_collection._get_default_sample_fields(
+                path=path, include_private=True
             )
+            selected_paths.update(default_paths)
+
+        if contains_videos:
+            selected_paths.add("frames")
 
         _remove_path_collisions(selected_paths)
         selected_paths = list(selected_paths)
@@ -5556,19 +5842,26 @@ class SelectFields(ViewStage):
             return None
 
         selected_paths = set()
-        roots = {None}  # must always select default fields
 
-        _, paths = fou.split_frame_fields(self.field_names)
-        for path in paths:
-            selected_paths.add(path)
+        if self._field_names is not None:
+            _, paths = fou.split_frame_fields(self._field_names)
+            selected_paths.update(paths)
+
+        if self._meta_filter is not None:
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter, frames=True
+            )
+            selected_paths.update(paths)
+
+        roots = {None}  # None ensures default fields are always selected
+        for path in selected_paths:
             roots.update(_get_roots(path))
 
         for path in roots:
-            selected_paths.update(
-                sample_collection._get_default_frame_fields(
-                    path=path, include_private=True
-                )
+            default_paths = sample_collection._get_default_frame_fields(
+                path=path, include_private=True
             )
+            selected_paths.update(default_paths)
 
         _remove_path_collisions(selected_paths)
         selected_paths = list(selected_paths)
@@ -5600,19 +5893,27 @@ class SelectFields(ViewStage):
         if not sample_collection._contains_videos():
             return False
 
+        if self._field_names is None:
+            return False
+
+        # @todo consider `meta_filter` here too?
         return any(
-            sample_collection._is_frame_field(f) for f in self.field_names
+            sample_collection._is_frame_field(f) for f in self._field_names
         )
 
     def _needs_group_slices(self, sample_collection):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices(self.field_names)
+        if self._field_names is None:
+            return None
+
+        return sample_collection._get_group_slices(self._field_names)
 
     def _kwargs(self):
         return [
             ["field_names", self._field_names],
+            ["meta_filter", self._meta_filter],
             ["_allow_missing", self._allow_missing],
         ]
 
@@ -5623,7 +5924,13 @@ class SelectFields(ViewStage):
                 "name": "field_names",
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "default": "None",
-                "placeholder": "list,of,fields",
+                "placeholder": "field_names",
+            },
+            {
+                "name": "meta_filter",
+                "type": "NoneType|str|json",
+                "default": "None",
+                "placeholder": "meta_filter",
             },
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
@@ -5632,7 +5939,8 @@ class SelectFields(ViewStage):
         if self._allow_missing:
             return
 
-        sample_collection.validate_fields_exist(self.field_names)
+        if self._field_names is not None:
+            sample_collection.validate_fields_exist(self._field_names)
 
 
 def _get_roots(path):
@@ -7967,7 +8275,6 @@ _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
 
-
 # Simple registry for the server to grab available view stages
 _STAGES = [
     Concat,
@@ -8012,7 +8319,6 @@ _STAGES = [
     ToTrajectories,
     ToFrames,
 ]
-
 
 # Registry of stages that promise to only reorder/select documents
 _STAGES_THAT_SELECT_OR_REORDER = {
