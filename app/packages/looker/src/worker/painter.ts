@@ -12,7 +12,7 @@ export const PainterFactory = (requestColor) => ({
     const color = await requestColor(
       coloring.pool,
       coloring.seed,
-      coloring.by === "label"
+      coloring.by === "value"
         ? label.label
         : coloring.by === "field"
         ? field
@@ -60,7 +60,7 @@ export const PainterFactory = (requestColor) => ({
     const color = await requestColor(coloring.pool, coloring.seed, field);
 
     const getColor =
-      coloring.by === "label"
+      coloring.by === "value"
         ? (value) => {
             if (value === 0) {
               return 0;
@@ -84,7 +84,7 @@ export const PainterFactory = (requestColor) => ({
               value = stop;
             }
 
-            const alpha = 1 - Math.abs(value) / absMax;
+            const alpha = Math.abs(value) / absMax;
 
             return get32BitColor(color, alpha);
           };

@@ -10,6 +10,8 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.media as fom
+
 import fiftyone.server.constants as foc
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.view as fosv
@@ -30,16 +32,19 @@ class Values(HTTPEndpoint):
         stages = data.get("view", [])
         extended = data.get("extended", None)
         group_id = data.get("group_id", None)
-        slice = data.get("slice", None)
+        slices = data.get("slices", None)
 
         view = fosv.get_view(
             dataset,
             stages=stages,
             extended_stages=extended,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(id=group_id, slice=slice)
+                group=GroupElementFilter(id=group_id, slices=slices)
             ),
         )
+
+        if view.media_type == fom.GROUP:
+            view = view.select_group_slices(_allow_mixed=True)
 
         if sample_id is not None:
             view = view.select(sample_id)

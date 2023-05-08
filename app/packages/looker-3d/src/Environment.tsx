@@ -3,10 +3,12 @@
  */
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { MutableRefObject, useLayoutEffect, useMemo } from "react";
-import { Camera, Quaternion, Vector3, Box3 } from "three";
+import { MutableRefObject, useEffect, useMemo } from "react";
+import { Box3, Camera, Quaternion, Vector3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Looker3dPluginSettings } from "./Looker3dPlugin";
+
+export const CAMERA_POSITION_KEY = "fiftyone-camera-position";
 
 type EnvironmentProps = {
   cameraRef: MutableRefObject<Camera>;
@@ -45,25 +47,24 @@ export const Environment = ({
     return new Quaternion().setFromAxisAngle(axis, angle);
   }, [upNormalized]);
 
-  useLayoutEffect(() => {
-    if (settings.defaultCameraPosition) {
-      camera.position.set(
-        settings.defaultCameraPosition.x,
-        settings.defaultCameraPosition.y,
-        settings.defaultCameraPosition.z
-      );
-    } else {
-      camera.position.set(0, 0, 20);
-    }
-
-    camera.up = upNormalized.clone();
-
-    camera.updateProjectionMatrix();
+  useEffect(() => {
     cameraRef.current = camera;
 
-    controlsRef.current.target = new Vector3(0, 0, 0);
-    controlsRef.current.update();
-  }, [camera, cameraRef, controlsRef, settings, upNormalized]);
+    const handleCameraChange = () => {
+      window?.localStorage.setItem(
+        CAMERA_POSITION_KEY,
+        JSON.stringify(camera.position.toArray())
+      );
+    };
+
+    const controls = controlsRef.current;
+
+    controls?.addEventListener("change", handleCameraChange);
+
+    return () => {
+      controls?.removeEventListener("change", handleCameraChange);
+    };
+  }, [camera, cameraRef, controlsRef]);
 
   const isDefaultUpZ = useMemo(
     () => upNormalized.equals(new Vector3(0, 0, 1)),

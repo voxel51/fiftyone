@@ -22,7 +22,7 @@ import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
-import Sample3d from "./Sample3d";
+import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
 
 const ModalWrapper = styled.div`
@@ -87,13 +87,13 @@ const Arrow = styled.span<{ isRight?: boolean }>`
 const SampleModal = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
-  const override = useRecoilValue(fos.sidebarOverride);
+  const override = useRecoilValue(fos.pinned3DSample);
   const disabled = useRecoilValue(fos.disabledPaths);
+  const mode = useRecoilValue(fos.groupStatistics(true));
 
   const lookerRef = useRef<AbstractLooker>();
 
   const navigation = useRecoilValue(modalNavigation);
-
   const renderEntry = useCallback(
     (
       key: string,
@@ -108,16 +108,19 @@ const SampleModal = () => {
     ) => {
       switch (entry.kind) {
         case fos.EntryKind.PATH:
-          const isTag = entry.path.startsWith("tags");
-          const isLabelTag = entry.path.startsWith("_label_tags");
+          const isTag = entry.path === "tags";
+          const isLabelTag = entry.path === "_label_tags";
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
-          const isFieldPrimitive = !isLabelTag && !isLabel && !isOther;
-
+          const isFieldPrimitive =
+            !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
           return {
             children: (
               <>
-                {(isLabel || isOther || isLabelTag) && (
+                {(isLabel ||
+                  isOther ||
+                  isLabelTag ||
+                  (isTag && mode === "group")) && (
                   <Entries.FilterablePath
                     entryKey={key}
                     modal={true}
@@ -129,7 +132,7 @@ const SampleModal = () => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
-                    disabled={isOther}
+                    disabled={isOther || isLabelTag}
                     key={key}
                     trigger={trigger}
                   />
@@ -186,7 +189,7 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    []
+    [mode]
   );
 
   const screen = useRecoilValue(fos.fullscreen)

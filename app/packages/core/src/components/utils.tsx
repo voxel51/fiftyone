@@ -108,7 +108,7 @@ const TabOptionDiv = animated(styled.div`
     cursor: inherit;
     flex-grow: 1;
     flex-basis: 0;
-    text-align: center;Checkbox
+    text-align: center;
     overflow: hidden;
   }
 `);
