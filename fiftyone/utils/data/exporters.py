@@ -1823,21 +1823,21 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if dataset.has_annotation_runs and self.export_runs:
             self._metadata["annotation_runs"] = {
                 k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.get_annotation_runs.items()
+                for k, v in dataset._doc.get_annotation_runs().items()
             }
             _export_annotation_results(dataset, self._anno_dir)
 
         if dataset.has_brain_runs and self.export_runs:
             self._metadata["brain_methods"] = {
                 k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.get_brain_methods.items()
+                for k, v in dataset._doc.get_brain_methods().items()
             }
             _export_brain_results(dataset, self._brain_dir)
 
         if dataset.has_evaluations and self.export_runs:
             self._metadata["evaluations"] = {
                 k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.get_evaluations.items()
+                for k, v in dataset._doc.get_evaluations().items()
             }
             _export_evaluation_results(dataset, self._eval_dir)
 
@@ -2139,20 +2139,21 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if _export_runs and dataset.has_annotation_runs:
             dataset_dict["annotation_runs"] = {
                 k: v.to_dict()
-                for k, v in dataset._doc.get_annotation_runs.items()
+                for k, v in dataset._doc.get_annotation_runs().items()
             }
             _export_annotation_results(dataset, self._anno_dir)
 
         if _export_runs and dataset.has_brain_runs:
             dataset_dict["brain_methods"] = {
                 k: v.to_dict()
-                for k, v in dataset._doc.get_brain_methods.items()
+                for k, v in dataset._doc.get_brain_methods().items()
             }
             _export_brain_results(dataset, self._brain_dir)
 
         if _export_runs and dataset.has_evaluations:
             dataset_dict["evaluations"] = {
-                k: v.to_dict() for k, v in dataset._doc.get_evaluations.items()
+                k: v.to_dict()
+                for k, v in dataset._doc.get_evaluations().items()
             }
             _export_evaluation_results(dataset, self._eval_dir)
 

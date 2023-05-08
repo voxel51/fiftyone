@@ -6589,19 +6589,19 @@ def _delete_dataset_doc(dataset_doc):
     for view_doc in dataset_doc.get_saved_views():
         view_doc.delete()
 
-    for run_doc in dataset_doc.get_annotation_runs.values():
+    for run_doc in dataset_doc.get_annotation_runs().values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
         run_doc.delete()
 
-    for run_doc in dataset_doc.get_brain_methods.values():
+    for run_doc in dataset_doc.get_brain_methods().values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
         run_doc.delete()
 
-    for run_doc in dataset_doc.get_evaluations.values():
+    for run_doc in dataset_doc.get_evaluations().values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
@@ -7052,7 +7052,7 @@ def _clone_extras(src_dataset, dst_dataset):
         dst_doc.saved_views.append(view_doc)
 
     # Clone annotation runs
-    for anno_key, _run_doc in src_doc.get_annotation_runs.items():
+    for anno_key, _run_doc in src_doc.get_annotation_runs().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
         run_doc.save(upsert=True)
@@ -7060,7 +7060,7 @@ def _clone_extras(src_dataset, dst_dataset):
         dst_doc.annotation_runs[anno_key] = run_doc
 
     # Clone brain method runs
-    for brain_key, _run_doc in src_doc.get_brain_methods.items():
+    for brain_key, _run_doc in src_doc.get_brain_methods().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
         run_doc.save(upsert=True)
@@ -7068,7 +7068,7 @@ def _clone_extras(src_dataset, dst_dataset):
         dst_doc.brain_methods[brain_key] = run_doc
 
     # Clone evaluation runs
-    for eval_key, _run_doc in src_doc.get_evaluations.items():
+    for eval_key, _run_doc in src_doc.get_evaluations().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
         run_doc.save(upsert=True)
