@@ -724,14 +724,10 @@ class ExcludeFields(ViewStage):
             excluded_paths.update(paths)
 
         if self._meta_filter is not None:
-            flat = False
-            if (
-                isinstance(self._meta_filter, dict)
-                and "include_nested_fields" in self._meta_filter
-            ):
-                flat = self._meta_filter["include_nested_fields"]
-            schema = sample_collection.get_field_schema(flat=flat)
-            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter
+            )
+
             # Cannnot exclude default fields
             default_paths = sample_collection._get_default_sample_fields(
                 include_private=True
@@ -760,8 +756,9 @@ class ExcludeFields(ViewStage):
             excluded_paths.update(paths)
 
         if self._meta_filter is not None:
-            schema = sample_collection.get_frame_field_schema()
-            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter, frames=True
+            )
 
             # Cannnot exclude default fields
             default_paths = sample_collection._get_default_frame_fields(
@@ -880,9 +877,19 @@ class ExcludeFields(ViewStage):
                 )
 
 
-def _get_meta_filtered_fields(schema, meta_filter):
+def _get_meta_filtered_fields(sample_collection, meta_filter, frames=False):
     if not meta_filter:
         return []
+
+    if isinstance(meta_filter, dict):
+        flat = meta_filter.get("include_nested_fields", False)
+    else:
+        flat = False
+
+    if frames:
+        schema = sample_collection.get_frame_field_schema(flat=flat)
+    else:
+        schema = sample_collection.get_field_schema(flat=flat)
 
     if isinstance(meta_filter, str):
         str_filter = meta_filter
@@ -894,6 +901,7 @@ def _get_meta_filtered_fields(schema, meta_filter):
 
     if not str_filter and isinstance(_mf, dict):
         str_filter = _mf.pop("any", None)
+
     description_filter = _mf.pop("description", None)
     name_filter = _mf.pop("name", None)
     info_filter = _mf.pop("info", None)
@@ -5515,14 +5523,9 @@ class SelectFields(ViewStage):
             selected_paths.update(paths)
 
         if self._meta_filter is not None:
-            flat = False
-            if (
-                isinstance(self._meta_filter, dict)
-                and "include_nested_fields" in self._meta_filter
-            ):
-                flat = self._meta_filter["include_nested_fields"]
-            schema = sample_collection.get_field_schema(flat=flat)
-            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter
+            )
             selected_paths.update(paths)
 
         roots = {None}  # None ensures default fields are always selected
@@ -5559,8 +5562,9 @@ class SelectFields(ViewStage):
             selected_paths.update(paths)
 
         if self._meta_filter is not None:
-            schema = sample_collection.get_frame_field_schema()
-            paths = _get_meta_filtered_fields(schema, self._meta_filter)
+            paths = _get_meta_filtered_fields(
+                sample_collection, self._meta_filter, frames=True
+            )
             selected_paths.update(paths)
 
         roots = {None}  # None ensures default fields are always selected
