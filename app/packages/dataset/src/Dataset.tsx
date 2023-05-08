@@ -130,6 +130,7 @@ export const Dataset: React.FC<DatasetProps> = ({
         </DatasetLoader>
       </Suspense>
       <div id="modal" />
+      <div id="colorModal" />
     </Container>
   );
 };

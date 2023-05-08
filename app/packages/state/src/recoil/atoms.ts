@@ -1,9 +1,9 @@
-import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
+import { AtomEffect, atom, atomFamily, selector, useRecoilCallback } from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
-
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "./types";
+import { Field } from "@fiftyone/utilities";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -383,5 +383,25 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
     ],
     type: "panel-container",
     activeChild: "default-samples-node",
+  },
+});
+
+// the active field for customize color modal
+export const activeColorField = atom<Field | "global" | "json" | null>({
+  key: "activeColorField",
+  default: null,
+});
+
+export const isUsingSessionColorScheme = atom<boolean>({
+  key: "isUsingSessionColorScheme",
+  default: false,
+});
+
+export const sessionColorScheme = atom<ColorSchemeSetting>({
+  key: "sessionColorScheme",
+  default: {
+    colorPool: [],
+    customizedColorSettings: [],
+    saveToApp: false,
   },
 });

@@ -7,6 +7,7 @@ export {
 export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
+export { default as useClearSessionColorScheme } from "./useClearSessionColorScheme";
 export { default as useDimensions } from "./useDimensions";
 export { default as useExpandSample } from "./useExpandSample";
 export { default as useHelpPanel } from "./useHelpPanel";
@@ -30,6 +31,8 @@ export { default as useSelectFlashlightSample } from "./useSelectFlashlightSampl
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";
 export { default as useSessionSpaces } from "./useSessionSpaces";
+export { default as useSessionColorScheme } from "./useSessionColorScheme";
+
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
