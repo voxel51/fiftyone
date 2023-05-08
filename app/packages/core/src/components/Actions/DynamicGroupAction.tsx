@@ -40,10 +40,10 @@ export const DynamicGroupAction = () => {
   const ref = useRef<HTMLDivElement>(null);
   const [measureRef] = useMeasure();
 
-  const onComplete = useRecoilCallback(({ set, reset }) => () => {
+  const onComplete = useCallback(() => {
     setIsFieldValidated(false);
     setIsProcessing(false);
-  });
+  }, []);
 
   const setView = useSetView(true, false, onComplete);
 
