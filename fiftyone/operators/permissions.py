@@ -34,7 +34,7 @@ class PermissionedOperatorRegistry(OperatorRegistry):
         )
 
     @classmethod
-    def from_exec_request(cls, request):
+    def from_exec_request(cls, request, dataset_ids=None):
         return PermissionedOperatorRegistry(
-            ManagedOperators.for_request(request),
+            ManagedOperators.for_request(request, dataset_ids=dataset_ids),
         )

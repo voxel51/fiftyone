@@ -39,7 +39,11 @@ class ListOperators(HTTPEndpoint):
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        registry = PermissionedOperatorRegistry.from_exec_request(request)
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
+        registry = PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=dataset_ids
+        )
         placements = []
         for operator in registry.list_operators():
             placement = resolve_placement(operator, data)
@@ -56,10 +60,14 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(request)
+        registry = PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=dataset_ids
+        )
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -85,10 +93,14 @@ async def create_response_generator(generator):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(request)
+        registry = PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=dataset_ids
+        )
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -119,11 +131,14 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
-        target_type = data.get("type", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(request)
+        registry = PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=dataset_ids
+        )
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri,
