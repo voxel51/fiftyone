@@ -3581,7 +3581,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeBy(field, values))
 
     @view_stage
-    def exclude_fields(self, field_names, _allow_missing=False):
+    def exclude_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -3632,14 +3634,40 @@ class SampleCollection(object):
             view = dataset.exclude_fields("predictions.mood")
 
         Args:
-            field_names: a field name or iterable of field names to exclude.
-                May contain ``embedded.field.name`` as well
+            field_names (None): a field name or iterable of field names to
+                exclude. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically excludes fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to exclude fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to exclude all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    exclude fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to exclude
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+            fos.ExcludeFields(
+                field_names=field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -5436,7 +5464,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_fields(self, field_names=None, _allow_missing=False):
+    def select_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
 
@@ -5502,12 +5532,38 @@ class SampleCollection(object):
         Args:
             field_names (None): a field name or iterable of field names to
                 select. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically selects fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to select fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to select all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    select fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to select fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to select
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectFields(field_names, _allow_missing=_allow_missing)
+            fos.SelectFields(
+                field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
