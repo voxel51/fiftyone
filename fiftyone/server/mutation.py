@@ -450,9 +450,7 @@ class Mutation:
         dataset = state.dataset
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
-            print("\n success \n", view)
         except Exception as e:
-            # try selecting only by field keys worst case
             try:
                 view = dataset.select_fields(meta_filter)
             except Exception as e:

@@ -84,7 +84,6 @@ export const schemaSearchRestuls = atom<string[]>({
             (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
             !skipFiled(path, viewSchema[path].ftype)
         );
-        console.log("search res", newPaths, greenPaths);
         setSelf(greenPaths);
       });
     },
@@ -114,13 +113,7 @@ export const selectedPathsState = atomFamily({
             )
         );
 
-        console.log("greenPaths", greenPaths);
-        console.log("selecting paths state", viewSchema, schema, newPaths);
-        // # TODO
-        // if (greenPaths.length) {
-        console.log("selecting paths state", greenPaths);
         setSelf(new Set(greenPaths));
-        // }
       });
     },
   ],
@@ -187,7 +180,6 @@ export default function useSchemaSettings() {
       setSchema(dataset ? buildSchema(dataset, true) : []);
     }
   }, [dataset]);
-  console.log("schemaschema", schema);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
@@ -214,7 +206,7 @@ export default function useSchemaSettings() {
           fetchPolicy: "store-and-network",
           onComplete: (err) => {
             if (err) {
-              console.log("failed to fetch view schema", err);
+              console.error("failed to fetch view schema", err);
             }
           },
         }
@@ -258,8 +250,6 @@ export default function useSchemaSettings() {
     }
 
     tmpSchema = keyBy(tmpSchema, "path");
-    console.log("tmpSchema", tmpSchema);
-    console.log("selectedPaths", selectedPaths);
     const resSchema = Object.keys(tmpSchema)
       .sort()
       .filter((path) => {
@@ -301,7 +291,6 @@ export default function useSchemaSettings() {
         fieldsOnly ? (item.disabled ? 1 : -1) : item.path > item2.path ? 1 : -1
       );
 
-    console.log("resSchema", resSchema);
     return [resSchema];
   }, [
     schema,
@@ -337,7 +326,6 @@ export default function useSchemaSettings() {
     []
   );
 
-  console.log("viewPaths", viewPaths, Object.keys(schema));
   useEffect(() => {
     if (viewPaths.length && !selectedPaths.size) {
       setSelectedPaths(new Set([...viewPaths, ...Object.keys(schema)]));
@@ -373,8 +361,6 @@ export default function useSchemaSettings() {
   // Reset will cause this effect
   useEffect(() => {
     if (allPaths.length) {
-      console.log("allPathsallPaths", allPaths);
-      console.log("allPathsallPathsvPathsvPathsvPaths", vPaths);
       // setSelectedPaths(new Set([...allPaths, ...vPaths]));
     }
   }, [revertSelectedPaths]);
@@ -384,10 +370,8 @@ export default function useSchemaSettings() {
     (val) => {
       if (allPaths?.length) {
         setAllFieldsChecked(val);
-        console.log("finalSchema", finalSchema);
         const allThePaths = finalSchema.map((ff) => ff.path);
         const newSelectedPaths = new Set(val ? allThePaths : []);
-        console.log("newSelectedPaths", newSelectedPaths);
         setSelectedPaths(newSelectedPaths);
       }
     },

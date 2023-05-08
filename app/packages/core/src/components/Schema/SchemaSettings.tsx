@@ -72,7 +72,6 @@ const SchemaSettings = () => {
     finalSchema,
   } = useSchemaSettings();
 
-  console.log("dko sou", finalSchema);
   const { open: isSettingsModalOpen } = settingModal || {};
   if (!isSettingsModalOpen) {
     return null;
@@ -186,10 +185,6 @@ const SchemaSettings = () => {
                   );
                 }
 
-                console.log(
-                  "selectedPaths",
-                  initialFieldNames.filter((pp) => !!pp)
-                );
                 const stageKwargs = {
                   field_names: initialFieldNames.filter((pp) => !!pp),
                   _allow_missing: true,
