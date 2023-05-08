@@ -10,70 +10,13 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 import os
-import yaml  # BEFORE PR: add to requirements.txt
+import yaml
 import traceback
 
 import fiftyone.plugins.core as fopc
 import fiftyone.constants as foc
 
-
-# BEFORE PR: where should this go?
-def find_files(root_dir, filename, extensions, max_depth):
-    """Returns all files matching the given pattern, up to the given depth.
-
-    Args:
-        pattern: a glob pattern
-        max_depth: the maximum depth to search
-
-    Returns:
-        a list of paths
-    """
-    if max_depth == 0:
-        return []
-
-    paths = []
-    for i in range(1, max_depth):
-        pattern_parts = [root_dir]
-        pattern_parts += list("*" * i)
-        pattern_parts += [filename]
-        pattern = os.path.join(*pattern_parts)
-        for extension in extensions:
-            paths += glob.glob(pattern + "." + extension)
-
-    return paths
-
-
-MAX_PLUGIN_SEARCH_DEPTH = 3
-PLUGIN_METADATA_FILENAME = "fiftyone"
-PLUGIN_METADATA_EXTENSIONS = ["yml", "yaml"]
 REQUIRED_PLUGIN_METADATA_KEYS = ["name"]
-
-
-def find_plugin_metadata_files():
-    plugins_dir = fo.config.plugins_dir
-
-    if not plugins_dir:
-        return []
-
-    normal_locations = find_files(
-        plugins_dir,
-        PLUGIN_METADATA_FILENAME,
-        PLUGIN_METADATA_EXTENSIONS,
-        MAX_PLUGIN_SEARCH_DEPTH,
-    )
-    node_modules_locations = find_files(
-        os.path.join(plugins_dir, "node_modules", "*"),
-        PLUGIN_METADATA_FILENAME,
-        PLUGIN_METADATA_EXTENSIONS,
-        1,
-    )
-    yarn_packages_locations = find_files(
-        os.path.join(plugins_dir, "packages", "*"),
-        PLUGIN_METADATA_FILENAME,
-        PLUGIN_METADATA_EXTENSIONS,
-        1,
-    )
-    return normal_locations + node_modules_locations + yarn_packages_locations
 
 
 class PluginDefinition:
@@ -232,9 +175,7 @@ def list_plugins():
     plugins = [
         pd
         for pd in [
-            load_plugin_definition(
-                os.path.join(p.path, PLUGIN_METADATA_FILENAME + ".yml")
-            )
+            load_plugin_definition(p.metadata_filepath)
             for p in fopc._list_plugins(enabled_only=True)
         ]
         if pd
