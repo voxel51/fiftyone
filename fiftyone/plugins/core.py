@@ -31,6 +31,61 @@ import fiftyone.zoo.utils.github as fozug
 logger = logging.getLogger(__name__)
 _PLUGIN_DEFINITION_FILE_PATTERN = r"/?fiftyone\.ya?ml$"
 _PLUGIN_DIRS = [fo.config.plugins_dir]
+_MAX_PLUGIN_SEARCH_DEPTH = 4
+_PLUGIN_METADATA_FILENAME = "fiftyone"
+_PLUGIN_METADATA_EXTENSIONS = ["yml", "yaml"]
+
+
+def _find_files(root_dir, filename, extensions, max_depth):
+    """Returns all files matching the given pattern, up to the given depth.
+
+    Args:
+        pattern: a glob pattern
+        max_depth: the maximum depth to search
+
+    Returns:
+        a list of paths
+    """
+    if max_depth == 0:
+        return []
+
+    paths = []
+    for i in range(1, max_depth):
+        pattern_parts = [root_dir]
+        pattern_parts += list("*" * i)
+        pattern_parts += [filename]
+        pattern = os.path.join(*pattern_parts)
+        for extension in extensions:
+            paths += glob.glob(pattern + "." + extension)
+
+    return paths
+
+
+def _find_plugin_metadata_files():
+    plugins_dir = fo.config.plugins_dir
+
+    if not plugins_dir:
+        return []
+
+    normal_locations = _find_files(
+        plugins_dir,
+        _PLUGIN_METADATA_FILENAME,
+        _PLUGIN_METADATA_EXTENSIONS,
+        _MAX_PLUGIN_SEARCH_DEPTH,
+    )
+    node_modules_locations = _find_files(
+        os.path.join(plugins_dir, "node_modules", "*"),
+        _PLUGIN_METADATA_FILENAME,
+        _PLUGIN_METADATA_EXTENSIONS,
+        1,
+    )
+    yarn_packages_locations = _find_files(
+        os.path.join(plugins_dir, "packages", "*"),
+        _PLUGIN_METADATA_FILENAME,
+        _PLUGIN_METADATA_EXTENSIONS,
+        1,
+    )
+    return normal_locations + node_modules_locations + yarn_packages_locations
 
 
 @dataclass
@@ -40,10 +95,12 @@ class plugin_package:
     Args:
         name: the name of the plugin
         path: the path to the plugin's root directory
+        metadata_filepath: the path to the plugin's metadata file
     """
 
     name: str
     path: str
+    metadata_filepath: str
 
 
 def enable_plugin(plugin_name: str):
@@ -250,10 +307,8 @@ def _list_plugins(enabled_only: bool = None) -> List[Optional[plugin_package]]:
     plugins = []
     disabled = _list_disabled_plugins()
     # plugin directory must have a fiftyone.yml file defining the plugin
-    for fpath in filter(
-        lambda x: _is_plugin_definition_file(x),
-        glob.glob(os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True),
-    ):
+    filepaths = _find_plugin_metadata_files()
+    for fpath in filepaths:
         try:
             # get plugin name from yml
             with open(fpath, "r") as f:
@@ -266,7 +321,7 @@ def _list_plugins(enabled_only: bool = None) -> List[Optional[plugin_package]]:
 
         if plugin_name:
             logging.debug(f"Found plugin {plugin_name} at {fpath}")
-            plugin = plugin_package(plugin_name, os.path.dirname(fpath))
+            plugin = plugin_package(plugin_name, os.path.dirname(fpath), fpath)
             plugins.append(plugin)
 
     if enabled_only and (disabled is not None):

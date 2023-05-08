@@ -117,17 +117,27 @@ def test_find_plugin_error_not_found(mocker, fiftyone_plugins_dir):
         _ = fop.find_plugin(plugin_dir_name)
 
 
-def mock_plugin_package_name(plugin_name, plugin_path):
+def mock_plugin_package_name(
+    plugin_name, plugin_path, plugin_metadata_filepath
+):
     if not plugin_name:
         plugin_name = "test-plugin1-name"
     if not plugin_path:
         plugin_path = "path/to/plugin"
-    return fop.core.plugin_package(plugin_name, plugin_path)
+    if not plugin_metadata_filepath:
+        plugin_metadata_filepath = "path/to/plugin/fiftyone.yml"
+    return fop.core.plugin_package(
+        plugin_name, plugin_path, plugin_metadata_filepath
+    )
 
 
 def test_find_plugin_error_duplicate_name(fiftyone_plugins_dir):
     plugin_name = "test-plugin1-name"
-    m = mock.Mock(spec=fop.core.plugin_package(plugin_name, "path/to/plugin"))
+    m = mock.Mock(
+        spec=fop.core.plugin_package(
+            plugin_name, "path/to/plugin", "path/to/plugin/fiftyone.yml"
+        )
+    )
 
     with pytest.raises(ValueError):
         _ = fop.find_plugin("test-plugin1-name")
