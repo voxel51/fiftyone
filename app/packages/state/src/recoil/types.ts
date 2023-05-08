@@ -1,5 +1,5 @@
-import { StrictField } from "@fiftyone/utilities";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -105,6 +105,11 @@ export namespace State {
     expanded?: boolean;
     name: string;
     paths: string[];
+  }
+
+  export interface DynamicGroupParameters {
+    groupBy: string;
+    orderBy?: string;
   }
 
   export interface DatasetAppConfig {
