@@ -12,7 +12,7 @@ export const PainterFactory = (requestColor) => ({
     const color = await requestColor(
       coloring.pool,
       coloring.seed,
-      coloring.by === "label"
+      coloring.by === "value"
         ? label.label
         : coloring.by === "field"
         ? field
@@ -60,7 +60,7 @@ export const PainterFactory = (requestColor) => ({
     const color = await requestColor(coloring.pool, coloring.seed, field);
 
     const getColor =
-      coloring.by === "label"
+      coloring.by === "value"
         ? (value) => {
             if (value === 0) {
               return 0;

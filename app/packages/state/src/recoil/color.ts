@@ -1,17 +1,22 @@
-import { selectorFamily } from "recoil";
+import { DefaultValue, selector, selectorFamily } from "recoil";
 
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
+  EMBEDDED_DOCUMENT_FIELD,
+  Field,
   getColor,
   hexToRgb,
   RGB,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
-import { colorPool, colorscale } from "./config";
+import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import { State } from "./types";
 
 export const coloring = selectorFamily<Coloring, boolean>({
@@ -19,7 +24,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPool);
+      const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,
@@ -47,10 +52,9 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     (modal) =>
     ({ get }) => {
       get(selectors.appConfigOption({ key: "colorBy", modal }));
-      let pool = get(colorPool);
+      let pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
       pool = pool.length ? pool : ["#000000"];
       const seed = get(atoms.colorSeed(modal));
-
       return createColorGenerator(pool, seed);
     },
   cachePolicy_UNSTABLE: {
@@ -76,6 +80,18 @@ export const pathColor = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
+      // video path tweak
+      const adjustedPath = path.startsWith("frames.")
+        ? path.slice("frames.".length)
+        : path;
+      const setting = get(
+        atoms.sessionColorScheme
+      )?.customizedColorSettings?.find((x) => x.field === adjustedPath);
+
+      if (setting?.useFieldColor && isValidColor(setting?.fieldColor)) {
+        return setting.fieldColor;
+      }
+
       const map = get(colorMap(modal));
       const video = get(selectors.mediaTypeSelector) !== "image";
 
@@ -92,5 +108,30 @@ export const pathColor = selectorFamily<
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const eligibleFieldsToCustomizeColor = selector({
+  key: "eligibleFieldsToCustomizeColor",
+  get: ({ get }) => {
+    const videoFields = get(
+      schemaAtoms.fields({
+        space: State.SPACE.FRAME,
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      })
+    );
+    console.info(videoFields);
+    const sampleFields = get(
+      schemaAtoms.fields({
+        space: State.SPACE.SAMPLE,
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      })
+    );
+    const fields = [...videoFields, ...sampleFields].filter((f) =>
+      VALID_LABEL_TYPES.includes(
+        f?.embeddedDocType?.split(".").slice(-1)[0] ?? ""
+      )
+    );
+    return fields;
   },
 });
