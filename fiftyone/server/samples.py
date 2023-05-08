@@ -22,16 +22,6 @@ from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
 
-import logging
-
-logging.basicConfig(
-    filename="/tmp/fiftyone.log",
-    filemode="a",
-    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
-    datefmt="%H:%M:%S",
-    level=logging.INFO,
-)
-
 
 @gql.type
 class MediaURL:
