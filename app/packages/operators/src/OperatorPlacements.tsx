@@ -5,8 +5,9 @@ import { Link } from "@fiftyone/components";
 import styled from "styled-components";
 import { types } from ".";
 import { Operator } from "./operators";
+import { withSuspense } from "@fiftyone/state";
 
-export default function OperatorPlacements(props: OperatorPlacementsProps) {
+function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
   const { placements } = useOperatorPlacements(place);
 
@@ -18,6 +19,8 @@ export default function OperatorPlacements(props: OperatorPlacementsProps) {
     />
   ));
 }
+
+export default withSuspense(OperatorPlacements, () => null);
 
 const componentByView = {
   Button: ButtonPlacement,
