@@ -117,6 +117,7 @@ def test_find_plugin_error_not_found(mocker, fiftyone_plugins_dir):
         _ = fop.find_plugin(plugin_dir_name)
 
 
+@pytest.fixture(scope="function")
 def mock_plugin_package_name(plugin_name, plugin_path):
     if not plugin_name:
         plugin_name = "test-plugin1-name"
@@ -125,9 +126,17 @@ def mock_plugin_package_name(plugin_name, plugin_path):
     return fop.core.plugin_package(plugin_name, plugin_path)
 
 
-def test_find_plugin_error_duplicate_name(fiftyone_plugins_dir):
-    plugin_name = "test-plugin1-name"
+def test_find_plugin_error_duplicate_name(
+    mocker,
+    fiftyone_plugins_dir,
+):
+    plugin_name = "test-plugin1"
+    dup_plugin_dir = fiftyone_plugins_dir / "test-plugin2"
+    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
     m = mock.Mock(spec=fop.core.plugin_package(plugin_name, "path/to/plugin"))
+    with open(os.path.join(dup_plugin_dir, "fiftyone.yml"), "w") as f:
+        pd = {k: plugin_name + "-" + k for k in _REQUIRED_YML_KEYS}
+        f.write(yaml.dump(pd))
 
     with pytest.raises(ValueError):
         _ = fop.find_plugin("test-plugin1-name")
