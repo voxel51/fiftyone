@@ -85,7 +85,6 @@ export const SchemaSearch = (props: Props) => {
                     }
                   },
                   onError: (e) => {
-                    console.error("ss", e);
                     setError("Failed to find fields matching your search");
                   },
                 });
