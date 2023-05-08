@@ -832,7 +832,7 @@ def patch_saved_views(dataset_name, dry_run=False):
     num_bad_ids = len(bad_ids)
     if num_bad_ids > 0:
         _logger.info(
-            "Purging %d bad saved view IDs %s from dataset",
+            "Purging %d bad saved view ID(s) %s from dataset",
             num_bad_ids,
             bad_ids,
         )
@@ -844,7 +844,7 @@ def patch_saved_views(dataset_name, dry_run=False):
     if num_missing_views > 0:
         missing_views = [(_id, sd[_id]) for _id in missing_ids]
         _logger.info(
-            "Adding %d misplaced saved views %s back to dataset",
+            "Adding %d misplaced saved view(s) %s back to dataset",
             num_missing_views,
             missing_views,
         )
