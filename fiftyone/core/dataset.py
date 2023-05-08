@@ -3485,7 +3485,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     def _delete_saved_view(self, name):
-        view_doc = self._get_saved_view_doc(name, pop=True, patch=False)
+        view_doc = self._get_saved_view_doc(name, pop=True)
         if view_doc:
             view_id = str(view_doc.id)
             view_doc.delete()
@@ -3496,7 +3496,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return view_id
 
-    def _get_saved_view_doc(self, name, pop=False, slug=False, patch=True):
+    def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
         key = "slug" if slug else "name"
 
