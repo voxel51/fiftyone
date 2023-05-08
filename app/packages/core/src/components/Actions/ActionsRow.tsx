@@ -435,7 +435,8 @@ export const GridActionsRow = () => {
   const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
   const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
 
-  // if the session color scheme is not applied to the dataset, check to see if dataset.appConfig has applicable settings
+  // if the session color scheme is not applied to the dataset,
+  // check to see if dataset.appConfig has applicable settings
   useEffect(() => {
     if (!isUsingSessionColorScheme && datasetColorScheme) {
       const colorPool =

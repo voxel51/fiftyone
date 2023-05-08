@@ -75,9 +75,6 @@ export const validateJSONSetting = (json: unknown[]) => {
       input["attributeForColor"] !== "label"
         ? input["attributeForColor"]
         : null,
-    // attributeForOpacity: isString(input["attributeForOpacity"])
-    //   ? input["attributeForOpacity"]
-    //   : null,
     labelColors: Array.isArray(input["labelColors"])
       ? getValidLabelColors(input["labelColors"])
       : null,
