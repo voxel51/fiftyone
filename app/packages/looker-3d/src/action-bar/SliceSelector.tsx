@@ -69,7 +69,7 @@ const PcdsSelector = () => {
 
   return (
     <ActionPopOver>
-      <PopoutSectionTitle>Select pcds</PopoutSectionTitle>
+      <PopoutSectionTitle>Select point clouds</PopoutSectionTitle>
       <div>
         {allPcdSlices.map((slice) => {
           return (
