@@ -16,8 +16,6 @@ import webbrowser
 from uuid import uuid4
 from bson import json_util
 
-from fiftyone.core.colorscheme import ColorScheme
-
 try:
     import IPython.display
 except:
@@ -31,6 +29,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.colorscheme import default_color_scheme, ColorScheme
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -375,7 +374,8 @@ class Session(object):
             spaces = default_spaces.copy()
 
         if color_scheme is None:
-            color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
+            # color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
+            color_scheme = default_color_scheme.copy()
 
         self._state = StateDescription(
             config=config,
@@ -587,10 +587,7 @@ class Session(object):
     @update_state()
     def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
         if color_scheme is None:
-            color_scheme = ColorScheme(
-                color_pool=focn.DEFAULT_APP_COLOR_POOL,
-                customized_color_settings=[],
-            )
+            color_scheme = default_color_scheme.copy()
         if not isinstance(color_scheme, ColorScheme):
             raise ValueError(
                 "`Session.color_scheme` must be a %s or None; found %s"
