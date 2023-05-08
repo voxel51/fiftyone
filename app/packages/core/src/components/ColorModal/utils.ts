@@ -1,5 +1,5 @@
-import { CustomizeColor } from "@fiftyone/state";
 import { isEmpty, xor } from "lodash";
+import * as fos from "@fiftyone/state";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
 // website Color Universal Design (CUD). This palette is a “Set of colors that
@@ -81,7 +81,7 @@ export const validateJSONSetting = (json: unknown[]) => {
     labelColors: Array.isArray(input["labelColors"])
       ? getValidLabelColors(input["labelColors"])
       : null,
-  })) as CustomizeColor[];
+  })) as fos.CustomizeColor[];
 
   // remove default settings
   return f.filter((x) => {
@@ -89,7 +89,7 @@ export const validateJSONSetting = (json: unknown[]) => {
     const hasAttributeColor = x.attributeForColor;
     const hasLabelColors = x.labelColors && x.labelColors.length > 0;
     return hasFieldSetting || hasAttributeColor || hasLabelColors;
-  }) as CustomizeColor[];
+  }) as fos.CustomizeColor[];
 };
 
 type ColorSchemeStr = {
