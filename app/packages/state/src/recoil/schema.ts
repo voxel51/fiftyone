@@ -96,9 +96,9 @@ export const buildSchema = (
     schema.frames = {
       ftype: LIST_FIELD,
       name: "frames",
-      fields: buildFlatExtendedSchema(
-        dataset.frameFields.reduce(schemaReduce, {})
-      ),
+      fields: flat
+        ? buildFlatExtendedSchema(dataset.frameFields.reduce(schemaReduce, {}))
+        : dataset.frameFields.reduce(schemaReduce, {}),
       dbField: null,
       description: null,
       info: null,
