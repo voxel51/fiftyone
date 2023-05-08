@@ -3,7 +3,7 @@ import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { Field } from "@fiftyone/utilities";
-import { State } from "./types";
+import { ColorSchemeSetting, State } from "./types";
 
 export interface AppSample extends Sample {
   _id: string;

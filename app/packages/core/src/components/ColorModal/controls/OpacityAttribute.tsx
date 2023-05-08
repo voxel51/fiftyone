@@ -1,17 +1,14 @@
-import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import useMeasure from "react-use-measure";
-import styled from "styled-components";
-import { cloneDeep } from "lodash";
+import { Popout, Tooltip, useTheme } from "@fiftyone/components/src/components";
+import * as fos from "@fiftyone/state";
+import { useOutsideClick } from "@fiftyone/state";
+import { Field } from "@fiftyone/utilities";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
-
-import * as fos from "@fiftyone/state";
-import { Tooltip, useTheme } from "@fiftyone/components/src/components";
-import { useOutsideClick } from "@fiftyone/state";
-import { Popout } from "@fiftyone/components/src/components";
+import React from "react";
+import useMeasure from "react-use-measure";
+import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
-import { Field } from "@fiftyone/utilities";
 
 const ActionDiv = styled.div`
   position: relative;

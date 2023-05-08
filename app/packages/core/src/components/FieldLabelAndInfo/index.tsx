@@ -22,6 +22,7 @@ import {
   activeColorField,
   canEditCustomColors,
 } from "@fiftyone/state";
+import ReactDOM from "react-dom";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -281,6 +282,7 @@ function FieldInfoExpanded({
     setIsCustomizingColor(field);
   };
 
+  const isNotTag = field.path !== "tags";
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
 
@@ -294,7 +296,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {field.embeddedDocType && !isModal && (
+        {isNotTag && !isModal && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}
