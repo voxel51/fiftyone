@@ -3438,13 +3438,12 @@ class ViewStageTests(unittest.TestCase):
         field_3 = dataset.get_field("field_3")
 
         field_child = dataset.get_field("field_parent.classifications.label")
-        field_child.description = "this is a child field that should return when including nested fields"
+        field_child.description = (
+            "this is a child field that should return when including nested "
+            "fields"
+        )
         field_child.info = {"isChild": True}
         field_child.save()
-        # field_parent.add_field({"name": "field_child_1", "ftype": fo.IntField})
-        # field_parent.add_field({"name": "field_child_2", "ftype": fo.StringField})
-        # field_parent.add_field({"name": "field_child_3", "ftype": fo.BooleanField})
-        # field_parent.save()
 
         field_1.description = "this is a unique description by joe"
         field_2.description = "hello world test123"

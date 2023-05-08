@@ -831,7 +831,7 @@ class ExcludeFields(ViewStage):
             },
             {
                 "name": "meta_filter",
-                "type": "NoneType|str|dict",
+                "type": "NoneType|str|json",
                 "default": "None",
                 "placeholder": "meta_filter",
             },
@@ -5642,7 +5642,7 @@ class SelectFields(ViewStage):
             },
             {
                 "name": "meta_filter",
-                "type": "NoneType|str|dict",
+                "type": "NoneType|str|json",
                 "default": "None",
                 "placeholder": "meta_filter",
             },
