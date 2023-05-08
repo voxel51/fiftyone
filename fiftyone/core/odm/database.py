@@ -852,9 +852,9 @@ def patch_saved_views(dataset_name, dry_run=False):
         made_changes = True
 
     if made_changes and not dry_run:
-        conn.datasets.update_name(
+        conn.datasets.update_one(
             {"name": dataset_name},
-            {"saved_views": saved_views},
+            {"$set": {"saved_views": saved_views}},
         )
 
 
@@ -960,7 +960,8 @@ def _patch_runs(dataset_name, runs_field, run_str, dry_run=False):
 
     if made_changes:
         conn.datasets.update_one(
-            {"name": dataset_name}, {runs_field: runs_dict}
+            {"name": dataset_name},
+            {"$set": {runs_field: runs_dict}},
         )
 
 
@@ -1087,7 +1088,7 @@ def delete_saved_view(dataset_name, view_name, dry_run=False):
     if not dry_run:
         conn.datasets.update_one(
             {"name": dataset_name},
-            {"saved_views": saved_views},
+            {"$set": {"saved_views": saved_views}},
         )
         _delete_saved_views(conn, [del_id])
 
@@ -1124,7 +1125,10 @@ def delete_saved_views(dataset_name, dry_run=False):
     )
 
     if not dry_run:
-        conn.datasets.update_one({"name": dataset_name}, {"saved_views": []})
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {"saved_views": []}},
+        )
         _delete_saved_views(conn, del_ids)
 
 
@@ -1338,7 +1342,10 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
     if not dry_run:
         _logger.info("Deleting %s doc '%s'", run_str, run_id)
         conn.runs.delete_one({"_id": run_id})
-        conn.datasets.update_one({"name": dataset_name}, {runs_field: runs})
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {runs_field: runs}},
+        )
 
 
 def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
@@ -1376,7 +1383,10 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
             _delete_run_results(conn, result_ids)
 
     if not dry_run:
-        conn.datasets.update_one({"name": dataset_name}, {runs_field: {}})
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {runs_field: {}}},
+        )
 
 
 def _get_saved_view_ids(dataset_dict):
