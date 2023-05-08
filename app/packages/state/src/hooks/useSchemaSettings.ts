@@ -22,7 +22,7 @@ import { keyBy } from "lodash";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
-  FILTER_RULE: "FilterRule",
+  FILTER_RULE: "Filter rule",
 };
 
 export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
