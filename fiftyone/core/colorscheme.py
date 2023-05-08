@@ -14,7 +14,9 @@ class ColorScheme(EmbeddedDocument):
     """Description of a color scheme in the App.
     Args:
         color_pool: a list of string representing colors for the color pool
-        customized_color_settings: a list of dicts mapping customoized color settings, which can includes properties such as field, useFieldColor, fieldColor, attributeForColor, labelColors
+        customized_color_settings: a list of dicts mapping customoized color settings,
+        which can include properties such as field, useFieldColor, fieldColor,
+        attributeForColor, labelColors
     """
 
     # strict=False lets this class ignore unknown fields from other versions

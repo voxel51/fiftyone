@@ -138,12 +138,19 @@ export const getColorFromOptions = ({
 };
 
 // for primitive types
+
+type PrimitiveParam = {
+  coloring: Coloring;
+  path: string;
+  value: string | number | boolean;
+  customizeColorSetting: CustomizeColor[];
+};
 export const getColorFromOptionsPrimitives = ({
   coloring,
   path,
   value,
   customizeColorSetting,
-}) => {
+}: PrimitiveParam) => {
   switch (coloring.by) {
     case "field":
       const customSetting = customizeColorSetting.find((s) => s.field === path);
