@@ -176,9 +176,10 @@ export class Operator {
   }
   async needsOutput(ctx: ExecutionContext, result: OperatorResult) {
     const outputs = await this.resolveOutput(ctx, result);
+    const hasOutputContent = result.hasOutputContent();
     if (!outputs || !outputs.type) return false;
     const outputType = outputs.type as types.Object;
-    if (outputType.properties.size > 0 && result.hasOutputContent()) {
+    if (outputType.properties.size > 0 && hasOutputContent) {
       return true;
     }
     if (result.error) {
@@ -330,6 +331,7 @@ export function listLocalAndRemoteOperators() {
 }
 
 export async function executeStartupOperators() {
+  return;
   const { allOperators } = listLocalAndRemoteOperators();
   console.log(allOperators.map((o) => o.uri));
   const startupOperators = allOperators.filter(
