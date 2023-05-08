@@ -296,7 +296,7 @@ class Mutation:
         return next(
             (
                 SavedView.from_doc(view_doc)
-                for view_doc in dataset._doc.saved_views
+                for view_doc in dataset._doc.get_saved_views()
                 if view_doc.name == view_name
             ),
             None,
@@ -390,7 +390,7 @@ class Mutation:
         return next(
             (
                 SavedView.from_doc(view_doc)
-                for view_doc in dataset._doc.saved_views
+                for view_doc in dataset._doc.get_saved_views()
                 if view_doc.name == current_name
             ),
             None,

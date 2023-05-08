@@ -9,13 +9,14 @@ from copy import copy, deepcopy
 import datetime
 import logging
 
-from bson import json_util
+from bson import json_util, DBRef
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
+from fiftyone.core.odm.database import _patch_runs
 from fiftyone.core.odm.runs import RunDocument
 
 
@@ -333,8 +334,7 @@ class Run(Configurable):
         Returns:
             a list of run keys
         """
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        run_docs = cls._get_run_docs(samples)
 
         if etau.is_str(type):
             type = etau.get_class(type)
@@ -398,7 +398,7 @@ class Run(Configurable):
         dataset = samples._root_dataset
 
         # Update run doc
-        run_docs = getattr(dataset._doc, cls._runs_field())
+        run_docs = cls._get_run_docs(samples)
         run_doc = run_docs.pop(key)
         run_doc.key = new_key
         run_docs[new_key] = run_doc
@@ -468,15 +468,14 @@ class Run(Configurable):
                 )
 
         dataset = samples._root_dataset
-        dataset_doc = dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        run_docs = cls._get_run_docs(samples)
         view_stages = [
             json_util.dumps(s)
             for s in samples.view()._serialize(include_uuids=False)
         ]
 
         run_doc = RunDocument(
-            dataset_id=dataset_doc.id,
+            dataset_id=dataset._doc.id,
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
@@ -501,9 +500,7 @@ class Run(Configurable):
         if key is None:
             return
 
-        dataset = samples._root_dataset
-        run_docs = getattr(dataset._doc, cls._runs_field())
-        run_doc = run_docs[key]
+        run_doc = cls._get_run_doc(samples, key)
         run_doc.config = deepcopy(config.serialize())
         run_doc.save()
 
@@ -525,8 +522,7 @@ class Run(Configurable):
             return
 
         dataset = samples._root_dataset
-        run_docs = getattr(dataset._doc, cls._runs_field())
-        run_doc = run_docs[key]
+        run_doc = cls._get_run_doc(samples, key)
 
         if run_doc.results:
             if overwrite:
@@ -718,7 +714,7 @@ class Run(Configurable):
         dataset = samples._root_dataset
 
         # Delete run from dataset
-        run_docs = getattr(dataset._doc, cls._runs_field())
+        run_docs = cls._get_run_docs(samples)
         run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
@@ -743,9 +739,34 @@ class Run(Configurable):
             cls.delete_run(samples, key)
 
     @classmethod
-    def _get_run_doc(cls, samples, key):
+    def _get_run_docs(cls, samples):
         dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        runs_field = cls._runs_field()
+        run_str = cls._run_str()
+        run_docs = getattr(dataset_doc, runs_field)
+
+        #
+        # When mongoengine encounters a ReferenceField that contains an
+        # ObjectId with no matching document, the doc will be a falsey DBRef.
+        #
+        # We're not currently sure why this happens... but we've observed that
+        # ObjectIDs in DatasetDocument can somehow get out of sync with their
+        # corresponding run documents. This attempts to patch on-the-fly.
+        #
+        if any(isinstance(doc, DBRef) for doc in run_docs.values()):
+            try:
+                _patch_runs(dataset_doc.name, runs_field, run_str)
+            except Exception as e:
+                logger.warning("Failed to patch %ss: %s", run_str, e)
+
+            dataset_doc.reload()
+            run_docs = getattr(dataset_doc, runs_field)
+
+        return run_docs
+
+    @classmethod
+    def _get_run_doc(cls, samples, key):
+        run_docs = cls._get_run_docs(samples)
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
