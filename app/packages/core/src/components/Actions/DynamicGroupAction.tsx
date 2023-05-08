@@ -10,9 +10,9 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ActionDiv } from "./ActionsRow";
 
@@ -71,7 +71,7 @@ export const DynamicGroupAction = () => {
     setView((v) => [
       ...v,
       {
-        _cls: "fiftyone.core.stages.GroupBy",
+        _cls: fos.GROUP_BY_VIEW_STAGE,
         kwargs: [
           ["field_or_expr", groupBy],
           ["order_by", useOrdered ? orderBy : null],
@@ -82,13 +82,13 @@ export const DynamicGroupAction = () => {
         ],
       },
     ]);
-  }, [canSubmitRequest, setView, groupBy, orderBy]);
+  }, [useOrdered, canSubmitRequest, setView, groupBy, orderBy]);
 
   const onClear = useCallback(() => {
     setView((v) => {
       const newView = [...v];
       const groupByIndex = newView.findIndex(
-        (stage) => stage._cls === "fiftyone.core.stages.GroupBy"
+        (stage) => stage._cls === fos.GROUP_BY_VIEW_STAGE
       );
       if (groupByIndex !== -1) {
         newView.splice(groupByIndex, 1);
