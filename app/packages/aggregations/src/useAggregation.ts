@@ -73,10 +73,10 @@ export default function useAggregation({
     const jsonAggregations = aggregations.map((a) => a.toJSON());
 
     const resBody = (await getFetchFunction()("POST", AGGREGATE_ROUTE, {
-      filters: filters, // extended view
-      view: view,
+      filters, // extended view
+      view,
       dataset: datasetName || dataset.name,
-      sample_ids: sample_ids,
+      sample_ids,
       aggregations: jsonAggregations,
     })) as any;
     setResult(resBody.aggregate);

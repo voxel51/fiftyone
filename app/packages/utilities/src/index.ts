@@ -85,7 +85,7 @@ export const removeKeys = <T>(
   );
 };
 
-interface BaseField {
+export interface BaseField {
   ftype: string;
   dbField: string | null;
   description: string | null;
@@ -94,6 +94,7 @@ interface BaseField {
   embeddedDocType: string | null;
   subfield: string | null;
   path: string | null;
+  visible: boolean | null;
 }
 
 export interface StrictField extends BaseField {
@@ -263,6 +264,8 @@ export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
 export const DICT_FIELD = "fiftyone.core.fields.DictField";
 export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
+export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
+  "fiftyone.core.fields.DynamicEmbeddedDocumentField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
@@ -270,6 +273,7 @@ export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
+export const JUST_FIELD = "fiftyone.core.fields.Field";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 

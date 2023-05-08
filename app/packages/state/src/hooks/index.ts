@@ -48,3 +48,5 @@ export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSamples } from "./useUpdateSamples";
+export { default as useSchemaSettings } from "./useSchemaSettings";
+export { settingsModal } from "./useSchemaSettings";

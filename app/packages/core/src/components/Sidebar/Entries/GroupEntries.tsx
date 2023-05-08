@@ -4,16 +4,13 @@ import {
   Close,
   Edit,
   FilterList,
-  LocalOffer,
   Remove,
-  Visibility,
 } from "@mui/icons-material";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   selectorFamily,
   SetterOrUpdater,
   useRecoilCallback,
-  useRecoilState,
   useRecoilStateLoadable,
   useRecoilValue,
   useRecoilValueLoadable,
@@ -24,7 +21,7 @@ import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
 
 import { useTheme, PillButton } from "@fiftyone/components";
-import { datasetName, readableTags, State } from "@fiftyone/state";
+import { datasetName } from "@fiftyone/state";
 import Draggable from "./Draggable";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({

@@ -1,5 +1,5 @@
+import { createBrowserHistory, createMemoryHistory, Location } from "history";
 import React from "react";
-import { createBrowserHistory, createMemoryHistory } from "history";
 import { loadQuery, PreloadedQuery } from "react-relay";
 import {
   Environment,
@@ -22,8 +22,8 @@ import {
 } from "@fiftyone/utilities";
 import RouteDefinition, { RouteBase } from "./RouteDefinition";
 
-import { MatchPathResult, matchPath } from "./matchPath";
 import { Route } from "..";
+import { matchPath, MatchPathResult } from "./matchPath";
 
 export interface RouteData<
   T extends OperationType | undefined = OperationType
@@ -65,6 +65,12 @@ export interface Router<T extends OperationType | undefined = OperationType> {
   context: RoutingContext<T>;
 }
 
+let context: RoutingContext;
+
+export const getContext = () => {
+  return context;
+};
+
 export const createRouter = (
   environment: Environment,
   routes: RouteDefinition[],
@@ -95,7 +101,7 @@ export const createRouter = (
       location.search
     );
 
-    const entries = prepareMatches(environment, matches);
+    const entries = prepareMatches(location, environment, matches);
     const nextEntry: Entry<any> = {
       pathname: location.pathname,
       state: location.state,
@@ -105,7 +111,7 @@ export const createRouter = (
     subscribers.forEach((cb) => cb(nextEntry));
   });
 
-  const context: RoutingContext = {
+  context = {
     history,
     get() {
       if (!currentEntry) {
@@ -114,6 +120,7 @@ export const createRouter = (
 
           state: history.location.state,
           entries: prepareMatches(
+            history.location,
             environment,
             matchRoute(
               routes,
@@ -205,6 +212,7 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
 };
 
 const prepareMatches = <T extends OperationType | undefined = OperationType>(
+  location: Location,
   environment: Environment,
   matches: Match<T>[]
 ) => {
@@ -226,6 +234,16 @@ const prepareMatches = <T extends OperationType | undefined = OperationType>(
         if (routeQuery !== undefined) {
           const prepared = new Resource(() =>
             routeQuery.load().then((q) => {
+              if (
+                q.operation.name === "DatasetQuery" &&
+                location.state?.selectedFieldsStage
+              ) {
+                matchData.variables.view = [
+                  ...(matchData.variables.view || []),
+                  location.state?.selectedFieldsStage,
+                ];
+              }
+
               return loadQuery(environment, q, matchData.variables || {}, {
                 fetchPolicy: "network-only",
               });
