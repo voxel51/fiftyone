@@ -29,18 +29,19 @@ const SidebarList: React.FC = () => {
   const handleGroupClick = (ev, idx) => {
     setGroupOpen((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
-  const getField = useRecoilCallback(({ snapshot }) => (path: string) => {
-    return snapshot.getLoadable(fos.field(path));
-  });
 
-  const onSelectField = (path) => {
-    if (["global", "json"].includes(path)) {
-      setActiveField(path);
-    } else {
-      const field = getField(path).contents;
-      setActiveField(field as Field);
-    }
-  };
+  const onSelectField = useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (path: string) => {
+        if (["global", "json"].includes(path)) {
+          set(fos.activeColorField, path);
+        } else {
+          const field = await snapshot.getPromise(fos.field(path));
+          set(fos.activeColorField, field);
+        }
+      },
+    []
+  );
 
   const getCurrentField = (activeField: Field | "global" | "json" | null) => {
     if (activeField === "global") return "global";
