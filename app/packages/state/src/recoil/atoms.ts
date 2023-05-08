@@ -1,8 +1,8 @@
-import { atom, atomFamily, useRecoilCallback } from "recoil";
+import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
-
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { Field } from "@fiftyone/utilities";
 import { State } from "./types";
 
 export interface AppSample extends Sample {
@@ -43,48 +43,6 @@ export const useRefresh = () => {
     []
   );
 };
-
-// recoil effect that syncs state with local storage
-export const getBrowserStorageEffectForKey =
-  (
-    key: string,
-    props: {
-      sessionStorage?: boolean;
-      valueClass?: "string" | "number" | "boolean";
-      map?: (value: unknown) => unknown;
-    } = { sessionStorage: false, valueClass: "string" }
-  ) =>
-  ({ setSelf, onSet }) => {
-    const { valueClass, sessionStorage } = props;
-
-    const storage = sessionStorage
-      ? window.sessionStorage
-      : window.localStorage;
-
-    const value = storage.getItem(key);
-    let procesedValue;
-
-    if (valueClass === "number") {
-      procesedValue = Number(value);
-    } else if (valueClass === "boolean") {
-      procesedValue = value === "true";
-    } else {
-      procesedValue = value;
-    }
-
-    if (value != null) setSelf(procesedValue);
-
-    onSet((newValue, _oldValue, isReset) => {
-      if (props.map) {
-        newValue = props.map(newValue);
-      }
-      if (isReset || newValue === undefined) {
-        storage.removeItem(key);
-      } else {
-        storage.setItem(key, newValue);
-      }
-    });
-  };
 
 export const modal = atom<ModalSample | null>({
   key: "modal",
@@ -245,8 +203,8 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const sidebarOverride = atom<string>({
-  key: "sidebarOverride",
+export const pinned3DSample = atom<string>({
+  key: "pinned3DSample",
   default: null,
 });
 
@@ -281,6 +239,80 @@ export const lookerPanels = atom({
     help: { isOpen: false },
   },
 });
+
+// recoil effect that syncs state with local storage
+export const getBrowserStorageEffectForKey =
+  <T>(
+    key: string,
+    props: {
+      map?: (value: unknown) => unknown;
+      sessionStorage?: boolean;
+      valueClass?: "string" | "stringArray" | "number" | "boolean";
+      prependDatasetNameInKey?: boolean;
+      useJsonSerialization?: boolean;
+    } = {
+      sessionStorage: false,
+      valueClass: "string",
+      prependDatasetNameInKey: false,
+      useJsonSerialization: false,
+    }
+  ): AtomEffect<T> =>
+  ({ setSelf, onSet, getPromise }) => {
+    (async () => {
+      const {
+        valueClass,
+        sessionStorage,
+        useJsonSerialization,
+        prependDatasetNameInKey,
+      } = props;
+
+      const storage = sessionStorage
+        ? window.sessionStorage
+        : window.localStorage;
+
+      if (prependDatasetNameInKey) {
+        const datasetName = (await getPromise(dataset))?.name;
+        key = `${datasetName}_${key}`;
+      }
+
+      const value = storage.getItem(key);
+      let procesedValue;
+
+      if (useJsonSerialization) {
+        procesedValue = JSON.parse(value);
+      } else if (valueClass === "number") {
+        procesedValue = Number(value);
+      } else if (valueClass === "boolean") {
+        procesedValue = value === "true";
+      } else if (valueClass === "stringArray") {
+        if (value?.length > 0) {
+          procesedValue = value?.split(",");
+        } else {
+          procesedValue = [];
+        }
+      } else {
+        procesedValue = value;
+      }
+
+      if (value != null) setSelf(procesedValue);
+
+      onSet((newValue, _oldValue, isReset) => {
+        if (props.map) {
+          newValue = props.map(newValue) as T;
+        }
+        if (isReset || newValue === undefined) {
+          storage.removeItem(key);
+        } else {
+          storage.setItem(
+            key,
+            useJsonSerialization
+              ? JSON.stringify(newValue)
+              : (newValue as string)
+          );
+        }
+      });
+    })();
+  };
 
 export const groupMediaIsCarouselVisible = atom<boolean>({
   key: "groupMediaIsCarouselVisible",
@@ -355,5 +387,25 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
     ],
     type: "panel-container",
     activeChild: "default-samples-node",
+  },
+});
+
+// the active field for customize color modal
+export const activeColorField = atom<Field | "global" | "json" | null>({
+  key: "activeColorField",
+  default: null,
+});
+
+export const isUsingSessionColorScheme = atom<boolean>({
+  key: "isUsingSessionColorScheme",
+  default: false,
+});
+
+export const sessionColorScheme = atom<ColorSchemeSetting>({
+  key: "sessionColorScheme",
+  default: {
+    colorPool: [],
+    customizedColorSettings: [],
+    saveToApp: false,
   },
 });

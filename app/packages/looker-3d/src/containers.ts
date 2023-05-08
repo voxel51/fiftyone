@@ -55,7 +55,7 @@ export const ActionsBar = styled.div`
 `;
 
 export const ActionPopOverDiv = styled.div`
-  width: 16rem;
+  width: 20rem;
   position: absolute;
   bottom: 2.5rem;
   background-color: var(--joy-palette-background-level2);
