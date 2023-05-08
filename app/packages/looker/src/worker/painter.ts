@@ -84,7 +84,7 @@ export const PainterFactory = (requestColor) => ({
               value = stop;
             }
 
-            const alpha = 1 - Math.abs(value) / absMax;
+            const alpha = Math.abs(value) / absMax;
 
             return get32BitColor(color, alpha);
           };
