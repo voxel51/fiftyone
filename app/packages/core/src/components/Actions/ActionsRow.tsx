@@ -428,6 +428,29 @@ export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+
+  // if the session color scheme is not applied to the dataset, check to see if dataset.appConfig has applicable settings
+  useEffect(() => {
+    if (!isUsingSessionColorScheme && datasetColorScheme) {
+      const colorPool =
+        datasetColorScheme.colorPool?.length > 0
+          ? datasetColorScheme.colorPool
+          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const customizedColorSettings =
+        JSON.parse(datasetColorScheme.customizedColorSettings) ??
+        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
+      setSessionColor({
+        colorPool,
+        customizedColorSettings,
+      });
+    }
+  }, [isUsingSessionColorScheme, datasetColorScheme]);
+
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
