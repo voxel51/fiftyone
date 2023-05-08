@@ -407,6 +407,10 @@ const getFieldAndValue = (
   let list = false;
 
   for (const key of path.split(".")) {
+    if (!schema?.[key]) {
+      return [null, null, false];
+    }
+
     field = schema[key];
 
     if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
@@ -419,6 +423,21 @@ const getFieldAndValue = (
     }
 
     schema = field ? field.fields : null;
+  }
+
+  if (Array.isArray(value) && value.every((v) => typeof v == "object")) {
+    value = value.reduce((acc, cur) => {
+      if (!acc._cls) {
+        acc._cls = cur._cls;
+      }
+      const key = acc._cls?.toLowerCase();
+      if (acc[key] == undefined) {
+        acc[key] = cur[key];
+      } else {
+        acc[key] = [...acc[key], ...cur[key]];
+      }
+      return acc;
+    }, {});
   }
 
   return [field, value, list];
