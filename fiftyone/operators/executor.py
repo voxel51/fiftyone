@@ -145,13 +145,6 @@ def resolve_placement(operator, request_params):
     except Exception as e:
         return ExecutionResult(None, None, str(e))
 
-def resolve_placement(operator, request_params):
-    ctx = ExecutionContext(request_params)
-    try:
-        return operator.resolve_placement(ctx)
-    except Exception as e:
-        return ExecutionResult(None, None, str(e))
-
 
 class ExecutionContext:
     """Represents the execution context of an operator.
