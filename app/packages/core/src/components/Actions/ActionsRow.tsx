@@ -431,13 +431,13 @@ export const GridActionsRow = () => {
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
-      <Options modal={false} />
       <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <Options modal={false} />
     </ActionsRowDiv>
   );
 };

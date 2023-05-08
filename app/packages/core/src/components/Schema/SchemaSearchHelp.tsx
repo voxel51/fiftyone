@@ -22,7 +22,11 @@ const EXAMPLES = [
   },
   {
     title: '# Match fields whose name contains "ground_truth"',
-    code: "name:foo",
+    code: "name:ground_truth",
+  },
+  {
+    title: "# Match fields whose owner contains “foo”",
+    code: "info.owner:foo",
   },
   {
     title: 'Match fields whose description contains "foo"',
