@@ -1118,6 +1118,10 @@ def delete_saved_views(dataset_name, dry_run=False):
     dataset_id = dataset_dict["_id"]
     del_ids = [d["_id"] for d in conn.views.find({"_dataset_id": dataset_id})]
 
+    if not del_ids:
+        _logger.info("Dataset '%s' has no saved views", dataset_name)
+        return
+
     _logger.info(
         "Deleting %d saved views from dataset '%s'",
         len(del_ids),
@@ -1357,11 +1361,12 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         _logger.warning("Dataset '%s' not found", dataset_name)
         return
 
-    run_keys, run_ids = zip(dataset_dict.get(runs_field, {}).items())
-
-    if not run_keys:
+    runs = dataset_dict.get(runs_field, {})
+    if not runs:
         _logger.info("Dataset '%s' has no %ss", dataset_name, run_str)
         return
+
+    run_keys, run_ids = zip(*runs.items())
 
     _logger.info(
         "Deleting %s(s) %s from dataset '%s'",
