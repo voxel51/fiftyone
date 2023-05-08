@@ -49,7 +49,13 @@ export const isBoolean = (v: unknown) => typeof v === "boolean";
 
 const getValidLabelColors = (labelColors: unknown[]) => {
   return labelColors?.filter((x) => {
-    return x && isObject(x) && isString(x["name"]) && isString(x["color"]);
+    return (
+      x &&
+      isObject(x) &&
+      isString(x["name"]) &&
+      x["name"] !== "" &&
+      isString(x["color"])
+    );
   }) as { name: string; color: string }[];
 };
 
@@ -59,20 +65,30 @@ export const validateJSONSetting = (json: unknown[]) => {
     (s) => s && isObject(s) && isString(s["field"])
   ) as {}[];
 
-  return filtered?.map((input) => ({
+  const f = filtered?.map((input) => ({
     field: input["field"],
     useFieldColor: isBoolean(input["useFieldColor"])
       ? input["useFieldColor"]
       : false,
     fieldColor: input["fieldColor"] ?? null,
-    attributeForColor: isString(input["attributeForColor"])
-      ? input["attributeForColor"]
-      : null,
-    attributeForOpacity: isString(input["attributeForOpacity"])
-      ? input["attributeForOpacity"]
-      : null,
+    attributeForColor:
+      isString(input["attributeForColor"]) &&
+      input["attributeForColor"] !== "label"
+        ? input["attributeForColor"]
+        : null,
+    // attributeForOpacity: isString(input["attributeForOpacity"])
+    //   ? input["attributeForOpacity"]
+    //   : null,
     labelColors: Array.isArray(input["labelColors"])
       ? getValidLabelColors(input["labelColors"])
       : null,
   })) as CustomizeColor[];
+
+  // remove default settings
+  return f.filter((x) => {
+    const hasFieldSetting = x.useFieldColor && x.fieldColor;
+    const hasAttributeColor = x.attributeForColor;
+    const hasLabelColors = x.labelColors && x.labelColors.length > 0;
+    return hasFieldSetting || hasAttributeColor || hasLabelColors;
+  }) as CustomizeColor[];
 };
