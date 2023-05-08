@@ -413,6 +413,11 @@ class SetView extends Operator {
       unlisted: true,
     });
   }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setView: fos.useSetView(),
+    };
+  }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.obj("view", {
@@ -421,8 +426,8 @@ class SetView extends Operator {
     });
     return new types.Property(inputs);
   }
-  async execute({ state, params }: ExecutionContext) {
-    state.set(fos.view, params.view);
+  async execute({ state, hooks, params }: ExecutionContext) {
+    hooks.setView(params.view);
   }
 }
 
