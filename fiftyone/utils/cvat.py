@@ -4183,9 +4183,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # by filename, so we must give CVAT filenames whose
                 # alphabetical order matches the order of `paths`
                 filename = "%06d_%s" % (idx, os.path.basename(path))
-                open_file = open(path, "rb")
-                files["client_files[%d]" % idx] = (filename, open_file)
-                open_files.append(open_file)
+                fh = open(path, "rb")
+                file_contents = fh.read()
+                fh.close()
+                files["client_files[%d]" % idx] = (filename, file_contents)
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
