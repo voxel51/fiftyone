@@ -244,13 +244,7 @@ export const useOperatorPrompt = () => {
   const autoExec = async () => {
     const needsInput = operator && (await operator.needsUserInput(ctx));
     const needsResolution = operator && operator.needsResolution();
-    console.log({
-      hasOperator: !!operator,
-      needsUserInput: needsInput,
-      needsResolution: needsResolution,
-    });
     if (!needsInput && !needsResolution) {
-      console.log("AUTO EXEC");
       execute();
     }
   };
@@ -359,6 +353,7 @@ export const availableOperators = selector({
         value: operator.uri,
         description: operator.description,
         unlisted: operator.unlisted,
+        canExecute: operator.config.canExecute,
       };
     });
   },
@@ -377,10 +372,12 @@ function sortResults(results, recentlyUsedOperators) {
   return results
     .map((result) => {
       let score = (result.description || result.label).charCodeAt(0);
-      if (recentlyUsedOperators.includes(result.label)) {
+      if (recentlyUsedOperators.includes(result.value)) {
         const recentIdx = recentlyUsedOperators.indexOf(result.label);
-        const recentScore = recentlyUsedOperators.length - recentIdx;
-        score = recentScore;
+        score = recentIdx * -1;
+      }
+      if (result.canExecute === false) {
+        score += results.length;
       }
       return {
         ...result,
@@ -440,10 +437,12 @@ export function useOperatorBrowser() {
   };
 
   const onSubmit = () => {
-    close();
-    const acceptedValue = selectedValue || choices[0]?.value;
-    if (acceptedValue) {
-      promptForInput(acceptedValue);
+    const accepted = selectedValue || choices[0];
+    if (accepted && accepted.canExecute) {
+      close();
+      promptForInput(accepted.value);
+    } else if (!accepted) {
+      close();
     }
   };
 
@@ -517,9 +516,11 @@ export function useOperatorBrowser() {
   }, [onKeyUp]);
 
   const setSelectedAndSubmit = useCallback(
-    (value) => {
-      close();
-      promptForInput(value);
+    (choice) => {
+      if (choice.canExecute) {
+        close();
+        promptForInput(choice.value);
+      }
     },
     [setSelected, setIsVisible, onSubmit]
   );

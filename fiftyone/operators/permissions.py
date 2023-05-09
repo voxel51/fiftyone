@@ -16,16 +16,16 @@ class PermissionedOperatorRegistry(OperatorRegistry):
         self.managed_operators = managed_operators
         super().__init__()
 
-    def list_operators(self):
-        """Lists the available FiftyOne operators.
+    def can_execute(self, operator_uri):
+        """Checks if the operator can be executed.
+
+        Args:
+            operator_uri: the URI of the operator
 
         Returns:
-            a list of operators
+            ``True`` if the operator can be executed, ``False`` otherwise
         """
-        operators = super().list_operators()
-        return [
-            o for o in operators if self.managed_operators.has_operator(o.uri)
-        ]
+        return self.managed_operators.has_operator(operator_uri)
 
     @classmethod
     def from_list_request(cls, request):
