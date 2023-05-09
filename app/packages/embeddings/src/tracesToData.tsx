@@ -1,6 +1,8 @@
 import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
 import { getPointIndex } from "./getPointIndex";
-import { Color } from "./Color";
+import { Color, cssColorNames } from "./Color";
+import { CustomizeColor } from "@fiftyone/state";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export function tracesToData(
   traces,
@@ -8,7 +10,8 @@ export function tracesToData(
   getColor,
   plotSelection,
   selectionStyle,
-  colorscale
+  colorscale,
+  setting
 ) {
   const isCategorical = style === "categorical";
   const isContinuous = style === "continuous";
@@ -21,8 +24,8 @@ export function tracesToData(
             .map((id) => getPointIndex(trace, id))
             .filter((p) => p !== null)
         : null;
-
-      const color = Color.fromCSSRGBValues(...getColor(key));
+      const color =
+        getLabelColor(key, setting) ?? getConvertedColor(getColor(key));
 
       const mappedColorscale = colorscale.map((c, idx) => {
         const color = Color.fromCSSRGBValues(...c);
@@ -39,7 +42,7 @@ export function tracesToData(
           autocolorscale: !isContinuous, // isCategorical || isUncolored,
           colorscale: mappedColorscale,
           color: isCategorical
-            ? color.toCSSRGBString()
+            ? color?.toCSSRGBString()
             : isUncolored
             ? null
             : trace.map((d) => d.label),
@@ -69,4 +72,49 @@ export function tracesToData(
         },
       };
     });
+}
+
+const getLabelColor = (key: string, setting: CustomizeColor) => {
+  if (setting && setting.labelColors) {
+    const color = setting.labelColors.find((x) => x.name === key)?.color;
+    return getConvertedColor(color);
+  }
+};
+
+const getConvertedColor = (color: string | number[]) => {
+  if (typeof color === "string" && isValidColor(color)) {
+    if (color.startsWith("#")) {
+      const c = hexToRgb(color);
+      return Color.fromCSSRGBValues(c.r, c.g, c.b);
+    } else if (color.startsWith("rgb")) {
+      const c = color.split("(")[1].split(")")[0].split(",");
+      return Color.fromCSSRGBValues(
+        parseInt(c[0]),
+        parseInt(c[1]),
+        parseInt(c[2])
+      );
+    } else {
+      const idx = cssColorNames.name.map((x) => x.toLowerCase()).indexOf(color);
+      if (idx > -1) {
+        const c = hexToRgb(cssColorNames.hex[idx]);
+        return Color.fromCSSRGBValues(c.r, c.g, c.b);
+      }
+    }
+  } else {
+    if (color) {
+      return Color.fromCSSRGBValues(...color);
+    }
+  }
+  return null;
+};
+
+function hexToRgb(hex) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
 }

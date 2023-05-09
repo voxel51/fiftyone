@@ -1,14 +1,12 @@
-import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
-import Plot from "react-plotly.js";
 import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
+import Plot from "react-plotly.js";
+import { useRecoilValue } from "recoil";
 import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
 import { usePlot } from "./usePlot";
 import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
-import { resetZoom } from "@fiftyone/looker/src/elements/common/actions";
-import { useCallback } from "react";
 
 export function EmbeddingsPlot({
   labelSelectorLoading,
@@ -19,8 +17,14 @@ export function EmbeddingsPlot({
   plotSelection,
 }) {
   const theme = useTheme();
-  const getColor = useRecoilValue(fos.colorMapRGB(false));
-  const datasetName = useRecoilValue(fos.datasetName);
+  const getColor = useRecoilValue(fos.colorMap(false));
+  const customizedColorSettings = useRecoilValue(
+    fos.sessionColorScheme
+  ).customizedColorSettings;
+  const setting = customizedColorSettings.find((setting) =>
+    labelField?.includes(setting.field)
+  );
+
   const {
     setPlotSelection,
     resolvedSelection,
@@ -63,7 +67,8 @@ export function EmbeddingsPlot({
     getColor,
     resolvedSelection,
     selectionStyle,
-    colorscale
+    colorscale,
+    setting
   );
   const isCategorical = style === "categorical";
 
