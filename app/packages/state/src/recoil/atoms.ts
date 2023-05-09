@@ -1,9 +1,9 @@
-import { AtomEffect, atom, atomFamily, selector, useRecoilCallback } from "recoil";
+import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
 
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { State } from "./types";
 import { Field } from "@fiftyone/utilities";
+import { ColorSchemeSetting, State } from "./types";
 
 export interface AppSample extends Sample {
   _id: string;
@@ -245,6 +245,7 @@ export const getBrowserStorageEffectForKey =
   <T>(
     key: string,
     props: {
+      map?: (value: unknown) => unknown;
       sessionStorage?: boolean;
       valueClass?: "string" | "stringArray" | "number" | "boolean";
       prependDatasetNameInKey?: boolean;
@@ -296,7 +297,10 @@ export const getBrowserStorageEffectForKey =
       if (value != null) setSelf(procesedValue);
 
       onSet((newValue, _oldValue, isReset) => {
-        if (isReset) {
+        if (props.map) {
+          newValue = props.map(newValue) as T;
+        }
+        if (isReset || newValue === undefined) {
           storage.removeItem(key);
         } else {
           storage.setItem(

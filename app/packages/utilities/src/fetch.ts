@@ -17,7 +17,7 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob" | "text" | "arrayBuffer",
+    result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
     retries?: number,
     retryCodes?: number[]
   ): Promise<R>;
@@ -154,11 +154,53 @@ export const setFetchFunction = (
       throw new ErrorClass(errorMetadata, errorMetadata.message);
     }
 
+    if (result === "json-stream") {
+      return new JSONStreamParser(response);
+    }
+
     return await response[result]();
   };
 
   fetchFunctionSingleton = fetchFunction;
 };
+
+class JSONStreamParser {
+  constructor(response) {
+    this.reader = response.body.getReader();
+    this.decoder = new TextDecoder();
+    this.partialLine = "";
+  }
+
+  private reader;
+  private decoder: TextDecoder;
+  private partialLine: string;
+
+  async parse(callback) {
+    while (true) {
+      const { done, value } = await this.reader.read();
+      if (done) {
+        // End of stream
+        break;
+      }
+
+      const chunk = this.decoder.decode(value);
+      for (const c of chunk) {
+        if (c === "\n") {
+          const json = JSON.parse(this.partialLine);
+          callback(json);
+          this.partialLine = "";
+        } else {
+          this.partialLine += c;
+        }
+      }
+    }
+    if (this.partialLine) {
+      // Process the last partial line, if any
+      const json = JSON.parse(this.partialLine);
+      callback(json);
+    }
+  }
+}
 
 const isWorker =
   // @ts-ignore

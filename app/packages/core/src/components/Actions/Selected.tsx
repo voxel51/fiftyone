@@ -29,9 +29,9 @@ const useClearSampleSelection = (close) => {
   const setSelected = useSetSelected();
 
   return useRecoilTransaction_UNSTABLE(
-    ({ set }) =>
+    ({ reset }) =>
       () => {
-        set(fos.selectedSamples, new Set());
+        reset(fos.selectedSamples);
         setSelected([]);
         close();
       },

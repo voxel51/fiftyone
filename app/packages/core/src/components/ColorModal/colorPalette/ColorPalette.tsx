@@ -1,16 +1,16 @@
-import React, { useRef, useState } from "react";
-import styled from "styled-components";
-import DeleteIcon from "@material-ui/icons/Delete";
-import AddIcon from "@material-ui/icons/Add";
-import { ChromePicker } from "react-color";
 import * as fos from "@fiftyone/state";
+import AddIcon from "@material-ui/icons/Add";
+import DeleteIcon from "@material-ui/icons/Delete";
+import React, { useRef, useState } from "react";
+import { ChromePicker } from "react-color";
+import styled from "styled-components";
 
+import Checkbox from "../../Common/Checkbox";
 import {
   colorBlindFriendlyPalette,
   fiftyoneDefaultColorPalette,
   isSameArray,
 } from "../utils";
-import Checkbox from "../../Common/Checkbox";
 
 interface ColorPaletteProps {
   maxColors?: number;

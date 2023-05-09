@@ -48,6 +48,6 @@
 }
 
 .lookerHighlight {
-  border: 2px solid var(--joy-palette-primary-plainColor);
+  border: 2px solid var(--fo-palette-primary-plainColor);
   border-radius: 3px;
 }

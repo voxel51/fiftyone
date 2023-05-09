@@ -81,7 +81,6 @@ const Checkbox = <T extends unknown>({
               opacity: muted ? 0.7 : 1,
             }}
             disabled={muted}
-            disableRipple={true}
           />
         )}
 
