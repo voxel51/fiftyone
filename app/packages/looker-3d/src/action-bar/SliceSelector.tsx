@@ -21,7 +21,7 @@ export const SliceSelector = () => {
       return `Showing ${activePcdSlices[0]}`;
     }
     if (activePcdSlices.length === 2) {
-      return activePcdSlices.join(" and ");
+      return `Showing ${activePcdSlices.join(" and ")}`;
     }
     if (activePcdSlices.length === allPcdSlices.length) {
       return "Showing all point clouds";
