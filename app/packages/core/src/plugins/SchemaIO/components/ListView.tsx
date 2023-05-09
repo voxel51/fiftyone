@@ -24,7 +24,6 @@ export default function ListView(props) {
     ...items,
     view: { ...(items?.view || {}), ...itemsView },
   };
-  console.log({ itemsSchema, schema });
   const label = view.label;
   const lowerCaseLabel = label.toLowerCase();
 
