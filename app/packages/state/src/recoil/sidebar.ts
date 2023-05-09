@@ -40,7 +40,7 @@ import { isLargeVideo } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import { getCurrentEnvironment } from "../hooks/useRouter";
-import { dataset, dataset } from "./atoms";
+import { dataset } from "./atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
