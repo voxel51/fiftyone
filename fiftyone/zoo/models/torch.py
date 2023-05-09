@@ -6,7 +6,6 @@ FiftyOne Zoo models provided by :mod:`torchvision:torchvision.models`.
 |
 """
 import inspect
-import logging
 from packaging import version
 import os
 
@@ -18,113 +17,7 @@ import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
-import torch
 import torchvision
-
-
-logger = logging.getLogger(__name__)
-
-
-def load_torch_hub_image_model(repo_or_dir, model, **kwargs):
-    """Loads an image model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
-    :class:`fiftyone.utils.torch.TorchImageModel`.
-
-    Example usage::
-
-        import fiftyone.zoo.models.torch as fozmt
-
-        model = fozmt.load_torch_hub_image_model(
-            "facebookresearch/dinov2",
-            "dinov2_vits14",
-            image_patch_size=14,
-            embeddings_layer="head",
-        )
-
-    Args:
-        repo_or_dir: see :attr:`torch:torch.hub.load`
-        model: see :attr:`torch:torch.hub.load`
-        **kwargs: additional parameters for
-            :class:`fiftyone.utils.torch.TorchImageModelConfig`
-
-    Returns:
-        a :class:`fiftyone.utils.torch.TorchImageModel`
-    """
-    d = {
-        "entrypoint_fcn": load_torch_hub_raw_model,
-        "entrypoint_args": {
-            "repo_or_dir": repo_or_dir,
-            "model": model,
-        },
-    }
-    d.update(**kwargs)
-    config = fout.TorchImageModelConfig(d)
-    return fout.TorchImageModel(config)
-
-
-def load_torch_hub_raw_model(**kwargs):
-    """Loads a raw model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
-    :class:`torch:torch.nn.Module`.
-
-    Args:
-        **kwargs: keyword arguments for :attr:`torch:torch.hub.load`
-
-    Returns:
-        a :class:`torch:torch.nn.Module`
-    """
-    return torch.hub.load(**kwargs)
-
-
-def find_torch_hub_requirements(repo_or_dir, source="github"):
-    """Locates the ``requirements.txt`` file on disk associated with a
-    downloaded `PyTorch Hub <https://pytorch.org/hub>`_ model.
-
-    Args:
-        repo_or_dir: see :attr:`torch:torch.hub.load`
-        source ("github"): see :attr:`torch:torch.hub.load`
-
-    Returns:
-        the path to the requirements file on disk
-    """
-    if source == "github":
-        model_dir = torch.hub._get_cache_or_reload(
-            repo_or_dir,
-            False,
-            True,
-            "",
-            verbose=False,
-            skip_validation=True,
-        )
-    else:
-        model_dir = repo_or_dir
-
-    return os.path.join(model_dir, "requirements.txt")
-
-
-def load_torch_hub_requirements(repo_or_dir, source="github"):
-    """Loads the package requirements from the ``requirements.txt`` file on
-    disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
-    model.
-
-    Args:
-        repo_or_dir: see :attr:`torch:torch.hub.load`
-        source ("github"): see :attr:`torch:torch.hub.load`
-
-    Returns:
-        a list of requirement strings
-    """
-    requirements_path = find_torch_hub_requirements(repo_or_dir, source=source)
-    if not os.path.isfile(requirements_path):
-        logger.warning("No requirements.txt file found for '%s'", repo_or_dir)
-        return []
-
-    requirements = []
-    with open(requirements_path, "r") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                requirements.append(line)
-
-    return requirements
 
 
 class TorchvisionImageModelConfig(
