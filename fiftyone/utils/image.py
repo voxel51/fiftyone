@@ -116,8 +116,7 @@ def reencode_images(
         update_filepaths (True): whether to store the output paths on the
             sample collection
         delete_originals (False): whether to delete the original images after
-            re-encoding. This parameter has no effect if the images are being
-            updated in-place
+            re-encoding
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising
@@ -207,8 +206,7 @@ def transform_images(
         update_filepaths (True): whether to store the output paths on the
             sample collection
         delete_originals (False): whether to delete the original images if any
-            transformation was applied. This parameter has no effect if the
-            images are being updated in-place
+            transformation was applied
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising

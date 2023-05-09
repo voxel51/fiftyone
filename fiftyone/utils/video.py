@@ -151,8 +151,7 @@ def reencode_videos(
         update_filepaths (True): whether to store the output paths on the
             sample collection
         delete_originals (False): whether to delete the original videos after
-            re-encoding. This parameter has no effect if the videos are being
-            updated in-place
+            re-encoding
         skip_failures (False): whether to gracefully continue without raising
             an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
