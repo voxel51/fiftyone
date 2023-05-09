@@ -1,14 +1,13 @@
+import { useTheme } from "@fiftyone/components";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import * as fos from "@fiftyone/state";
+import Editor from "@monaco-editor/react";
 import React, { useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
-import Editor from "@monaco-editor/react";
-import * as fos from "@fiftyone/state";
-
-import { ActionOption } from "../Actions/Common";
-import { useTheme } from "@fiftyone/components";
 import { COLOR_SCHEME } from "../../utils/links";
-import { SectionWrapper } from "./ShareStyledDiv";
+import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
 
 const JSONViewer: React.FC = ({}) => {
@@ -48,6 +47,8 @@ const JSONViewer: React.FC = ({}) => {
     setData(setting);
   }, [setting]);
 
+  const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
+
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
@@ -64,8 +65,15 @@ const JSONViewer: React.FC = ({}) => {
           }}
           svgStyles={{ height: "1rem", marginTop: 7.5 }}
         />
+        {haveChanges && (
+          <Button
+            onClick={onApply}
+            style={{ margin: "0.25rem" }}
+            text="Save Changes"
+            title="Validate color scheme JSON and apply to session color scheme setting"
+          />
+        )}
       </SectionWrapper>
-
       <Editor
         defaultLanguage="json"
         theme={themeMode == "dark" ? "vs-dark" : "vs-light"}
@@ -76,13 +84,6 @@ const JSONViewer: React.FC = ({}) => {
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
-      <div style={{ width: "200px", margin: "0.5rem 1rem" }}>
-        <Button
-          text="Apply color scheme to session"
-          title="Validate color scheme JSON and apply to session color scheme setting"
-          onClick={onApply}
-        />
-      </div>
     </div>
   );
 };

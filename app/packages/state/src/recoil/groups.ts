@@ -155,7 +155,10 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
         return get(activePcdSlices);
       }
 
-      return [get(groupSlice(modal)) || get(defaultGroupSlice)];
+      const defaultCurrentSlice =
+        get(groupSlice(modal)) || get(defaultGroupSlice);
+
+      return defaultCurrentSlice ? [defaultCurrentSlice] : null;
     },
 });
 

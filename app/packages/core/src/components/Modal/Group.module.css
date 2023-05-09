@@ -30,11 +30,11 @@
   overflow: hidden;
   width: 100%;
   height: 100%;
-  border-bottom: 3px solid var(--joy-palette-primary-plainBorder);
+  border-bottom: 3px solid var(--fo-palette-primary-plainBorder);
 }
 
 .groupSampleActive {
-  border-bottom: 3px solid var(--joy-palette-primary-plainColor);
+  border-bottom: 3px solid var(--fo-palette-primary-plainColor);
 }
 
 .lookerPanelOverlayContainer {

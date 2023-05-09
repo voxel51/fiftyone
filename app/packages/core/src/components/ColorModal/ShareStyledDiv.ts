@@ -1,11 +1,5 @@
 import styled from "styled-components";
 
-type ContainerProp = {
-  height: string;
-  width: string;
-  minWidth: string;
-};
-
 export const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -19,7 +13,7 @@ export const ModalWrapper = styled.div`
   background-color: ${({ theme }) => theme.neutral.softBg};
 `;
 
-export const Container = styled.div<ContainerProp>`
+export const Container = styled.div`
   background-color: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   position: relative;
@@ -28,14 +22,22 @@ export const Container = styled.div<ContainerProp>`
   justify-content: start;
   overflow: hidden;
   box-shadow: ${({ theme }) => `0 20px 25px -20px ${theme.background.level1}`};
-  min-width: ${({ minWidth }) => minWidth};
-  width: ${({ width }) => width};
-  height: ${({ height }) => height};
+  width: 80vw;
+  height: 80vh;
 `;
 
-export const DraggableContent = styled.div<ContainerProp>`
-  height: ${({ height }) => `calc(${height} - 6rem)`};
+export const DraggableContent = styled.div`
+  height: calc(80vh - 6rem);
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+`;
+
+export const Display = styled.div`
   overflow: auto;
+  height: 100%;
+  margin: 1rem;
+  flex: 1;
 `;
 
 export const DraggableModalTitle = styled.div`
@@ -46,7 +48,7 @@ export const DraggableModalTitle = styled.div`
   height: 2.5rem;
   background-color: ${({ theme }) => theme.background.level1};
   padding: 2px;
-  cursor: pointer;
+  cursor: move;
   font-weight: 600;
 `;
 
@@ -164,7 +166,7 @@ export const Slider = styled.span`
     width: 26px;
     left: 4px;
     bottom: 4px;
-    background-color: white;
+    background-color: ${({ theme }) => theme.background.level1}};
     transition: 0.4s;
     border-radius: 50%;
   }

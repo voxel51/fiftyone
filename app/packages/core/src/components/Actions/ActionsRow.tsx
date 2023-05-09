@@ -11,6 +11,7 @@ import {
   Wallpaper,
   Search,
   ColorLens,
+  List,
 } from "@mui/icons-material";
 import React, {
   MutableRefObject,
@@ -41,6 +42,9 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import { types, OperatorPlacements } from "@fiftyone/operators";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -284,7 +288,7 @@ const Colors = () => {
 
   const onOpen = () => {
     setOpen(!open);
-    setActiveField("global");
+    setActiveField(ACTIVE_FIELD.global);
   };
 
   useEffect(() => {
@@ -447,20 +451,61 @@ const ActionsRowDiv = styled.div`
   align-items: center;
 `;
 
+export const BrowseOperations = () => {
+  const browser = useOperatorBrowser();
+  return (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={<List />}
+        onClick={() => browser.toggle()}
+        title={"Browse operations"}
+      />
+    </ActionDiv>
+  );
+};
+
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+
+  // if the session color scheme is not applied to the dataset,
+  // check to see if dataset.appConfig has applicable settings
+  useEffect(() => {
+    if (!isUsingSessionColorScheme && datasetColorScheme) {
+      const colorPool =
+        datasetColorScheme.colorPool?.length > 0
+          ? datasetColorScheme.colorPool
+          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const customizedColorSettings =
+        JSON.parse(datasetColorScheme.customizedColorSettings) ??
+        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
+      setSessionColor({
+        colorPool,
+        customizedColorSettings,
+      });
+    }
+  }, [isUsingSessionColorScheme, datasetColorScheme]);
+
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
-      <Options modal={false} />
       <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <BrowseOperations />
+      <Options modal={false} />
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
     </ActionsRowDiv>
   );
 };
@@ -488,6 +533,7 @@ export const ModalActionsRow = ({
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+      <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

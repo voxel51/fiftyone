@@ -1,0 +1,527 @@
+{
+    "type": "object",
+    "view": {
+        "readOnly": true,
+        "component": "ObjectView"
+    },
+    "default": null,
+    "required": false,
+    "properties": {
+        "linear": {
+            "type": "string",
+            "view": {
+                "readOnly": true,
+                "name": "ProgressView",
+                "label": "Loading...",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "variant": "linear",
+                "component": "ProgressView"
+            },
+            "default": null,
+            "required": false
+        },
+        "circular": {
+            "type": "string",
+            "view": {
+                "readOnly": true,
+                "name": "ProgressView",
+                "label": "Loading...",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "variant": "circular",
+                "component": "ProgressView"
+            },
+            "default": null,
+            "required": false
+        },
+        "plot": {
+            "type": "array",
+            "view": {
+                "readOnly": true,
+                "name": "PlotlyView",
+                "label": "PlotX",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": true,
+                "data": null,
+                "config": null,
+                "layout": null,
+                "component": "PlotlyView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "object",
+                "view": {
+                    "readOnly": true,
+                    "component": "ObjectView"
+                },
+                "properties": {}
+            }
+        },
+        "string": {
+            "type": "string",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "String value",
+                "description": null,
+                "caption": null,
+                "space": 3,
+                "placeholder": null,
+                "read_only": null,
+                "component": "LabelValueView"
+            },
+            "default": null,
+            "required": false
+        },
+        "number": {
+            "type": "number",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Number value",
+                "description": null,
+                "caption": null,
+                "space": 3,
+                "placeholder": null,
+                "read_only": null,
+                "component": "LabelValueView"
+            },
+            "default": null,
+            "required": false
+        },
+        "float": {
+            "type": "number",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Float value",
+                "description": null,
+                "caption": null,
+                "space": 3,
+                "placeholder": null,
+                "read_only": null,
+                "component": "LabelValueView"
+            },
+            "default": null,
+            "required": false
+        },
+        "boolean": {
+            "type": "boolean",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Boolean value",
+                "description": null,
+                "caption": null,
+                "space": 3,
+                "placeholder": null,
+                "read_only": null,
+                "component": "LabelValueView"
+            },
+            "default": null,
+            "required": false
+        },
+        "nestedObject": {
+            "type": "object",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Car details",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "component": "ObjectView"
+            },
+            "default": null,
+            "required": false,
+            "properties": {
+                "id": {
+                    "type": "number",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Car ID",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                },
+                "first_name": {
+                    "type": "string",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Owner First Name",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                },
+                "last_name": {
+                    "type": "string",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Owner Last Name",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                },
+                "email": {
+                    "type": "string",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Owner Email",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                },
+                "Year": {
+                    "type": "string",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Year",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                },
+                "Make": {
+                    "type": "string",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Make",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                },
+                "Model": {
+                    "type": "string",
+                    "view": {
+                        "readOnly": true,
+                        "name": "View",
+                        "label": "Model",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "component": "LabelValueView"
+                    },
+                    "default": null,
+                    "required": false
+                }
+            }
+        },
+        "arrayOfStrings": {
+            "type": "array",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "String array",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "component": "TagsView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "string",
+                "view": {
+                    "readOnly": true,
+                    "component": "LabelValueView"
+                }
+            }
+        },
+        "arrayOfNumbers": {
+            "type": "array",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Number array",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "component": "TagsView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "number",
+                "view": {
+                    "readOnly": true,
+                    "component": "LabelValueView"
+                }
+            }
+        },
+        "arrayOfFloats": {
+            "type": "array",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Float array",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "component": "TagsView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "number",
+                "view": {
+                    "readOnly": true,
+                    "component": "LabelValueView"
+                }
+            }
+        },
+        "arrayOfBooleans": {
+            "type": "array",
+            "view": {
+                "readOnly": true,
+                "name": "View",
+                "label": "Boolean array",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "component": "TagsView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "boolean",
+                "view": {
+                    "readOnly": true,
+                    "component": "LabelValueView"
+                }
+            }
+        },
+        "table": {
+            "type": "array",
+            "view": {
+                "readOnly": true,
+                "name": "TableView",
+                "label": "Table",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "columns": [
+                    {
+                        "name": "Column",
+                        "label": "ID",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "key": "id"
+                    },
+                    {
+                        "name": "Column",
+                        "label": "Owner First Name",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "key": "first_name"
+                    },
+                    {
+                        "name": "Column",
+                        "label": "Owner Last Name",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "key": "last_name"
+                    }
+                ],
+                "component": "TableView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "object",
+                "view": {
+                    "readOnly": true,
+                    "component": "ObjectView"
+                },
+                "properties": {
+                    "id": {
+                        "type": "number",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Car ID",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Owner First Name",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Owner Last Name",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "email": {
+                        "type": "string",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Owner Email",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "Year": {
+                        "type": "string",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Year",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "Make": {
+                        "type": "string",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Make",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "Model": {
+                        "type": "string",
+                        "view": {
+                            "readOnly": true,
+                            "name": "View",
+                            "label": "Model",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "LabelValueView"
+                        },
+                        "default": null,
+                        "required": false
+                    }
+                }
+            }
+        }
+    }
+}

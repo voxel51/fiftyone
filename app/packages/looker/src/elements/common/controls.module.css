@@ -15,14 +15,14 @@
   justify-items: center;
   align-items: center;
 
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
 
   width: 100%;
 
-  background-color: var(--joy-palette-background-level3);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
+  background-color: var(--fo-palette-background-level3);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
   border-right: 0;
-  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
 }
 
 .lookerError > .lookerControls {
@@ -52,9 +52,9 @@
 }
 
 .lookerControls button {
-  background: var(--joy-palette-neutral-softBg);
+  background: var(--fo-palette-neutral-softBg);
   border: 0;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   -webkit-border-radius: 3px;
   -moz-border-radius: 3px;
   -o-border-radius: 3px;
@@ -96,15 +96,15 @@
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
-  background: var(--joy-palette-background-level1);
+  background: var(--fo-palette-background-level1);
   outline: 0;
   border: none;
   background: linear-gradient(
     to right,
-    var(--joy-palette-primary-plainColor) 0%,
-    var(--joy-palette-primary-plainColor) var(--progress, 0%),
-    var(--joy-palette-background-level1) var(--progress, 0%),
-    var(--joy-palette-background-level1) 100%
+    var(--fo-palette-primary-plainColor) 0%,
+    var(--fo-palette-primary-plainColor) var(--progress, 0%),
+    var(--fo-palette-background-level1) var(--progress, 0%),
+    var(--fo-palette-background-level1) 100%
   );
   overflow: hidden;
 }
@@ -135,8 +135,8 @@
   top: 50%;
   margin-top: -1.75rem;
   cursor: pointer;
-  background-color: var(--joy-palette-background-button);
-  box-shadow: 0 1px 3px var(--joy-palette-custom-shadowDark);
+  background-color: var(--fo-palette-background-button);
+  box-shadow: 0 1px 3px var(--fo-palette-custom-shadowDark);
   border-radius: 3px;
   z-index: 100;
 }
