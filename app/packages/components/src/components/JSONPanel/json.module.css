@@ -37,7 +37,7 @@
 
 .lookerCloseJSON:hover,
 .lookerCopyJSON:hover {
-  background-color: var(--joy-palette-primary-plainColor);
-  color: var(--joy-palette-text-buttonHighlight);
+  background-color: var(--fo-palette-primary-plainColor);
+  color: var(--fo-palette-text-buttonHighlight);
   transform: translate(0, -1px);
 }

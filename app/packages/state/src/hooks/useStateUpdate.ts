@@ -9,6 +9,7 @@ import {
   _activeFields,
   activePcdSlices,
   dataset as datasetAtom,
+  dynamicGroupSamplesStoreMap,
   extendedSelection,
   filters,
   groupSlice,
@@ -39,6 +40,8 @@ import {
   collapseFields,
   viewsAreEqual,
 } from "../utils";
+
+import { selectedFieldsStageState } from "./useSchemaSettings";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -71,6 +74,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
+          reset(selectedFieldsStageState);
         }
         set(viewAtoms.viewName, state.viewName || null);
       }
@@ -142,6 +146,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
             groups = resolveGroups(dataset);
           }
           reset(_activeFields({ modal: false }));
+          reset(selectedFieldsStageState);
           let slice = dataset.groupSlice;
 
           if (dataset.groupMediaTypes[slice] === "pcd") {
@@ -171,6 +176,10 @@ const useStateUpdate = (ignoreSpaces = false) => {
           reset(extendedSelection);
           reset(filters);
           reset(activePcdSlices);
+
+          // todo: find a way to reset atom family or key by dataset name
+          // reset(dynamicGroupSamplesStoreMap());
+          // reset(viewAtoms.dynamicGroupCurrentElementIndex);
         }
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {

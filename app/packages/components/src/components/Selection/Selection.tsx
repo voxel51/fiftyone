@@ -11,6 +11,7 @@ import { debounce } from "lodash";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
 import { CloseRounded } from "@mui/icons-material";
+import { JoyThemeProvider } from "../ThemeProvider";
 
 const Box = styled.div`
   display: flex;
@@ -66,7 +67,7 @@ type SelectionProps = {
 const VIEW_LIST_MAX_HEIGHT = "300px";
 const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
 
-export default function Selection(props: SelectionProps) {
+function Selection(props: SelectionProps) {
   const {
     items = [],
     headerComponent = null,
@@ -271,5 +272,14 @@ export default function Selection(props: SelectionProps) {
         )}
       </Select>
     </div>
+  );
+}
+
+// fix: wrapped with joy theme provider until component is refactored to use mui
+export default function SelectionWithJoy(props: SelectionProps) {
+  return (
+    <JoyThemeProvider>
+      <Selection {...props} />
+    </JoyThemeProvider>
   );
 }

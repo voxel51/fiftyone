@@ -88,7 +88,11 @@ async def paginate_samples(
         media = root_view.group_media_types[root_view.default_group_slice]
 
     if media == fom.GROUP:
-        media = view.group_media_types[view.group_slice]
+        if view.group_slice is not None:
+            media = view.group_media_types[view.group_slice]
+        else:
+            # todo: this is a temp hack
+            media = fom.IMAGE
 
     # TODO: Remove this once we have a better way to handle large videos. This
     # is a temporary fix to reduce the $lookup overhead for sample frames on

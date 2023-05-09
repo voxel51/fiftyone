@@ -18,6 +18,7 @@ import * as selectors from "./selectors";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import { State } from "./types";
+import { PathEntry, sidebarEntries } from "./sidebar";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -114,24 +115,12 @@ export const pathColor = selectorFamily<
 export const eligibleFieldsToCustomizeColor = selector({
   key: "eligibleFieldsToCustomizeColor",
   get: ({ get }) => {
-    const videoFields = get(
-      schemaAtoms.fields({
-        space: State.SPACE.FRAME,
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-      })
-    );
-    console.info(videoFields);
-    const sampleFields = get(
-      schemaAtoms.fields({
-        space: State.SPACE.SAMPLE,
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-      })
-    );
-    const fields = [...videoFields, ...sampleFields].filter((f) =>
-      VALID_LABEL_TYPES.includes(
-        f?.embeddedDocType?.split(".").slice(-1)[0] ?? ""
-      )
-    );
+    const entries = get(
+      sidebarEntries({ modal: false, loading: false })
+    ).filter(
+      (e) => e.kind == "PATH" && !["_label_tags", "tags"].includes(e.path)
+    ) as PathEntry[];
+    const fields = entries.map((e) => get(schemaAtoms.field(e.path)));
     return fields;
   },
 });

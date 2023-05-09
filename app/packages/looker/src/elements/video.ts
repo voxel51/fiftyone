@@ -121,7 +121,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     this.pause.setAttribute("viewBox", "0 0 24 24");
 
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("fill", "var(--joy-palette-text-secondary)");
+    path.setAttribute("fill", "var(--fo-palette-text-secondary)");
     path.setAttribute("d", "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
     this.pause.appendChild(path);
 
@@ -218,8 +218,8 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
       path.setAttribute(
         "fill",
         this.singleFrame
-          ? "var(--joy-palette-text-tertiary)"
-          : "var(--joy-palette-text-secondary)"
+          ? "var(--fo-palette-text-tertiary)"
+          : "var(--fo-palette-text-secondary)"
       );
       this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
       this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";

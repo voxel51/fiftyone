@@ -1,0 +1,22 @@
+.noRipple span {
+  /* this disables mui's ripple */
+  display: none;
+}
+
+.currentPageInput {
+  text-align: center;
+  border: none;
+  font: inherit;
+  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  background: transparent;
+  outline-width: 0;
+  width: 4em;
+  color: var(--joy-palette-text-primary);
+}
+
+.currentPageInput:focus {
+  border: none;
+  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  background: transparent;
+  outline-width: 0;
+}

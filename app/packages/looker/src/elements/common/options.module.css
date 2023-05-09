@@ -15,11 +15,11 @@
   justify-content: center;
   align-items: center;
   font-weight: bold;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   display: none;
-  background-color: var(--joy-palette-background-level2);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
-  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  background-color: var(--fo-palette-background-level2);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
   border-radius: 3px;
 
   -webkit-touch-callout: none; /* iOS Safari */
@@ -37,9 +37,9 @@
 }
 
 .lookerOptionsInput {
-  background: var(--joy-palette-neutral-softBg);
+  background: var(--fo-palette-neutral-softBg);
   border: 0;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   border-radius: 8px;
 
   -webkit-border-radius: 3px;

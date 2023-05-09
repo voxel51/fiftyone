@@ -3,7 +3,7 @@ import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import { scrollbarStyles } from "./utils";
+import { scrollbarStyles } from "@fiftyone/utilities";
 
 import {
   formatDateTime,
