@@ -3479,7 +3479,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
         for view_doc in self._doc.saved_views:
-            view_doc.delete()
+            if view_doc:
+                view_doc.delete()
 
         self._doc.saved_views = []
         self.save()
@@ -6587,25 +6588,29 @@ def _do_load_dataset(obj, name):
 
 def _delete_dataset_doc(dataset_doc):
     for view_doc in dataset_doc.saved_views:
-        view_doc.delete()
+        if view_doc:
+            view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
-        if run_doc.results is not None:
-            run_doc.results.delete()
+        if run_doc:
+            if run_doc.results is not None:
+                run_doc.results.delete()
 
-        run_doc.delete()
+            run_doc.delete()
 
     for run_doc in dataset_doc.brain_methods.values():
-        if run_doc.results is not None:
-            run_doc.results.delete()
+        if run_doc:
+            if run_doc.results is not None:
+                run_doc.results.delete()
 
-        run_doc.delete()
+            run_doc.delete()
 
     for run_doc in dataset_doc.evaluations.values():
-        if run_doc.results is not None:
-            run_doc.results.delete()
+        if run_doc:
+            if run_doc.results is not None:
+                run_doc.results.delete()
 
-        run_doc.delete()
+            run_doc.delete()
 
     dataset_doc.delete()
 
