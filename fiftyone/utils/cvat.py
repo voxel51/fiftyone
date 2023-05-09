@@ -3599,7 +3599,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def labels_url(self, task_id):
-        # server_version >= 2,4 only
+        # server_version >= 2.4 only
         return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
 
     def jobs_url(self, task_id):
@@ -3691,16 +3691,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             ver = version.Version(response["version"])
             if ver.major != self._server_version.major:
                 logger.warning(
-                    f"CVAT server major versions don't match: {ver.major} vs {self._server_version.major}"
+                    "CVAT server major versions don't match: %s vs %s",
+                    ver.major,
+                    self._server_version.major,
                 )
+
             self._server_version = ver
-            # major version ._server_version[0] set above, assume consistent for now
         except Exception as e:
             logger.debug(
-                f"Couldn't access or parse CVAT server version: {print(e)}"
+                "Failed to access or parse CVAT server version: %s", e
             )
 
-        logger.debug(f"CVAT server version: {self._server_version}")
+        logger.debug("CVAT server version: %s", self._server_version)
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:
@@ -3732,7 +3734,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _make_request(
         self, request_method, url, print_error_info=True, **kwargs
     ):
-        logger.debug(f" {request_method.__name__}: {url}")
         response = request_method(url, verify=False, **kwargs)
         if print_error_info:
             self._validate(response, kwargs)
@@ -3977,13 +3978,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             tasks = []
             for task in val:
                 if isinstance(task, int):
-                    # For CVATv2 servers, task ids are stored directly as an array
+                    # For v2 servers, task ids are stored directly as an array
                     # of integers
                     tasks.append(task)
                 else:
-                    # For CVATv1 servers, project tasks are dictionaries we need to
+                    # For v1 servers, project tasks are dictionaries we need to
                     # exctract "id" from
                     tasks.append(task["id"])
+
         return tasks
 
     def create_task(
@@ -4173,9 +4175,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
             # Video task
             filename = os.path.basename(paths[0])
-            open_file = open(paths[0], "rb")
-            files["client_files[0]"] = (filename, open_file)
-            open_files.append(open_file)
+            f = open(paths[0], "rb")
+            files["client_files[0]"] = (filename, f)
+            open_files.append(f)
         else:
             # Image task
             for idx, path in enumerate(paths):
@@ -4183,10 +4185,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # by filename, so we must give CVAT filenames whose
                 # alphabetical order matches the order of `paths`
                 filename = "%06d_%s" % (idx, os.path.basename(path))
-                fh = open(path, "rb")
-                file_contents = fh.read()
-                fh.close()
-                files["client_files[%d]" % idx] = (filename, file_contents)
+                with open(path, "rb") as f:
+                    files["client_files[%d]" % idx] = (filename, f.read())
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
@@ -4196,9 +4196,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for f in open_files:
                 f.close()
 
-        # @todo is this loop really needed?
-        # AL 20230402 testing on a local cvat server this polling loop does
-        # repeat a few times before jobs show up
+        # It can take a bit for jobs to show up, so we poll
         job_ids = []
         while not job_ids:
             url = self.jobs_url(task_id)
@@ -4211,8 +4209,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     job_resp_json = job_resp_json["results"]
 
             job_ids = [j["id"] for j in job_resp_json]
-
-            time.sleep(1)
+            if not job_ids:
+                time.sleep(1)
 
         if job_assignees is not None:
             num_assignees = len(job_assignees)
