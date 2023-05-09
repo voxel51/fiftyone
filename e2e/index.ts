@@ -4,7 +4,7 @@ import { config as dotEnvConfig } from "dotenv";
 dotEnvConfig({ path: ".env.cypress" });
 
 const runCypress = async () => {
-  const args = ["cypress", "run", "--browser", "chrome", "--headless"];
+  const args = ["cypress", "run", "--browser", "chrome", "--headed"];
 
   const options = await cypress.cli.parseRunArguments([
     ...args,
@@ -26,11 +26,11 @@ const runCypress = async () => {
 
   console.log("cypress options", options);
 
-  // if (!options.headed) {
-  //   throw new Error(
-  //     "Cypress is running in headless mode, but screenshotting doesn't work as expected in this mode with looker. See https://github.com/cypress-io/cypress/issues/15605 for more details."
-  //   );
-  // }
+  if (!options.headed) {
+    throw new Error(
+      "Cypress is running in headless mode, but screenshotting doesn't work as expected in this mode with looker. See https://github.com/cypress-io/cypress/issues/15605 for more details."
+    );
+  }
 
   return cypress.run(options);
 };
