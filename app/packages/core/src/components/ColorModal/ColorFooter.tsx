@@ -1,15 +1,16 @@
-import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-
 import * as fos from "@fiftyone/state";
+import React, { useMemo } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Field } from "@fiftyone/utilities";
 
 import { Button } from "../utils";
 import {
-  ModalActionButtonContainer,
-  LONG_BUTTON_STYLE,
   ButtonGroup,
+  LONG_BUTTON_STYLE,
+  ModalActionButtonContainer,
+  BUTTON_STYLE,
 } from "./ShareStyledDiv";
+import { isDefaultSetting } from "./utils";
 
 const ColorFooter: React.FC = () => {
   const setting = useRecoilValue(fos.sessionColorScheme);
@@ -19,6 +20,7 @@ const ColorFooter: React.FC = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
+  const savedSettings = useRecoilValue(fos.datasetAppConfig).colorScheme;
 
   const onSave = () => {
     setColorScheme(setting.colorPool, setting.customizedColorSettings, true);
@@ -30,16 +32,22 @@ const ColorFooter: React.FC = () => {
     setActiveColorModalField(null);
   };
 
+  const hasSavedSettings = useMemo(() => {
+    if (!savedSettings) return false;
+    if (isDefaultSetting(savedSettings)) return false;
+    return true;
+  }, [savedSettings]);
+
   if (!activeColorModalField) return null;
 
   return (
     <ModalActionButtonContainer>
       <ButtonGroup>
         <Button
-          text={"Reset Colorscheme"}
+          text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => clearSetting(false)}
-          style={LONG_BUTTON_STYLE}
+          style={BUTTON_STYLE}
         />
         {canEdit && (
           <Button
@@ -49,9 +57,9 @@ const ColorFooter: React.FC = () => {
             style={LONG_BUTTON_STYLE}
           />
         )}
-        {canEdit && (
+        {canEdit && hasSavedSettings && (
           <Button
-            text={"Clear saved"}
+            text={"Clear default"}
             title={`Clear`}
             onClick={onClearSave}
             style={LONG_BUTTON_STYLE}

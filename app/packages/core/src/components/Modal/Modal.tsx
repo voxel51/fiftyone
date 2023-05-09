@@ -21,6 +21,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
+import { GroupContextProvider } from "./Group/GroupContextProvider";
 import Sample from "./Sample";
 import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
@@ -70,8 +71,8 @@ const Arrow = styled.span<{ isRight?: boolean }>`
   bottom: 40vh;
   width: 3rem;
   height: 3rem;
-  background-color: var(--joy-palette-background-button);
-  box-shadow: 0 1px 3px var(--joy-palette-custom-shadowDark);
+  background-color: var(--fo-palette-background-button);
+  box-shadow: 0 1px 3px var(--fo-palette-custom-shadowDark);
   border-radius: 3px;
   opacity: 0.6;
   transition: opacity 0.15s ease-in-out;
@@ -296,7 +297,9 @@ const SampleModal = () => {
             )}
             <ErrorBoundary onReset={() => {}}>
               {isGroup ? (
-                <Group lookerRefCallback={lookerRefCallback} />
+                <GroupContextProvider lookerRefCallback={lookerRefCallback}>
+                  <Group />
+                </GroupContextProvider>
               ) : isPcd ? (
                 <Sample3d />
               ) : (

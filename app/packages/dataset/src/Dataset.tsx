@@ -22,6 +22,12 @@ import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import styled from "styled-components";
+import {
+  OperatorBrowser,
+  OperatorInvocationRequestExecutor,
+  OperatorPrompt,
+  OperatorViewModal,
+} from "@fiftyone/operators";
 
 // built-in plugins
 import "@fiftyone/looker-3d";
@@ -31,19 +37,19 @@ import "@fiftyone/embeddings";
 const Container = styled.div`
   width: 100%;
   height: 100%;
-  background: var(--joy-palette-background-level2);
+  background: var(--fo-palette-background-level2);
   margin: 0;
   padding: 0;
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
-  color: var(--joy-palette-text-primary);
+  color: var(--fo-palette-text-primary);
   display: flex;
   flex-direction: column;
   min-width: 660px;
 `;
 const ViewBarWrapper = styled.div`
   padding: 16px;
-  background: var(--joy-palette-background-header);
+  background: var(--fo-palette-background-header);
   display: flex;
 `;
 const CoreDatasetContainer = styled.div`
@@ -131,6 +137,10 @@ export const Dataset: React.FC<DatasetProps> = ({
       </Suspense>
       <div id="modal" />
       <div id="colorModal" />
+      <OperatorBrowser />
+      <OperatorPrompt />
+      <OperatorViewModal />
+      <OperatorInvocationRequestExecutor />
     </Container>
   );
 };
@@ -145,7 +155,6 @@ const HeadersToggle: React.FC<{
       onClick={() => {
         toggleHeaders();
       }}
-      disableRipple
       sx={{ color: (theme) => theme.palette.text.secondary }}
     >
       {hideHeaders && <KeyboardArrowDown />}

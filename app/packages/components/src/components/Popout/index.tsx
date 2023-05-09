@@ -20,7 +20,7 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
 
   return (
     <PopoutDiv
-      style={{ ...show, zIndex: 100001, ...style, right: modal ? 0 : "unset" }}
+      style={{ ...show, zIndex: 100001, right: modal ? 0 : "unset", ...style }}
     >
       {children}
     </PopoutDiv>

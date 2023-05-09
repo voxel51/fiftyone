@@ -14,6 +14,7 @@ import useSchemaSettings, {
 
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
+import { useOutsideClick } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -49,7 +50,12 @@ const Container = styled.div`
 const SchemaSettings = () => {
   const theme = useTheme();
 
+  const schemaModalWrapperRef = useRef<HTMLDivElement>(null);
   const schemaModalRef = useRef<HTMLDivElement>(null);
+
+  useOutsideClick(schemaModalRef, (_) => {
+    close();
+  });
 
   const {
     settingModal,
@@ -71,13 +77,20 @@ const SchemaSettings = () => {
     return null;
   }
 
+  const close = () => {
+    setSearchTerm("");
+    setSearchResults([]);
+    setSettingsModal({ ...settingModal, open: false });
+  };
+
   return (
     <Fragment>
       <ModalWrapper
-        ref={schemaModalRef}
-        onClick={(event) => event.target === schemaModalRef.current}
+        ref={schemaModalWrapperRef}
+        onClick={(event) => event.target === schemaModalWrapperRef.current}
       >
         <Container
+          ref={schemaModalRef}
           style={{
             ...screen,
             zIndex: 10001,
@@ -107,11 +120,7 @@ const SchemaSettings = () => {
                 color: theme.text.primary,
                 cursor: "pointer",
               }}
-              onClick={() => {
-                setSearchTerm("");
-                setSearchResults([]);
-                setSettingsModal({ ...settingModal, open: false });
-              }}
+              onClick={() => close()}
             />
           </Box>
           <Box
