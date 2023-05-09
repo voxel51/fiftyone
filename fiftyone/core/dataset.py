@@ -16,7 +16,7 @@ import os
 import random
 import string
 
-from bson import json_util, ObjectId
+from bson import json_util, ObjectId, DBRef
 import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
@@ -3478,7 +3478,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
-        for view_doc in self._doc.get_saved_views():
+        for view_doc in self._doc.saved_views:
+            if isinstance(view_doc, DBRef):
+                continue
+
             view_doc.delete()
 
         self._doc.saved_views = []
@@ -3486,7 +3489,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _delete_saved_view(self, name):
         view_doc = self._get_saved_view_doc(name, pop=True)
-        if view_doc:
+        if not isinstance(view_doc, DBRef):
             view_id = str(view_doc.id)
             view_doc.delete()
         else:
@@ -6586,22 +6589,34 @@ def _do_load_dataset(obj, name):
 
 
 def _delete_dataset_doc(dataset_doc):
-    for view_doc in dataset_doc.get_saved_views():
+    for view_doc in dataset_doc.saved_views:
+        if isinstance(view_doc, DBRef):
+            continue
+
         view_doc.delete()
 
-    for run_doc in dataset_doc.get_annotation_runs().values():
+    for run_doc in dataset_doc.annotation_runs.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
         if run_doc.results is not None:
             run_doc.results.delete()
 
         run_doc.delete()
 
-    for run_doc in dataset_doc.get_brain_methods().values():
+    for run_doc in dataset_doc.brain_methods.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
         if run_doc.results is not None:
             run_doc.results.delete()
 
         run_doc.delete()
 
-    for run_doc in dataset_doc.get_evaluations().values():
+    for run_doc in dataset_doc.evaluations.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
         if run_doc.results is not None:
             run_doc.results.delete()
 
