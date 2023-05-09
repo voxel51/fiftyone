@@ -1062,3 +1062,8 @@ class ProgressView(View):
 
     def to_json(self):
         return {**super().to_json(), "variant": self.variant}
+
+
+class ImageView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
