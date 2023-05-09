@@ -84,7 +84,7 @@ export const tagStatistics = selectorFamily<
           groupData: get(isGroup)
             ? {
                 id: modal ? get(groupId) : null,
-                slice: get(currentSlice(modal)),
+                slices: [get(currentSlice(modal))],
                 mode: get(groupStatistics(modal)),
               }
             : null,
@@ -166,7 +166,7 @@ export const tagParameters = ({
   activeFields: string[];
   groupData: {
     id: string | null;
-    slice: string | null;
+    slices: string[] | null;
     mode: "group" | "slice";
   } | null;
   targetLabels: boolean;
@@ -178,7 +178,7 @@ export const tagParameters = ({
 
   const getSampleIds = () => {
     if (shouldShowCurrentSample && !groups) {
-      if (groupData?.slice) {
+      if (groupData?.slices) {
         return null;
       }
       return [sampleId];
@@ -192,7 +192,7 @@ export const tagParameters = ({
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    slice: !groups ? groupData?.slice : null,
+    slices: !groups ? groupData?.slices : null,
     group_id: params.modal ? groupData?.id : null,
     sample_ids: getSampleIds(),
     labels:

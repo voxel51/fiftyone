@@ -5,13 +5,172 @@ FiftyOne Plugins
 
 .. default-role:: code
 
-FiftyOne provides a plugin system that you can use to customize and extend its
-behavior!
+In the context of FiftyOne, a plugin is a powerful way to extend and customize the functionality of the tool to suit your specific needs. At its core, a plugin consists of Operators and Components.
 
-This page describes how to develop, publish, and install custom plugins.
+Operators are user-facing operations that allow you to interact with the data in your dataset. They can range from simple actions like checking a checkbox to more complex workflows such as requesting annotation of samples from a configurable backend. Operators can even be composed of other operators or be used to add functionality to custom Panels and Visualizers.
 
-Configuring your plugin directory
----------------------------------
+Components, on the other hand, are responsible for rendering and event handling. They provide the necessary functionality to display and interact with your plugin in the FiftyOne App. Components also implement form inputs and output rendering for Operators, making it possible to customize the way an operator is rendered in the FiftyOne App.
+
+Together, Operators and Components form the building blocks of a plugin, enabling you to tailor FiftyOne to your specific use case and workflow. Whether you're working with images, videos, or other data types, a plugin can help you streamline your machine learning workflows and achieve better results.
+
+What you can and cannot do with plugins?
+----------------------------------------
+
+Plugins in FiftyOne are a powerful way to extend and customize the functionality of the tool to suit your specific needs. With plugins, you can add new functionality to the FiftyOne App, render custom panels, and add custom buttons to menus. You can even add custom options to built-in options with Operators and execute custom Python code.
+
+However, there are also certain limitations to keep in mind when working with plugins. For example, plugins cannot add functionality to the SDK or trigger app functionality directly from a Python session or notebook. You also cannot customize built-in menus or options, or override the sidebar, viewbar, or samples grid.
+
+Despite these limitations, plugins still offer a wide range of possibilities for customizing your FiftyOne experience. Whether you're looking to add your own panel, customize how samples are visualized or streamline your workflows.
+
+Python and JavaScript Plugins
+-----------------------------
+
+FiftyOne supports two types of plugins: JS Plugins and Python Plugins.
+
+JS Plugins are built using the @fiftyone TypeScript packages, npm packages, and your own TypeScript. They consist of Operators, Panels, Visualizers, and Components. Panels are a blank canvas that JS Plugins can use to render content, while Visualizers allow JS Plugins to override the built-in sample visualizer.
+
+On the other hand, Python Plugins are built using the FiftyOne Python SDK, pip packages, and your own Python. Python plugins can only define Operators.
+
+Component Types
+---------------
+
+Plugins may register components to add or customize functionality within the FiftyOne App. Each component is registered with an activation function. The component will only be considered for rendering when the activation function returns true.
+
+ - :class:`Panel` - JS plugins can register a panel component, that is available from the “new panel” action menu
+ - :class:`Visualizer` - JS plugins can register a component that will override the built in visualizer (when active)
+ - :class:`Component` - JS plugins can register generic components that can be used to render operator input and output
+
+Plugin Settings
+---------------
+
+Python and JS plugins can read their settings at the dataset scope or app scope, allowing users to configure plugins in ways that match their workflows. This allows for settings that may correspond to data such as the default camera position in the Looker3D plugin.
+
+Operators
+---------
+
+Operators are a powerful feature in FiftyOne that allow plugin developers to define custom operations that can be executed by users of the FiftyOne App. They can be defined in either Python or JS, and are typically triggered by the user clicking a button or using the Operator Browser. Operators can execute other operators and custom code with custom dependencies.
+
+The Operator Browser allows users to search through all available operations without having to find them in a menu or remember the corresponding keyboard shortcuts. You can open the Operator Browser using the "\`" key or by clicking on the Operator Browser icon in the Samples Grid.
+
+Instead of building a user interface from scratch, Operators are built using Operator Types, which define the input and output properties of the operator. At runtime, these types are used to facilitate the execution of the operation by collecting information from the user, validating the user input, and executing the operation. The execution step is the only required step; all other steps are optional and can be customized as needed.
+
+Operators can be composed for coordination between Python and the Fiftyone App, such as triggering a reload of samples/view to update the app with the changes made by the operator. Operators can also be executed from code and triggered by other operators.
+
+Operator Inputs and Outputs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An operator consists of a Definition and a method that executes the operation. The Definition object defines the input and output properties of the operator using Operator Types. At runtime the Definition object is used to facilitate the execution of the operation by a user in the following basic steps:
+
+1. Render a prompt to collect information from the user needed to execute the operation
+2. As the user inputs information, and based on the user input aka “params”
+   a. Resolve the definition of the input, allowing the form to change based on the user input
+   b. Validate the user input
+3. Execute the operation
+   a. Return a “result”
+4. Resolve the output definition based on the params and result of the operation
+5. Render the output
+
+
+Besides step 3, the execution step, all of the above steps will depend on the details of the operator implementation and are optional.
+
+Operator Types
+~~~~~~~~~~~~~~
+
+:mod:`Python API Reference <fiftyone.operators.types>`
+:mod:`Typescript API Reference <@fiftyone/operators>`
+
+The operator definition is constructed using the types defined below. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
+
+.. code-block:: python
+
+    inputs = types.Object()
+    choices = types.RadioGroup(label="Choose a Color")
+    choices.add("red", label="Red")
+    choices.add("blue", label="Blue")
+    inputs.enum("color", choices.values(), view=choices)
+
+Operator Composition
+~~~~~~~~~~~~~~~~~~~~
+
+Operators in FiftyOne are used to execute operations on datasets and samples, and can return meaningful results. Operators can be used for a variety of use cases, including querying datasets, mutating samples, and triggering external orchestrations.
+
+In some cases, coordination between operators is necessary. For example, when a Python operator requires some code to be executed in the app after its own execution. In such cases, an operator can trigger another operator to be executed using the ctx.trigger() method of the ExecutionContext. This is commonly used to reload samples/views and update the app with the changes made by the operator.
+
+Operator Exceptions
+~~~~~~~~~~~~~~~~~~~
+
+When an operator’s execute() method throws an error it will be returned to the browser and display as a result.
+
+Executing Operators from Code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Regardless of operator type, all operators can be executed from code. For example, a python operator can be executed from JS. To execute an operator you must provide an object that matches the properties the operator defines. When an operator is executed via UI, that object and the execution of that operator is handled by the plugin system.
+
+ - JS to JS
+ - JS to Py
+ - JS to Py to JS
+ - NOT JS to Py to Py
+ - NOT Py to Py
+ - NOT Py to JS
+
+Placements (Menus and Options)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following images and titles correspond to the available menu ids. MenuItem operators are appended to the specified menu id.
+
+ - SampleActions
+ - SampleModalActions
+
+Plugin Runtime
+--------------
+
+How are plugins executed?
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In JS, plugins are loaded from the FIFTYONE_PLUGINS_DIR into the browser. The fiftyone app server finds these plugins by looking for package.json files that include fiftyone as a property. This fiftyone property describes where the plugin executable (dist) is.
+
+For Python plugins there are two ways to execute a plugin.
+
+
+Python Local Execution
+~~~~~~~~~~~~~~~~~~~~~~
+
+When running the fiftyone app server locally, the plugin server is executed as a subprocess. This subprocess is a python process that runs the plugin server. The plugin server is responsible for loading plugins and executing them. The plugin server is only accessible via ipc. Its interface (similar to JSON rpc) allows for functions to be called over inter process communication. This allows for user python code to be isolated from core code. It also allows for the operating system to manage the separate process as it exists in the same process tree as the root fiftyone, ipython, or even Jupyter process.
+
+As part of running the fiftyone app server (either locally or in the teams environment) a sub process is executed called the plugin server. This server is only accessible via ipc. Its interface (similar to JSON rpc) allows for functions to be called over inter process communication. This allows for user python code to be isolated from core code. It also allows for the operating system to manage the separate process as it exists in the same process tree as the root fiftyone, ipython, or even Jupyter process.
+
+Executing Brain Methods and other Long Running Operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In Fiftyone Teams environments, python operators may still use local execution for simple operations such as queries, tagging, mutating samples, annotation runs, short imports or exports. However for most interesting operations (computing similarity or mistakenness, computing visualizations), long running task orchestration is required. For this we recommend Apache Airflow, although similar tools can be used instead.
+
+A typical long running operation would look like this:
+
+1. Operators are registered in the local execution environment
+2. Browser fetches description of all registered operators
+3. Browser requests execution of a long running operator
+4. Local execution environment executes the operator
+5. Operator makes API request to airflow or another data orchestration platform to schedule a long running task
+   a. Operator returns a unique identifier, that is used to reference this long running task
+6. Browser requests updates on status via an operator that in turn calls the airflow status API
+    a. Browser correlates the previous execution using unique identifier it stored earlier
+    b. Browser displays status of all relevant tasks
+
+Fiftyone Teams
+--------------
+
+Plugin Management
+~~~~~~~~~~~~~~~~~
+
+Using Fiftyone teams, administrators can upload a zip file containing their JS or Python plugins. After a plugin is created within Fiftyone Teams, an administrator can enable or disable the plugin. They can also define permissions required to execute python operators.
+
+Permissions
+~~~~~~~~~~~
+
+Python operators are listed based on the role defined by the administrator who configured the operators access. In order for a user to execute a python operator, the user will also need the dataset permission defined by the administrator.
+
+Setting up your Plugin Directory
+--------------------------------
 
 First, create a directory where you want to store your plugins.
 
@@ -41,7 +200,7 @@ restart it to pick up this new setting.
 Installing plugins manually
 ---------------------------
 
-Fiftyone will try and find your plugin's `package.json` file within the plugin
+Fiftyone will try and find your plugin's `fiftyone.yaml` file within the plugin
 directory described above. Below is an example of a typical plugin directory.
 
 .. code-block:: text
@@ -49,14 +208,14 @@ directory described above. Below is an example of a typical plugin directory.
     /my-fiftyone-plugins
       /my-plugin-1
         /package.json
+        /fiftyone.yaml
         /dist
           /my-plugin.min.js
       /my-plugin-2
-        /package.json
-        /dist
-          /my-plugin2.min.js
+        /fiftyone-plugin.yaml
+        /__init__.py
 
-In order to manually install a plugin, you must copy the plugin's directory
+In order to manually install a plugin, you must copy the plugin's source directory
 into your plugin directory so that it matches the structure above.
 
 If your FiftyOne App server is already running, you should restart the server
@@ -64,52 +223,13 @@ and refresh any connected browser clients to see the plugins show up.
 
 .. note::
 
-    If you do not see your plugin, make sure the `package.json` file is
-    present and has the appropriate `fiftyone.script` setting described below.
+    If you do not see your plugin, make sure the `fiftyone.yaml` file is
+    present and defines all operators (python) and scripts (js).
 
-Installing plugins with a package manager or git
-------------------------------------------------
+Installing plugins via CLI or Python
+------------------------------------
 
-In order to install plugins with a package manager, you must have one of the
-following tools available in the environment you are running FiftyOne:
-
--   `npm`
--   `yarn`
--   `git` - if installing from a git repo
-
-Once you have a plugins directory setup, you must create a shell package to
-version your plugins:
-
-.. code-block:: shell
-
-    cd $FIFTYONE_PLUGINS_DIR
-
-    yarn init
-
-    # or with npm
-    npm init
-
-Now you can install a node package that contains a plugin:
-
-.. code-block:: shell
-
-    # if it is avaialable on plubic/private npm registry
-    yarn add my-fiftyone-plugin
-
-    # or with npm
-    npm install my-fiftyone-plugin --save
-
-If your plugin is only available in a git repository, you can still install via
-git, although the environment must be configured to allow reading from that git
-repository:
-
-.. code-block:: shell
-
-    # install via a github http url
-    yarn add my-plugin@https://github.com/user/my-plugin.git#my-branch-name
-
-    # install via ssh/repo
-    yarn add ssh://github.com/user/my-plugin#my-branch
+TBD
 
 Configuring plugins
 -------------------
@@ -197,39 +317,85 @@ You should now have a running FiftyOne server and App, including your plugin.
 Publishing your plugin
 ----------------------
 
-You can publish your plugin to either a public/private npm registry or a git
-repository. Including your package.json and built (dist) files is required for
-both. No other files are required to be published with your plugin.
-
-Before publishing make sure you do the following:
-
--   Login to the registry you are trying to publish to
--   OR use a `.npmrc` to include private registry credentials
--   Have the correct name, version, etc in your package.json
--   Have a built plugin `dist` directory
--   Your `package.json` points to the plugin entry point
-
-Then to publish your latest plugin to an npm registry:
-
-.. code-block:: shell
-
-    yarn publish
-
-    # or with npm
-    npm publish
-
-If you are using a git repository to publish your plugins, you must ensure that
-you include the `dist` directory when pushing to the remote repo.
+TBD
 
 How to write plugins
 --------------------
 
 Below are introductory examples to the FiftyOne plugin API.
 
-Hello world
-~~~~~~~~~~~
+Hello world Operator - Python
+~~~~~~~~~~~~~~~~~~~~
 
-A simple hello world plugin, that renders "hello world" in a panel, would look
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HelloWorld(foo.Operator):
+        def __init__(self):
+            super().__init__(
+                "hello_world",
+                "Hello World"
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.str("message", label="Message", default="Hello")
+            return types.Property(inputs, label="My Hello World Operator")
+
+        def execute(self, ctx):
+            return {
+                "message": f"{ctx.params.get("message")} World!"
+            }
+
+        def resolve_output(self, ctx):
+            outputs = types.Object()
+            outputs.str("message", label="Message")
+            return types.Property(outputs, label="Success!")
+
+
+Hello world Operator - JS
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: typescript
+
+    import * as foo from "@fiftyone/operators";
+    const types = foo.types;
+
+    class HelloWorld extends foo.Operator {
+        constructor() {
+            super(
+                "hello_world",
+                "Hello World"
+            );
+            // You must provide your plugin name to ensure the uniqueness of this operator.uri
+            this.pluginName = "@fiftyone/example-plugin";
+        }
+
+        resolveInput(ctx: foo.ExecutionContext) {
+            const inputs = new types.ObjectType()
+            inputs.str("message", {label: "Message", default: "Hello"})
+            return new types.Property(inputs, {label: "My Hello World Operator"})
+        }
+
+        execute(ctx: foo.ExecutionContext) {
+            return {
+                message: `${ctx.params.get("message")} World!`
+            }
+        }
+
+        resolveOutput(ctx: foo.ExecutionContext) {
+            const outputs = new types.ObjectType()
+            outputs.str("message", {label: "Message"})
+            return new types.Property(outputs, {label: "Success!"})
+        }
+    }
+
+Hello world Panel - JS
+~~~~~~~~~~~~~~~~
+
+A simple hello world JS plugin, that renders "hello world" in a panel, would look
 like this:
 
 .. code-block:: jsx
@@ -337,22 +503,22 @@ Adding a custom Plot
     The `PluginComponentType.Plot` type is deprecated. Use
     `PluginComponentType.Panel` instead.
 
-Reacting to state changes
-~~~~~~~~~~~~~~~~~~~~~~~~~
+.. Reacting to state changes
+.. ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: jsx
+.. .. code-block:: jsx
 
-    import * as fos from '@fiftyone/state'
-    import * as recoil from 'recoil'
+..     import * as fos from '@fiftyone/state'
+..     import * as recoil from 'recoil'
 
-    // this example demonstrates handling updates to
-    // filters/sidebar, but applies to everything
-    // listed under "state" below
-    function MyPlugin() {
-      const activeFields = recoil.useRecoilValue(fos.activeFields)
+..     // this example demonstrates handling updates to
+..     // filters/sidebar, but applies to everything
+..     // listed under "state" below
+..     function MyPlugin() {
+..       const activeFields = recoil.useRecoilValue(fos.activeFields)
 
-      return <ul>{activeFields.map(f => <li>{f.name}</li>)}
-    }
+..       return <ul>{activeFields.map(f => <li>{f.name}</li>)}
+..     }
 
 Interactivity and state
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -536,8 +702,4 @@ In a FiftyOne plugin this same query can be performed using the
    :hidden:
 
    Overview <self>
-   @fiftyone/state <api/fiftyone.state>
-   @fiftyone/plugins <api/fiftyone.plugins>
-   @fiftyone/aggregations <api/fiftyone.aggregations>
-   @fiftyone/relay <api/fiftyone.relay>
-   @fiftyone/utils <api/fiftyone.utils>
+   Typescript API <ts-api>

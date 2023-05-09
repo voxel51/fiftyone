@@ -222,7 +222,7 @@ export const getColor = (
   seed: number,
   fieldOrValue: string | number | boolean | null
 ) => {
-  return createColorGenerator(pool, seed)(fieldOrValue);
+  return createColorGenerator(pool ?? default_app_color, seed)(fieldOrValue);
 };
 
 // a function to convert a hex color to a rgb color
@@ -236,3 +236,19 @@ export const hexToRgb = (hex: string): RGB => {
       ]
     : null;
 };
+
+const default_app_color = [
+  "#ee0000",
+  "#ee6600",
+  "#993300",
+  "#996633",
+  "#999900",
+  "#009900",
+  "#003300",
+  "#009999",
+  "#000099",
+  "#0066ff",
+  "#6600ff",
+  "#cc33cc",
+  "#777799",
+];

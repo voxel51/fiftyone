@@ -9,6 +9,7 @@ import {
 } from "recoil";
 import {
   DICT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -22,12 +23,14 @@ import {
 
 import * as aggregationAtoms from "./aggregations";
 import {
+  buildFlatExtendedSchema,
   buildSchema,
   field,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
+  schemaReduce,
 } from "./schema";
 
 import { State } from "./types";
@@ -37,6 +40,7 @@ import { isLargeVideo } from "./options";
 import { commitMutation, VariablesOf } from "react-relay";
 import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import { getCurrentEnvironment } from "../hooks/useRouter";
+import { dataset, dataset } from "./atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -277,7 +281,14 @@ export const resolveGroups = (
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
     .forEach((name) => {
       const fieldPaths = (fields[name].fields || [])
-        .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
+        .reduce(
+          fieldsReducer([
+            ...VALID_PRIMITIVE_TYPES,
+            EMBEDDED_DOCUMENT_FIELD,
+            LIST_FIELD,
+          ]),
+          []
+        )
         .map((subfield) => `${name}.${subfield}`)
         .filter((path) => !present.has(path));
 
@@ -337,13 +348,14 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true, persist = true }) =>
+    ({ modal, loading, filtered = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
+
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
@@ -588,33 +600,19 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
-    paths = [
-      ...paths,
-      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
-        (path) => !get(field(path)).subfield
-      ),
-    ];
-
-    get(
-      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
-    ).forEach(({ fields, name: prefix }) => {
-      Object.values(fields)
-        .filter(
-          ({ ftype, subfield }) =>
-            ftype === DICT_FIELD ||
-            subfield === DICT_FIELD ||
-            (ftype === LIST_FIELD && !subfield)
-        )
-        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
-    });
+    const ds = get(dataset);
+    const schema = buildFlatExtendedSchema(
+      ds?.sampleFields?.reduce(schemaReduce, {})
+    );
+    const paths = Object.keys(schema)
+      ?.filter((fieldPath) => schema[fieldPath]?.ftype === DICT_FIELD)
+      .map((fieldPath) => fieldPath);
 
     get(fields({ space: State.SPACE.FRAME })).forEach(
       ({ name, embeddedDocType }) => {
         if (LABELS.includes(embeddedDocType)) {
           return;
         }
-
         paths.push(`frames.${name}`);
       }
     );

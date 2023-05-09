@@ -86,6 +86,11 @@ export function isRgbMaskTargets(
   return Object.keys(maskTargets)[0]?.startsWith("#") === true;
 }
 
+// Return true is string is a valid color
+export function isValidColor(color: string): boolean {
+  return CSS.supports("color", color);
+}
+
 export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
   if (!maskTargets || !isRgbMaskTargets(maskTargets)) {
     return maskTargets;

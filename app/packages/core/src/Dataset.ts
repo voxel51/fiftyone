@@ -57,6 +57,10 @@ export const DatasetNodeQuery = graphql`
           name
         }
         sidebarMode
+        colorScheme {
+          colorPool
+          customizedColorSettings
+        }
       }
       sampleFields {
         ftype

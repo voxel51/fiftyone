@@ -32,7 +32,9 @@ class Samples(HTTPEndpoint):
             filters,
             page_length,
             (page - 1) * page_length - 1,
-            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(slices=[slice] if slice else None)
+            ),
             extended_stages=extended,
         )
 

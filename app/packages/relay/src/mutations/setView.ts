@@ -121,6 +121,10 @@ export default r(graphql`
             paths
           }
           sidebarMode
+          colorScheme {
+            colorPool
+            customizedColorSettings
+          }
         }
       }
       view

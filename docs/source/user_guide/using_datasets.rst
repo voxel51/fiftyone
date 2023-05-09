@@ -1368,19 +1368,22 @@ Media type is inferred from the
 as per the table below:
 
 .. table::
-    :widths: 30 30 40
+    :widths: 35 30 35
 
-    +------------+----------------+-------------------------------------------+
-    | MIME type  | `media_type`   | Description                               |
-    +============+================+===========================================+
-    | `image/*`  | `image`        | Image sample                              |
-    +------------+----------------+-------------------------------------------+
-    | `video/*`  | `video`        | Video sample                              |
-    +------------+----------------+-------------------------------------------+
-    | other      | `-`            | Generic sample                            |
-    +------------+----------------+-------------------------------------------+
+    +---------------------+----------------+----------------------------------+
+    | MIME type/extension | `media_type`   | Description                      |
+    +=====================+================+==================================+
+    | `image/*`           | `image`        | Image sample                     |
+    +---------------------+----------------+----------------------------------+
+    | `video/*`           | `video`        | Video sample                     |
+    +---------------------+----------------+----------------------------------+
+    | `*.pcd`             | `point-cloud`  | Point cloud sample               |
+    +---------------------+----------------+----------------------------------+
+    | other               | `-`            | Generic sample                   |
+    +---------------------+----------------+----------------------------------+
 
 .. note::
+
     The `filepath` of a sample can be changed after the sample is created, but
     the new filepath must have the same media type. In other words,
     `media_type` is immutable.
@@ -2532,13 +2535,31 @@ attributes and rendered as such in the App:
         'occluded': [False, False, True, False],
     }>
 
+If your keypoints have semantic meanings, you can
+:ref:`store keypoint skeletons <storing-keypoint-skeletons>` on your dataset to
+encode the meanings.
+
+If you are working with keypoint skeletons and a particular point is missing or
+not visible for an instance, use nan values for its coordinates:
+
+.. code-block:: python
+    :linenos:
+
+    keypoint = fo.Keypoint(
+        label="rectangle",
+        points=[
+            (0.3, 0.3),
+            (float("nan"), float("nan")),  # use nan to encode missing points
+            (0.7, 0.7),
+            (0.3, 0.7),
+        ],
+    )
+
 .. note::
 
-    Did you know? You can
-    :ref:`store keypoint skeletons <storing-keypoint-skeletons>` for your
-    keypoint fields on your dataset. Then, when you view the dataset in the
-    App, label strings and edges will be drawn when you visualize these fields
-    in the App.
+    Did you know? When you view datasets with
+    :ref:`keypoint skeletons <storing-keypoint-skeletons>` in the App, label
+    strings and edges will be drawn when you visualize the keypoint fields.
 
 .. _semantic-segmentation:
 
