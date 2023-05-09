@@ -2030,8 +2030,11 @@ def _get_region(fs, bucket):
     client = _get_default_client(fs)
 
     try:
-        resp = client._client.get_bucket_location(Bucket=bucket)
-        return resp["LocationConstraint"] or "us-east-1"
+        # This is the AWS recommended way to determine a bucket's region
+        # It requires the `s3:ListBucket` action
+        resp = client._client.head_bucket(Bucket=bucket)
+        headers = resp["ResponseMetadata"]["HTTPHeaders"]
+        return headers.get("x-amz-bucket-region", "us-east-1")
     except:
         return _UNKNOWN_REGION
 
