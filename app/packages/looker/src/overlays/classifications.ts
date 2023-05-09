@@ -21,7 +21,7 @@ import {
   RegularLabel,
   SelectData,
 } from "./base";
-import { sizeBytes } from "./util";
+import { isValidColor, sizeBytes } from "./util";
 
 export interface Classification extends RegularLabel {}
 
@@ -49,17 +49,57 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    const key =
+    let pool;
+    let key =
       label._cls === REGRESSION
         ? field
         : state.options.coloring.byLabel
         ? label.label
         : field;
-    return getColor(
-      state.options.coloring.pool,
-      state.options.coloring.seed,
-      key
-    );
+    const { coloring, customizeColorSetting } = state.options;
+    const f = field.startsWith("frames.")
+      ? field.slice("frames.".length)
+      : field;
+    switch (coloring.by) {
+      case "field":
+        // check if the field has a customized color, use it if it is a valid color
+        const fieldSetting = customizeColorSetting.find((s) => s.field === f);
+        const useFieldColor = fieldSetting?.useFieldColor;
+        const fieldColor = fieldSetting?.fieldColor;
+        if (useFieldColor && fieldColor && isValidColor(fieldColor)) {
+          return fieldColor;
+        }
+
+        // use default settings
+        return getColor(coloring.pool, coloring.seed, key);
+
+      default:
+      case "value":
+        // check if the field has customized setting
+        const setting = customizeColorSetting.find((s) => s.field === f);
+        if (setting) {
+          key = setting.attributeForColor ?? key;
+          pool = setting.colors?.every((c) => isValidColor(c))
+            ? setting.colors
+            : coloring.pool;
+          // check if this label has a assigned color, use it if it is a valid color
+
+          const labelColor = setting.labelColors?.find(
+            (l) => l.name == label[key]?.toString()
+          )?.color;
+
+          if (isValidColor(labelColor)) {
+            return labelColor;
+          } else {
+            // fallback to use label as default attribute
+            key = "label";
+          }
+        } else {
+          key = "label";
+          pool = coloring.pool;
+        }
+        return getColor(pool, coloring.seed, label[key]);
+    }
   }
 
   isShown(state: Readonly<State>): boolean {
