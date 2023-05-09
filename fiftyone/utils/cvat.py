@@ -6,21 +6,23 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import math
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import math
 import multiprocessing
 import multiprocessing.dummy
 import os
+import time
 import warnings
 import webbrowser
 
 from bson import ObjectId
 import jinja2
 import numpy as np
+from packaging import version
 import requests
 import urllib3
 
@@ -3525,7 +3527,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def base_api_url(self):
-        if self._server_version[0] == 1:
+        if self._server_version.major == 1:
             return "%s/api/v1" % self.base_url
 
         return "%s/api" % self.base_url
@@ -3597,17 +3599,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def labels_url(self, task_id):
-        # server_version (2,4) only
+        # server_version >= 2,4 only
         return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
 
     def jobs_url(self, task_id):
-        if self._server_version == (2, 4):
+        if self._server_version >= version.Version("2.4"):
             return "%s/jobs?task_id=%d" % (self.base_api_url, task_id)
         else:
             return "%s/jobs" % self.task_url(task_id)
 
     def job_url(self, task_id, job_id):
-        if self._server_version == (2, 4):
+        if self._server_version >= version.Version("2.4"):
             return self.taskless_job_url(job_id)
         else:
             return "%s/%d" % (self.jobs_url(task_id), job_id)
@@ -3635,13 +3637,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def assignee_key(self):
-        if self._server_version[0] == 1:
+        if self._server_version.major == 1:
             return "assignee_id"
 
         return "assignee"
 
     def _parse_reviewers(self, job_reviewers):
-        if self._server_version[0] == 2 and job_reviewers is not None:
+        if self._server_version.major > 1 and job_reviewers is not None:
             logger.warning("CVAT v2 servers do not support `job_reviewers`")
             return None
 
@@ -3669,7 +3671,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
-        self._server_version = (2, None)
+        self._server_version = version.Version("2")
 
         try:
             self._login(username, password)
@@ -3677,7 +3679,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if e.response.status_code != 404:
                 raise e
 
-            self._server_version = (1, None)
+            self._server_version = version.Version("1")
             self._login(username, password)
 
         self._add_referer()
@@ -3686,13 +3688,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         try:
             response = self.get(self.about_url).json()
             toks = response["version"].split(".")
-            major_ver = int(toks[0])
-            minor_ver = int(toks[1])
-            if major_ver != self._server_version[0]:
+            ver = version.Version(response["version"])
+            if ver.major != self._server_version.major:
                 logger.warning(
-                    f"CVAT server major versions don't match: {major_ver} vs {self._server_version[0]}"
+                    f"CVAT server major versions don't match: {ver.major} vs {self._server_version.major}"
                 )
-            self._server_version = (major_ver, minor_ver)
+            self._server_version = ver
             # major version ._server_version[0] set above, assume consistent for now
         except Exception as e:
             logger.debug(
@@ -3720,7 +3721,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.post,
             self.login_url,
             print_error_info=False,
-            data={"username": username, "password": password},
+            json={"username": username, "password": password},
         )
 
         if "csrftoken" in response.cookies:
@@ -3911,7 +3912,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of project IDs
         """
         return self._get_paginated_results(
-            self.projects_url, self.projects_page_url, value="id"
+            self.projects_url, get_page_url=self.projects_page_url, value="id"
         )
 
     def project_exists(self, project_id):
@@ -3969,8 +3970,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         resp = self.get(self.project_url(project_id)).json()
         val = resp.get("tasks", [])
 
-        if self._server_version == (2, 4):
-            tasks = self._get_paginated_results_2(val["url"])
+        if self._server_version >= version.Version("2.4"):
+            tasks = self._get_paginated_results(val["url"])
             tasks = [x["id"] for x in tasks]
         else:
             tasks = []
@@ -4070,7 +4071,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of task IDs
         """
         return self._get_paginated_results(
-            self.tasks_url, self.tasks_page_url, value="id"
+            self.tasks_url, get_page_url=self.tasks_page_url, value="id"
         )
 
     def task_exists(self, task_id):
@@ -4188,6 +4189,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
+        except Exception as e:
+            raise e
         finally:
             for f in open_files:
                 f.close()
@@ -4198,19 +4201,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_ids = []
         while not job_ids:
             url = self.jobs_url(task_id)
-            if self._server_version == (2, 4) or self._server_version == (
-                2,
-                3,
-            ):
-                jobs = self._get_paginated_results_2(url)
-                job_ids = [j["id"] for j in jobs]
+            if self._server_version >= version.Version("2.4"):
+                job_resp_json = self._get_paginated_results(url)
             else:
                 job_resp = self.get(url)
                 job_resp_json = job_resp.json()
                 if "results" in job_resp_json:
                     job_resp_json = job_resp_json["results"]
 
-                job_ids = [j["id"] for j in job_resp_json]
+            job_ids = [j["id"] for j in job_resp_json]
+
+            time.sleep(1)
 
         if job_assignees is not None:
             num_assignees = len(job_assignees)
@@ -4223,7 +4224,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     job_patch = {self.assignee_key: user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
-        if self._server_version[0] == 1 and job_reviewers is not None:
+        if self._server_version.major == 1 and job_reviewers is not None:
             num_reviewers = len(job_reviewers)
             for idx, job_id in enumerate(job_ids):
                 # Round robin strategy
@@ -4662,37 +4663,31 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return attr_id_map, class_map_rev
 
-    def _get_paginated_results(self, base_url, get_page_url, value=None):
+    def _get_paginated_results(self, base_url, get_page_url=None, value=None):
         results = []
         page_number = 1
         page = base_url
         while True:
             response = self.get(page).json()
+            if "results" not in response:
+                break
+
             for result in response["results"]:
                 if value is not None:
                     results.append(result[value])
                 else:
                     results.append(result)
 
-            if not response["next"]:
+            page = response.get("next", None)
+
+            if not page:
                 break
 
-            page_number += 1
-            page = get_page_url(page_number)
+            if get_page_url is not None:
+                page_number += 1
+                page = get_page_url(page_number)
 
         return results
-
-    def _get_paginated_results_2(self, base_url):
-        res_all = []
-        url = base_url
-        while url is not None:
-            response = self.get(url).json()
-            if "results" not in response:
-                break
-            res_all.extend(response["results"])
-            url = response["next"]
-
-        return res_all
 
     def _get_value_from_search(
         self, search_url_fcn, target, target_key, value_key
@@ -4728,8 +4723,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         resp = self.get(self.project_url(project_id)).json()
         labels = resp["labels"]
 
-        if self._server_version == (2, 4):
-            labels = self._get_paginated_results_2(labels["url"])
+        if self._server_version >= version.Version("2.4"):
+            labels = self._get_paginated_results(labels["url"])
 
         return labels
 
@@ -4739,8 +4734,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             raise ValueError("Task '%s' not found" % task_id)
 
         labels = resp["labels"]
-        if self._server_version == (2, 4):
-            labels = self._get_paginated_results_2(labels["url"])
+        if self._server_version >= version.Version("2.4"):
+            labels = self._get_paginated_results(labels["url"])
 
         return labels
 
@@ -4749,8 +4744,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_id = resp["id"]
 
         labels = resp["labels"]
-        if self._server_version == (2, 4):
-            labels = self._get_paginated_results_2(labels["url"])
+        if self._server_version >= version.Version("2.4"):
+            labels = self._get_paginated_results(labels["url"])
 
         return task_id, labels
 
