@@ -15,7 +15,7 @@ import tempfile
 import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
-from mongoengine import connect
+import mongoengine
 import mongoengine.errors as moe
 import motor.motor_asyncio as mtr
 
@@ -33,15 +33,23 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.internal as foi
 
+import fiftyone_teams_api.pymongo as fomongo
+import fiftyone_teams_api.motor as fomotor
+
 from .document import Document
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
 logger = logging.getLogger(__name__)
 
+_async_mongo_client_cls = mtr.AsyncIOMotorClient
+_mongo_client_cls = pymongo.MongoClient
+
+
 _client = None
 _async_client = None
 _connection_kwargs = {}
+_database_name = None
 _db_service = None
 
 
@@ -182,44 +190,75 @@ def establish_db_conn(config):
     global _client
     global _db_service
     global _connection_kwargs
+    global _database_name
 
-    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
-    if established_port is not None:
-        _connection_kwargs["port"] = int(established_port)
-    if config.database_uri is not None:
-        _connection_kwargs["host"] = config.database_uri
-    elif _db_service is None:
-        if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
-            return
+    _connection_kwargs["appname"] = foc.DATABASE_APPNAME
+    if config.api_uri is not None:
+        if not config.api_key:
+            raise ConnectionError(
+                "No API key found. Refer to "
+                "https://docs.voxel51.com/teams/installation.html to see how "
+                "to provide one"
+            )
 
-        try:
-            _db_service = fos.DatabaseService()
-            port = _db_service.port
-            _connection_kwargs["port"] = port
-            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
+        _connection_kwargs = {
+            "__teams_api_uri": config.api_uri,
+            "__teams_api_key": config.api_key,
+        }
 
-        except fos.ServiceExecutableNotFound as error:
-            if fou.is_32_bit():
-                raise FiftyOneConfigError(
-                    "MongoDB is not supported on 32-bit systems. Please "
-                    "define a `database_uri` in your "
-                    "`fiftyone.core.config.FiftyOneConfig` to define a "
-                    "connection to your own MongoDB instance or cluster "
-                )
+        global _async_mongo_client_cls
+        global _mongo_client_cls
 
-            raise error
+        _async_mongo_client_cls = fomotor.AsyncIOMotorClient
+        _mongo_client_cls = fomongo.MongoClient
 
-    _client = pymongo.MongoClient(
-        **_connection_kwargs, appname=foc.DATABASE_APPNAME
-    )
+        mongoengine.connection.MongoClient = fomongo.MongoClient
+    else:
+        established_port = os.environ.get(
+            "FIFTYONE_PRIVATE_DATABASE_PORT", None
+        )
+        if established_port is not None:
+            _connection_kwargs["port"] = int(established_port)
+        if config.database_uri is not None:
+            _connection_kwargs["host"] = config.database_uri
+        elif _db_service is None:
+            if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
+                return
+
+            try:
+                _db_service = fos.DatabaseService()
+                port = _db_service.port
+                _connection_kwargs["port"] = port
+                os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
+
+            except fos.ServiceExecutableNotFound as error:
+                if fou.is_32_bit():
+                    raise FiftyOneConfigError(
+                        "MongoDB is not supported on 32-bit systems. Please "
+                        "define a `database_uri` in your "
+                        "`fiftyone.core.config.FiftyOneConfig` to define a "
+                        "connection to your own MongoDB instance or cluster "
+                    )
+
+                raise error
+
+    _client = _mongo_client_cls(**_connection_kwargs)
+    if _mongo_client_cls is fomongo.MongoClient:
+        default_db = _client.get_default_database()
+        _database_name = default_db.name
+    else:
+        _database_name = config.database_name
+
     _validate_db_version(config, _client)
 
     if foi.is_internal_service():
         atexit.register(_at_exit_internal)
-    elif config.database_uri is None or "localhost" in config.database_uri:
+    elif config.api_uri is None and (
+        config.database_uri is None or "localhost" in config.database_uri
+    ):
         atexit.register(_at_exit_user)
 
-    connect(config.database_name, **_connection_kwargs)
+    mongoengine.connect(_database_name, **_connection_kwargs)
 
     config = get_db_config()
     if foc.CLIENT_TYPE != config.type:
@@ -232,20 +271,21 @@ def establish_db_conn(config):
 def _connect():
     global _client
     if _client is None:
+        global _mongo_client_cls
         global _connection_kwargs
-        _client = pymongo.MongoClient(
-            **_connection_kwargs, appname=foc.DATABASE_APPNAME
-        )
-        connect(fo.config.database_name, **_connection_kwargs)
+        global _database_name
+
+        _client = _mongo_client_cls(**_connection_kwargs)
+        mongoengine.connect(_database_name, **_connection_kwargs)
 
 
 def _async_connect():
     global _async_client
     if _async_client is None:
+        global _async_mongo_client_cls
         global _connection_kwargs
-        _async_client = mtr.AsyncIOMotorClient(
-            **_connection_kwargs, appname=foc.DATABASE_APPNAME
-        )
+
+        _async_client = _async_mongo_client_cls(**_connection_kwargs)
 
 
 def _at_exit_internal():
@@ -347,6 +387,10 @@ def aggregate(collection, pipelines):
         return [result] if is_list else result
 
     return _do_pooled_aggregate(collection, pipelines)
+
+
+async def _do_aggregate(collection, pipeline):
+    return [i for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
 def _do_pooled_aggregate(collection, pipelines):

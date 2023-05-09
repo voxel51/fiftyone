@@ -8,7 +8,8 @@ User management.
 import datetime
 import enum
 import re
-from typing import List, Literal, Optional, TypedDict, Union
+from typing import List, Optional, Union
+from typing_extensions import Literal, TypedDict
 
 from fiftyone.management import connection
 from fiftyone.management import util as fom_util

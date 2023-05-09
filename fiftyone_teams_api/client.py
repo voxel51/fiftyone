@@ -5,6 +5,7 @@
 """
 import os
 from typing import Any, Dict, Mapping, Optional
+from typing_extensions import Literal
 
 import backoff
 import requests
@@ -35,6 +36,9 @@ class Client:
             return self.base_url == other.base_url and self.key == self.key
         return NotImplemented
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(base_url='{self.__base_url}')"
+
     @property
     def base_url(self):
         """Base URL to Teams Api"""
@@ -45,30 +49,18 @@ class Client:
         """Key for authenticating Teams Api"""
         return self.__key
 
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ConnectionError, max_tries=5
-    )
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ReadTimeout, max_time=60
-    )
     def get(self, url_path: str) -> requests.Response:
-        url = os.path.join(self.__base_url, url_path)
-        response = self._session.get(url=url, timeout=self._timeout)
-        if response.status_code in [401, 403]:
-            raise errors.APIAuthenticationError
-
-        response.raise_for_status()
-        return response
+        return self.__request("GET", url_path)
 
     def post(self, url_path: str, payload: Dict[str, Any]) -> Any:
         """Make post request"""
-        response = self._post(url_path, data=payload)
+        response = self.__request("POST", url_path, data=payload)
 
         return response.content
 
     def post_json(self, url_path: str, payload: Dict[str, Any]) -> Any:
         """Make post request with json payload"""
-        response = self._post(url_path, json=payload)
+        response = self.__request("POST", url_path, json=payload)
 
         return response.json()
 
@@ -127,13 +119,21 @@ class Client:
     @backoff.on_exception(
         backoff.expo, requests.exceptions.ReadTimeout, max_time=60
     )
-    def _post(self, url_path: str, **post_kwargs):
+    def __request(
+        self, method: Literal["POST", "GET"], url_path: str, **request_kwargs
+    ):
         url = os.path.join(self.__base_url, url_path)
-        response = self._session.post(
-            url=url, timeout=self._timeout, **post_kwargs
+
+        response = self._session.request(
+            method, url=url, timeout=self._timeout, **request_kwargs
         )
-        if response.status_code in [401, 403]:
+
+        if response.status_code == 401:
             raise errors.APIAuthenticationError
 
+        if response.status_code == 403:
+            raise errors.APIForbiddenError(response.text)
+
         response.raise_for_status()
+
         return response

@@ -3,5 +3,4 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-DEFAULT_TIMEOUT: int = 10
+from fiftyone_teams_api.pymongo.client import MongoClient
