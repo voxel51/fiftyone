@@ -56,6 +56,7 @@ jobs:
 
       - name: Run e2e tests
         run: |
+          FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
           yarn install
           yarn start
 
