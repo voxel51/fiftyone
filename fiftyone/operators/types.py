@@ -445,6 +445,7 @@ class View:
         space (12): An ``int`` specifying how much vertical space to allocate out of ``12``.
         placeholder (None): string to display placeholder text
         read_only (False): whether the :class:`View` is read-only
+        component (None): specifying custom component to use as the view
     """
 
     def __init__(self, **kwargs):
@@ -454,6 +455,7 @@ class View:
         self.space = kwargs.get("space", None)
         self.placeholder = kwargs.get("placeholder", None)
         self.read_only = kwargs.get("read_only", None)
+        self.component = kwargs.get("component", None)
         self._kwargs = kwargs
 
     def clone(self):
@@ -468,6 +470,7 @@ class View:
             "space": self.space,
             "placeholder": self.placeholder,
             "read_only": self.read_only,
+            "component": self.component,
             **self._kwargs,
         }
 

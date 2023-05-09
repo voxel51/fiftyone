@@ -79,7 +79,7 @@ function getOutputComponent(property, options) {
 
 function getComponentByView(property) {
   const view = getViewSchema(property) || {};
-  const viewComponentName = view.name;
+  const viewComponentName = view.component || view.name;
   if (viewComponentName && !baseViews.includes(viewComponentName)) {
     return viewAliases[viewComponentName] || viewComponentName;
   }
