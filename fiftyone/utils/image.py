@@ -27,11 +27,16 @@ def reencode_images(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
 ):
     """Re-encodes the images in the sample collection to the given format.
+
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
 
     .. note::
 
@@ -60,9 +65,10 @@ def reencode_images(
             ``output_dir`` to generate an output path for each image. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original images after
-            re-encoding. This parameter has no effect if the images are being
-            updated in-place
+            re-encoding
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising
@@ -78,6 +84,7 @@ def reencode_images(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
@@ -96,12 +103,17 @@ def transform_images(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
 ):
     """Transforms the images in the sample collection according to the provided
     parameters.
+
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
 
     .. note::
 
@@ -143,9 +155,10 @@ def transform_images(
             ``output_dir`` to generate an output path for each image. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original images if any
-            transformation was applied. This parameter has no effect if the
-            images are being updated in-place
+            transformation was applied
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (False): whether to gracefully continue without raising
@@ -165,6 +178,7 @@ def transform_images(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         num_workers=num_workers,
         skip_failures=skip_failures,
@@ -227,6 +241,7 @@ def _transform_images(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     num_workers=None,
     skip_failures=False,
@@ -249,6 +264,7 @@ def _transform_images(
             output_field=output_field,
             output_dir=output_dir,
             rel_dir=rel_dir,
+            update_filepaths=update_filepaths,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
         )
@@ -266,6 +282,7 @@ def _transform_images(
             output_field=output_field,
             output_dir=output_dir,
             rel_dir=rel_dir,
+            update_filepaths=update_filepaths,
             delete_originals=delete_originals,
             skip_failures=skip_failures,
         )
@@ -283,6 +300,7 @@ def _transform_images_single(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
 ):
@@ -316,7 +334,7 @@ def _transform_images_single(
                 skip_failures=skip_failures,
             )
 
-            if diff_field or outpath != inpath:
+            if update_filepaths and (diff_field or outpath != inpath):
                 sample[output_field] = outpath
                 sample.save()
 
@@ -334,6 +352,7 @@ def _transform_images_multi(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
 ):
@@ -376,10 +395,13 @@ def _transform_images_multi(
                 for sample_id, inpath, outpath, _ in pb(
                     pool.imap_unordered(_do_transform, inputs)
                 ):
-                    if diff_field or outpath != inpath:
+                    if update_filepaths and (diff_field or outpath != inpath):
                         outpaths[sample_id] = outpath
     finally:
-        sample_collection.set_values(output_field, outpaths, key_field="id")
+        if outpaths:
+            sample_collection.set_values(
+                output_field, outpaths, key_field="id"
+            )
 
 
 def _do_transform(args):
@@ -405,17 +427,26 @@ def _transform_image(
     out_ext = os.path.splitext(outpath)[1]
 
     did_transform = False
+    moves = []
 
     try:
-        if (
-            size is not None
+        should_reencode = (
+            force_reencode
+            or size is not None
             or min_size is not None
             or max_size is not None
-            or in_ext != out_ext
-            or force_reencode
-        ):
+            or in_ext.lower() != out_ext.lower()
+        )
+
+        if should_reencode:
             img = etai.read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
+
+        if should_reencode and inpath == outpath and not delete_original:
+            orig_path = etau.make_unique_path(inpath, suffix="-original")
+            etau.move_file(inpath, orig_path)
+            moves.append((inpath, orig_path))
+            inpath = orig_path
 
         if size is not None:
             if interpolation is not None:
@@ -426,7 +457,7 @@ def _transform_image(
             img = etai.resize(img, width=size[0], height=size[1], **kwargs)
             etai.write(img, outpath)
             did_transform = True
-        elif force_reencode or (in_ext != out_ext):
+        elif should_reencode:
             etai.write(img, outpath)
             did_transform = True
         elif inpath != outpath:
@@ -434,7 +465,14 @@ def _transform_image(
 
         if delete_original and inpath != outpath:
             etau.delete_file(inpath)
-    except Exception as e:
+    except BaseException as e:
+        try:
+            # Undo any moves
+            for from_path, to_path in moves:
+                etau.move_file(to_path, from_path)
+        except:
+            pass
+
         if not skip_failures:
             raise
 
