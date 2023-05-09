@@ -209,7 +209,17 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
+    _delete_non_persistent_datasets(verbose=verbose)
+
+
+def _delete_non_persistent_datasets(min_age=None, verbose=False):
     conn = foo.get_db_conn()
+
+    if min_age is not None:
+        now = datetime.utcnow()
+        is_old_enough = lambda ca: ca is None or now - ca >= min_age
+    else:
+        is_old_enough = lambda ca: True
 
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
@@ -219,7 +229,11 @@ def delete_non_persistent_datasets(verbose=False):
             # which means it is persistent, so we don't worry about it here
             continue
 
-        if not dataset.persistent and not dataset.deleted:
+        if (
+            not dataset.persistent
+            and not dataset.deleted
+            and is_old_enough(dataset.created_at)
+        ):
             dataset.delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
