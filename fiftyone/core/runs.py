@@ -754,7 +754,7 @@ class Run(Configurable):
         if any(isinstance(doc, DBRef) for doc in run_docs.values()):
             logger.warning(
                 "This dataset's %s references are corrupted. Run %s('%s') and "
-                "dataset.reload() to resolve the issue",
+                "dataset.reload() to resolve",
                 cls._run_str(),
                 etau.get_function_name(cls._patch_function()),
                 dataset_doc.name,
