@@ -3019,6 +3019,16 @@ class TransformImagesCommand(Command):
             ),
         )
         parser.add_argument(
+            "--no-update-filepaths",
+            dest="update_filepaths",
+            action="store_false",
+            default=True,
+            help=(
+                "whether to store the output filepaths on the sample "
+                "collection"
+            ),
+        )
+        parser.add_argument(
             "-d",
             "--delete-originals",
             action="store_true",
@@ -3059,6 +3069,7 @@ class TransformImagesCommand(Command):
             output_field=args.output_field,
             output_dir=args.output_dir,
             rel_dir=args.rel_dir,
+            update_filepaths=args.update_filepaths,
             delete_originals=args.delete_originals,
             num_workers=args.num_workers,
             skip_failures=args.skip_failures,
@@ -3186,6 +3197,16 @@ class TransformVideosCommand(Command):
             ),
         )
         parser.add_argument(
+            "--no-update-filepaths",
+            dest="update_filepaths",
+            action="store_false",
+            default=True,
+            help=(
+                "whether to store the output filepaths on the sample "
+                "collection"
+            ),
+        )
+        parser.add_argument(
             "-d",
             "--delete-originals",
             action="store_true",
@@ -3224,6 +3245,7 @@ class TransformVideosCommand(Command):
             output_field=args.output_field,
             output_dir=args.output_dir,
             rel_dir=args.rel_dir,
+            update_filepaths=args.update_filepaths,
             delete_originals=args.delete_originals,
             skip_failures=args.skip_failures,
             verbose=args.verbose,
