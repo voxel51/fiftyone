@@ -16,7 +16,6 @@ import eta.core.utils as etau
 
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
-from fiftyone.core.odm.database import _patch_runs
 from fiftyone.core.odm.runs import RunDocument
 
 
@@ -155,6 +154,13 @@ class Run(Configurable):
     def _run_str(cls):
         """A string to use when referring to these runs in log messages."""
         raise NotImplementedError("subclass must implement _run_str()")
+
+    @classmethod
+    def _patch_function(cls):
+        """A function that can patch any ReferenceField issues with a dataset's
+        runs.
+        """
+        raise NotImplementedError("subclass must implement _patch_function()")
 
     @classmethod
     def _results_cache_field(cls):
@@ -741,26 +747,15 @@ class Run(Configurable):
     @classmethod
     def _get_run_docs(cls, samples):
         dataset_doc = samples._root_dataset._doc
-        runs_field = cls._runs_field()
-        run_str = cls._run_str()
-        run_docs = getattr(dataset_doc, runs_field)
+        run_docs = getattr(dataset_doc, cls._runs_field())
 
-        #
-        # When mongoengine encounters a ReferenceField that contains an
-        # ObjectId with no matching document, the doc will be a falsey DBRef.
-        #
-        # We're not currently sure why this happens... but we've observed that
-        # ObjectIDs in DatasetDocument can somehow get out of sync with their
-        # corresponding run documents. This attempts to patch on-the-fly.
-        #
         if any(isinstance(doc, DBRef) for doc in run_docs.values()):
-            try:
-                _patch_runs(dataset_doc.name, runs_field, run_str)
-            except Exception as e:
-                logger.warning("Failed to patch %ss: %s", run_str, e)
-
-            dataset_doc.reload()
-            run_docs = getattr(dataset_doc, runs_field)
+            logger.warning(
+                "This dataset's %ss are corrupted. Run %s('%s') to resolve",
+                cls._run_str(),
+                etau.get_function_name(cls._patch_function()),
+                dataset_doc.name,
+            )
 
         return run_docs
 

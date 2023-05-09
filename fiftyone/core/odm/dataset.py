@@ -496,88 +496,52 @@ class DatasetDocument(Document):
     def get_saved_views(self):
         saved_views = self.saved_views
 
-        #
-        # When mongoengine encounters a ReferenceField that contains an
-        # ObjectId with no matching document, the doc is a falsey DBRef.
-        #
-        # We're not currently sure why this happens... but we've observed that
-        # ObjectIDs in DatasetDocument can somehow get out of sync with their
-        # corresponding view documents. This attempts to patch on-the-fly.
-        #
         if any(isinstance(doc, DBRef) for doc in saved_views):
-            try:
-                patch_saved_views(self.name)
-            except Exception as e:
-                logger.warning("Failed to patch saved views: %s", e)
-
-            self.reload()
-            saved_views = self.saved_views
+            logger.warning(
+                "This dataset's saved views are corrupted. Run %s('%s') to "
+                "resolve",
+                etau.get_function_name(patch_saved_views),
+                self.name,
+            )
 
         return saved_views
 
     def get_annotation_runs(self):
         annotation_runs = self.annotation_runs
 
-        #
-        # When mongoengine encounters a ReferenceField that contains an
-        # ObjectId with no matching document, the doc will be a falsey DBRef.
-        #
-        # We're not currently sure why this happens... but we've observed that
-        # ObjectIDs in DatasetDocument can somehow get out of sync with their
-        # corresponding run documents. This attempts to patch on-the-fly.
-        #
         if any(isinstance(doc, DBRef) for doc in annotation_runs.values()):
-            try:
-                patch_annotation_runs(self.name)
-            except Exception as e:
-                logger.warning("Failed to patch annotation runs: %s", e)
-
-            self.reload()
-            annotation_runs = self.annotation_runs
+            logger.warning(
+                "This dataset's annotation runs are corrupted. Run %s('%s') "
+                "to resolve",
+                etau.get_function_name(patch_annotation_runs),
+                self.name,
+            )
 
         return annotation_runs
 
     def get_brain_methods(self):
         brain_methods = self.brain_methods
 
-        #
-        # When mongoengine encounters a ReferenceField that contains an
-        # ObjectId with no matching document, the doc will be a falsey DBRef.
-        #
-        # We're not currently sure why this happens... but we've observed that
-        # ObjectIDs in DatasetDocument can somehow get out of sync with their
-        # corresponding run documents. This attempts to patch on-the-fly.
-        #
         if any(isinstance(doc, DBRef) for doc in brain_methods.values()):
-            try:
-                patch_brain_runs(self.name)
-            except Exception as e:
-                logger.warning("Failed to patch brain method runs: %s", e)
-
-            self.reload()
-            brain_methods = self.brain_methods
+            logger.warning(
+                "This dataset's brain runs are corrupted. Run %s('%s') to "
+                "resolve",
+                etau.get_function_name(patch_brain_runs),
+                self.name,
+            )
 
         return brain_methods
 
     def get_evaluations(self):
         evaluations = self.evaluations
 
-        #
-        # When mongoengine encounters a ReferenceField that contains an
-        # ObjectId with no matching document, the doc will be a falsey DBRef.
-        #
-        # We're not currently sure why this happens... but we've observed that
-        # ObjectIDs in `dataset_doc` can somehow get out of sync with their
-        # corresponding run documents. This attempts to patch on-the-fly.
-        #
         if any(isinstance(doc, DBRef) for doc in evaluations.values()):
-            try:
-                patch_evaluations(self.name)
-            except Exception as e:
-                logger.warning("Failed to patch evaluations: %s", e)
-
-            self.reload()
-            evaluations = self.evaluations
+            logger.warning(
+                "This dataset's evaluations are corrupted. Run %s('%s') to "
+                "resolve",
+                etau.get_function_name(patch_evaluations),
+                self.name,
+            )
 
         return evaluations
 
