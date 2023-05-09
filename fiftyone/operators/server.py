@@ -80,7 +80,7 @@ class ExecuteOperator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
-        result = execute_operator(operator_uri, data)
+        result = await execute_operator(operator_uri, data)
         json = result.to_json()
         if result.error is not None:
             print(result.error)

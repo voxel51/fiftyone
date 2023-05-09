@@ -13,6 +13,8 @@ import fiftyone.operators.types as types
 from .message import GeneratedMessage, MessageType
 import types as python_types
 import traceback
+from .decorators import coroutine_timeout
+import asyncio
 
 
 class InvocationRequest:
@@ -71,7 +73,8 @@ class Executor:
         }
 
 
-def execute_operator(operator_name, request_params):
+@coroutine_timeout(seconds=fo.config.operator_timeout)
+async def execute_operator(operator_name, request_params):
     """Executes the operator with the given name.
     Args:
         operator_name: the name of the operator
@@ -92,7 +95,10 @@ def execute_operator(operator_name, request_params):
     if validation_ctx.invalid:
         return ExecutionResult(None, None, "Validation Error", validation_ctx)
     try:
-        raw_result = operator.execute(ctx)
+        if asyncio.iscoroutinefunction(operator.execute):
+            raw_result = await operator.execute(ctx)
+        else:
+            raw_result = operator.execute(ctx)
     except Exception as e:
         return ExecutionResult(None, executor, str(e))
 
