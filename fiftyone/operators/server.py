@@ -130,7 +130,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=erroDetail)
 
-        execution_result = execute_operator(operator_uri, data)
+        execution_result = await execute_operator(operator_uri, data)
         if execution_result.is_generator:
             generator = create_response_generator(execution_result.result)
             return StreamingResponse(
