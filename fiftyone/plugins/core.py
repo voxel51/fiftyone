@@ -150,10 +150,10 @@ def delete_plugin(plugin_name, dry_run=False, cleanup=True, limit=None):
         if plugin_dir:
             if dry_run:
                 to_delete = glob.glob(
-                    os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True
+                    os.path.join(plugin_dir, "**"), recursive=True
                 )
                 logging.info(
-                    f"Deleting `{plugin_name}` will permanently remove the following files from the filesystem:\n {to_delete}"
+                    f"Deleting `{plugin_name}` will permanently remove the following items from the filesystem:\n {to_delete}"
                 )
                 return
             shutil.rmtree(plugin_dir)
@@ -172,11 +172,12 @@ def delete_plugin(plugin_name, dry_run=False, cleanup=True, limit=None):
 
 
 def _cleanup_plugin_dir(plugin_dir: str, recursive: bool = True):
-    if plugin_dir == _PLUGIN_DIRS[0]:
+    """Deletes any empty plugin parent directories if empty after deleting the plugin."""
+    if plugin_dir in _PLUGIN_DIRS:
         return
     plugin_parent_dir = os.path.dirname(plugin_dir)
     if len(glob.glob(os.path.join(plugin_parent_dir, "*"))) == 0:
-        if plugin_parent_dir != _PLUGIN_DIRS[0]:
+        if plugin_parent_dir not in _PLUGIN_DIRS:
             shutil.rmtree(plugin_parent_dir)
         logging.debug(f"Deleted empty directory {plugin_parent_dir}")
     if recursive:
@@ -250,10 +251,7 @@ def _list_plugins(enabled_only: bool = None) -> List[Optional[plugin_package]]:
     plugins = []
     disabled = _list_disabled_plugins()
     # plugin directory must have a fiftyone.yml file defining the plugin
-    for fpath in filter(
-        lambda x: _is_plugin_definition_file(x),
-        glob.glob(os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True),
-    ):
+    for fpath in _iter_plugin_definition_files():
         try:
             # get plugin name from yml
             with open(fpath, "r") as f:
@@ -314,8 +312,8 @@ def _iter_plugin_definition_files(filepaths: Optional[List[str]] = None):
             dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
             for file in files:
                 if _is_plugin_definition_file(file):
-                    files = []
                     yield os.path.join(root, file)
+                    files[:] = []
 
 
 def _find_plugin_paths(name: str = None) -> Optional[str]:
@@ -360,7 +358,13 @@ def download_plugin(
     if not plugins_dir:
         raise ValueError("Plugins directory not set.")
     elif not os.path.isdir(plugins_dir):
-        raise ValueError(f"Plugins directory '{plugins_dir}' does not exist.")
+        try:
+            # create plugins directory at set path if it doesn't exist
+            os.makedirs(plugins_dir)
+        except:
+            raise ValueError(
+                f"Plugins directory '{plugins_dir}' does not exist."
+            )
     download_ref = next(ref for ref in [name, url, gh_repo] if ref is not None)
     if not download_ref:
         raise ValueError("Must provide name, url, or github_repo.")
