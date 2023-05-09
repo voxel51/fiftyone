@@ -15,6 +15,7 @@ import math
 import multiprocessing
 import multiprocessing.dummy
 import os
+from packaging.version import Version
 import time
 import warnings
 import webbrowser
@@ -22,7 +23,6 @@ import webbrowser
 from bson import ObjectId
 import jinja2
 import numpy as np
-from packaging import version
 import requests
 import urllib3
 
@@ -3603,13 +3603,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
 
     def jobs_url(self, task_id):
-        if self._server_version >= version.Version("2.4"):
+        if self._server_version >= Version("2.4"):
             return "%s/jobs?task_id=%d" % (self.base_api_url, task_id)
         else:
             return "%s/jobs" % self.task_url(task_id)
 
     def job_url(self, task_id, job_id):
-        if self._server_version >= version.Version("2.4"):
+        if self._server_version >= Version("2.4"):
             return self.taskless_job_url(job_id)
         else:
             return "%s/%d" % (self.jobs_url(task_id), job_id)
@@ -3671,7 +3671,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
-        self._server_version = version.Version("2")
+        self._server_version = Version("2")
 
         try:
             self._login(username, password)
@@ -3679,7 +3679,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if e.response.status_code != 404:
                 raise e
 
-            self._server_version = version.Version("1")
+            self._server_version = Version("1")
             self._login(username, password)
 
         self._add_referer()
@@ -3687,8 +3687,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         try:
             response = self.get(self.about_url).json()
-            toks = response["version"].split(".")
-            ver = version.Version(response["version"])
+            ver = Version(response["version"])
             if ver.major != self._server_version.major:
                 logger.warning(
                     "CVAT server major versions don't match: %s vs %s",
@@ -3971,7 +3970,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         resp = self.get(self.project_url(project_id)).json()
         val = resp.get("tasks", [])
 
-        if self._server_version >= version.Version("2.4"):
+        if self._server_version >= Version("2.4"):
             tasks = self._get_paginated_results(val["url"])
             tasks = [x["id"] for x in tasks]
         else:
@@ -4200,7 +4199,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_ids = []
         while not job_ids:
             url = self.jobs_url(task_id)
-            if self._server_version >= version.Version("2.4"):
+            if self._server_version >= Version("2.4"):
                 job_resp_json = self._get_paginated_results(url)
             else:
                 job_resp = self.get(url)
@@ -4722,7 +4721,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         resp = self.get(self.project_url(project_id)).json()
         labels = resp["labels"]
 
-        if self._server_version >= version.Version("2.4"):
+        if self._server_version >= Version("2.4"):
             labels = self._get_paginated_results(labels["url"])
 
         return labels
@@ -4733,7 +4732,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             raise ValueError("Task '%s' not found" % task_id)
 
         labels = resp["labels"]
-        if self._server_version >= version.Version("2.4"):
+        if self._server_version >= Version("2.4"):
             labels = self._get_paginated_results(labels["url"])
 
         return labels
@@ -4743,7 +4742,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_id = resp["id"]
 
         labels = resp["labels"]
-        if self._server_version >= version.Version("2.4"):
+        if self._server_version >= Version("2.4"):
             labels = self._get_paginated_results(labels["url"])
 
         return task_id, labels
