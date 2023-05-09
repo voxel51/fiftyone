@@ -61,7 +61,6 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
           yarn install
           yarn start
 
@@ -71,10 +70,9 @@ jobs:
         with:
           name: videos
           path: e2e/cypress/videos
-          
+
       - name: Upload snapshots
         uses: actions/upload-artifact@v2
         with:
           name: snapshots
           path: e2e/cypress/snapshots/actual
-

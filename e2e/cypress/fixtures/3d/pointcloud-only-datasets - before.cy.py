@@ -4,5 +4,4 @@ import fiftyone as fo
 dataset = fo.Dataset(name="pointcloud-only-datasets", persistent=True)
 pcd_sample = fo.Sample("cypress/fixtures/3d/resources/cone.pcd")
 dataset.add_sample(pcd_sample)
-session = fo.launch_app(dataset, address="0.0.0.0", remote=True)
-session.wait(-1)
+session = fo.launch_app(dataset, remote=True)
