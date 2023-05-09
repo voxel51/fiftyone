@@ -1724,7 +1724,6 @@ def make_optimized_select_view(
     sample_ids,
     ordered=False,
     groups=False,
-    select_groups=False,
 ):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
@@ -1742,30 +1741,27 @@ def make_optimized_select_view(
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
-        select_groups (False): whether to select sample groups via sample ids
 
     Returns:
         a :class:`DatasetView`
     """
-    view = sample_collection.view()
+    in_view = sample_collection.view()
+    media_type = sample_collection.media_type
+    stages = in_view._stages
 
-    if any(isinstance(stage, fost.Mongo) for stage in view._stages):
-        #
+    if any(isinstance(stage, fost.Mongo) for stage in stages):
         # We have no way of knowing what a `Mongo()` stage might do, so we must
         # run the entire view's aggregation first and then select the samples
         # of interest at the end
-        #
-        if groups:
-            return view.select_groups(sample_ids, ordered=ordered)
-        elif view.media_type == fom.GROUP and not select_groups:
-            return view.select_group_slices(_allow_mixed=True)
+        view = in_view
+        stages = []
+    else:
+        view = in_view._base_view
 
+    if groups:
+        view = view.select_groups(sample_ids, ordered=ordered)
+    else:
         view = view.select(sample_ids, ordered=ordered)
-
-        if view.media_type == fom.GROUP and select_groups:
-            view = view.select_group_slices(_allow_mixed=True)
-
-        return view
 
     #
     # Selecting the samples of interest first can be significantly faster than
@@ -1782,24 +1778,11 @@ def make_optimized_select_view(
     # we'll need to account for that here...
     #
 
-    optimized_view = view._base_view
-
-    if groups:
-        optimized_view = optimized_view.select_groups(
-            sample_ids, ordered=ordered
-        )
-    else:
-        optimized_view = optimized_view.select(sample_ids, ordered=ordered)
-        if view.media_type == fom.GROUP and select_groups:
-            optimized_view = optimized_view.select_group_slices(
-                _allow_mixed=True
-            )
-
-    for stage in view._stages:
+    for stage in stages:
         if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
-            optimized_view._stages.append(stage)
+            view = view._add_view_stage(stage, validate=False)
 
-    return optimized_view
+    return view
 
 
 def _filter_schema(schema, selected_fields, excluded_fields):

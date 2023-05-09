@@ -18,15 +18,15 @@ export const SliceSelector = () => {
     }
 
     if (activePcdSlices.length === 1) {
-      return `${activePcdSlices[0]} selected`;
+      return `Showing ${activePcdSlices[0]}`;
     }
     if (activePcdSlices.length === 2) {
-      return activePcdSlices.join(" and ");
+      return `Showing ${activePcdSlices.join(" and ")}`;
     }
     if (activePcdSlices.length === allPcdSlices.length) {
-      return "All pcds selected";
+      return "Showing all point clouds";
     }
-    return `${activePcdSlices.length} point-clouds selected`;
+    return `Showing ${activePcdSlices.length} point clouds`;
   }, [activePcdSlices, allPcdSlices]);
 
   const handleActionClick = useCallback(() => {
@@ -43,7 +43,7 @@ export const SliceSelector = () => {
 
   return (
     <>
-      <ActionItem title="Select pcds">
+      <ActionItem title="Select point clouds">
         <div onClick={handleActionClick}>{activeSlicesLabel}</div>
       </ActionItem>
 
@@ -69,7 +69,7 @@ const PcdsSelector = () => {
 
   return (
     <ActionPopOver>
-      <PopoutSectionTitle>Select pcds</PopoutSectionTitle>
+      <PopoutSectionTitle>Select point clouds</PopoutSectionTitle>
       <div>
         {allPcdSlices.map((slice) => {
           return (

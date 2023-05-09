@@ -57,7 +57,7 @@ export const PathEntryCounts = ({
   return shown.state === "loading" ? (
     <LoadingDots text="" />
   ) : (
-    typeof shown.contents === "number" && (
+    shown.contents && (
       <SuspenseEntryCounts
         countAtom={getAtom(false)}
         subcountAtom={getAtom(true)}

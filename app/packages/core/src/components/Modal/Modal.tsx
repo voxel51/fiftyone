@@ -133,7 +133,7 @@ const SampleModal = () => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
-                    disabled={isOther || isLabelTag}
+                    disabled={isOther || isLabelTag || isTag}
                     key={key}
                     trigger={trigger}
                   />

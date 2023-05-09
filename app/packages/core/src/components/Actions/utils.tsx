@@ -192,7 +192,7 @@ export const tagParameters = ({
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    slices: !groups ? [groupData?.slices] : null,
+    slices: !groups ? groupData?.slices : null,
     group_id: params.modal ? groupData?.id : null,
     sample_ids: getSampleIds(),
     labels:
