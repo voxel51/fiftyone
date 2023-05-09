@@ -9,7 +9,7 @@ from copy import copy, deepcopy
 import datetime
 import logging
 
-from bson import json_util
+from bson import json_util, DBRef
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -725,7 +725,7 @@ class Run(Configurable):
         if run_results is not None:
             run_results._key = None
 
-        if run_doc:
+        if not isinstance(run_doc, DBRef):
             # Must manually delete run result, which is stored via GridFS
             if run_doc.results:
                 run_doc.results.delete()
