@@ -1,15 +1,6 @@
-import {
-  atomFamily,
-  DefaultValue,
-  selector,
-  selectorFamily,
-  useRecoilStateLoadable,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import {
   DICT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -20,27 +11,31 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-
+import { VariablesOf, commitMutation } from "react-relay";
+import {
+  DefaultValue,
+  atomFamily,
+  selector,
+  selectorFamily,
+  useRecoilStateLoadable,
+  useRecoilValue,
+} from "recoil";
+import { getCurrentEnvironment } from "../hooks/useRouter";
 import * as aggregationAtoms from "./aggregations";
+import { dataset } from "./atoms";
+import { isLargeVideo } from "./options";
 import {
   buildFlatExtendedSchema,
   buildSchema,
-  field,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
   schemaReduce,
 } from "./schema";
-
+import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
-import { isLargeVideo } from "./options";
-import { commitMutation, VariablesOf } from "react-relay";
-import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
-import { getCurrentEnvironment } from "../hooks/useRouter";
-import { dataset, dataset } from "./atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -96,26 +91,6 @@ export const readableTags = selectorFamily<
       );
     },
 });
-
-export const useLabelTagText = (modal: boolean) => {
-  const loading =
-    useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
-      .state === "loading";
-
-  return { text: loading ? "Loading label tags" : "No label tags", loading };
-};
-
-export const useTagText = (modal: boolean) => {
-  const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const loading =
-    useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
-    "loading";
-
-  return {
-    text: loading ? `Loading ${singular} tags` : `No ${singular} tags`,
-    loading,
-  };
-};
 
 export const useEntries = (
   modal: boolean
