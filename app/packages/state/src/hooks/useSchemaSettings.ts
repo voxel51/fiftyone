@@ -12,10 +12,8 @@ import {
 import * as foq from "@fiftyone/relay";
 import {
   DICT_FIELD,
-  EMBEDDED_DOCUMENT_FIELD,
   FRAME_NUMBER_FIELD,
   JUST_FIELD,
-  LIST_FIELD,
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
 import { keyBy } from "lodash";
@@ -43,8 +41,8 @@ const disabledField = (path: string, ftype: string, subfield: string) => {
     (ftype === OBJECT_ID_FIELD && path === "id") ||
     path.startsWith("metadata") ||
     path.endsWith("frames.frame_number") ||
-    ftype === FRAME_NUMBER_FIELD ||
-    (ftype === LIST_FIELD && subfield === EMBEDDED_DOCUMENT_FIELD)
+    ftype === FRAME_NUMBER_FIELD
+    // (ftype === LIST_FIELD && subfield === EMBEDDED_DOCUMENT_FIELD)
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -97,21 +95,37 @@ export const selectedPathsState = atomFamily({
       onSet(async (newPaths) => {
         const viewSchema = await getPromise(viewSchemaState);
         const schema = await getPromise(schemaState);
+        const dataset = await getPromise(fos.dataset);
 
-        const greenPaths = [...newPaths].filter(
-          (path) =>
-            !!path &&
-            // (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
-            !skipFiled(
-              path,
-              viewSchema?.[path]?.ftype || schema?.[path]?.ftype
-            ) &&
-            !disabledField(
-              path,
-              viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-              viewSchema?.[path]?.subfield || schema?.[path]?.subfield
-            )
-        );
+        const combinedSchema = { ...schema, ...viewSchema };
+        const mapping = {};
+        Object.keys(combinedSchema).forEach((path) => {
+          if (dataset.mediaType === "image") {
+            mapping[path] = path;
+          }
+          if (dataset.mediaType === "video" && viewSchema) {
+            Object.keys(viewSchema).forEach((path) => {
+              mapping[path] = `frames.${path}`;
+            });
+          }
+        });
+
+        const greenPaths = [...newPaths]
+          .filter(
+            (path) =>
+              !!path &&
+              // (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
+              !skipFiled(
+                path,
+                viewSchema?.[path]?.ftype || schema?.[path]?.ftype
+              ) &&
+              !disabledField(
+                path,
+                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
+                viewSchema?.[path]?.subfield || schema?.[path]?.subfield
+              )
+          )
+          .map((path) => mapping?.[path] || path);
 
         setSelf(new Set(greenPaths));
       });
@@ -129,10 +143,6 @@ export const viewSchemaState = atom({
 });
 export const showMetadataState = atom({
   key: "showMetadataState",
-  default: false,
-});
-export const revertSelectedPathsState = atom({
-  key: "revertSelectedPathsState",
   default: false,
 });
 export const affectedPathCountState = atom({
@@ -164,7 +174,6 @@ export const selectedFieldsStageState = atom<any>({
 });
 
 export default function useSchemaSettings() {
-  const revertSelectedPaths = useRecoilValue(revertSelectedPathsState);
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
   const setSelectedFieldsStage = useSetRecoilState(selectedFieldsStageState);
@@ -263,14 +272,20 @@ export default function useSchemaSettings() {
         const pathLabel = path.split(".");
         const count = pathLabel?.length;
         const pathLabelFinal =
-          dataset.mediaType === "video"
+          dataset.mediaType === "video" && viewSchema?.[path]
             ? `frames.${pathLabel[pathLabel.length - 1]}`
             : pathLabel[pathLabel.length - 1];
-        let isSelected = selectedPaths.has(path);
 
         const ftype = tmpSchema[path].ftype;
         const skip = skipFiled(path, ftype);
         const disabled = disabledField(path, ftype, tmpSchema[path].subfield);
+
+        const fullPath =
+          dataset.mediaType === "video" && viewSchema?.[path]
+            ? `frames.${path}`
+            : path;
+
+        const isSelected = selectedPaths.has(fullPath);
 
         return {
           path,
@@ -303,16 +318,44 @@ export default function useSchemaSettings() {
   ]);
 
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
-  const getSubPaths = useCallback((viewPaths: string[], path: string) => {
-    const subPaths = new Set<string>();
-    subPaths.add(path);
-    viewPaths.forEach((currPath: string) => {
-      if (currPath.startsWith(path + ".")) {
-        subPaths.add(currPath);
+  const getPath = useCallback(
+    (path: string) => {
+      if (dataset && viewSchema) {
+        return dataset.mediaType === "video" && viewSchema?.[path]
+          ? `frames.${path}`
+          : path;
       }
-    });
-    return subPaths;
-  }, []);
+      return path;
+    },
+    [viewSchema, dataset]
+  );
+
+  const mergedSchema = useMemo(
+    () => ({ ...viewSchema, ...schema }),
+    [viewSchema, schema]
+  );
+  const getSubPaths = useCallback(
+    (path: string) => {
+      const subPaths = new Set<string>();
+      subPaths.add(getPath(path));
+      Object.keys(mergedSchema).forEach((currPath: string) => {
+        if (
+          currPath.startsWith(path + ".") &&
+          !skipFiled(currPath, mergedSchema?.[currPath]?.ftype) &&
+          !disabledField(
+            currPath,
+            mergedSchema?.[currPath]?.ftype,
+            mergedSchema?.[currPath]?.subfield
+          )
+        ) {
+          subPaths.add(getPath(currPath));
+        }
+      });
+      return subPaths;
+    },
+    [mergedSchema]
+  );
+
   const parentPathList = useCallback(
     (currPathSplit: string[], path: string) => {
       let ppaths = [];
@@ -335,7 +378,7 @@ export default function useSchemaSettings() {
   // toggle field selection
   const toggleSelection = useCallback(
     (path: string, checked: boolean) => {
-      const pathAndSubPaths = getSubPaths(viewPaths, path);
+      const pathAndSubPaths = getSubPaths(path);
       const currPathSplit = path.split(".");
 
       if (checked) {
@@ -348,7 +391,6 @@ export default function useSchemaSettings() {
         setSelectedPaths(newSelectedPaths);
       } else {
         const union = new Set<string>([...selectedPaths, ...pathAndSubPaths]);
-
         const parentPaths = parentPathList(currPathSplit, path);
         union.add(parentPaths[0]);
         setSelectedPaths(union);
@@ -357,13 +399,6 @@ export default function useSchemaSettings() {
     },
     [selectedPaths, viewPaths]
   );
-
-  // Reset will cause this effect
-  useEffect(() => {
-    if (allPaths.length) {
-      // setSelectedPaths(new Set([...allPaths, ...vPaths]));
-    }
-  }, [revertSelectedPaths]);
 
   // select and unselect all
   const setAllFieldsCheckedWrapper = useCallback(

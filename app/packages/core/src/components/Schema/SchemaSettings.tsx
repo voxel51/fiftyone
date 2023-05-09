@@ -182,12 +182,6 @@ const SchemaSettings = () => {
                   ? searchResults.filter((pp) => selectedPaths.has(pp))
                   : [...selectedPaths];
 
-                if (mediatType === "video") {
-                  initialFieldNames = initialFieldNames.map(
-                    (pp) => `frames.${pp}`
-                  );
-                }
-
                 const stageKwargs = {
                   field_names: initialFieldNames.filter((pp) => !!pp),
                   _allow_missing: true,

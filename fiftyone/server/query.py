@@ -467,9 +467,6 @@ class Query(fosa.AggregateQuery):
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
 
-                for stage in view_stages:
-                    view.add_stage(fosg.ViewStage._from_dict(stage))
-
                 base_schema = serialize_fields(
                     view.get_field_schema(flat=True)
                 )
