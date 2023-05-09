@@ -490,6 +490,10 @@ class DatasetMixin(object):
         if new_group_field:
             dataset_doc.group_field = new_group_field
 
+        if is_frame_field:
+            paths = [dataset._FRAMES_PREFIX + p for p in paths]
+            new_paths = [dataset._FRAMES_PREFIX + p for p in new_paths]
+
         dataset_doc.app_config._rename_paths(paths, new_paths)
         dataset.save()
 
@@ -679,6 +683,9 @@ class DatasetMixin(object):
             cls._delete_field_schema(del_path)
 
         if del_paths:
+            if is_frame_field:
+                del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
+
             dataset_doc.app_config._delete_paths(del_paths)
             dataset.save()
 
@@ -740,6 +747,9 @@ class DatasetMixin(object):
 
         if del_paths:
             dataset = cls._dataset
+            if cls._is_frames_doc:
+                del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
+
             dataset._doc.app_config._delete_paths(del_paths)
             dataset.save()
 
