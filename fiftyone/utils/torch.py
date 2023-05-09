@@ -51,6 +51,8 @@ def load_torch_hub_image_model(repo_or_dir, model, **kwargs):
             embeddings_layer="head",
         )
 
+        assert model.has_embeddings is True
+
     Args:
         repo_or_dir: see :attr:`torch:torch.hub.load`
         model: see :attr:`torch:torch.hub.load`
@@ -71,22 +73,44 @@ def load_torch_hub_image_model(repo_or_dir, model, **kwargs):
     return TorchImageModel(config)
 
 
-def load_torch_hub_raw_model(**kwargs):
+def load_torch_hub_raw_model(*args, **kwargs):
     """Loads a raw model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
     :class:`torch:torch.nn.Module`.
 
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        model = fout.load_torch_hub_raw_model(
+            "facebookresearch/dinov2",
+            "dinov2_vits14",
+        )
+
+        print(type(model))
+        # <class 'dinov2.models.vision_transformer.DinoVisionTransformer'>
+
     Args:
+        *args: positional arguments for :attr:`torch:torch.hub.load`
         **kwargs: keyword arguments for :attr:`torch:torch.hub.load`
 
     Returns:
         a :class:`torch:torch.nn.Module`
     """
-    return torch.hub.load(**kwargs)
+    return torch.hub.load(*args, **kwargs)
 
 
 def find_torch_hub_requirements(repo_or_dir, source="github"):
     """Locates the ``requirements.txt`` file on disk associated with a
     downloaded `PyTorch Hub <https://pytorch.org/hub>`_ model.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        req_path = fout.find_torch_hub_requirements("facebookresearch/dinov2")
+
+        print(req_path)
+        # '~/.cache/torch/hub/facebookresearch_dinov2_main/requirements.txt'
 
     Args:
         repo_or_dir: see :attr:`torch:torch.hub.load`
@@ -114,6 +138,15 @@ def load_torch_hub_requirements(repo_or_dir, source="github"):
     """Loads the package requirements from the ``requirements.txt`` file on
     disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
     model.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        requirements = fout.load_torch_hub_requirements("facebookresearch/dinov2")
+
+        print(requirements)
+        # ['torch==2.0.0', 'torchvision==0.15.0', ...]
 
     Args:
         repo_or_dir: see :attr:`torch:torch.hub.load`
