@@ -310,6 +310,8 @@ def _iter_plugin_definition_files(filepaths: Optional[List[str]] = None):
             yield fpath
     else:
         for root, dirs, files in os.walk(_PLUGIN_DIRS[0]):
+            # ignore hidden directories
+            dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
             for file in files:
                 if _is_plugin_definition_file(file):
                     files = []
