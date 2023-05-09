@@ -88,6 +88,9 @@ FiftyOne supports the configuration options described below:
 | `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
 |                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`         | `600`                         | The timeout for execution of an operator. See :ref:`this page <app-plugins>` for more  |
+|                               |                                     |                               | information.                                                                           |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <app-plugins>` for more |
 |                               |                                     |                               | information.                                                                           |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -148,6 +151,7 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
+            "operator_timeout": 600,
             "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
@@ -191,6 +195,7 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
+            "operator_timeout": 600,
             "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
