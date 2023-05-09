@@ -498,8 +498,8 @@ class DatasetDocument(Document):
 
         if any(isinstance(doc, DBRef) for doc in saved_views):
             logger.warning(
-                "This dataset's saved views are corrupted. Run %s('%s') to "
-                "resolve",
+                "This dataset's saved view references are corrupted. Run "
+                "%s('%s') and dataset.reload() to resolve",
                 etau.get_function_name(patch_saved_views),
                 self.name,
             )
@@ -511,8 +511,8 @@ class DatasetDocument(Document):
 
         if any(isinstance(doc, DBRef) for doc in annotation_runs.values()):
             logger.warning(
-                "This dataset's annotation runs are corrupted. Run %s('%s') "
-                "to resolve",
+                "This dataset's annotation run references are corrupted. Run "
+                "%s('%s') and dataset.reload() to resolve",
                 etau.get_function_name(patch_annotation_runs),
                 self.name,
             )
@@ -524,8 +524,8 @@ class DatasetDocument(Document):
 
         if any(isinstance(doc, DBRef) for doc in brain_methods.values()):
             logger.warning(
-                "This dataset's brain runs are corrupted. Run %s('%s') to "
-                "resolve",
+                "This dataset's brain run references are corrupted. Run "
+                "%s('%s') and dataset.reload() to resolve",
                 etau.get_function_name(patch_brain_runs),
                 self.name,
             )
