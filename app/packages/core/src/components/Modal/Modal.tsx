@@ -169,13 +169,7 @@ const SampleModal = () => {
           return {
             children: (
               <Entries.Empty
-                useText={
-                  group === "tags"
-                    ? () => fos.useTagText(true)
-                    : group === "label tags"
-                    ? () => fos.useLabelTagText(true)
-                    : () => "No fields"
-                }
+                useText={() => ({ text: "No fields", loading: false })}
                 key={key}
               />
             ),
