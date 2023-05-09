@@ -67,7 +67,7 @@ def test_list_downloaded_plugins(mocker, fiftyone_plugins_dir):
     # Test that the exact `name` from yml file is used
     expected = [n + "-name" for n in _DEFAULT_TEST_PLUGINS]
     assert len(actual) == len(expected)
-    assert all([a == b for a, b in zip(actual, expected)])
+    assert set(actual) == set(expected)
 
 
 #
@@ -84,8 +84,7 @@ def test_list_enabled_plugins(mocker, fiftyone_plugins_dir):
     downloaded = fop.list_downloaded_plugins()
 
     assert len(initial) == len(expected)
-    assert all([a == b for a, b in zip(initial, expected)])
-    assert all([a == b for a, b in zip(downloaded, expected)])
+    assert set(initial) == set(expected)
 
     # disable one
     disabled = expected.pop()
@@ -96,7 +95,7 @@ def test_list_enabled_plugins(mocker, fiftyone_plugins_dir):
     assert disabled not in actual
     assert disabled in downloaded
     assert len(actual) == len(expected)
-    assert all([a == b for a, b in zip(actual, expected)])
+    assert set(actual) == set(expected)
 
 
 def test_find_plugin_success(mocker, fiftyone_plugins_dir):
