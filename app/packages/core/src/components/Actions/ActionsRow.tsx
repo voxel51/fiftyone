@@ -5,6 +5,7 @@ import {
   FlipToBack,
   KeyboardArrowLeft,
   KeyboardArrowRight,
+  List,
   LocalOffer,
   Search,
   Settings,
@@ -30,9 +31,12 @@ import styled from "styled-components";
 
 import { PillButton, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
@@ -40,7 +44,6 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { ACTIVE_FIELD } from "../ColorModal/utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -426,6 +429,21 @@ const ActionsRowDiv = styled.div`
   align-items: center;
 `;
 
+export const BrowseOperations = () => {
+  const browser = useOperatorBrowser();
+  return (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={<List />}
+        onClick={() => browser.toggle()}
+        title={"Browse operations"}
+      />
+    </ActionDiv>
+  );
+};
+
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
@@ -464,7 +482,9 @@ export const GridActionsRow = () => {
       <SaveFilters />
       <Selected modal={false} />
       <DynamicGroupAction />
+      <BrowseOperations />
       <Options modal={false} />
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
     </ActionsRowDiv>
   );
 };
@@ -492,6 +512,7 @@ export const ModalActionsRow = ({
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+      <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

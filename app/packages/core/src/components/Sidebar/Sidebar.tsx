@@ -11,7 +11,7 @@ import styled from "styled-components";
 import { move } from "@fiftyone/utilities";
 
 import { useEventHandler } from "@fiftyone/state";
-import { scrollbarStyles } from "../utils";
+import { scrollbarStyles } from "@fiftyone/utilities";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { replace } from "./Entries/GroupEntries";

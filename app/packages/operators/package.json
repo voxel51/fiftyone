@@ -1,0 +1,29 @@
+{
+    "name": "@fiftyone/operators",
+    "author": "Voxel51, Inc.",
+    "version": "0.0.0",
+    "description": "Develop fiftyone plugins",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/operators",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone/"
+    },
+    "main": "./src/index.ts",
+    "scripts": {
+        "dev": "vite"
+    },
+    "private": true,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "devDependencies": {
+        "@babel/preset-typescript": "^7.17.12",
+        "@fiftyone/utilities": "workspace:^",
+        "@types/react": "^18.0.12",
+        "jest": "^28.1.1",
+        "prettier": "2.2.1",
+        "typescript": "4.2.4",
+        "vite": "2.4.2"
+    }
+}

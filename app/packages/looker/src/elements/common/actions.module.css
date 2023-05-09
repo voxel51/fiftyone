@@ -31,15 +31,15 @@
 
 .lookerShortcutValue {
   font-weight: normal;
-  color: var(--joy-palette-primary-plainColor);
+  color: var(--fo-palette-primary-plainColor);
 }
 
 .lookerShortcutTitle {
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   font-weight: bold;
 }
 
 .lookerShortcutDetail {
   font-weight: normal;
-  color: var(--joy-palette-text-tertiary);
+  color: var(--fo-palette-text-tertiary);
 }

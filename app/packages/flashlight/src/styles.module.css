@@ -48,8 +48,8 @@
   height: 100%;
   overflow: auto;
 
-  --light-color: var(--joy-palette-text-tertiary);
-  --dark-color: var(--joy-palette-background-level2);
+  --light-color: var(--fo-palette-text-tertiary);
+  --dark-color: var(--fo-palette-background-level2);
 
   scrollbar-color: var(--light-color) var(--dark-color);
 }
@@ -107,7 +107,7 @@
 .flashlightSection > div {
   position: absolute;
   contain: size layout paint;
-  background-color: var(--joy-palette-background-level1);
+  background-color: var(--fo-palette-background-level1);
   overflow: hidden;
 }
 
