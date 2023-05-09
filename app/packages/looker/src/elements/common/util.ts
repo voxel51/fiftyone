@@ -90,6 +90,8 @@ export const prettify = (
 
   return result;
 };
+
+// for classification types and regression types
 type Param = {
   coloring: Coloring;
   path: string;
@@ -132,5 +134,45 @@ export const getColorFromOptions = ({
         key = labelDefault ? "label" : "value";
       }
       return getColor(coloring.pool, coloring.seed, param[key]);
+  }
+};
+
+// for primitive types
+
+type PrimitiveParam = {
+  coloring: Coloring;
+  path: string;
+  value: string | number | boolean | { datetime: number };
+  customizeColorSetting: CustomizeColor[];
+};
+export const getColorFromOptionsPrimitives = ({
+  coloring,
+  path,
+  value,
+  customizeColorSetting,
+}: PrimitiveParam) => {
+  switch (coloring.by) {
+    case "field":
+      const customSetting = customizeColorSetting.find((s) => s.field === path);
+      const fieldColor = customSetting?.fieldColor;
+      const useFieldColor = customSetting?.useFieldColor;
+      if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
+        return fieldColor;
+      }
+      // fall back on default setting:
+      return getColor(coloring.pool, coloring.seed, path);
+    case "value":
+    default:
+      const setting = customizeColorSetting.find((s) => s.field === path);
+      if (setting) {
+        // check if this label has a assigned color, use it if it is a valid color
+        const labelColor = setting.labelColors?.find(
+          (l) => l.name == value
+        )?.color;
+        if (isValidColor(labelColor)) {
+          return labelColor;
+        }
+      }
+      return getColor(coloring.pool, coloring.seed, path);
   }
 };

@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
-import styled from "styled-components";
-import DeleteIcon from "@material-ui/icons/Delete";
-import { ChromePicker } from "react-color";
-import Input from "../../Common/Input";
 import * as fos from "@fiftyone/state";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { cloneDeep } from "lodash";
-import { Button } from "../../utils";
 import { Field } from "@fiftyone/utilities";
+import DeleteIcon from "@material-ui/icons/Delete";
+import { cloneDeep } from "lodash";
+import React, { useEffect, useRef, useState } from "react";
+import { ChromePicker } from "react-color";
+import { useRecoilValue } from "recoil";
+import styled from "styled-components";
+import Input from "../../Common/Input";
+import { Button } from "../../utils";
 
 const RowContainer = styled.div`
   display: flex;

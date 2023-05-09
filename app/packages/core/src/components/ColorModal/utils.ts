@@ -1,11 +1,10 @@
-import { atom, useRecoilCallback } from "recoil";
+import { isEmpty, xor } from "lodash";
 import * as fos from "@fiftyone/state";
 
-import { isEmpty, xor } from "lodash";
-import { Field } from "@fiftyone/utilities";
-import { CustomizeColor } from "@fiftyone/state";
-
-// Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their website Color Universal Design (CUD). This palette is a “Set of colors that is unambiguous both to colorblinds and non-colorblinds”.
+// Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
+// website Color Universal Design (CUD). This palette is a “Set of colors that
+// is unambiguous both to colorblinds and non-colorblinds”.
+//
 // https://jfly.uni-koeln.de/color/
 export const colorBlindFriendlyPalette = [
   "#E69F00", // orange
@@ -34,8 +33,8 @@ export const fiftyoneDefaultColorPalette = [
 ];
 
 export const ACTIVE_FIELD = {
-  ["JSON"]: "json",
-  ["GLOBAL"]: "global",
+  ["json"]: "JSON editor",
+  ["global"]: "Global settings",
 };
 
 // disregard the order
@@ -49,7 +48,13 @@ export const isBoolean = (v: unknown) => typeof v === "boolean";
 
 const getValidLabelColors = (labelColors: unknown[]) => {
   return labelColors?.filter((x) => {
-    return x && isObject(x) && isString(x["name"]) && isString(x["color"]);
+    return (
+      x &&
+      isObject(x) &&
+      isString(x["name"]) &&
+      x["name"] !== "" &&
+      isString(x["color"])
+    );
   }) as { name: string; color: string }[];
 };
 
@@ -59,20 +64,44 @@ export const validateJSONSetting = (json: unknown[]) => {
     (s) => s && isObject(s) && isString(s["field"])
   ) as {}[];
 
-  return filtered?.map((input) => ({
+  const f = filtered?.map((input) => ({
     field: input["field"],
     useFieldColor: isBoolean(input["useFieldColor"])
       ? input["useFieldColor"]
       : false,
     fieldColor: input["fieldColor"] ?? null,
-    attributeForColor: isString(input["attributeForColor"])
-      ? input["attributeForColor"]
-      : null,
-    attributeForOpacity: isString(input["attributeForOpacity"])
-      ? input["attributeForOpacity"]
-      : null,
+    attributeForColor:
+      isString(input["attributeForColor"]) &&
+      input["attributeForColor"] !== "label"
+        ? input["attributeForColor"]
+        : null,
     labelColors: Array.isArray(input["labelColors"])
       ? getValidLabelColors(input["labelColors"])
       : null,
-  })) as CustomizeColor[];
+  })) as fos.CustomizeColor[];
+
+  // remove default settings
+  return f.filter((x) => {
+    const hasFieldSetting = x.useFieldColor && x.fieldColor;
+    const hasAttributeColor = x.attributeForColor;
+    const hasLabelColors = x.labelColors && x.labelColors.length > 0;
+    return hasFieldSetting || hasAttributeColor || hasLabelColors;
+  }) as fos.CustomizeColor[];
+};
+
+type ColorSchemeStr = {
+  colorPool: string[];
+  customizedColorSettings: string;
+};
+
+export const isDefaultSetting = (savedSetting: ColorSchemeStr) => {
+  return (
+    isSameArray(
+      savedSetting.colorPool,
+      fos.DEFAULT_APP_COLOR_SCHEME.colorPool
+    ) &&
+    (savedSetting.customizedColorSettings ==
+      JSON.stringify(fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings) ||
+      !savedSetting.customizedColorSettings)
+  );
 };

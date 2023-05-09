@@ -25,7 +25,7 @@ class Plugins(HTTPEndpoint):
         plugin_packages = [
             plugin_definition.to_json() for plugin_definition in list_plugins()
         ]
-        return {"plugins": plugin_packages}
+        return {"plugins": filter_disabled_plugins(request, plugin_packages)}
 
 
 def load_json_or_none(filepath):

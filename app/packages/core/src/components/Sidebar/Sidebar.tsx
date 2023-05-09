@@ -1,4 +1,10 @@
-import React, { Suspense, useCallback, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -14,6 +20,8 @@ import * as fos from "@fiftyone/state";
 import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
+import SchemaSettings from "../Schema/SchemaSettings";
+import { graphql, useFragment } from "react-relay";
 
 const MARGIN = 3;
 
@@ -437,6 +445,8 @@ const InteractiveSidebar = ({
     () => new Controller({ minHeight: 0 })
   );
 
+  const modalContainer = document.getElementById("modal");
+
   if (entries instanceof Error) {
     throw entries;
   }
@@ -726,6 +736,7 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
+      {modalContainer && <SchemaSettings />}
       {!modal && (
         <Suspense>
           <Box

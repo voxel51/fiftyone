@@ -42,6 +42,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { types, OperatorPlacements } from "@fiftyone/operators";
 
@@ -287,7 +288,7 @@ const Colors = () => {
 
   const onOpen = () => {
     setOpen(!open);
-    setActiveField("global");
+    setActiveField(ACTIVE_FIELD.global);
   };
 
   useEffect(() => {
@@ -341,32 +342,33 @@ const SaveFilters = () => {
   const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const loading = await snapshot.getPromise(fos.savingFilters);
-      const selected = await snapshot.getPromise(fos.selectedSamples);
+    ({ snapshot, set }) =>
+      async () => {
+        const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
 
-      if (loading) {
-        return;
-      }
+        if (loading) {
+          return;
+        }
 
-      set(fos.savingFilters, true);
-      if (selected.size > 0) {
-        setView(
-          (v) => [
-            ...v,
-            {
-              _cls: "fiftyone.core.stages.Select",
-              kwargs: [["sample_ids", [...selected]]],
-            },
-          ],
-          undefined,
-          undefined,
-          true
-        );
-      } else {
-        setView((v) => v);
-      }
-    },
+        set(fos.savingFilters, true);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
+      },
     []
   );
 
@@ -468,10 +470,33 @@ export const GridActionsRow = () => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+
+  // if the session color scheme is not applied to the dataset,
+  // check to see if dataset.appConfig has applicable settings
+  useEffect(() => {
+    if (!isUsingSessionColorScheme && datasetColorScheme) {
+      const colorPool =
+        datasetColorScheme.colorPool?.length > 0
+          ? datasetColorScheme.colorPool
+          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const customizedColorSettings =
+        JSON.parse(datasetColorScheme.customizedColorSettings) ??
+        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
+      setSessionColor({
+        colorPool,
+        customizedColorSettings,
+      });
+    }
+  }, [isUsingSessionColorScheme, datasetColorScheme]);
+
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
-      <Options modal={false} />
       <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
@@ -479,6 +504,7 @@ export const GridActionsRow = () => {
       <SaveFilters />
       <Selected modal={false} />
       <BrowseOperations />
+      <Options modal={false} />
       <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
     </ActionsRowDiv>
   );

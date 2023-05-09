@@ -205,7 +205,7 @@ def _is_plugin_definition_file(path):
 
 def _list_plugins_by_name(
     enabled_only: bool = None, check_for_duplicates=True
-) -> list[str]:
+) -> List[Optional[str]]:
     """Returns a list of plugins.
 
     Args:
@@ -238,7 +238,7 @@ def _list_plugins_by_name(
     return [p.name for p in plugins]
 
 
-def _list_plugins(enabled_only: bool = None) -> list[Optional[plugin_package]]:
+def _list_plugins(enabled_only: bool = None) -> List[Optional[plugin_package]]:
     """Returns a list of plugins.
     If enabled_only == True, only returns enabled plugins.
     If enabled_only == False, only returns disabled plugins.
@@ -300,13 +300,22 @@ def find_plugin(name: str, check_for_duplicates: bool = True) -> Optional[str]:
 def _iter_plugin_definition_files(filepaths: Optional[List[str]] = None):
     """Returns an iterator that finds all plugin definition files in filepaths.
     If filepaths is not provided, the default plugin directory is searched.
+
     """
-    if not filepaths:
-        filepaths = glob.glob(
-            os.path.join(_PLUGIN_DIRS[0], "**"), recursive=True
-        )
-    for fpath in filter(lambda x: _is_plugin_definition_file(x), filepaths):
-        yield fpath
+
+    if filepaths and len(filepaths) > 0:
+        for fpath in filter(
+            lambda x: _is_plugin_definition_file(x), filepaths
+        ):
+            yield fpath
+    else:
+        for root, dirs, files in os.walk(_PLUGIN_DIRS[0]):
+            # ignore hidden directories
+            dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
+            for file in files:
+                if _is_plugin_definition_file(file):
+                    files = []
+                    yield os.path.join(root, file)
 
 
 def _find_plugin_paths(name: str = None) -> Optional[str]:

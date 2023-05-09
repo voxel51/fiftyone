@@ -129,6 +129,7 @@ export const TabOption = ({ active, options, color }: TabOptionProps) => {
           style={{
             ...styles[i],
             cursor: text === active ? "default" : "pointer",
+            color: theme.text.primary,
           }}
           onMouseEnter={() =>
             setHovering(hovering.map((_, j) => (j === i ? true : _)))

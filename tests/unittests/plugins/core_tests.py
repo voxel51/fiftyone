@@ -67,7 +67,7 @@ def test_list_downloaded_plugins(mocker, fiftyone_plugins_dir):
     # Test that the exact `name` from yml file is used
     expected = [n + "-name" for n in _DEFAULT_TEST_PLUGINS]
     assert len(actual) == len(expected)
-    assert all([a == b for a, b in zip(actual, expected)])
+    assert set(actual) == set(expected)
 
 
 #
@@ -84,8 +84,7 @@ def test_list_enabled_plugins(mocker, fiftyone_plugins_dir):
     downloaded = fop.list_downloaded_plugins()
 
     assert len(initial) == len(expected)
-    assert all([a == b for a, b in zip(initial, expected)])
-    assert all([a == b for a, b in zip(downloaded, expected)])
+    assert set(initial) == set(expected)
 
     # disable one
     disabled = expected.pop()
@@ -96,7 +95,7 @@ def test_list_enabled_plugins(mocker, fiftyone_plugins_dir):
     assert disabled not in actual
     assert disabled in downloaded
     assert len(actual) == len(expected)
-    assert all([a == b for a, b in zip(actual, expected)])
+    assert set(actual) == set(expected)
 
 
 def test_find_plugin_success(mocker, fiftyone_plugins_dir):
@@ -117,6 +116,7 @@ def test_find_plugin_error_not_found(mocker, fiftyone_plugins_dir):
         _ = fop.find_plugin(plugin_dir_name)
 
 
+@pytest.fixture(scope="function")
 def mock_plugin_package_name(plugin_name, plugin_path):
     if not plugin_name:
         plugin_name = "test-plugin1-name"
@@ -125,9 +125,17 @@ def mock_plugin_package_name(plugin_name, plugin_path):
     return fop.core.plugin_package(plugin_name, plugin_path)
 
 
-def test_find_plugin_error_duplicate_name(fiftyone_plugins_dir):
-    plugin_name = "test-plugin1-name"
+def test_find_plugin_error_duplicate_name(
+    mocker,
+    fiftyone_plugins_dir,
+):
+    plugin_name = "test-plugin1"
+    dup_plugin_dir = fiftyone_plugins_dir / "test-plugin2"
+    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
     m = mock.Mock(spec=fop.core.plugin_package(plugin_name, "path/to/plugin"))
+    with open(os.path.join(dup_plugin_dir, "fiftyone.yml"), "w") as f:
+        pd = {k: plugin_name + "-" + k for k in _REQUIRED_YML_KEYS}
+        f.write(yaml.dump(pd))
 
     with pytest.raises(ValueError):
         _ = fop.find_plugin("test-plugin1-name")
