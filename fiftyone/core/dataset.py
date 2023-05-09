@@ -383,6 +383,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_collection_name.startswith("clips.")
 
     @property
+    def _is_dynamic_groups(self):
+        return False
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -2336,6 +2340,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def get_group(self, group_id, group_slices=None):
         """Returns a dict containing the samples for the given group ID.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            group_id = dataset.take(1).first().group.id
+            group = dataset.get_group(group_id)
+
+            print(group.keys())
+            # ['left', 'right', 'pcd']
 
         Args:
             group_id: a group ID
@@ -5923,7 +5940,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [{"$match": {"$expr": {"$eq": ["$" + name_field, slice_name]}}}]
 
     def _attach_groups_pipeline(self, group_slices=None):
-        """A pipeline that attaches the reuested group slice(s) for each
+        """A pipeline that attaches the requested group slice(s) for each
         document and stores them in under ``groups.<slice>`` keys.
         """
         if self.group_field is None:

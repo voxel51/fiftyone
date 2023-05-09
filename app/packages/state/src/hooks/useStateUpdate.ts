@@ -9,6 +9,7 @@ import {
   _activeFields,
   activePcdSlices,
   dataset as datasetAtom,
+  dynamicGroupSamplesStoreMap,
   extendedSelection,
   filters,
   groupSlice,
@@ -175,6 +176,10 @@ const useStateUpdate = (ignoreSpaces = false) => {
           reset(extendedSelection);
           reset(filters);
           reset(activePcdSlices);
+
+          // todo: find a way to reset atom family or key by dataset name
+          // reset(dynamicGroupSamplesStoreMap());
+          // reset(viewAtoms.dynamicGroupCurrentElementIndex);
         }
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {

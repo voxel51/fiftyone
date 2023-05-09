@@ -23,7 +23,9 @@ const GroupSlice: React.FC = () => {
    * (todo: rm network side effect and move to session subscription initialization)
    */
   useEffect(() => {
-    setSlice(defaultSlice);
+    if (defaultSlice) {
+      setSlice(defaultSlice);
+    }
     // only run on mount, setSlice dependency should be stable but somehow changes on every render (todo: fix)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultSlice]);
