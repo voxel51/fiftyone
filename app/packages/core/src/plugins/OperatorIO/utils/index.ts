@@ -23,6 +23,7 @@ const baseViews = ["View"];
 const viewAliases = {
   Button: "ButtonView",
   Dropdown: "DropdownView",
+  Choices: "DropdownView",
   Error: "AlertView",
   Header: "HeaderView",
   Notice: "AlertView",
