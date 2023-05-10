@@ -39,22 +39,35 @@ class OperatorObject extends BaseType {
     return this.defineProperty(name, new OperatorObject(), options);
   }
   str(name, options: any = {}) {
-    return this.defineProperty(name, new String(), options);
+    return this.defineProperty(name, new OperatorString(), options);
   }
   bool(name, options: any = {}) {
-    return this.defineProperty(name, new Boolean(), options);
+    return this.defineProperty(name, new OperatorBoolean(), options);
   }
   int(name, options: any = {}) {
-    return this.defineProperty(name, new Number(), options);
+    return this.defineProperty(name, new OperatorNumber(), options);
   }
   float(name, options: any = {}) {
-    return this.defineProperty(name, new Number(), options);
+    return this.defineProperty(name, new OperatorNumber(), options);
   }
   list(name, elementType: ANY_TYPE, options: any = {}) {
     return this.defineProperty(name, new List(elementType), options);
   }
   enum(name, values: any[], options: any = {}) {
     return this.defineProperty(name, new Enum(values), options);
+  }
+  map(name, keyType: ANY_TYPE, valueType: ANY_TYPE, options: any = {}) {
+    return this.defineProperty(
+      name,
+      new OperatorMap(keyType, valueType),
+      options
+    );
+  }
+  oneof(name, types: ANY_TYPE[], options: any = {}) {
+    return this.defineProperty(name, new OneOf(types), options);
+  }
+  tuple(name, items: ANY_TYPE[], options: any = {}) {
+    return this.defineProperty(name, new Tuple(items), options);
   }
   static fromJSON(json: any) {
     const entries = Object.entries(json.properties).map(([k, v]) => [
@@ -146,7 +159,7 @@ export class List extends BaseType {
     return new List(typeFromJSON(element_type));
   }
 }
-export class SampleID extends String {
+export class SampleID extends OperatorString {
   static fromJSON(json: any) {
     const Type = this;
     const type = new Type();
@@ -163,7 +176,7 @@ export class Enum extends BaseType {
   }
 }
 export class OneOf extends BaseType {
-  constructor(public types: [ANY_TYPE]) {
+  constructor(public types: ANY_TYPE[]) {
     super();
   }
 
@@ -172,7 +185,7 @@ export class OneOf extends BaseType {
   }
 }
 export class Tuple extends BaseType {
-  constructor(public items: [ANY_TYPE]) {
+  constructor(public items: ANY_TYPE[]) {
     super();
   }
 
@@ -271,7 +284,7 @@ export class Form extends View {
     );
   }
 }
-export class ReadOnlyView extends View {
+export class ReadonlyView extends View {
   readOnly: boolean;
   constructor(options: ViewProps) {
     super(options);
@@ -603,7 +616,7 @@ const VIEWS = {
   View,
   InferredView,
   Form,
-  ReadOnlyView,
+  ReadonlyView,
   Choice,
   Choices,
   RadioGroup,
