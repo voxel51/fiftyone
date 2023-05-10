@@ -448,10 +448,13 @@ def _serialize_reference(ref):
     """Returns a dict representation of the reference if it exists."""
 
     if type(ref) == DBRef:
+        # Referenced object does not exist in the database so log error and return
+        oid = getattr(ref, "id", "")
+        col = getattr(ref, "collection", "")
+        created = getattr(ref.id, "generation_time", "") if oid else ""
         logging.error(
-            f"Could not resolve ObjectId('{ref.id}') from '{ref.collection}' collection created at {ref.generation_time}"
+            f"Could not resolve ObjectId('{oid}') from '{col}' collection created at {created}"
         )
-        # Referenced object does not exist in the database
         return
     return ref.to_dict()
 
