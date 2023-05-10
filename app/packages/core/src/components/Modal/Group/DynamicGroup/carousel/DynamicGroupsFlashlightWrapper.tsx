@@ -149,6 +149,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
     }
 
     const containerWidth = flashlight.element.clientWidth;
+    // elementWidth represents the width of the first element in the flashlight
     const elementWidth =
       flashlight.element.firstElementChild?.firstElementChild?.clientWidth ??
       100;
