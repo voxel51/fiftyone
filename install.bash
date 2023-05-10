@@ -59,29 +59,26 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
         VERSION_FULL=$(bin/mongod --version | grep 'db version')
         VERSION="${VERSION_FULL:12}"
         if [ "${OS}" == "Darwin" ] && [ "${ARCH}" == "arm64" ]; then
-            if [ ${VERSION} != "6.0.2" ]; then
-                echo "Upgrading MongoDB v${VERSION} to v6.0.2"
+            if [ ${VERSION} != "6.0.5" ]; then
+                echo "Upgrading MongoDB v${VERSION} to v6.0.5"
             else
                 echo "MongoDB v6.0.2 already installed"
                 INSTALL_MONGODB=false
             fi
         else
-            if [ ${VERSION} != "5.0.4" ]; then
-                echo "Upgrading MongoDB v${VERSION} to v5.0.4"
+            if [ ${VERSION} != "6.0.5" ]; then
+                echo "Upgrading MongoDB v${VERSION} to v6.0.5"
             else
-                echo "MongoDB v5.0.4 already installed"
+                echo "MongoDB v6.0.5 already installed"
                 INSTALL_MONGODB=false
             fi
         fi
     else
-        echo "Installing MongoDB v5.0.4"
+        echo "Installing MongoDB v6.0.5"
     fi
     if [ ${INSTALL_MONGODB} = true ]; then
-        MONGODB_VERSION=5.0.4
+        MONGODB_VERSION=6.0.5
         if [ "${OS}" == "Darwin" ]; then
-            if [ "${ARCH}" == "arm64" ]; then
-                MONGODB_VERSION=6.0.2
-            fi
             MONGODB_BUILD=mongodb-macos-x86_64-${MONGODB_VERSION}
 
             curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
@@ -90,7 +87,7 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
             rm mongodb.tgz
             rm -rf ${MONGODB_BUILD}
         elif [ "${OS}" == "Linux" ]; then
-            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu2004-${MONGODB_VERSION}
+            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}
 
             curl https://fastdl.mongodb.org/linux/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz
