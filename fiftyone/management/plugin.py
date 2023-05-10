@@ -186,7 +186,7 @@ def get_plugin_info(plugin_name: str) -> Plugin:
     plugin = client.post_graphql_request(
         query=_GET_PLUGIN_INFO_QUERY, variables={"pluginName": plugin_name}
     )["plugin"]
-    return util.camel_to_snake_value(plugin)
+    return util.camel_to_snake_container(plugin)
 
 
 def list_plugins(include_builtin: bool = False) -> List[Plugin]:
@@ -205,7 +205,7 @@ def list_plugins(include_builtin: bool = False) -> List[Plugin]:
         query=_LIST_PLUGINS_QUERY,
         variables={"includeBuiltin": include_builtin},
     )["plugins"]
-    return util.camel_to_snake_value(plugins)
+    return util.camel_to_snake_container(plugins)
 
 
 def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:

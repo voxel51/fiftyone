@@ -427,7 +427,7 @@ class ManagementSdkTests(unittest.TestCase):
                 }
             ],
         }
-        expected = fom_util.camel_to_snake_value(plugin)
+        expected = fom_util.camel_to_snake_container(plugin)
 
         self.client.post_graphql_request.return_value = {"plugin": plugin}
 
@@ -465,7 +465,7 @@ class ManagementSdkTests(unittest.TestCase):
                 "operators": None,
             },
         ]
-        expected = fom_util.camel_to_snake_value(plugins)
+        expected = fom_util.camel_to_snake_container(plugins)
         self.client.post_graphql_request.return_value = {"plugins": plugins}
 
         include_builtin = mock.Mock()
@@ -773,7 +773,7 @@ class ManagementSdkTests(unittest.TestCase):
         ]:
             self.assertEqual(fom_util.camel_to_snake(pre), post)
 
-    def test_camel_to_snake_value(self):
+    def test_camel_to_snake_container(self):
         for pre, post in [
             ("sameSame", "sameSame"),
             ({"inviteeRole": "theInvitee"}, {"invitee_role": "theInvitee"}),
@@ -790,4 +790,4 @@ class ManagementSdkTests(unittest.TestCase):
                 },
             ),
         ]:
-            self.assertEqual(fom_util.camel_to_snake_value(pre), post)
+            self.assertEqual(fom_util.camel_to_snake_container(pre), post)

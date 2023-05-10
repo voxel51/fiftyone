@@ -15,12 +15,12 @@ def camel_to_snake(variable: str):
     return CAMEL_TO_SNAKE_REGEX.sub("_", variable).lower()
 
 
-def camel_to_snake_value(value: Any):
+def camel_to_snake_container(value: Any):
     if isinstance(value, list):
-        return [camel_to_snake_value(i) for i in value]
+        return [camel_to_snake_container(i) for i in value]
     elif isinstance(value, dict):
         return {
-            camel_to_snake(k): camel_to_snake_value(v)
+            camel_to_snake(k): camel_to_snake_container(v)
             for k, v in value.items()
         }
     else:
