@@ -4,12 +4,8 @@
 |
 """
 import os
-<<<<<<< HEAD
-from typing import Any, Dict, Mapping, Optional
-from typing_extensions import Literal
-=======
 from typing import Any, BinaryIO, Dict, Mapping, Optional
->>>>>>> 31b2ac1f1 (plugin management sdk)
+from typing_extensions import Literal
 
 import backoff
 import requests
