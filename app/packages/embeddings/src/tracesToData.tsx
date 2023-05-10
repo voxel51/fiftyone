@@ -100,8 +100,7 @@ const getConvertedColor = (color: string | number[]) => {
         return Color.fromCSSRGBValues(c.r, c.g, c.b);
       }
     }
-  } else {
-    if (color) {
+  } else if (Array.isArray(color) {
       return Color.fromCSSRGBValues(...color);
     }
   }
