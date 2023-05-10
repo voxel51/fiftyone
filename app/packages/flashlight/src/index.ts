@@ -37,7 +37,7 @@ export interface FlashlightConfig<K> {
   options: FlashlightOptions;
   elementId?: string;
   containerId?: string;
-  enableKeyNavigation?: {
+  enableHorizontalKeyNavigation?: {
     navigationCallback: (isPrev: boolean) => Promise<void>;
     previousKey: string;
     nextKey: string;
@@ -70,20 +70,19 @@ export default class Flashlight<K> {
 
     document.addEventListener("visibilitychange", () => this.render());
 
-    if (config.enableKeyNavigation) {
+    if (config.enableHorizontalKeyNavigation && config.horizontal) {
       const keyDownEventListener = (e) => {
         if (!this.isAttached()) {
           document.removeEventListener("keydown", keyDownEventListener);
           return;
         }
 
-        if (e.key === config.enableKeyNavigation.previousKey) {
+        if (e.key === config.enableHorizontalKeyNavigation.previousKey) {
           e.preventDefault();
-          config.enableKeyNavigation.navigationCallback(true);
-          this.container.scrollLeft -= 316;
-        } else if (e.key === config.enableKeyNavigation.nextKey) {
+          config.enableHorizontalKeyNavigation.navigationCallback(true);
+        } else if (e.key === config.enableHorizontalKeyNavigation.nextKey) {
           e.preventDefault();
-          config.enableKeyNavigation.navigationCallback(false);
+          config.enableHorizontalKeyNavigation.navigationCallback(false);
         }
       };
 

@@ -26,6 +26,13 @@ import { RelayEnvironmentKey } from "./relay";
 import { fieldSchema } from "./schema";
 import { datasetName } from "./selectors";
 import { dynamicGroupViewQuery, view } from "./view";
+import {
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 
 export type SliceName = string | undefined | null;
 
@@ -240,11 +247,11 @@ export const dynamicGroupCandidateFields = selector<string[]>({
         ([_, { name, ftype }]) =>
           name !== "filepath" &&
           name !== "id" &&
-          (ftype === "fiftyone.core.fields.IntField" ||
-            ftype === "fiftyone.core.fields.FloatField" ||
-            ftype === "fiftyone.core.fields.StringField" ||
-            ftype === "fiftyone.core.fields.FrameNumberField" ||
-            ftype === "fiftyone.core.fields.ObjectIdField")
+          (ftype === INT_FIELD ||
+            ftype === FLOAT_FIELD ||
+            ftype === STRING_FIELD ||
+            ftype === FRAME_NUMBER_FIELD ||
+            ftype === OBJECT_ID_FIELD)
       )
       .map(([_, { name }]) => name);
   },

@@ -4,6 +4,7 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, {
   MutableRefObject,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -140,6 +141,24 @@ export const DynamicGroupsFlashlightWrapper = () => {
   const flashlightRef = useRef<Flashlight<number>>();
   selectSample.current = select;
 
+  const getScrollParams = useCallback(() => {
+    const flashlight = flashlightRef.current;
+
+    if (!flashlight) {
+      return;
+    }
+
+    const containerWidth = flashlight.element.clientWidth;
+    // elementWidth represents the width of the first element in the flashlight
+    const elementWidth =
+      flashlight.element.firstElementChild?.firstElementChild?.clientWidth ??
+      100;
+
+    const elementsCount = Math.ceil(containerWidth / elementWidth!);
+
+    return { elementWidth, elementsCount, containerWidth };
+  }, []);
+
   const navigationCallback = useRecoilCallback(
     ({ snapshot }) =>
       async (isPrevious) => {
@@ -167,18 +186,18 @@ export const DynamicGroupsFlashlightWrapper = () => {
         const nextSample = store.samples.get(nextSampleId);
         nextSample && setSample(nextSample);
 
-        // todo: very unstable, just ideating auto scroll based on quickstart groups params
+        // todo: implement better scrolling logic
         if (flashlightRef.current) {
-          const newLeft = isPrevious
-            ? flashlightRef.current?.element.scrollLeft - 325 * 3
-            : flashlightRef.current?.element.scrollLeft + 325 * 3;
+          const { elementWidth } = getScrollParams()!;
 
-          nextSampleIndex !== 0 &&
-            nextSampleIndex % 3 === 0 &&
-            flashlightRef.current?.element.scroll({
-              left: newLeft,
-              behavior: "smooth",
-            });
+          const newLeft = isPrevious
+            ? flashlightRef.current?.element.scrollLeft - elementWidth
+            : flashlightRef.current?.element.scrollLeft + elementWidth;
+
+          flashlightRef.current?.element.scroll({
+            left: newLeft,
+            behavior: "smooth",
+          });
         }
       },
     [setSample, store.indices, store.samples]
@@ -189,7 +208,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
       horizontal: true,
       containerId: DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID,
       elementId: DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID,
-      enableKeyNavigation: {
+      enableHorizontalKeyNavigation: {
         navigationCallback,
         previousKey: "<",
         nextKey: ">",

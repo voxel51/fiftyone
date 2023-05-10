@@ -115,7 +115,7 @@ const ImageContainerHeader = () => {
   const groupStats = useRecoilValue(groupStatistics(false));
 
   const shouldShowSliceSelector = useMemo(
-    () => isGroup && groupSlices.length > 0,
+    () => isGroup && groupSlices.length > 1,
     [isGroup, groupSlices]
   );
 
