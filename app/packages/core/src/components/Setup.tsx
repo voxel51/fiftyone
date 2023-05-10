@@ -13,7 +13,7 @@ import {
 import { isNotebook } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
-import { scrollbarStyles } from "../components/utils";
+import { scrollbarStyles } from "@fiftyone/utilities";
 
 const SectionTitle = styled.div`
   font-size: 2rem;

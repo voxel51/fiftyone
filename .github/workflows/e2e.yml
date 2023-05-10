@@ -66,10 +66,9 @@ jobs:
         with:
           name: videos
           path: e2e/cypress/videos
-          
+
       - name: Upload snapshots
         uses: actions/upload-artifact@v2
         with:
           name: snapshots
           path: e2e/cypress/snapshots/actual
-

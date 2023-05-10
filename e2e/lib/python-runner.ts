@@ -3,7 +3,7 @@ import dedent from "dedent";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { DEFAULT_APP_PORT } from "./constants";
+import { DEFAULT_APP_ADDRESS, DEFAULT_APP_PORT } from "./constants";
 
 export class PythonRunner {
   public static exec(sourceCode: string) {
@@ -17,10 +17,9 @@ export class PythonRunner {
       // todo: might want to set PYTHONPATH here to point to the python source code
       FIFTYONE_DATABASE_NAME: "cypress",
       FIFTYONE_DEFAULT_APP_PORT: String(DEFAULT_APP_PORT),
+      FIFTYONE_DEFAULT_APP_ADDRESS: DEFAULT_APP_ADDRESS,
     };
 
-    console.log(fs.existsSync(sourceFilePath));
-    console.log(`python ${sourceFilePath}`);
     const proc = spawn("python", [sourceFilePath], {
       env,
     });

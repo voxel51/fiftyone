@@ -26,7 +26,7 @@
 }
 
 .lookerLabel input[type="radio"]:checked ~ .lookerRadio {
-  background: var(--joy-palette-primary-plainColor);
+  background: var(--fo-palette-primary-plainColor);
 }
 .lookerRadio:after {
   content: "";
@@ -51,5 +51,5 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--joy-palette-text-primary);
+  background: var(--fo-palette-text-primary);
 }

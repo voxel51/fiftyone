@@ -1,5 +1,3 @@
-import { Duration } from "../../support/utils";
-
 /**
  * This test suite validates that quickstart-groups dataset from the zoo can be loaded in the app.
  */
@@ -24,7 +22,7 @@ describe("quickstart-groups dataset", () => {
   });
 
   beforeEach(() => {
-    cy.waitForGridToBeVisible();
+    cy.waitForGridToBeVisible("quickstart-groups-12");
   });
 
   it("should have four lookers in two flashlight sections", () => {

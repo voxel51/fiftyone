@@ -860,6 +860,7 @@ Transforms the images in a dataset per the specified parameters.
                                     [-e EXT] [-f] [--media-field MEDIA_FIELD]
                                     [--output-field OUTPUT_FIELD]
                                     [-o OUTPUT_DIR] [-r REL_DIR]
+                                    [--no-update-filepaths]
                                     [-d] [-n NUM_WORKERS] [-s]
                                     DATASET_NAME
 
@@ -899,6 +900,9 @@ Transforms the images in a dataset per the specified parameters.
                             input filepath to generate a unique identifier that
                             is joined with `output_dir` to generate an output
                             path for each image
+      --no-update-filepaths
+                            whether to store the output filepaths on the sample
+                            collection
       -d, --delete-originals
                             whether to delete the original images after transforming
       -n NUM_WORKERS, --num-workers NUM_WORKERS
@@ -928,7 +932,6 @@ Transforms the videos in a dataset per the specified parameters.
 
 .. code-block:: text
 
-
     fiftyone utils transform-videos [-h] [--fps FPS] [--min-fps MIN_FPS]
                                     [--max-fps MAX_FPS] [--size SIZE]
                                     [--min-size MIN_SIZE] [--max-size MAX_SIZE]
@@ -937,6 +940,7 @@ Transforms the videos in a dataset per the specified parameters.
                                     [--output-field OUTPUT_FIELD]
                                     [--output-dir OUTPUT_DIR]
                                     [--rel-dir REL_DIR]
+                                    [--no-update-filepaths]
                                     [-d] [-s] [-v]
                                     DATASET_NAME
 
@@ -978,6 +982,9 @@ Transforms the videos in a dataset per the specified parameters.
                             input filepath to generate a unique identifier that
                             is joined with `output_dir` to generate an output
                             path for each video
+      --no-update-filepaths
+                            whether to store the output filepaths on the sample
+                            collection
       -d, --delete-originals
                             whether to delete the original videos after transforming
       -s, --skip-failures   whether to gracefully continue without raising an

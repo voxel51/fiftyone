@@ -19,7 +19,6 @@ import webbrowser
 from bson import ObjectId
 import numpy as np
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -28,6 +27,14 @@ import fiftyone.utils.annotations as foua
 ls = fou.lazy_import(
     "label_studio_sdk",
     callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),
+)
+brush = fou.lazy_import(
+    "label_studio_converter.brush",
+    callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+)
+etree = fou.lazy_import(
+    "lxml.etree",
+    callback=lambda: fou.ensure_import("lxml.etree"),
 )
 
 
@@ -247,12 +254,15 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             for _id, _mime_type, _filepath in zip(ids, mime_types, filepaths)
         ]
 
-        predictions, id_map = {}, {}
+        predictions = {}
+        id_map = {}
         for label_field, label_info in label_schema.items():
+            label_type = label_info["type"]
             if label_info["existing_field"]:
                 predictions[label_field] = {
                     smp.id: export_label_to_label_studio(
                         smp[label_field],
+                        label_type=label_type,
                         full_result={
                             "from_name": "label",
                             "to_name": "image",
@@ -363,7 +373,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 )
             else:
                 labels = [
-                    import_label_studio_annotation(r)
+                    import_label_studio_annotation(r, label_type=label_type)
                     for r in latest_annotation.get("result", [])
                 ]
 
@@ -380,6 +390,12 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _export_to_label_studio(self, labels, label_type):
+        if label_type == "instances":
+            raise ValueError(
+                "This method does not support uploading instance "
+                "segmentations. Use upload_samples() instead"
+            )
+
         if _LABEL_TYPES[label_type]["multiple"] is None:
             return export_label_to_label_studio(labels)
 
@@ -463,10 +479,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             task_ids: list of task ids
         """
         for t_id in task_ids:
-            self._client.make_request(
-                "DELETE",
-                f"/api/tasks/{t_id}",
-            )
+            self._client.make_request("DELETE", f"/api/tasks/{t_id}")
 
     def delete_project(self, project_id):
         """Deletes the project from Label Studio.
@@ -474,10 +487,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         Args:
             project_id: project id
         """
-        self._client.make_request(
-            "DELETE",
-            f"/api/projects/{project_id}",
-        )
+        self._client.make_request("DELETE", f"/api/projects/{project_id}")
 
 
 class LabelStudioAnnotationResults(foua.AnnotationResults):
@@ -541,10 +551,6 @@ def generate_labeling_config(media, label_type, labels=None):
     Returns:
         a labeling config
     """
-    etree = fou.lazy_import(
-        "lxml.etree", callback=lambda: fou.ensure_import("lxml.etree")
-    )
-
     assert media in ["image", "video"]
     assert (
         label_type in _LABEL_TYPES.keys()
@@ -569,11 +575,16 @@ def generate_labeling_config(media, label_type, labels=None):
     return config_str
 
 
-def import_label_studio_annotation(result):
+def import_label_studio_annotation(result, label_type=None):
     """Imports an annotation from Label Studio.
 
     Args:
         result: the annotation result from Label Studio
+        label_type (None): the label type to use when importing the annotation.
+            This argument is only used when importing brush labels. By default,
+            these labels are imported as semantic segmentations, but you can
+            pass ``label_type="instances"`` to import them as instance
+            segmentations instead
 
     Returns:
         a :class:`fiftyone.core.labels.Label`
@@ -596,7 +607,7 @@ def import_label_studio_annotation(result):
     elif ls_type == "keypointlabels":
         label = _from_keypointlabels(result)
     elif ls_type == "brushlabels":
-        label = _from_brushlabels(result)
+        label = _from_brushlabels(result, label_type=label_type)
     elif ls_type == "number":
         label = _from_number(result)
     else:
@@ -618,12 +629,17 @@ def _update_dict(src_dict, update_dict):
     return new
 
 
-def export_label_to_label_studio(label, full_result=None):
+def export_label_to_label_studio(label, label_type=None, full_result=None):
     """Exports a label to the Label Studio format.
 
     Args:
         label: a :class:`fiftyone.core.labels.Label` or list of
             :class:`fiftyone.core.labels.Label` instances
+        label_type (None): the label type to use when exporting the annotation.
+            This argument is only used when exporting object detections. By
+            default, only the bounding boxes are exported, but you can pass
+            ``label_type="instances"`` to export them as brush labels encoding
+            the instance masks instead
         full_result (None): if non-empty, return the full Label Studio result
 
     Returns:
@@ -633,11 +649,18 @@ def export_label_to_label_studio(label, full_result=None):
     if label is None:
         result_value = {}
         ls_type = None
-        ids = []
+        ids = None
     elif _check_type(label, fol.Classification, fol.Classifications):
         result_value, ls_type, ids = _to_classification(label)
     elif _check_type(label, fol.Detection, fol.Detections):
-        result_value, ls_type, ids = _to_detection(label)
+        if label_type == "instances":
+            size = (
+                full_result["original_width"],
+                full_result["original_height"],
+            )
+            result_value, ls_type, ids = _to_instance(label, size)
+        else:
+            result_value, ls_type, ids = _to_detection(label)
     elif _check_type(label, fol.Polyline, fol.Polylines):
         result_value, ls_type, ids = _to_polyline(label)
     elif _check_type(label, fol.Keypoint, fol.Keypoints):
@@ -645,9 +668,7 @@ def export_label_to_label_studio(label, full_result=None):
     elif isinstance(label, fol.Segmentation):
         result_value, ls_type, ids = _to_segmentation(label)
     elif isinstance(label, fol.Regression):
-        result_value = {"number": label.value}
-        ls_type = "number"
-        ids = label.id
+        result_value, ls_type, ids = _to_regression(label)
     else:
         raise ValueError("Label type %s is not supported" % type(label))
 
@@ -655,6 +676,7 @@ def export_label_to_label_studio(label, full_result=None):
         # return full LS result
         if not isinstance(result_value, (list, tuple)):
             result_value = [result_value]
+            ids = [ids]
 
         return [
             _update_dict(
@@ -720,6 +742,28 @@ def _to_detection(label):
     return result, ls_type, label.id
 
 
+def _to_instance(label, size):
+    ls_type = "brushlabels"
+
+    if isinstance(label, list):
+        return (
+            [_to_instance(l, size)[0] for l in label],
+            ls_type,
+            [l.id for l in label],
+        )
+
+    if isinstance(label, fol.Detections):
+        return (
+            [_to_instance(l, size)[0] for l in label.detections],
+            ls_type,
+            [l.id for l in label.detections],
+        )
+
+    rle = brush.mask2rle(label.to_segmentation(frame_size=size).get_mask())
+    result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
+    return result, ls_type, label.id
+
+
 def _to_polyline(label):
     ls_type = "polygonlabels"
 
@@ -775,13 +819,13 @@ def _to_keypoint(label):
 
 
 def _to_segmentation(label):
-    brush = fou.lazy_import(
-        "label_studio_converter.brush",
-        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
-    )
     rle = brush.mask2rle(label.get_mask())
     result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, "brushlabels", label.id
+
+
+def _to_regression(label):
+    return {"number": label.value}, "number", label.id
 
 
 def _from_choices(result):
@@ -826,18 +870,20 @@ def _from_keypointlabels(result):
     return keypoints
 
 
-def _from_brushlabels(result):
-    brush = fou.lazy_import(
-        "label_studio_converter.brush",
-        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
-    )
-
+def _from_brushlabels(result, label_type=None):
     label_values = result["value"]["brushlabels"]
     img = brush.decode_rle(result["value"]["rle"])
-    mask = img.reshape(
-        (result["original_height"], result["original_width"], 4)
-    )[:, :, 3]
-    return fol.Segmentation(label=label_values[0], mask=mask)
+    shape = (result["original_height"], result["original_width"], 4)
+    mask = img.reshape(shape)[:, :, 3]
+
+    label = label_values[0]
+    segmentation = fol.Segmentation(label=label, mask=mask)
+
+    if label_type == "instances":
+        detections = segmentation.to_detections({255: label}).detections
+        return detections[0] if detections else None
+
+    return segmentation
 
 
 def _from_number(result):
@@ -866,7 +912,7 @@ def _ls_tags_from_type(label_type):
 
 
 def _label_class_from_tag(label_type):
-    """Maps Label Studio parent tag to fo.Label."""
+    """Maps Label Studio parent tag to FiftyOne Label type."""
     reverse = {
         v["parent_tag"].lower(): v["label"] for v in _LABEL_TYPES.values()
     }
@@ -935,6 +981,11 @@ _LABEL_TYPES = {
     ),
     "detections": dict(
         parent_tag="RectangleLabels",
+        child_tag="Label",
+        label=fol.Detection,
+    ),
+    "instances": dict(
+        parent_tag="BrushLabels",
         child_tag="Label",
         label=fol.Detection,
     ),

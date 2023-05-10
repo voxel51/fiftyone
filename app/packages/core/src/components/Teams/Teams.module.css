@@ -10,10 +10,10 @@
   font-size: 1rem;
   width: 300px;
 
-  background: var(--joy-palette-background-body);
-  box-shadow: 0 2px 40px var(--joy-palette-custom-shadow);
+  background: var(--fo-palette-background-body);
+  box-shadow: 0 2px 40px var(--fo-palette-custom-shadow);
   border-radius: 3px;
-  color: var(--joy-palette-text-primary);
+  color: var(--fo-palette-text-primary);
 }
 
 .header {
@@ -26,7 +26,7 @@
 .text {
   font-weight: unset;
   margin-bottom: 1rem;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
 }
 
 .form input {
@@ -35,20 +35,20 @@
   border: none;
   padding: 0.25rem 0;
   margin-bottom: 1rem;
-  color: var(--joy-palette-text-primary);
+  color: var(--fo-palette-text-primary);
   line-height: 1rem;
   border: none;
-  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  border-bottom: 1px solid var(--fo-palette-primary-plainColor);
   font-weight: bold;
   outline: none;
 }
 
 .teamsForm input:focus {
-  border-bottom: 1px solid var(--joy-palette-primary-plainColor);
+  border-bottom: 1px solid var(--fo-palette-primary-plainColor);
   outline: none;
   font-weight: bold;
 }
 .teamsForm input::placeholder {
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   font-weight: bold;
 }

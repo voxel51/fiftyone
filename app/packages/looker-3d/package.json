@@ -19,6 +19,7 @@
         "@react-three/drei": "^9.13.0",
         "@react-three/fiber": "^8.0.23",
         "lodash": "^4.17.21",
+        "react-color": "^2.19.3",
         "styled-components": "^5.3.5",
         "three": "^0.141.0"
     },

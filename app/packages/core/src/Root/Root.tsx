@@ -13,6 +13,13 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
 import {
+  OperatorBrowser,
+  OperatorPrompt,
+  OperatorInvocationRequestExecutor,
+  OperatorViewModal,
+} from "@fiftyone/operators";
+
+import {
   Button,
   DocsLink,
   GitHubLink,
@@ -51,7 +58,7 @@ const rootQuery = graphql`
   }
 `;
 
-const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
+export const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
   const refresh = useRecoilValue(fos.refresher);
 
   return (search: string) => {
@@ -180,7 +187,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           )}
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
-            disableRipple
             onClick={() => {
               const nextMode = mode === "dark" ? "light" : "dark";
               setMode(nextMode);
@@ -197,6 +203,10 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           <GitHubLink />
           <DocsLink />
         </div>
+        <OperatorBrowser />
+        <OperatorPrompt />
+        <OperatorViewModal />
+        <OperatorInvocationRequestExecutor />
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>

@@ -4,7 +4,7 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { sizeBytes } from "./util";
+import { isValidColor, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -93,20 +93,54 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label.id);
   }
 
-  getColor({ options: { coloring } }: Readonly<State>): string {
+  getColor({
+    options: { coloring, customizeColorSetting },
+  }: Readonly<State>): string {
     let key;
-
+    let pool;
+    // video fields path needs to be converted
+    const path = this.field.startsWith("frames.")
+      ? this.field.slice("frames.".length)
+      : this.field;
     switch (coloring.by) {
       case "field":
-        return getColor(coloring.pool, coloring.seed, this.field);
-      case "instance":
-        key = this.label.index !== undefined ? "index" : "id";
-        break;
-      default:
-        key = "label";
-    }
+        // check if the field has a customized color, use it if it is a valid color
+        const field = customizeColorSetting.find((s) => s.field === path);
+        const useFieldColor = field?.useFieldColor;
+        const fieldColor = field?.fieldColor;
+        if (useFieldColor && fieldColor && isValidColor(fieldColor)) {
+          return fieldColor;
+        }
 
-    return getColor(coloring.pool, coloring.seed, this.label[key]);
+        // use default settings
+        return getColor(coloring.pool, coloring.seed, this.field);
+
+      default:
+        // check if the field has customized setting
+        const setting = customizeColorSetting.find((s) => s.field === path);
+        if (setting) {
+          key = setting.attributeForColor ?? "label";
+          pool = setting.colors?.every((c) => isValidColor(c))
+            ? setting.colors
+            : coloring.pool;
+          // check if this label has a assigned color, use it if it is a valid color
+
+          const labelColor = setting.labelColors?.find(
+            (l) => l.name == this.label[key]?.toString()
+          )?.color;
+
+          if (isValidColor(labelColor)) {
+            return labelColor;
+          } else {
+            // fallback to use label as default attribute
+            key = "label";
+          }
+        } else {
+          key = "label";
+          pool = coloring.pool;
+        }
+        return getColor(pool, coloring.seed, this.label[key]);
+    }
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

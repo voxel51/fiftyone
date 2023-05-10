@@ -37,7 +37,7 @@ class AggregationForm:
     mixed: bool
     paths: t.List[str]
     sample_ids: t.List[gql.ID]
-    slice: t.Optional[str]
+    slices: t.Optional[t.List[str]]
     view: BSONArray
     view_name: t.Optional[str] = None
 
@@ -119,7 +119,7 @@ async def aggregate_resolver(
         filters=form.filters,
         extended_stages=form.extended_stages,
         sample_filter=SampleFilter(
-            group=GroupElementFilter(id=form.group_id, slice=form.slice)
+            group=GroupElementFilter(id=form.group_id, slices=form.slices)
         ),
     )
 

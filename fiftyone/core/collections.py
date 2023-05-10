@@ -241,6 +241,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _is_clips")
 
     @property
+    def _is_dynamic_groups(self):
+        """Whether this collection contains dynamic groups."""
+        raise NotImplementedError("Subclass must implement _is_dynamic_groups")
+
+    @property
     def _element_str(self):
         if self.media_type == fom.GROUP:
             return "group"
@@ -3035,11 +3040,15 @@ class SampleCollection(object):
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Keypoints in :class:`fiftyone.core.labels.Keypoints` format
         -   Temporal detections in
             :class:`fiftyone.core.labels.TemporalDetections` format
 
         For spatial object detection evaluation, this method uses COCO-style
         evaluation by default.
+
+        When evaluating keypoints, "IoUs" are computed via
+        `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
 
         For temporal segment detection, this method uses ActivityNet-style
         evaluation by default.
@@ -3084,10 +3093,12 @@ class SampleCollection(object):
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
@@ -3575,7 +3586,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeBy(field, values))
 
     @view_stage
-    def exclude_fields(self, field_names, _allow_missing=False):
+    def exclude_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -3626,14 +3639,40 @@ class SampleCollection(object):
             view = dataset.exclude_fields("predictions.mood")
 
         Args:
-            field_names: a field name or iterable of field names to exclude.
-                May contain ``embedded.field.name`` as well
+            field_names (None): a field name or iterable of field names to
+                exclude. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically excludes fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to exclude fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to exclude all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    exclude fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to exclude
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+            fos.ExcludeFields(
+                field_names=field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -4345,6 +4384,37 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def flatten(self, stages=None):
+        """Returns a flattened view that contains all samples in the dynamic
+        grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            # Group samples by ground truth label
+            grouped_view = dataset.take(1000).group_by("ground_truth.label")
+            print(len(grouped_view))  # 10
+
+            # Return a flat view that contains 10 samples from each class
+            flat_view = grouped_view.flatten(fo.Limit(10))
+            print(len(flat_view))  # 100
+
+        Args:
+            stages (None): a :class:`fiftyone.core.stages.ViewStage` or list of
+                :class:`fiftyone.core.stages.ViewStage` instances to apply to
+                each group's samples while flattening
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Flatten(stages=stages))
+
+    @view_stage
     def geo_near(
         self,
         point,
@@ -4509,12 +4579,14 @@ class SampleCollection(object):
     def group_by(
         self,
         field_or_expr,
+        order_by=None,
+        reverse=False,
+        flat=False,
         match_expr=None,
         sort_expr=None,
-        reverse=False,
     ):
-        """Creates a view that reorganizes the samples in the collection so
-        that they are grouped by a specified field or expression.
+        """Creates a view that groups the samples in the collection by a
+        specified field or expression.
 
         Examples::
 
@@ -4524,41 +4596,57 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("cifar10", split="test")
 
-            # Take a random sample of 1000 samples and organize them by ground
-            # truth label with groups arranged in decreasing order of size
+            #
+            # Take 1000 samples at random and group them by ground truth label
+            #
+
+            view = dataset.take(1000).group_by("ground_truth.label")
+
+            for group in view.iter_dynamic_groups():
+                group_value = group.first().ground_truth.label
+                print("%s: %d" % (group_value, len(group)))
+
+            #
+            # Variation of above operation that arranges the groups in
+            # decreasing order of size and immediately flattens them
+            #
+
+            from itertools import groupby
+
             view = dataset.take(1000).group_by(
                 "ground_truth.label",
+                flat=True,
                 sort_expr=F().length(),
                 reverse=True,
             )
 
-            print(view.values("ground_truth.label"))
-            print(
-                sorted(
-                    view.count_values("ground_truth.label").items(),
-                    key=lambda kv: kv[1],
-                    reverse=True,
-                )
-            )
+            rle = lambda v: [(k, len(list(g))) for k, g in groupby(v)]
+            for label, count in rle(view.values("ground_truth.label")):
+                print("%s: %d" % (label, count))
 
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
                 a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
+            order_by (None): an optional field by which to order the samples in
+                each group
+            reverse (False): whether to return the results in descending order.
+                Applies both to ``order_by`` and ``sort_expr``
+            flat (False): whether to return a grouped collection (False) or a
+                flattened collection (True)
             match_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines which groups to include in the output view. If
                 provided, this expression will be evaluated on the list of
-                samples in each group
+                samples in each group. Only applicable when ``flat=True``
             sort_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
-                samples in each group
-            reverse (False): whether to return the results in descending order
+                samples in each group. Only applicable when ``flat=True``
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4566,9 +4654,11 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.GroupBy(
                 field_or_expr,
+                order_by=order_by,
+                reverse=reverse,
+                flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
-                reverse=reverse,
             )
         )
 
@@ -5243,7 +5333,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
-    def mongo(self, pipeline):
+    def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
         """Adds a view stage defined by a raw MongoDB aggregation pipeline.
 
         See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
@@ -5334,7 +5424,13 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Mongo(pipeline))
+        return self._add_view_stage(
+            fos.Mongo(
+                pipeline,
+                _needs_frames=_needs_frames,
+                _group_slices=_group_slices,
+            )
+        )
 
     @view_stage
     def select(self, sample_ids, ordered=False):
@@ -5430,7 +5526,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_fields(self, field_names=None, _allow_missing=False):
+    def select_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
 
@@ -5496,12 +5594,38 @@ class SampleCollection(object):
         Args:
             field_names (None): a field name or iterable of field names to
                 select. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically selects fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to select fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to select all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    select fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to select fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to select
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectFields(field_names, _allow_missing=_allow_missing)
+            fos.SelectFields(
+                field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -6127,8 +6251,9 @@ class SampleCollection(object):
 
         Args:
             field: the patches field, which must be of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than ``field``
                 and the default sample fields are included. Can be any of the
                 following:
@@ -6200,8 +6325,9 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than the
                 ground truth/predicted fields and the default sample fields are
                 included. Can be any of the following:
@@ -8344,12 +8470,24 @@ class SampleCollection(object):
         Frame-level fields can be indexed by prepending ``"frames."`` to the
         field name.
 
-        If you are indexing a single field and it already has a unique
-        constraint, it will be retained regardless of the ``unique`` value you
-        specify. Conversely, if the given field already has a non-unique index
-        but you requested a unique index, the existing index will be replaced
-        with a unique index. Use :meth:`drop_index` to drop an existing index
-        first if you wish to modify an existing index in other ways.
+        .. note::
+
+            If an index with the same field(s) but different order(s) already
+            exists, no new index will be created.
+
+            Use :meth:`drop_index` to drop an existing index first if you wish
+            to replace an existing index with new properties.
+
+        .. note::
+
+            If you are indexing a single field and it already has a unique
+            constraint, it will be retained regardless of the ``unique`` value
+            you specify. Conversely, if the given field already has a
+            non-unique index but you requested a unique index, the existing
+            index will be replaced with a unique index.
+
+            Use :meth:`drop_index` to drop an existing index first if you wish
+            to replace an existing index with new properties.
 
         Args:
             field_or_spec: the field name, ``embedded.field.name``, or index
@@ -8369,13 +8507,13 @@ class SampleCollection(object):
             input_spec = list(field_or_spec)
 
         single_field_index = len(input_spec) == 1
+        index_info = self.get_index_information()
 
         # For single field indexes, provide special handling based on `unique`
         # constraint
         if single_field_index:
             field = input_spec[0][0]
 
-            index_info = self.get_index_information()
             if field in index_info:
                 _unique = index_info[field].get("unique", False)
                 if _unique or (unique == _unique):
@@ -8415,6 +8553,20 @@ class SampleCollection(object):
             )
 
         is_frame_index = all(is_frame_fields)
+
+        if single_field_index:
+            index_name = input_spec[0][0]
+        else:
+            index_name = "_".join("%s_%s" % (f, o) for f, o in index_spec)
+
+        if is_frame_index:
+            index_name = self._FRAMES_PREFIX + index_name
+
+        normalize = lambda name: name.replace("-1", "1")
+        _index_name = normalize(index_name)
+        if any(_index_name == normalize(name) for name in index_info.keys()):
+            # Satisfactory index already exists
+            return index_name
 
         if is_frame_index:
             coll = self._dataset._frame_collection
@@ -9245,6 +9397,9 @@ class SampleCollection(object):
             return True
 
         if self.media_type == fom.GROUP:
+            if self.group_media_types is None:
+                return self._dataset.media_type == fom.VIDEO
+
             if any_slice:
                 return any(
                     slice_media_type == fom.VIDEO

@@ -50,7 +50,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             const enabled =
               shouldHandleKeyEvents || matchedControl.alwaysHandle;
 
-            console.log(matchedControl, { enabled, shouldHandleKeyEvents });
             if (
               enabled &&
               matchedControl.eventKeyType === ControlEventKeyType.HOLD

@@ -9,6 +9,7 @@ import {
 } from "@fiftyone/looker/src/overlays/util";
 import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
@@ -104,6 +105,7 @@ export const appConfigDefault = selectorFamily<
     eviction: "most-recent",
   },
 });
+
 export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {
     key: "appConfigOptions",
@@ -421,12 +423,19 @@ export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
+    const selectFieldsStage = get(selectedFieldsStageState) as {
+      _cls: string;
+      kwargs: string[];
+    };
 
     return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
+      ...(selectFieldsStage
+        ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
+        : {}),
     };
   },
 });
