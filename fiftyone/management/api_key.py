@@ -6,7 +6,6 @@ API key management.
 |
 """
 import datetime
-
 from typing import Optional, TypedDict, Union
 
 from fiftyone.management import connection
@@ -15,21 +14,12 @@ from fiftyone.management import util as fom_util
 
 
 class APIKey(TypedDict):
-    """dict with information about a user"""
+    """API key dict."""
 
     id: str
     name: str
     created_at: datetime.datetime
 
-
-_GENERATE_API_KEY_QUERY = """
-    mutation($name: String!, $userId: String) {
-      generateApiKey(
-            name: $name
-            userId: $userId
-        ) { key }
-    }
-"""
 
 _LIST_API_KEYS_QUERY = """
     query ($userId: String!) {
@@ -43,7 +33,16 @@ _LIST_API_KEYS_QUERY = """
     }
 """
 
-_REMOVE_API_KEY_QUERY = """
+_GENERATE_API_KEY_QUERY = """
+    mutation($name: String!, $userId: String) {
+      generateApiKey(
+            name: $name
+            userId: $userId
+        ) { key }
+    }
+"""
+
+_DELETE_API_KEY_QUERY = """
     mutation($key: String!, $userId: String) {
       removeApiKey(
             keyId: $key
@@ -51,37 +50,6 @@ _REMOVE_API_KEY_QUERY = """
         )
     }
 """
-
-
-def generate_api_key(
-    key_name: str, user: Optional[Union[str, users.User]] = None
-) -> str:
-    """Generates an API key for the given user (default: current user).
-
-    .. note:
-
-        Only admins can generate keys for other users.
-
-    Args:
-        key_name: a descriptive name for the key
-        user (None): an optional user ID, email string, or
-            :class:`fiftyone.management.User` instance. Defaults to the current
-            user
-
-    Returns:
-        the API key string
-    """
-    user_id = users._resolve_user_id(user, nullable=True)
-
-    client = connection.APIClientConnection().client
-    data = client.post_graphql_request(
-        query=_GENERATE_API_KEY_QUERY,
-        variables={
-            "name": key_name,
-            "userId": user_id,
-        },
-    )
-    return data["generateApiKey"]["key"]
 
 
 def list_api_keys(user: Optional[Union[str, users.User]] = None):
@@ -116,7 +84,38 @@ def list_api_keys(user: Optional[Union[str, users.User]] = None):
     ]
 
 
-def remove_api_key(
+def generate_api_key(
+    key_name: str, user: Optional[Union[str, users.User]] = None
+) -> str:
+    """Generates an API key for the given user (default: current user).
+
+    .. note:
+
+        Only admins can generate keys for other users.
+
+    Args:
+        key_name: a descriptive name for the key
+        user (None): an optional user ID, email string, or
+            :class:`fiftyone.management.User` instance. Defaults to the current
+            user
+
+    Returns:
+        the API key string
+    """
+    user_id = users._resolve_user_id(user, nullable=True)
+
+    client = connection.APIClientConnection().client
+    data = client.post_graphql_request(
+        query=_GENERATE_API_KEY_QUERY,
+        variables={
+            "name": key_name,
+            "userId": user_id,
+        },
+    )
+    return data["generateApiKey"]["key"]
+
+
+def delete_api_key(
     key: str, user: Optional[Union[str, users.User]] = None
 ) -> None:
     """Deletes the API key for the given user (default: current user).
@@ -126,7 +125,7 @@ def remove_api_key(
         Only admins can delete keys for other users.
 
     Args:
-        key: the key to remove
+        key: the key to delete
         user (None): an optional user ID, email string, or
             :class:`fiftyone.management.User` instance. Defaults to the current
             user
@@ -135,7 +134,7 @@ def remove_api_key(
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
-        query=_REMOVE_API_KEY_QUERY,
+        query=_DELETE_API_KEY_QUERY,
         variables={
             "key": key,
             "userId": user_id,

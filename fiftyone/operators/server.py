@@ -9,7 +9,7 @@ FiftyOne operator server.
 from .registry import OperatorRegistry
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-from fiftyone.server.decorators import route
+from fiftyone.server.decorators import route, FiftyOneResponse
 from .executor import (
     execute_operator,
     resolve_type,
@@ -30,6 +30,9 @@ class ListOperators(HTTPEndpoint):
         operators_as_json = [
             operator.to_json(ctx) for operator in registry.list_operators()
         ]
+        for operator in operators_as_json:
+            config = operator["config"]
+            config["can_execute"] = registry.can_execute(operator["uri"])
         return {
             "operators": operators_as_json,
             "errors": registry.list_errors(),
@@ -68,6 +71,8 @@ class ExecuteOperator(HTTPEndpoint):
         registry = PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
+        if registry.can_execute(operator_uri) is False:
+            return create_permission_error(operator_uri)
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -90,6 +95,19 @@ async def create_response_generator(generator):
             yield line
 
 
+def create_permission_error(uri):
+    return FiftyOneResponse(
+        {
+            "error": {
+                "message": "User does not have permission to execute operator '%s'"
+                % uri
+            }
+        },
+        status_code=403,
+    )
+    return
+
+
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
@@ -101,6 +119,9 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         registry = PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
+        if registry.can_execute(operator_uri) is False:
+            return create_permission_error(operator_uri)
+
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -139,6 +160,8 @@ class ResolveType(HTTPEndpoint):
         registry = PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
+        if registry.can_execute(operator_uri) is False:
+            return create_permission_error(operator_uri)
         if registry.operator_exists(operator_uri) is False:
             erroDetail = {
                 "message": "Operator '%s' does not exist" % operator_uri,

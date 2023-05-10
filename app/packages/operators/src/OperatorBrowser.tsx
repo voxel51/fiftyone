@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useOperatorBrowser } from "./state";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { Link } from "@mui/material";
-import { Close, Help } from "@mui/icons-material";
+import { Close, Help, Lock, Extension } from "@mui/icons-material";
 import { useTheme } from "@fiftyone/components";
 import { initializationErrors } from "./operators";
 
@@ -53,6 +53,7 @@ const ChoiceContainer = styled.div`
     background: ${({ theme }) => theme.background.level1};
     cursor: pointer;
   }
+  opacity: ${({ disabled, theme }) => (disabled ? 0.5 : 1)};
   background: ${({ selected, theme }) => selected && theme.primary.plainColor};
 `;
 
@@ -71,9 +72,16 @@ const ChoiceLabel = styled.div`
   text-overflow: ellipsis;
 `;
 
+const ChoiceIcon = styled.div`
+  margin-right: 0.5rem;
+  line-height: 45px;
+`;
+
 const Choice = ({ onClick, choice, selected }) => {
+  const disabled = choice.canExecute === false;
   return (
-    <ChoiceContainer onClick={onClick} selected={selected}>
+    <ChoiceContainer disabled={disabled} onClick={onClick} selected={selected}>
+      <ChoiceIcon>{disabled ? <Lock /> : <Extension />}</ChoiceIcon>
       <ChoiceDescription>{choice.label}</ChoiceDescription>
       {choice.label && <ChoiceLabel>{choice.name}</ChoiceLabel>}
     </ChoiceContainer>
@@ -168,7 +176,7 @@ export default function OperatorBrowser() {
           <ResultsContainer>
             {browser.choices.map((choice) => (
               <Choice
-                onClick={() => browser.setSelectedAndSubmit(choice.value)}
+                onClick={() => browser.setSelectedAndSubmit(choice)}
                 key={choice.value}
                 choice={choice}
                 selected={choice.value === browser.selectedValue}

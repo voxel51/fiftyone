@@ -35,6 +35,7 @@ INSTALL_REQUIRES = [
     "boto3",
     "cachetools",
     "dacite>=1.6.0,<1.8.0",
+    "dill",
     "Deprecated",
     "eventlet",
     "ftfy",
