@@ -545,7 +545,7 @@ class DatasetDocument(Document):
                 evaluations[key] = run_doc
             else:
                 logger.warning(
-                    "This dataset's evaluation runs references are corrupted. "
+                    "This dataset's evaluation run references are corrupted. "
                     "Run %s('%s') and dataset.reload() to resolve",
                     etau.get_function_name(patch_evaluations),
                     self.name,
