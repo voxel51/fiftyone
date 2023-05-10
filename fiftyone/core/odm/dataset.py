@@ -510,8 +510,9 @@ class DatasetDocument(Document):
         # Sadly there appears to be no builtin way to tell mongoengine to
         # serialize reference fields like this
         if no_dereference:
-            d["saved_views"] = _safe_serialize(self.saved_views)
             d["annotation_runs"] = _safe_serialize(self.annotation_runs)
             d["brain_methods"] = _safe_serialize(self.brain_methods)
             d["evaluations"] = _safe_serialize(self.evaluations)
+            d["saved_views"] = _safe_serialize(self.saved_views)
+
         return d
