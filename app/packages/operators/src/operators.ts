@@ -144,7 +144,6 @@ export class OperatorConfig {
 
 export class Operator {
   public definition: types.Object;
-  public unlisted: boolean;
   constructor(
     public pluginName: string,
     public _builtIn: boolean = false,
@@ -167,6 +166,9 @@ export class Operator {
   }
   get uri() {
     return `${this.pluginName || "@voxel51/operators"}/${this.name}`;
+  }
+  get unlisted() {
+    return this.config.unlisted;
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
