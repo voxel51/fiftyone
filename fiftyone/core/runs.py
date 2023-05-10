@@ -404,7 +404,7 @@ class Run(Configurable):
         dataset = samples._root_dataset
 
         # Update run doc
-        run_docs = cls._get_run_docs(samples)
+        run_docs = getattr(dataset._doc, cls._runs_field())
         run_doc = run_docs.pop(key)
         run_doc.key = new_key
         run_docs[new_key] = run_doc
@@ -474,11 +474,7 @@ class Run(Configurable):
                 )
 
         dataset = samples._root_dataset
-        run_docs = cls._get_run_docs(samples)
-        view_stages = [
-            json_util.dumps(s)
-            for s in samples.view()._serialize(include_uuids=False)
-        ]
+        run_docs = getattr(dataset._doc, cls._runs_field())
 
         run_doc = RunDocument(
             dataset_id=dataset._doc.id,
@@ -486,7 +482,10 @@ class Run(Configurable):
             version=run_info.version,
             timestamp=run_info.timestamp,
             config=deepcopy(run_info.config.serialize()),
-            view_stages=view_stages,
+            view_stages=[
+                json_util.dumps(s)
+                for s in samples.view()._serialize(include_uuids=False)
+            ],
             results=None,
         )
         run_doc.save(upsert=True)
@@ -720,7 +719,7 @@ class Run(Configurable):
         dataset = samples._root_dataset
 
         # Delete run from dataset
-        run_docs = cls._get_run_docs(samples)
+        run_docs = getattr(dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
@@ -748,17 +747,19 @@ class Run(Configurable):
 
     @classmethod
     def _get_run_docs(cls, samples):
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
-
-        if any(isinstance(doc, DBRef) for doc in run_docs.values()):
-            logger.warning(
-                "This dataset's %s references are corrupted. Run %s('%s') and "
-                "dataset.reload() to resolve",
-                cls._run_str(),
-                etau.get_function_name(cls._patch_function()),
-                dataset_doc.name,
-            )
+        dataset = samples._root_dataset
+        run_docs = {}
+        for key, run_doc in getattr(dataset._doc, cls._runs_field()).items():
+            if not isinstance(run_doc, DBRef):
+                run_docs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's %s references are corrupted. Run %s('%s') "
+                    "and dataset.reload() to resolve",
+                    cls._run_str(),
+                    etau.get_function_name(cls._patch_function()),
+                    dataset._doc.name,
+                )
 
         return run_docs
 

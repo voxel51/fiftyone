@@ -494,54 +494,62 @@ class DatasetDocument(Document):
     evaluations = DictField(ReferenceField(RunDocument))
 
     def get_saved_views(self):
-        saved_views = self.saved_views
-
-        if any(isinstance(doc, DBRef) for doc in saved_views):
-            logger.warning(
-                "This dataset's saved view references are corrupted. Run "
-                "%s('%s') and dataset.reload() to resolve",
-                etau.get_function_name(patch_saved_views),
-                self.name,
-            )
+        saved_views = []
+        for view_doc in self.saved_views:
+            if not isinstance(view_doc, DBRef):
+                saved_views.append(view_doc)
+            else:
+                logger.warning(
+                    "This dataset's saved view references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_saved_views),
+                    self.name,
+                )
 
         return saved_views
 
     def get_annotation_runs(self):
-        annotation_runs = self.annotation_runs
-
-        if any(isinstance(doc, DBRef) for doc in annotation_runs.values()):
-            logger.warning(
-                "This dataset's annotation run references are corrupted. Run "
-                "%s('%s') and dataset.reload() to resolve",
-                etau.get_function_name(patch_annotation_runs),
-                self.name,
-            )
+        annotation_runs = {}
+        for key, run_doc in self.annotation_runs.items():
+            if not isinstance(run_doc, DBRef):
+                annotation_runs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's annotation run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_annotation_runs),
+                    self.name,
+                )
 
         return annotation_runs
 
     def get_brain_methods(self):
-        brain_methods = self.brain_methods
-
-        if any(isinstance(doc, DBRef) for doc in brain_methods.values()):
-            logger.warning(
-                "This dataset's brain run references are corrupted. Run "
-                "%s('%s') and dataset.reload() to resolve",
-                etau.get_function_name(patch_brain_runs),
-                self.name,
-            )
+        brain_methods = {}
+        for key, run_doc in self.brain_methods.items():
+            if not isinstance(run_doc, DBRef):
+                brain_methods[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's brain method run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_brain_runs),
+                    self.name,
+                )
 
         return brain_methods
 
     def get_evaluations(self):
-        evaluations = self.evaluations
-
-        if any(isinstance(doc, DBRef) for doc in evaluations.values()):
-            logger.warning(
-                "This dataset's evaluations are corrupted. Run %s('%s') to "
-                "resolve",
-                etau.get_function_name(patch_evaluations),
-                self.name,
-            )
+        evaluations = {}
+        for key, run_doc in self.evaluations.items():
+            if not isinstance(run_doc, DBRef):
+                evaluations[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's evaluation runs references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_evaluations),
+                    self.name,
+                )
 
         return evaluations
 
