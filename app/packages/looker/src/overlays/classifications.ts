@@ -10,6 +10,7 @@ import {
   BaseState,
   BoundingBox,
   Coordinates,
+  CustomizeColor,
   NONFINITE,
   VideoState,
 } from "../state";
@@ -49,56 +50,50 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    let pool;
     let key =
       label._cls === REGRESSION
         ? field
-        : state.options.coloring.byLabel
+        : state.options.coloring.by === "value"
         ? label.label
         : field;
     const { coloring, customizeColorSetting } = state.options;
     const f = field.startsWith("frames.")
       ? field.slice("frames.".length)
       : field;
-    switch (coloring.by) {
-      case "field":
-        // check if the field has a customized color, use it if it is a valid color
-        const fieldSetting = customizeColorSetting.find((s) => s.field === f);
-        const useFieldColor = fieldSetting?.useFieldColor;
-        const fieldColor = fieldSetting?.fieldColor;
-        if (useFieldColor && fieldColor && isValidColor(fieldColor)) {
-          return fieldColor;
+    if (coloring.by === "field") {
+      // check if the field has a customized color, use it if it is a valid color
+      const fieldSetting = customizeColorSetting.find((s) => s.field === f);
+      if (fieldSetting) {
+        if (
+          fieldSetting.useFieldColor &&
+          fieldSetting.fieldColor &&
+          isValidColor(fieldSetting.fieldColor)
+        ) {
+          return fieldSetting.fieldColor;
         }
+      }
+      // use default settings
+      return getColor(coloring.pool, coloring.seed, key);
+    } else {
+      // check if the field has customized setting
+      const setting = customizeColorSetting.find((s) => s.field === f);
+      if (setting) {
+        key = setting.attributeForColor ?? key;
+        // check if this label has a assigned color, use it if it is a valid color
+        const labelColor = setting.labelColors?.find(
+          (l) => l.name == label[key]?.toString()
+        )?.color;
 
-        // use default settings
-        return getColor(coloring.pool, coloring.seed, key);
-
-      default:
-      case "value":
-        // check if the field has customized setting
-        const setting = customizeColorSetting.find((s) => s.field === f);
-        if (setting) {
-          key = setting.attributeForColor ?? key;
-          pool = setting.colors?.every((c) => isValidColor(c))
-            ? setting.colors
-            : coloring.pool;
-          // check if this label has a assigned color, use it if it is a valid color
-
-          const labelColor = setting.labelColors?.find(
-            (l) => l.name == label[key]?.toString()
-          )?.color;
-
-          if (isValidColor(labelColor)) {
-            return labelColor;
-          } else {
-            // fallback to use label as default attribute
-            key = "label";
-          }
+        if (isValidColor(labelColor)) {
+          return labelColor;
         } else {
+          // fallback to use label as default attribute
           key = "label";
-          pool = coloring.pool;
         }
-        return getColor(pool, coloring.seed, label[key]);
+      } else {
+        key = "label";
+      }
+      return getColor(coloring.pool, coloring.seed, label[key]);
     }
   }
 

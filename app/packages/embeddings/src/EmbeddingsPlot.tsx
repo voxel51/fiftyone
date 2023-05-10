@@ -1,3 +1,4 @@
+import React, { useMemo } from "react";
 import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
@@ -21,9 +22,11 @@ export function EmbeddingsPlot({
   const customizedColorSettings = useRecoilValue(
     fos.sessionColorScheme
   ).customizedColorSettings;
-  const setting = customizedColorSettings.find((setting) =>
-    labelField?.includes(setting.field)
-  );
+  const setting = useMemo(() => {
+    return customizedColorSettings.find((setting) =>
+      labelField?.includes(setting.field)
+    );
+  }, [customizedColorSettings, labelField]);
 
   const {
     setPlotSelection,

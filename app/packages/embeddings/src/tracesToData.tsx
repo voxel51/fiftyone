@@ -25,7 +25,9 @@ export function tracesToData(
             .filter((p) => p !== null)
         : null;
       const color =
-        getLabelColor(key, setting) ?? getConvertedColor(getColor(key));
+        getLabelColor(key, setting) ??
+        getConvertedColor(getColor(key)) ??
+        new Color(255, 165, 0);
 
       const mappedColorscale = colorscale.map((c, idx) => {
         const color = Color.fromCSSRGBValues(...c);
@@ -42,7 +44,7 @@ export function tracesToData(
           autocolorscale: !isContinuous, // isCategorical || isUncolored,
           colorscale: mappedColorscale,
           color: isCategorical
-            ? color?.toCSSRGBString()
+            ? color.toCSSRGBString()
             : isUncolored
             ? null
             : trace.map((d) => d.label),
@@ -74,14 +76,15 @@ export function tracesToData(
     });
 }
 
-const getLabelColor = (key: string, setting: CustomizeColor) => {
+const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
   if (setting && setting.labelColors) {
     const color = setting.labelColors.find((x) => x.name === key)?.color;
     return getConvertedColor(color);
   }
 };
 
-const getConvertedColor = (color: string | number[]) => {
+// converts CSS color (hex, name, rgb) to Color object
+const getConvertedColor = (color: string | number[]): Color | null => {
   if (typeof color === "string" && isValidColor(color)) {
     if (color.startsWith("#")) {
       const c = hexToRgb(color);
@@ -100,11 +103,9 @@ const getConvertedColor = (color: string | number[]) => {
         return Color.fromCSSRGBValues(c.r, c.g, c.b);
       }
     }
-  } else if (Array.isArray(color) {
-      return Color.fromCSSRGBValues(...color);
-    }
+  } else if (Array.isArray(color)) {
+    return Color.fromCSSRGBValues(...color);
   }
-  return null;
 };
 
 function hexToRgb(hex) {

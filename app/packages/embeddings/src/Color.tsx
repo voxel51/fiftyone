@@ -16,6 +16,7 @@ export class Color {
   }
 }
 
+// used for conversion between CSS color names and hex values
 export const cssColorNames = {
   name: [
     "AliceBlue",
