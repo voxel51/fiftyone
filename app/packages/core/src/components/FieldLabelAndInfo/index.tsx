@@ -1,6 +1,3 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
 import React, {
   MutableRefObject,
   useEffect,
@@ -8,9 +5,24 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { atom, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
+import * as fos from "@fiftyone/state";
+import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
+import {
+  coloring,
+  activeColorField,
+  canEditCustomColors,
+} from "@fiftyone/state";
+import ReactDOM from "react-dom";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -252,6 +264,8 @@ function FieldInfoExpanded({
   const [isCollapsed, setIsCollapsed] = useState(
     descTooLong || tooManyInfoKeys
   );
+
+  const setIsCustomizingColor = useSetRecoilState(activeColorField);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
@@ -259,7 +273,16 @@ function FieldInfoExpanded({
     el.current.style.top = top + "px";
     el.current.style.left = left + "px";
   };
+  const colorSettings = useRecoilValue(coloring(false));
 
+  const isModal = useRecoilValue(fos.modal);
+  const colorBy = colorSettings.by;
+  const onClickCustomizeColor = () => {
+    // open the color customization modal based on colorBy status
+    setIsCustomizingColor(field);
+  };
+
+  const isNotTag = field.path !== "tags";
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
 
@@ -273,6 +296,13 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
+        {isNotTag && !isModal && (
+          <CustomizeColor
+            onClick={onClickCustomizeColor}
+            color={color}
+            colorBy={colorBy}
+          />
+        )}
         {/* <FieldInfoTitle color={color}><span>{field.path}</span></FieldInfoTitle> */}
         {field.description && (
           <ExpFieldInfoDesc
@@ -303,6 +333,34 @@ function FieldInfoExpanded({
     document.body
   );
 }
+
+type CustomizeColorProp = {
+  color: string;
+  onClick: () => void;
+  colorBy: string;
+};
+
+const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
+  ...props
+}) => {
+  return (
+    <FieldInfoTableContainer onClick={props.onClick}>
+      <tbody>
+        <tr style={{ cursor: "pointer" }}>
+          <td>
+            <PaletteIcon sx={{ color: props.color }} fontSize={"small"} />
+          </td>
+          <td>
+            <ContentValue>
+              Customize colors by{" "}
+              {props.colorBy == "field" ? "field" : "attribute value"}
+            </ContentValue>
+          </td>
+        </tr>
+      </tbody>
+    </FieldInfoTableContainer>
+  );
+};
 
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (

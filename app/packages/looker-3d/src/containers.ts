@@ -5,7 +5,7 @@ export const ActionItem = styled.div`
   align-content: center;
   text-align: center;
   cursor: pointer;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   -webkit-transition: 0.2s ease-in-out;
   -moz-transition: 0.2s ease-in-out;
   -o-transition: 0.2s ease-in-out;
@@ -37,8 +37,8 @@ export const ActionBarContainer = styled.div`
 
   opacity: 0.95;
   height: 37px;
-  background-color: var(--joy-palette-background-level3);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
+  background-color: var(--fo-palette-background-level3);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
   border-left: 0;
   padding: 0 1rem;
 `;
@@ -55,14 +55,14 @@ export const ActionsBar = styled.div`
 `;
 
 export const ActionPopOverDiv = styled.div`
-  width: 16rem;
+  width: 20rem;
   position: absolute;
   bottom: 2.5rem;
-  background-color: var(--joy-palette-background-level2);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
-  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  background-color: var(--fo-palette-background-level2);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
   border-radius: 3px;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
   overflow: hidden;
 `;
 
@@ -79,8 +79,8 @@ export const Container = styled.div`
 export const ViewButton = styled.div`
   line-height: 1rem;
   padding: 3px 6px;
-  background-color: var(--joy-palette-text-secondary);
-  color: var(--joy-palette-text-invert);
+  background-color: var(--fo-palette-text-secondary);
+  color: var(--fo-palette-text-invert);
   border-radius: 1rem;
   border: none;
   font-weight: bold;

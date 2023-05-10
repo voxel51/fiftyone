@@ -30,6 +30,7 @@ from .core.aggregations import (
     Sum,
     Values,
 )
+from .core.colorscheme import ColorScheme
 from .core.collections import SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
@@ -166,11 +167,12 @@ from .core.stages import (
     FilterField,
     FilterLabels,
     FilterKeypoints,
-    Limit,
-    LimitLabels,
+    Flatten,
     GeoNear,
     GeoWithin,
     GroupBy,
+    Limit,
+    LimitLabels,
     MapLabels,
     Match,
     MatchFrames,

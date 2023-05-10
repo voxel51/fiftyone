@@ -100,7 +100,7 @@ export function EmbeddingsPlot({
             dragmode: dragMode,
             uirevision: zoomRev,
             font: {
-              family: "var(--joy-fontFamily-body)",
+              family: "var(--fo-fontFamily-body)",
               size: 14,
             },
             showlegend: isCategorical,

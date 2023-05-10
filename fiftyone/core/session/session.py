@@ -19,6 +19,7 @@ import time
 import typing as t
 import webbrowser
 from uuid import uuid4
+from bson import json_util
 
 try:
     import IPython.display
@@ -33,6 +34,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.colorscheme import default_color_scheme, ColorScheme
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -107,6 +109,7 @@ def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
     spaces: Space = None,
+    color_scheme: ColorScheme = None,
     plots: fop.PlotManager = None,
     port: int = None,
     address: str = None,
@@ -128,6 +131,7 @@ def launch_app(
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
+        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -169,6 +173,7 @@ def launch_app(
         dataset=dataset,
         view=view,
         spaces=spaces,
+        color_scheme=color_scheme,
         plots=plots,
         port=port,
         address=address,
@@ -278,6 +283,7 @@ class Session(object):
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
+        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -305,6 +311,7 @@ class Session(object):
         view: fov.DatasetView = None,
         view_name: str = None,
         spaces: Space = None,
+        color_scheme: ColorScheme = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -320,7 +327,7 @@ class Session(object):
             view = dataset
             dataset = dataset._root_dataset
 
-        self._validate(dataset, view, spaces, plots, config)
+        self._validate(dataset, view, spaces, color_scheme, plots, config)
 
         if port is None:
             port = fo.config.default_app_port
@@ -371,12 +378,17 @@ class Session(object):
         if spaces is None:
             spaces = default_spaces.copy()
 
+        if color_scheme is None:
+            # color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
+            color_scheme = default_color_scheme.copy()
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
             spaces=spaces,
+            color_scheme=color_scheme,
         )
         self._client = fosc.Client(
             address=address,
@@ -425,6 +437,7 @@ class Session(object):
         dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
         spaces: t.Optional[Space],
+        color_scheme: t.Optional[ColorScheme],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
     ) -> None:
@@ -444,6 +457,14 @@ class Session(object):
             raise ValueError(
                 "`spaces` must be a %s or None; found %s"
                 % (Space, type(spaces))
+            )
+
+        if color_scheme is not None and not isinstance(
+            color_scheme, ColorScheme
+        ):
+            raise ValueError(
+                "`color_scheme` must be a %s or None; found %s"
+                % (ColorScheme, type(color_scheme))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
@@ -563,6 +584,23 @@ class Session(object):
         self._state.spaces = spaces
 
     @property
+    def color_scheme(self) -> ColorScheme:
+        """The color scheme for the session."""
+        return self._state.color_scheme
+
+    @color_scheme.setter  # type: ignore
+    @update_state()
+    def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
+        if color_scheme is None:
+            color_scheme = default_color_scheme.copy()
+        if not isinstance(color_scheme, ColorScheme):
+            raise ValueError(
+                "`Session.color_scheme` must be a %s or None; found %s"
+                % (ColorScheme, type(color_scheme))
+            )
+        self._state.color_scheme = color_scheme
+
+    @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
         if self.view is not None:
             return self.view
@@ -591,6 +629,7 @@ class Session(object):
         self._state.selected = []
         self._state.selected_labels = []
         self._state.spaces = default_spaces
+        self._state.color_scheme = None
 
     @update_state()
     def clear_dataset(self) -> None:
@@ -1049,8 +1088,8 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("close_session", on_close_session)
 
-    on_state_update: t.Callable[[StateUpdate], None] = lambda event: setattr(
-        session, "_state", event.state
+    on_state_update: t.Callable[[StateUpdate], None] = lambda event: (
+        setattr(session, "_state", event.state),
     )
     session._client.add_event_listener("state_update", on_state_update)
 

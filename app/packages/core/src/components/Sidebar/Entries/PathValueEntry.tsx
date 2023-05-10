@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -66,6 +67,7 @@ const ScalarValueEntry = ({
   entryKey,
   path,
   trigger,
+  slices,
 }: {
   entryKey: string;
   path: string;
@@ -74,6 +76,7 @@ const ScalarValueEntry = ({
     key: string,
     cb: () => void
   ) => void;
+  slices?: boolean;
 }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
@@ -94,7 +97,7 @@ const ScalarValueEntry = ({
     >
       <ScalarDiv>
         <Suspense fallback={<LoadingDots text="" />}>
-          <Loadable path={path} />
+          {slices ? <SlicesLoadable path={path} /> : <Loadable path={path} />}
         </Suspense>
         <FieldLabelAndInfo
           field={field ?? pseudoField}
@@ -117,7 +120,7 @@ const ScalarValueEntry = ({
 
 const ListContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--joy-palette-divider);
+  border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
@@ -128,6 +131,7 @@ const ListValueEntry = ({
   entryKey,
   path,
   trigger,
+  slices,
 }: {
   entryKey: string;
   path: string;
@@ -136,6 +140,7 @@ const ListValueEntry = ({
     key: string,
     cb: () => void
   ) => void;
+  slices?: boolean;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
@@ -169,7 +174,11 @@ const ListValueEntry = ({
           <span key="path">{OVERRIDE[path] ?? path}</span>
           <span key="value">
             <Suspense fallback={<LoadingDots text="" />}>
-              <LengthLoadable path={path} />
+              {slices ? (
+                <SlicesLengthLoadable path={path} />
+              ) : (
+                <LengthLoadable path={path} />
+              )}
             </Suspense>
           </span>
           <Arrow
@@ -191,11 +200,21 @@ const ListValueEntry = ({
     >
       {expanded && (
         <Suspense fallback={null}>
-          <ListLoadable path={path} />
+          {slices ? (
+            <SlicesListLoadable path={path} />
+          ) : (
+            <ListLoadable path={path} />
+          )}
         </Suspense>
       )}
     </RegularEntry>
   );
+};
+
+const SlicesLengthLoadable = ({ path }: { path: string }) => {
+  const data = useSlicesData<any[]>(path);
+
+  return <>{Object.entries(data).filter(([_, v]) => v).length || 0}</>;
 };
 
 const LengthLoadable = ({ path }: { path: string }) => {
@@ -221,6 +240,104 @@ const ListLoadable = ({ path }: { path: string }) => {
   );
 };
 
+const SlicesListLoadable = ({ path }: { path: string }) => {
+  const values = useSlicesData<(string | number | null)[]>(path);
+  const theme = useTheme();
+  return (
+    <>
+      {Object.entries(values).map(([slice, data]) => {
+        return (
+          <ListContainer key={slice}>
+            <div
+              style={{
+                color: theme.text.secondary,
+                borderBottom: `1px solid ${theme.text.secondary}`,
+              }}
+            >
+              {slice}
+            </div>
+            {(data || []).map((value, i) => (
+              <div key={i}>{prettify(value as string)}</div>
+            ))}
+            {(!data || !data.length) && <>No results</>}
+          </ListContainer>
+        );
+      })}
+    </>
+  );
+};
+
+const SlicesLoadable = ({ path }: { path: string }) => {
+  const values = useSlicesData<string | number | null>(path);
+
+  const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const timeZone = useRecoilValue(fos.timeZone);
+  const theme = useTheme();
+
+  return (
+    <>
+      {Object.entries(values).map(([slice, value], i) => {
+        const none = value === null || value === undefined;
+        const formatted = format({ ftype, value, timeZone });
+
+        const add = none ? { color } : {};
+        return (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "left",
+              columnGap: "0.5rem",
+            }}
+            key={i}
+          >
+            <div style={{ color: theme.text.secondary }}>{slice}</div>
+            <div
+              data-cy={`sidebar-entry-${path}`}
+              style={{
+                ...add,
+                flex: 1,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {none ? "None" : formatted}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+const useSlicesData = <T extends unknown>(path: string) => {
+  const keys = path.split(".");
+  const data = { ...useRecoilValue(fos.activePcdSliceToSampleMap) };
+  const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
+
+  let field = useRecoilValue(fos.field(keys[0]));
+  slices.forEach((slice) => {
+    let sliceData = data[slice].sample;
+
+    for (let index = 0; index < keys.length; index++) {
+      if (!sliceData) {
+        break;
+      }
+      const key = keys[index];
+
+      sliceData = sliceData[field?.dbField || key];
+
+      if (keys[index + 1]) {
+        field = field?.fields[keys[index + 1]];
+      }
+    }
+    data[slice] = sliceData;
+  });
+
+  return data as { [slice: string]: T };
+};
+
 const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
@@ -241,20 +358,23 @@ const useData = <T extends unknown>(path: string): T => {
   const activeSlice = useRecoilValue(fos.currentSlice(true));
 
   let data = useRecoilValue(fos.activeModalSample(activeSlice));
-
   let field = useRecoilValue(fos.field(keys[0]));
 
-  for (let index = 0; index < keys.length; index++) {
-    if (!data) {
-      break;
-    }
+  if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]).join(", ");
+  } else {
+    for (let index = 0; index < keys.length; index++) {
+      if (!data) {
+        break;
+      }
 
-    const key = keys[index];
+      const key = keys[index];
 
-    data = data[field?.dbField || key];
+      data = data[field?.dbField || key];
 
-    if (keys[index + 1]) {
-      field = field?.fields[keys[index + 1]];
+      if (keys[index + 1]) {
+        field = field?.fields[keys[index + 1]];
+      }
     }
   }
 
@@ -275,10 +395,24 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
+  const pinned3DSample = useRecoilValue(fos.pinned3DSample);
+  const activePcdSlices = useRecoilValue(fos.activePcdSlices);
+  const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
+
   return field && field.ftype !== LIST_FIELD ? (
-    <ScalarValueEntry entryKey={entryKey} path={path} trigger={trigger} />
+    <ScalarValueEntry
+      entryKey={entryKey}
+      path={path}
+      trigger={trigger}
+      slices={slices}
+    />
   ) : (
-    <ListValueEntry entryKey={entryKey} path={path} trigger={trigger} />
+    <ListValueEntry
+      entryKey={entryKey}
+      path={path}
+      trigger={trigger}
+      slices={slices}
+    />
   );
 };
 

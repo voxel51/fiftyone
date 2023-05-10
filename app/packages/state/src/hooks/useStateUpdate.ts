@@ -5,7 +5,11 @@ import {
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import {
+  State,
+  _activeFields,
+  activePcdSlices,
   dataset as datasetAtom,
+  dynamicGroupSamplesStoreMap,
   extendedSelection,
   filters,
   groupSlice,
@@ -22,14 +26,22 @@ import {
   sidebarMode,
   similarityParameters,
   similaritySorting,
-  State,
   tagging,
   theme,
-  _activeFields,
+  sessionColorScheme,
+  ColorScheme,
+  activeColorField,
+  isUsingSessionColorScheme,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
-import { collapseFields, viewsAreEqual } from "../utils";
+import {
+  DEFAULT_APP_COLOR_SCHEME,
+  collapseFields,
+  viewsAreEqual,
+} from "../utils";
+
+import { selectedFieldsStageState } from "./useSchemaSettings";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -44,7 +56,6 @@ export type StateResolver =
 
 const useStateUpdate = (ignoreSpaces = false) => {
   const { setMode } = useColorScheme();
-
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
       const { config, dataset, state } =
@@ -63,6 +74,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
           reset(extendedSelection);
           reset(similarityParameters);
           reset(filters);
+          reset(selectedFieldsStageState);
         }
         set(viewAtoms.viewName, state.viewName || null);
       }
@@ -93,6 +105,26 @@ const useStateUpdate = (ignoreSpaces = false) => {
         reset(sessionSpaces);
       }
 
+      let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
+      if (state?.colorScheme && typeof state?.colorScheme === "string") {
+        let parsedSetting = JSON.parse(state?.colorScheme);
+        if (typeof parsedSetting === "string") {
+          parsedSetting = JSON.parse(parsedSetting);
+        }
+        colorSetting = {
+          colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
+          customizedColorSettings:
+            parsedSetting["customized_color_settings"] ??
+            parsedSetting?.customizedColorSettings,
+        } as ColorScheme;
+        set(sessionColorScheme, colorSetting);
+        set(isUsingSessionColorScheme, true);
+      } else if (!ignoreSpaces) {
+        reset(activeColorField);
+        reset(isUsingSessionColorScheme);
+        set(sessionColorScheme, colorSetting);
+      }
+
       if (dataset) {
         dataset.brainMethods = Object.values(dataset.brainMethods || {});
         dataset.evaluations = Object.values(dataset.evaluations || {});
@@ -114,6 +146,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
             groups = resolveGroups(dataset);
           }
           reset(_activeFields({ modal: false }));
+          reset(selectedFieldsStageState);
           let slice = dataset.groupSlice;
 
           if (dataset.groupMediaTypes[slice] === "pcd") {
@@ -142,12 +175,16 @@ const useStateUpdate = (ignoreSpaces = false) => {
           );
           reset(extendedSelection);
           reset(filters);
+          reset(activePcdSlices);
+
+          // todo: find a way to reset atom family or key by dataset name
+          // reset(dynamicGroupSamplesStoreMap());
+          // reset(viewAtoms.dynamicGroupCurrentElementIndex);
         }
 
         if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
         }
-
         set(datasetAtom, dataset);
       }
 

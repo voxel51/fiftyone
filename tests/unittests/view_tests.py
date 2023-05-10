@@ -20,6 +20,8 @@ import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
 
+from fiftyone.core.labels import Classification, Classifications
+
 from decorators import drop_datasets, skip_windows
 
 
@@ -2189,6 +2191,215 @@ class ViewStageTests(unittest.TestCase):
         total_size = dataset.stats()["frames_bytes"]
         self.assertLess(excl_size, total_size)
 
+    def test_exclude_fields_meta_filter(self):
+        self._exclude_fields_setup()
+        dataset = self.dataset
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg", ground_truth=fo.Classification()
+                ),
+                fo.Sample(
+                    filepath="image3.jpg",
+                    field_1=1,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_1=1)]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_2=2,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        dataset.add_sample_field("field_3", ftype=fo.StringField)
+
+        field_1 = dataset.get_field("field_1")
+        field_2 = dataset.get_field("field_2")
+        field_3 = dataset.get_field("field_3")
+
+        field_1.description = "this is a unique description by joe"
+        field_2.description = "hello world test123"
+
+        field_1.info = {
+            "a": 12,
+            "b": 24,
+            "c": 36,
+            "owner": "jill",
+            "test": True,
+            "d_1": {
+                "e_2": {"f_3": "oo", "g_3": {"h_4": {"i_5": {"j_6": "nope"}}}}
+            },
+        }
+        field_2.info = {
+            "list": [1, 2, 3],
+            "owner": "joe",
+            "test": True,
+            "other": "this is a unique info value",
+            "date_created": "2020-01-01",
+        }
+        field_3.info = {"one": {"two": {"three": "test123"}}}
+
+        field_1.save()
+        field_2.save()
+        field_3.save()
+
+        # return everything on empty string
+        view = dataset.exclude_fields(field_names=[], meta_filter="")
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # returns everything on None
+        view = dataset.exclude_fields(field_names=[], meta_filter=None)
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # basic string match anywhere
+        view = dataset.exclude_fields(field_names=[], meta_filter="unique")
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # basic string match in info
+        view = dataset.exclude_fields(
+            field_names=[], meta_filter=dict(info="2020")
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # should bust the recursion limit (default is 1)
+        view = dataset.exclude_fields(
+            field_names=[], meta_filter=dict(j_6="nope")
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # basic string match anywhere
+        view = dataset.exclude_fields(field_names=[], meta_filter="test123")
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # match entire info with some additional selected fields
+        view = dataset.exclude_fields(
+            field_names=["ground_truth", "field_2"],
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # match entire info with no additional selected fields
+        view = dataset.exclude_fields(
+            field_names=[],
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        view = dataset.exclude_fields(
+            field_names="ground_truth",
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.exclude_fields(field_names=[], meta_filter="joe")
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        view = dataset.exclude_fields(
+            field_names=[], meta_filter=dict(owner="joe")
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # match a boolean value
+        view = dataset.exclude_fields(
+            field_names=[], meta_filter=dict(test=True)
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # match a boolean value
+        meta_filter = {"description": "joe"}
+        view = dataset.exclude_fields(field_names=[], meta_filter=meta_filter)
+        dataset.save_view("joe_view", view=view)
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        pre_length = len(view)
+
+        # add another field that would match the previous view
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_4=4,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        field_4 = dataset.get_field("field_4")
+        field_4.description = "this was added by joe as well"
+        field_4.save()
+
+        # make sure the new field is also excluded
+        view = dataset.load_saved_view("joe_view")
+        fields = view.get_field_schema(flat=True)
+
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertNotIn("field_4", fields)
+        self.assertIn("ground_truth", fields)
+
+        self.assertEqual(len(view), pre_length + 1)
+
+        self._exclude_fields_teardown()
+
     def test_exists(self):
         sample1 = fo.Sample(filepath="video1.mp4", index=1)
         sample1.frames[1] = fo.Frame()
@@ -3175,6 +3386,315 @@ class ViewStageTests(unittest.TestCase):
         self.assertLess(base_size, total_size)
         self._select_field_teardown()
 
+    def test_select_fields_meta_filter(self):
+        self._select_field_setup()
+        dataset = self.dataset
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg", ground_truth=fo.Classification()
+                ),
+                fo.Sample(
+                    filepath="image3.jpg",
+                    field_1=1,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_1=1)]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_2=2,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+
+        sample4 = fo.Sample(
+            filepath="image5.jpg",
+            field_parent=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="rabbit"),
+                    fo.Classification(label="squirrel", fluffy=True),
+                    fo.Classification(label="frog"),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample4)
+
+        dataset.add_sample_field("field_3", ftype=fo.StringField)
+        dataset.add_sample_field("field_string", ftype=fo.StringField)
+        dataset.add_sample_field("field_array", ftype=fo.ArrayField)
+        dataset.add_sample_field("field_boolean", ftype=fo.BooleanField)
+        dataset.add_sample_field("field_classes", ftype=fo.ClassesField)
+        dataset.add_sample_field("field_date", ftype=fo.DateField)
+        dataset.add_sample_field("field_dict", ftype=fo.DictField)
+
+        field_1 = dataset.get_field("field_1")
+        field_2 = dataset.get_field("field_2")
+        field_3 = dataset.get_field("field_3")
+
+        field_child = dataset.get_field("field_parent.classifications.label")
+        field_child.description = (
+            "this is a child field that should return when including nested "
+            "fields"
+        )
+        field_child.info = {"isChild": True}
+        field_child.save()
+
+        field_1.description = "this is a unique description by joe"
+        field_2.description = "hello world test123"
+
+        field_1.info = {
+            "a": 12,
+            "b": 24,
+            "c": 36,
+            "owner": "jill",
+            "test": True,
+            "d_1": {
+                "e_2": {"f_3": "oo", "g_3": {"h_4": {"i_5": {"j_6": "nope"}}}}
+            },
+        }
+        field_2.info = {
+            "list": [1, 2, 3],
+            "owner": "joe",
+            "test": True,
+            "other": "this is a unique info value",
+            "date_created": "2020-01-01",
+        }
+        field_3.info = {"one": {"two": {"three": "test123"}}}
+
+        field_1.save()
+        field_2.save()
+        field_3.save()
+
+        # doesn't return anything on empty string
+        view = dataset.select_fields(meta_filter="")
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # returns everything on None
+        view = dataset.select_fields(meta_filter=None)
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # basic string match anywhere
+        view = dataset.select_fields(meta_filter="unique")
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # basic string match anywhere
+        view = dataset.select_fields(meta_filter={"any": "unique"})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # search in nested fields
+        view = dataset.select_fields(
+            meta_filter={"info.isChild": True, "include_nested_fields": True}
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_parent.classifications.label", fields)
+        self.assertIn("field_parent.classifications", fields)
+        self.assertIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter={"info.isChild": True})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_parent.classifications.label", fields)
+        self.assertNotIn("field_parent.classifications", fields)
+        self.assertNotIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # finds fields based on type
+        view = dataset.select_fields(meta_filter={"type": fo.BooleanField})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_boolean", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # finds fields based on type as string
+        view = dataset.select_fields(meta_filter={"type": "BooleanField"})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_boolean", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # finds fields based on EmbeddedDocumentField.document-type
+        view = dataset.select_fields(meta_filter={"type": Classification})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # finds fields based on EmbeddedDocumentField.document-type as string
+        view = dataset.select_fields(meta_filter={"type": "Classification"})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter={"type": Classifications})
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_parent", fields)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # basic string match in info
+        view = dataset.select_fields(meta_filter=dict(info="2020"))
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter=dict(j_6="nope"))
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # basic string match anywhere
+        view = dataset.select_fields(meta_filter="test123")
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # match entire info with some additional selected fields
+        view = dataset.select_fields(
+            ["ground_truth", "field_2"],
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        # match entire info with no additional selected fields
+        view = dataset.select_fields(
+            meta_filter=dict(one=dict(two=dict(three="test123")))
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(
+            "ground_truth",
+            meta_filter=dict(one=dict(two=dict(three="test123"))),
+        )
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertIn("field_3", fields)
+        self.assertIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter="joe")
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter=dict(owner="joe"))
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        view = dataset.select_fields(meta_filter={"info.owner": "joe"})
+        fields = view.get_field_schema(flat=True)
+        self.assertNotIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # match a boolean value
+        view = dataset.select_fields(meta_filter=dict(test=True))
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        # match a boolean value
+        meta_filter = {"description": "joe"}
+        view = dataset.select_fields(meta_filter=meta_filter)
+        dataset.save_view("joe_view", view=view)
+        fields = view.get_field_schema(flat=True)
+        self.assertIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        pre_length = len(view)
+
+        # add another field that would match the previous view
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image4.jpg",
+                    field_4=4,
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(field_2=2)]
+                    ),
+                ),
+            ]
+        )
+        field_4 = dataset.get_field("field_4")
+        field_4.description = "this was added by joe as well"
+        field_4.save()
+
+        # make sure the new field comes back in the schema as well
+        view = dataset.load_saved_view("joe_view")
+        fields = view.get_field_schema(flat=True)
+
+        self.assertIn("field_1", fields)
+        self.assertNotIn("field_2", fields)
+        self.assertNotIn("field_3", fields)
+        self.assertIn("field_4", fields)
+        self.assertNotIn("ground_truth", fields)
+
+        self.assertEqual(len(view), pre_length + 1)
+
+        self._select_field_teardown()
+
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
         self.assertIs(len(result), 1)
@@ -3213,41 +3733,10 @@ class ViewStageTests(unittest.TestCase):
         field = F("$ground_truth")
         self.assertEqual(str(field), str(deepcopy(field)))
 
-    def test_make_optimized_select_view_group_media_type_select_samples(self):
-        samples = self._create_group_samples()
-        dataset = self._create_group_dataset()
-        sample_ids = dataset.add_samples(samples)
-        self.assertEqual(len(sample_ids), len(samples))
-
-        # Default call should have select_groups = False
-        optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
-
-        expected_stages = [fosg.Select(sample_ids[0])]
-        self.assertEqual(optimized_view._all_stages, expected_stages)
-
-    def test_make_optimized_select_view_group_media_type_select_groups(self):
-        samples = self._create_group_samples()
-        dataset = self._create_group_dataset()
-        sample_ids = dataset.add_samples(samples)
-        self.assertEqual(len(sample_ids), len(samples))
-
-        optimized_view = fov.make_optimized_select_view(
-            dataset, sample_ids[0], select_groups=True
-        )
-        expected_stages = [
-            fosg.Select(sample_ids[0]),
-            fosg.SelectGroupSlices(),
-        ]
-        self.assertEqual(optimized_view._all_stages, expected_stages)
-
-    def _create_group_dataset(self):
+    def test_make_optimized_select_view_group_dataset(self):
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="center")
-        self.assertEqual(dataset.media_type, fom.GROUP)
-        self.assertEqual(dataset.default_group_slice, "center")
-        return dataset
 
-    def _create_group_samples(self):
         groups = ["left", "center", "right"]
         filepaths = [
             [str(i) + str(j) + ".jpg" for i in groups] for j in range(3)
@@ -3257,12 +3746,15 @@ class ViewStageTests(unittest.TestCase):
         samples = []
         for fps in filepaths:
             for name, filepath in fps.items():
-                sample = fo.Sample(
-                    filepath=filepath, group=group.element(name)
+                samples.append(
+                    fo.Sample(filepath=filepath, group=group.element(name))
                 )
-                samples.append(sample)
-        assert all([s.group is not None for s in samples])
-        return samples
+
+        sample_ids = dataset.add_samples(samples)
+
+        optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
+        expected_stages = [fosg.Select(sample_ids[0])]
+        self.assertEqual(optimized_view._all_stages, expected_stages)
 
 
 if __name__ == "__main__":

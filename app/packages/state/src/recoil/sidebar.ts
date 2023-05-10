@@ -1,12 +1,4 @@
-import {
-  atomFamily,
-  DefaultValue,
-  selector,
-  selectorFamily,
-  useRecoilStateLoadable,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -19,24 +11,31 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-
-import * as aggregationAtoms from "./aggregations";
+import { VariablesOf, commitMutation } from "react-relay";
 import {
+  DefaultValue,
+  atomFamily,
+  selector,
+  selectorFamily,
+  useRecoilStateLoadable,
+  useRecoilValue,
+} from "recoil";
+import { getCurrentEnvironment } from "../hooks/useRouter";
+import * as aggregationAtoms from "./aggregations";
+import { dataset } from "./atoms";
+import { isLargeVideo } from "./options";
+import {
+  buildFlatExtendedSchema,
   buildSchema,
-  field,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
+  schemaReduce,
 } from "./schema";
-
+import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
-import { isLargeVideo } from "./options";
-import { commitMutation, VariablesOf } from "react-relay";
-import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
-import { getCurrentEnvironment } from "../hooks/useRouter";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -92,26 +91,6 @@ export const readableTags = selectorFamily<
       );
     },
 });
-
-export const useLabelTagText = (modal: boolean) => {
-  const loading =
-    useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
-      .state === "loading";
-
-  return { text: loading ? "Loading label tags" : "No label tags", loading };
-};
-
-export const useTagText = (modal: boolean) => {
-  const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const loading =
-    useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
-    "loading";
-
-  return {
-    text: loading ? `Loading ${singular} tags` : `No ${singular} tags`,
-    loading,
-  };
-};
 
 export const useEntries = (
   modal: boolean
@@ -344,13 +323,14 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true, persist = true }) =>
+    ({ modal, loading, filtered = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
+
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
@@ -595,33 +575,19 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
-    paths = [
-      ...paths,
-      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
-        (path) => !get(field(path)).subfield
-      ),
-    ];
-
-    get(
-      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
-    ).forEach(({ fields, name: prefix }) => {
-      Object.values(fields)
-        .filter(
-          ({ ftype, subfield }) =>
-            ftype === DICT_FIELD ||
-            subfield === DICT_FIELD ||
-            (ftype === LIST_FIELD && !subfield)
-        )
-        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
-    });
+    const ds = get(dataset);
+    const schema = buildFlatExtendedSchema(
+      ds?.sampleFields?.reduce(schemaReduce, {})
+    );
+    const paths = Object.keys(schema)
+      ?.filter((fieldPath) => schema[fieldPath]?.ftype === DICT_FIELD)
+      .map((fieldPath) => fieldPath);
 
     get(fields({ space: State.SPACE.FRAME })).forEach(
       ({ name, embeddedDocType }) => {
         if (LABELS.includes(embeddedDocType)) {
           return;
         }
-
         paths.push(`frames.${name}`);
       }
     );

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8eae0827c119cd0b621118fe22cd6d86>>
+ * @generated SignedSource<<b965eb1474c8e5503b242344204aa178>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type SampleFilter = {
 };
 export type GroupElementFilter = {
   id?: string | null;
-  slice?: string | null;
+  slices?: ReadonlyArray<string> | null;
 };
 export type paginateGroupPageQuery$variables = {
   count?: number | null;

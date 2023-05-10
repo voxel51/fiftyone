@@ -22,11 +22,11 @@ export const Selectors = styled.div`
 `;
 export const PlotOption = styled(Link)`
   display: flex;
-  color: var(--joy-palette-primary-plainColor);
+  color: var(--fo-palette-primary-plainColor);
   align-items: center;
   cursor: pointer;
-  border-bottom: 1px var(--joy-palette-primary-plainColor) solid;
-  background: var(--joy-palette-neutral-softBg);
+  border-bottom: 1px var(--fo-palette-primary-plainColor) solid;
+  background: var(--fo-palette-neutral-softBg);
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   padding: 0.25rem;
@@ -37,7 +37,7 @@ export const WarningsContainer = styled.ul`
   z-index: 999;
   list-style: none;
   padding-inline-start: 0;
-  background: var(--joy-palette-background-level1);
+  background: var(--fo-palette-background-level1);
   > li {
     margin: 1rem 0;
   }
@@ -45,7 +45,7 @@ export const WarningsContainer = styled.ul`
 export const WarningItem = styled.li`
   display: flex;
   column-gap: 1rem;
-  color: var(--joy-palette-text-plainColor);
+  color: var(--fo-palette-text-plainColor);
   padding: 0 2.5rem 0 1rem;
   border-radius: 3px;
   list-style: none;

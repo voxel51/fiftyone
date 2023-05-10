@@ -131,7 +131,6 @@ export const Popout = styled.div`
 export function IconButton(props: IconButtonProps) {
   return (
     <MuiIconButton
-      disableRipple
       {...props}
       sx={{
         p: 0.5,

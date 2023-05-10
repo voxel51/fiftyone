@@ -1,8 +1,8 @@
 import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
-  atomFamily,
   RecoilState,
   RecoilValue,
+  atomFamily,
   selectorFamily,
   useRecoilCallback,
   useRecoilValue,
@@ -14,7 +14,7 @@ import styled from "styled-components";
 import { Selector, useTheme } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
-import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
+import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 
 import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
@@ -26,7 +26,7 @@ import Wrapper from "./Wrapper";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--joy-palette-divider);
+  border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
@@ -92,7 +92,7 @@ const categoricalSearchResults = selectorFamily<
           selected,
           group_id: modal ? group : null,
           mixed,
-          slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
           sample_id: modal && !group && !mixed ? sampleId : null,
           ...sorting,
         });

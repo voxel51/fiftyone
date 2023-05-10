@@ -666,8 +666,9 @@ __________
 You can use the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method to evaluate the predictions of an object detection model stored in a
-|Detections| or |Polylines| field of your dataset or of a temporal detection
-model stored in a |TemporalDetections| field of your dataset.
+|Detections|, |Polylines|, or |Keypoints| field of your dataset or of a
+temporal detection model stored in a |TemporalDetections| field of your
+dataset.
 
 Invoking
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
@@ -698,14 +699,23 @@ method supports all of the following task types:
 -   :ref:`Object detection <object-detection>`
 -   :ref:`Instance segmentations <instance-segmentation>`
 -   :ref:`Polygon detection <polylines>`
+-   :ref:`Keypoints <keypoints>`
 -   :ref:`Temporal detections <temporal-detection>`
 -   :ref:`3D detections <3d-detections>`
 
 The only difference between each task type is in how the IoU between objects is
-calculated. Specifically, for instance segmentations and polygons, IoUs are
-computed between the polgyonal shapes rather than their rectangular bounding
-boxes. For temporal detections, IoU is computed between the 1D support of two
-temporal segments.
+calculated:
+
+-   For object detections, IoUs are computed between each pair of bounding boxes
+-   For instance segmentations and polygons, IoUs are computed between the
+    polgyonal shapes rather than their rectangular bounding boxes
+-   For keypoint tasks,
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
+    is computed for each pair of objects, using the extent of the ground truth
+    keypoints as a proxy for the area of the object's bounding box, and
+    assuming uniform falloff (:math:`\kappa`)
+-   For temporal detections, IoU is computed between the 1D support of two
+    temporal segments
 
 For object detection tasks, the ground truth and predicted objects should be
 stored in |Detections| format.
@@ -732,6 +742,15 @@ polylines).
     than the actual polygonal geometries for IoU calculations, you can pass
     ``use_boxes=True`` to
     :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+
+For keypoint tasks, each |Keypoint| instance must contain point arrays of equal
+length and semantic ordering.
+
+.. note::
+
+    If a particular point is missing or not visible for a |Keypoint| instance,
+    use nan values for its coordinates. :ref:`See here <keypoints>` for more
+    information about structuring keypoints.
 
 For temporal detection tasks, the ground truth and predicted objects should be
 stored in |TemporalDetections| format.

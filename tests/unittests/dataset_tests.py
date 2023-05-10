@@ -3178,10 +3178,13 @@ class DatasetDeletionTests(unittest.TestCase):
         sample2 = sample1.copy()
         sample2.filepath = "image2.png"
 
-        sample3 = sample1.copy()
-        sample3.filepath = "image3.png"
+        # Test missing labels
+        sample3 = fo.Sample(filepath="image3.png")
 
-        self.dataset.add_samples([sample1, sample2, sample3])
+        sample4 = sample1.copy()
+        sample4.filepath = "image4.png"
+
+        self.dataset.add_samples([sample1, sample2, sample3, sample4])
 
     def _setUp_video_classification(self):
         sample1 = fo.Sample(filepath="video1.mp4")
@@ -3195,10 +3198,14 @@ class DatasetDeletionTests(unittest.TestCase):
             frame_number=3, ground_truth=fo.Classification(label="rabbit")
         )
 
-        sample2 = sample1.copy()
-        sample2.filepath = "video2.mp4"
+        # Test missing labels
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
 
-        self.dataset.add_samples([sample1, sample2])
+        sample3 = sample1.copy()
+        sample3.filepath = "video3.mp4"
+
+        self.dataset.add_samples([sample1, sample2, sample3])
 
     def _setUp_detections(self):
         sample1 = fo.Sample(
@@ -3225,10 +3232,13 @@ class DatasetDeletionTests(unittest.TestCase):
         sample2 = sample1.copy()
         sample2.filepath = "image2.png"
 
-        sample3 = sample1.copy()
-        sample3.filepath = "image3.png"
+        # Test missing labels
+        sample3 = fo.Sample(filepath="image3.png")
 
-        self.dataset.add_samples([sample1, sample2, sample3])
+        sample4 = sample1.copy()
+        sample4.filepath = "image4.png"
+
+        self.dataset.add_samples([sample1, sample2, sample3, sample4])
 
     def _setUp_video_detections(self):
         sample1 = fo.Sample(filepath="video1.mp4")
@@ -3263,10 +3273,14 @@ class DatasetDeletionTests(unittest.TestCase):
         frame3.frame_number = 3
         sample1.frames[3] = frame3
 
-        sample2 = sample1.copy()
-        sample2.filepath = "video2.mp4"
+        # Test missing labels
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
 
-        self.dataset.add_samples([sample1, sample2])
+        sample3 = sample1.copy()
+        sample3.filepath = "video3.mp4"
+
+        self.dataset.add_samples([sample1, sample2, sample3])
 
     def test_delete_samples_ids(self):
         self._setUp_classification()

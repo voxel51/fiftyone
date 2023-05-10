@@ -383,6 +383,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_collection_name.startswith("clips.")
 
     @property
+    def _is_dynamic_groups(self):
+        return False
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -2337,6 +2341,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def get_group(self, group_id, group_slices=None):
         """Returns a dict containing the samples for the given group ID.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            group_id = dataset.take(1).first().group.id
+            group = dataset.get_group(group_id)
+
+            print(group.keys())
+            # ['left', 'right', 'pcd']
+
         Args:
             group_id: a group ID
             group_slices (None): an optional subset of group slices to load
@@ -2999,11 +3016,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops = []
             if issubclass(label_type, fol._LABEL_LIST_FIELDS):
                 array_field = field + "." + label_type._LABEL_LIST_FIELD
+                query = {array_field: {"$exists": True}}
 
                 if view_ids is not None:
                     ops.append(
                         UpdateMany(
-                            {},
+                            query,
                             {
                                 "$pull": {
                                     array_field: {"_id": {"$in": view_ids}}
@@ -3015,14 +3033,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if ids is not None:
                     ops.append(
                         UpdateMany(
-                            {}, {"$pull": {array_field: {"_id": {"$in": ids}}}}
+                            query,
+                            {"$pull": {array_field: {"_id": {"$in": ids}}}},
                         )
                     )
 
                 if tags is not None:
                     ops.append(
                         UpdateMany(
-                            {},
+                            query,
                             {
                                 "$pull": {
                                     array_field: {
@@ -3474,13 +3493,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             name: the name of a saved view
         """
-        view_doc = self._get_saved_view_doc(name, pop=True)
-        deleted_id = view_doc.id
-
-        view_doc.delete()
-        self.save()
-
-        return str(deleted_id)
+        self._delete_saved_view(name)
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
@@ -3489,6 +3502,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.saved_views = []
         self.save()
+
+    def _delete_saved_view(self, name):
+        view_doc = self._get_saved_view_doc(name, pop=True)
+        if view_doc:
+            view_id = str(view_doc.id)
+            view_doc.delete()
+        else:
+            view_id = None
+
+        self.save()
+
+        return view_id
 
     def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
@@ -5917,7 +5942,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [{"$match": {"$expr": {"$eq": ["$" + name_field, slice_name]}}}]
 
     def _attach_groups_pipeline(self, group_slices=None):
-        """A pipeline that attaches the reuested group slice(s) for each
+        """A pipeline that attaches the requested group slice(s) for each
         document and stores them in under ``groups.<slice>`` keys.
         """
         if self.group_field is None:
