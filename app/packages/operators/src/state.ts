@@ -401,6 +401,7 @@ export const operatorBrowserChoices = selector({
     const allChoices = get(availableOperators);
     const query = get(operatorBrowserQueryState);
     let results = [...allChoices];
+    console.log(results);
     results = results.filter(({ unlisted }) => !unlisted);
     if (query && query.length > 0) {
       results = filterChoicesByQuery(query, results);

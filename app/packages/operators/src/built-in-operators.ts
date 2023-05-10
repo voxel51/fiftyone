@@ -202,6 +202,7 @@ class ClosePanel extends Operator {
     return new OperatorConfig({
       name: "close_panel",
       label: "Close a panel",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -263,6 +264,7 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -525,46 +527,13 @@ function getTypeForValue(value: any) {
       return type;
   }
 }
-class GetAppValue extends Operator {
-  get config(): OperatorConfig {
-    return new OperatorConfig({
-      name: "get_app_value",
-      label: "Get App Value",
-      dynamic: true,
-    });
-  }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.Object();
-    const values = Object.entries(fos)
-      .filter(([k, v]) => {
-        return isAtomOrSelector(v);
-      })
-      .map(([k, v]) => k);
-    inputs.defineProperty("target", new types.Enum(values));
-
-    return new types.Property(inputs);
-  }
-  async resolveOutput(
-    ctx: ExecutionContext,
-    { result }: OperatorResult
-  ): Promise<types.Property> {
-    const outputs = new types.Object();
-    outputs.defineProperty("value", new types.List(new types.String()));
-    return new types.Property(outputs, { view: { name: "InferredView" } });
-  }
-  async execute({ params, state }: ExecutionContext) {
-    const target = params.target;
-    return {
-      value: await state.snapshot.getPromise(fos[target]),
-    };
-  }
-}
 
 class ConsoleLog extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "console_log",
       label: "Console Log",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -689,7 +658,6 @@ export function registerBuiltInOperators() {
     registerOperator(SetView);
     registerOperator(ShowSamples);
     // registerOperator(ClearShowSamples);
-    registerOperator(GetAppValue);
     registerOperator(ConsoleLog);
     registerOperator(ShowOutput);
     registerOperator(TestOperator);

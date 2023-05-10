@@ -236,6 +236,7 @@ class PrintStdout(foo.Operator):
         return foo.OperatorConfig(
             name="print_stdout",
             label="Print to Stdout",
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
