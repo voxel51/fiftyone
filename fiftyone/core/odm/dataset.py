@@ -455,16 +455,15 @@ def _serialize_reference(ref):
 def _safe_serialize(refs):
     """Returns a dict representation of the referenced objects in the field if it exists."""
 
-    if issubclass(type(refs), BaseList):
-        return [_safe_serialize(r) for r in refs]
-    elif issubclass(type(refs), BaseDict):
+    if issubclass(type(refs), (BaseList, list)):
+        return [_serialize_reference(r) for r in refs]
+    elif issubclass(type(refs), (BaseDict, dict)):
         return {
             k: _serialize_reference(v)
             for k, v in refs.items()
             if _serialize_reference(v)
         }
-    else:
-        raise ValueError("Unsupported type '%s'" % type(refs))
+    return _serialize_reference(refs)
 
 
 class DatasetDocument(Document):
