@@ -4,7 +4,7 @@ import { HeaderView } from ".";
 import { getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
 
-export default function TuplesView(props) {
+export default function TupleView(props) {
   const { onChange, path, schema, data, errors } = props;
   const { view = {}, items } = schema;
 

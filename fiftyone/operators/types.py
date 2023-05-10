@@ -1067,3 +1067,154 @@ class ProgressView(View):
 class ImageView(View):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class AlertView(View):
+    """Displays an alert for the given :class:`View` instance.
+
+    Kwargs:
+        severity (None): the severity of the alert displayed. Must be one of
+         'error', 'info', 'success', and 'warning'.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.severity = kwargs.get("severity", "info")
+
+    def to_json(self):
+        return {**super().to_json(), "severity": self.severity}
+
+
+class CheckboxView(View):
+    """Displays a checkbox for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`Boolean`
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ErrorView(View):
+    """Represents an error in a :class:`View`."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class HeaderView(View):
+    """Displays a header component for the given :class:`View` instance.
+    Header can have a title, description, and caption; each of which are
+    displayed in a separate line.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ObjectView(View):
+    """Displays a object component for the given :class:`View` instance."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class RadioView(RadioGroup):
+    """Displays a radio component for the given :class:`RadioGroup` instance."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class SwitchView(View):
+    """Displays a toggle switch for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`Boolean`
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TextFieldView(View):
+    """Displays a text input for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`String` or :class:`Number`
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class FieldView(View):
+    """Displays a text input for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`String` or :class:`Number`
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class DropdownView(Dropdown):
+    """Displays a select input for the given :class:`View` instance."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class LabelValueView(View):
+    """Displays a label-value component for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`String`, :class:`Number`, :class:`Boolean`, or a :class:`List`
+    whose items is an instance of :class:`String`, :class:`Number`, or
+    :class:`Boolean`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class PrimitiveView(View):
+    """Displays a inferred component for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`String`, :class:`Number`, or :class:`Boolean`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class SliderView(View):
+    """Displays a slider component for the given :class:`View` instance. Must
+    be used with a :class:`Property` whose type is an instance of
+    :class:`Number`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TagsView(View):
+    """Displays a list of tags component for the given :class:`View` instance.
+    Must be used with a :class:`Property` whose type is an instance of
+    :class:`List` whose items is an instance of :class:`String`,
+    :class:`Number`, or :class:`Boolean`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class Success(View):
+    """Represents an success in a :class:`View`."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ButtonView(Button):
+    """Represents an button in a :class:`Button`."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

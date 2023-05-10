@@ -473,7 +473,7 @@
                     "required": false,
                     "choices": null,
                     "view": {
-                        "name": "TuplesView",
+                        "name": "TupleView",
                         "label": "The Tuple",
                         "description": "Tuple with string as the type for first item, number for second, and boolean for third",
                         "caption": null,
