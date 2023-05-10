@@ -6,6 +6,7 @@ Documents that track datasets and their sample schemas in the database.
 |
 """
 import eta.core.utils as etau
+from bson import DBRef
 
 from fiftyone.core.fields import (
     BooleanField,
@@ -443,6 +444,15 @@ def _update_path(p, path, new_path):
     return new_path + p[len(path) :]
 
 
+def _serialize_reference(ref):
+    """Returns a dict representation of the reference if it exists."""
+
+    if type(ref) == DBRef:
+        # Referenced object does not exist in the database
+        return
+    return ref.to_dict()
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -486,15 +496,21 @@ class DatasetDocument(Document):
         # Sadly there appears to be no builtin way to tell mongoengine to
         # serialize reference fields like this
         if no_dereference:
-            d["saved_views"] = [v.to_dict() for v in self.saved_views]
+            d["saved_views"] = [
+                _serialize_reference(v)
+                for v in self.saved_views
+                if type(v) != DBRef
+            ]
             d["annotation_runs"] = {
-                k: v.to_dict() for k, v in self.annotation_runs.items()
+                k: _serialize_reference(v)
+                for k, v in self.annotation_runs.items()
             }
             d["brain_methods"] = {
-                k: v.to_dict() for k, v in self.brain_methods.items()
+                k: _serialize_reference(v)
+                for k, v in self.brain_methods.items()
             }
             d["evaluations"] = {
-                k: v.to_dict() for k, v in self.evaluations.items()
+                k: _serialize_reference(v) for k, v in self.evaluations.items()
             }
 
         return d
