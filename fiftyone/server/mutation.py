@@ -441,13 +441,16 @@ class Mutation:
 
     @gql.mutation
     async def search_select_fields(
-        self, meta_filter: t.Optional[JSON]
+        self, dataset_name: str, meta_filter: t.Optional[JSON]
     ) -> t.List[SampleField]:
         if not meta_filter:
             return []
 
         state = get_state()
         dataset = state.dataset
+        if dataset is None:
+            dataset = fod.load_dataset(dataset_name)
+
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
         except Exception as e:

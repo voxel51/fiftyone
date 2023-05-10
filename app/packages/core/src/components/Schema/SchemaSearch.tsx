@@ -19,7 +19,7 @@ export const SchemaSearch = (props: Props) => {
     useMutation<foq.searchSelectFieldsMutation>(foq.searchSelectFields);
   const [error, setError] = useState<string>("");
 
-  const { setSearchResults } = useSchemaSettings();
+  const { setSearchResults, dataset } = useSchemaSettings();
 
   return (
     <Box
@@ -44,7 +44,7 @@ export const SchemaSearch = (props: Props) => {
           }}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && dataset) {
               if (searchTerm) {
                 // convert dot notation to object
                 const split = searchTerm.split(":");
@@ -75,7 +75,7 @@ export const SchemaSearch = (props: Props) => {
                 }
 
                 searchSchemaFields({
-                  variables: { metaFilter: object },
+                  variables: { datasetName: dataset.name, metaFilter: object },
                   onCompleted: (data, err) => {
                     if (data) {
                       const { searchSelectFields = [] } = data;
