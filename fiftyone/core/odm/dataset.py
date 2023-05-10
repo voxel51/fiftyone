@@ -31,6 +31,7 @@ from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
 from .views import SavedViewDocument
 from .utils import create_field
+import logging
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
@@ -447,6 +448,9 @@ def _serialize_reference(ref):
     """Returns a dict representation of the reference if it exists."""
 
     if type(ref) == DBRef:
+        logging.error(
+            f"Could not resolve ObjectId('{ref.id}') from '{ref.collection}' collection created at {ref.generation_time}"
+        )
         # Referenced object does not exist in the database
         return
     return ref.to_dict()
@@ -456,7 +460,9 @@ def _safe_serialize(refs):
     """Returns a dict representation of the referenced objects in the field if it exists."""
 
     if issubclass(type(refs), (BaseList, list)):
-        return [_serialize_reference(r) for r in refs]
+        return [
+            _serialize_reference(r) for r in refs if _serialize_reference(r)
+        ]
     elif issubclass(type(refs), (BaseDict, dict)):
         return {
             k: _serialize_reference(v)
