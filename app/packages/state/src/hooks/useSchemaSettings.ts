@@ -42,7 +42,6 @@ const disabledField = (path: string, ftype: string, subfield: string) => {
     path.startsWith("metadata") ||
     path.endsWith("frames.frame_number") ||
     ftype === FRAME_NUMBER_FIELD
-    // (ftype === LIST_FIELD && subfield === EMBEDDED_DOCUMENT_FIELD)
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -114,7 +113,6 @@ export const selectedPathsState = atomFamily({
           .filter(
             (path) =>
               !!path &&
-              // (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
               !skipFiled(
                 path,
                 viewSchema?.[path]?.ftype || schema?.[path]?.ftype
