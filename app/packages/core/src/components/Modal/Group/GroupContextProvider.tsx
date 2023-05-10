@@ -1,5 +1,6 @@
 import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
+import { get } from "lodash";
 import React, { useContext, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -32,9 +33,10 @@ export const GroupContextProvider = ({
   const groupByFieldValue = useMemo(() => {
     if (modal && dynamicGroupParameters?.groupBy) {
       return String(
-        modal.sample[
+        get(
+          modal.sample,
           fos.getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-        ] as unknown
+        )
       );
     }
     return null;
