@@ -81,7 +81,7 @@ const useSetView = (
 
               const search = searchParams.toString();
 
-              if (router.history.location.state) {
+              if (router.loaded) {
                 const newRoute = `${router.history.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
@@ -116,6 +116,7 @@ const useSetView = (
                   viewName,
                   dataset,
                 });
+
                 window.history.replaceState(window.history.state, "", newRoute);
               }
               onComplete && onComplete();

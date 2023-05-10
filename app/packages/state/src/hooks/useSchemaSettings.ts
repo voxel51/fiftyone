@@ -1,15 +1,6 @@
+import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
-import { useCallback, useEffect, useMemo } from "react";
-import { useRefetchableFragment } from "react-relay";
-import {
-  atom,
-  atomFamily,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
-import * as foq from "@fiftyone/relay";
 import {
   DICT_FIELD,
   FRAME_NUMBER_FIELD,
@@ -17,6 +8,16 @@ import {
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
 import { keyBy } from "lodash";
+import { useCallback, useContext, useEffect, useMemo } from "react";
+import { useMutation, useRefetchableFragment } from "react-relay";
+import {
+  atom,
+  atomFamily,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -154,8 +155,8 @@ export const selectedFieldsStageState = atom<any>({
   effects: [
     ({ onSet }) => {
       onSet((value) => {
-        try {
-          const context = fos.getContext();
+        const context = fos.getContext();
+        if (context.loaded) {
           context.history.replace(
             `${context.history.location.pathname}${context.history.location.search}`,
             {
@@ -163,8 +164,6 @@ export const selectedFieldsStageState = atom<any>({
               selectedFieldsStage: value || null,
             }
           );
-        } catch (e) {
-          console.error("failed to select field stage", value);
         }
       });
     },
@@ -174,7 +173,34 @@ export const selectedFieldsStageState = atom<any>({
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
-  const setSelectedFieldsStage = useSetRecoilState(selectedFieldsStageState);
+  const router = useContext(fos.RouterContext);
+  const [setView] = useMutation<foq.setViewMutation>(foq.setView);
+  const setSelectedFieldsStage = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (value) => {
+        set(selectedFieldsStageState, value);
+
+        if (router.loaded) return;
+        const view = await snapshot.getPromise(fos.view);
+        const datasetName = await snapshot.getPromise(fos.datasetName);
+        const subscription = await snapshot.getPromise(fos.stateSubscription);
+        setView({
+          variables: {
+            view: value ? [...view, value] : view,
+            datasetName,
+            form: {},
+            subscription,
+          },
+          onCompleted: ({ setView: { dataset } }) => {
+            set(fos.stateProxy, (current) => ({
+              ...(current || {}),
+              dataset,
+            }));
+          },
+        });
+      },
+    [setView, router]
+  );
 
   const setViewSchema = useSetRecoilState(viewSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
