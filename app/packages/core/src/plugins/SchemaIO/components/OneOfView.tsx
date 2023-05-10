@@ -40,12 +40,9 @@ export default function OneOfView(props) {
       </Tabs>
       <Box sx={{ p: 1 }}>
         <DynamicIO
+          {...props}
           key={`${path}-${tab}-content`}
           schema={types[tab]}
-          onChange={onChange}
-          path={path}
-          data={data} // todo: need to support selecting oneof matching data
-          errors={errors}
         />
       </Box>
     </Box>

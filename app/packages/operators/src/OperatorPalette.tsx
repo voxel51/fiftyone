@@ -5,6 +5,7 @@ import { PropsWithChildren, useCallback, useEffect, useRef } from "react";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { useOutsideClick } from "@fiftyone/state";
 import { PALETTE_CONTROL_KEYS } from "./constants";
+import { onEnter } from "./utils";
 
 export default function OperatorPalette(props: OperatorPaletteProps) {
   const paletteElem = useRef<HTMLDivElement>(null);
@@ -74,12 +75,18 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
               {!hideActions && (
                 <ButtonsContainer>
                   {onCancel && (
-                    <Button onClick={onCancel} style={{ marginRight: "8px" }}>
+                    <Button
+                      onClick={onCancel}
+                      style={{ marginRight: "8px" }}
+                      onKeyDown={onEnter(onCancel)}
+                    >
                       {cancelButtonText}
                     </Button>
                   )}
                   {onSubmit && (
-                    <Button onClick={onSubmit}>{submitButtonText}</Button>
+                    <Button onClick={onSubmit} onKeyDown={onEnter(onSubmit)}>
+                      {submitButtonText}
+                    </Button>
                   )}
                 </ButtonsContainer>
               )}

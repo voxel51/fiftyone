@@ -8,6 +8,7 @@ export default function MapView(props) {
 
   return (
     <ListView
+      {...props}
       id={id}
       schema={{
         type: "array",
@@ -30,8 +31,6 @@ export default function MapView(props) {
       onChange={(path, value) => {
         onChange(path, getActualValue(value));
       }}
-      path={path}
-      errors={errors}
     />
   );
 }

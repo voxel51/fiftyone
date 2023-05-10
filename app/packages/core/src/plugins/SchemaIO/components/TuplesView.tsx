@@ -5,7 +5,7 @@ import { getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function TuplesView(props) {
-  const { onChange, path, schema, data, errors } = props;
+  const { path, schema, data } = props;
   const { view = {}, items } = schema;
 
   return (
@@ -22,11 +22,10 @@ export default function TuplesView(props) {
           return (
             <Grid key={`${path}-${i}`} item xs={computedView.space || 12}>
               <DynamicIO
+                {...props}
                 schema={itemSchema}
-                onChange={onChange}
                 path={getPath(path, i)}
                 data={data?.[i] ?? itemSchema?.default ?? schema?.default?.[i]}
-                errors={errors}
               />
             </Grid>
           );

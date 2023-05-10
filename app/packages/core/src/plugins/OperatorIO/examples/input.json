@@ -39,6 +39,18 @@
         "type": {
             "name": "Object",
             "properties": {
+                "switch": {
+                    "type": { "name": "Boolean" },
+                    "view": {
+                        "name": "SwitchView"
+                    }
+                },
+                "slider": {
+                    "type": { "name": "Number" },
+                    "view": {
+                        "name": "SliderView"
+                    }
+                },
                 "errors": {
                     "type": {
                         "name": "List",
