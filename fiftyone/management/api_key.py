@@ -6,7 +6,6 @@ API key management.
 |
 """
 import datetime
-
 from typing import Optional, TypedDict, Union
 
 from fiftyone.management import connection
@@ -15,31 +14,12 @@ from fiftyone.management import util as fom_util
 
 
 class APIKey(TypedDict):
-    """dict with information about a user"""
+    """API key dict."""
 
     id: str
     name: str
     created_at: datetime.datetime
 
-
-_DELETE_API_KEY_QUERY = """
-    mutation($key: String!, $userId: String) {
-      removeApiKey(
-            keyId: $key
-            userId: $userId
-        )
-    }
-"""
-
-
-_GENERATE_API_KEY_QUERY = """
-    mutation($name: String!, $userId: String) {
-      generateApiKey(
-            name: $name
-            userId: $userId
-        ) { key }
-    }
-"""
 
 _LIST_API_KEYS_QUERY = """
     query ($userId: String!) {
@@ -53,32 +33,55 @@ _LIST_API_KEYS_QUERY = """
     }
 """
 
+_GENERATE_API_KEY_QUERY = """
+    mutation($name: String!, $userId: String) {
+      generateApiKey(
+            name: $name
+            userId: $userId
+        ) { key }
+    }
+"""
 
-def delete_api_key(
-    key: str, user: Optional[Union[str, users.User]] = None
-) -> None:
-    """Deletes the API key for the given user (default: current user).
+_DELETE_API_KEY_QUERY = """
+    mutation($key: String!, $userId: String) {
+      removeApiKey(
+            keyId: $key
+            userId: $userId
+        )
+    }
+"""
+
+
+def list_api_keys(user: Optional[Union[str, users.User]] = None):
+    """Lists all API keys for the given user (default: current user).
+
+    The returned key objects only have their name and IDs populated; the raw
+    key is only available at time of generation.
 
     .. note:
 
-        Only admins can delete keys for other users.
+        Only admins can request keys for other users.
 
     Args:
-        key: the key to delete
         user (None): an optional user ID, email string, or
             :class:`fiftyone.management.User` instance. Defaults to the current
             user
+
+    Returns:
+        a list of :class:`APIKey` instances
     """
-    user_id = users._resolve_user_id(user, nullable=True)
+    if user is None:
+        user = users.whoami()
+    user_id = users._resolve_user_id(user)
 
     client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_DELETE_API_KEY_QUERY,
-        variables={
-            "key": key,
-            "userId": user_id,
-        },
+    data = client.post_graphql_request(
+        query=_LIST_API_KEYS_QUERY, variables={"userId": user_id}
     )
+    return [
+        {fom_util.camel_to_snake(var): val for var, val in api_key.items()}
+        for api_key in data["user"]["apiKeys"]
+    ]
 
 
 def generate_api_key(
@@ -112,33 +115,28 @@ def generate_api_key(
     return data["generateApiKey"]["key"]
 
 
-def list_api_keys(user: Optional[Union[str, users.User]] = None):
-    """Lists all API keys for the given user (default: current user).
-
-    The returned key objects only have their name and IDs populated; the raw
-    key is only available at time of generation.
+def delete_api_key(
+    key: str, user: Optional[Union[str, users.User]] = None
+) -> None:
+    """Deletes the API key for the given user (default: current user).
 
     .. note:
 
-        Only admins can request keys for other users.
+        Only admins can delete keys for other users.
 
     Args:
+        key: the key to delete
         user (None): an optional user ID, email string, or
             :class:`fiftyone.management.User` instance. Defaults to the current
             user
-
-    Returns:
-        a list of :class:`APIKey` instances
     """
-    if user is None:
-        user = users.whoami()
-    user_id = users._resolve_user_id(user)
+    user_id = users._resolve_user_id(user, nullable=True)
 
     client = connection.APIClientConnection().client
-    data = client.post_graphql_request(
-        query=_LIST_API_KEYS_QUERY, variables={"userId": user_id}
+    client.post_graphql_request(
+        query=_DELETE_API_KEY_QUERY,
+        variables={
+            "key": key,
+            "userId": user_id,
+        },
     )
-    return [
-        {fom_util.camel_to_snake(var): val for var, val in api_key.items()}
-        for api_key in data["user"]["apiKeys"]
-    ]

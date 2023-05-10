@@ -16,12 +16,14 @@ from fiftyone.management import util
 
 
 class OperatorPermission(TypedDict):
+    """Operator permission dict."""
+
     minimum_role: users.UserRole
     minimum_dataset_permission: dataset.DatasetPermission
 
 
 class PluginOperator(TypedDict):
-    """dict with information about a plugin operator"""
+    """Plugin operator dict."""
 
     name: str
     enabled: bool
@@ -29,7 +31,7 @@ class PluginOperator(TypedDict):
 
 
 class Plugin(TypedDict):
-    """dict with information about a plugin"""
+    """Plugin dict."""
 
     name: str
     description: str
@@ -140,61 +142,11 @@ _UPLOAD_PLUGIN_QUERY = (
 )
 
 
-def delete_plugin(plugin_name: str) -> None:
-    """Deletes the given plugin.
-
-    .. note::
-
-        Only admins can perform this action.
-
-    Args:
-        plugin_name: name of plugin to remove
-    """
-
-    client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_DELETE_PLUGIN_QUERY, variables={"name": plugin_name}
-    )
-
-
-def download_plugin(plugin_name: str, download_dir: str) -> str:
-    client = connection.APIClientConnection().client
-    return_value = client.post_graphql_request(
-        query=_DOWNLOAD_PLUGIN_QUERY, variables={"name": plugin_name}
-    )
-
-    file_token = return_value["downloadPlugin"]
-    resp = client.get(f"file/{file_token}")
-    out_path = os.path.join(download_dir.rstrip("/"), file_token)
-    with open(out_path, "wb") as outfile:
-        outfile.write(resp.content)
-
-    return out_path
-
-
-def get_plugin_info(plugin_name: str) -> Plugin:
-    """Gets information about the specified plugin (if any).
-
-    Args:
-        plugin_name: plugin name string
-
-    Returns:
-        :class:`Plugin`, or ``None`` if no such plugin is found
-    """
-    client = connection.APIClientConnection().client
-
-    plugin = client.post_graphql_request(
-        query=_GET_PLUGIN_INFO_QUERY, variables={"pluginName": plugin_name}
-    )["plugin"]
-    return util.camel_to_snake_container(plugin)
-
-
 def list_plugins(include_builtin: bool = False) -> List[Plugin]:
-    """Returns a list of all installed plugins
+    """Returns a list of all installed plugins in central FiftyOne Teams.
 
     Args:
-        include_builtin (False): a bool specifying to include
-            builtin plugin/operators
+        include_builtin (False): whether to include builtin plugins
 
     Returns:
         a list of :class:`Plugin` instances
@@ -208,15 +160,103 @@ def list_plugins(include_builtin: bool = False) -> List[Plugin]:
     return util.camel_to_snake_container(plugins)
 
 
-def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:
-    """Sets enabled status of the given plugin.
+def get_plugin_info(plugin_name: str) -> Plugin:
+    """Gets information about the specified plugin in central FiftyOne Teams.
+
+    Args:
+        plugin_name: a plugin name
+
+    Returns:
+        :class:`Plugin`, or ``None`` if no such plugin is found
+    """
+    client = connection.APIClientConnection().client
+
+    plugin = client.post_graphql_request(
+        query=_GET_PLUGIN_INFO_QUERY, variables={"pluginName": plugin_name}
+    )["plugin"]
+    return util.camel_to_snake_container(plugin)
+
+
+def upload_plugin(zip_path: str, overwrite: bool = False) -> Plugin:
+    """Uploads a plugin to central FiftyOne Teams.
+
+    The local plugin must be a zip file that contains a single directory with
+    a ``fiftyone.yml`` file. For example::
+
+        my_plugin/
+            fiftyone.yml
+            __init__.py
+            data.txt
+
+    .. note:
+
+        Only admins can upload plugins.
+
+    Args:
+        zip_path: the path to a plugin zip
+        overwrite (False): whether to overwrite an existing plugin with same
+            name
+    """
+    client = connection.APIClientConnection().client
+
+    with open(zip_path, "rb") as f:
+        upload_token = json.loads(client.post_file("file", f))["file_token"]
+
+    return client.post_graphql_request(
+        query=_UPLOAD_PLUGIN_QUERY,
+        variables={"token": upload_token, "overwrite": overwrite},
+    )["uploadPlugin"]
+
+
+def download_plugin(plugin_name: str, download_dir: str) -> str:
+    """Downloads a plugin from central FiftyOne Teams.
+
+    Args:
+        plugin_name: a plugin name
+        download_dir: a directory into which to download the plugin
+
+    Returns:
+        the path to the downloaded plugin
+    """
+    client = connection.APIClientConnection().client
+    return_value = client.post_graphql_request(
+        query=_DOWNLOAD_PLUGIN_QUERY, variables={"name": plugin_name}
+    )
+
+    file_token = return_value["downloadPlugin"]
+    resp = client.get(f"file/{file_token}")
+    outpath = os.path.join(download_dir, file_token)
+    with open(outpath, "wb") as f:
+        f.write(resp.content)
+
+    return outpath
+
+
+def delete_plugin(plugin_name: str) -> None:
+    """Deletes the given plugin from central FiftyOne Teams.
 
     .. note::
 
         Only admins can perform this action.
 
     Args:
-        plugin_name: a plugin name string
+        plugin_name: a plugin name
+    """
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_DELETE_PLUGIN_QUERY, variables={"name": plugin_name}
+    )
+
+
+def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:
+    """Sets the enabled status of the given plugin in central FiftyOne Teams.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        plugin_name: a plugin name
         enabled: a bool specifying what to set enabled status to
     """
     client = connection.APIClientConnection().client
@@ -229,15 +269,16 @@ def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:
 def set_plugin_operator_enabled(
     plugin_name: str, operator_name: str, enabled: bool
 ) -> None:
-    """Sets enabled status of the given plugin operator.
+    """Sets the enabled status of the given plugin operator in central FiftyOne
+    Teams.
 
     .. note::
 
         Only admins can perform this action.
 
     Args:
-        plugin_name: a plugin name string
-        operator_name: a string specifying name of operator within given plugin
+        plugin_name: a plugin name
+        operator_name: an operator name within the given plugin
         enabled: a bool specifying what to set operator enabled status to
     """
     client = connection.APIClientConnection().client
@@ -257,7 +298,9 @@ def set_plugin_operator_permissions(
     minimum_role: Optional[users.UserRole] = None,
     minimum_dataset_permission: Optional[dataset.DatasetPermission] = None,
 ):
-    """Sets permission levels of the given plugin operator.
+    """Sets permission levels of the given plugin operator in central FiftyOne
+    Teams.
+
     At least one of ``minimum_role`` and ``minimum_dataset_permission``
     must be set.
 
@@ -266,13 +309,12 @@ def set_plugin_operator_permissions(
         Only admins can perform this action.
 
     Args:
-        plugin_name: a plugin name string
-        operator_name: a string specifying name of operator within given plugin
-        minimum_role (None): an optional :class:`fiftyone.management.DatasetPermission`
-            instance. Defaults to None which means don't update the field.
+        plugin_name: a plugin name
+        operator_name: an operator name within the given plugin
+        minimum_role (None): an optional
+            :class:`fiftyone.management.DatasetPermission` to set
         minimum_dataset_permission (None): an optional
-            :class:`fiftyone.management.DatasetPermission`
-            instance. Defaults to None which means don't update the field.
+            :class:`fiftyone.management.DatasetPermission` to set
     """
     if not any((minimum_role, minimum_dataset_permission)):
         raise ValueError(
@@ -294,37 +336,3 @@ def set_plugin_operator_permissions(
             "minDatasetPerm": minimum_dataset_permission_str,
         },
     )
-
-
-def upload_plugin(
-    plugin_zip_file_path: str, overwrite: bool = False
-) -> Plugin:
-    """Uploads a local path plugin to the FiftyOne Teams shared plugin system.
-
-    Local path plugin must be in zip format with valid `fiftyone.yml` at the
-    root or within a single common root folder.
-
-    E.g.,
-        my_plugin/
-        my_plugin/fiftyone.yml
-        my_plugin/__init__.py
-        my_plugin/data.txt
-
-    .. note:
-
-        Only admins can upload plugins.
-
-    Args:
-        plugin_zip_file_path: a path to plugin .zip file
-        overwrite (False): overwrites an existing plugin with same name if True
-    """
-    client = connection.APIClientConnection().client
-
-    with open(plugin_zip_file_path, "rb") as f:
-        json_content = json.loads(client.post_file("file", f))
-    upload_token = json_content["file_token"]
-
-    return client.post_graphql_request(
-        query=_UPLOAD_PLUGIN_QUERY,
-        variables={"token": upload_token, "overwrite": overwrite},
-    )["uploadPlugin"]
