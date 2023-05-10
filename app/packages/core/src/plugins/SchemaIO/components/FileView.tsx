@@ -6,7 +6,7 @@ import TabsView from "./TabsView";
 import TextFieldView from "./TextFieldView";
 
 export default function FileView(props) {
-  const { onChange, path, schema } = props;
+  const { onChange, path, schema, autoFocused } = props;
   const { view = {} } = schema;
   const { types } = view;
   const [type, setType] = useState("file");
@@ -39,6 +39,7 @@ export default function FileView(props) {
               onChange(path, result);
             }}
             types={types}
+            autoFocused={autoFocused}
             // allowMultiple={allowMultiple}
           />
         )}

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import * as ColorPickers from "react-color";
 import { colorPicker } from "./ColorView.module.css";
 import HeaderView from "./HeaderView";
+import autoFocus from "../utils/auto-focus";
 
 export default function ColorView(props) {
   const { onChange, path, schema, data } = props;
@@ -38,6 +39,7 @@ export default function ColorView(props) {
         />
         {!compact && (
           <TextField
+            autoFocus={autoFocus(props)}
             size="small"
             value={hexColor}
             onChange={(e) => {
