@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6aeac381594064ae7f8e58c8a3972720>>
+ * @generated SignedSource<<fc74ac51debe0ebc4fda5c7da7e8d743>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type searchSelectFieldsMutation$variables = {
+  datasetName: string;
   metaFilter?: object | null;
 };
 export type searchSelectFieldsMutation$data = {
@@ -27,6 +28,11 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
+    "name": "datasetName"
+  },
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
     "name": "metaFilter"
   }
 ],
@@ -34,6 +40,11 @@ v1 = [
   {
     "alias": null,
     "args": [
+      {
+        "kind": "Variable",
+        "name": "datasetName",
+        "variableName": "datasetName"
+      },
       {
         "kind": "Variable",
         "name": "metaFilter",
@@ -74,16 +85,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "05ffc3bc35bab390474fc9a2190d0b88",
+    "cacheID": "1eaeda342a4af68822fa0cf50597efbe",
     "id": null,
     "metadata": {},
     "name": "searchSelectFieldsMutation",
     "operationKind": "mutation",
-    "text": "mutation searchSelectFieldsMutation(\n  $metaFilter: JSON = null\n) {\n  searchSelectFields(metaFilter: $metaFilter) {\n    path\n  }\n}\n"
+    "text": "mutation searchSelectFieldsMutation(\n  $datasetName: String!\n  $metaFilter: JSON = null\n) {\n  searchSelectFields(datasetName: $datasetName, metaFilter: $metaFilter) {\n    path\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "81e6b8da8399868f5d70bd599e40ac5f";
+(node as any).hash = "7509f7695fcde68a5b04b389f16164a6";
 
 export default node;

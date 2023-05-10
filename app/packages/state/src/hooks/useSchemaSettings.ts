@@ -445,5 +445,6 @@ export default function useSchemaSettings() {
     setSelectedFieldsStage,
     affectedPathCount,
     mediatType: dataset.mediaType,
+    dataset,
   };
 }

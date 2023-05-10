@@ -478,12 +478,11 @@ class Query(fosa.AggregateQuery):
 
                 return base_schema
 
-            base_schema = serialize_fields(ds.get_field_schema(flat=True))
             if ds.media_type == fom.VIDEO:
                 # return base_schema + serialize_fields(ds.get_frame_field_schema(flat=True))
                 return serialize_fields(ds.get_frame_field_schema(flat=True))
 
-            return base_schema
+            return serialize_fields(ds.get_field_schema(flat=True))
         except Exception as e:
             print("failed to get schema for view stages", str(e))
             return []
