@@ -2030,10 +2030,29 @@ def _get_region(fs, bucket):
     client = _get_default_client(fs)
 
     try:
-        resp = client._client.get_bucket_location(Bucket=bucket)
-        return resp["LocationConstraint"] or "us-east-1"
-    except:
-        return _UNKNOWN_REGION
+        # HeadBucket is the AWS recommended way to determine a bucket's region
+        # It requires `s3:ListBucket` permsision
+        resp = client._client.head_bucket(Bucket=bucket)
+        headers = resp["ResponseMetadata"]["HTTPHeaders"]
+        return headers.get("x-amz-bucket-region", "us-east-1")
+    except Exception as e1:
+        try:
+            # Fallback to GetBucketLocation, which requires
+            # `s3:GetBucketLocation` permission but does not support
+            # multi-account credentials
+            resp = client._client.get_bucket_location(Bucket=bucket)
+            return resp["LocationConstraint"] or "us-east-1"
+        except Exception as e2:
+            logger.warning(
+                "Failed to determine filesystem '%s' bucket '%s' location. "
+                "HeadBucket: %s. GetBucketLocation: %s",
+                fs,
+                bucket,
+                e1,
+                e2,
+            )
+
+            return _UNKNOWN_REGION
 
 
 def _make_client(fs, num_workers=None):
