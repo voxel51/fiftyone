@@ -401,7 +401,6 @@ export const operatorBrowserChoices = selector({
     const allChoices = get(availableOperators);
     const query = get(operatorBrowserQueryState);
     let results = [...allChoices];
-    console.log(results);
     results = results.filter(({ unlisted }) => !unlisted);
     if (query && query.length > 0) {
       results = filterChoicesByQuery(query, results);
@@ -565,7 +564,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const hooks = operator.useHooks(ctx);
 
   const clear = useCallback(() => {
-    console.log("clearing executor");
     setIsExecuting(false);
     setError(null);
     setResult(null);
@@ -575,7 +573,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides) => {
-      console.log("starting execution");
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -588,7 +585,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       );
       ctx.state = state;
       try {
-        console.log("executing operator with context", ctx);
         ctx.hooks = hooks;
         ctx.state = state;
         const result = await executeOperatorWithContext(uri, ctx);
@@ -597,11 +593,11 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setError(result.error);
         handlers.onSuccess?.(result);
       } catch (e) {
-        console.error("Error executing operator");
-        console.error(e);
         setError(e);
         setResult(null);
         handlers.onError?.(e);
+        console.error("Error executing operator", operator, ctx);
+        console.error(e);
       }
       setHasExecuted(true);
       setIsExecuting(false);
