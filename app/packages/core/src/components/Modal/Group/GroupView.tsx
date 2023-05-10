@@ -105,7 +105,7 @@ export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
 
         {!shouldSplitVertically && is3DVisible && <GroupSample3d />}
       </div>
-      {subBar ?? subBar}
+      {subBar && subBar}
     </div>
   );
 };
