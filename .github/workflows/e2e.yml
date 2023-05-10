@@ -1,11 +1,6 @@
 name: Test e2e
 
-on:
-  pull_request:
-    types:
-      - opened
-    branches:
-      - develop
+on: workflow_call
 
 jobs:
   test-e2e:
