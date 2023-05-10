@@ -441,39 +441,50 @@ class ShowSamples extends Operator {
       unlisted: true,
     });
   }
-  async execute({ state, params }: ExecutionContext) {
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setView: fos.useSetView(),
+    };
+  }
+  async execute({ state, hooks, params }: ExecutionContext) {
     if (params.use_extended_selection) {
       state.set(fos.extendedSelection, {
         selection: params.samples,
         scope: "global",
       });
+      return;
     }
     const currentView = await state.snapshot.getPromise(fos.view);
-    state.set(fos.view, [
+    const newView = [
       ...currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID),
-      {
-        _cls: "fiftyone.core.stages.Select",
-        kwargs: [
-          ["sample_ids", params.samples],
-          ["ordered", false],
-        ],
-        _uuid: SHOW_SAMPLES_STAGE_ID,
-      },
-    ]);
+      ...(params.samples
+        ? [
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [
+                ["sample_ids", params.samples],
+                ["ordered", false],
+              ],
+              _uuid: SHOW_SAMPLES_STAGE_ID,
+            },
+          ]
+        : []),
+    ];
+    hooks.setView(fos.view, newView);
   }
 }
 
-class ClearShowSamples extends Operator {
-  get config(): OperatorConfig {
-    return new OperatorConfig({
-      name: "clear_show_samples",
-      label: "Clear show samples",
-    });
-  }
-  async execute(ctx: ExecutionContext) {
-    executeOperator("show_samples", { samples: [] });
-  }
-}
+// class ClearShowSamples extends Operator {
+//   get config(): OperatorConfig {
+//     return new OperatorConfig({
+//       name: "clear_show_samples",
+//       label: "Clear show samples",
+//     });
+//   }
+//   async execute(ctx: ExecutionContext) {
+//     executeOperator("show_samples", { samples: null });
+//   }
+// }
 
 function isAtomOrSelector(v: any): boolean {
   return (
@@ -677,7 +688,7 @@ export function registerBuiltInOperators() {
     registerOperator(CloseAllPanels);
     registerOperator(SetView);
     registerOperator(ShowSamples);
-    registerOperator(ClearShowSamples);
+    // registerOperator(ClearShowSamples);
     registerOperator(GetAppValue);
     registerOperator(ConsoleLog);
     registerOperator(ShowOutput);
