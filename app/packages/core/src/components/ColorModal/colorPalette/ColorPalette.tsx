@@ -6,6 +6,8 @@ import { ChromePicker } from "react-color";
 import styled from "styled-components";
 
 import Checkbox from "../../Common/Checkbox";
+import { colorPicker } from "./Colorpicker.module.css";
+
 import {
   colorBlindFriendlyPalette,
   fiftyoneDefaultColorPalette,
@@ -67,7 +69,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const handleColorAdd = () => {
     if (colors?.length < maxColors) {
       setColorScheme(
-        [...colors, "#fff"],
+        [...colors, "#ffffff"],
         computedSessionColorScheme.customizedColorSettings,
         false
       );
@@ -115,6 +117,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                   popperProps={{ positionFixed: true }}
                   ref={pickerRef}
                   disableAlpha={true}
+                  className={colorPicker}
                 />
               </ChromePickerWrapper>
             )}

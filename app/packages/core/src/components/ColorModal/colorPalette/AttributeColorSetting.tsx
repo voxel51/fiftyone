@@ -8,6 +8,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
+import { colorPicker } from "./Colorpicker.module.css";
 
 const RowContainer = styled.div`
   display: flex;
@@ -162,6 +163,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
                       prev.map((_, i) => (i === index ? false : _))
                     )
                   }
+                  className={colorPicker}
                 />
               </ChromePickerWrapper>
             )}
