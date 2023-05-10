@@ -7,6 +7,7 @@ Documents that track datasets and their sample schemas in the database.
 """
 import eta.core.utils as etau
 from bson import DBRef
+from mongoengine.base.datastructures import BaseList, BaseDict
 
 from fiftyone.core.fields import (
     BooleanField,
@@ -24,8 +25,6 @@ from fiftyone.core.fields import (
     StringField,
 )
 import fiftyone.core.utils as fou
-
-# import fiftyone.core.colorscheme as foc
 
 from .document import Document
 from .embedded_document import EmbeddedDocument
@@ -453,6 +452,21 @@ def _serialize_reference(ref):
     return ref.to_dict()
 
 
+def _safe_serialize(refs):
+    """Returns a dict representation of the referenced objects in the field if it exists."""
+
+    if issubclass(type(refs), BaseList):
+        return [_safe_serialize(r) for r in refs]
+    elif issubclass(type(refs), BaseDict):
+        return {
+            k: _serialize_reference(v)
+            for k, v in refs.items()
+            if _serialize_reference(v)
+        }
+    else:
+        raise ValueError("Unsupported type '%s'" % type(refs))
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -496,21 +510,8 @@ class DatasetDocument(Document):
         # Sadly there appears to be no builtin way to tell mongoengine to
         # serialize reference fields like this
         if no_dereference:
-            d["saved_views"] = [
-                _serialize_reference(v)
-                for v in self.saved_views
-                if type(v) != DBRef
-            ]
-            d["annotation_runs"] = {
-                k: _serialize_reference(v)
-                for k, v in self.annotation_runs.items()
-            }
-            d["brain_methods"] = {
-                k: _serialize_reference(v)
-                for k, v in self.brain_methods.items()
-            }
-            d["evaluations"] = {
-                k: _serialize_reference(v) for k, v in self.evaluations.items()
-            }
-
+            d["saved_views"] = _safe_serialize(self.saved_views)
+            d["annotation_runs"] = _safe_serialize(self.annotation_runs)
+            d["brain_methods"] = _safe_serialize(self.brain_methods)
+            d["evaluations"] = _safe_serialize(self.evaluations)
         return d
