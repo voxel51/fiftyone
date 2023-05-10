@@ -1,49 +1,18 @@
-import { Button } from "@fiftyone/components";
-import { scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
-import styled from "styled-components";
 import OperatorIO from "./OperatorIO";
 import {
   showOperatorPromptSelector,
   useOperatorPrompt,
   useShowOperatorIO,
 } from "./state";
-import { scrollable } from "@fiftyone/components";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import BaseStylesProvider from "./BaseStylesProvider";
+import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { stringifyError } from "./utils";
-
-const PromptContainer = styled.div`
-  position: absolute;
-  top: 5rem;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  z-index: 999;
-`;
-
-const PromptModal = styled.div`
-  align-self: stretch;
-  background: ${({ theme }) => theme.background.level2};
-  max-width: 90vw;
-  min-width: 50%;
-  width: auto;
-  padding: 1rem;
-  max-height: 80vh;
-  overflow: auto;
-  ${scrollbarStyles}
-`;
-
-const ButtonsContainer = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -65,53 +34,56 @@ function ActualOperatorPrompt() {
     operatorPrompt.executorError ||
     operatorPrompt.resolveError;
 
+  const paletteProps: OperatorPaletteProps = {
+    submitButtonText: "Execute",
+    cancelButtonText: "Cancel",
+  };
+
+  if (operatorPrompt.showPrompt) {
+    paletteProps.onSubmit = operatorPrompt.execute;
+    paletteProps.onCancel = operatorPrompt.cancel;
+  } else if (showResultOrError) {
+    paletteProps.onCancel = operatorPrompt.close;
+    paletteProps.cancelButtonText = "Close";
+  }
+
   return createPortal(
-    <PromptContainer>
-      <PromptModal ref={operatorPrompt.containerRef}>
-        {operatorPrompt.showPrompt && (
-          <Prompting operatorPrompt={operatorPrompt} />
-        )}
-        {operatorPrompt.isExecuting && <div>Executing...</div>}
-        {showResultOrError && (
-          <ResultsOrError
-            operatorPrompt={operatorPrompt}
-            outputFields={operatorPrompt.outputFields}
-          />
-        )}
-      </PromptModal>
-    </PromptContainer>,
+    <OperatorPalette
+      dynamicWidth
+      {...paletteProps}
+      onClose={paletteProps.onCancel || operatorPrompt.close}
+      submitOnControlEnter
+    >
+      {operatorPrompt.showPrompt && (
+        <Prompting operatorPrompt={operatorPrompt} />
+      )}
+      {operatorPrompt.isExecuting && <div>Executing...</div>}
+      {showResultOrError && (
+        <ResultsOrError
+          operatorPrompt={operatorPrompt}
+          outputFields={operatorPrompt.outputFields}
+        />
+      )}
+    </OperatorPalette>,
     document.body
   );
 }
 
 function Prompting({ operatorPrompt }) {
   return (
-    <Box sx={{ height: "100%" }}>
-      <Box
-        sx={{ pb: 2, maxHeight: "calc(100% - 32px)", overflow: "auto" }}
-        className={scrollable}
-      >
-        <form onSubmit={operatorPrompt.onSubmit}>
-          <OperatorIO
-            schema={operatorPrompt.inputFields}
-            onChange={(data) => {
-              const formData = data;
-              for (const field in formData) {
-                operatorPrompt.setFieldValue(field, formData[field]);
-              }
-            }}
-            data={operatorPrompt.promptingOperator.params}
-            errors={operatorPrompt?.validationErrors || []}
-          />
-        </form>
-      </Box>
-      <ButtonsContainer>
-        <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
-          Cancel
-        </Button>
-        <Button onClick={operatorPrompt.execute}>Execute</Button>
-      </ButtonsContainer>
-    </Box>
+    <form onSubmit={operatorPrompt.onSubmit}>
+      <OperatorIO
+        schema={operatorPrompt.inputFields}
+        onChange={(data) => {
+          const formData = data;
+          for (const field in formData) {
+            operatorPrompt.setFieldValue(field, formData[field]);
+          }
+        }}
+        data={operatorPrompt.promptingOperator.params}
+        errors={operatorPrompt?.validationErrors || []}
+      />
+    </form>
   );
 }
 
@@ -120,29 +92,9 @@ export function OperatorViewModal() {
   if (!io.visible) return null;
 
   return createPortal(
-    <BaseStylesProvider>
-      <PromptContainer>
-        <PromptModal>
-          <Box>
-            <Box sx={{ pb: 2 }}>
-              <OperatorIO
-                schema={io.schema}
-                data={io.data || {}}
-                type={io.type}
-              />
-            </Box>
-            {/* {io.showButtons && (
-            <ButtonsContainer>
-              <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
-                Cancel
-              </Button>
-              <Button onClick={operatorPrompt.execute}>Execute</Button>
-            </ButtonsContainer>
-          )}  */}
-          </Box>
-        </PromptModal>
-      </PromptContainer>
-    </BaseStylesProvider>,
+    <OperatorPalette>
+      <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
+    </OperatorPalette>,
     document.body
   );
 }
@@ -175,9 +127,6 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
           ]}
         />
       )}
-      <ButtonsContainer>
-        <Button onClick={() => operatorPrompt.close()}>Close</Button>
-      </ButtonsContainer>
     </Box>
   );
 }
