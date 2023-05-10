@@ -35,14 +35,16 @@ const skipFiled = (path: string, ftype: string) => {
     path.endsWith(".bounding_box")
   );
 };
-const disabledField = (path: string, ftype: string, subfield: string) => {
+const disabledField = (path: string, ftype: string) => {
   return (
     path === "tags" ||
     path === "filepath" ||
     (ftype === OBJECT_ID_FIELD && path === "id") ||
     path.startsWith("metadata") ||
     path.endsWith("frames.frame_number") ||
-    ftype === FRAME_NUMBER_FIELD
+    ftype === FRAME_NUMBER_FIELD ||
+    path === "group" ||
+    path === "frames.group"
   );
 };
 export const schemaSearchTerm = atom<string>({
