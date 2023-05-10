@@ -10,6 +10,7 @@ export default function DynamicIO(props) {
   // todo: need to improve initializing default value in state
   useEffect(() => {
     if (schema.default) onChange(path, schema.default);
+    else if (schema.type === "boolean") onChange(path, false);
   }, []);
 
   return <Component {...props} />;

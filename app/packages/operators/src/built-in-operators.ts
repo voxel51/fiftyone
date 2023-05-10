@@ -111,14 +111,22 @@ class OpenPanel extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.defineProperty(
-      "name",
-      new types.Enum(["Histograms", "Embeddings"]),
-      { label: "Name of the panel", required: true }
-    );
+    inputs.defineProperty("name", new types.String(), {
+      view: new types.AutocompleteView({
+        choices: [
+          new types.Choice("Embeddings"),
+          new types.Choice("Histograms"),
+          new types.Choice("Samples"),
+          new types.Choice("Map"),
+        ],
+        label: "Name of the panel",
+        required: true,
+      }),
+    });
     inputs.defineProperty("isActive", new types.Boolean(), {
       label: "Auto-select on open",
       required: true,
+      default: true,
     });
     return new types.Property(inputs);
   }
@@ -139,11 +147,18 @@ class OpenPanel extends Operator {
     }
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { spaces } = hooks;
+    const { spaces, openedPanels, availablePanels } = hooks;
     const { name, isActive } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
+    }
+    const openedPanel = openedPanels.find(({ type }) => type === name);
+    const panel = availablePanels.find((panel) => name === panel.name);
+    const allowDuplicate = panel?.panelOptions?.allowDuplicates;
+    if (openedPanel && !allowDuplicate) {
+      if (isActive) spaces.setNodeActive(openedPanel);
+      return;
     }
     const newNode = new SpaceNode();
     newNode.type = name;
@@ -206,11 +221,18 @@ class ClosePanel extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.defineProperty(
-      "name",
-      new types.Enum(["Histograms", "Embeddings"]),
-      { label: "Name of the panel", required: true }
-    );
+    inputs.defineProperty("name", new types.String(), {
+      view: new types.AutocompleteView({
+        choices: [
+          new types.Choice("Embeddings"),
+          new types.Choice("Histograms"),
+          new types.Choice("Samples"),
+          new types.Choice("Map"),
+        ],
+        label: "Name of the panel",
+        required: true,
+      }),
+    });
     return new types.Property(inputs);
   }
   useHooks(): object {
@@ -222,16 +244,16 @@ class ClosePanel extends Operator {
   async execute({ hooks, params }: ExecutionContext) {
     const { openedPanels, spaces } = hooks;
     const { name, id } = params;
-    const targetPanel = openedPanels.find(
+    const panel = openedPanels.find(
       (panel) => id === panel.id || name === panel.type
     );
-    if (!targetPanel)
+    if (!panel)
       return console.error(
         `Opened panel with ${id ? "id" : "name"} "${
           id || name
         }" cannot be found`
       );
-    spaces.removeNode(targetPanel);
+    if (!panel.pinned) spaces.removeNode(panel);
   }
 }
 
