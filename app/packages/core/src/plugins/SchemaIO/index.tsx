@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import DynamicIO from "./components/DynamicIO";
 import { set } from "lodash";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 
 export function SchemaIOComponent(props) {
-  const { schema, onChange, data, errors } = props;
+  const { onChange } = props;
   const [state, setState] = useState({});
+  const autoFocused = useRef(false);
 
   function onIOChange(path, value) {
     setState((state) => {
@@ -21,11 +22,10 @@ export function SchemaIOComponent(props) {
 
   return (
     <DynamicIO
-      schema={schema}
+      {...props}
       onChange={onIOChange}
       path=""
-      data={data}
-      errors={errors}
+      autoFocused={autoFocused}
     />
   );
 }

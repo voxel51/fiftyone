@@ -5,8 +5,8 @@ import { getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function ObjectView(props) {
-  const { schema, onChange, path, data, errors } = props;
-  const { properties, view = {} } = schema;
+  const { schema, path, data } = props;
+  const { properties } = schema;
 
   const propertiesAsArray = [];
 
@@ -23,11 +23,10 @@ export default function ObjectView(props) {
           return (
             <Grid key={property.id} item xs={space}>
               <DynamicIO
+                {...props}
                 schema={property}
-                onChange={onChange}
                 path={getPath(path, property.id)}
                 data={data?.[property.id]}
-                errors={errors}
               />
             </Grid>
           );
