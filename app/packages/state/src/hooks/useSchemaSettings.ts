@@ -180,6 +180,7 @@ export default function useSchemaSettings() {
       async (value) => {
         set(selectedFieldsStageState, value);
 
+        // router is loaded only in OSS
         if (router.loaded) return;
         const view = await snapshot.getPromise(fos.view);
         const datasetName = await snapshot.getPromise(fos.datasetName);
@@ -192,6 +193,8 @@ export default function useSchemaSettings() {
             subscription,
           },
           onCompleted: ({ setView: { dataset } }) => {
+            // in an embedded context, we update the dataset schema through the
+            // state proxy
             set(fos.stateProxy, (current) => ({
               ...(current || {}),
               dataset,

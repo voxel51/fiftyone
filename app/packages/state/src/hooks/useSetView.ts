@@ -81,6 +81,7 @@ const useSetView = (
 
               const search = searchParams.toString();
 
+              // the router is only loaded in OSS
               if (router.loaded) {
                 const newRoute = `${router.history.location.pathname}${
                   search.length ? "?" : ""
