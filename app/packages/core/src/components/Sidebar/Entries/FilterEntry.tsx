@@ -32,6 +32,8 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
   const affectedPathCount = useRecoilValue(affectedPathCountState);
 
+  const { setSelectedFieldsStage } = fos.useSchemaSettings();
+
   useDebounce(
     () => {
       setDebouncedValue(value);
@@ -67,6 +69,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 }}
                 onClick={() => {
                   resetSelectedFieldStages();
+                  setSelectedFieldsStage(undefined);
                   resetSelectedPaths();
                 }}
               >
