@@ -22,6 +22,16 @@ class APIKey(TypedDict):
     created_at: datetime.datetime
 
 
+_DELETE_API_KEY_QUERY = """
+    mutation($key: String!, $userId: String) {
+      removeApiKey(
+            keyId: $key
+            userId: $userId
+        )
+    }
+"""
+
+
 _GENERATE_API_KEY_QUERY = """
     mutation($name: String!, $userId: String) {
       generateApiKey(
@@ -43,14 +53,32 @@ _LIST_API_KEYS_QUERY = """
     }
 """
 
-_REMOVE_API_KEY_QUERY = """
-    mutation($key: String!, $userId: String) {
-      removeApiKey(
-            keyId: $key
-            userId: $userId
-        )
-    }
-"""
+
+def delete_api_key(
+    key: str, user: Optional[Union[str, users.User]] = None
+) -> None:
+    """Deletes the API key for the given user (default: current user).
+
+    .. note:
+
+        Only admins can delete keys for other users.
+
+    Args:
+        key: the key to delete
+        user (None): an optional user ID, email string, or
+            :class:`fiftyone.management.User` instance. Defaults to the current
+            user
+    """
+    user_id = users._resolve_user_id(user, nullable=True)
+
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_DELETE_API_KEY_QUERY,
+        variables={
+            "key": key,
+            "userId": user_id,
+        },
+    )
 
 
 def generate_api_key(
@@ -114,30 +142,3 @@ def list_api_keys(user: Optional[Union[str, users.User]] = None):
         {fom_util.camel_to_snake(var): val for var, val in api_key.items()}
         for api_key in data["user"]["apiKeys"]
     ]
-
-
-def remove_api_key(
-    key: str, user: Optional[Union[str, users.User]] = None
-) -> None:
-    """Deletes the API key for the given user (default: current user).
-
-    .. note:
-
-        Only admins can delete keys for other users.
-
-    Args:
-        key: the key to remove
-        user (None): an optional user ID, email string, or
-            :class:`fiftyone.management.User` instance. Defaults to the current
-            user
-    """
-    user_id = users._resolve_user_id(user, nullable=True)
-
-    client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_REMOVE_API_KEY_QUERY,
-        variables={
-            "key": key,
-            "userId": user_id,
-        },
-    )

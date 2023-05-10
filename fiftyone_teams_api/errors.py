@@ -17,6 +17,14 @@ class APIAuthenticationError(FiftyOneTeamsAPIError):
         super().__init__(msg)
 
 
+class APIBadRequestError(FiftyOneTeamsAPIError):
+    """Authentication error for the FiftyOne Teams API."""
+
+    def __init__(self, msg):
+        msg = msg or "Bad client request for the FiftyOne Teams API."
+        super().__init__(msg)
+
+
 class APIForbiddenError(FiftyOneTeamsAPIError):
     """Forbidden error for the FiftyOne Teams API."""
 

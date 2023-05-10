@@ -44,6 +44,34 @@ class UserRole(enum.Enum):
     GUEST = "GUEST"
 
 
+def _validate_user_role(
+    candidate_user_role: Union[str, UserRole, None], nullable: bool = False
+) -> Optional[str]:
+    if candidate_user_role is None and nullable:
+        return None
+
+    if isinstance(candidate_user_role, UserRole):
+        return candidate_user_role.value
+    elif isinstance(candidate_user_role, str):
+        try:
+            return UserRole[candidate_user_role].value
+        except KeyError:
+            ...
+    raise ValueError(f"Invalid user role {candidate_user_role}")
+
+
+_DELETE_INVITATION_QUERY = """
+    mutation($invitationId: String!) {
+      revokeUserInvitation(invitationId: $invitationId)
+    }
+"""
+
+_DELETE_USER_QUERY = """
+    mutation($userId: String!) {
+      removeUser(userId: $userId)
+    }
+"""
+
 _GET_USER_QUERY = """
     query ($userId: String!) {
         user(id: $userId) {
@@ -87,18 +115,6 @@ _LIST_USERS_QUERY = """
     }
 """
 
-_REMOVE_USER_QUERY = """
-    mutation($userId: String!) {
-      removeUser(userId: $userId)
-    }
-"""
-
-_REVOKE_INVITATION_QUERY = """
-    mutation($invitationId: String!) {
-      revokeUserInvitation(invitationId: $invitationId)
-    }
-"""
-
 _SEND_INVITATION_QUERY = """
     mutation($email: String!, $role: UserRole!) {
       sendUserInvitation(email: $email, role: $role) { id }
@@ -121,6 +137,43 @@ _VIEWER_QUERY = """
         }
     }
 """
+
+
+def delete_user(user: Union[str, User]) -> None:
+    """Deletes the given user.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        user: a user ID, email string, or :class:`User` instance
+    """
+    user_id = _resolve_user_id(user)
+
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_DELETE_USER_QUERY, variables={"userId": user_id}
+    )
+
+
+def delete_user_invitation(invitation_id: str) -> None:
+    """Deletes/revokes a previously-sent invitation if it has not been accepted.
+
+    .. note::
+
+        Only admins can perform this action.
+
+    Args:
+        invitation_id: an invitation ID as returned by
+            :meth:`send_user_invitation`
+    """
+    client = connection.APIClientConnection().client
+
+    client.post_graphql_request(
+        query=_DELETE_INVITATION_QUERY,
+        variables={"invitationId": invitation_id},
+    )
 
 
 def get_user(user: str) -> Union[User, None]:
@@ -181,43 +234,6 @@ def list_users() -> List[User]:
     )
 
 
-def remove_user(user: Union[str, User]) -> None:
-    """Deletes the given user.
-
-    .. note::
-
-        Only admins can perform this action.
-
-    Args:
-        user: a user ID, email string, or :class:`User` instance
-    """
-    user_id = _resolve_user_id(user)
-
-    client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_REMOVE_USER_QUERY, variables={"userId": user_id}
-    )
-
-
-def revoke_user_invitation(invitation_id: str) -> None:
-    """Revokes a previously-sent invitation if it has not been accepted.
-
-    .. note::
-
-        Only admins can perform this action.
-
-    Args:
-        invitation_id: an invitation ID as returned by
-            :meth:`send_user_invitation`
-    """
-    client = connection.APIClientConnection().client
-
-    client.post_graphql_request(
-        query=_REVOKE_INVITATION_QUERY,
-        variables={"invitationId": invitation_id},
-    )
-
-
 def send_user_invitation(email: str, role: UserRole) -> str:
     """Sends an email invitation to join your FiftyOne Teams organization.
 
@@ -232,11 +248,12 @@ def send_user_invitation(email: str, role: UserRole) -> str:
     Returns:
         the invitation ID string
     """
+    role_str = _validate_user_role(role)
     client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(
         query=_SEND_INVITATION_QUERY,
-        variables={"email": email, "role": role.value},
+        variables={"email": email, "role": role_str},
     )
     return data["sendUserInvitation"]["id"]
 
@@ -252,12 +269,13 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
         user: a user ID, email string, or :class:`User` instance
         role: the :class:`UserRole` to set
     """
+    role_str = _validate_user_role(role)
     user_id = _resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
         query=_SET_USER_ROLE_QUERY,
-        variables={"userId": user_id, "role": role.value},
+        variables={"userId": user_id, "role": role_str},
     )
 
 
