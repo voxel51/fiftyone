@@ -258,7 +258,7 @@ export default function useSchemaSettings() {
     if (viewSchema) {
       setViewSchema(viewSchema);
     }
-  }, [viewSchema]);
+  }, [viewSchema, dataset]);
 
   const [selectedTab, setSelectedTab] = useRecoilState(
     schemaSelectedSettingsTab
@@ -344,6 +344,7 @@ export default function useSchemaSettings() {
     viewSchema,
     selectedTab,
     searchResults,
+    dataset,
   ]);
 
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
