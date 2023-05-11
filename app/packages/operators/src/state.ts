@@ -381,9 +381,17 @@ export const operatorBrowserChoices = selector({
     return sortResults(results, get(recentlyUsedOperatorsState));
   },
 });
+export const operatorDefaultChoice = selector({
+  key: "operatorDefaultChoice",
+  get: ({ get }) => {
+    const choices = get(operatorBrowserChoices);
+    const firstOperatorName = choices?.[0]?.value;
+    return firstOperatorName || null;
+  },
+});
 export const operatorChoiceState = atom({
   key: "operatorChoiceState",
-  default: null,
+  default: operatorDefaultChoice,
 });
 
 export const recentlyUsedOperatorsState = atom({
