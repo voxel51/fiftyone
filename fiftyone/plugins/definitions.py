@@ -209,6 +209,7 @@ class PluginDefinition:
             "js_bundle_server_path": self.js_bundle_server_path,
             "has_py": self.has_py,
             "has_js": self.has_js,
+            "server_path": self.server_path,
         }
 
 

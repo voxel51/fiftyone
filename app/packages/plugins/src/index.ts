@@ -90,10 +90,12 @@ class PluginDefinition {
   pyEntry: string | null;
   jsBundleExists: boolean;
   jsBundleServerPath: string | null;
+  serverPath: string;
   hasPy: boolean;
   hasJS: boolean;
 
   constructor(json: any) {
+    const serverPathPrefix = fou.getFetchPathPrefix();
     this.name = json.name;
     this.version = json.version;
     this.license = json.license;
@@ -102,10 +104,12 @@ class PluginDefinition {
     this.operators = json.operators;
     this.jsBundle = json.js_bundle;
     this.pyEntry = json.py_entry;
+
     this.jsBundleExists = json.js_bundle_exists;
-    this.jsBundleServerPath = json.js_bundle_server_path;
+    this.jsBundleServerPath = `${serverPathPrefix}${json.js_bundle_server_path}`;
     this.hasPy = json.has_py;
     this.hasJS = json.has_js;
+    this.serverPath = `${serverPathPrefix}${json.server_path}`;
   }
 }
 
@@ -180,6 +184,41 @@ export function usePlugin(
   type: PluginComponentType
 ): PluginComponentRegistration[] {
   return usingRegistry().getByType(type);
+}
+
+/**
+ * Get a plugin definition by name.
+ * @param name The name of the plugin
+ * @returns The plugin definition
+ */
+export function usePluginDefinition(name: string): PluginDefinition {
+  return getPluginDefinition(name);
+}
+
+/**
+ * Get a plugin definition by name.
+ * @param name The name of the plugin
+ * @returns The plugin definition
+ */
+export function getPluginDefinition(name: string): PluginDefinition {
+  const pluginDefinition = usingRegistry().getPluginDefinition(name);
+  if (!pluginDefinition) {
+    throw new Error(`Plugin "${name}" not found`);
+  }
+  return pluginDefinition;
+}
+
+/**
+ * Get the absolute path to a file within a plugin directory.
+ * @param name The name of the plugin
+ * @param path The path to the file within the plugin directory
+ * @returns An absolute path to the file
+ */
+export function getAbsolutePluginPath(name: string, path: string): string {
+  const pluginDefinition = getPluginDefinition(name);
+  if (pluginDefinition) {
+    return `${pluginDefinition.serverPath}/${path}`;
+  }
 }
 
 /**
@@ -266,9 +305,16 @@ function warn(ok, msg) {
 const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
+  private pluginDefinitions = new Map<string, PluginDefinition>();
   private scripts = new Set<string>();
   registerScript(name: string) {
     this.scripts.add(name);
+  }
+  registerPluginDefinition(pluginDefinition: PluginDefinition) {
+    this.pluginDefinitions.set(pluginDefinition.name, pluginDefinition);
+  }
+  getPluginDefinition(name: string) {
+    return this.pluginDefinitions.get(name);
   }
   hasScript(name: string) {
     return this.scripts.has(name);
