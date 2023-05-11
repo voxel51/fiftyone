@@ -78,12 +78,20 @@ export const schemaSearchRestuls = atom<string[]>({
         const viewSchema = await getPromise(viewSchemaState);
         const schema = await getPromise(schemaState);
 
-        const greenPaths = [...newPaths].filter(
-          (path) =>
-            path &&
-            (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
-            !skipFiled(path, viewSchema[path].ftype)
-        );
+        const greenPaths = [...newPaths]
+          .filter(
+            (path) =>
+              path &&
+              (viewSchema?.[
+                path.startsWith("frames.") ? path.replace("frames.", "") : path
+              ]?.ftype ||
+                schema?.[path]?.ftype) &&
+              !skipFiled(path, viewSchema?.[path]?.ftype)
+          )
+          .map((path) =>
+            path.startsWith("frames.") ? path.replace("frames.", "") : path
+          );
+
         setSelf(greenPaths);
       });
     },
@@ -122,8 +130,7 @@ export const selectedPathsState = atomFamily({
               ) &&
               !disabledField(
                 path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-                viewSchema?.[path]?.subfield || schema?.[path]?.subfield
+                viewSchema?.[path]?.ftype || schema?.[path]?.ftype
               )
           )
           .map((path) => mapping?.[path] || path);
