@@ -4245,7 +4245,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             files = {}
             open_files = []
         else:
-            files, open_files = self._parse_local_files(paths, data)
+            files, open_files = self._parse_local_files(paths)
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
@@ -4294,6 +4294,58 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         return job_ids
+
+    def _parse_local_files(self, paths):
+        paths = focc.media_cache.get_local_paths(paths)
+
+        files = {}
+        open_files = []
+
+        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
+            # Video task
+            filename = os.path.basename(paths[0])
+            f = open(paths[0], "rb")
+            files["client_files[0]"] = (filename, f)
+            open_files.append(f)
+        else:
+            # Image task
+            for idx, path in enumerate(paths):
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+
+                if self._server_version >= Version("2.3"):
+                    with open(path, "rb") as f:
+                        files["client_files[%d]" % idx] = (filename, f.read())
+                else:
+                    f = open(path, "rb")
+                    files["client_files[%d]" % idx] = (filename, f)
+                    open_files.append(f)
+
+        return files, open_files
+
+    def _parse_cloud_files(self, paths, data, cloud_manifest):
+        if not etau.is_str(cloud_manifest):
+            # Use default manifest name and location at root of bucket
+            cloud_manifest = self._get_default_manifest_from_path(paths[0])
+
+        data["storage"] = "cloud_storage"
+        (
+            root_dir,
+            manifest_filename,
+            cloud_storage_id,
+        ) = self._parse_cloud_manifest(cloud_manifest)
+        self._verify_cloud_files(
+            root_dir, cloud_storage_id, manifest_filename, paths
+        )
+        data["cloud_storage_id"] = cloud_storage_id
+
+        for idx, path in enumerate(paths):
+            # Samples are pre-sorted if using to cloud storage
+            data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
+
+        data["server_files[%d]" % (idx + 1)] = manifest_filename
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
@@ -6703,52 +6755,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             track["attributes"] = attrs
 
         return tracks
-
-    def _parse_local_files(self, paths, data):
-        paths = focc.media_cache.get_local_paths(paths)
-
-        files = {}
-        open_files = []
-        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
-            # Video task
-            filename = os.path.basename(paths[0])
-            f = open(paths[0], "rb")
-            files["client_files[0]"] = (filename, f)
-            open_files.append(f)
-        else:
-            # Image task
-            for idx, path in enumerate(paths):
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must give CVAT filenames whose
-                # alphabetical order matches the order of `paths`
-                filename = "%06d_%s" % (idx, os.path.basename(path))
-
-            with open(path, "rb") as f:
-                files["client_files[%d]" % idx] = (filename, f.read())
-
-        return files, open_files
-
-    def _parse_cloud_files(self, paths, data, cloud_manifest):
-        if not etau.is_str(cloud_manifest):
-            # Use default manifest name and location at root of bucket
-            cloud_manifest = self._get_default_manifest_from_path(paths[0])
-
-        data["storage"] = "cloud_storage"
-        (
-            root_dir,
-            manifest_filename,
-            cloud_storage_id,
-        ) = self._parse_cloud_manifest(cloud_manifest)
-        self._verify_cloud_files(
-            root_dir, cloud_storage_id, manifest_filename, paths
-        )
-        data["cloud_storage_id"] = cloud_storage_id
-
-        for idx, path in enumerate(paths):
-            # Samples are pre-sorted if using to cloud storage
-            data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
-
-        data["server_files[%d]" % (idx + 1)] = manifest_filename
 
     def _get_default_manifest_from_path(self, path):
         path_fs = fos.get_file_system(path)
