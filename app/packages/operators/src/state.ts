@@ -391,7 +391,7 @@ export const operatorDefaultChoice = selector({
 });
 export const operatorChoiceState = atom({
   key: "operatorChoiceState",
-  default: operatorDefaultChoice,
+  default: null,
 });
 
 export const recentlyUsedOperatorsState = atom({
@@ -402,9 +402,14 @@ export const recentlyUsedOperatorsState = atom({
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
   const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
-  const [selectedValue, setSelected] = useRecoilState(operatorChoiceState);
+  const [selected, setSelected] = useRecoilState(operatorChoiceState);
+  const defaultSelected = useRecoilValue(operatorDefaultChoice);
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
+
+  const selectedValue = useMemo(() => {
+    return selected ?? defaultSelected;
+  }, [selected, defaultSelected]);
 
   const onChangeQuery = (query) => {
     setQuery(query);
@@ -417,7 +422,7 @@ export function useOperatorBrowser() {
     setSelected(null);
   }, [setIsVisible, setQuery, setSelected]);
 
-  const onSubmit = () => {
+  const onSubmit = useCallback(() => {
     const firstChoice = choices[0];
     const selectedOperator = selectedValue
       ? choices.find(({ value }) => value === selectedValue)
@@ -428,7 +433,7 @@ export function useOperatorBrowser() {
     } else if (!selectedOperator) {
       close();
     }
-  };
+  }, [choices, selectedValue, close, promptForInput]);
 
   const getSelectedPrevAndNext = useCallback(() => {
     const selectedIndex = choices.findIndex(
