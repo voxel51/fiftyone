@@ -18,7 +18,11 @@ export default function AutocompleteView(props) {
         freeSolo
         size="small"
         onChange={(e, choice) => onChange(path, choice?.value || choice)}
-        options={choices.map((choice) => ({ id: choice.value, ...choice }))}
+        options={choices.map((choice) => ({
+          id: choice.value,
+          label: choice.label || choice.value,
+          value: choice.value,
+        }))}
         renderInput={(params) => (
           <TextField
             {...params}

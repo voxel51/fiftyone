@@ -418,7 +418,7 @@
         "tuples": {
             "type": "array",
             "view": {
-                "name": "TuplesView",
+                "name": "TupleView",
                 "label": "The Tuple",
                 "description": "Tuple with string as the type for first item, number for second, and boolean for third",
                 "caption": null,
@@ -450,7 +450,7 @@
                         "placeholder": null
                     }
                 ],
-                "component": "TuplesView"
+                "component": "TupleView"
             },
             "required": false,
             "items": [

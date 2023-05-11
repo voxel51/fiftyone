@@ -144,7 +144,6 @@ export class OperatorConfig {
 
 export class Operator {
   public definition: types.Object;
-  public unlisted: boolean;
   constructor(
     public pluginName: string,
     public _builtIn: boolean = false,
@@ -167,6 +166,9 @@ export class Operator {
   }
   get uri() {
     return `${this.pluginName || "@voxel51/operators"}/${this.name}`;
+  }
+  get unlisted() {
+    return this.config.unlisted;
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
@@ -255,7 +257,7 @@ class OperatorRegistry {
 
 const localRegistry = new OperatorRegistry();
 const remoteRegistry = new OperatorRegistry();
-export const initializationErrors = [];
+export let initializationErrors = [];
 
 export function registerOperator(
   OperatorType: typeof Operator,
@@ -271,6 +273,7 @@ export function _registerBuiltInOperator(OperatorType: typeof Operator) {
 }
 
 export async function loadOperatorsFromServer() {
+  initializationErrors = [];
   try {
     const { operators, errors } = await getFetchFunction()("GET", "/operators");
     const operatorInstances = operators.map((d: any) =>

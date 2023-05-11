@@ -203,7 +203,7 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const pinned3DSample = atom<string>({
+export const pinned3DSample = atom<string | null>({
   key: "pinned3DSample",
   default: null,
 });

@@ -80,7 +80,7 @@ class ExecuteOperator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=erroDetail)
-        result = execute_operator(operator_uri, data)
+        result = await execute_operator(operator_uri, data)
         json = result.to_json()
         if result.error is not None:
             print(result.error)
@@ -130,7 +130,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=erroDetail)
 
-        execution_result = execute_operator(operator_uri, data)
+        execution_result = await execute_operator(operator_uri, data)
         if execution_result.is_generator:
             generator = create_response_generator(execution_result.result)
             return StreamingResponse(

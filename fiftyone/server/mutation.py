@@ -307,7 +307,7 @@ class Mutation:
         return next(
             (
                 SavedView.from_doc(view_doc)
-                for view_doc in dataset._doc.saved_views
+                for view_doc in dataset._doc.get_saved_views()
                 if view_doc.name == view_name
             ),
             None,
@@ -401,7 +401,7 @@ class Mutation:
         return next(
             (
                 SavedView.from_doc(view_doc)
-                for view_doc in dataset._doc.saved_views
+                for view_doc in dataset._doc.get_saved_views()
                 if view_doc.name == current_name
             ),
             None,
@@ -450,13 +450,16 @@ class Mutation:
 
     @gql.mutation
     async def search_select_fields(
-        self, meta_filter: t.Optional[JSON]
+        self, dataset_name: str, meta_filter: t.Optional[JSON]
     ) -> t.List[SampleField]:
         if not meta_filter:
             return []
 
         state = get_state()
         dataset = state.dataset
+        if dataset is None:
+            dataset = fod.load_dataset(dataset_name)
+
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
         except Exception as e:

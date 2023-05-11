@@ -9,7 +9,7 @@ from copy import copy, deepcopy
 import datetime
 import logging
 
-from bson import json_util
+from bson import json_util, DBRef
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -154,6 +154,13 @@ class Run(Configurable):
     def _run_str(cls):
         """A string to use when referring to these runs in log messages."""
         raise NotImplementedError("subclass must implement _run_str()")
+
+    @classmethod
+    def _patch_function(cls):
+        """A function that can patch any ReferenceField issues with a dataset's
+        runs.
+        """
+        raise NotImplementedError("subclass must implement _patch_function()")
 
     @classmethod
     def _results_cache_field(cls):
@@ -333,8 +340,7 @@ class Run(Configurable):
         Returns:
             a list of run keys
         """
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        run_docs = cls._get_run_docs(samples)
 
         if etau.is_str(type):
             type = etau.get_class(type)
@@ -471,20 +477,18 @@ class Run(Configurable):
                 )
 
         dataset = samples._root_dataset
-        dataset_doc = dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
-        view_stages = [
-            json_util.dumps(s)
-            for s in samples.view()._serialize(include_uuids=False)
-        ]
+        run_docs = getattr(dataset._doc, cls._runs_field())
 
         run_doc = RunDocument(
-            dataset_id=dataset_doc.id,
+            dataset_id=dataset._doc.id,
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
             config=deepcopy(run_info.config.serialize()),
-            view_stages=view_stages,
+            view_stages=[
+                json_util.dumps(s)
+                for s in samples.view()._serialize(include_uuids=False)
+            ],
             results=None,
         )
         run_doc.save(upsert=True)
@@ -504,9 +508,7 @@ class Run(Configurable):
         if key is None:
             return
 
-        dataset = samples._root_dataset
-        run_docs = getattr(dataset._doc, cls._runs_field())
-        run_doc = run_docs[key]
+        run_doc = cls._get_run_doc(samples, key)
         run_doc.config = deepcopy(config.serialize())
         run_doc.save()
 
@@ -528,8 +530,7 @@ class Run(Configurable):
             return
 
         dataset = samples._root_dataset
-        run_docs = getattr(dataset._doc, cls._runs_field())
-        run_doc = run_docs[key]
+        run_doc = cls._get_run_doc(samples, key)
 
         if run_doc.results:
             if overwrite:
@@ -728,11 +729,13 @@ class Run(Configurable):
         if run_results is not None:
             run_results._key = None
 
-        # Must manually delete run result, which is stored via GridFS
-        if run_doc.results:
-            run_doc.results.delete()
+        if not isinstance(run_doc, DBRef):
+            # Must manually delete run result, which is stored via GridFS
+            if run_doc.results:
+                run_doc.results.delete()
 
-        run_doc.delete()
+            run_doc.delete()
+
         dataset.save()
 
     @classmethod
@@ -746,9 +749,26 @@ class Run(Configurable):
             cls.delete_run(samples, key)
 
     @classmethod
+    def _get_run_docs(cls, samples):
+        dataset = samples._root_dataset
+        run_docs = {}
+        for key, run_doc in getattr(dataset._doc, cls._runs_field()).items():
+            if not isinstance(run_doc, DBRef):
+                run_docs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's %s references are corrupted. Run %s('%s') "
+                    "and dataset.reload() to resolve",
+                    cls._run_str(),
+                    etau.get_function_name(cls._patch_function()),
+                    dataset._doc.name,
+                )
+
+        return run_docs
+
+    @classmethod
     def _get_run_doc(cls, samples, key):
-        dataset_doc = samples._root_dataset._doc
-        run_docs = getattr(dataset_doc, cls._runs_field())
+        run_docs = cls._get_run_docs(samples)
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(

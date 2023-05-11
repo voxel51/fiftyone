@@ -17,6 +17,11 @@ queried in ways that respect the relationships between the slices of data.
    :alt: groups-sizzle
    :align: center
 
+.. note::
+
+    Did you know? You can also create :ref:`dynamic group views <view-groups>`
+    into your datasets based on a field or expression of interest.
+
 .. _groups-overview:
 
 Overview

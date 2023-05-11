@@ -40,5 +40,5 @@ export { default as TableView } from "./TableView";
 export { default as TabsView } from "./TabsView";
 export { default as TagsView } from "./TagsView";
 export { default as TextFieldView } from "./TextFieldView";
-export { default as TuplesView } from "./TuplesView";
+export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";

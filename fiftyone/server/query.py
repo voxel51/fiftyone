@@ -458,7 +458,8 @@ class Query(fosa.AggregateQuery):
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fod.load_dataset(dataset_name)
         return [
-            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
+            SavedView.from_doc(view_doc)
+            for view_doc in ds._doc.get_saved_views()
         ]
 
     @gql.field
@@ -469,9 +470,6 @@ class Query(fosa.AggregateQuery):
         try:
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
-
-                for stage in view_stages:
-                    view.add_stage(fosg.ViewStage._from_dict(stage))
 
                 base_schema = serialize_fields(
                     view.get_field_schema(flat=True)
@@ -484,12 +482,11 @@ class Query(fosa.AggregateQuery):
 
                 return base_schema
 
-            base_schema = serialize_fields(ds.get_field_schema(flat=True))
             if ds.media_type == fom.VIDEO:
                 # return base_schema + serialize_fields(ds.get_frame_field_schema(flat=True))
                 return serialize_fields(ds.get_frame_field_schema(flat=True))
 
-            return base_schema
+            return serialize_fields(ds.get_field_schema(flat=True))
         except Exception as e:
             print("failed to get schema for view stages", str(e))
             return []

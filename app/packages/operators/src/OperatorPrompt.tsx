@@ -131,14 +131,9 @@ export function OperatorViewModal() {
                 type={io.type}
               />
             </Box>
-            {/* {io.showButtons && (
             <ButtonsContainer>
-              <Button onClick={operatorPrompt.cancel} style={{ marginRight: "8px" }}>
-                Cancel
-              </Button>
-              <Button onClick={operatorPrompt.execute}>Execute</Button>
+              <Button onClick={io.hide}>Close</Button>
             </ButtonsContainer>
-          )}  */}
           </Box>
         </PromptModal>
       </PromptContainer>

@@ -23,6 +23,7 @@ const baseViews = ["View"];
 const viewAliases = {
   Button: "ButtonView",
   Dropdown: "DropdownView",
+  Choices: "DropdownView",
   Error: "AlertView",
   Header: "HeaderView",
   Notice: "AlertView",
@@ -78,7 +79,7 @@ function getOutputComponent(property, options) {
 
 function getComponentByView(property) {
   const view = getViewSchema(property) || {};
-  const viewComponentName = view.name;
+  const viewComponentName = view.component || view.name;
   if (viewComponentName && !baseViews.includes(viewComponentName)) {
     return viewAliases[viewComponentName] || viewComponentName;
   }
@@ -106,6 +107,12 @@ function getSchema(property, options?) {
 
   if (typeName === "List") {
     schema.items = getSchema({ type: property.type.elementType }, options);
+    if (schema?.view?.items) {
+      schema.view.items.component = getComponent(
+        { type: property.type.elementType, view: schema?.view?.items },
+        options
+      );
+    }
   }
 
   if (typeName === "OneOf") {

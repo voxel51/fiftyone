@@ -5,6 +5,10 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
+
+from bson import DBRef
+
 import eta.core.utils as etau
 
 from fiftyone.core.fields import (
@@ -26,14 +30,23 @@ import fiftyone.core.utils as fou
 
 # import fiftyone.core.colorscheme as foc
 
+from .database import (
+    patch_saved_views,
+    patch_annotation_runs,
+    patch_brain_runs,
+    patch_evaluations,
+)
 from .document import Document
 from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
-from .views import SavedViewDocument
 from .utils import create_field
+from .views import SavedViewDocument
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
+
+
+logger = logging.getLogger(__name__)
 
 
 class SampleFieldDocument(EmbeddedDocument):
@@ -480,9 +493,65 @@ class DatasetDocument(Document):
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
 
-    @property
-    def _id(self):
-        return self._id
+    def get_saved_views(self):
+        saved_views = []
+        for view_doc in self.saved_views:
+            if not isinstance(view_doc, DBRef):
+                saved_views.append(view_doc)
+            else:
+                logger.warning(
+                    "This dataset's saved view references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_saved_views),
+                    self.name,
+                )
+
+        return saved_views
+
+    def get_annotation_runs(self):
+        annotation_runs = {}
+        for key, run_doc in self.annotation_runs.items():
+            if not isinstance(run_doc, DBRef):
+                annotation_runs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's annotation run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_annotation_runs),
+                    self.name,
+                )
+
+        return annotation_runs
+
+    def get_brain_methods(self):
+        brain_methods = {}
+        for key, run_doc in self.brain_methods.items():
+            if not isinstance(run_doc, DBRef):
+                brain_methods[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's brain method run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_brain_runs),
+                    self.name,
+                )
+
+        return brain_methods
+
+    def get_evaluations(self):
+        evaluations = {}
+        for key, run_doc in self.evaluations.items():
+            if not isinstance(run_doc, DBRef):
+                evaluations[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's evaluation run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_evaluations),
+                    self.name,
+                )
+
+        return evaluations
 
     def to_dict(self, *args, no_dereference=False, **kwargs):
         d = super().to_dict(*args, **kwargs)
@@ -490,15 +559,15 @@ class DatasetDocument(Document):
         # Sadly there appears to be no builtin way to tell mongoengine to
         # serialize reference fields like this
         if no_dereference:
-            d["saved_views"] = [v.to_dict() for v in self.saved_views]
+            d["saved_views"] = [v.to_dict() for v in self.get_saved_views()]
             d["annotation_runs"] = {
-                k: v.to_dict() for k, v in self.annotation_runs.items()
+                k: v.to_dict() for k, v in self.get_annotation_runs().items()
             }
             d["brain_methods"] = {
-                k: v.to_dict() for k, v in self.brain_methods.items()
+                k: v.to_dict() for k, v in self.get_brain_methods().items()
             }
             d["evaluations"] = {
-                k: v.to_dict() for k, v in self.evaluations.items()
+                k: v.to_dict() for k, v in self.get_evaluations().items()
             }
 
         return d
