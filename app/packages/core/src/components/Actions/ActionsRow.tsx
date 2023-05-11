@@ -44,6 +44,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -53,11 +54,17 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
+    const affectedPathCount = get(affectedPathCountState);
+    const isFieldVisibilityOn = affectedPathCount > 0;
+
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
 
     return Boolean(
-      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+      isExtendedSelectionOn ||
+        hasFiltersValue ||
+        selectedSampleSet.size > 0 ||
+        isFieldVisibilityOn
     );
   },
 });
