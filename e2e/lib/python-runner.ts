@@ -53,6 +53,10 @@ export class PythonRunner {
       console.error(data.toString());
     });
 
-    return new Promise<void>((resolve) => proc.on("exit", () => resolve(null)));
+    return new Promise<number>((resolve, reject) =>
+      proc.on("exit", (exitCode) =>
+        exitCode ? reject(exitCode) : resolve(exitCode)
+      )
+    );
   }
 }

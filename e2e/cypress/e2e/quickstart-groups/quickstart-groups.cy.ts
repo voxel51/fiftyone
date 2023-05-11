@@ -22,6 +22,7 @@ describe("quickstart-groups dataset", () => {
   it("should have four lookers in two flashlight sections", () => {
     cy.get("[data-cy=flashlight-section]")
       .should("be.visible")
+
       .and("have.length", 2);
 
     cy.get("[data-cy=looker]").should("be.visible").and("have.length", 4);

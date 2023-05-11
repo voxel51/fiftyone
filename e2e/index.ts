@@ -3,7 +3,7 @@ import { config as dotEnvConfig } from "dotenv";
 
 dotEnvConfig({ path: ".env.cypress" });
 
-const runCypress = async () => {
+(async () => {
   const args = ["cypress", "run", "--browser", "chrome", "--headed"];
 
   const options = await cypress.cli.parseRunArguments([
@@ -32,7 +32,11 @@ const runCypress = async () => {
     );
   }
 
-  return cypress.run(options);
-};
+  cypress.run(options).then((result) => {
+    if (result.status === "failed") {
+      process.exit(1);
+    }
 
-runCypress();
+    process.exit(result.totalFailed);
+  });
+})();
