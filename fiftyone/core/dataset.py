@@ -16,7 +16,7 @@ import os
 import random
 import string
 
-from bson import json_util, ObjectId
+from bson import json_util, ObjectId, DBRef
 import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
@@ -3324,7 +3324,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of saved view names
         """
-        return [view_doc.name for view_doc in self._doc.saved_views]
+        return [view_doc.name for view_doc in self._doc.get_saved_views()]
 
     def save_view(
         self,
@@ -3498,6 +3498,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
         for view_doc in self._doc.saved_views:
+            if isinstance(view_doc, DBRef):
+                continue
+
             view_doc.delete()
 
         self._doc.saved_views = []
@@ -3505,7 +3508,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _delete_saved_view(self, name):
         view_doc = self._get_saved_view_doc(name, pop=True)
-        if view_doc:
+        if not isinstance(view_doc, DBRef):
             view_id = str(view_doc.id)
             view_doc.delete()
         else:
@@ -3519,7 +3522,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         idx = None
         key = "slug" if slug else "name"
 
-        for i, view_doc in enumerate(self._doc.saved_views):
+        for i, view_doc in enumerate(self._doc.get_saved_views()):
             if name == getattr(view_doc, key):
                 idx = i
                 break
@@ -3541,7 +3544,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
-        for view_doc in self._doc.saved_views:
+        for view_doc in self._doc.get_saved_views():
             if view_doc is skip:
                 continue
 
@@ -6606,21 +6609,33 @@ def _do_load_dataset(obj, name):
 
 def _delete_dataset_doc(dataset_doc):
     for view_doc in dataset_doc.saved_views:
+        if isinstance(view_doc, DBRef):
+            continue
+
         view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
         if run_doc.results is not None:
             run_doc.results.delete()
 
         run_doc.delete()
 
     for run_doc in dataset_doc.brain_methods.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
         if run_doc.results is not None:
             run_doc.results.delete()
 
         run_doc.delete()
 
     for run_doc in dataset_doc.evaluations.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
         if run_doc.results is not None:
             run_doc.results.delete()
 
@@ -6726,7 +6741,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         or dataset.has_brain_runs
         or dataset.has_evaluations
     ):
-        _clone_extras(clone_dataset, dataset._doc)
+        _clone_extras(dataset, clone_dataset)
 
     return clone_dataset
 
@@ -7058,11 +7073,12 @@ def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
-def _clone_extras(dst_dataset, src_doc):
+def _clone_extras(src_dataset, dst_dataset):
+    src_doc = src_dataset._doc
     dst_doc = dst_dataset._doc
 
     # Clone saved views
-    for _view_doc in src_doc.saved_views:
+    for _view_doc in src_doc.get_saved_views():
         view_doc = _clone_view_doc(_view_doc)
         view_doc.dataset_id = dst_doc.id
         view_doc.save(upsert=True)
@@ -7070,7 +7086,7 @@ def _clone_extras(dst_dataset, src_doc):
         dst_doc.saved_views.append(view_doc)
 
     # Clone annotation runs
-    for anno_key, _run_doc in src_doc.annotation_runs.items():
+    for anno_key, _run_doc in src_doc.get_annotation_runs().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
         run_doc.save(upsert=True)
@@ -7078,7 +7094,7 @@ def _clone_extras(dst_dataset, src_doc):
         dst_doc.annotation_runs[anno_key] = run_doc
 
     # Clone brain method runs
-    for brain_key, _run_doc in src_doc.brain_methods.items():
+    for brain_key, _run_doc in src_doc.get_brain_methods().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
         run_doc.save(upsert=True)
@@ -7086,7 +7102,7 @@ def _clone_extras(dst_dataset, src_doc):
         dst_doc.brain_methods[brain_key] = run_doc
 
     # Clone evaluation runs
-    for eval_key, _run_doc in src_doc.evaluations.items():
+    for eval_key, _run_doc in src_doc.get_evaluations().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
         run_doc.save(upsert=True)
