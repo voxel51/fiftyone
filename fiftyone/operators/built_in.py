@@ -9,6 +9,7 @@ class CloneSelectedSamples(foo.Operator):
         return foo.OperatorConfig(
             name="clone_selected_samples",
             label="Clone Selected Samples",
+            dynamic=True,
         )
 
     def resolve_input(self, ctx):
