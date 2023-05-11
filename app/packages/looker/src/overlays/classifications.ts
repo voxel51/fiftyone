@@ -73,7 +73,7 @@ export class ClassificationsOverlay<
     if (coloring.by !== "field") {
       key = setting?.attributeForColor ?? key;
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.labelColors?.find(
+      const labelColor = setting?.labelColors?.find(
         (l) => l.name == label[key]?.toString()
       )?.color;
       if (isValidColor(labelColor)) {
