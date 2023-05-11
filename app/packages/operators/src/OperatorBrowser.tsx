@@ -114,7 +114,7 @@ export default function OperatorBrowser() {
     return null;
   }
   return createPortal(
-    <OperatorPalette>
+    <OperatorPalette onOutsideClick={browser.close}>
       <TopBarDiv>
         <QueryDiv>
           <QueryInput
