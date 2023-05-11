@@ -23,7 +23,6 @@ export class PythonRunner {
     const proc = spawn("python", [sourceFilePath], {
       env,
     });
-    const pId = proc.pid;
 
     console.log(`Spawning python process with source code:`);
     console.log("=====================================");
@@ -38,22 +37,22 @@ export class PythonRunner {
     });
     console.log("=====================================");
     console.log();
-    console.log("New python process spawned with pid:", pId);
+    console.log("New python process spawned with pid:", proc.pid);
 
     proc.stdout.on("data", (data) => {
-      console.log(`${pId}: ${data.toString()}`);
+      console.log(`${proc.pid}: ${data.toString()}`);
     });
 
     proc.stderr.on("data", (data) => {
-      console.error(`${pId} STDERR:`);
+      console.error(`${proc.pid} STDERR:`);
       console.error(data.toString());
     });
 
     proc.on("error", (data) => {
-      console.error(`${pId} STDERR:`);
+      console.error(`${proc.pid} STDERR:`);
       console.error(data.toString());
     });
 
-    return pId;
+    return new Promise<void>((resolve) => proc.on("exit", () => resolve(null)));
   }
 }

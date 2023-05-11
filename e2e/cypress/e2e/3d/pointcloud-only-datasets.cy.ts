@@ -3,17 +3,9 @@
  */
 
 describe("pointcloud only datasets", () => {
-  let pId: number;
-
-  before(() => {
-    cy.executePythonFixture("3d/pointcloud-only-datasets - before.cy.py").then(
-      (pId_) => {
-        pId = pId_;
-      }
-    );
-
-    return cy.waitForFiftyOneApp();
-  });
+  before(() =>
+    cy.executePythonFixture("3d/pointcloud-only-datasets - before.cy.py")
+  );
 
   beforeEach(() => {
     cy.waitForGridToBeVisible("pointcloud-only-datasets");
@@ -30,9 +22,5 @@ describe("pointcloud only datasets", () => {
     cy.get("[data-cy=looker]").click();
     cy.waitForLookerToRender();
     cy.get("[data-cy=looker3d]").compareSnapshot("pcd-only-looker-modal-open");
-  });
-
-  after(() => {
-    cy.killFiftyoneApp(pId);
   });
 });

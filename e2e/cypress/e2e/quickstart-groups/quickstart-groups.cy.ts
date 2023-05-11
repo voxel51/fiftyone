@@ -9,17 +9,11 @@ const THIRD_SAMPLE_ID = "004416";
 const SLICES = ["left", "pcd", "right"] as const;
 
 describe("quickstart-groups dataset", () => {
-  let pId: number;
-
-  before(() => {
+  before(() =>
     cy.executePythonFixture(
       "quickstart-groups/quickstart-groups - before.cy.py"
-    ).then((pId_) => {
-      pId = pId_;
-    });
-
-    return cy.waitForFiftyOneApp();
-  });
+    )
+  );
 
   beforeEach(() => {
     cy.waitForGridToBeVisible("quickstart-groups-12");
@@ -160,10 +154,6 @@ describe("quickstart-groups dataset", () => {
         });
       });
     });
-  });
-
-  after(() => {
-    cy.killFiftyoneApp(pId);
   });
 });
 
