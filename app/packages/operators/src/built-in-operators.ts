@@ -465,6 +465,18 @@ class ShowSamples extends Operator {
       unlisted: true,
     });
   }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.list("samples", new types.String(), {
+      label: "Samples",
+      required: true,
+    });
+    inputs.bool("use_extended_selection", {
+      label: "Use extended selection",
+      default: false,
+    });
+    return new types.Property(inputs);
+  }
   useHooks(ctx: ExecutionContext): {} {
     return {
       setView: fos.useSetView(),

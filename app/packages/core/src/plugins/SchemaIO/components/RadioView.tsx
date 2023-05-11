@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
+import { autoFocus } from "../utils";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
@@ -31,7 +32,7 @@ export default function RadioView(props: RadioGroupProps) {
           <FormControlLabel
             key={value}
             value={value}
-            control={<Radio />}
+            control={<Radio autoFocus={autoFocus(props)} />}
             label={
               <HeaderView schema={{ view: { label, description, caption } }} />
             }
