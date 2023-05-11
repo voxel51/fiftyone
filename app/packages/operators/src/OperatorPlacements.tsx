@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import { ErrorBoundary, PillButton } from "@fiftyone/components";
 import { useOperatorPlacements, usePromptOperatorInput } from "./state";
 import { Placement, Places } from "./types";
 import { Link } from "@fiftyone/components";
@@ -6,17 +6,16 @@ import styled from "styled-components";
 import { types } from ".";
 import { Operator } from "./operators";
 import { withSuspense } from "@fiftyone/state";
+import { usePluginDefinition } from "@fiftyone/plugins";
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
   const { placements } = useOperatorPlacements(place);
 
   return placements.map((placement) => (
-    <OperatorPlacement
-      key={placement?.operator?.uri}
-      {...placement}
-      place={place}
-    />
+    <ErrorBoundary key={placement?.operator?.uri} Fallback={() => null}>
+      <OperatorPlacement {...placement} place={place} />
+    </ErrorBoundary>
   ));
 }
 
@@ -41,13 +40,14 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 function ButtonPlacement(props: OperatorPlacementProps) {
   const promptForInput = usePromptOperatorInput();
   const { operator, placement, place } = props;
-  const { uri } = operator;
+  const { uri, pluginName } = operator;
   const { view = {} } = placement;
   const { label } = view;
   const { icon } = view?.options || {};
+  const { serverPath } = usePluginDefinition(pluginName);
 
   const IconComponent = icon && (
-    <img src={`/plugins/${icon}`} width={21} height={21} />
+    <img src={`${serverPath}/${icon}`} width={21} height={21} />
   );
 
   const handleClick = () => {
