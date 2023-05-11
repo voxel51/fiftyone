@@ -71,7 +71,6 @@ class TorchvisionImageModel(fout.TorchImageModel):
             return super()._load_model(config)
 
 
-
 def _make_load_state_dict_from_url_monkey_patcher(entrypoint, model_dir):
     """Monkey patches all instances of ``load_state_dict_from_url()`` that are
     reachable from the given ``entrypoint`` function in the

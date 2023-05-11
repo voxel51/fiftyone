@@ -815,6 +815,39 @@ class TorchImageModel(
         if etau.is_str(transforms_fcn):
             transforms_fcn = etau.get_function(transforms_fcn)
 
+        return transforms, ragged_batches
+
+    def _download_model(self, config):
+        pass
+
+    def _load_model(self, config):
+        if config.model is not None:
+            model = config.model
+        else:
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args or {}
+            model = entrypoint_fcn(**kwargs)
+
+        model = model.to(self.device)
+
+        if self.using_half_precision:
+            model = model.half()
+
+        model.eval()
+
+        return model
+
+    def _load_transforms(self, config):
+        transforms_fcn = config.transforms_fcn
+
+        if etau.is_str(transforms_fcn):
+            transforms_fcn = etau.get_function(transforms_fcn)
+
+>>>>>>> 123f06b84 (cleaning up implementation)
         kwargs = config.transforms_args or {}
         return transforms_fcn(**kwargs)
 
