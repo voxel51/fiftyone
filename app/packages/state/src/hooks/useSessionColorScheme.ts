@@ -2,12 +2,12 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import {
-  stateSubscription,
   CustomizeColor,
-  sessionColorScheme,
   datasetName,
+  sessionColorScheme,
+  stateSubscription,
   view,
 } from "../recoil";
 import useSendEvent from "./useSendEvent";
@@ -25,7 +25,7 @@ const useSessionColorScheme = () => {
   function setColorScheme(
     colorPool: string[],
     customizedColorSettings: CustomizeColor[],
-    saveToApp: boolean = false
+    saveToApp = false
   ) {
     const combined = {
       colorPool,
@@ -69,8 +69,8 @@ const useSessionColorScheme = () => {
   const props = {
     opacity,
     colorBy: colorBy as "field" | "value",
-    useMulticolorKeypoints: useMulticolorKeypoints as Boolean,
-    showSkeleton: showSkeleton as Boolean,
+    useMulticolorKeypoints: useMulticolorKeypoints as boolean,
+    showSkeleton: showSkeleton as boolean,
     setOpacity,
     setColorBy,
     setUseMultiplecolorKeypoints,

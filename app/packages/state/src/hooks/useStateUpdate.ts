@@ -5,15 +5,17 @@ import {
   useRecoilTransaction_UNSTABLE,
 } from "recoil";
 import {
+  ColorScheme,
   State,
   _activeFields,
+  activeColorField,
   activePcdSlices,
   dataset as datasetAtom,
-  dynamicGroupSamplesStoreMap,
   extendedSelection,
   filters,
   groupSlice,
   groupStatistics,
+  isUsingSessionColorScheme,
   modal,
   patching,
   resolveGroups,
@@ -21,6 +23,7 @@ import {
   selectedLabels,
   selectedMediaField,
   selectedSamples,
+  sessionColorScheme,
   sessionSpaces,
   sidebarGroupsDefinition,
   sidebarMode,
@@ -28,10 +31,6 @@ import {
   similaritySorting,
   tagging,
   theme,
-  sessionColorScheme,
-  ColorScheme,
-  activeColorField,
-  isUsingSessionColorScheme,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -78,7 +77,6 @@ const useStateUpdate = (ignoreSpaces = false) => {
         }
         set(viewAtoms.viewName, state.viewName || null);
       }
-
       const viewCls = state?.viewCls || dataset?.viewCls;
       viewCls !== undefined && set(viewAtoms.viewCls, viewCls);
 
@@ -106,11 +104,13 @@ const useStateUpdate = (ignoreSpaces = false) => {
       }
 
       let colorSetting = DEFAULT_APP_COLOR_SCHEME as ColorScheme;
-      if (state?.colorScheme && typeof state?.colorScheme === "string") {
-        let parsedSetting = JSON.parse(state?.colorScheme);
-        if (typeof parsedSetting === "string") {
-          parsedSetting = JSON.parse(parsedSetting);
-        }
+      if (state?.colorScheme) {
+        const parsedSetting =
+          typeof state.colorScheme === "string"
+            ? typeof JSON.parse(state.colorScheme) === "string"
+              ? JSON.parse(JSON.parse(state.colorScheme))
+              : JSON.parse(state.colorScheme)
+            : state.colorScheme;
         colorSetting = {
           colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
           customizedColorSettings:

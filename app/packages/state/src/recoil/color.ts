@@ -54,7 +54,6 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     ({ get }) => {
       get(selectors.appConfigOption({ key: "colorBy", modal }));
       let pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
-      pool = pool.length ? pool : ["#000000"];
       const seed = get(atoms.colorSeed(modal));
       return createColorGenerator(pool, seed);
     },

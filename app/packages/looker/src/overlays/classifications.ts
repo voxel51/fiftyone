@@ -15,15 +15,15 @@ import {
 } from "../state";
 import {
   CONTAINS,
-  isShown,
   Overlay,
   PointInfo,
   RegularLabel,
   SelectData,
+  isShown,
 } from "./base";
-import { sizeBytes } from "./util";
+import { isValidColor, sizeBytes } from "./util";
 
-export interface Classification extends RegularLabel {}
+export type Classification = RegularLabel;
 
 export interface Regression {
   confidence?: number | NONFINITE;
@@ -49,17 +49,41 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    const key =
+    let key =
       label._cls === REGRESSION
         ? field
-        : state.options.coloring.byLabel
+        : state.options.coloring.by === "value"
         ? label.label
         : field;
-    return getColor(
-      state.options.coloring.pool,
-      state.options.coloring.seed,
-      key
-    );
+    const { coloring, customizeColorSetting } = state.options;
+    const f = field.startsWith("frames.")
+      ? field.slice("frames.".length)
+      : field;
+    const setting = customizeColorSetting.find((s) => s.field === f);
+    // check if the field has a customized color, use it if it is a valid color
+    if (
+      coloring.by === "field" &&
+      setting?.useFieldColor &&
+      setting?.fieldColor &&
+      isValidColor(setting.fieldColor)
+    ) {
+      return setting.fieldColor;
+    }
+
+    if (coloring.by !== "field") {
+      key = setting?.attributeForColor ?? key;
+      // check if this label has a assigned color, use it if it is a valid color
+      const labelColor = setting?.labelColors?.find(
+        (l) => l.name == label[key]?.toString()
+      )?.color;
+      if (isValidColor(labelColor)) {
+        return labelColor;
+      }
+
+      // fallback to use label as default attribute
+      key = label.label;
+    }
+    return getColor(coloring.pool, coloring.seed, key);
   }
 
   isShown(state: Readonly<State>): boolean {
@@ -174,10 +198,7 @@ export class ClassificationsOverlay<
     ]);
   }
 
-  getFilteredAndFlat(
-    state: Readonly<State>,
-    sort: boolean = true
-  ): [string, Label][] {
+  getFilteredAndFlat(state: Readonly<State>, sort = true): [string, Label][] {
     let result: [string, Label][] = [];
     this.getFiltered(state).forEach(([field, labels]) => {
       result = [
