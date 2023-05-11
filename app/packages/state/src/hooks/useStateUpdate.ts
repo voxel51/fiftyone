@@ -107,7 +107,9 @@ const useStateUpdate = (ignoreSpaces = false) => {
       if (state?.colorScheme) {
         const parsedSetting =
           typeof state.colorScheme === "string"
-            ? JSON.parse(state.colorScheme)
+            ? typeof JSON.parse(state.colorScheme) === "string"
+              ? JSON.parse(JSON.parse(state.colorScheme))
+              : JSON.parse(state.colorScheme)
             : state.colorScheme;
         colorSetting = {
           colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
