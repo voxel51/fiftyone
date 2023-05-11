@@ -10,6 +10,7 @@ import { useOperatorBrowser } from "./state";
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorPalette from "./OperatorPalette";
+import { useEffect, useRef } from "react";
 
 const ResultsContainer = styled.div`
   margin-top: 1rem;
@@ -109,6 +110,12 @@ const TopBarDiv = styled.div`
 export default function OperatorBrowser() {
   const theme = useTheme();
   const browser = useOperatorBrowser();
+  const queryInputRef = useRef();
+
+  useEffect(() => {
+    const { current } = queryInputRef;
+    if (current) current.value = browser.query;
+  }, [queryInputRef, browser.query]);
 
   if (!browser.isVisible) {
     return null;
@@ -118,7 +125,7 @@ export default function OperatorBrowser() {
       <TopBarDiv>
         <QueryDiv>
           <QueryInput
-            value={browser.query}
+            ref={queryInputRef}
             autoFocus
             placeholder="Search operations by name..."
             onChange={(e) => browser.onChangeQuery(e.target.value)}
