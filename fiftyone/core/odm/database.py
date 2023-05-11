@@ -910,7 +910,7 @@ def _patch_runs(dataset_name, runs_field, run_str, dry_run=False):
 
     dataset_dict = conn.datasets.find_one({"name": dataset_name})
     if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", dataset_name)
+        _logger.warning("Dataset '%s' not found" % dataset_name)
         return
 
     dataset_id = dataset_dict["_id"]
@@ -936,10 +936,8 @@ def _patch_runs(dataset_name, runs_field, run_str, dry_run=False):
     num_bad_runs = len(bad_runs)
     if num_bad_runs > 0:
         _logger.info(
-            "Purging %d %s(s) %s from dataset",
-            num_bad_runs,
-            run_str,
-            bad_runs,
+            "Purging %d %s(s) %s from dataset"
+            % (num_bad_runs, run_str, bad_runs),
         )
         for bad_key, _ in bad_runs:
             runs_dict.pop(bad_key, None)
@@ -950,10 +948,8 @@ def _patch_runs(dataset_name, runs_field, run_str, dry_run=False):
     num_missing_runs = len(missing_runs)
     if num_missing_runs > 0:
         _logger.info(
-            "Adding %d misplaced %s(s) %s to dataset",
-            num_missing_runs,
-            run_str,
-            missing_runs,
+            "Adding %d misplaced %s(s) %s to dataset"
+            % (num_missing_runs, run_str, missing_runs)
         )
         runs_dict.update(missing_runs)
         made_changes = True
@@ -983,10 +979,10 @@ def delete_dataset(name, dry_run=False):
 
     dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found" % name)
         return
 
-    _logger.info("Dropping document '%s' from 'datasets' collection", name)
+    _logger.info("Dropping document '%s' from 'datasets' collection" % name)
     if not dry_run:
         conn.datasets.delete_one({"name": name})
 
@@ -994,8 +990,7 @@ def delete_dataset(name, dry_run=False):
         _logger.warning(
             "Cannot find sample/frame collections for dataset '%s'; stopping "
             "now. Use `drop_orphan_collections()` to cleanup any dangling "
-            "collections",
-            name,
+            "collections" % name,
         )
         return
 
@@ -1003,20 +998,20 @@ def delete_dataset(name, dry_run=False):
 
     sample_collection_name = dataset_dict["sample_collection_name"]
     if sample_collection_name in collections:
-        _logger.info("Dropping collection '%s'", sample_collection_name)
+        _logger.info("Dropping collection '%s'" % sample_collection_name)
         if not dry_run:
             conn.drop_collection(sample_collection_name)
 
     frame_collection_name = "frames." + sample_collection_name
     if frame_collection_name in collections:
-        _logger.info("Dropping collection '%s'", frame_collection_name)
+        _logger.info("Dropping collection '%s'" % frame_collection_name)
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
     view_ids = _get_saved_view_ids(dataset_dict)
 
     if view_ids:
-        _logger.info("Deleting %d saved view(s)", len(view_ids))
+        _logger.info("Deleting %d saved view(s)" % len(view_ids))
         if not dry_run:
             _delete_saved_views(conn, view_ids)
 
@@ -1024,12 +1019,12 @@ def delete_dataset(name, dry_run=False):
     result_ids = _get_result_ids(conn, dataset_dict)
 
     if run_ids:
-        _logger.info("Deleting %d run doc(s)", len(run_ids))
+        _logger.info("Deleting %d run doc(s)" % len(run_ids))
         if not dry_run:
             _delete_run_docs(conn, run_ids)
 
     if result_ids:
-        _logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d run result(s)" % len(result_ids))
         if not dry_run:
             _delete_run_results(conn, result_ids)
 
@@ -1072,15 +1067,13 @@ def delete_saved_view(dataset_name, view_name, dry_run=False):
     del_id = sd.get(view_name, None)
     if del_id is None:
         _logger.warning(
-            "Dataset '%s' has no saved view '%s'", dataset_name, view_name
+            "Dataset '%s' has no saved view '%s'" % (dataset_name, view_name)
         )
         return
 
     _logger.info(
-        "Deleting saved view %s' with ID '%s' from dataset '%s'",
-        view_name,
-        del_id,
-        dataset_name,
+        "Deleting saved view %s' with ID '%s' from dataset '%s'"
+        % (view_name, del_id, dataset_name)
     )
 
     saved_views = [_id for _id in saved_views if _id != del_id]
@@ -1112,20 +1105,22 @@ def delete_saved_views(dataset_name, dry_run=False):
 
     dataset_dict = conn.datasets.find_one({"name": dataset_name})
     if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", dataset_name)
+        _logger.warning("Dataset '%s' not found" % dataset_name)
         return
 
     dataset_id = dataset_dict["_id"]
     del_ids = [d["_id"] for d in conn.views.find({"_dataset_id": dataset_id})]
 
     if not del_ids:
-        _logger.info("Dataset '%s' has no saved views", dataset_name)
+        _logger.info("Dataset '%s' has no saved views" % dataset_name)
         return
 
     _logger.info(
-        "Deleting %d saved views from dataset '%s'",
-        len(del_ids),
-        dataset_name,
+        "Deleting %d saved views from dataset '%s'"
+        % (
+            len(del_ids),
+            dataset_name,
+        )
     )
 
     if not dry_run:
@@ -1314,24 +1309,19 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
 
     dataset_dict = conn.datasets.find_one({"name": dataset_name})
     if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", dataset_name)
+        _logger.warning("Dataset '%s' not found" % dataset_name)
         return
 
     runs = dataset_dict.get(runs_field, {})
     if run_key not in runs:
         _logger.warning(
-            "Dataset '%s' has no %s with key '%s'",
-            dataset_name,
-            run_str,
-            run_key,
+            "Dataset '%s' has no %s with key '%s'"
+            % (dataset_name, run_str, run_key)
         )
         return
 
     _logger.info(
-        "Deleting %s '%s' from dataset '%s'",
-        run_str,
-        run_key,
-        dataset_name,
+        "Deleting %s '%s' from dataset '%s'" % (run_str, run_key, dataset_name)
     )
 
     run_id = runs.pop(run_key)
@@ -1339,12 +1329,12 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
     run_doc = conn.runs.find_one({"_id": run_id})
     result_id = run_doc.get("results", None)
     if result_id is not None:
-        _logger.info("Deleting %s result '%s'", run_str, result_id)
+        _logger.info("Deleting %s result '%s'" % (run_str, result_id))
         if not dry_run:
             _delete_run_results(conn, [result_id])
 
     if not dry_run:
-        _logger.info("Deleting %s doc '%s'", run_str, run_id)
+        _logger.info("Deleting %s doc '%s'" % (run_str, run_id))
         conn.runs.delete_one({"_id": run_id})
         conn.datasets.update_one(
             {"name": dataset_name},
@@ -1358,32 +1348,30 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
 
     dataset_dict = conn.datasets.find_one({"name": dataset_name})
     if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", dataset_name)
+        _logger.warning("Dataset '%s' not found" % dataset_name)
         return
 
     runs = dataset_dict.get(runs_field, {})
     if not runs:
-        _logger.info("Dataset '%s' has no %ss", dataset_name, run_str)
+        _logger.info("Dataset '%s' has no %ss" % dataset_name, run_str)
         return
 
     run_keys, run_ids = zip(*runs.items())
 
     _logger.info(
-        "Deleting %s(s) %s from dataset '%s'",
-        run_str,
-        run_keys,
-        dataset_name,
+        "Deleting %s(s) %s from dataset '%s'"
+        % (run_str, run_keys, dataset_name)
     )
 
     result_ids = _get_result_ids(conn, dataset_dict)
 
     if run_ids:
-        _logger.info("Deleting %d %s doc(s)", len(run_ids), run_str)
+        _logger.info("Deleting %d %s doc(s)" % (len(run_ids), run_str))
         if not dry_run:
             _delete_run_docs(conn, run_ids)
 
     if result_ids:
-        _logger.info("Deleting %d %s result(s)", len(result_ids), run_str)
+        _logger.info("Deleting %d %s result(s)" % (len(result_ids), run_str))
         if not dry_run:
             _delete_run_results(conn, result_ids)
 
