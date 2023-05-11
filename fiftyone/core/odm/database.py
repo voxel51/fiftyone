@@ -1040,12 +1040,12 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
 
-    dataset_doc = conn.datasets.find_one({"name": dataset_name})
-    if not dataset_doc:
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
         _logger.warning("Dataset '%s' not found", dataset_name)
         return
 
-    runs = dataset_doc.get(runs_field, {})
+    runs = dataset_dict.get(runs_field, {})
     if run_key not in runs:
         _logger.warning(
             "Dataset '%s' has no %s run with key '%s'",
@@ -1075,7 +1075,7 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
         _logger.info("Deleting %s doc '%s'", run_str, run_id)
         # first remove the run from the dataset
         update_result = conn.datasets.update_one(
-            {"_id": dataset_doc["_id"]}, {"$set": {runs_field: runs}}
+            {"_id": dataset_dict["_id"]}, {"$set": {runs_field: runs}}
         )
         if update_result.upserted_id is not None:
             # if the dataset was upserted, then something went wrong
@@ -1086,7 +1086,7 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
         if update_result.acknowledged and (update_result.modified_count == 1):
             # only delete the run data if the dataset update was successful
             delete_result = conn.runs.delete_one(
-                {"_id": run_id, "_dataset_id": dataset_doc["_id"]}
+                {"_id": run_id, "_dataset_id": dataset_dict["_id"]}
             )
             if not delete_result.deleted_count != 1:
                 raise ValueError(
@@ -1181,11 +1181,8 @@ def _get_result_ids(conn, dataset_dict):
                 # lazily migrated
                 result_id = run_doc_or_id.get("results", None)
                 if result_id is not None:
-                    if isinstance(result_id, ObjectId):
-                        result_ids.append(result_id)
-                    elif isinstance(result_id, str) and ObjectId.is_valid(
-                        result_id
-                    ):
+                    # ensure that the result id is a valid ObjectId
+                    if ObjectId.is_valid(result_id):
                         result_ids.append(ObjectId(result_id))
                     else:
                         logger.error(
@@ -1221,7 +1218,9 @@ def _delete_run_docs(conn, run_ids):
 
 
 def _delete_run_results(conn, result_ids):
-    fs_result = conn.fs.files.delete_many({"_id": {"$in": result_ids}})
+    # ensure result_ids are ObjectIds
+    oids = [ObjectId(rid) for rid in result_ids if ObjectId.is_valid(rid)]
+    fs_result = conn.fs.files.delete_many({"_id": {"$in": oids}})
     if fs_result.deleted_count != len(result_ids):
         logger.error(
             f"Failed to delete {len(result_ids)-fs_result.deleted_count} result files"
