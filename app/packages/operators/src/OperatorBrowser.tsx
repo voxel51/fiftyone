@@ -118,6 +118,7 @@ export default function OperatorBrowser() {
       <TopBarDiv>
         <QueryDiv>
           <QueryInput
+            value={browser.query}
             autoFocus
             placeholder="Search operations by name..."
             onChange={(e) => browser.onChangeQuery(e.target.value)}
