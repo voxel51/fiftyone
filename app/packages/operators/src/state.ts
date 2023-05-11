@@ -410,10 +410,10 @@ export function useOperatorBrowser() {
   }, [setIsVisible, setQuery, setSelected]);
 
   const onSubmit = () => {
-    if (!selectedValue) return;
-    const selectedOperator = choices.find(
-      ({ value }) => value === selectedValue
-    );
+    const firstChoice = choices[0];
+    const selectedOperator = selectedValue
+      ? choices.find(({ value }) => value === selectedValue)
+      : firstChoice;
     if (selectedOperator && selectedOperator.canExecute) {
       close();
       promptForInput(selectedOperator.value);
