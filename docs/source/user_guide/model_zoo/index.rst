@@ -272,7 +272,7 @@ predictions of a |Model| instance are generated using the following pattern:
         import fiftyone as fo
 
         def read_rgb_image(path):
-            """Utility function that loads an image as an RGB numpy aray."""
+            """Utility function that loads an image as an RGB numpy array."""
             return np.asarray(Image.open(path).convert("rgb"))
 
         # Load a `Model` instance that processes images

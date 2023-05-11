@@ -305,30 +305,30 @@ class TorchImageModelConfig(foc.Config):
 
     1.  Model::
 
-        # Directly specify a model
-        model
+            # Directly specify a model
+            model
 
-        # Load model from an entrypoint
-        model = entrypoint_fcn(**entrypoint_args)
+            # Load model from an entrypoint
+            model = entrypoint_fcn(**entrypoint_args)
 
     2.  Transforms::
 
-        # Directly provide transforms
-        transforms
+            # Directly provide transforms
+            transforms
 
-        # Load transforms from a function
-        transforms = transforms_fcn(**transforms_args)
+            # Load transforms from a function
+            transforms = transforms_fcn(**transforms_args)
 
-        # Use the `image_XXX` parameters defined below to build a transform
-        transforms = build_transforms(image_XXX, ...)
+            # Use the `image_XXX` parameters defined below to build a transform
+            transforms = build_transforms(image_XXX, ...)
 
     3.  OutputProcessor::
 
-        # Directly provide an OutputProcessor
-        output_processor
+            # Directly provide an OutputProcessor
+            output_processor
 
-        # Load an OutputProcessor from a function
-        output_processor = output_processor_cls(**output_processor_args)
+            # Load an OutputProcessor from a function
+            output_processor = output_processor_cls(**output_processor_args)
 
     Given these components, inference happens as follows::
 
@@ -356,11 +356,10 @@ class TorchImageModelConfig(foc.Config):
             ``transforms_args``
         raw_inputs (None): whether to feed the raw list of images to the model
             rather than stacking them as a Torch tensor
-        output_processor (None): an
-            :class:`fifytone.utils.torch.OutputProcessor` instance to use
+        output_processor (None): an :class:`OutputProcessor` instance to use
         output_processor_cls (None): a class or string like
             ``"fifytone.utils.torch.ClassifierOutputProcessor"`` specifying the
-            :class:`fifytone.utils.torch.OutputProcessor` to use
+            :class:`OutputProcessor` to use
         output_processor_args (None): a dictionary of arguments for
             ``output_processor_cls(classes=classes, **kwargs)``
         confidence_thresh (None): an optional confidence threshold apply to any
