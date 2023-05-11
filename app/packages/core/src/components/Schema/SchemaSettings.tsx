@@ -69,7 +69,6 @@ const SchemaSettings = () => {
     searchResults,
     setFieldsOnly,
     setSelectedFieldsStage,
-    mediatType,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -178,6 +177,7 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
+                if (!selectedPaths) return;
                 let initialFieldNames = searchResults.length
                   ? searchResults.filter((pp) => selectedPaths.has(pp))
                   : [...selectedPaths];

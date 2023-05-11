@@ -1,6 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
+import { Schema } from "@fiftyone/utilities";
 import {
   DICT_FIELD,
   FRAME_NUMBER_FIELD,
@@ -8,7 +9,14 @@ import {
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
 import { keyBy } from "lodash";
-import { useCallback, useContext, useEffect, useMemo } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
   atom,
@@ -16,6 +24,7 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
 
@@ -99,7 +108,7 @@ export const schemaSearchRestuls = atom<string[]>({
 });
 export const selectedPathsState = atomFamily({
   key: "selectedPathsState",
-  default: (param: { allPaths: string[] }) => new Set([...param.allPaths]),
+  default: (param: Set<string>) => (param?.size ? param : null),
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPaths) => {
@@ -140,9 +149,9 @@ export const selectedPathsState = atomFamily({
     },
   ],
 });
-export const schemaState = atom({
+export const schemaState = atom<Schema>({
   key: "schemaState",
-  default: [],
+  default: null,
 });
 
 export const viewSchemaState = atom({
@@ -184,20 +193,26 @@ export default function useSchemaSettings() {
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
   const router = useContext(fos.RouterContext);
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
+  const dataset = useRecoilValue(fos.dataset);
+  const resetTextFilter = useResetRecoilState(fos.textFilter(false));
+
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
       async (value) => {
+        if (!dataset) {
+          return;
+        }
+
         set(selectedFieldsStageState, value);
 
         // router is loaded only in OSS
         if (router.loaded) return;
         const view = await snapshot.getPromise(fos.view);
-        const datasetName = await snapshot.getPromise(fos.datasetName);
         const subscription = await snapshot.getPromise(fos.stateSubscription);
         setView({
           variables: {
             view: value ? [...view, value] : view,
-            datasetName,
+            datasetName: dataset.name,
             form: {},
             subscription,
           },
@@ -211,18 +226,17 @@ export default function useSchemaSettings() {
           },
         });
       },
-    [setView, router]
+    [setView, router, dataset]
   );
 
   const setViewSchema = useSetRecoilState(viewSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
-  const dataset = useRecoilValue(fos.dataset);
   const [schema, setSchema] = useRecoilState(schemaState);
   useEffect(() => {
     if (dataset) {
-      setSchema(dataset ? buildSchema(dataset, true) : []);
+      setSchema(dataset ? buildSchema(dataset, true) : null);
     }
   }, [dataset]);
 
@@ -246,9 +260,9 @@ export default function useSchemaSettings() {
   useEffect(() => {
     if (dataset?.name) {
       refetch(
-        { name: dataset?.name, viewStages: vStages || [] },
+        { name: dataset.name, viewStages: vStages || [] },
         {
-          fetchPolicy: "store-and-network",
+          fetchPolicy: "network-only",
           onComplete: (err) => {
             if (err) {
               console.error("failed to fetch view schema", err);
@@ -257,7 +271,7 @@ export default function useSchemaSettings() {
         }
       );
     }
-  }, [vStages]);
+  }, [vStages, dataset]);
   const viewSchema = keyBy(data?.schemaForViewStages, "path");
   const vPaths = Object.keys(viewSchema);
 
@@ -272,7 +286,7 @@ export default function useSchemaSettings() {
   );
 
   const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
-    selectedPathsState({ allPaths: [] })
+    selectedPathsState(new Set())
   );
 
   useEffect(() => {
@@ -282,6 +296,7 @@ export default function useSchemaSettings() {
   }, [selectedTab]);
 
   const [finalSchema] = useMemo(() => {
+    if (!schema || !selectedPaths) return [[]];
     let tmpSchema = {};
     if (dataset.mediaType === "video") {
       Object.keys(viewSchema).forEach((fieldPath) => {
@@ -294,12 +309,14 @@ export default function useSchemaSettings() {
       tmpSchema = viewSchema;
     }
 
+    const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
+
     tmpSchema = keyBy(tmpSchema, "path");
     const resSchema = Object.keys(tmpSchema)
       .sort()
       .filter((path) => {
         if (path === "undefined") return false;
-        if (selectedTab === TAB_OPTIONS_MAP.FILTER_RULE) {
+        if (filterRuleTab) {
           return searchResults.includes(path);
         }
         return true;
@@ -314,14 +331,14 @@ export default function useSchemaSettings() {
 
         const ftype = tmpSchema[path].ftype;
         const skip = skipFiled(path, ftype);
-        const disabled = disabledField(path, ftype, tmpSchema[path].subfield);
+        const disabled = disabledField(path, ftype) || filterRuleTab;
 
         const fullPath =
           dataset.mediaType === "video" && viewSchema?.[path]
             ? `frames.${path}`
             : path;
 
-        const isSelected = selectedPaths.has(fullPath);
+        const isSelected = selectedPaths.has(fullPath) || filterRuleTab;
 
         return {
           path,
@@ -379,11 +396,7 @@ export default function useSchemaSettings() {
         if (
           currPath.startsWith(path + ".") &&
           !skipFiled(currPath, mergedSchema?.[currPath]?.ftype) &&
-          !disabledField(
-            currPath,
-            mergedSchema?.[currPath]?.ftype,
-            mergedSchema?.[currPath]?.subfield
-          )
+          !disabledField(currPath, mergedSchema?.[currPath]?.ftype)
         ) {
           subPaths.add(getPath(currPath));
         }
@@ -407,20 +420,21 @@ export default function useSchemaSettings() {
   );
 
   useEffect(() => {
-    if (viewPaths.length && !selectedPaths.size) {
+    if (schema && viewPaths.length && !selectedPaths) {
       setSelectedPaths(new Set([...viewPaths, ...Object.keys(schema)]));
     }
-  }, [schema]);
+  }, [schema, dataset, viewPaths]);
 
   // toggle field selection
   const toggleSelection = useCallback(
     (path: string, checked: boolean) => {
+      if (!selectedPaths) return;
       const pathAndSubPaths = getSubPaths(path);
       const currPathSplit = path.split(".");
 
       if (checked) {
         const newSelectedPaths = new Set(
-          [...selectedPaths].filter((x) => !pathAndSubPaths.has(x))
+          [...selectedPaths].filter((path) => !pathAndSubPaths.has(path))
         );
 
         const parentPaths = parentPathList(currPathSplit, path);
@@ -483,5 +497,6 @@ export default function useSchemaSettings() {
     affectedPathCount,
     mediatType: dataset.mediaType,
     dataset,
+    resetTextFilter,
   };
 }
