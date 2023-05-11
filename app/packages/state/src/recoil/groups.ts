@@ -23,10 +23,18 @@ import {
   refresher,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
+import { fieldSchema } from "./schema";
 import { datasetName } from "./selectors";
-import { view } from "./view";
+import { dynamicGroupViewQuery, view } from "./view";
+import {
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 
-type SliceName = string | undefined | null;
+export type SliceName = string | undefined | null;
 
 export const isGroup = selector<boolean>({
   key: "isGroup",
@@ -229,6 +237,46 @@ export const groupQuery = graphQLSelector<
   },
 });
 
+export const dynamicGroupCandidateFields = selector<string[]>({
+  key: "dynamicGroupFields",
+  get: ({ get }) => {
+    const fieldSchemaValue = get(fieldSchema({ space: null }));
+
+    return Object.entries(fieldSchemaValue)
+      .filter(
+        ([_, { name, ftype }]) =>
+          name !== "filepath" &&
+          name !== "id" &&
+          (ftype === INT_FIELD ||
+            ftype === FLOAT_FIELD ||
+            ftype === STRING_FIELD ||
+            ftype === FRAME_NUMBER_FIELD ||
+            ftype === OBJECT_ID_FIELD)
+      )
+      .map(([_, { name }]) => name);
+  },
+});
+
+export const dynamicGroupPaginationQuery = graphQLSelectorFamily<
+  VariablesOf<paginateGroupQuery>,
+  string,
+  ResponseFrom<paginateGroupQuery>
+>({
+  key: "dynamicGroupQuery",
+  environment: RelayEnvironmentKey,
+  mapResponse: (response) => response,
+  query: paginateGroup,
+  variables:
+    (fieldOrExpression) =>
+    ({ get }) => {
+      return {
+        dataset: get(datasetName),
+        filter: {},
+        view: get(dynamicGroupViewQuery(fieldOrExpression)),
+      };
+    },
+});
+
 const mapSampleResponse = (response: mainSampleQuery$data) => {
   const actualRawSample = response?.sample?.sample;
 
@@ -277,6 +325,31 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
   key: "groupPaginationFragment",
   get: ({ get }) => get(groupQuery),
+});
+
+export const dynamicGroupSamplesStoreMap = atomFamily<
+  Map<number, SampleData>,
+  string
+>({
+  key: "dynamicGroupSamplesStoreMap",
+  // todo: use map with LRU cache
+  default: new Map<number, SampleData>(),
+});
+
+export const dynamicGroupPaginationFragment = selectorFamily<
+  paginateGroup_query$key,
+  { fieldOrExpression: string }
+>({
+  key: "dynamicGroupPaginationFragment",
+  get:
+    ({ fieldOrExpression }) =>
+    ({ get }) => {
+      return get(dynamicGroupPaginationQuery(fieldOrExpression));
+    },
+  cachePolicy_UNSTABLE: {
+    eviction: "lru",
+    maxSize: 20,
+  },
 });
 
 export const activeModalSample = selectorFamily<

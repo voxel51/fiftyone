@@ -21,6 +21,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
+import { GroupContextProvider } from "./Group/GroupContextProvider";
 import Sample from "./Sample";
 import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
@@ -132,7 +133,7 @@ const SampleModal = () => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
-                    disabled={isOther || isLabelTag}
+                    disabled={isOther || isLabelTag || isTag}
                     key={key}
                     trigger={trigger}
                   />
@@ -168,13 +169,7 @@ const SampleModal = () => {
           return {
             children: (
               <Entries.Empty
-                useText={
-                  group === "tags"
-                    ? () => fos.useTagText(true)
-                    : group === "label tags"
-                    ? () => fos.useLabelTagText(true)
-                    : () => "No fields"
-                }
+                useText={() => ({ text: "No fields", loading: false })}
                 key={key}
               />
             ),
@@ -296,7 +291,9 @@ const SampleModal = () => {
             )}
             <ErrorBoundary onReset={() => {}}>
               {isGroup ? (
-                <Group lookerRefCallback={lookerRefCallback} />
+                <GroupContextProvider lookerRefCallback={lookerRefCallback}>
+                  <Group />
+                </GroupContextProvider>
               ) : isPcd ? (
                 <Sample3d />
               ) : (

@@ -111,14 +111,22 @@ class OpenPanel extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.defineProperty(
-      "name",
-      new types.Enum(["Histograms", "Embeddings"]),
-      { label: "Name of the panel", required: true }
-    );
+    inputs.defineProperty("name", new types.String(), {
+      view: new types.AutocompleteView({
+        choices: [
+          new types.Choice("Embeddings"),
+          new types.Choice("Histograms"),
+          new types.Choice("Samples"),
+          new types.Choice("Map"),
+        ],
+        label: "Name of the panel",
+        required: true,
+      }),
+    });
     inputs.defineProperty("isActive", new types.Boolean(), {
       label: "Auto-select on open",
       required: true,
+      default: true,
     });
     return new types.Property(inputs);
   }
@@ -139,11 +147,18 @@ class OpenPanel extends Operator {
     }
   }
   async execute({ hooks, params }: ExecutionContext) {
-    const { spaces } = hooks;
+    const { spaces, openedPanels, availablePanels } = hooks;
     const { name, isActive } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
+    }
+    const openedPanel = openedPanels.find(({ type }) => type === name);
+    const panel = availablePanels.find((panel) => name === panel.name);
+    const allowDuplicate = panel?.panelOptions?.allowDuplicates;
+    if (openedPanel && !allowDuplicate) {
+      if (isActive) spaces.setNodeActive(openedPanel);
+      return;
     }
     const newNode = new SpaceNode();
     newNode.type = name;
@@ -202,15 +217,23 @@ class ClosePanel extends Operator {
     return new OperatorConfig({
       name: "close_panel",
       label: "Close a panel",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.defineProperty(
-      "name",
-      new types.Enum(["Histograms", "Embeddings"]),
-      { label: "Name of the panel", required: true }
-    );
+    inputs.defineProperty("name", new types.String(), {
+      view: new types.AutocompleteView({
+        choices: [
+          new types.Choice("Embeddings"),
+          new types.Choice("Histograms"),
+          new types.Choice("Samples"),
+          new types.Choice("Map"),
+        ],
+        label: "Name of the panel",
+        required: true,
+      }),
+    });
     return new types.Property(inputs);
   }
   useHooks(): object {
@@ -222,16 +245,16 @@ class ClosePanel extends Operator {
   async execute({ hooks, params }: ExecutionContext) {
     const { openedPanels, spaces } = hooks;
     const { name, id } = params;
-    const targetPanel = openedPanels.find(
+    const panel = openedPanels.find(
       (panel) => id === panel.id || name === panel.type
     );
-    if (!targetPanel)
+    if (!panel)
       return console.error(
         `Opened panel with ${id ? "id" : "name"} "${
           id || name
         }" cannot be found`
       );
-    spaces.removeNode(targetPanel);
+    if (!panel.pinned) spaces.removeNode(panel);
   }
 }
 
@@ -263,6 +286,7 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -441,39 +465,50 @@ class ShowSamples extends Operator {
       unlisted: true,
     });
   }
-  async execute({ state, params }: ExecutionContext) {
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setView: fos.useSetView(),
+    };
+  }
+  async execute({ state, hooks, params }: ExecutionContext) {
     if (params.use_extended_selection) {
       state.set(fos.extendedSelection, {
         selection: params.samples,
         scope: "global",
       });
+      return;
     }
     const currentView = await state.snapshot.getPromise(fos.view);
-    state.set(fos.view, [
+    const newView = [
       ...currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID),
-      {
-        _cls: "fiftyone.core.stages.Select",
-        kwargs: [
-          ["sample_ids", params.samples],
-          ["ordered", false],
-        ],
-        _uuid: SHOW_SAMPLES_STAGE_ID,
-      },
-    ]);
+      ...(params.samples
+        ? [
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [
+                ["sample_ids", params.samples],
+                ["ordered", false],
+              ],
+              _uuid: SHOW_SAMPLES_STAGE_ID,
+            },
+          ]
+        : []),
+    ];
+    hooks.setView(fos.view, newView);
   }
 }
 
-class ClearShowSamples extends Operator {
-  get config(): OperatorConfig {
-    return new OperatorConfig({
-      name: "clear_show_samples",
-      label: "Clear show samples",
-    });
-  }
-  async execute(ctx: ExecutionContext) {
-    executeOperator("show_samples", { samples: [] });
-  }
-}
+// class ClearShowSamples extends Operator {
+//   get config(): OperatorConfig {
+//     return new OperatorConfig({
+//       name: "clear_show_samples",
+//       label: "Clear show samples",
+//     });
+//   }
+//   async execute(ctx: ExecutionContext) {
+//     executeOperator("show_samples", { samples: null });
+//   }
+// }
 
 function isAtomOrSelector(v: any): boolean {
   return (
@@ -514,46 +549,13 @@ function getTypeForValue(value: any) {
       return type;
   }
 }
-class GetAppValue extends Operator {
-  get config(): OperatorConfig {
-    return new OperatorConfig({
-      name: "get_app_value",
-      label: "Get App Value",
-      dynamic: true,
-    });
-  }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.Object();
-    const values = Object.entries(fos)
-      .filter(([k, v]) => {
-        return isAtomOrSelector(v);
-      })
-      .map(([k, v]) => k);
-    inputs.defineProperty("target", new types.Enum(values));
-
-    return new types.Property(inputs);
-  }
-  async resolveOutput(
-    ctx: ExecutionContext,
-    { result }: OperatorResult
-  ): Promise<types.Property> {
-    const outputs = new types.Object();
-    outputs.defineProperty("value", new types.List(new types.String()));
-    return new types.Property(outputs, { view: { name: "InferredView" } });
-  }
-  async execute({ params, state }: ExecutionContext) {
-    const target = params.target;
-    return {
-      value: await state.snapshot.getPromise(fos[target]),
-    };
-  }
-}
 
 class ConsoleLog extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "console_log",
       label: "Console Log",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -677,8 +679,7 @@ export function registerBuiltInOperators() {
     registerOperator(CloseAllPanels);
     registerOperator(SetView);
     registerOperator(ShowSamples);
-    registerOperator(ClearShowSamples);
-    registerOperator(GetAppValue);
+    // registerOperator(ClearShowSamples);
     registerOperator(ConsoleLog);
     registerOperator(ShowOutput);
     registerOperator(TestOperator);

@@ -21,7 +21,7 @@ export default function MapView(props) {
             additionalProperties,
           ],
           view: {
-            component: "TuplesView",
+            component: "TupleView",
           },
         },
         view: { ...view, hideIndexLabel: true },

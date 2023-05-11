@@ -1,7 +1,7 @@
 import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 
 import {
@@ -13,14 +13,14 @@ import {
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../Common/Checkbox";
-import style from "../Modal/Group.module.css";
+import style from "../Modal/Group/Group.module.css";
 import Popout from "./Popout";
 
 interface GroupMediaVisibilityProps {
   modal: boolean;
 }
 
-const TITLE = "Toggle Media";
+const TITLE = "Toggle media";
 
 const Container = styled.div`
   position: relative;

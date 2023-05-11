@@ -50,6 +50,7 @@ export interface RoutingContext<
 > {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
+  loaded: boolean;
   pathname: string;
   state: any;
   subscribe: (cb: (entry: Entry<T>) => void) => () => void;
@@ -133,6 +134,9 @@ export const createRouter = (
         };
       }
       return currentEntry;
+    },
+    get loaded() {
+      return Boolean(currentEntry);
     },
     get pathname() {
       return history.location.pathname;

@@ -250,7 +250,13 @@ installation by adding `--force-reinstall` to the commands below.
 
 .. tabs::
 
-  .. tab:: Ubuntu 16.04
+  .. tab:: Ubuntu 22.04
+
+    .. code-block:: shell
+
+      pip install fiftyone-db-ubuntu2204 
+
+  .. tab:: Ubuntu 20.04
 
     .. code-block:: shell
 

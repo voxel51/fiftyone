@@ -2,16 +2,16 @@ import {
   ArrowDownward,
   Bookmark,
   Check,
+  ColorLens,
   FlipToBack,
   KeyboardArrowLeft,
   KeyboardArrowRight,
+  List,
   LocalOffer,
+  Search,
   Settings,
   VisibilityOff,
   Wallpaper,
-  Search,
-  ColorLens,
-  List,
 } from "@mui/icons-material";
 import React, {
   MutableRefObject,
@@ -32,9 +32,13 @@ import styled from "styled-components";
 
 import { PillButton, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
+import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import ExportAction from "./Export";
@@ -42,9 +46,6 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { ACTIVE_FIELD } from "../ColorModal/utils";
-import { useOperatorBrowser } from "@fiftyone/operators/src/state";
-import { types, OperatorPlacements } from "@fiftyone/operators";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -65,10 +66,10 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
 
 const Loading = () => {
   const theme = useTheme();
-  return <LoadingDots text="" color={theme.text.primary} />;
+  return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
 
-const ActionDiv = styled.div`
+export const ActionDiv = styled.div`
   position: relative;
 `;
 
@@ -503,6 +504,7 @@ export const GridActionsRow = () => {
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <DynamicGroupAction />
       <BrowseOperations />
       <Options modal={false} />
       <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />

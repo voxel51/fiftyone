@@ -6,12 +6,17 @@ Utilities for working with `YouTube <https://youtube.com>`.
 |
 """
 import importlib
+
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import itertools
 import logging
 import multiprocessing
 import multiprocessing.dummy
 import os
-import pkg_resources
 
 import numpy as np
 
@@ -24,7 +29,7 @@ import fiftyone.core.utils as fou
 
 def _ensure_pytube():
     fou.ensure_package("pytube>=11.0.2")
-    if pkg_resources.get_distribution("pytube").version == "11.0.2":
+    if metadata.version("pytube") == "11.0.2":
         _patch_pytube_cypher()
 
 

@@ -13,7 +13,6 @@ import { Settings, VisibilityOff } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
 import {
   affectedPathCountState,
-  revertSelectedPathsState,
   selectedFieldsStageState,
   selectedPathsState,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
@@ -31,10 +30,9 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const resetSelectedPaths = useResetRecoilState(
     selectedPathsState({ allPaths: [] })
   );
-  const [revertSelectedPaths, setRevertSelectedPaths] = useRecoilState(
-    revertSelectedPathsState
-  );
   const affectedPathCount = useRecoilValue(affectedPathCountState);
+
+  const { setSelectedFieldsStage } = fos.useSchemaSettings();
 
   useDebounce(
     () => {
@@ -71,7 +69,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 }}
                 onClick={() => {
                   resetSelectedFieldStages();
-                  setRevertSelectedPaths(!revertSelectedPaths);
+                  setSelectedFieldsStage(undefined);
                   resetSelectedPaths();
                 }}
               >
