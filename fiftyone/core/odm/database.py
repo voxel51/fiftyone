@@ -1195,8 +1195,9 @@ def _get_result_ids(conn, dataset_dict):
         for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
             result_id = run_doc.get("results", None)
             if result_id is not None:
-
-                result_ids.append(result_id)
+                # ensure that the result id is a valid ObjectId
+                if ObjectId.is_valid(result_id):
+                    result_ids.append(ObjectId(result_id))
 
     return result_ids
 
@@ -1225,7 +1226,10 @@ def _delete_run_results(conn, result_ids):
         logger.error(
             f"Failed to delete {len(result_ids)-fs_result.deleted_count} result files"
         )
-    conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
+    chunks_result = conn.fs.chunks.delete_many({"files_id": {"$in": oids}})
+    # since the relationship between files and chunks is not 1:1, we can't verify the success based on deletion count, so just report if nothing was deleted
+    if chunks_result.deleted_count == 0:
+        logger.warning("No fs chunks were deleted for result_ids=%s", oids)
 
 
 _RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations"]
