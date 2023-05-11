@@ -57,7 +57,7 @@ export const schemaFiledsOnly = atom<boolean>({
 });
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: TAB_OPTIONS_MAP.FILTER_RULE,
+  default: TAB_OPTIONS_MAP.SELECTION,
 });
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
