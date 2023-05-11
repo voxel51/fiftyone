@@ -118,6 +118,7 @@ export async function loadPlugins() {
   await foo.loadOperators();
   const plugins = await fetchPluginsMetadata();
   for (const plugin of plugins) {
+    usingRegistry().registerPluginDefinition(plugin);
     if (plugin.hasJS) {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
