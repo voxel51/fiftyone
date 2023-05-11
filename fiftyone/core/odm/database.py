@@ -1353,7 +1353,7 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
 
     runs = dataset_dict.get(runs_field, {})
     if not runs:
-        _logger.info("Dataset '%s' has no %ss" % dataset_name, run_str)
+        _logger.info("Dataset '%s' has no %ss" % (dataset_name, run_str))
         return
 
     run_keys, run_ids = zip(*runs.items())
