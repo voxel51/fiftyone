@@ -1,8 +1,8 @@
-import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
-import { getPointIndex } from "./getPointIndex";
-import { Color, cssColorNames } from "./Color";
-import { CustomizeColor } from "@fiftyone/state";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { CustomizeColor } from "@fiftyone/state";
+import { Color, cssColorNames } from "./Color";
+import { getPointIndex } from "./getPointIndex";
+import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
 
 export function tracesToData(
   traces,
@@ -29,10 +29,12 @@ export function tracesToData(
         getConvertedColor(getColor(key)) ??
         new Color(255, 165, 0);
 
-      const mappedColorscale = colorscale.map((c, idx) => {
-        const color = Color.fromCSSRGBValues(...c);
-        return [idx / (colorscale.length - 1), color.toCSSRGBString()];
-      });
+      const mappedColorscale = colorscale.map(
+        (c: [number, number, number], idx) => {
+          const color = Color.fromCSSRGBValues(...c);
+          return [idx / (colorscale.length - 1), color.toCSSRGBString()];
+        }
+      );
 
       return {
         x: trace.map((d) => d.points[0]),
@@ -77,35 +79,47 @@ export function tracesToData(
 }
 
 const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
-  if (setting && setting.labelColors) {
-    const color = setting.labelColors.find((x) => x.name === key)?.color;
-    return getConvertedColor(color);
+  if (!setting || !setting.labelColors) {
+    return null;
   }
+
+  const color = setting.labelColors.find((x) => x.name === key)?.color;
+  return getConvertedColor(color);
 };
 
 // converts CSS color (hex, name, rgb) to Color object
-const getConvertedColor = (color: string | number[]): Color | null => {
-  if (typeof color === "string" && isValidColor(color)) {
-    if (color.startsWith("#")) {
-      const c = hexToRgb(color);
-      return Color.fromCSSRGBValues(c.r, c.g, c.b);
-    } else if (color.startsWith("rgb")) {
-      const c = color.split("(")[1].split(")")[0].split(",");
-      return Color.fromCSSRGBValues(
-        parseInt(c[0]),
-        parseInt(c[1]),
-        parseInt(c[2])
-      );
-    } else {
-      const idx = cssColorNames.name.map((x) => x.toLowerCase()).indexOf(color);
-      if (idx > -1) {
-        const c = hexToRgb(cssColorNames.hex[idx]);
-        return Color.fromCSSRGBValues(c.r, c.g, c.b);
-      }
-    }
-  } else if (Array.isArray(color)) {
+const getConvertedColor = (
+  color: string | [number, number, number]
+): Color | null => {
+  if (Array.isArray(color)) {
     return Color.fromCSSRGBValues(...color);
   }
+
+  if (!isValidColor(color)) {
+    return null;
+  }
+
+  if (color.startsWith("#")) {
+    const c = hexToRgb(color);
+    return Color.fromCSSRGBValues(c.r, c.g, c.b);
+  }
+
+  if (color.startsWith("rgb")) {
+    const c = color.split("(")[1].split(")")[0].split(",");
+    return Color.fromCSSRGBValues(
+      parseInt(c[0]),
+      parseInt(c[1]),
+      parseInt(c[2])
+    );
+  }
+
+  const idx = cssColorNames.name.map((x) => x.toLowerCase()).indexOf(color);
+  if (idx > -1) {
+    const c = hexToRgb(cssColorNames.hex[idx]);
+    return Color.fromCSSRGBValues(c.r, c.g, c.b);
+  }
+
+  return null;
 };
 
 function hexToRgb(hex) {

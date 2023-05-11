@@ -10,21 +10,20 @@ import {
   BaseState,
   BoundingBox,
   Coordinates,
-  CustomizeColor,
   NONFINITE,
   VideoState,
 } from "../state";
 import {
   CONTAINS,
-  isShown,
   Overlay,
   PointInfo,
   RegularLabel,
   SelectData,
+  isShown,
 } from "./base";
 import { isValidColor, sizeBytes } from "./util";
 
-export interface Classification extends RegularLabel {}
+export type Classification = RegularLabel;
 
 export interface Regression {
   confidence?: number | NONFINITE;
@@ -60,41 +59,31 @@ export class ClassificationsOverlay<
     const f = field.startsWith("frames.")
       ? field.slice("frames.".length)
       : field;
-    if (coloring.by === "field") {
-      // check if the field has a customized color, use it if it is a valid color
-      const fieldSetting = customizeColorSetting.find((s) => s.field === f);
-      if (fieldSetting) {
-        if (
-          fieldSetting.useFieldColor &&
-          fieldSetting.fieldColor &&
-          isValidColor(fieldSetting.fieldColor)
-        ) {
-          return fieldSetting.fieldColor;
-        }
-      }
-      // use default settings
-      return getColor(coloring.pool, coloring.seed, key);
-    } else {
-      // check if the field has customized setting
-      const setting = customizeColorSetting.find((s) => s.field === f);
-      if (setting) {
-        key = setting.attributeForColor ?? key;
-        // check if this label has a assigned color, use it if it is a valid color
-        const labelColor = setting.labelColors?.find(
-          (l) => l.name == label[key]?.toString()
-        )?.color;
-
-        if (isValidColor(labelColor)) {
-          return labelColor;
-        } else {
-          // fallback to use label as default attribute
-          key = "label";
-        }
-      } else {
-        key = "label";
-      }
-      return getColor(coloring.pool, coloring.seed, label[key]);
+    const setting = customizeColorSetting.find((s) => s.field === f);
+    // check if the field has a customized color, use it if it is a valid color
+    if (
+      coloring.by === "field" &&
+      setting?.useFieldColor &&
+      setting?.fieldColor &&
+      isValidColor(setting.fieldColor)
+    ) {
+      return setting.fieldColor;
     }
+
+    if (coloring.by !== "field") {
+      key = setting?.attributeForColor ?? key;
+      // check if this label has a assigned color, use it if it is a valid color
+      const labelColor = setting.labelColors?.find(
+        (l) => l.name == label[key]?.toString()
+      )?.color;
+      if (isValidColor(labelColor)) {
+        return labelColor;
+      }
+
+      // fallback to use label as default attribute
+      key = label.label;
+    }
+    return getColor(coloring.pool, coloring.seed, key);
   }
 
   isShown(state: Readonly<State>): boolean {
@@ -209,10 +198,7 @@ export class ClassificationsOverlay<
     ]);
   }
 
-  getFilteredAndFlat(
-    state: Readonly<State>,
-    sort: boolean = true
-  ): [string, Label][] {
+  getFilteredAndFlat(state: Readonly<State>, sort = true): [string, Label][] {
     let result: [string, Label][] = [];
     this.getFiltered(state).forEach(([field, labels]) => {
       result = [

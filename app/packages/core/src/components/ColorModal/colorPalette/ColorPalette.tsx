@@ -40,7 +40,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<ChromePicker>(null);
 
   const handleColorChange = (color: any) => {
     if (activeIndex !== null && color) {
