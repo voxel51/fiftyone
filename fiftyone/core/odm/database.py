@@ -1221,15 +1221,19 @@ def _delete_run_docs(conn, run_ids):
 def _delete_run_results(conn, result_ids):
     # ensure result_ids are ObjectIds
     oids = [ObjectId(rid) for rid in result_ids if ObjectId.is_valid(rid)]
+    num_to_delete = len(oids)
+
     fs_result = conn.fs.files.delete_many({"_id": {"$in": oids}})
-    if fs_result.deleted_count != len(result_ids):
+    if fs_result.deleted_count != num_to_delete:
         logger.error(
-            f"Failed to delete {len(result_ids)-fs_result.deleted_count} result files"
+            f"Failed to delete {num_to_delete-fs_result.deleted_count} result files"
         )
     chunks_result = conn.fs.chunks.delete_many({"files_id": {"$in": oids}})
-    # since the relationship between files and chunks is not 1:1, we can't verify the success based on deletion count, so just report if nothing was deleted
+    # since the relationship between files and chunks is not 1:1,
+    # we can't verify the success based on deletion count,
+    # so just report if nothing was deleted
     if chunks_result.deleted_count == 0:
-        logger.warning("No fs chunks were deleted for result_ids=%s", oids)
+        logger.error("No fs chunks were deleted for result_ids=%s", oids)
 
 
 _RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations"]
