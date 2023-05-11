@@ -455,7 +455,8 @@ class Query(fosa.AggregateQuery):
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fod.load_dataset(dataset_name)
         return [
-            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
+            SavedView.from_doc(view_doc)
+            for view_doc in ds._doc.get_saved_views()
         ]
 
     @gql.field
