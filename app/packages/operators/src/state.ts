@@ -532,6 +532,7 @@ export function useOperatorBrowser() {
     clear,
     toggle,
     hasQuery: typeof query === "string" && query.length > 0,
+    query,
   };
 }
 
