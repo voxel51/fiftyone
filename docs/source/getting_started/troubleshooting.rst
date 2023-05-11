@@ -254,7 +254,6 @@ installation by adding `--force-reinstall` to the commands below.
 
     .. code-block:: shell
 
-      # installs MongoDB v6.0.5
       pip install fiftyone-db-ubuntu2204 
 
   .. tab:: Ubuntu 20.04
