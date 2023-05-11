@@ -36,7 +36,7 @@ from torch.utils.data import Dataset
 logger = logging.getLogger(__name__)
 
 
-def load_torch_hub_image_model(repo_or_dir, model, **kwargs):
+def load_torch_hub_image_model(repo_or_dir, model, hub_kwargs=None, **kwargs):
     """Loads an image model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
     :class:`TorchImageModel`.
 
@@ -61,14 +61,16 @@ def load_torch_hub_image_model(repo_or_dir, model, **kwargs):
     Returns:
         a :class:`TorchImageModel`
     """
+    e = {"repo_or_dir": repo_or_dir, "model": model}
+    if hub_kwargs:
+        e.update(**hub_kwargs)
+
     d = {
         "entrypoint_fcn": load_torch_hub_raw_model,
-        "entrypoint_args": {
-            "repo_or_dir": repo_or_dir,
-            "model": model,
-        },
+        "entrypoint_args": e,
     }
     d.update(**kwargs)
+
     config = TorchImageModelConfig(d)
     return TorchImageModel(config)
 
@@ -155,19 +157,90 @@ def load_torch_hub_requirements(repo_or_dir, source="github"):
     Returns:
         a list of requirement strings
     """
-    requirements_path = find_torch_hub_requirements(repo_or_dir, source=source)
-    if not os.path.isfile(requirements_path):
+    req_path = find_torch_hub_requirements(repo_or_dir, source=source)
+    if not os.path.isfile(req_path):
         logger.warning("No requirements.txt file found for '%s'", repo_or_dir)
         return []
 
     requirements = []
-    with open(requirements_path, "r") as f:
+    with open(req_path, "r") as f:
         for line in f:
-            line = line.strip()
+            line = _strip_comments(line)
             if line:
                 requirements.append(line)
 
     return requirements
+
+
+def _strip_comments(requirement_str):
+    chunks = []
+    for chunk in requirement_str.strip().split():
+        if chunk.startswith("#"):
+            break
+
+        chunks.append(chunk)
+
+    return " ".join(chunks)
+
+
+def install_torch_hub_requirements(
+    repo_or_dir, source="github", error_level=None
+):
+    """Installs the package requirements from the ``requirements.txt`` file on
+    disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
+    model.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        fout.install_torch_hub_requirements("facebookresearch/dinov2")
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    for req_str in load_torch_hub_requirements(repo_or_dir, source=source):
+        fou.install_package(req_str, error_level=error_level)
+
+
+def ensure_torch_hub_requirements(
+    repo_or_dir, source="github", error_level=None, log_success=False
+):
+    """Verifies that the package requirements from the ``requirements.txt``
+    file on disk associated with a downloaded
+    `PyTorch Hub <https://pytorch.org/hub>`_ model are installed.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        fout.ensure_torch_hub_requirements("facebookresearch/dinov2")
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+    for req_str in load_torch_hub_requirements(repo_or_dir, source=source):
+        fou.ensure_package(
+            req_str, error_level=error_level, log_success=log_success
+        )
 
 
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
