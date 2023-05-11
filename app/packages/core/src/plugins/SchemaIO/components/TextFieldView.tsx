@@ -1,6 +1,7 @@
 import React from "react";
 import { TextField } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
+import autoFocus from "../utils/auto-focus";
 
 export default function TextFieldView(props) {
   const { schema, onChange, path, data } = props;
@@ -9,6 +10,7 @@ export default function TextFieldView(props) {
   return (
     <FieldWrapper {...props}>
       <TextField
+        autoFocus={autoFocus(props)}
         defaultValue={data ?? schema.default}
         size="small"
         fullWidth

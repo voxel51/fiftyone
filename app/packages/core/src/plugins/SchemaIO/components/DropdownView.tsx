@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography, Select, MenuItem, ListItemText } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
+import autoFocus from "../utils/auto-focus";
 
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
@@ -17,6 +18,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
+        autoFocus={autoFocus(props)}
         defaultValue={data ?? schema.default ?? (multiple ? [] : "")}
         size="small"
         fullWidth

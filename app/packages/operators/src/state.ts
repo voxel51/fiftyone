@@ -206,39 +206,12 @@ export const useOperatorPrompt = () => {
     executor.clear();
   };
 
-  const onKeyUp = useCallback(
-    (e) => {
-      if (!promptingOperator) return;
-      switch (e.key) {
-        case "Escape":
-          e.preventDefault();
-          close();
-          break;
-        case "Enter":
-          if (e.metaKey || e.ctrlKey) {
-            execute();
-          }
-          break;
-      }
-    },
-    [execute, close, promptingOperator]
-  );
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.addEventListener("keydown", onKeyUp);
-    return () => {
-      if (containerRef.current)
-        containerRef.current.removeEventListener("keydown", onKeyUp);
-    };
-  }, [onKeyUp, containerRef.current]);
-
   const onSubmit = useCallback(
     (e) => {
       e.preventDefault();
       execute();
     },
-    [execute, close, promptingOperator]
+    [execute]
   );
 
   const autoExec = async () => {
@@ -408,6 +381,14 @@ export const operatorBrowserChoices = selector({
     return sortResults(results, get(recentlyUsedOperatorsState));
   },
 });
+export const operatorDefaultChoice = selector({
+  key: "operatorDefaultChoice",
+  get: ({ get }) => {
+    const choices = get(operatorBrowserChoices);
+    const firstOperatorName = choices?.[0]?.value;
+    return firstOperatorName || null;
+  },
+});
 export const operatorChoiceState = atom({
   key: "operatorChoiceState",
   default: null,
@@ -421,30 +402,38 @@ export const recentlyUsedOperatorsState = atom({
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
   const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
-  const [selectedValue, setSelected] = useRecoilState(operatorChoiceState);
+  const [selected, setSelected] = useRecoilState(operatorChoiceState);
+  const defaultSelected = useRecoilValue(operatorDefaultChoice);
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
+
+  const selectedValue = useMemo(() => {
+    return selected ?? defaultSelected;
+  }, [selected, defaultSelected]);
 
   const onChangeQuery = (query) => {
     setQuery(query);
   };
 
-  const close = () => {
+  const close = useCallback(() => {
     setIsVisible(false);
     // reset necessary state
     setQuery("");
     setSelected(null);
-  };
+  }, [setIsVisible, setQuery, setSelected]);
 
-  const onSubmit = () => {
-    const accepted = selectedValue || choices[0];
-    if (accepted && accepted.canExecute) {
+  const onSubmit = useCallback(() => {
+    const firstChoice = choices[0];
+    const selectedOperator = selectedValue
+      ? choices.find(({ value }) => value === selectedValue)
+      : firstChoice;
+    if (selectedOperator && selectedOperator.canExecute) {
       close();
-      promptForInput(accepted.value);
-    } else if (!accepted) {
+      promptForInput(selectedOperator.value);
+    } else if (!selectedOperator) {
       close();
     }
-  };
+  }, [choices, selectedValue, close, promptForInput]);
 
   const getSelectedPrevAndNext = useCallback(() => {
     const selectedIndex = choices.findIndex(
@@ -469,13 +458,13 @@ export function useOperatorBrowser() {
 
   const selectNext = useCallback(() => {
     setSelected(getSelectedPrevAndNext().selectedNext);
-  }, [choices, selectedValue]);
+  }, [setSelected, getSelectedPrevAndNext]);
 
   const selectPrevious = useCallback(() => {
     setSelected(getSelectedPrevAndNext().selectedPrev);
-  }, [choices, selectedValue]);
+  }, [setSelected, getSelectedPrevAndNext]);
 
-  const onKeyUp = useCallback(
+  const onKeyDown = useCallback(
     (e) => {
       if (e.key !== "`" && !isVisible) return;
       if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
@@ -501,7 +490,7 @@ export function useOperatorBrowser() {
           break;
       }
     },
-    [selectNext, selectPrevious, onSubmit, isVisible]
+    [selectNext, selectPrevious, isVisible, onSubmit, close, setIsVisible]
   );
 
   const toggle = useCallback(() => {
@@ -509,11 +498,11 @@ export function useOperatorBrowser() {
   }, [setIsVisible]);
 
   useEffect(() => {
-    document.addEventListener("keyup", onKeyUp);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("keydown", onKeyDown);
     };
-  }, [onKeyUp]);
+  }, [onKeyDown]);
 
   const setSelectedAndSubmit = useCallback(
     (choice) => {
@@ -522,7 +511,7 @@ export function useOperatorBrowser() {
         promptForInput(choice.value);
       }
     },
-    [setSelected, setIsVisible, onSubmit]
+    [close, promptForInput]
   );
 
   const clear = () => {
@@ -543,6 +532,7 @@ export function useOperatorBrowser() {
     clear,
     toggle,
     hasQuery: typeof query === "string" && query.length > 0,
+    query,
   };
 }
 

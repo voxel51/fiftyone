@@ -194,10 +194,14 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           <GitHubLink />
           <DocsLink />
         </div>
-        <OperatorBrowser />
-        <OperatorPrompt />
-        <OperatorViewModal />
-        <OperatorInvocationRequestExecutor />
+        {dataset && (
+          <>
+            <OperatorBrowser />
+            <OperatorPrompt />
+            <OperatorViewModal />
+            <OperatorInvocationRequestExecutor />
+          </>
+        )}
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>

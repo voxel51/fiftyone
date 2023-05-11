@@ -58,6 +58,7 @@ export default function ListView(props) {
 
           return (
             <ItemComponent
+              {...props}
               key={`${path}.${id}`}
               id={id}
               path={id.toString()}
