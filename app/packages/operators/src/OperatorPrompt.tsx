@@ -8,6 +8,7 @@ import {
   useShowOperatorIO,
 } from "./state";
 import { throttle } from "lodash";
+import styled from "styled-components";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
@@ -16,6 +17,7 @@ import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { stringifyError } from "./utils";
 import { useCallback } from "react";
 import { RESOLVE_TYPE_TTL } from "./constants";
+import { Button } from "@fiftyone/components";
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -100,7 +102,7 @@ export function OperatorViewModal() {
   if (!io.visible) return null;
 
   return createPortal(
-    <OperatorPalette>
+    <OperatorPalette onSubmit={io.hide} submitButtonText="Done">
       <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
     </OperatorPalette>,
     document.body
