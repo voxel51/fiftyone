@@ -5,8 +5,12 @@ Plugin management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import io
 import json
 import os
+import shutil
+import tempfile
+import zipfile
 from typing import List, Optional, TypedDict
 
 from fiftyone.management import connection
@@ -177,11 +181,11 @@ def get_plugin_info(plugin_name: str) -> Plugin:
     return util.camel_to_snake_container(plugin)
 
 
-def upload_plugin(zip_path: str, overwrite: bool = False) -> Plugin:
+def upload_plugin(plugin_path: str, overwrite: bool = False) -> Plugin:
     """Uploads a plugin to central FiftyOne Teams.
 
     The local plugin must be a zip file that contains a single directory with
-    a ``fiftyone.yml`` file. For example::
+    a ``fiftyone.yml`` or ``fiftyone.yaml`` file. For example::
 
         my_plugin/
             fiftyone.yml
@@ -193,14 +197,28 @@ def upload_plugin(zip_path: str, overwrite: bool = False) -> Plugin:
         Only admins can upload plugins.
 
     Args:
-        zip_path: the path to a plugin zip
+        plugin_path: the path to a plugin zip or directory
         overwrite (False): whether to overwrite an existing plugin with same
             name
     """
     client = connection.APIClientConnection().client
 
-    with open(zip_path, "rb") as f:
-        upload_token = json.loads(client.post_file("file", f))["file_token"]
+    if os.path.isdir(plugin_path):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_name = os.path.join(temp_dir, "plugin")
+            zip_name = shutil.make_archive(
+                base_name=zip_name, format="zip", root_dir=plugin_path
+            )
+
+            with open(zip_name, "rb") as f:
+                upload_token = json.loads(client.post_file("file", f))[
+                    "file_token"
+                ]
+    else:
+        with open(plugin_path, "rb") as f:
+            upload_token = json.loads(client.post_file("file", f))[
+                "file_token"
+            ]
 
     return client.post_graphql_request(
         query=_UPLOAD_PLUGIN_QUERY,
