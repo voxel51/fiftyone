@@ -46,7 +46,8 @@ const ColorModal = () => {
                 <div style={{ margin: "4px" }}>Edit color scheme</div>
                 <CloseIcon
                   onClick={() => setActiveColorModalField(null)}
-                  style={{ margin: "4px" }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{ margin: "4px", cursor: "pointer" }}
                 />
               </DraggableModalTitle>
               <DraggableContent>

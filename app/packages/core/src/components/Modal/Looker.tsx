@@ -85,10 +85,6 @@ const Looker = ({
   }
 
   const sampleData = useMemo(() => {
-    if (!propsSampleData) {
-      return modalSampleData;
-    }
-
     let transformedUrls = {};
     if (urls) {
       if (Array.isArray(urls)) {
@@ -100,9 +96,16 @@ const Looker = ({
       }
     }
 
+    if (propsSampleData) {
+      return {
+        ...modalSampleData,
+        sample: propsSampleData,
+        urls: transformedUrls,
+      };
+    }
+
     return {
       ...modalSampleData,
-      sample: propsSampleData,
       urls: transformedUrls,
     };
   }, [propsSampleData, modalSampleData, urls]);
