@@ -10,9 +10,9 @@ from typing_extensions import Literal
 import backoff
 import requests
 
-from fiftyone_teams_api import constants
-from fiftyone_teams_api import errors
-from fiftyone_teams_api import socket
+from fiftyone.api import constants
+from fiftyone.api import errors
+from fiftyone.api import socket
 
 
 class Client:
@@ -135,9 +135,6 @@ class Client:
         response = self._session.request(
             method, url=url, timeout=self._timeout, **request_kwargs
         )
-
-        if response.status_code == 400:
-            raise errors.APIBadRequestError(response.text)
 
         if response.status_code == 401:
             raise errors.APIAuthenticationError

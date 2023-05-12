@@ -8,7 +8,7 @@ API connection.
 import requests.exceptions
 
 import fiftyone.core.config as foc
-import fiftyone_teams_api
+import fiftyone.api
 
 
 class APIClientConnection(object):
@@ -43,9 +43,7 @@ class APIClientConnection(object):
                 raise ConnectionError(
                     "Cannot connect to API without an API key."
                 )
-            self.__client = fiftyone_teams_api.Client(
-                config.api_uri, config.api_key
-            )
+            self.__client = fiftyone.api.Client(config.api_uri, config.api_key)
         return self.__client
 
 

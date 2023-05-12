@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 from motor import motor_asyncio
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.motor import proxy
+from fiftyone.api import client
+from fiftyone.api.motor import proxy
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.motor.client import AsyncIOMotorClient
-    from fiftyone_teams_api.motor.database import AsyncIOMotorDatabase
-    from fiftyone_teams_api.motor.collection import AsyncIOMotorCollection
+    from fiftyone.api.motor.client import AsyncIOMotorClient
+    from fiftyone.api.motor.database import AsyncIOMotorDatabase
+    from fiftyone.api.motor.collection import AsyncIOMotorCollection
 
 
 _Target = Union[

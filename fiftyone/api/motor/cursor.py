@@ -5,13 +5,14 @@
 """
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Union
 
+from motor import motor_asyncio
 import pymongo
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.pymongo import proxy
+from fiftyone.api import client
+from fiftyone.api.motor import proxy
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.pymongo.collection import Collection
+    from fiftyone.api.motor.collection import AsyncIOMotorCollection
 
 CursorType = pymongo.cursor.CursorType
 _Sort = pymongo.cursor._Sort  # pylint: disable=protected-access
@@ -21,14 +22,16 @@ _Sort = pymongo.cursor._Sort  # pylint: disable=protected-access
 _Sort = pymongo.cursor._Sort  # pylint: disable=protected-access
 
 
-class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
-    """Proxy class for pymongo.cursor.Cursor"""
+class AsyncIOMotorCursor(
+    proxy.MotorWebsocketProxy, motor_cls=motor_asyncio.AsyncIOMotorCursor
+):
+    """Proxy class for motor.motor_asyncio.AsyncIOMotorCursor"""
 
     # pylint: disable=missing-function-docstring
 
     def __init__(
         self,
-        collection: "Collection",
+        collection: "AsyncIOMotorCollection",
         # pylint: disable-next=redefined-builtin
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
@@ -40,7 +43,7 @@ class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
         self._collection = collection
 
         # Initialize proxy class
-        proxy.PymongoWebsocketProxy.__init__(
+        proxy.MotorWebsocketProxy.__init__(
             self, "find", [filter, projection, skip, limit, *args], kwargs
         )
 
@@ -83,14 +86,14 @@ class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
             clone.limit(-1)
             return next(clone)
 
-    def __copy__(self) -> "Cursor":
+    def __copy__(self) -> "AsyncIOMotorCursor":
         return self.clone()
 
     def __deepcopy__(self, _: Any) -> Any:
         return self.clone()
 
     @property
-    def collection(self) -> "Collection":
+    def collection(self) -> "AsyncIOMotorCollection":
         return self._collection
 
     @property
@@ -106,18 +109,14 @@ class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
         return self._collection.teams_api_ctx
 
     def clone(self):
-        return self.__class__(self._collection, **self._kwargs)
+        return self.__class__(self._collection, *self._args, **self._kwargs)
 
-    def limit(self, limit: int) -> "Cursor":
+    def limit(self, limit: int) -> "AsyncIOMotorCursor":
         self._limit = limit
         self.teams_api_execute_proxy("limit", (limit,))
         return self
 
-    def skip(self, skip: int) -> "Cursor":
+    def skip(self, skip: int) -> "AsyncIOMotorCursor":
         self._skip = skip
         self.teams_api_execute_proxy("skip", (skip,))
         return self
-
-
-class RawBatchCursor(Cursor, pymongo_cls=pymongo.cursor.RawBatchCursor):
-    """Proxy class for pymongo.cursor.RawBatchCursor"""

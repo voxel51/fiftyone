@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 import pymongo
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.pymongo import proxy
+from fiftyone.api import client
+from fiftyone.api.pymongo import proxy
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.pymongo.client import MongoClient
-    from fiftyone_teams_api.pymongo.database import Database
-    from fiftyone_teams_api.pymongo.collection import Collection
+    from fiftyone.api.pymongo.client import MongoClient
+    from fiftyone.api.pymongo.database import Database
+    from fiftyone.api.pymongo.collection import Collection
 
 
 _Target = Union["MongoClient", "Database", "Collection"]

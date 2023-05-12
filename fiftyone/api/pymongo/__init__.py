@@ -3,4 +3,4 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone_teams_api.client import Client
+from fiftyone.api.pymongo.client import MongoClient

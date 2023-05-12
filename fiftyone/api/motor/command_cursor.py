@@ -5,22 +5,22 @@
 """
 from typing import TYPE_CHECKING, Any, Dict, Union
 
-import pymongo
+from motor import motor_asyncio
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.pymongo import proxy
+from fiftyone.api import client
+from fiftyone.api.motor import proxy
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.pymongo.client import MongoClient
-    from fiftyone_teams_api.pymongo.database import Database
-    from fiftyone_teams_api.pymongo.collection import Collection
+    from fiftyone.api.motor.client import AsyncIOMotorClient
+    from fiftyone.api.motor.database import AsyncIOMotorDatabase
+    from fiftyone.api.motor.collection import AsyncIOMotorCollection
 
 
-class CommandCursor(
-    proxy.PymongoWebsocketProxy,
-    pymongo_cls=pymongo.command_cursor.CommandCursor,
+class AsyncIOMotorCommandCursor(
+    proxy.MotorWebsocketProxy,
+    motor_cls=motor_asyncio.AsyncIOMotorCommandCursor,
 ):
-    """Proxy class for pymongo.command_cursor.CommandCursor"""
+    """Proxy class for motor.motor_asyncio.AsyncIOMotorCommandCursor"""
 
     # pylint: disable=missing-function-docstring
 
@@ -34,7 +34,7 @@ class CommandCursor(
         self._target = target
 
         # Initialize proxy class
-        proxy.PymongoWebsocketProxy.__init__(self, command, args, kwargs)
+        proxy.MotorWebsocketProxy.__init__(self, command, args, kwargs)
 
     def __del__(self):
         pipeline = self._kwargs.get(
@@ -47,7 +47,7 @@ class CommandCursor(
         if any(stage.get("$out") or stage.get("$merge") for stage in pipeline):
             self.teams_api_execute_proxy("to_list", kwargs=dict(length=None))
 
-        proxy.PymongoWebsocketProxy.__del__(self)
+        proxy.MotorWebsocketProxy.__del__(self)
 
     @property
     def session(self) -> None:
@@ -62,7 +62,4 @@ class CommandCursor(
         return self._target.teams_api_ctx
 
 
-class RawBatchCommandCursor(
-    CommandCursor, pymongo_cls=pymongo.command_cursor.RawBatchCommandCursor
-):
-    """Proxy class for pymongo.command_cursor.RawBatchCommandCursor"""
+#

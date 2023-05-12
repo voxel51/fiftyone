@@ -9,10 +9,9 @@ import threading
 import time
 from typing import Dict, Optional
 
-import backoff
 import websocket
 
-from fiftyone_teams_api import constants
+from fiftyone.api import constants
 
 
 class Socket:

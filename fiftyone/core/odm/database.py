@@ -33,8 +33,7 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.internal as foi
 
-import fiftyone_teams_api.pymongo as fomongo
-import fiftyone_teams_api.motor as fomotor
+from fiftyone.api import pymongo as fomongo, motor as fomotor
 
 from .document import Document
 

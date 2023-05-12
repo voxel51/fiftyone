@@ -6,8 +6,8 @@
 import abc
 import asyncio
 
-from fiftyone_teams_api.motor.proxy import abstract
-from fiftyone_teams_api.pymongo.proxy import abstract as _pymongo_abstract
+from fiftyone.api.motor.proxy import abstract
+from fiftyone.api.pymongo.proxy import abstract as _pymongo_abstract
 
 TeamsContext = _pymongo_abstract.TeamsContext
 

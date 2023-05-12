@@ -5,7 +5,7 @@
 """
 import abc
 
-from fiftyone_teams_api.pymongo.proxy import abstract
+from fiftyone.api.pymongo.proxy import abstract
 
 TeamsContext = abstract.TeamsContext
 

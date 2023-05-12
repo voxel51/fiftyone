@@ -31,7 +31,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
         os.environ.pop("FIFTYONE_API_KEY", None)
         os.environ.pop("FIFTYONE_API_URI", None)
 
-    @mock.patch("fiftyone.management.connection.fiftyone_teams_api")
+    @mock.patch("fiftyone.management.connection.fiftyone.api")
     def test_singleton(self, api_mock):
         instance1 = fom.connection.APIClientConnection()
 
@@ -47,7 +47,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
 
         self.assertEqual(instance1, instance2)
 
-    @mock.patch("fiftyone.management.connection.fiftyone_teams_api")
+    @mock.patch("fiftyone.management.connection.fiftyone.api")
     def test_reload(self, api_mock):
         conn = fom.connection.APIClientConnection()
         conn.client.get()

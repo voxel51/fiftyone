@@ -17,8 +17,8 @@ import bson.raw_bson
 import pymongo
 from motor import motor_asyncio
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.motor import (
+from fiftyone.api import client
+from fiftyone.api.motor import (
     change_stream,
     command_cursor,
     cursor,
@@ -27,7 +27,7 @@ from fiftyone_teams_api.motor import (
 
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.motor.database import AsyncIOMotorDatabase
+    from fiftyone.api.motor.database import AsyncIOMotorDatabase
 
 
 class AsyncIOMotorCollection(

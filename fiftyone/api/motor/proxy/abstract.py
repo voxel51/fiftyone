@@ -11,8 +11,8 @@ from typing import Any, Iterable, List, Mapping, Optional, Tuple, Union, Type
 import dill as pickle
 import motor
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.pymongo.proxy import abstract as pymongo_abstract
+from fiftyone.api import client
+from fiftyone.api.pymongo.proxy import abstract as pymongo_abstract
 
 
 class MotorProxyMeta(abc.ABCMeta):

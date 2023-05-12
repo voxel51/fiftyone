@@ -17,15 +17,15 @@ import bson
 import bson.raw_bson
 import pymongo
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.pymongo import proxy
-from fiftyone_teams_api.pymongo import change_stream
-from fiftyone_teams_api.pymongo import command_cursor
-from fiftyone_teams_api.pymongo import cursor
+from fiftyone.api import client
+from fiftyone.api.pymongo import proxy
+from fiftyone.api.pymongo import change_stream
+from fiftyone.api.pymongo import command_cursor
+from fiftyone.api.pymongo import cursor
 
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.pymongo.database import Database
+    from fiftyone.api.pymongo.database import Database
 
 
 class Collection(

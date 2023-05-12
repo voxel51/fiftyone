@@ -5,22 +5,22 @@
 """
 from typing import TYPE_CHECKING, Any, Dict, Union
 
-from motor import motor_asyncio
+import pymongo
 
-from fiftyone_teams_api import client
-from fiftyone_teams_api.motor import proxy
+from fiftyone.api import client
+from fiftyone.api.pymongo import proxy
 
 if TYPE_CHECKING:
-    from fiftyone_teams_api.motor.client import AsyncIOMotorClient
-    from fiftyone_teams_api.motor.database import AsyncIOMotorDatabase
-    from fiftyone_teams_api.motor.collection import AsyncIOMotorCollection
+    from fiftyone.api.pymongo.client import MongoClient
+    from fiftyone.api.pymongo.database import Database
+    from fiftyone.api.pymongo.collection import Collection
 
 
-class AsyncIOMotorCommandCursor(
-    proxy.MotorWebsocketProxy,
-    motor_cls=motor_asyncio.AsyncIOMotorCommandCursor,
+class CommandCursor(
+    proxy.PymongoWebsocketProxy,
+    pymongo_cls=pymongo.command_cursor.CommandCursor,
 ):
-    """Proxy class for motor.motor_asyncio.AsyncIOMotorCommandCursor"""
+    """Proxy class for pymongo.command_cursor.CommandCursor"""
 
     # pylint: disable=missing-function-docstring
 
@@ -34,7 +34,7 @@ class AsyncIOMotorCommandCursor(
         self._target = target
 
         # Initialize proxy class
-        proxy.MotorWebsocketProxy.__init__(self, command, args, kwargs)
+        proxy.PymongoWebsocketProxy.__init__(self, command, args, kwargs)
 
     def __del__(self):
         pipeline = self._kwargs.get(
@@ -47,7 +47,7 @@ class AsyncIOMotorCommandCursor(
         if any(stage.get("$out") or stage.get("$merge") for stage in pipeline):
             self.teams_api_execute_proxy("to_list", kwargs=dict(length=None))
 
-        proxy.MotorWebsocketProxy.__del__(self)
+        proxy.PymongoWebsocketProxy.__del__(self)
 
     @property
     def session(self) -> None:
@@ -62,4 +62,7 @@ class AsyncIOMotorCommandCursor(
         return self._target.teams_api_ctx
 
 
-#
+class RawBatchCommandCursor(
+    CommandCursor, pymongo_cls=pymongo.command_cursor.RawBatchCommandCursor
+):
+    """Proxy class for pymongo.command_cursor.RawBatchCommandCursor"""

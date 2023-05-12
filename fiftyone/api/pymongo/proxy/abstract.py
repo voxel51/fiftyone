@@ -10,7 +10,7 @@ from typing import Any, Iterable, List, Mapping, Optional, Tuple, Union, Type
 
 import dill as pickle
 
-from fiftyone_teams_api import client
+from fiftyone.api import client
 
 
 TeamsContext = List[

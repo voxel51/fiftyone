@@ -3,22 +3,26 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from typing import Any, Dict, Optional
+import asyncio
+from typing import Any, Optional
 
 import bson
 import pymongo
+from motor import motor_asyncio
 
-from fiftyone_teams_api import client as api_client
-from fiftyone_teams_api.pymongo import proxy
-from fiftyone_teams_api.pymongo import change_stream
-from fiftyone_teams_api.pymongo import command_cursor
-from fiftyone_teams_api.pymongo import database
+from fiftyone.api import client as api_client
+
+from fiftyone.api.motor import proxy
+
+from fiftyone.api.motor import change_stream
+from fiftyone.api.motor import command_cursor
+from fiftyone.api.motor import database
 
 
-class MongoClient(proxy.PymongoRestProxy, pymongo_cls=pymongo.MongoClient):
-    """Proxy class for pymongo.MongoClient"""
-
-    # pylint: disable=missing-function-docstring
+class AsyncIOMotorClient(
+    proxy.MotorRestProxy, motor_cls=motor_asyncio.AsyncIOMotorClient
+):
+    """Proxy class for motor.motor_asyncio.AsyncIOMotorClient"""
 
     def __init__(self, *_: Any, **kwargs: Any):
         # Initialize Teams API client
@@ -26,23 +30,31 @@ class MongoClient(proxy.PymongoRestProxy, pymongo_cls=pymongo.MongoClient):
         api_key = kwargs.get("__teams_api_key")
 
         if not api_url and not api_key:
-            raise ValueError("MongoClient requires an API URL and an API key.")
+            raise ValueError(
+                "AsyncIOMotorClient requires an API URL and an API key."
+            )
 
         self.__teams_api_client = api_client.Client(api_url, api_key)
 
         # Initialize proxy class
-        proxy.PymongoRestProxy.__init__(self)
+        proxy.MotorRestProxy.__init__(self)
 
-    def __getattr__(self, name: str) -> database.Database:
+    @property
+    def io_loop(self):
+        return asyncio.get_event_loop()
+
+    def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(
-                f"MongoClient has no attribute {name!r}. To access the {name} "
-                f"database, use client[{name!r}]."
+                "%s has no attribute %r. To access the %s"
+                " database, use client['%s']."
+                % (self.__class__.__name__, name, name, name)
             )
-        return self.get_database(name)
 
-    def __getitem__(self, name: str) -> database.Database:
-        return self.get_database(name)
+        return self[name]
+
+    def __getitem__(self, name):
+        return database.AsyncIOMotorDatabase(self, name)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
@@ -57,7 +69,7 @@ class MongoClient(proxy.PymongoRestProxy, pymongo_cls=pymongo.MongoClient):
         return hash(self._topology)
 
     def __repr__(self):
-        return f"MongoClient({{url={self.teams_api_client.base_url}}})"
+        return f"{self.__class__.__name__}({self.__teams_api_client!r})"
 
     @property
     def address(self) -> None:
@@ -113,11 +125,11 @@ class MongoClient(proxy.PymongoRestProxy, pymongo_cls=pymongo.MongoClient):
         read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
         write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
         read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
-    ) -> database.Database:
+    ) -> database.AsyncIOMotorDatabase:
         if not name:
             return self.get_default_database()
 
-        return database.Database(
+        return database.AsyncIOMotorDatabase(
             self,
             name,
             codec_options,
@@ -133,11 +145,12 @@ class MongoClient(proxy.PymongoRestProxy, pymongo_cls=pymongo.MongoClient):
         read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
         write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
         read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
-    ) -> database.Database:
+    ) -> database.AsyncIOMotorDatabase:
         # The following proxy call is is a special method only on the server
         # to help is restricting which databases a SDK user has access to.
         default = self.teams_api_execute_proxy("__get_default_database_name")
-        return database.Database(
+
+        return database.AsyncIOMotorDatabase(
             self,
             default,
             codec_options,
@@ -146,17 +159,17 @@ class MongoClient(proxy.PymongoRestProxy, pymongo_cls=pymongo.MongoClient):
             read_concern,
         )
 
-    def list_databases(
+    async def list_databases(
         self, *args: Any, **kwargs: Any
-    ) -> command_cursor.CommandCursor[Dict[str, Any]]:
-        return command_cursor.CommandCursor(
+    ) -> command_cursor.AsyncIOMotorCommandCursor:
+        return command_cursor.AsyncIOMotorCommandCursor(
             self, "list_databases", *args, **kwargs
         )
 
-    def start_session(self, *args: Any, **kwargs: Any) -> None:
+    async def start_session(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
     def watch(
         self, *args: Any, **kwargs: Any
-    ) -> change_stream.ClusterChangeStream:
-        return change_stream.ClusterChangeStream(self, *args, **kwargs)
+    ) -> change_stream.AsyncIOMotorChangeStream:
+        return change_stream.AsyncIOMotorChangeStream(self, *args, **kwargs)
