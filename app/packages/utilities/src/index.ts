@@ -3,11 +3,11 @@ import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
 
+export * from "./Resource";
 export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
-export * from "./Resource";
 export * from "./styles";
 
 interface O {
@@ -72,7 +72,7 @@ type KeyValue<T> = {
 export const removeKeys = <T>(
   obj: KeyValue<T>,
   keys: Iterable<string>,
-  startsWith: boolean = false
+  startsWith = false
 ): KeyValue<T> => {
   const set = new Set(keys);
   const values = Array.from(keys);
@@ -261,6 +261,7 @@ export const AGGS = {
   DISTINCT: "Distinct",
 };
 
+export const ARRAY_FIELD = "fiftyone.core.fields.ArrayField";
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const DATE_FIELD = "fiftyone.core.fields.DateField";
 export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
@@ -277,6 +278,7 @@ export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
+export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
@@ -310,6 +312,15 @@ export const VALID_NUMERIC_TYPES = [
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+];
+
+// list fields may not have a subfield type, so null, undefined is included
+export const UNSUPPORTED_FILTER_TYPES = [
+  ARRAY_FIELD,
+  DICT_FIELD,
+  VECTOR_FIELD,
+  null,
+  undefined,
 ];
 
 export const LABELS_PATH = "fiftyone.core.labels";
@@ -388,12 +399,12 @@ const isURL = (() => {
       return false;
     }
 
-    var match = string.match(protocolAndDomainRE);
+    const match = string.match(protocolAndDomainRE);
     if (!match) {
       return false;
     }
 
-    var everythingAfterProtocol = match[1];
+    const everythingAfterProtocol = match[1];
     if (!everythingAfterProtocol) {
       return false;
     }
@@ -524,7 +535,7 @@ export const toSlug = (name: string) => {
   const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
 
   let slug = name.toLowerCase();
-  let matches = [];
+  const matches = [];
   let match;
   while ((match = valid_chars.exec(slug)) !== null) {
     matches.push(match);
