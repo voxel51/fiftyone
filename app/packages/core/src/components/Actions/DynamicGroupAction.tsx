@@ -10,13 +10,13 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
+import { Alert } from "@mui/material";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ActionDiv } from "./ActionsRow";
 import { useDynamicGroupChoices } from "./DynamicGroupAction/useDynamicGroupChoices";
-import { Alert, Typography } from "@mui/material";
 
 const DynamicGroupContainer = styled.div`
   margin: 0.5rem 0;
