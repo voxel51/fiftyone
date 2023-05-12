@@ -52,9 +52,11 @@ function ActualOperatorPrompt() {
     paletteProps.cancelButtonText = "Close";
   }
 
+  const title = getPromptTitle(operatorPrompt);
+
   return createPortal(
     <OperatorPalette
-      dynamicWidth
+      title={title}
       {...paletteProps}
       onClose={paletteProps.onCancel || operatorPrompt.close}
       submitOnControlEnter
@@ -139,4 +141,10 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
       )}
     </Box>
   );
+}
+
+function getPromptTitle(operatorPrompt) {
+  const definition =
+    operatorPrompt?.inputFields || operatorPrompt?.outputFields;
+  return definition?.view?.label;
 }

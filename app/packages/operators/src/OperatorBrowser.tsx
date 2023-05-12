@@ -1,5 +1,4 @@
 import { useTheme } from "@fiftyone/components";
-import { scrollbarStyles } from "@fiftyone/utilities";
 import { Close, Extension, Help, Lock } from "@mui/icons-material";
 import { Link } from "@mui/material";
 import { createPortal } from "react-dom";
@@ -8,16 +7,11 @@ import { initializationErrors } from "./operators";
 import { useOperatorBrowser } from "./state";
 
 // todo: use plugin component
+import { useEffect, useRef } from "react";
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorPalette from "./OperatorPalette";
-import { useEffect, useRef } from "react";
 
-const ResultsContainer = styled.div`
-  margin-top: 1rem;
-  max-height: calc(100% - 66px);
-  overflow: auto;
-  ${scrollbarStyles}
-`;
+const ResultsContainer = styled.div``;
 const QueryInput = styled.input`
   width: 100%;
   background: none;
