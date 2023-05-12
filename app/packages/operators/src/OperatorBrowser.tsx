@@ -121,41 +121,45 @@ export default function OperatorBrowser() {
     return null;
   }
   return createPortal(
-    <OperatorPalette onOutsideClick={browser.close}>
-      <TopBarDiv>
-        <QueryDiv>
-          <QueryInput
-            ref={queryInputRef}
-            autoFocus
-            placeholder="Search operations by name..."
-            onChange={(e) => browser.onChangeQuery(e.target.value)}
-          />
-        </QueryDiv>
-        <IconsContainer>
-          {browser.hasQuery && (
-            <Close
-              onClick={() => browser.clear()}
-              style={{
-                cursor: "pointer",
-                color: theme.text.secondary,
-              }}
+    <OperatorPalette
+      onOutsideClick={browser.close}
+      title={
+        <TopBarDiv>
+          <QueryDiv>
+            <QueryInput
+              ref={queryInputRef}
+              autoFocus
+              placeholder="Search operations by name..."
+              onChange={(e) => browser.onChangeQuery(e.target.value)}
             />
-          )}
-          <ErrorView
-            schema={{
-              view: { detailed: true, popout: true, left: true },
-            }}
-            data={initializationErrors}
-          />
-          <Link
-            href="https://docs.voxel51.com/user_guide/app.html#operations"
-            style={{ display: "flex" }}
-            target="_blank"
-          >
-            <Help style={{ color: theme.text.secondary }} />
-          </Link>
-        </IconsContainer>
-      </TopBarDiv>
+          </QueryDiv>
+          <IconsContainer>
+            {browser.hasQuery && (
+              <Close
+                onClick={() => browser.clear()}
+                style={{
+                  cursor: "pointer",
+                  color: theme.text.secondary,
+                }}
+              />
+            )}
+            <ErrorView
+              schema={{
+                view: { detailed: true, popout: true, left: true },
+              }}
+              data={initializationErrors}
+            />
+            <Link
+              href="https://docs.voxel51.com/user_guide/app.html#operations"
+              style={{ display: "flex" }}
+              target="_blank"
+            >
+              <Help style={{ color: theme.text.secondary }} />
+            </Link>
+          </IconsContainer>
+        </TopBarDiv>
+      }
+    >
       <ResultsContainer>
         {browser.choices.map((choice) => (
           <Choice

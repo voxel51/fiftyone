@@ -1,11 +1,23 @@
 import styled from "styled-components";
 import BaseStylesProvider from "./BaseStylesProvider";
 import { Button } from "@fiftyone/components";
-import { PropsWithChildren, useCallback, useEffect, useRef } from "react";
+import {
+  PropsWithChildren,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { useOutsideClick } from "@fiftyone/state";
 import { PALETTE_CONTROL_KEYS } from "./constants";
 import { onEnter } from "./utils";
+
+import Dialog, { DialogProps } from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 
 export default function OperatorPalette(props: OperatorPaletteProps) {
   const paletteElem = useRef<HTMLDivElement>(null);
@@ -20,8 +32,10 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     onOutsideClick,
     allowPropagation,
     submitOnControlEnter,
+    title,
   } = props;
   const hideActions = !onSubmit && !onCancel;
+  const scroll = "paper";
 
   useOutsideClick(paletteElem, (e) => {
     const { top, bottom, left, right } =
@@ -64,6 +78,30 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
       document.removeEventListener("keydown", keyDownHandler);
     };
   }, [paletteElem, keyDownHandler]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      scroll={scroll}
+      maxWidth="lg"
+      aria-labelledby="scroll-dialog-title"
+      aria-describedby="scroll-dialog-description"
+    >
+      <DialogTitle id="scroll-dialog-title">{title}</DialogTitle>
+      <DialogContent dividers={scroll === "paper"}>
+        <DialogContentText id="scroll-dialog-description" tabIndex={-1}>
+          {children}
+        </DialogContentText>
+      </DialogContent>
+      {!hideActions && (
+        <DialogActions>
+          <Button onClick={onCancel}>Cancel</Button>
+          <Button onClick={onSubmit}>{submitButtonText}</Button>
+        </DialogActions>
+      )}
+    </Dialog>
+  );
 
   return (
     <BaseStylesProvider>
@@ -156,4 +194,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   dynamicWidth?: boolean;
   allowPropagation?: boolean;
   submitOnControlEnter?: boolean;
+  title?: ReactElement;
 };
