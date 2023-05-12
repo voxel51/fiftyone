@@ -13,12 +13,7 @@ import { move } from "@fiftyone/utilities";
 import { useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { Resizable } from "re-resizable";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -26,8 +21,6 @@ import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
 import SchemaSettings from "../Schema/SchemaSettings";
-import { graphql, useFragment } from "react-relay";
-import { selectedPathsState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 const MARGIN = 3;
 
