@@ -490,7 +490,6 @@ export default function useSchemaSettings() {
       const disabledCount = finalSchema.filter(
         (field) => field.disabled
       )?.length;
-      const skipCount = finalSchema.filter((field) => field.skip)?.length;
       const subSelected = unSelected
         .map((field) => [...getSubPaths(field.path)])
         .flat()
@@ -498,13 +497,6 @@ export default function useSchemaSettings() {
       const unSelectedCount =
         subSelected.length - unSelected.length - disabledCount;
 
-      console.log(
-        "count",
-        subSelected.length,
-        unSelected.length,
-        disabledCount,
-        skipCount
-      );
       if (unSelectedCount !== affectedPathCount && unSelectedCount > 0) {
         setAffectedPathCount(unSelectedCount);
       }
