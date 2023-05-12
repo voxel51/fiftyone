@@ -582,6 +582,7 @@ class TestOperator extends Operator {
     return new OperatorConfig({
       name: "test_operator",
       label: "Test an Operator",
+      dynamic: true,
     });
   }
   parseParams(rawParams: string) {
@@ -593,13 +594,18 @@ class TestOperator extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    const operatorNames = listLocalAndRemoteOperators().allOperators.map(
-      (o) => o.name
-    );
-    inputs.defineProperty("operator", new types.Enum(operatorNames), {
+    const choices = new types.AutocompleteView();
+    const { allOperators } = listLocalAndRemoteOperators();
+    for (const operator of allOperators) {
+      choices.addChoice(operator.uri, {
+        label: operator.label,
+        description: operator.uri,
+      });
+    }
+    inputs.defineProperty("operator", new types.Enum(choices.values()), {
       label: "Operator",
       required: true,
-      view: { name: "AutocompleteView" },
+      view: choices,
     });
     const parsedParams =
       typeof ctx.params.raw_params === "string"

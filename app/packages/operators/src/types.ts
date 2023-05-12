@@ -307,7 +307,8 @@ export class Choice extends View {
 }
 export class Choices extends View {
   choices: Choice[];
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
+    options = options || { choices: [] };
     super(options);
     this.choices = options.choices;
   }
@@ -326,7 +327,7 @@ export class Choices extends View {
 }
 export class RadioGroup extends Choices {
   orientation: ViewOrientation;
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
     super(options);
     this.orientation = options.orientation as ViewOrientation;
   }
@@ -338,7 +339,7 @@ export class RadioGroup extends Choices {
   }
 }
 export class Dropdown extends Choices {
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
     super(options);
   }
   static fromJSON(json) {
@@ -466,7 +467,7 @@ export class JSONView extends View {
   }
 }
 export class AutocompleteView extends Choices {
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
     super(options);
   }
   static fromJSON(json) {
