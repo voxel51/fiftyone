@@ -484,40 +484,24 @@ export default function useSchemaSettings() {
 
   // updates the affected fields count
   useEffect(() => {
-    if (viewSchema && schema && selectedPaths?.[datasetName]) {
-      const combinedSchema =
-        dataset.mediaType === "video"
-          ? {
-              ...viewSchema,
-              ...schema,
-            }
-          : schema;
-
-      const skipFieldsCount = Object.keys(combinedSchema).filter(
-        (path: string) => {
-          return skipFiled(path, combinedSchema[path]?.ftype);
-        }
+    if (finalSchema?.length) {
+      const unSelected = finalSchema.filter((field) => !field.isSelected);
+      const disabledCount = finalSchema.filter(
+        (field) => field.disabled
       )?.length;
-      const disabledFieldsCount = Object.keys(combinedSchema).filter(
-        (path: string) => {
-          return disabledField(
-            path,
-            combinedSchema[path]?.ftype,
-            dataset?.groupField
-          );
-        }
-      )?.length;
+      const skipCount = finalSchema.filter((field) => field.skip)?.length;
+      const subSelected = unSelected
+        .map((field) => [...getSubPaths(field.path)])
+        .flat()
+        .filter((path) => !skipFiled(path, finalSchema[path]?.ftype));
+      const unSelectedCount =
+        subSelected.length - unSelected.length - disabledCount - skipCount;
 
-      const diff =
-        Object.keys(combinedSchema).length -
-        selectedPaths?.[datasetName]?.size -
-        skipFieldsCount -
-        disabledFieldsCount;
-      if (diff !== affectedPathCount && diff >= 0) {
-        setAffectedPathCount(diff);
+      if (unSelectedCount !== affectedPathCount && unSelectedCount > 0) {
+        setAffectedPathCount(unSelectedCount);
       }
     }
-  }, [viewSchema, schema, selectedPaths?.[datasetName]]);
+  }, [finalSchema]);
 
   return {
     settingModal,
