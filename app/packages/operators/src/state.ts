@@ -23,6 +23,8 @@ import * as fos from "@fiftyone/state";
 import { BROWSER_CONTROL_KEYS } from "./constants";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
+import { throttle } from "lodash";
+import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -663,26 +665,16 @@ export function useInvocationRequestExecutor({
   return executor;
 }
 
+export const operatorThrottledContext = atom({
+  key: "operatorThrottledContext",
+  default: {},
+});
+
 export const operatorPlacementsSelector = selector({
   key: "operatorPlacementsSelector",
   get: async ({ get }) => {
-    // const globalContext = get(globalContextSelector);
-
-    const datasetName = get(fos.datasetName);
-    const view = get(fos.view);
-    const extended = get(fos.extendedStages);
-    const filters = get(fos.filters);
-    // TODO: this should include the actual selected samples
-    // using get(fos.selectedSamples) ends up in an infinite loop
-    const selectedSamples = new Set(); // get(fos.selectedSamples);
-    const _ctx = {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-    };
-    const ctx = new ExecutionContext({}, _ctx);
+    const throttledContext = get(operatorThrottledContext);
+    const ctx = new ExecutionContext({}, throttledContext);
     const placements = await fetchRemotePlacements(ctx);
     return placements;
   },
@@ -704,6 +696,33 @@ export const placementsForPlaceSelector = selectorFamily({
 });
 
 export function useOperatorPlacements(place: Place) {
+  const datasetName = useRecoilValue(fos.datasetName);
+  const view = useRecoilValue(fos.view);
+  const extendedStages = useRecoilValue(fos.extendedStages);
+  const filters = useRecoilValue(fos.filters);
+  const selectedSamples = useRecoilValue(fos.selectedSamples);
+  const setContext = useSetRecoilState(operatorThrottledContext);
+  const setThrottledContext = useCallback(
+    throttle(
+      (context) => {
+        setContext(context);
+      },
+      RESOLVE_PLACEMENTS_TTL,
+      { leading: true, trailing: true }
+    ),
+    []
+  );
+
+  useEffect(() => {
+    setThrottledContext({
+      datasetName,
+      view,
+      extendedStages,
+      filters,
+      selectedSamples,
+    });
+  }, [datasetName, view, extendedStages, filters, selectedSamples]);
+
   const placements = useRecoilValue(placementsForPlaceSelector(place));
 
   return { placements };
