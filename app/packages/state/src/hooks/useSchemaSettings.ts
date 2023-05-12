@@ -260,7 +260,7 @@ export default function useSchemaSettings() {
       refetch(
         { name: dataset.name, viewStages: vStages || [] },
         {
-          fetchPolicy: "network-only",
+          fetchPolicy: "store-and-network",
           onComplete: (err) => {
             if (err) {
               console.error("failed to fetch view schema", err);
