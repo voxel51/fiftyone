@@ -496,8 +496,15 @@ export default function useSchemaSettings() {
         .flat()
         .filter((path) => !skipFiled(path, finalSchema[path]?.ftype));
       const unSelectedCount =
-        subSelected.length - unSelected.length - disabledCount - skipCount;
+        subSelected.length - unSelected.length - disabledCount;
 
+      console.log(
+        "count",
+        subSelected.length,
+        unSelected.length,
+        disabledCount,
+        skipCount
+      );
       if (unSelectedCount !== affectedPathCount && unSelectedCount > 0) {
         setAffectedPathCount(unSelectedCount);
       }
