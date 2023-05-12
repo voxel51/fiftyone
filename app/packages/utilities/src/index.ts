@@ -537,3 +537,11 @@ export const toSlug = (name: string) => {
   }
   return "";
 };
+
+export function pluralize(
+  number: number,
+  singular: string | JSX.Element,
+  plural: string | JSX.Element
+) {
+  return number === 1 ? singular : plural;
+}

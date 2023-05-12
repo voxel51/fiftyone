@@ -522,46 +522,6 @@ class ShowSamples extends Operator {
 //   }
 // }
 
-function isAtomOrSelector(v: any): boolean {
-  return (
-    v &&
-    v.constructor &&
-    v.constructor.name &&
-    (v.constructor.name === "RecoilState" ||
-      v.constructor.name === "RecoilValueReadOnly")
-  );
-}
-
-function getTypeForValue(value: any) {
-  switch (typeof value) {
-    case "string":
-      return new types.String();
-      break;
-    case "number":
-      return new types.Number();
-      break;
-    case "boolean":
-      return new types.Boolean();
-      break;
-    case "object":
-      if (value === null) {
-        return new types.String();
-      }
-      if (Array.isArray(value)) {
-        if (value.length > 0) {
-          return new types.List(getTypeForValue(value[0]));
-        } else {
-          return new types.List(new types.String());
-        }
-      }
-      const type = new types.Object();
-      Object.entries(value).forEach(([k, v]) => {
-        type.defineProperty(k, getTypeForValue(v));
-      });
-      return type;
-  }
-}
-
 class ConsoleLog extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
