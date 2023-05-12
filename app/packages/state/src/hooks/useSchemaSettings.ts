@@ -195,6 +195,7 @@ export default function useSchemaSettings() {
   const dataset = useRecoilValue(fos.dataset);
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
+  const hasFrames = dataset?.mediaType === "video";
 
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -477,13 +478,36 @@ export default function useSchemaSettings() {
 
   // updates the affected fields count
   useEffect(() => {
-    if (viewSchema && schema) {
-      const diff = Object.keys(viewSchema).length - Object.keys(schema).length;
+    if (viewSchema && schema && selectedPaths?.[datasetName]) {
+      const combinedSchema =
+        dataset.mediaType === "video"
+          ? {
+              ...viewSchema,
+              ...schema,
+            }
+          : schema;
+
+      const skipFieldsCount = Object.keys(combinedSchema).filter(
+        (path: string) => {
+          return skipFiled(path, combinedSchema[path]?.ftype);
+        }
+      )?.length;
+      const disabledFieldsCount = Object.keys(combinedSchema).filter(
+        (path: string) => {
+          return disabledField(path, combinedSchema[path]?.ftype);
+        }
+      )?.length;
+
+      const diff =
+        Object.keys(combinedSchema).length -
+        selectedPaths?.[datasetName]?.size -
+        skipFieldsCount -
+        disabledFieldsCount;
       if (diff !== affectedPathCount && diff >= 0) {
         setAffectedPathCount(diff);
       }
     }
-  }, [viewSchema, schema]);
+  }, [viewSchema, schema, selectedPaths?.[datasetName]]);
 
   return {
     settingModal,
