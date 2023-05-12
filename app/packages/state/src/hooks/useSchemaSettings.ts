@@ -2,6 +2,7 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
+import { VECTOR_FIELD } from "@fiftyone/utilities";
 import {
   DICT_FIELD,
   FRAME_NUMBER_FIELD,
@@ -32,6 +33,7 @@ const skipFiled = (path: string, ftype: string) => {
   return (
     ftype === DICT_FIELD ||
     ftype === JUST_FIELD ||
+    ftype === VECTOR_FIELD ||
     path.includes(".logits") ||
     path.endsWith(".index") ||
     path.endsWith(".bounding_box")
