@@ -70,6 +70,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
               placeholder={"Select brain key"}
               overflow={true}
               component={Value}
+              resultsPlacement="bottom-start"
               containerStyle={selectorStyle}
             />
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
@@ -78,6 +79,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 placeholder={"Color by"}
                 overflow={true}
                 component={Value}
+                resultsPlacement="bottom-start"
                 containerStyle={selectorStyle}
               />
             )}
