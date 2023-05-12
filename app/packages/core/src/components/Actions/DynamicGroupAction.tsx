@@ -10,11 +10,13 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
-import { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ActionDiv } from "./ActionsRow";
+import { useDynamicGroupChoices } from "./DynamicGroupAction/useDynamicGroupChoices";
+import { Alert, Typography } from "@mui/material";
 
 const DynamicGroupContainer = styled.div`
   margin: 0.5rem 0;
@@ -47,7 +49,7 @@ export const DynamicGroupAction = () => {
 
   const setView = useSetView(true, false, onComplete);
 
-  const candidateFields = useRecoilValue(fos.dynamicGroupCandidateFields);
+  const { availableFields, error, isLoading } = useDynamicGroupChoices();
 
   const canSubmitRequest = useMemo(() => {
     if (isProcessing) {
@@ -108,12 +110,12 @@ export const DynamicGroupAction = () => {
 
   const searchSelector = useCallback(
     (search: string) => {
-      const values = candidateFields.filter((name) => {
+      const values = availableFields?.filter((name) => {
         return name.includes(search);
       });
-      return { values, total: values.length };
+      return { values, total: values?.length ?? 0 };
     },
-    [candidateFields]
+    [availableFields]
   );
 
   return (
@@ -148,67 +150,79 @@ export const DynamicGroupAction = () => {
             ) : (
               <>
                 <PopoutSectionTitle>Group By</PopoutSectionTitle>
-                <Selector
-                  inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
-                  component={SelectorValueComponent}
-                  containerStyle={{
-                    marginLeft: "0.5rem",
-                    position: "relative",
-                  }}
-                  onSelect={setGroupBy}
-                  resultsPlacement="center"
-                  overflow={true}
-                  placeholder={"group by"}
-                  useSearch={searchSelector}
-                  value={groupBy ?? ""}
-                />
-                <TabOption
-                  active={useOrdered ? "ordered" : "unordered"}
-                  disabled={isProcessing}
-                  options={[
-                    {
-                      text: "ordered",
-                      title: "Ordered",
-                      onClick: () => setUseOrdered(true),
-                    },
-                    {
-                      text: "unordered",
-                      title: "Unordered",
-                      onClick: () => setUseOrdered(false),
-                    },
-                  ]}
-                />
-                {useOrdered && (
-                  <Selector
-                    inputStyle={{
-                      height: 28,
-                      width: "100%",
-                      fontSize: "medium",
-                    }}
-                    component={SelectorValueComponent}
-                    containerStyle={{
-                      marginLeft: "0.5rem",
-                      position: "relative",
-                    }}
-                    onSelect={setOrderBy}
-                    resultsPlacement="center"
-                    overflow={true}
-                    placeholder={"order by"}
-                    useSearch={searchSelector}
-                    value={orderBy ?? ""}
-                  />
+                {isLoading && <LoadingDots text="Loading fields" />}
+                {error && <Alert severity="error">{error}</Alert>}
+
+                {!isLoading && !error && availableFields && (
+                  <>
+                    <Selector
+                      inputStyle={{
+                        height: 28,
+                        width: "100%",
+                        fontSize: "medium",
+                      }}
+                      component={SelectorValueComponent}
+                      containerStyle={{
+                        marginLeft: "0.5rem",
+                        position: "relative",
+                      }}
+                      onSelect={setGroupBy}
+                      resultsPlacement="center"
+                      overflow={true}
+                      placeholder={"group by"}
+                      useSearch={searchSelector}
+                      value={groupBy ?? ""}
+                    />
+
+                    <TabOption
+                      active={useOrdered ? "ordered" : "unordered"}
+                      disabled={isProcessing}
+                      options={[
+                        {
+                          text: "ordered",
+                          title: "Ordered",
+                          onClick: () => setUseOrdered(true),
+                        },
+                        {
+                          text: "unordered",
+                          title: "Unordered",
+                          onClick: () => setUseOrdered(false),
+                        },
+                      ]}
+                    />
+                    {useOrdered && (
+                      <Selector
+                        inputStyle={{
+                          height: 28,
+                          width: "100%",
+                          fontSize: "medium",
+                        }}
+                        component={SelectorValueComponent}
+                        containerStyle={{
+                          marginLeft: "0.5rem",
+                          position: "relative",
+                        }}
+                        onSelect={setOrderBy}
+                        resultsPlacement="center"
+                        overflow={true}
+                        placeholder={"order by"}
+                        useSearch={searchSelector}
+                        value={orderBy ?? ""}
+                      />
+                    )}
+                    <Button
+                      style={{
+                        width: "100%",
+                        marginTop: "0.5rem",
+                        cursor: !canSubmitRequest ? "not-allowed" : "pointer",
+                      }}
+                      disabled={!canSubmitRequest}
+                      onClick={onSubmit}
+                    >
+                      {isProcessing ? "Processing..." : "Submit"}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  style={{
-                    width: "100%",
-                    marginTop: "0.5rem",
-                    cursor: !canSubmitRequest ? "not-allowed" : "pointer",
-                  }}
-                  disabled={!canSubmitRequest}
-                  onClick={onSubmit}
-                >
-                  {isProcessing ? "Processing..." : "Submit"}
-                </Button>
               </>
             )}
           </DynamicGroupContainer>

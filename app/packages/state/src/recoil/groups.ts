@@ -12,6 +12,16 @@ import {
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 
+import {
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  VALID_LIST_FIELDS,
+} from "@fiftyone/utilities";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import {
@@ -26,13 +36,6 @@ import { RelayEnvironmentKey } from "./relay";
 import { fieldSchema } from "./schema";
 import { datasetName } from "./selectors";
 import { dynamicGroupViewQuery, view } from "./view";
-import {
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-} from "@fiftyone/utilities";
 
 export type SliceName = string | undefined | null;
 
@@ -234,26 +237,6 @@ export const groupQuery = graphQLSelector<
         },
       },
     };
-  },
-});
-
-export const dynamicGroupCandidateFields = selector<string[]>({
-  key: "dynamicGroupFields",
-  get: ({ get }) => {
-    const fieldSchemaValue = get(fieldSchema({ space: null }));
-
-    return Object.entries(fieldSchemaValue)
-      .filter(
-        ([_, { name, ftype }]) =>
-          name !== "filepath" &&
-          name !== "id" &&
-          (ftype === INT_FIELD ||
-            ftype === FLOAT_FIELD ||
-            ftype === STRING_FIELD ||
-            ftype === FRAME_NUMBER_FIELD ||
-            ftype === OBJECT_ID_FIELD)
-      )
-      .map(([_, { name }]) => name);
   },
 });
 
