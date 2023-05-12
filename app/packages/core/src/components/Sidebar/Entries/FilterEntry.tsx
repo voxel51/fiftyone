@@ -27,7 +27,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const resetSelectedFieldStages = useResetRecoilState(
     selectedFieldsStageState
   );
-  const resetSelectedPaths = useResetRecoilState(selectedPathsState(new Set()));
+  const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
   const affectedPathCount = useRecoilValue(affectedPathCountState);
 
   const { setSelectedFieldsStage, resetTextFilter } = fos.useSchemaSettings();

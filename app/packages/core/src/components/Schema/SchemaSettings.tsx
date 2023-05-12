@@ -69,6 +69,7 @@ const SchemaSettings = () => {
     searchResults,
     setFieldsOnly,
     setSelectedFieldsStage,
+    datasetName,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -179,8 +180,10 @@ const SchemaSettings = () => {
               onClick={() => {
                 if (!selectedPaths) return;
                 let initialFieldNames = searchResults.length
-                  ? searchResults.filter((pp) => selectedPaths.has(pp))
-                  : [...selectedPaths];
+                  ? searchResults.filter((pp) =>
+                      selectedPaths?.[datasetName]?.has(pp)
+                    )
+                  : [...selectedPaths[datasetName]];
 
                 const stageKwargs = {
                   field_names: initialFieldNames.filter((pp) => !!pp),

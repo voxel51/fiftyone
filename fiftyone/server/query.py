@@ -462,24 +462,19 @@ class Query(fosa.AggregateQuery):
     def schema_for_view_stages(
         self, dataset_name: str, view_stages: BSONArray
     ) -> t.List[SampleField]:
-        ds = fod.load_dataset(dataset_name)
         try:
+            ds = fod.load_dataset(dataset_name)
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
 
-                base_schema = serialize_fields(
-                    view.get_field_schema(flat=True)
-                )
                 if ds.media_type == fom.VIDEO:
-                    # return base_schema + serialize_fields(view.get_frame_field_schema(flat=True))
                     return serialize_fields(
                         view.get_frame_field_schema(flat=True)
                     )
 
-                return base_schema
+                return serialize_fields(view.get_field_schema(flat=True))
 
             if ds.media_type == fom.VIDEO:
-                # return base_schema + serialize_fields(ds.get_frame_field_schema(flat=True))
                 return serialize_fields(ds.get_frame_field_schema(flat=True))
 
             return serialize_fields(ds.get_field_schema(flat=True))
