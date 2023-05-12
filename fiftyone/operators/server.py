@@ -43,6 +43,9 @@ class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         dataset_name = data.get("dataset_name", None)
+        if dataset_name is None:
+            raise ValueError("Dataset name must be provided")
+
         dataset_ids = [dataset_name]
         registry = PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
