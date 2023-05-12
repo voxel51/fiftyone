@@ -7,6 +7,7 @@ import {
   sessionColorScheme,
   datasetName,
   view,
+  datasetAppConfig,
 } from "../recoil";
 import useSendEvent from "./useSendEvent";
 import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
@@ -19,17 +20,25 @@ const useClearSessionColorScheme = () => {
   const setSessionColorSchemeState = useSetRecoilState(sessionColorScheme);
   const dataset = useRecoilValue(datasetName);
   const stages = useRecoilValue(view);
+  const defaultSetting = useRecoilValue(datasetAppConfig).colorScheme;
 
   function onClear(saveToApp: boolean) {
     const combined = {
-      colorPool: DEFAULT_APP_COLOR_SCHEME.colorPool,
-      customizedColorSettings: DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
+      colorPool: defaultSetting
+        ? defaultSetting.colorPool
+        : DEFAULT_APP_COLOR_SCHEME.colorPool,
+      customizedColorSettings: defaultSetting?.customizedColorSettings
+        ? JSON.parse(defaultSetting.customizedColorSettings)
+        : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
     };
     const api = {
-      colorPool: DEFAULT_APP_COLOR_SCHEME.colorPool,
-      customizedColorSettings: null,
+      colorPool: defaultSetting
+        ? defaultSetting.colorPool
+        : DEFAULT_APP_COLOR_SCHEME.colorPool,
+      customizedColorSettings: defaultSetting?.customizedColorSettings
+        ? defaultSetting.customizedColorSettings
+        : null,
     };
-
     setSessionColorSchemeState(combined);
 
     return send((session) =>
