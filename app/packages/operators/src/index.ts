@@ -6,6 +6,7 @@ export {
   Operator,
   OperatorConfig,
   executeStartupOperators,
+  executeOperator,
 } from "./operators";
 export { useOperatorExecutor, useOperatorPlacements } from "./state";
 export { loadOperators } from "./built-in-operators";
