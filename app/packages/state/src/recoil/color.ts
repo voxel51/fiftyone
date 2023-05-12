@@ -82,9 +82,15 @@ export const pathColor = selectorFamily<
     ({ modal, path }) =>
     ({ get }) => {
       // video path tweak
-      const adjustedPath = path.startsWith("frames.")
-        ? path.slice("frames.".length)
-        : path;
+      const video = get(selectors.mediaTypeSelector) !== "image";
+      const parentPath =
+        video && path.startsWith("frames.")
+          ? path.split(".").slice(0, 2).join(".")
+          : path.split(".")[0];
+      const adjustedPath = parentPath.startsWith("frames.")
+        ? parentPath.slice("frames.".length)
+        : parentPath;
+
       const setting = get(
         atoms.sessionColorScheme
       )?.customizedColorSettings?.find((x) => x.field === adjustedPath);
@@ -94,12 +100,6 @@ export const pathColor = selectorFamily<
       }
 
       const map = get(colorMap(modal));
-      const video = get(selectors.mediaTypeSelector) !== "image";
-
-      const parentPath =
-        video && path.startsWith("frames.")
-          ? path.split(".").slice(0, 2).join(".")
-          : path.split(".")[0];
 
       if (get(schemaAtoms.labelFields({})).includes(parentPath)) {
         return map(parentPath);
