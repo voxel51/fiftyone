@@ -41,6 +41,11 @@ def test_semantic_segmentation_models():
     _apply_models(models)
 
 
+def test_sam():
+    models = ["segment-anything-vit_b-torch"]
+    _apply_models(models, max_samples=1)
+
+
 def test_keypoint_models():
     models = _get_models_with_tag("keypoints")
     _apply_person_keypoint_models(models)
@@ -49,7 +54,7 @@ def test_keypoint_models():
 def test_embedding_models():
     all_models = foz.list_zoo_models()
     _apply_embedding_models(all_models)
-    
+
 
 def test_logits_models():
     models = _get_models_with_tag("logits")
@@ -100,6 +105,7 @@ def _apply_models(
     batch_size=None,
     confidence_thresh=None,
     pass_confidence_thresh=False,
+    max_samples=10,
 ):
     if pass_confidence_thresh:
         kwargs = {"confidence_thresh": confidence_thresh}
@@ -111,7 +117,7 @@ def _apply_models(
         split="validation",
         dataset_name=fo.get_default_dataset_name(),
         shuffle=True,
-        max_samples=10,
+        max_samples=max_samples,
     )
 
     for idx, model_name in enumerate(model_names, 1):
@@ -213,7 +219,12 @@ def _apply_zero_shot_models(model_names):
         dataset.apply_model(model, label_field=label_field, batch_size=4)
 
         assert len(dataset.exists(label_field)) == len(dataset)
-        assert all([label in custom_labels for label in dataset.distinct(f"{label_field}.label")])
+        assert all(
+            [
+                label in custom_labels
+                for label in dataset.distinct(f"{label_field}.label")
+            ]
+        )
 
 
 def _apply_person_keypoint_models(model_names):

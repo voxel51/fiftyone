@@ -389,7 +389,7 @@ class TorchImageModel(
         if self._using_half_precision:
             imgs = imgs.half()
 
-        output = self._model(imgs)
+        output = self._forward_pass(imgs)
 
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
@@ -397,6 +397,9 @@ class TorchImageModel(
         return self._output_processor(
             output, frame_size, confidence_thresh=self.config.confidence_thresh
         )
+
+    def _forward_pass(self, inputs):
+        return self._model(inputs)
 
     def _parse_classes(self, config):
         if config.labels_string is not None:
