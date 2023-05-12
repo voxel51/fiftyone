@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import CloseIcon from "@mui/icons-material/Close";
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -31,6 +31,23 @@ const ColorModal = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
+
+  const keyboardHandler = useCallback(
+    (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
+          return;
+        }
+      }
+      if (e.key === "Escape") {
+        setActiveColorModalField(null);
+      }
+    },
+    [setActiveColorModalField]
+  );
+
+  fos.useEventHandler(document, "keydown", keyboardHandler);
 
   if (targetContainer) {
     return ReactDOM.createPortal(
