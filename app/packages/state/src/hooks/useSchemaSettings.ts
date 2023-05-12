@@ -47,7 +47,8 @@ const disabledField = (path: string, ftype: string, groupField?: string) => {
     path.startsWith("metadata") ||
     path.endsWith("frames.frame_number") ||
     ftype === FRAME_NUMBER_FIELD ||
-    groupField === path
+    groupField === path ||
+    path === "sample_id"
   );
 };
 export const schemaSearchTerm = atom<string>({
