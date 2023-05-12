@@ -24,7 +24,7 @@ import {
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
-import ShuffleColor from "./controls/RefreshColor";
+import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 
 type Prop = {
   field: Field;
@@ -151,6 +151,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                       colors={colorPool}
                       onChange={(color) => onChangeFieldColor(color.hex)}
                       id={"twitter-color-picker"}
+                      className={colorPicker}
                     />
                   </PickerWrapper>
                 )}

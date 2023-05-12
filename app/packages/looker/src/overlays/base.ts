@@ -97,49 +97,34 @@ export abstract class CoordinateOverlay<
     options: { coloring, customizeColorSetting },
   }: Readonly<State>): string {
     let key;
-    let pool;
     // video fields path needs to be converted
     const path = this.field.startsWith("frames.")
       ? this.field.slice("frames.".length)
       : this.field;
-    switch (coloring.by) {
-      case "field":
-        // check if the field has a customized color, use it if it is a valid color
-        const field = customizeColorSetting.find((s) => s.field === path);
-        const useFieldColor = field?.useFieldColor;
-        const fieldColor = field?.fieldColor;
-        if (useFieldColor && fieldColor && isValidColor(fieldColor)) {
-          return fieldColor;
-        }
-
-        // use default settings
-        return getColor(coloring.pool, coloring.seed, this.field);
-
-      default:
-        // check if the field has customized setting
-        const setting = customizeColorSetting.find((s) => s.field === path);
-        if (setting) {
-          key = setting.attributeForColor ?? "label";
-          pool = setting.colors?.every((c) => isValidColor(c))
-            ? setting.colors
-            : coloring.pool;
-          // check if this label has a assigned color, use it if it is a valid color
-
-          const labelColor = setting.labelColors?.find(
-            (l) => l.name == this.label[key]?.toString()
-          )?.color;
-
-          if (isValidColor(labelColor)) {
-            return labelColor;
-          } else {
-            // fallback to use label as default attribute
-            key = "label";
-          }
-        } else {
-          key = "label";
-          pool = coloring.pool;
-        }
-        return getColor(pool, coloring.seed, this.label[key]);
+    const field = customizeColorSetting.find((s) => s.field === path);
+    if (coloring.by === "field") {
+      if (
+        field?.useFieldColor &&
+        field?.fieldColor &&
+        isValidColor(field.fieldColor)
+      ) {
+        return field.fieldColor;
+      }
+      return getColor(coloring.pool, coloring.seed, this.field);
+    }
+    if (coloring.by === "value") {
+      if (field) {
+        key = field.attributeForColor ?? "label";
+        // check if this label has a assigned color, use it if it is a valid color
+        const labelColor = field.labelColors?.find(
+          (l) => l.name == this.label[key]?.toString()
+        )?.color;
+        return isValidColor(labelColor)
+          ? labelColor
+          : getColor(coloring.pool, coloring.seed, this.label["label"]);
+      } else {
+        return getColor(coloring.pool, coloring.seed, this.label["label"]);
+      }
     }
   }
 
