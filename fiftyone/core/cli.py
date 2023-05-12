@@ -31,6 +31,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
+import fiftyone.plugins.core as fop
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
@@ -92,6 +93,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
+        _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
@@ -2697,6 +2699,164 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class PluginsCommand(Command):
+    """Tools for working with the FiftyOne Plugin Zoo."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", PluginListCommand)
+        _register_command(subparsers, "enable", PluginEnableCommand)
+        _register_command(subparsers, "disable", PluginDisableCommand)
+        _register_command(subparsers, "download", PluginDownloadCommand)
+        _register_command(subparsers, "delete", PluginDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class PluginListCommand(Command):
+    """List plugins in the FiftyOne Plugin Zoo.
+
+    Examples::
+
+        # List all locally available plugins
+        fiftyone plugins list
+
+        # List enabled plugins
+        fiftyone plugins list --enabled
+
+        # List downloaded but not installed (disabled) plugins
+        fiftyone plugins list --disabled
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show plugin names",
+        )
+        parser.add_argument(
+            "-e",
+            "--enabled",
+            action="store_true",
+            default=None,
+            help="only show plugins enabled in FiftyOne",
+        )
+        parser.add_argument(
+            "-d",
+            "--disabled",
+            action="store_true",
+            default=None,
+            help="only show plugins that have been disabled",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        enabled_only = None
+        if args.disabled:
+            enable_only = False
+        elif args.enabled:
+            enabled_only = True
+
+        plugin_packages = fop._list_plugins(enabled_only=enabled_only)
+        _print_dict_as_table(
+            plugin_packages.to_dict(), headers=["plugin name", "path"]
+        )
+
+
+class PluginDownloadCommand(Command):
+    """Download plugins. Note that this command only downloads the plugin files.
+    Run the `install` command to enable the plugin in Fiftyone.
+
+    Examples::
+
+        # Download plugins by providing a GitHub repository URL:
+        fiftyone plugins download <github-repo-url>
+
+        # Download plugins by specifying the GitHub repository owner and name:
+        fiftyone plugins download <username>/<repo>[/<branch>]
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "repo",
+            metavar="REPO",
+            help="URL or 'owner/name[/branch]' of the GitHub repo",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        repo = args.repo
+        fop.download_plugin(repo)
+
+
+class PluginEnableCommand(Command):
+    """Enable plugins in the App.
+    Examples::
+
+        # Enable a plugin that has previously been disabled:
+        fiftyone plugins enable <plugin_name>
+
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            help="name of the plugin to enable",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fop.enable_plugin(name)
+
+
+class PluginDisableCommand(Command):
+    """Disable the plugins in the App.
+    Examples::
+
+        # Uninstall a plugin:
+        fiftyone plugins uninstall <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fop.disable_plugin(name)
+
+
+class PluginDeleteCommand(Command):
+    """Deletes the local copy of the plugin on disk.
+
+    Examples::
+
+        # Delete an entire plugin from disk
+        fiftyone zoo datasets delete <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the plugin"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fop.delete_plugin(name)
 
 
 class MigrateCommand(Command):
