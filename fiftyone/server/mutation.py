@@ -173,6 +173,14 @@ class Mutation:
         state.selected_labels = []
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        view_name = None
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+                view_name = doc.name
+            except:
+                pass
 
         # Load saved views
         if saved_view_slug is not None:
@@ -212,6 +220,7 @@ class Mutation:
         if state and state.view:
             final_view = state.view._serialize()
 
+        slug = fou.to_slug(view_name) if view_name else None
         dataset = await Dataset.resolver(
             name=dataset_name,
             view=final_view,

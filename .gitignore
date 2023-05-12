@@ -22,8 +22,13 @@ dist/
 /docs/build/
 /docs/source/api/
 
+/docker/README.pdf
 /bin
 /lib
 coverage.xml
 .coverage.*
 pyvenv.cfg
+.python-version
+
+*.whl
+/deployment/docker/__models__

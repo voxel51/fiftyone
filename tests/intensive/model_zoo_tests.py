@@ -49,7 +49,7 @@ def test_keypoint_models():
 def test_embedding_models():
     all_models = foz.list_zoo_models()
     _apply_embedding_models(all_models)
-    
+
 
 def test_logits_models():
     models = _get_models_with_tag("logits")
@@ -213,7 +213,12 @@ def _apply_zero_shot_models(model_names):
         dataset.apply_model(model, label_field=label_field, batch_size=4)
 
         assert len(dataset.exists(label_field)) == len(dataset)
-        assert all([label in custom_labels for label in dataset.distinct(f"{label_field}.label")])
+        assert all(
+            [
+                label in custom_labels
+                for label in dataset.distinct(f"{label_field}.label")
+            ]
+        )
 
 
 def _apply_person_keypoint_models(model_names):

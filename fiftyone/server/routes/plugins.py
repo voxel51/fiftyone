@@ -15,6 +15,7 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 from fiftyone.server.decorators import route
+from fiftyone.plugins.permissions import ManagedPlugins
 from fiftyone.plugins import list_plugins
 
 
@@ -24,7 +25,7 @@ class Plugins(HTTPEndpoint):
         plugin_packages = [
             plugin_definition.to_json() for plugin_definition in list_plugins()
         ]
-        return {"plugins": plugin_packages}
+        return {"plugins": filter_disabled_plugins(request, plugin_packages)}
 
 
 def load_json_or_none(filepath):
@@ -32,3 +33,12 @@ def load_json_or_none(filepath):
         return etas.read_json(filepath)
     except FileNotFoundError:
         return None
+
+
+def filter_disabled_plugins(request, plugin_packages):
+    managed_plugins = ManagedPlugins.for_request(request)
+    return [
+        p
+        for p in plugin_packages
+        if managed_plugins.has_plugin(p.get("name", None))
+    ]

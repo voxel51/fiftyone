@@ -459,11 +459,19 @@ class DatasetView(foc.SampleCollection):
                 exit_context.enter_context(pb)
                 samples = pb(samples)
 
+            download_context = getattr(self, "_download_context", None)
+            download = download_context is not None
+            if download:
+                exit_context.enter_context(download_context)
+
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for sample in samples:
+                if download:
+                    download_context.next()
+
                 yield sample
 
                 if autosave:
@@ -584,11 +592,19 @@ class DatasetView(foc.SampleCollection):
                 exit_context.enter_context(pb)
                 groups = pb(groups)
 
+            download_context = getattr(self, "_download_context", None)
+            download = download_context is not None
+            if download:
+                exit_context.enter_context(download_context)
+
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for group in groups:
+                if download:
+                    download_context.next()
+
                 yield group
 
                 if autosave:
@@ -1253,9 +1269,9 @@ class DatasetView(foc.SampleCollection):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
-                case for this argument is that your source data lives in a
-                single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.storage.normalize_path`. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             include_private (False): whether to include private fields
             include_frames (False): whether to include the frame labels for
