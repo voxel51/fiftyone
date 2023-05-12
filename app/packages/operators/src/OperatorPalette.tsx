@@ -84,12 +84,24 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
           },
         }}
       >
-        {title && <DialogTitle component="div">{title}</DialogTitle>}
-        <DialogContent dividers={scroll === "paper"} className={scrollable}>
+        {title && (
+          <DialogTitle component="div" sx={{ p: 1 }}>
+            {title}
+          </DialogTitle>
+        )}
+        <DialogContent
+          dividers={scroll === "paper"}
+          className={scrollable}
+          sx={{
+            p: 1,
+            ...(hideActions ? { borderBottom: "none" } : {}),
+            ...(title ? {} : { borderTop: "none" }),
+          }}
+        >
           {children}
         </DialogContent>
         {!hideActions && (
-          <DialogActions>
+          <DialogActions sx={{ p: 1 }}>
             {onCancel && <Button onClick={onCancel}>{cancelButtonText}</Button>}
             {onSubmit && <Button onClick={onSubmit}>{submitButtonText}</Button>}
           </DialogActions>
