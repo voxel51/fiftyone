@@ -151,12 +151,16 @@ class OperatorNumber extends BaseType {
 }
 export { OperatorNumber as Number };
 export class List extends BaseType {
-  constructor(public elementType: ANY_TYPE) {
+  constructor(
+    public elementType: ANY_TYPE,
+    public minItems?: number,
+    public maxItems?: number
+  ) {
     super();
   }
 
-  static fromJSON({ element_type }) {
-    return new List(typeFromJSON(element_type));
+  static fromJSON({ element_type, min_items, max_items }) {
+    return new List(typeFromJSON(element_type), min_items, max_items);
   }
 }
 export class SampleID extends OperatorString {

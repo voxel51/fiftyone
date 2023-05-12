@@ -138,7 +138,9 @@ class Object(BaseType):
         """
         return self.define_property(name, Enum(values), **kwargs)
 
-    def list(self, name, element_type, **kwargs):
+    def list(
+        self, name, element_type, min_items=None, max_items=None, **kwargs
+    ):
         """Defines a property on the object that is a list.
 
         Args:
@@ -148,7 +150,9 @@ class Object(BaseType):
             description (None): the :class:`View`.description of the :class:`Property`
             view (None): the :class:`View` of the :class:`Property`
         """
-        return self.define_property(name, List(element_type), **kwargs)
+        return self.define_property(
+            name, List(element_type, min_items, max_items), **kwargs
+        )
 
     def obj(self, name, **kwargs):
         """Defines a property on the object that is an object.
