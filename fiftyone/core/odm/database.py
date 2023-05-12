@@ -192,7 +192,7 @@ def establish_db_conn(config):
     global _database_name
 
     _connection_kwargs["appname"] = foc.DATABASE_APPNAME
-    if config.api_uri is not None:
+    if config.database_uri is None and config.api_uri is not None:
         if not config.api_key:
             raise ConnectionError(
                 "No API key found. Refer to "
