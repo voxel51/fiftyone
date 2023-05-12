@@ -48,7 +48,7 @@ const JSONViewer: React.FC = ({}) => {
   }, [setting]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
-
+  console.info(theme);
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
@@ -65,25 +65,33 @@ const JSONViewer: React.FC = ({}) => {
           }}
           svgStyles={{ height: "1rem", marginTop: 7.5 }}
         />
-        {haveChanges && (
-          <Button
-            onClick={onApply}
-            style={{ margin: "0.25rem" }}
-            text="Save Changes"
-            title="Validate color scheme JSON and apply to session color scheme setting"
-          />
-        )}
       </SectionWrapper>
       <Editor
         defaultLanguage="json"
         theme={themeMode == "dark" ? "vs-dark" : "vs-light"}
         value={JSON.stringify(data, null, 4)}
         width={"100%"}
-        height={"calc(100% - 110px)"}
+        height={"calc(100% - 90px)"}
         wrapperProps={{ padding: 0 }}
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
+      {haveChanges && (
+        <Button
+          onClick={onApply}
+          style={{
+            margin: "0.25rem",
+            backgroundColor: theme.voxel["500"],
+            color: "#fff",
+            position: "absolute",
+            top: "calc(100% - 90px)",
+            left: "calc(100% - 150px)",
+            textAlign: "center",
+          }}
+          text="Apply Changes"
+          title="Validate color scheme JSON and apply to session color scheme setting"
+        />
+      )}
     </div>
   );
 };
