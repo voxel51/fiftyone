@@ -7,12 +7,15 @@ import {
   useOperatorPrompt,
   useShowOperatorIO,
 } from "./state";
+import { throttle } from "lodash";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import BaseStylesProvider from "./BaseStylesProvider";
 import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { stringifyError } from "./utils";
+import { useCallback } from "react";
+import { RESOLVE_TYPE_TTL } from "./constants";
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -70,16 +73,21 @@ function ActualOperatorPrompt() {
 }
 
 function Prompting({ operatorPrompt }) {
+  const setFormState = useCallback(
+    throttle((data) => {
+      const formData = data;
+      for (const field in formData) {
+        operatorPrompt.setFieldValue(field, formData[field]);
+      }
+    }, RESOLVE_TYPE_TTL),
+    []
+  );
+
   return (
     <form onSubmit={operatorPrompt.onSubmit}>
       <OperatorIO
         schema={operatorPrompt.inputFields}
-        onChange={(data) => {
-          const formData = data;
-          for (const field in formData) {
-            operatorPrompt.setFieldValue(field, formData[field]);
-          }
-        }}
+        onChange={setFormState}
         data={operatorPrompt.promptingOperator.params}
         errors={operatorPrompt?.validationErrors || []}
       />
