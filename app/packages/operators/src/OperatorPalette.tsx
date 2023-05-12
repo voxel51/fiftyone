@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogProps,
 } from "@mui/material";
+import { onEnter } from "./utils";
 
 export default function OperatorPalette(props: OperatorPaletteProps) {
   const paletteElem = useRef<HTMLDivElement>(null);
@@ -102,8 +103,16 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
         </DialogContent>
         {!hideActions && (
           <DialogActions sx={{ p: 1 }}>
-            {onCancel && <Button onClick={onCancel}>{cancelButtonText}</Button>}
-            {onSubmit && <Button onClick={onSubmit}>{submitButtonText}</Button>}
+            {onCancel && (
+              <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
+                {cancelButtonText}
+              </Button>
+            )}
+            {onSubmit && (
+              <Button onClick={onSubmit} onKeyDown={onEnter(onSubmit)}>
+                {submitButtonText}
+              </Button>
+            )}
           </DialogActions>
         )}
       </Dialog>
