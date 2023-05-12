@@ -197,11 +197,13 @@ restart it to pick up this new setting.
 
     Your plugins directory must be readable by the FiftyOne server.
 
-Installing plugins manually
+Installing local plugins
 ---------------------------
 
-Fiftyone will try and find your plugin's `fiftyone.yaml` file within the plugin
-directory described above. Below is an example of a typical plugin directory.
+In order for Fiftyone to recognize a plugin package, Fiftyone will try and
+find your plugin's `fiftyone.yaml` file
+within the `FIFTYONE_PLUGINS_DIR` described above. Below is an example of a
+typical plugin directory.
 
 .. code-block:: text
 
@@ -215,8 +217,14 @@ directory described above. Below is an example of a typical plugin directory.
         /fiftyone-plugin.yaml
         /__init__.py
 
-In order to manually install a plugin, you must copy the plugin's source directory
-into your plugin directory so that it matches the structure above.
+If the source code for a plugin already exists on the local filesystem, you can
+use
+the `fiftyone.core.plugins.create_plugin` function that will copy the source
+code to the plugins directory and create a `fiftyone.yaml` file for you if
+one does not already exist.
+
+Alternatively, you can manually copy the plugin
+directory into your plugins directory so that it matches the structure above.
 
 If your FiftyOne App server is already running, you should restart the server
 and refresh any connected browser clients to see the plugins show up.
@@ -226,10 +234,19 @@ and refresh any connected browser clients to see the plugins show up.
     If you do not see your plugin, make sure the `fiftyone.yaml` file is
     present and defines all operators (python) and scripts (js).
 
-Installing plugins via CLI or Python
+Downloading plugins via CLI or Python
 ------------------------------------
 
-TBD
+If you see a plugin on GitHub you want to try out or have a direct link to a
+ZIP archive of a plugin, you can download and install it via the CLI
+command or Python SDK. simply via the CLI commandby calling
+`` from the
+command line or
+running: `
+You can download plugins from the command line
+or from within
+Python.
+
 
 Configuring plugins
 -------------------
