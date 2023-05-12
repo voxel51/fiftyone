@@ -39,7 +39,7 @@ const skipFiled = (path: string, ftype: string) => {
     path.endsWith(".bounding_box")
   );
 };
-const disabledField = (path: string, ftype: string) => {
+const disabledField = (path: string, ftype: string, groupField?: string) => {
   return (
     path === "tags" ||
     path === "filepath" ||
@@ -47,8 +47,7 @@ const disabledField = (path: string, ftype: string) => {
     path.startsWith("metadata") ||
     path.endsWith("frames.frame_number") ||
     ftype === FRAME_NUMBER_FIELD ||
-    path === "group" ||
-    path === "frames.group"
+    groupField === path
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -135,7 +134,8 @@ export const selectedPathsState = atomFamily({
               ) &&
               !disabledField(
                 path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype
+                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
+                dataset?.groupField
               )
           )
           .map((path) => mapping?.[path] || path);
@@ -193,9 +193,9 @@ export default function useSchemaSettings() {
   const router = useContext(fos.RouterContext);
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
+
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
-  const hasFrames = dataset?.mediaType === "video";
 
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -333,7 +333,9 @@ export default function useSchemaSettings() {
 
         const ftype = tmpSchema[path].ftype;
         const skip = skipFiled(path, ftype);
-        const disabled = disabledField(path, ftype) || filterRuleTab;
+        const isGroupField = dataset?.groupField;
+        const disabled =
+          disabledField(path, ftype, isGroupField) || filterRuleTab;
 
         const fullPath =
           dataset.mediaType === "video" && viewSchema?.[path]
@@ -401,7 +403,11 @@ export default function useSchemaSettings() {
         if (
           currPath.startsWith(path + ".") &&
           !skipFiled(currPath, mergedSchema?.[currPath]?.ftype) &&
-          !disabledField(currPath, mergedSchema?.[currPath]?.ftype)
+          !disabledField(
+            currPath,
+            mergedSchema?.[currPath]?.ftype,
+            dataset?.groupField
+          )
         ) {
           subPaths.add(getPath(currPath));
         }
@@ -494,7 +500,11 @@ export default function useSchemaSettings() {
       )?.length;
       const disabledFieldsCount = Object.keys(combinedSchema).filter(
         (path: string) => {
-          return disabledField(path, combinedSchema[path]?.ftype);
+          return disabledField(
+            path,
+            combinedSchema[path]?.ftype,
+            dataset?.groupField
+          );
         }
       )?.length;
 
