@@ -48,11 +48,12 @@ const JSONViewer: React.FC = ({}) => {
   }, [setting]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
-  console.info(theme);
+
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
-        You can use the JSON editor to customize the color settings.
+        You can use the JSON editor below to copy/edit your current color
+        scheme, or you can paste in a pre-built color scheme to apply.
         <ActionOption
           href={COLOR_SCHEME}
           text={"Read more"}
@@ -62,9 +63,12 @@ const JSONViewer: React.FC = ({}) => {
             color: theme.text.primary,
             paddingTop: 0,
             paddingBottom: 0,
+            marginLeft: 5,
+            display: "inline-block",
           }}
           svgStyles={{ height: "1rem", marginTop: 7.5 }}
-        />
+        />{" "}
+        about custom color schemes.
       </SectionWrapper>
       <Editor
         defaultLanguage="json"

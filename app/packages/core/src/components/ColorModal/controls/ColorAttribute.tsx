@@ -70,7 +70,7 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
 
   return (
     <div>
-      Select an attribute for annotation's color
+      Select an attribute to color by
       <ActionDiv ref={ref}>
         <Tooltip
           text={

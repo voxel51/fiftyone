@@ -129,7 +129,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     }
   }, [values]);
 
-  if (!values) return null;
+  if (!values || values.length == 0) return null;
   return (
     <div style={style}>
       {values.map((value, index) => (
