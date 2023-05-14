@@ -85,7 +85,7 @@ const JSONViewer: React.FC = ({}) => {
           onClick={onApply}
           style={{
             margin: "0.25rem",
-            backgroundColor: theme.voxel["500"],
+            backgroundColor: theme.primary.main,
             color: "#fff",
             position: "absolute",
             top: "calc(100% - 90px)",
