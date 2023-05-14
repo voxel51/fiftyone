@@ -10,8 +10,8 @@ import { useOperatorBrowser } from "./state";
 import { useEffect, useRef } from "react";
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorPalette from "./OperatorPalette";
+import { PaletteContentContainer } from "./styled-components";
 
-const ResultsContainer = styled.div``;
 const QueryInput = styled.input`
   width: 100%;
   background: none;
@@ -154,7 +154,7 @@ export default function OperatorBrowser() {
         </TopBarDiv>
       }
     >
-      <ResultsContainer>
+      <PaletteContentContainer>
         {browser.choices.map((choice) => (
           <Choice
             onClick={() => browser.setSelectedAndSubmit(choice)}
@@ -171,7 +171,7 @@ export default function OperatorBrowser() {
             selected={false}
           />
         )}
-      </ResultsContainer>
+      </PaletteContentContainer>
     </OperatorPalette>,
     document.body
   );

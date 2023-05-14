@@ -6,7 +6,7 @@ import {
   useEffect,
   useRef,
 } from "react";
-import BaseStylesProvider from "./BaseStylesProvider";
+import { BaseStylesProvider } from "./styled-components";
 import { PALETTE_CONTROL_KEYS } from "./constants";
 
 import { scrollable } from "@fiftyone/components";

@@ -12,7 +12,10 @@ import styled from "styled-components";
 
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
-import BaseStylesProvider from "./BaseStylesProvider";
+import {
+  BaseStylesProvider,
+  PaletteContentContainer,
+} from "./styled-components";
 import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { stringifyError } from "./utils";
 import { useCallback } from "react";
@@ -61,16 +64,18 @@ function ActualOperatorPrompt() {
       onClose={paletteProps.onCancel || operatorPrompt.close}
       submitOnControlEnter
     >
-      {operatorPrompt.showPrompt && (
-        <Prompting operatorPrompt={operatorPrompt} />
-      )}
-      {operatorPrompt.isExecuting && <div>Executing...</div>}
-      {showResultOrError && (
-        <ResultsOrError
-          operatorPrompt={operatorPrompt}
-          outputFields={operatorPrompt.outputFields}
-        />
-      )}
+      <PaletteContentContainer>
+        {operatorPrompt.showPrompt && (
+          <Prompting operatorPrompt={operatorPrompt} />
+        )}
+        {operatorPrompt.isExecuting && <div>Executing...</div>}
+        {showResultOrError && (
+          <ResultsOrError
+            operatorPrompt={operatorPrompt}
+            outputFields={operatorPrompt.outputFields}
+          />
+        )}
+      </PaletteContentContainer>
     </OperatorPalette>,
     document.body
   );
