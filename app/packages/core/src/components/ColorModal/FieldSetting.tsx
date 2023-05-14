@@ -187,19 +187,21 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
           >
-            <Checkbox
-              name={`Use custom attribute for label`}
-              value={state.useCustomAttribute}
-              setValue={(v: boolean) => {
-                if (!v) {
-                  const newSetting = cloneDeep(customizedColorSettings ?? []);
-                  const index = newSetting.findIndex((x) => x.field === path);
-                  newSetting[index].attributeForColor = undefined;
-                  setColorScheme(colorPool, newSetting, false);
-                }
-                setState((s) => ({ ...s, useCustomAttribute: v }));
-              }}
-            />
+            {path && field.embeddedDocType && (
+              <Checkbox
+                name={`Use custom attribute for label`}
+                value={state.useCustomAttribute}
+                setValue={(v: boolean) => {
+                  if (!v) {
+                    const newSetting = cloneDeep(customizedColorSettings ?? []);
+                    const index = newSetting.findIndex((x) => x.field === path);
+                    newSetting[index].attributeForColor = undefined;
+                    setColorScheme(colorPool, newSetting, false);
+                  }
+                  setState((s) => ({ ...s, useCustomAttribute: v }));
+                }}
+              />
+            )}
             {/* set the attribute used for color */}
             {path && field.embeddedDocType && state.useCustomAttribute && (
               <ColorAttribute fields={colorFields} />
