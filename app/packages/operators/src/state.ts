@@ -1,30 +1,33 @@
+import * as fos from "@fiftyone/state";
+import { throttle } from "lodash";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   atom,
   selector,
   selectorFamily,
-  useRecoilValue,
-  useRecoilState,
   useRecoilCallback,
-  useSetRecoilState,
+  useRecoilState,
   useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
-import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
-  getLocalOrRemoteOperator,
-  listLocalAndRemoteOperators,
-  executeOperatorWithContext,
+  BROWSER_CONTROL_KEYS,
+  RESOLVE_PLACEMENTS_TTL,
+  RESOLVE_TYPE_TTL,
+} from "./constants";
+import {
   ExecutionContext,
-  getInvocationRequestQueue,
   InvocationRequestQueue,
   OperatorResult,
+  executeOperatorWithContext,
   fetchRemotePlacements,
+  getInvocationRequestQueue,
+  getLocalOrRemoteOperator,
+  listLocalAndRemoteOperators,
 } from "./operators";
-import * as fos from "@fiftyone/state";
-import { BROWSER_CONTROL_KEYS } from "./constants";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
-import { throttle } from "lodash";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -137,19 +140,28 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
+  const resolveInput = useCallback(
+    throttle(
+      async (ctx) => {
+        try {
+          const resolved = await operator.resolveInput(ctx);
+          if (resolved) {
+            setInputFields(resolved.toProps());
+          } else {
+            setInputFields(null);
+          }
+        } catch (e) {
+          resolveTypeError.current = e;
+          setInputFields(null);
+        }
+      },
+      operator.isRemote ? RESOLVE_TYPE_TTL : 0
+    ),
+    []
+  );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
-    try {
-      const resolved = await operator.resolveInput(ctx);
-      if (resolved) {
-        setInputFields(resolved.toProps());
-      } else {
-        setInputFields(null);
-      }
-    } catch (e) {
-      resolveTypeError.current = e;
-      setInputFields(null);
-    }
+    resolveInput(ctx);
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
 
   useEffect(() => {
