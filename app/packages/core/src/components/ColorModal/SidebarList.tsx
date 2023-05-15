@@ -104,7 +104,13 @@ const SidebarList: React.FC = () => {
                 <List component="div" disablePadding>
                   {group.paths.map((path, pathIdx) => (
                     <ListItemButton
-                      sx={{ pl: 4, margin: "-0.25rem" }}
+                      sx={{
+                        pl: 4,
+                        margin: "-0.25rem",
+                        "&.Mui-selected": {
+                          backgroundColor: theme.primary.main,
+                        },
+                      }}
                       key={`menu-${pathIdx}`}
                       selected={path === getCurrentField(activeField)}
                       disableRipple
