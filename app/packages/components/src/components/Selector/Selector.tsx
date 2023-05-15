@@ -57,6 +57,7 @@ const SelectorResults = <T extends unknown>({
 };
 
 export interface SelectorProps<T> {
+  id?: string;
   value?: string;
   onSelect: (value: T) => void;
   placeholder: string;
@@ -72,6 +73,7 @@ export interface SelectorProps<T> {
 }
 
 const Selector = <T extends unknown>({
+  id,
   value,
   onSelect,
   placeholder,
@@ -195,6 +197,7 @@ const Selector = <T extends unknown>({
           <AnimatePresence>
             <motion.div
               className={style.resultsContainer}
+              id={id}
               initial={{ opacity: 0, height: 0 }}
               animate={{
                 opacity: 1,

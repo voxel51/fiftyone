@@ -18,6 +18,8 @@ import styled from "styled-components";
 import { ActionDiv } from "./ActionsRow";
 import { useDynamicGroupChoices } from "./DynamicGroupAction/useDynamicGroupChoices";
 
+const SELECTOR_RESULTS_ID = "dynamic-group-selector-results";
+
 const DynamicGroupContainer = styled.div`
   margin: 0.5rem 0;
   display: flex;
@@ -41,6 +43,9 @@ export const DynamicGroupAction = () => {
 
   const ref = useRef<HTMLDivElement>(null);
   const [measureRef] = useMeasure();
+  fos.useOutsideClick(ref, () => setOpen(false), {
+    exceptionIds: [SELECTOR_RESULTS_ID],
+  });
 
   const onComplete = useCallback(() => {
     setIsFieldValidated(false);
@@ -156,6 +161,7 @@ export const DynamicGroupAction = () => {
                 {!isLoading && !error && availableFields && (
                   <>
                     <Selector
+                      id={SELECTOR_RESULTS_ID}
                       inputStyle={{
                         height: 28,
                         width: "100%",
