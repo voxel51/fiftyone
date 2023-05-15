@@ -11,11 +11,9 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.fields as fof
-import fiftyone.core.stages as fos
 
 from fiftyone.server.decorators import route
 import fiftyone.server.utils as fosu
-import fiftyone.server.view as fosv
 
 
 MAX_CATEGORIES = 100
@@ -37,22 +35,30 @@ class DynamicGroupFieldChoices(HTTPEndpoint):
 
         dataset = fosu.load_and_cache_dataset(dataset_name)
 
-        schema = dataset.get_field_schema(flat=True)
+        dataset_schema = dataset.get_field_schema(flat=True)
+        group_field = dataset.group_field
 
         nested_fields = set(
-            k for k, v in schema.items() if isinstance(v, fof.ListField)
+            k
+            for k, v in dataset_schema.items()
+            if isinstance(v, fof.ListField)
         )
 
         fields = [
             k
-            for k, v in schema.items()
+            for k, v in dataset_schema.items()
             if (
                 isinstance(v, DYNAMIC_GROUP_TYPES)
                 and not any(
                     k == "id"
                     or k == "filepath"
-                    or k == "group.name"
-                    or k == "group.id"
+                    or (
+                        group_field is not None
+                        and (
+                            k == f"{group_field}.name"
+                            or k == f"{group_field}.id"
+                        )
+                    )
                     or k == r
                     or k.startswith(r + ".")
                     for r in nested_fields

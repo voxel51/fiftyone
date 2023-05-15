@@ -12,16 +12,6 @@ import {
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 
-import {
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  LIST_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  VALID_LIST_FIELDS,
-} from "@fiftyone/utilities";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import {
@@ -33,7 +23,6 @@ import {
   refresher,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
-import { fieldSchema } from "./schema";
 import { datasetName } from "./selectors";
 import { dynamicGroupViewQuery, view } from "./view";
 
