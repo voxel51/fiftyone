@@ -107,6 +107,8 @@ function getSchema(property, options?) {
 
   if (typeName === "List") {
     schema.items = getSchema({ type: property.type.elementType }, options);
+    schema.minItems = property.type.minItems;
+    schema.maxItems = property.type.maxItems;
     if (schema?.view?.items) {
       schema.view.items.component = getComponent(
         { type: property.type.elementType, view: schema?.view?.items },

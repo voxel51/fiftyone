@@ -4168,24 +4168,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if chunk_size:
             data["chunk_size"] = chunk_size
 
-        files = {}
-        open_files = []
-
-        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
-            # Video task
-            filename = os.path.basename(paths[0])
-            f = open(paths[0], "rb")
-            files["client_files[0]"] = (filename, f)
-            open_files.append(f)
-        else:
-            # Image task
-            for idx, path in enumerate(paths):
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must give CVAT filenames whose
-                # alphabetical order matches the order of `paths`
-                filename = "%06d_%s" % (idx, os.path.basename(path))
-                with open(path, "rb") as f:
-                    files["client_files[%d]" % idx] = (filename, f.read())
+        files, open_files = self._parse_local_files(paths)
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
@@ -4234,6 +4217,34 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         return job_ids
+
+    def _parse_local_files(self, paths):
+        files = {}
+        open_files = []
+
+        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
+            # Video task
+            filename = os.path.basename(paths[0])
+            f = open(paths[0], "rb")
+            files["client_files[0]"] = (filename, f)
+            open_files.append(f)
+        else:
+            # Image task
+            for idx, path in enumerate(paths):
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+
+                if self._server_version >= Version("2.3"):
+                    with open(path, "rb") as f:
+                        files["client_files[%d]" % idx] = (filename, f.read())
+                else:
+                    f = open(path, "rb")
+                    files["client_files[%d]" % idx] = (filename, f)
+                    open_files.append(f)
+
+        return files, open_files
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's

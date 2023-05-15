@@ -151,12 +151,16 @@ class OperatorNumber extends BaseType {
 }
 export { OperatorNumber as Number };
 export class List extends BaseType {
-  constructor(public elementType: ANY_TYPE) {
+  constructor(
+    public elementType: ANY_TYPE,
+    public minItems?: number,
+    public maxItems?: number
+  ) {
     super();
   }
 
-  static fromJSON({ element_type }) {
-    return new List(typeFromJSON(element_type));
+  static fromJSON({ element_type, min_items, max_items }) {
+    return new List(typeFromJSON(element_type), min_items, max_items);
   }
 }
 export class SampleID extends OperatorString {
@@ -303,7 +307,8 @@ export class Choice extends View {
 }
 export class Choices extends View {
   choices: Choice[];
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
+    options = options || { choices: [] };
     super(options);
     this.choices = options.choices;
   }
@@ -322,7 +327,7 @@ export class Choices extends View {
 }
 export class RadioGroup extends Choices {
   orientation: ViewOrientation;
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
     super(options);
     this.orientation = options.orientation as ViewOrientation;
   }
@@ -334,7 +339,7 @@ export class RadioGroup extends Choices {
   }
 }
 export class Dropdown extends Choices {
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
     super(options);
   }
   static fromJSON(json) {
@@ -462,7 +467,7 @@ export class JSONView extends View {
   }
 }
 export class AutocompleteView extends Choices {
-  constructor(options: ChoicesOptions) {
+  constructor(options?: ChoicesOptions) {
     super(options);
   }
   static fromJSON(json) {

@@ -34,7 +34,11 @@ import fiftyone.core.utils as fou
 
 from .document import Document
 
+foa = fou.lazy_import("fiftyone.core.annotation")
+fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
+foe = fou.lazy_import("fiftyone.core.evaluation")
+
 
 logger = logging.getLogger(__name__)
 
@@ -795,6 +799,186 @@ def list_datasets():
     return conn.datasets.distinct("name")
 
 
+def patch_saved_views(dataset_name, dry_run=False):
+    """Ensures that the saved view documents in the ``views`` collection for
+    the given dataset exactly match the IDs in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    dataset_id = dataset_dict["_id"]
+    saved_views = dataset_dict.get("saved_views", [])
+
+    # {id: name} in `views` collection
+    sd = {}
+    for saved_view_dict in conn.views.find({"_dataset_id": dataset_id}):
+        try:
+            sd[saved_view_dict["_id"]] = saved_view_dict["name"]
+        except:
+            pass
+
+    # Make sure docs in `views` collection match IDs in `dataset_dict`
+    saved_view_ids = set(saved_views)
+    saved_view_doc_ids = set(sd)
+    made_changes = False
+
+    bad_ids = saved_view_ids - saved_view_doc_ids
+    num_bad_ids = len(bad_ids)
+    if num_bad_ids > 0:
+        _logger.info(
+            "Purging %d bad saved view ID(s) %s from dataset",
+            num_bad_ids,
+            bad_ids,
+        )
+        saved_views = [_id for _id in saved_views if _id not in bad_ids]
+        made_changes = True
+
+    missing_ids = saved_view_doc_ids - saved_view_ids
+    num_missing_views = len(missing_ids)
+    if num_missing_views > 0:
+        missing_views = [(_id, sd[_id]) for _id in missing_ids]
+        _logger.info(
+            "Adding %d misplaced saved view(s) %s back to dataset",
+            num_missing_views,
+            missing_views,
+        )
+        saved_views.extend(missing_ids)
+        made_changes = True
+
+    if made_changes and not dry_run:
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {"saved_views": saved_views}},
+        )
+
+
+def patch_annotation_runs(dataset_name, dry_run=False):
+    """Ensures that the annotation runs in the ``runs`` collection for the
+    given dataset exactly match the values in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_runs(
+        dataset_name,
+        "annotation_runs",
+        foa.AnnotationMethod,
+        "annotation run",
+        dry_run=dry_run,
+    )
+
+
+def patch_brain_runs(dataset_name, dry_run=False):
+    """Ensures that the brain method runs in the ``runs`` collection for the
+    given dataset exactly match the values in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_runs(
+        dataset_name,
+        "brain_methods",
+        fob.BrainMethod,
+        "brain method run",
+        dry_run=dry_run,
+    )
+
+
+def patch_evaluations(dataset_name, dry_run=False):
+    """Ensures that the evaluation runs in the ``runs`` collection for the
+    given dataset exactly match the values in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_runs(
+        dataset_name,
+        "evaluations",
+        foe.EvaluationMethod,
+        "evaluation",
+        dry_run=dry_run,
+    )
+
+
+def _patch_runs(dataset_name, runs_field, run_cls, run_str, dry_run=False):
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    dataset_id = dataset_dict["_id"]
+
+    # {key: id} in dataset_dict
+    runs_dict = dataset_dict.get(runs_field, {})
+
+    # {key: id} in runs collection
+    rd = {}
+    for run_dict in conn.runs.find({"_dataset_id": dataset_id}):
+        try:
+            cls = etau.get_class(run_dict["config"]["cls"][: -len("Config")])
+            if issubclass(cls, run_cls):
+                rd[run_dict["key"]] = run_dict["_id"]
+        except:
+            pass
+
+    # In order for a run to be valid, its ``(key, id)`` must match in both
+    # `dataset_dict` and the `runs` collection
+    runs = set(runs_dict.items())
+    run_docs = set(rd.items())
+    made_changes = False
+
+    bad_runs = runs - run_docs
+    num_bad_runs = len(bad_runs)
+    if num_bad_runs > 0:
+        _logger.info(
+            "Purging %d %s(s) %s from dataset",
+            num_bad_runs,
+            run_str,
+            bad_runs,
+        )
+        for bad_key, _ in bad_runs:
+            runs_dict.pop(bad_key, None)
+
+        made_changes = True
+
+    missing_runs = run_docs - runs
+    num_missing_runs = len(missing_runs)
+    if num_missing_runs > 0:
+        _logger.info(
+            "Adding %d misplaced %s(s) %s to dataset",
+            num_missing_runs,
+            run_str,
+            missing_runs,
+        )
+        runs_dict.update(missing_runs)
+        made_changes = True
+
+    if made_changes:
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {runs_field: runs_dict}},
+        )
+
+
 def delete_dataset(name, dry_run=False):
     """Deletes the dataset with the given name.
 
@@ -864,6 +1048,108 @@ def delete_dataset(name, dry_run=False):
             _delete_run_results(conn, result_ids)
 
 
+def delete_saved_view(dataset_name, view_name, dry_run=False):
+    """Deletes the saved view with the given name from the dataset with the
+    given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.load_saved_view`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Args:
+        dataset_name: the name of the dataset
+        view_name: the name of the saved view
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    dataset_id = dataset_dict["_id"]
+    saved_views = dataset_dict.get("saved_views", [])
+
+    # {name: id} in `views` collection
+    sd = {}
+    for saved_view_dict in conn.views.find({"_dataset_id": dataset_id}):
+        try:
+            sd[saved_view_dict["name"]] = saved_view_dict["_id"]
+        except:
+            pass
+
+    del_id = sd.get(view_name, None)
+    if del_id is None:
+        _logger.warning(
+            "Dataset '%s' has no saved view '%s'", dataset_name, view_name
+        )
+        return
+
+    _logger.info(
+        "Deleting saved view %s' with ID '%s' from dataset '%s'",
+        view_name,
+        del_id,
+        dataset_name,
+    )
+
+    saved_views = [_id for _id in saved_views if _id != del_id]
+
+    if not dry_run:
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {"saved_views": saved_views}},
+        )
+        _delete_saved_views(conn, [del_id])
+
+
+def delete_saved_views(dataset_name, dry_run=False):
+    """Deletes all saved views from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.load_saved_view`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    dataset_id = dataset_dict["_id"]
+    del_ids = [d["_id"] for d in conn.views.find({"_dataset_id": dataset_id})]
+
+    if not del_ids:
+        _logger.info("Dataset '%s' has no saved views", dataset_name)
+        return
+
+    _logger.info(
+        "Deleting %d saved views from dataset '%s'",
+        len(del_ids),
+        dataset_name,
+    )
+
+    if not dry_run:
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {"saved_views": []}},
+        )
+        _delete_saved_views(conn, del_ids)
+
+
 def delete_annotation_run(name, anno_key, dry_run=False):
     """Deletes the annotation run with the given key from the dataset with
     the given name.
@@ -887,7 +1173,7 @@ def delete_annotation_run(name, anno_key, dry_run=False):
         name,
         anno_key,
         "annotation_runs",
-        "annotation",
+        "annotation run",
         dry_run=dry_run,
     )
 
@@ -912,7 +1198,7 @@ def delete_annotation_runs(name, dry_run=False):
     _delete_runs(
         name,
         "annotation_runs",
-        "annotation",
+        "annotation run",
         dry_run=dry_run,
     )
 
@@ -940,7 +1226,7 @@ def delete_brain_run(name, brain_key, dry_run=False):
         name,
         brain_key,
         "brain_methods",
-        "brain method",
+        "brain method run",
         dry_run=dry_run,
     )
 
@@ -965,7 +1251,7 @@ def delete_brain_runs(name, dry_run=False):
     _delete_runs(
         name,
         "brain_methods",
-        "brain method",
+        "brain method run",
         dry_run=dry_run,
     )
 
@@ -1048,7 +1334,7 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
     runs = dataset_dict.get(runs_field, {})
     if run_key not in runs:
         _logger.warning(
-            "Dataset '%s' has no %s run with key '%s'",
+            "Dataset '%s' has no %s with key '%s'",
             dataset_name,
             run_str,
             run_key,
@@ -1056,7 +1342,7 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
         return
 
     _logger.info(
-        "Deleting %s run '%s' from dataset '%s'",
+        "Deleting %s '%s' from dataset '%s'",
         run_str,
         run_key,
         dataset_name,
@@ -1074,8 +1360,10 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
     if not dry_run:
         _logger.info("Deleting %s doc '%s'", run_str, run_id)
         conn.runs.delete_one({"_id": run_id})
-
-        conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {runs_field: runs}},
+        )
 
 
 def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
@@ -1087,14 +1375,15 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         _logger.warning("Dataset '%s' not found", dataset_name)
         return
 
-    run_keys, run_ids = zip(dataset_dict.get(runs_field, {}).items())
-
-    if not run_keys:
-        _logger.info("Dataset '%s' has no %s runs", dataset_name, run_str)
+    runs = dataset_dict.get(runs_field, {})
+    if not runs:
+        _logger.info("Dataset '%s' has no %ss", dataset_name, run_str)
         return
 
+    run_keys, run_ids = zip(*runs.items())
+
     _logger.info(
-        "Deleting %s runs %s from dataset '%s'",
+        "Deleting %s(s) %s from dataset '%s'",
         run_str,
         run_keys,
         dataset_name,
@@ -1113,8 +1402,10 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
             _delete_run_results(conn, result_ids)
 
     if not dry_run:
-        dataset_dict[runs_field] = {}
-        conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {runs_field: {}}},
+        )
 
 
 def _get_saved_view_ids(dataset_dict):

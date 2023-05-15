@@ -22,12 +22,7 @@ import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 import styled from "styled-components";
-import {
-  OperatorBrowser,
-  OperatorInvocationRequestExecutor,
-  OperatorPrompt,
-  OperatorViewModal,
-} from "@fiftyone/operators";
+import { OperatorCore } from "@fiftyone/operators";
 
 // built-in plugins
 import "@fiftyone/looker-3d";
@@ -137,10 +132,7 @@ export const Dataset: React.FC<DatasetProps> = ({
       </Suspense>
       <div id="modal" />
       <div id="colorModal" />
-      <OperatorBrowser />
-      <OperatorPrompt />
-      <OperatorViewModal />
-      <OperatorInvocationRequestExecutor />
+      <OperatorCore />
     </Container>
   );
 };

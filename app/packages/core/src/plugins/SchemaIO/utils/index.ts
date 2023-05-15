@@ -41,3 +41,4 @@ export function getErrorsForView(props) {
 }
 
 export * from "./generate-schema";
+export { default as autoFocus } from "./auto-focus";

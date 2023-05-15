@@ -3,11 +3,11 @@ import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
 
+export * from "./Resource";
 export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
-export * from "./Resource";
 export * from "./styles";
 
 interface O {
@@ -72,7 +72,7 @@ type KeyValue<T> = {
 export const removeKeys = <T>(
   obj: KeyValue<T>,
   keys: Iterable<string>,
-  startsWith: boolean = false
+  startsWith = false
 ): KeyValue<T> => {
   const set = new Set(keys);
   const values = Array.from(keys);
@@ -281,6 +281,7 @@ export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 
+
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
 export const VALID_PRIMITIVE_TYPES = [
@@ -400,12 +401,12 @@ const isURL = (() => {
       return false;
     }
 
-    var match = string.match(protocolAndDomainRE);
+    const match = string.match(protocolAndDomainRE);
     if (!match) {
       return false;
     }
 
-    var everythingAfterProtocol = match[1];
+    const everythingAfterProtocol = match[1];
     if (!everythingAfterProtocol) {
       return false;
     }
@@ -536,7 +537,7 @@ export const toSlug = (name: string) => {
   const trim = new RegExp("-?(?<slug>[0-9a-z][0-9a-z-]*?)-?$");
 
   let slug = name.toLowerCase();
-  let matches = [];
+  const matches = [];
   let match;
   while ((match = valid_chars.exec(slug)) !== null) {
     matches.push(match);
@@ -549,3 +550,11 @@ export const toSlug = (name: string) => {
   }
   return "";
 };
+
+export function pluralize(
+  number: number,
+  singular: string | JSX.Element,
+  plural: string | JSX.Element
+) {
+  return number === 1 ? singular : plural;
+}

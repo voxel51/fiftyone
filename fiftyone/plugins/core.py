@@ -45,6 +45,9 @@ class plugin_package:
     name: str
     path: str
 
+    def __repr__(self):
+        return f"Plugin(name={self.name}, path={self.path})"
+
 
 def enable_plugin(plugin_name: str):
     """Enable the plugin in the app.

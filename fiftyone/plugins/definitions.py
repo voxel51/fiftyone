@@ -77,6 +77,20 @@ def find_plugin_metadata_files():
 
 
 class PluginDefinition:
+    """A plugin definition.
+
+    Args:
+        directory: the directory containing the plugin
+        metadata: a dict of plugin metadata
+
+    Attributes:
+        directory: the directory containing the plugin
+        js_bundle: relative path to the JS bundle file
+        js_bundle_path: absolute path to the JS bundle file
+        py_entry: relative path to the Python entry file
+        py_entry_path: absolute path to the Python entry file
+    """
+
     def __init__(self, directory, metadata):
         missing = []
         if not directory:
@@ -88,76 +102,7 @@ class PluginDefinition:
 
         self.directory = directory
         self._metadata = metadata
-        self.js_bundle = None
-        self.js_bundle_path = None
-        self.py_entry = None
-        self.py_entry_path = None
-        self._load_and_validate()
 
-    def _get_fullpath(self, filename):
-        if not filename:
-            return None
-        if filename in os.listdir(self.directory):
-            return os.path.join(self.directory, filename)
-        return None
-
-    @property
-    def name(self):
-        return self._metadata.get("name", None)
-
-    @property
-    def author(self):
-        return self._metadata.get("author", None)
-
-    @property
-    def version(self):
-        return self._metadata.get("version", None)
-
-    @property
-    def license(self):
-        return self._metadata.get("license", None)
-
-    @property
-    def description(self):
-        return self._metadata.get("description", None)
-
-    @property
-    def fiftyone_compatibility(self):
-        return self._metadata.get("fiftyone", {}).get("version", foc.Version)
-
-    @property
-    def operators(self):
-        return self._metadata.get("operators", [])
-
-    @property
-    def package_json_path(self):
-        return self._get_fullpath("package.json")
-
-    def _set_js_bundle_path(self):
-        js_bundle = self._metadata.get("js_bundle", None)
-        path = self._get_fullpath(js_bundle)
-        if not path:
-            if self.package_json_path:
-                pkg = etas.read_json(self.package_json_path)
-                js_bundle = pkg.get("fiftyone", {}).get("script", None)
-                path = self._get_fullpath(js_bundle)
-        if path:
-            self.js_bundle_path = path
-            self.js_bundle = js_bundle
-
-    def _set_py_entry_path(self):
-        py_entry = self._metadata.get("py_entry", None)
-        path = self._get_fullpath(py_entry)
-        if not path:
-            # check for __init__.py if none specified
-            py_entry = "__init__.py"
-            path = self._get_fullpath(py_entry)
-        if path:
-            self.py_entry = py_entry
-            self.py_entry_path = path
-        return None
-
-    def _load_and_validate(self):
         missing_metadata_keys = [
             k
             for k in REQUIRED_PLUGIN_METADATA_KEYS
@@ -167,32 +112,108 @@ class PluginDefinition:
             raise ValueError(
                 f"Plugin definition missing required fields: {missing_metadata_keys}"
             )
-        self._set_js_bundle_path()
-        self._set_py_entry_path()
+
+    def _get_abs_path(self, filename):
+        if not filename:
+            return None
+        return os.path.join(self.directory, filename)
+
+    @property
+    def name(self):
+        """The name of the plugin."""
+        return self._metadata.get("name", None)
+
+    @property
+    def author(self):
+        """The author of the plugin."""
+        return self._metadata.get("author", None)
+
+    @property
+    def version(self):
+        """The version of the plugin."""
+        return self._metadata.get("version", None)
+
+    @property
+    def license(self):
+        """The license of the plugin."""
+        return self._metadata.get("license", None)
+
+    @property
+    def description(self):
+        """The description of the plugin."""
+        return self._metadata.get("description", None)
+
+    @property
+    def fiftyone_compatibility(self):
+        """The FiftyOne compatible version as a semver string."""
+        return self._metadata.get("fiftyone", {}).get("version", foc.Version)
+
+    @property
+    def operators(self):
+        """The operators of the plugin."""
+        return self._metadata.get("operators", [])
+
+    @property
+    def package_json_path(self):
+        """The absolute path to the package.json file."""
+        return self._get_abs_path("package.json")
+
+    @property
+    def has_package_json(self):
+        """Whether the plugin has a package.json file."""
+        return os.path.exists(self.package_json_path)
+
+    @property
+    def js_bundle(self):
+        """The relative path to the JS bundle file."""
+        js_bundle = self._metadata.get("js_bundle", None)
+        if not js_bundle and self.has_package_json:
+            pkg = etas.read_json(self.package_json_path)
+            js_bundle = pkg.get("fiftyone", {}).get("script", None)
+        return js_bundle or "dist/index.umd.js"
+
+    @property
+    def js_bundle_path(self):
+        js_bundle = self.js_bundle
+        return self._get_abs_path(js_bundle)
+
+    @property
+    def py_entry(self):
+        return self._metadata.get("py_entry", "__init__.py")
+
+    @property
+    def py_entry_path(self):
+        """The absolute path to the Python entry file."""
+        return self._get_abs_path(self.py_entry)
 
     @property
     def server_path(self):
+        """The default server path to the plugin."""
         return "/" + os.path.join(
             "plugins", os.path.relpath(self.directory, fo.config.plugins_dir)
         )
 
     @property
     def js_bundle_server_path(self):
+        """The default server path to the JS bundle."""
         if self.has_js:
             return os.path.join(self.server_path, self.js_bundle)
 
     def can_register_operator(self, operator_name):
+        """Whether the plugin can register the given operator."""
         if self.has_py and (operator_name in self.operators):
             return True
         return False
 
     @property
     def has_py(self):
-        return bool(self.py_entry_path)
+        """Whether the plugin has a Python entry file."""
+        return os.path.exists(self.py_entry_path)
 
     @property
     def has_js(self):
-        return bool(self.js_bundle_path)
+        """Whether the plugin has a JS bundle file."""
+        return os.path.exists(self.js_bundle_path)
 
     def to_json(self):
         return {
@@ -209,6 +230,7 @@ class PluginDefinition:
             "js_bundle_server_path": self.js_bundle_server_path,
             "has_py": self.has_py,
             "has_js": self.has_js,
+            "server_path": self.server_path,
         }
 
 

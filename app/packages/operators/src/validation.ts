@@ -1,4 +1,5 @@
-import { Enum, List, Object } from "./types";
+import { pluralize } from "@fiftyone/utilities";
+import { Enum, List, Object, Boolean, String, Number } from "./types";
 
 export class ValidationError {
   constructor(public reason, public property, public path) {}
@@ -42,21 +43,19 @@ export class ValidationContext {
   // todo: oneOf, Tuple
   validateProperty(path, property, value) {
     const { type } = property;
-    const isNullish = value === undefined || value === null;
+    const valueIsNullish = isNullish(value);
     if (property.invalid) {
       this.addError(new ValidationError("Invalid property", property, path));
-    } else if (property.required && isNullish) {
+    } else if (property.required && valueIsNullish) {
       this.addError(new ValidationError("Required property", property, path));
-    } else if (!isNullish) {
-      if (type instanceof Enum) {
-        this.validateEnum(path, property, value);
-      } else if (type instanceof Object) {
-        this.validateObject(path, property, value);
-      } else if (type instanceof List) {
-        this.validateList(path, property, value);
-      } else if (!isNullish) {
-        this.validatePrimitive(path, property, value);
-      }
+    } else if (type instanceof Enum && !valueIsNullish) {
+      this.validateEnum(path, property, value);
+    } else if (type instanceof Object && !valueIsNullish) {
+      this.validateObject(path, property, value);
+    } else if (type instanceof List) {
+      this.validateList(path, property, value);
+    } else if (isPrimitive(type) && !valueIsNullish) {
+      this.validatePrimitive(path, property, value);
     }
   }
 
@@ -80,20 +79,45 @@ export class ValidationContext {
   }
 
   validateList(path, property, value) {
+    const { elementType, minItems, maxItems } = property.type;
+    const valueIsNullish = isNullish(value);
+    if (valueIsNullish && !isNumber(minItems)) return;
+    const label = pluralize(minItems, "item", "items");
+    const minItemsError = new ValidationError(
+      `Must have at least ${minItems} ${label}`,
+      property,
+      path
+    );
     if (!Array.isArray(value)) {
-      return this.addError(new ValidationError("Invalid list", property, path));
-    }
-    const { elementType } = property.type;
-    const elementProperty = { type: elementType };
+      return this.addError(minItemsError);
+    } else {
+      const length = value.length;
 
-    for (const i in value) {
-      this.validateProperty(getPath(path, i), elementProperty, value[i]);
+      if (isNumber(minItems) && length < minItems) {
+        this.addError(minItemsError);
+      }
+
+      if (isNumber(maxItems) && length > maxItems) {
+        this.addError(
+          new ValidationError(
+            `Must have at most ${maxItems} items`,
+            property,
+            path
+          )
+        );
+      }
+
+      const elementProperty = { type: elementType };
+
+      for (const i in value) {
+        this.validateProperty(getPath(path, i), elementProperty, value[i]);
+      }
     }
   }
 
   validatePrimitive(path, property, value) {
-    const propType = operatorTypeToNativeType[property.type.constructor.name];
-    if (typeof value !== propType) {
+    const expectedType = getOperatorTypeName(property.type);
+    if (typeof value !== expectedType) {
       return this.addError(
         new ValidationError("Invalid value type", property, path)
       );
@@ -105,8 +129,21 @@ function getPath(prefix, path) {
   return prefix ? prefix + "." + path : path;
 }
 
-const operatorTypeToNativeType = {
-  OperatorString: "string",
-  OperatorBoolean: "boolean",
-  OperatorNumber: "number",
-};
+function isNullish(value) {
+  return value === undefined || value === null;
+}
+
+function isNumber(value) {
+  return typeof value === "number";
+}
+
+const primitiveTypes = ["boolean", "string", "number"];
+function isPrimitive(type) {
+  return primitiveTypes.includes(getOperatorTypeName(type));
+}
+
+function getOperatorTypeName(type) {
+  if (type instanceof Boolean) return "boolean";
+  if (type instanceof String) return "string";
+  if (type instanceof Number) return "number";
+}

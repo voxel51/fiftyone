@@ -344,7 +344,7 @@ def ensure_package(
 ):
     """Verifies that the given package is installed.
 
-    This function uses ``pkg_resources.get_distribution`` to locate the package
+    This function uses ``importlib.metadata`` to locate the package
     by its pip name and does not actually import the module.
 
     Therefore, unlike :meth:`ensure_import`, ``requirement_str`` should refer

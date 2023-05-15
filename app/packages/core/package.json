@@ -58,6 +58,7 @@
         "@types/lodash": "^4.14.182",
         "@types/mime": "^2.0.3",
         "@types/react": "^18.0.9",
+        "@types/react-color": "^3.0.6",
         "@types/react-dom": "^18.0.3",
         "@types/react-relay": "^14.1.0",
         "@types/react-router": "^5.1.18",

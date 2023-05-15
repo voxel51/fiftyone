@@ -217,6 +217,7 @@ class ClosePanel extends Operator {
     return new OperatorConfig({
       name: "close_panel",
       label: "Close a panel",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -285,6 +286,7 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -463,119 +465,69 @@ class ShowSamples extends Operator {
       unlisted: true,
     });
   }
-  async execute({ state, params }: ExecutionContext) {
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.list("samples", new types.String(), {
+      label: "Samples",
+      required: true,
+    });
+    inputs.bool("use_extended_selection", {
+      label: "Use extended selection",
+      default: false,
+    });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setView: fos.useSetView(),
+    };
+  }
+  async execute({ state, hooks, params }: ExecutionContext) {
     if (params.use_extended_selection) {
       state.set(fos.extendedSelection, {
         selection: params.samples,
         scope: "global",
       });
+      return;
     }
     const currentView = await state.snapshot.getPromise(fos.view);
-    state.set(fos.view, [
+    const newView = [
       ...currentView.filter((s) => s._uuid !== SHOW_SAMPLES_STAGE_ID),
-      {
-        _cls: "fiftyone.core.stages.Select",
-        kwargs: [
-          ["sample_ids", params.samples],
-          ["ordered", false],
-        ],
-        _uuid: SHOW_SAMPLES_STAGE_ID,
-      },
-    ]);
+      ...(params.samples
+        ? [
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [
+                ["sample_ids", params.samples],
+                ["ordered", false],
+              ],
+              _uuid: SHOW_SAMPLES_STAGE_ID,
+            },
+          ]
+        : []),
+    ];
+    hooks.setView(fos.view, newView);
   }
 }
 
-class ClearShowSamples extends Operator {
-  get config(): OperatorConfig {
-    return new OperatorConfig({
-      name: "clear_show_samples",
-      label: "Clear show samples",
-    });
-  }
-  async execute(ctx: ExecutionContext) {
-    executeOperator("show_samples", { samples: [] });
-  }
-}
-
-function isAtomOrSelector(v: any): boolean {
-  return (
-    v &&
-    v.constructor &&
-    v.constructor.name &&
-    (v.constructor.name === "RecoilState" ||
-      v.constructor.name === "RecoilValueReadOnly")
-  );
-}
-
-function getTypeForValue(value: any) {
-  switch (typeof value) {
-    case "string":
-      return new types.String();
-      break;
-    case "number":
-      return new types.Number();
-      break;
-    case "boolean":
-      return new types.Boolean();
-      break;
-    case "object":
-      if (value === null) {
-        return new types.String();
-      }
-      if (Array.isArray(value)) {
-        if (value.length > 0) {
-          return new types.List(getTypeForValue(value[0]));
-        } else {
-          return new types.List(new types.String());
-        }
-      }
-      const type = new types.Object();
-      Object.entries(value).forEach(([k, v]) => {
-        type.defineProperty(k, getTypeForValue(v));
-      });
-      return type;
-  }
-}
-class GetAppValue extends Operator {
-  get config(): OperatorConfig {
-    return new OperatorConfig({
-      name: "get_app_value",
-      label: "Get App Value",
-      dynamic: true,
-    });
-  }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
-    const inputs = new types.Object();
-    const values = Object.entries(fos)
-      .filter(([k, v]) => {
-        return isAtomOrSelector(v);
-      })
-      .map(([k, v]) => k);
-    inputs.defineProperty("target", new types.Enum(values));
-
-    return new types.Property(inputs);
-  }
-  async resolveOutput(
-    ctx: ExecutionContext,
-    { result }: OperatorResult
-  ): Promise<types.Property> {
-    const outputs = new types.Object();
-    outputs.defineProperty("value", new types.List(new types.String()));
-    return new types.Property(outputs, { view: { name: "InferredView" } });
-  }
-  async execute({ params, state }: ExecutionContext) {
-    const target = params.target;
-    return {
-      value: await state.snapshot.getPromise(fos[target]),
-    };
-  }
-}
+// class ClearShowSamples extends Operator {
+//   get config(): OperatorConfig {
+//     return new OperatorConfig({
+//       name: "clear_show_samples",
+//       label: "Clear show samples",
+//     });
+//   }
+//   async execute(ctx: ExecutionContext) {
+//     executeOperator("show_samples", { samples: null });
+//   }
+// }
 
 class ConsoleLog extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "console_log",
       label: "Console Log",
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -630,6 +582,7 @@ class TestOperator extends Operator {
     return new OperatorConfig({
       name: "test_operator",
       label: "Test an Operator",
+      dynamic: true,
     });
   }
   parseParams(rawParams: string) {
@@ -641,13 +594,18 @@ class TestOperator extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    const operatorNames = listLocalAndRemoteOperators().allOperators.map(
-      (o) => o.name
-    );
-    inputs.defineProperty("operator", new types.Enum(operatorNames), {
+    const choices = new types.AutocompleteView();
+    const { allOperators } = listLocalAndRemoteOperators();
+    for (const operator of allOperators) {
+      choices.addChoice(operator.uri, {
+        label: operator.label,
+        description: operator.uri,
+      });
+    }
+    inputs.defineProperty("operator", new types.Enum(choices.values()), {
       label: "Operator",
       required: true,
-      view: { name: "AutocompleteView" },
+      view: choices,
     });
     const parsedParams =
       typeof ctx.params.raw_params === "string"
@@ -699,8 +657,7 @@ export function registerBuiltInOperators() {
     registerOperator(CloseAllPanels);
     registerOperator(SetView);
     registerOperator(ShowSamples);
-    registerOperator(ClearShowSamples);
-    registerOperator(GetAppValue);
+    // registerOperator(ClearShowSamples);
     registerOperator(ConsoleLog);
     registerOperator(ShowOutput);
     registerOperator(TestOperator);

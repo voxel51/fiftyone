@@ -6,13 +6,17 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import os
-from pkg_resources import DistributionNotFound, get_distribution
 import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.20.1"
+VERSION = "0.21.0"
 
 
 def get_version():
@@ -40,6 +44,7 @@ INSTALL_REQUIRES = [
     "ftfy",
     "future",
     "hypercorn>=0.13.2",
+    "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
@@ -91,10 +96,10 @@ def choose_requirement(mains, secondary):
     for main in mains:
         try:
             name = re.split(r"[!<>=]", main)[0]
-            get_distribution(name)
+            metadata.version(name)
             chosen = main
             break
-        except DistributionNotFound:
+        except metadata.PackageNotFoundError:
             pass
 
     return str(chosen)
