@@ -1,7 +1,11 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
-import { Schema } from "@fiftyone/utilities";
+import {
+  DETECTION_FILED,
+  Schema,
+  UNSUPPORTED_FILTER_TYPES,
+} from "@fiftyone/utilities";
 import { VECTOR_FIELD } from "@fiftyone/utilities";
 import {
   DICT_FIELD,
@@ -9,7 +13,7 @@ import {
   JUST_FIELD,
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
-import { keyBy } from "lodash";
+import { keyBy, lastIndexOf } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
@@ -29,14 +33,16 @@ export const TAB_OPTIONS_MAP = {
 
 export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 
-const skipFiled = (path: string, ftype: string) => {
+const skipFiled = (path: string, ftype: string, schema: {}) => {
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+
   return (
-    ftype === DICT_FIELD ||
+    UNSUPPORTED_FILTER_TYPES.includes(path) ||
     ftype === JUST_FIELD ||
-    ftype === VECTOR_FIELD ||
-    path.includes(".logits") ||
-    path.endsWith(".index") ||
-    path.endsWith(".bounding_box")
+    (parentPath &&
+      schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
+      path.endsWith(".bounding_box")) ||
+    path.endsWith(".index")
   );
 };
 const disabledField = (path: string, ftype: string, groupField?: string) => {
@@ -44,11 +50,11 @@ const disabledField = (path: string, ftype: string, groupField?: string) => {
     path === "tags" ||
     path === "filepath" ||
     (ftype === OBJECT_ID_FIELD && path === "id") ||
-    path.startsWith("metadata") ||
-    path.endsWith("frames.frame_number") ||
     ftype === FRAME_NUMBER_FIELD ||
     groupField === path ||
-    path === "sample_id"
+    path === "sample_id" ||
+    path.startsWith("metadata") ||
+    path.endsWith("frames.frame_number")
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -90,7 +96,7 @@ export const schemaSearchRestuls = atom<string[]>({
                 path.startsWith("frames.") ? path.replace("frames.", "") : path
               ]?.ftype ||
                 schema?.[path]?.ftype) &&
-              !skipFiled(path, viewSchema?.[path]?.ftype)
+              !skipFiled(path, viewSchema?.[path]?.ftype, viewSchema)
           )
           .map((path) =>
             path.startsWith("frames.") ? path.replace("frames.", "") : path
@@ -131,7 +137,8 @@ export const selectedPathsState = atomFamily({
               !!path &&
               !skipFiled(
                 path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype
+                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
+                viewSchema
               ) &&
               !disabledField(
                 path,
@@ -333,7 +340,7 @@ export default function useSchemaSettings() {
             : pathLabel[pathLabel.length - 1];
 
         const ftype = tmpSchema[path].ftype;
-        const skip = skipFiled(path, ftype);
+        const skip = skipFiled(path, ftype, tmpSchema);
         const isGroupField = dataset?.groupField;
         const disabled =
           disabledField(path, ftype, isGroupField) || filterRuleTab;
@@ -403,7 +410,7 @@ export default function useSchemaSettings() {
       Object.keys(mergedSchema).forEach((currPath: string) => {
         if (
           currPath.startsWith(path + ".") &&
-          !skipFiled(currPath, mergedSchema?.[currPath]?.ftype) &&
+          !skipFiled(currPath, mergedSchema?.[currPath]?.ftype, mergedSchema) &&
           !disabledField(
             currPath,
             mergedSchema?.[currPath]?.ftype,
@@ -493,7 +500,9 @@ export default function useSchemaSettings() {
       const subSelected = unSelected
         .map((field) => [...getSubPaths(field.path)])
         .flat()
-        .filter((path) => !skipFiled(path, finalSchema[path]?.ftype));
+        .filter(
+          (path) => !skipFiled(path, finalSchema[path]?.ftype, finalSchema)
+        );
       const unSelectedCount =
         subSelected.length - unSelected.length - disabledCount;
 
