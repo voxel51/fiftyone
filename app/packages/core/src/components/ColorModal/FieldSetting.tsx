@@ -97,11 +97,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         field: path,
         useFieldColor: false,
         fieldColor: color,
-        attributeForColor: colorFields.some(
-          (f) => f.path?.includes("label") || f.name == "label"
-        )
-          ? "label"
-          : undefined,
+        attributeForColor: undefined,
         labelColors: [],
       } as fos.CustomizeColor;
       const newSetting = [...copy, defaultSetting];
