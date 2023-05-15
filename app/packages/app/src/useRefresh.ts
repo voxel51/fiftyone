@@ -5,6 +5,7 @@ import { useRecoilCallback } from "recoil";
 export const refreshPage = selectorWithEffect({
   key: "refreshPage",
   get: () => undefined,
+  set: true,
 });
 
 const useRefresh = () => {

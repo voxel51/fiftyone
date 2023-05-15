@@ -53,6 +53,14 @@ export function graphQLSyncFragmentAtomFamily<
         !fragmentOptions.sync || fragmentOptions.sync(params)
           ? [
               ({ setSelf, trigger }: Parameters<AtomEffect<K>>[0]) => {
+                // recoil state should be initialized via RecoilRoot's initializeState
+                // during tests
+                if (
+                  typeof process !== "undefined" &&
+                  process.env.MODE === "test"
+                )
+                  return;
+
                 if (trigger === "set") {
                   return;
                 }

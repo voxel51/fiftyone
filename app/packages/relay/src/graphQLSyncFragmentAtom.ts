@@ -41,6 +41,11 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
     effects: [
       ...(options.effects || []),
       ({ setSelf, trigger }) => {
+        // recoil state should be initialized via RecoilRoot's initializeState
+        // during tests
+        if (typeof process !== "undefined" && process.env.MODE === "test")
+          return;
+
         if (trigger === "set") {
           return;
         }
