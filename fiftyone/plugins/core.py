@@ -76,27 +76,21 @@ def list_plugins(enabled=True):
 
 
 def enable_plugin(plugin_name):
-    """Enables the given plugin in the FiftyOne App.
+    """Enables the given plugin.
 
     Args:
         plugin_name: the plugin name
-
-    Returns:
-        the path to the enabled plugin
     """
-    return _update_plugin_settings(plugin_name, enabled=True)
+    _update_plugin_settings(plugin_name, enabled=True)
 
 
 def disable_plugin(plugin_name):
-    """Disables the given plugin in the FiftyOne App.
+    """Disables the given plugin.
 
     Args:
         plugin_name: the plugin name
-
-    Returns:
-        the path to the enabled plugin
     """
-    return _update_plugin_settings(plugin_name, enabled=False)
+    _update_plugin_settings(plugin_name, enabled=False)
 
 
 def delete_plugin(plugin_name):
@@ -106,6 +100,8 @@ def delete_plugin(plugin_name):
         plugin_name: the plugin name
     """
     plugin_dir = _find_plugin(plugin_name)
+
+    _update_plugin_settings(plugin_name, delete=True)
     etau.delete_dir(plugin_dir)
 
 
@@ -488,7 +484,7 @@ def _recommend_label(name):
     return " ".join([w.capitalize() for w in label.split()])
 
 
-def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
+def _update_plugin_settings(plugin_name, enabled=None, delete=False, **kwargs):
     # This would ensure that the plugin actually exists
     # _find_plugin(plugin_name)
 
@@ -519,20 +515,25 @@ def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
 
     plugins = app_config["plugins"]
 
-    if not plugins.get(plugin_name):
-        plugins[plugin_name] = {}
-
-    plugin_settings = plugins[plugin_name]
-
-    if enabled in (True, None):
-        # Plugins are enabled by default, so just remove the entry altogether
-        plugin_settings.pop("enabled", None)
-        if not plugin_settings:
-            plugins.pop(plugin_name)
+    if delete:
+        # Delete entire plugin entry
+        plugins.pop(plugin_name, None)
     else:
-        plugin_settings["enabled"] = False
+        # Update plugin settings
+        if not plugins.get(plugin_name):
+            plugins[plugin_name] = {}
 
-    plugin_settings.update(kwargs)
+        plugin_settings = plugins[plugin_name]
+
+        if enabled in (True, None):
+            # Plugins are enabled by default, so just remove the entry altogether
+            plugin_settings.pop("enabled", None)
+            if not plugin_settings:
+                plugins.pop(plugin_name)
+        else:
+            plugin_settings["enabled"] = False
+
+        plugin_settings.update(kwargs)
 
     with open(app_config_path, "wt") as f:
         json.dump(app_config, f, indent=4)
