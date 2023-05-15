@@ -1,11 +1,13 @@
 import { types } from "@fiftyone/operators";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { Box } from "@mui/material";
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import { Box, Button } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../SchemaIO";
 import { TabsView } from "../../SchemaIO/components";
 import { log, operatorToIOSchema } from "../utils";
 import {
+  basic as basicSchema,
   errors as inputErrors,
   schema as inputSchema,
   simpleSchema,
@@ -24,13 +26,16 @@ if (import.meta.env?.MODE === "development") {
 }
 
 function OperatorIO() {
-  const [mode, setMode] = useState("input");
+  const [mode, setMode] = usePanelStatePartial("mode", "input");
+  const [basicData, setBasicData] = useState({});
   const input = types.Property.fromJSON(inputSchema);
   const ioSchema = operatorToIOSchema(input);
   const output = types.Property.fromJSON(outputSchema);
   const oSchema = operatorToIOSchema(output, { isOutput: true });
   const simple = types.Property.fromJSON(simpleSchema);
   const sSchema = operatorToIOSchema(simple);
+  const basic = types.Property.fromJSON(basicSchema);
+  const bSchema = operatorToIOSchema(basic);
   const [state, setState] = useState(data);
 
   useEffect(() => {
@@ -57,12 +62,13 @@ function OperatorIO() {
             setState({ ...state, linear: 0, circular: 0 });
           }}
           schema={{
-            default: "input",
+            default: mode,
             view: {
               choices: [
                 { value: "input", label: "Input" },
                 { value: "output", label: "Output" },
                 { value: "inferred-input", label: "Inferred Input" },
+                { value: "basic-input", label: "Basic Input" },
               ],
             },
           }}
@@ -80,6 +86,18 @@ function OperatorIO() {
       )}
       {mode === "inferred-input" && (
         <SchemaIOComponent schema={sSchema} onChange={log} />
+      )}
+      {mode === "basic-input" && (
+        <Box>
+          <Button
+            onClick={() => {
+              setBasicData({ list: ["Hi", "Bye"] });
+            }}
+          >
+            Set data
+          </Button>
+          <SchemaIOComponent schema={bSchema} onChange={log} data={basicData} />
+        </Box>
       )}
     </Box>
   );
