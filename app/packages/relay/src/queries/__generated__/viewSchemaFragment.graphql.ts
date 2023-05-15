@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a0fc5a3af0cf4acb1eaf4aa70b31bae6>>
+ * @generated SignedSource<<b736b15dd60e3bd66872789202320661>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ import { FragmentRefs } from "relay-runtime";
 export type viewSchemaFragment$data = {
   readonly schemaForViewStages: ReadonlyArray<{
     readonly description: string | null;
+    readonly embeddedDocType: string | null;
     readonly ftype: string;
     readonly info: object | null;
     readonly path: string;
@@ -85,6 +86,20 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "subfield",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "embeddedDocType",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "info",
           "storageKey": null
         },
@@ -93,13 +108,6 @@ const node: ReaderFragment = {
           "args": null,
           "kind": "ScalarField",
           "name": "description",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "subfield",
           "storageKey": null
         }
       ],
@@ -110,6 +118,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "b4bad82699d83a881a85521f1be83721";
+(node as any).hash = "f0d986e992cfda1ea89e036a79e55e81";
 
 export default node;

@@ -27,12 +27,10 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const resetSelectedFieldStages = useResetRecoilState(
     selectedFieldsStageState
   );
-  const resetSelectedPaths = useResetRecoilState(
-    selectedPathsState({ allPaths: [] })
-  );
+  const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
   const affectedPathCount = useRecoilValue(affectedPathCountState);
 
-  const { setSelectedFieldsStage } = fos.useSchemaSettings();
+  const { setSelectedFieldsStage, resetTextFilter } = fos.useSchemaSettings();
 
   useDebounce(
     () => {
@@ -41,6 +39,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
     200,
     [value]
   );
+
   return (
     <InputDiv>
       <input
@@ -96,11 +95,12 @@ const Filter = ({ modal }: { modal: boolean }) => {
           )}
           <Tooltip text="Change field visibility" placement="bottom-center">
             <Settings
-              onClick={() =>
+              onClick={() => {
                 setSchemaModal({
                   open: true,
-                })
-              }
+                });
+                resetTextFilter();
+              }}
               sx={{
                 color: theme.text.tertiary,
                 "&:hover": { color: theme.text.primary },

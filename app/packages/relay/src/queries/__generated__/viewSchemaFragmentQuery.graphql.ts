@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<396bf154fff49eeb66955d8d3633f2a3>>
+ * @generated SignedSource<<53e1f2a36751db81d104e98860cb0ca7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -94,6 +94,20 @@ return {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "subfield",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "embeddedDocType",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "info",
             "storageKey": null
           },
@@ -103,13 +117,6 @@ return {
             "kind": "ScalarField",
             "name": "description",
             "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "subfield",
-            "storageKey": null
           }
         ],
         "storageKey": null
@@ -117,16 +124,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "7d37b0615de67c61c580bc74fd72bd91",
+    "cacheID": "e977c7f98e83df0f47b63b26a056de21",
     "id": null,
     "metadata": {},
     "name": "viewSchemaFragmentQuery",
     "operationKind": "query",
-    "text": "query viewSchemaFragmentQuery(\n  $name: String!\n  $viewStages: BSONArray!\n) {\n  ...viewSchemaFragment\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $viewStages) {\n    path\n    ftype\n    info\n    description\n    subfield\n  }\n}\n"
+    "text": "query viewSchemaFragmentQuery(\n  $name: String!\n  $viewStages: BSONArray!\n) {\n  ...viewSchemaFragment\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $viewStages) {\n    path\n    ftype\n    subfield\n    embeddedDocType\n    info\n    description\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b4bad82699d83a881a85521f1be83721";
+(node as any).hash = "f0d986e992cfda1ea89e036a79e55e81";
 
 export default node;
