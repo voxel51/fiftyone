@@ -1,10 +1,22 @@
-import styled from "styled-components";
-import BaseStylesProvider from "./BaseStylesProvider";
 import { Button } from "@fiftyone/components";
-import { PropsWithChildren, useCallback, useEffect, useRef } from "react";
-import { scrollbarStyles } from "@fiftyone/utilities";
-import { useOutsideClick } from "@fiftyone/state";
+import {
+  PropsWithChildren,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
+import { BaseStylesProvider } from "./styled-components";
 import { PALETTE_CONTROL_KEYS } from "./constants";
+
+import { scrollable } from "@fiftyone/components";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  DialogProps,
+} from "@mui/material";
 import { onEnter } from "./utils";
 
 export default function OperatorPalette(props: OperatorPaletteProps) {
@@ -16,22 +28,15 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     onClose,
     submitButtonText = "Execute",
     cancelButtonText = "Cancel",
-    dynamicWidth,
+    maxWidth = "lg",
     onOutsideClick,
     allowPropagation,
     submitOnControlEnter,
+    title,
+    disableSubmit,
   } = props;
   const hideActions = !onSubmit && !onCancel;
-
-  useOutsideClick(paletteElem, (e) => {
-    const { top, bottom, left, right } =
-      paletteElem.current.getBoundingClientRect();
-    if (e.x < left || e.x >= right || e.y < top || e.y > bottom) {
-      if (onOutsideClick) onOutsideClick();
-      if (onClose) onClose();
-    }
-  });
-
+  const scroll = "paper";
   const keyDownHandler = useCallback(
     (event) => {
       const { key } = event;
@@ -58,6 +63,11 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     [onClose, onCancel, onSubmit, allowPropagation, submitOnControlEnter]
   );
 
+  const handleSubmit = useCallback(() => {
+    if (disableSubmit) return;
+    onSubmit();
+  }, [disableSubmit, onSubmit]);
+
   useEffect(() => {
     document.addEventListener("keydown", keyDownHandler);
     return () => {
@@ -67,84 +77,58 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
 
   return (
     <BaseStylesProvider>
-      <PaletteContainer>
-        <PaletteContentContainer>
-          <PaletteContent dynamicWidth={dynamicWidth} ref={paletteElem}>
-            <PaletteBody fullHeight={hideActions}>{children}</PaletteBody>
-            <PaletteFooter hidden={hideActions}>
-              {!hideActions && (
-                <ButtonsContainer>
-                  {onCancel && (
-                    <Button
-                      onClick={onCancel}
-                      style={{ marginRight: "8px" }}
-                      onKeyDown={onEnter(onCancel)}
-                    >
-                      {cancelButtonText}
-                    </Button>
-                  )}
-                  {onSubmit && (
-                    <Button onClick={onSubmit} onKeyDown={onEnter(onSubmit)}>
-                      {submitButtonText}
-                    </Button>
-                  )}
-                </ButtonsContainer>
-              )}
-            </PaletteFooter>
-          </PaletteContent>
-        </PaletteContentContainer>
-      </PaletteContainer>
+      <Dialog
+        open
+        onClose={onClose || onOutsideClick}
+        scroll={scroll}
+        maxWidth={maxWidth}
+        aria-labelledby=""
+        aria-describedby="scroll-dialog-description"
+        PaperProps={{ sx: { backgroundImage: "none" } }}
+        sx={{
+          "& .MuiDialog-container": {
+            alignItems: "flex-start",
+          },
+        }}
+      >
+        {title && (
+          <DialogTitle component="div" sx={{ p: 1 }}>
+            {title}
+          </DialogTitle>
+        )}
+        <DialogContent
+          dividers={scroll === "paper"}
+          className={scrollable}
+          sx={{
+            p: 1,
+            ...(hideActions ? { borderBottom: "none" } : {}),
+            ...(title ? {} : { borderTop: "none" }),
+          }}
+        >
+          {children}
+        </DialogContent>
+        {!hideActions && (
+          <DialogActions sx={{ p: 1 }}>
+            {onCancel && (
+              <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
+                {cancelButtonText}
+              </Button>
+            )}
+            {onSubmit && (
+              <Button
+                onClick={handleSubmit}
+                onKeyDown={onEnter(handleSubmit)}
+                disabled={disableSubmit}
+              >
+                {submitButtonText}
+              </Button>
+            )}
+          </DialogActions>
+        )}
+      </Dialog>
     </BaseStylesProvider>
   );
 }
-
-const PaletteContainer = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  justify-content: center;
-  align-items: flex-start;
-  z-index: 1000;
-`;
-
-const PaletteContentContainer = styled.div`
-  max-height: calc(100% - 10rem);
-  margin-top: 5rem;
-  display: flex;
-  justify-content: center;
-`;
-
-const PaletteContent = styled.div<{ dynamicWidth: boolean }>`
-  padding: 1rem;
-  padding-right: 0;
-  background: ${({ theme }) => theme.background.level2};
-  overflow: auto;
-  width: ${({ dynamicWidth }) => (dynamicWidth ? "auto" : "50%")};
-  max-width: ${({ dynamicWidth }) => (dynamicWidth ? "80%" : "unset")};
-  min-width: ${({ dynamicWidth }) => (dynamicWidth ? "50%" : "unset")};
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-`;
-
-const PaletteBody = styled.div<{ fullHeight: boolean }>`
-  max-height: ${({ fullHeight }) =>
-    fullHeight ? "100%" : "calc(100% - 38px)"};
-  overflow: auto;
-  ${scrollbarStyles}
-`;
-
-const PaletteFooter = styled.div<{ hidden: boolean }>`
-  padding-top: ${({ hidden }) => (hidden ? 0 : "12px")};
-  padding-right: 1rem;
-`;
-
-const ButtonsContainer = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
 
 export type OperatorPaletteProps = PropsWithChildren & {
   onSubmit?: () => void;
@@ -153,7 +137,9 @@ export type OperatorPaletteProps = PropsWithChildren & {
   onOutsideClick?: () => void;
   submitButtonText?: string;
   cancelButtonText?: string;
-  dynamicWidth?: boolean;
+  maxWidth?: DialogProps["maxWidth"];
   allowPropagation?: boolean;
   submitOnControlEnter?: boolean;
+  title?: ReactElement;
+  disableSubmit?: boolean;
 };

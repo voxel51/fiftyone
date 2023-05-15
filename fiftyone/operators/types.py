@@ -450,6 +450,7 @@ class View:
         placeholder (None): string to display placeholder text
         read_only (False): whether the :class:`View` is read-only
         component (None): specifying custom component to use as the view
+        componentProps (None): dict for providing props to components rendered by a :class:`View`
     """
 
     def __init__(self, **kwargs):
@@ -460,6 +461,7 @@ class View:
         self.placeholder = kwargs.get("placeholder", None)
         self.read_only = kwargs.get("read_only", None)
         self.component = kwargs.get("component", None)
+        self.componentProps = kwargs.get("componentProps", None)
         self._kwargs = kwargs
 
     def clone(self):
@@ -475,6 +477,7 @@ class View:
             "placeholder": self.placeholder,
             "read_only": self.read_only,
             "component": self.component,
+            "componentProps": self.componentProps,
             **self._kwargs,
         }
 

@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
 import OperatorIO from "./OperatorIO";
@@ -7,17 +8,14 @@ import {
   useOperatorPrompt,
   useShowOperatorIO,
 } from "./state";
-import { throttle } from "lodash";
-import styled from "styled-components";
-
 // todo: use plugin component
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
-import BaseStylesProvider from "./BaseStylesProvider";
+import {
+  BaseStylesProvider,
+  PaletteContentContainer,
+} from "./styled-components";
 import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { stringifyError } from "./utils";
-import { useCallback } from "react";
-import { RESOLVE_TYPE_TTL } from "./constants";
-import { Button } from "@fiftyone/components";
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -52,38 +50,40 @@ function ActualOperatorPrompt() {
     paletteProps.cancelButtonText = "Close";
   }
 
+  const title = getPromptTitle(operatorPrompt);
+
   return createPortal(
     <OperatorPalette
-      dynamicWidth
+      title={title}
       {...paletteProps}
       onClose={paletteProps.onCancel || operatorPrompt.close}
       submitOnControlEnter
+      disableSubmit={operatorPrompt.validationErrors?.length > 0}
     >
-      {operatorPrompt.showPrompt && (
-        <Prompting operatorPrompt={operatorPrompt} />
-      )}
-      {operatorPrompt.isExecuting && <div>Executing...</div>}
-      {showResultOrError && (
-        <ResultsOrError
-          operatorPrompt={operatorPrompt}
-          outputFields={operatorPrompt.outputFields}
-        />
-      )}
+      <PaletteContentContainer>
+        {operatorPrompt.showPrompt && (
+          <Prompting operatorPrompt={operatorPrompt} />
+        )}
+        {operatorPrompt.isExecuting && <div>Executing...</div>}
+        {showResultOrError && (
+          <ResultsOrError
+            operatorPrompt={operatorPrompt}
+            outputFields={operatorPrompt.outputFields}
+          />
+        )}
+      </PaletteContentContainer>
     </OperatorPalette>,
     document.body
   );
 }
 
 function Prompting({ operatorPrompt }) {
-  const setFormState = useCallback(
-    throttle((data) => {
-      const formData = data;
-      for (const field in formData) {
-        operatorPrompt.setFieldValue(field, formData[field]);
-      }
-    }, RESOLVE_TYPE_TTL),
-    []
-  );
+  const setFormState = useCallback((data) => {
+    const formData = data;
+    for (const field in formData) {
+      operatorPrompt.setFieldValue(field, formData[field]);
+    }
+  }, []);
 
   return (
     <form onSubmit={operatorPrompt.onSubmit}>
@@ -139,4 +139,10 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
       )}
     </Box>
   );
+}
+
+function getPromptTitle(operatorPrompt) {
+  const definition =
+    operatorPrompt?.inputFields || operatorPrompt?.outputFields;
+  return definition?.view?.label;
 }

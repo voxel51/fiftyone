@@ -1,4 +1,165 @@
 {
+    "basic": {
+        "type": {
+            "name": "Object",
+            "properties": {
+                "autocomplete": {
+                    "type": { "name": "String" },
+                    "view": {
+                        "label": "Autocomplete Field",
+                        "name": "AutocompleteView",
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "First",
+                                "value": "1"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Second",
+                                "value": "2"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Third",
+                                "value": "3"
+                            }
+                        ]
+                    }
+                },
+                "checkbox": {
+                    "type": { "name": "Boolean" },
+                    "view": { "label": "Checkbox field" }
+                },
+                "code": {
+                    "type": { "name": "String" },
+                    "view": {
+                        "label": "Code field",
+                        "name": "CodeView",
+                        "language": "javascript"
+                    }
+                },
+                "color": {
+                    "type": { "name": "String" },
+                    "view": { "label": "Color field", "name": "ColorView" }
+                },
+                "dropdown": {
+                    "type": { "name": "Number" },
+                    "view": {
+                        "label": "Dropdown Field",
+                        "name": "Dropdown",
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "First",
+                                "value": "1"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Second",
+                                "value": "2"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Third",
+                                "value": "3"
+                            }
+                        ]
+                    }
+                },
+                "number": {
+                    "type": { "name": "Number" },
+                    "view": { "label": "Number Field" }
+                },
+                "string": {
+                    "type": { "name": "String" },
+                    "view": { "label": "String Field" }
+                },
+                "file": {
+                    "type": { "name": "String" },
+                    "view": { "label": "File Field", "name": "FileView" }
+                },
+                "list": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "String" }
+                    },
+                    "view": { "label": "List Field" }
+                },
+                "map": {
+                    "type": {
+                        "name": "Map",
+                        "key_type": { "name": "String" },
+                        "value_type": { "name": "String" }
+                    },
+                    "view": {
+                        "name": "MapView",
+                        "label": "Map Field",
+                        "key": { "label": "Key" },
+                        "value": { "label": "Value" }
+                    }
+                },
+                "object": {
+                    "type": {
+                        "name": "Object",
+                        "properties": {
+                            "nestedString": {
+                                "type": { "name": "String" },
+                                "view": { "label": "Nested String Field" }
+                            }
+                        }
+                    },
+                    "view": { "label": "Object Field" }
+                },
+                "oneof": {
+                    "type": {
+                        "name": "OneOf",
+                        "types": [{ "name": "String" }, { "name": "Number" }]
+                    },
+                    "view": {
+                        "name": "OneOfView",
+                        "label": "Number or String",
+                        "oneof": [
+                            { "name": "View", "label": "String Field" },
+                            { "name": "View", "label": "Number Field" }
+                        ]
+                    }
+                },
+                "radio": {
+                    "type": {
+                        "name": "Enum",
+                        "values": ["first", "second", "third"]
+                    },
+                    "view": { "label": "Radio Field", "name": "RadioGroup" }
+                },
+                "slider": {
+                    "type": { "name": "Number" },
+                    "view": { "name": "SliderView", "label": "Slider Field" }
+                },
+                "switch": {
+                    "type": { "name": "Boolean" },
+                    "view": { "name": "SwitchView", "label": "Switch Field" }
+                },
+                "tuple": {
+                    "type": {
+                        "name": "Tuple",
+                        "items": [{ "name": "String" }, { "name": "Number" }]
+                    },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "TupleView",
+                        "label": "Tuple Field",
+                        "items": [
+                            { "label": "String Field" },
+                            { "label": "Number Field" }
+                        ]
+                    }
+                }
+            }
+        }
+    },
     "simpleSchema": {
         "type": { "name": "Object", "properties": {} },
         "default": {

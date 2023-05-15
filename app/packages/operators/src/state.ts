@@ -1,30 +1,34 @@
+import * as fos from "@fiftyone/state";
+import { throttle } from "lodash";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   atom,
   selector,
   selectorFamily,
-  useRecoilValue,
-  useRecoilState,
   useRecoilCallback,
-  useSetRecoilState,
+  useRecoilState,
   useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
-import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
-  getLocalOrRemoteOperator,
-  listLocalAndRemoteOperators,
-  executeOperatorWithContext,
+  BROWSER_CONTROL_KEYS,
+  RESOLVE_PLACEMENTS_TTL,
+  RESOLVE_TYPE_TTL,
+  RESOLVE_INPUT_VALIDATION_TTL,
+} from "./constants";
+import {
   ExecutionContext,
-  getInvocationRequestQueue,
   InvocationRequestQueue,
   OperatorResult,
+  executeOperatorWithContext,
   fetchRemotePlacements,
+  getInvocationRequestQueue,
+  getLocalOrRemoteOperator,
+  listLocalAndRemoteOperators,
 } from "./operators";
-import * as fos from "@fiftyone/state";
-import { BROWSER_CONTROL_KEYS } from "./constants";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
-import { throttle } from "lodash";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -33,16 +37,14 @@ export const promptingOperatorState = atom({
 
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
-  get:
-    (operatorName) =>
-    ({ get }) => {
-      const promptingOperator = get(promptingOperatorState);
-      if (!promptingOperator) {
-        return {};
-      }
-      const { params } = promptingOperator;
-      return params;
-    },
+  get: (operatorName) => ({ get }) => {
+    const promptingOperator = get(promptingOperatorState);
+    if (!promptingOperator) {
+      return {};
+    }
+    const { params } = promptingOperator;
+    return params;
+  },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -92,22 +94,26 @@ const globalContextSelector = selector({
 
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
-  get:
-    (operatorName) =>
-    ({ get }) => {
-      const globalContext = get(globalContextSelector);
-      const params = get(currentOperatorParamsSelector(operatorName));
-      return {
-        ...globalContext,
-        params,
-      };
-    },
+  get: (operatorName) => ({ get }) => {
+    const globalContext = get(globalContextSelector);
+    const params = get(currentOperatorParamsSelector(operatorName));
+    return {
+      ...globalContext,
+      params,
+    };
+  },
 });
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const { datasetName, view, extended, filters, selectedSamples, params } =
-    curCtx;
+  const {
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    params,
+  } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -137,20 +143,57 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
+  const resolveInput = useCallback(
+    throttle(
+      async (ctx) => {
+        try {
+          const resolved = await operator.resolveInput(ctx);
+          validateThrottled(ctx, resolved);
+          if (resolved) {
+            setInputFields(resolved.toProps());
+          } else {
+            setInputFields(null);
+          }
+        } catch (e) {
+          resolveTypeError.current = e;
+          setInputFields(null);
+        }
+      },
+      operator.isRemote ? RESOLVE_TYPE_TTL : 0
+    ),
+    []
+  );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
-    try {
-      const resolved = await operator.resolveInput(ctx);
-      if (resolved) {
-        setInputFields(resolved.toProps());
-      } else {
-        setInputFields(null);
-      }
-    } catch (e) {
-      resolveTypeError.current = e;
-      setInputFields(null);
-    }
+    resolveInput(ctx);
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
+
+  const validate = useCallback((ctx, resolved) => {
+    return new Promise<{
+      invalid: boolean;
+      errors: any;
+      validationContext: any;
+    }>((resolve) => {
+      setTimeout(() => {
+        const validationContext = new ValidationContext(ctx, resolved);
+        const validationErrors = validationContext.toProps().errors;
+        console.log({ validationContext });
+        setValidationErrors(validationErrors);
+        resolve({
+          invalid: validationContext.invalid,
+          errors: validationErrors,
+          validationContext,
+        });
+      }, 0);
+    });
+  }, []);
+  const validateThrottled = useCallback(
+    throttle(validate, RESOLVE_INPUT_VALIDATION_TTL, {
+      leading: false,
+      trailing: true,
+    }),
+    []
+  );
 
   useEffect(() => {
     resolveInputFields();
@@ -177,27 +220,23 @@ export const useOperatorPrompt = () => {
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      (fieldName, value) => {
-        const state = get(promptingOperatorState);
-        set(promptingOperatorState, {
-          ...state,
-          params: {
-            ...state.params,
-            [fieldName]: value,
-          },
-        });
-      }
+    ({ get, set }) => (fieldName, value) => {
+      const state = get(promptingOperatorState);
+      set(promptingOperatorState, {
+        ...state,
+        params: {
+          ...state.params,
+          [fieldName]: value,
+        },
+      });
+    }
   );
   const execute = useCallback(async () => {
     const resolved = await operator.resolveInput(ctx);
-    const validationContext = new ValidationContext(ctx, resolved);
-    if (validationContext.invalid) {
+    const { invalid, errors } = await validate(ctx, resolved);
+    if (invalid) {
       console.log("Execution halted due to invalid input");
-      const validationErrors = validationContext.toProps().errors;
-      console.log(validationErrors);
-      setValidationErrors(validationErrors);
-      return;
+      return console.log(errors);
     }
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
@@ -263,6 +302,8 @@ export const useOperatorPrompt = () => {
     close,
     cancel: close,
     validationErrors,
+    validate,
+    validateThrottled,
     executorError,
     resolveError,
   };
@@ -682,17 +723,15 @@ export const operatorPlacementsSelector = selector({
 
 export const placementsForPlaceSelector = selectorFamily({
   key: "operatorsForPlaceSelector",
-  get:
-    (place: Places) =>
-    ({ get }) => {
-      const placements = get(operatorPlacementsSelector);
-      return placements
-        .filter((p) => p.placement.place === place)
-        .map((p) => ({
-          placement: p.placement,
-          operator: p.operator.operator,
-        }));
-    },
+  get: (place: Places) => ({ get }) => {
+    const placements = get(operatorPlacementsSelector);
+    return placements
+      .filter((p) => p.placement.place === place)
+      .map((p) => ({
+        placement: p.placement,
+        operator: p.operator.operator,
+      }));
+  },
 });
 
 export function useOperatorPlacements(place: Place) {
