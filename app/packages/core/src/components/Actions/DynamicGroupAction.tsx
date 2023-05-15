@@ -11,7 +11,13 @@ import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
 import { Alert } from "@mui/material";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -54,6 +60,8 @@ export const DynamicGroupAction = () => {
 
   const setView = useSetView(true, false, onComplete);
 
+  const [validationError, setValidationError] = useState<string>("");
+
   const { availableFields, error, isLoading } = useDynamicGroupChoices();
 
   const canSubmitRequest = useMemo(() => {
@@ -67,8 +75,19 @@ export const DynamicGroupAction = () => {
     return groupBy.length > 0;
   }, [useOrdered, groupBy, orderBy, isProcessing]);
 
+  useEffect(() => {
+    setOrderBy("");
+  }, [useOrdered]);
+
   const onSubmit = useCallback(() => {
     if (!canSubmitRequest) {
+      return;
+    }
+
+    setValidationError("");
+
+    if (groupBy === orderBy) {
+      setValidationError("Group by and order by fields must be different.");
       return;
     }
 
@@ -113,7 +132,7 @@ export const DynamicGroupAction = () => {
 
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
 
-  const searchSelector = useCallback(
+  const groupByOptionsSearchSelector = useCallback(
     (search: string) => {
       const values = availableFields?.filter((name) => {
         return name.includes(search);
@@ -176,7 +195,7 @@ export const DynamicGroupAction = () => {
                       resultsPlacement="center"
                       overflow={true}
                       placeholder={"group by"}
-                      useSearch={searchSelector}
+                      useSearch={groupByOptionsSearchSelector}
                       value={groupBy ?? ""}
                     />
 
@@ -198,6 +217,7 @@ export const DynamicGroupAction = () => {
                     />
                     {useOrdered && (
                       <Selector
+                        id={SELECTOR_RESULTS_ID}
                         inputStyle={{
                           height: 28,
                           width: "100%",
@@ -212,9 +232,20 @@ export const DynamicGroupAction = () => {
                         resultsPlacement="center"
                         overflow={true}
                         placeholder={"order by"}
-                        useSearch={searchSelector}
+                        useSearch={groupByOptionsSearchSelector}
                         value={orderBy ?? ""}
                       />
+                    )}
+                    {validationError && (
+                      <Alert
+                        style={{ marginTop: "0.5rem" }}
+                        severity="error"
+                        onClose={() => {
+                          setValidationError("");
+                        }}
+                      >
+                        {validationError}
+                      </Alert>
                     )}
                     <Button
                       style={{
