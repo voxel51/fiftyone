@@ -260,8 +260,8 @@ def create_plugin(
     If no input files are provided, a directory containing only the plugin's
     metadata file will be created.
 
-    If no ``outdir`` is specified, the plugin is created within your
-    ``fo.config.plugins_dir``.
+    If no ``outdir`` is specified, the plugin is created within your local
+    plugins directory (``fo.config.plugins_dir``).
 
     Args:
         plugin_name: the name of the plugin
@@ -279,7 +279,7 @@ def create_plugin(
             definition
 
     Returns:
-        the directory containging the plugin
+        the directory containing the plugin
     """
     if outdir is None:
         existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
@@ -389,10 +389,11 @@ def _find_plugin_metadata_files(root_dir, max_depth=1):
 
 
 def _iter_plugin_metadata_files():
-    if not fo.config.plugins_dir or not os.path.isdir(fo.config.plugins_dir):
+    plugins_dir = fo.config.plugins_dir
+    if not plugins_dir or not os.path.isdir(plugins_dir):
         return
 
-    for root, dirs, files in os.walk(fo.config.plugins_dir):
+    for root, dirs, files in os.walk(plugins_dir, followlinks=True):
         # ignore hidden directories
         dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
         for file in files:
