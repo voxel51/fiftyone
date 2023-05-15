@@ -181,7 +181,7 @@ def download_plugin(
     """
     if etaw.is_url(url_or_gh_repo):
         if "github" in url_or_gh_repo:
-            repo = GitHubRepository(url)
+            repo = GitHubRepository(url_or_gh_repo)
             url = repo.download_url
         else:
             url = url_or_gh_repo
