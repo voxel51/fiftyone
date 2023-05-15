@@ -20,21 +20,6 @@ from .core import (
 )
 from .definitions import list_plugins
 
-
-@deprecated.deprecated(reason="Use list_plugins() instead")
-def list_all_plugins():
-    """Wrapper for backwards compatibility. Returns a list of all plugins
-    that have not explicitly been disabled.
-
-    .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`list_plugins()` instead.
-    """
-
-    return list_plugins()
-
-
 # This enables Sphinx refs to directly use paths imported here
 # and ignore functions marked as depreciated
 __all__ = [
