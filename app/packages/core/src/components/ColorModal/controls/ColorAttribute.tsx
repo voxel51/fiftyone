@@ -58,7 +58,7 @@ const ColorAttribute: React.FC<Prop> = ({ fields, style }) => {
       e.preventDefault();
       const copy = cloneDeep(customizedColorSettings);
       if (index > -1) {
-        copy[index].attributeForColor = field.path?.split(".").slice(-1);
+        copy[index].attributeForColor = field.path?.split(".").slice(-1)[0];
         setColorScheme(colorPool, copy, false);
         setOpen(false);
       }

@@ -48,6 +48,7 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 type View = "pov" | "top";
 
@@ -67,6 +68,10 @@ export const Looker3d = () => {
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
   const getColor = useRecoilValue(fos.colorMap(true));
+  const colorScheme = useRecoilValue(
+    fos.sessionColorScheme
+  ).customizedColorSettings;
+
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE })
@@ -89,10 +94,6 @@ export const Looker3d = () => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
   const sampleMap = useRecoilValue(fos.activePcdSliceToSampleMap);
-
-  // const sampleMapJson = useMemo(() => {
-  //   r
-  // }, [sampleMap])
 
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
@@ -378,17 +379,44 @@ export const Looker3d = () => {
         .map((l) => {
           const path = l.path.join(".");
           let color: string;
-          switch (coloring.by) {
-            case "field":
+          const setting = colorScheme?.find((s) => s.field === path);
+          if (coloring.by === "field") {
+            if (
+              setting &&
+              setting.useFieldColor &&
+              setting.fieldColor &&
+              isValidColor(setting.fieldColor)
+            ) {
+              color = setting.fieldColor;
+            } else {
               color = getColor(path);
-              break;
-            case "instance":
-              color = getColor(l._id);
-              break;
-            default:
-              color = getColor(l.label);
-              break;
+            }
           }
+          if (coloring.by === "value") {
+            const key =
+              setting.attributeForColor === "index"
+                ? l._id
+                : setting.attributeForColor === "label"
+                ? l.label
+                : l.attributes[setting.attributeForColor] ?? l.label;
+            if (
+              setting &&
+              setting.labelColors &&
+              setting.labelColors.length > 0
+            ) {
+              const labelColor = setting.labelColors.find(
+                (s) => s.name === key
+              )?.color;
+              if (isValidColor(labelColor)) {
+                color = labelColor;
+              } else {
+                color = getColor(key);
+              }
+            } else {
+              color = getColor(key);
+            }
+          }
+
           return { ...l, color, id: l._id };
         })
         .filter((l) => pathFilter(l.path.join("."), l)),

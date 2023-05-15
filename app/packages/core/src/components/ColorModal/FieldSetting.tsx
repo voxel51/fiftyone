@@ -202,8 +202,18 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
             {/* set the attribute used for color */}
             <SectionWrapper>
               {path && field.embeddedDocType && state.useLabelColors && (
-                <ColorAttribute fields={colorFields} style={FieldCHILD_STYLE} />
+                <>
+                  <ColorAttribute
+                    fields={colorFields}
+                    style={FieldCHILD_STYLE}
+                  />
+                  <br />
+                  <div style={FieldCHILD_STYLE}>
+                    Use specific colors for the following values
+                  </div>
+                </>
               )}
+
               <AttributeColorSetting style={FieldCHILD_STYLE} />
             </SectionWrapper>
           </form>
