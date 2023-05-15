@@ -23,10 +23,7 @@ import { ACTIVE_FIELD } from "./utils";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@fiftyone/components";
 import { Resizable } from "re-resizable";
-import {
-  resizeHandle,
-  resizeLeftHandle,
-} from "./../Sidebar/Sidebar.module.css";
+import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 
 const ColorModal = () => {
   const ref = React.useRef<HTMLDivElement>();
