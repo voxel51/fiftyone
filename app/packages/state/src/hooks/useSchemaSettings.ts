@@ -82,7 +82,7 @@ export const schemaSearchRestuls = atom<string[]>({
   default: [],
   effects: [
     ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPaths) => {
+      onSet(async (newPaths = []) => {
         const viewSchema = await getPromise(viewSchemaState);
         const schema = await getPromise(schemaState);
 
@@ -128,7 +128,7 @@ export const selectedPathsState = atomFamily({
           }
         });
 
-        const newPaths = newPathsMap?.[dataset?.name];
+        const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter(
             (path) =>

@@ -80,9 +80,7 @@ export const SchemaSearch = (props: Props) => {
                   onCompleted: (data, err) => {
                     if (data) {
                       const { searchSelectFields = [] } = data;
-                      setSearchResults(
-                        searchSelectFields.map((ss) => ss?.path) as string[]
-                      );
+                      setSearchResults(searchSelectFields as string[]);
                     }
                   },
                   onError: (e) => {

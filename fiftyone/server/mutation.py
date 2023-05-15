@@ -442,7 +442,7 @@ class Mutation:
     @gql.mutation
     async def search_select_fields(
         self, dataset_name: str, meta_filter: t.Optional[JSON]
-    ) -> t.List[SampleField]:
+    ) -> t.List[str]:
         if not meta_filter:
             return []
 
@@ -462,14 +462,13 @@ class Mutation:
 
         res = []
         try:
-            schema = dataset.get_field_schema(flat=True)
-            has_frames = dataset.media_type == "video"
-            if has_frames:
-                schema = dataset.get_frame_field_schema(flat=True)
-
             for stage in view._stages:
-                sf = stage.get_selected_fields(view, frames=has_frames)
-                res += [schema[st] for st in sf if st in schema]
+                res += [
+                    st
+                    for st in stage.get_selected_fields(
+                        view, frames=dataset.media_type == "video"
+                    )
+                ]
         except Exception as e:
             print("failed to get_selected_fields", e)
             res = []
