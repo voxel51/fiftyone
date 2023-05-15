@@ -10,6 +10,7 @@ import json
 import logging
 import typing as t
 
+from mongoengine.base import BaseDict
 import strawberry as gql
 
 import eta.core.serial as etas
@@ -233,7 +234,9 @@ def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=field.info,
+                    info=dict(**field.info)
+                    if isinstance(field.info, BaseDict)
+                    else field.info,
                 )
             )
 
