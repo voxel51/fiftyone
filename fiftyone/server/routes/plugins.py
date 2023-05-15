@@ -40,5 +40,5 @@ def filter_disabled_plugins(request, plugin_packages):
     return [
         p
         for p in plugin_packages
-        if managed_plugins.has_plugin(p.get("name", None))
+        if managed_plugins.has_enabled_plugin(p.get("name", None))
     ]
