@@ -2694,7 +2694,6 @@ class PluginDownloadCommand(Command):
         parser.add_argument(
             "-n",
             "--plugin-names",
-            action="append",
             nargs="*",
             default=None,
             metavar="PLUGIN_NAMES",
@@ -2750,7 +2749,6 @@ class PluginCreateCommand(Command):
         parser.add_argument(
             "-f",
             "--from-files",
-            action="append",
             nargs="*",
             default=None,
             metavar="FILES",
