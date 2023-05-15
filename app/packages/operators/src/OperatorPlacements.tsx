@@ -7,6 +7,8 @@ import { types } from ".";
 import { Operator } from "./operators";
 import { withSuspense } from "@fiftyone/state";
 import { usePluginDefinition } from "@fiftyone/plugins";
+import { resolveServerPath } from "./utils";
+import { useColorScheme } from "@mui/material";
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
@@ -38,16 +40,19 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 }
 
 function ButtonPlacement(props: OperatorPlacementProps) {
+  const { mode } = useColorScheme();
   const promptForInput = usePromptOperatorInput();
   const { operator, placement, place } = props;
   const { uri, pluginName } = operator;
   const { view = {} } = placement;
   const { label } = view;
-  const { icon } = view?.options || {};
-  const { serverPath } = usePluginDefinition(pluginName);
+  const { icon, darkIcon, lightIcon } = view?.options || {};
+  const plugin = usePluginDefinition(pluginName);
+  const serverPath = resolveServerPath(plugin);
+  const iconPath = mode === "dark" && darkIcon ? darkIcon : lightIcon || icon;
 
   const IconComponent = icon && (
-    <img src={`${serverPath}/${icon}`} width={21} height={21} />
+    <img src={`${serverPath}/${iconPath}`} width={21} height={21} />
   );
 
   const handleClick = () => {

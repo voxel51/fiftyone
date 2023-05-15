@@ -17,7 +17,7 @@ from io import BytesIO
 from time import time
 from typing import List, Optional
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
 import eta.core.web as etaw
@@ -346,7 +346,9 @@ def download_plugin(
     **kwargs,
 ) -> Optional[str]:
     """Downloads a plugin into the directory specified by FIFTYONE_PLUGINS_DIR.
-    Currently only supports downloading zip archives directly via URL or from public GitHub repos.
+    Currently only supports downloading zip archives directly via URL or from GitHub repos.
+    To download a plugin from a private GitHub repo that you have access to,
+    provide your GitHub personal access token via setting the `GITHUB_TOKEN` in your env.
 
     Args:
         name: the name of the plugin as it appears in the .yml file
@@ -422,7 +424,11 @@ def _download_and_extract_zip(
             return extracted_dir_path
 
     try:
-        with urlopen(zip_url) as zipresp:
+        token = os.environ.get("GITHUB_TOKEN", None)
+        req = Request(zip_url)
+        if token:
+            req.headers.update({"Authorization": "token " + token})
+        with urlopen(req) as zipresp:
             if zipresp.info().get("Content-Type") != "application/zip":
                 raise ValueError(
                     f"File at {zip_url} is not a zip archive. Aborting download."

@@ -1,30 +1,34 @@
+import * as fos from "@fiftyone/state";
+import { throttle } from "lodash";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   atom,
   selector,
   selectorFamily,
-  useRecoilValue,
-  useRecoilState,
   useRecoilCallback,
-  useSetRecoilState,
+  useRecoilState,
   useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
-import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import {
-  getLocalOrRemoteOperator,
-  listLocalAndRemoteOperators,
-  executeOperatorWithContext,
+  BROWSER_CONTROL_KEYS,
+  RESOLVE_PLACEMENTS_TTL,
+  RESOLVE_TYPE_TTL,
+  RESOLVE_INPUT_VALIDATION_TTL,
+} from "./constants";
+import {
   ExecutionContext,
-  getInvocationRequestQueue,
   InvocationRequestQueue,
   OperatorResult,
+  executeOperatorWithContext,
   fetchRemotePlacements,
+  getInvocationRequestQueue,
+  getLocalOrRemoteOperator,
+  listLocalAndRemoteOperators,
 } from "./operators";
-import * as fos from "@fiftyone/state";
-import { BROWSER_CONTROL_KEYS } from "./constants";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
-import { throttle } from "lodash";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -137,20 +141,57 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
+  const resolveInput = useCallback(
+    throttle(
+      async (ctx) => {
+        try {
+          const resolved = await operator.resolveInput(ctx);
+          validateThrottled(ctx, resolved);
+          if (resolved) {
+            setInputFields(resolved.toProps());
+          } else {
+            setInputFields(null);
+          }
+        } catch (e) {
+          resolveTypeError.current = e;
+          setInputFields(null);
+        }
+      },
+      operator.isRemote ? RESOLVE_TYPE_TTL : 0
+    ),
+    []
+  );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
-    try {
-      const resolved = await operator.resolveInput(ctx);
-      if (resolved) {
-        setInputFields(resolved.toProps());
-      } else {
-        setInputFields(null);
-      }
-    } catch (e) {
-      resolveTypeError.current = e;
-      setInputFields(null);
-    }
+    resolveInput(ctx);
   }, [ctx, operatorName, hooks, JSON.stringify(ctx.params)]);
+
+  const validate = useCallback((ctx, resolved) => {
+    return new Promise<{
+      invalid: boolean;
+      errors: any;
+      validationContext: any;
+    }>((resolve) => {
+      setTimeout(() => {
+        const validationContext = new ValidationContext(ctx, resolved);
+        const validationErrors = validationContext.toProps().errors;
+        console.log({ validationContext });
+        setValidationErrors(validationErrors);
+        resolve({
+          invalid: validationContext.invalid,
+          errors: validationErrors,
+          validationContext,
+        });
+      }, 0);
+    });
+  }, []);
+  const validateThrottled = useCallback(
+    throttle(validate, RESOLVE_INPUT_VALIDATION_TTL, {
+      leading: false,
+      trailing: true,
+    }),
+    []
+  );
 
   useEffect(() => {
     resolveInputFields();
@@ -191,13 +232,10 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(async () => {
     const resolved = await operator.resolveInput(ctx);
-    const validationContext = new ValidationContext(ctx, resolved);
-    if (validationContext.invalid) {
+    const { invalid, errors } = await validate(ctx, resolved);
+    if (invalid) {
       console.log("Execution halted due to invalid input");
-      const validationErrors = validationContext.toProps().errors;
-      console.log(validationErrors);
-      setValidationErrors(validationErrors);
-      return;
+      return console.log(errors);
     }
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
@@ -239,7 +277,7 @@ export const useOperatorPrompt = () => {
       "executor.hasExecuted": executor.hasExecuted,
       "executor.needsOutput": executor.needsOutput,
     });
-    if (executor.hasExecuted && !executor.needsOutput) {
+    if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       console.log("AUTO CLOSING");
       close();
     }
@@ -263,6 +301,8 @@ export const useOperatorPrompt = () => {
     close,
     cancel: close,
     validationErrors,
+    validate,
+    validateThrottled,
     executorError,
     resolveError,
   };
@@ -399,6 +439,7 @@ export const operatorChoiceState = atom({
 export const recentlyUsedOperatorsState = atom({
   key: "recentlyUsedOperators",
   default: [],
+  effects: [fos.getBrowserStorageEffectForKey("operators-recently-used")],
 });
 
 export function useOperatorBrowser() {

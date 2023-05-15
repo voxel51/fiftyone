@@ -20,6 +20,7 @@ const useSessionColorScheme = () => {
   const [computedSessionColorScheme, setSessionColorSchemeState] =
     useRecoilState(sessionColorScheme);
   const dataset = useRecoilValue(datasetName);
+  const setDataset = fos.useSetDataset();
   const stages = useRecoilValue(view);
 
   function setColorScheme(
@@ -37,10 +38,14 @@ const useSessionColorScheme = () => {
       customizedColorSettings: JSON.stringify(customizedColorSettings),
     };
 
-    setSessionColorSchemeState(combined);
-
     return send((session) =>
       commit({
+        onCompleted: () => {
+          setSessionColorSchemeState(combined);
+          if (saveToApp) {
+            setDataset(dataset);
+          }
+        },
         onError,
         variables: {
           subscription,

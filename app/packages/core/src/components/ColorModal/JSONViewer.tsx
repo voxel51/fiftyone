@@ -52,7 +52,8 @@ const JSONViewer: React.FC = ({}) => {
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
-        You can use the JSON editor to customize the color settings.
+        You can use the JSON editor below to copy/edit your current color
+        scheme, or you can paste in a pre-built color scheme to apply.
         <ActionOption
           href={COLOR_SCHEME}
           text={"Read more"}
@@ -62,28 +63,39 @@ const JSONViewer: React.FC = ({}) => {
             color: theme.text.primary,
             paddingTop: 0,
             paddingBottom: 0,
+            marginLeft: 5,
+            display: "inline-block",
           }}
           svgStyles={{ height: "1rem", marginTop: 7.5 }}
-        />
-        {haveChanges && (
-          <Button
-            onClick={onApply}
-            style={{ margin: "0.25rem" }}
-            text="Save Changes"
-            title="Validate color scheme JSON and apply to session color scheme setting"
-          />
-        )}
+        />{" "}
+        about custom color schemes.
       </SectionWrapper>
       <Editor
         defaultLanguage="json"
         theme={themeMode == "dark" ? "vs-dark" : "vs-light"}
         value={JSON.stringify(data, null, 4)}
         width={"100%"}
-        height={"calc(100% - 110px)"}
+        height={"calc(100% - 90px)"}
         wrapperProps={{ padding: 0 }}
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
+      {haveChanges && (
+        <Button
+          onClick={onApply}
+          style={{
+            margin: "0.25rem",
+            backgroundColor: theme.primary.main,
+            color: "#fff",
+            position: "absolute",
+            top: "calc(100% - 90px)",
+            left: "calc(100% - 150px)",
+            textAlign: "center",
+          }}
+          text="Apply Changes"
+          title="Validate color scheme JSON and apply to session color scheme setting"
+        />
+      )}
     </div>
   );
 };

@@ -85,9 +85,6 @@ class ExecuteOperator(HTTPEndpoint):
             raise HTTPException(status_code=404, detail=erroDetail)
         result = await execute_operator(operator_uri, data)
         json = result.to_json()
-        if result.error is not None:
-            print(result.error)
-            raise HTTPException(status_code=500, detail=json)
         return json
 
 
@@ -146,9 +143,6 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             )
         else:
             json = execution_result.to_json()
-            if execution_result.error is not None:
-                print(execution_result.error)
-                raise HTTPException(status_code=500, detail=json)
             return json
 
 

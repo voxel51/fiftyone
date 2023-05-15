@@ -28,7 +28,11 @@ export default function AutocompleteView(props) {
           <TextField
             autoFocus={autoFocus(props)}
             {...params}
-            placeholder="Type and press enter to add an item"
+            placeholder={
+              multiple
+                ? "Type and press enter to add a value"
+                : "Type or select a value"
+            }
           />
         )}
         onInputChange={(e) => {

@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Field } from "@fiftyone/utilities";
 
 import { Button } from "../utils";
 import {

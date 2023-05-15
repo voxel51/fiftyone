@@ -37,6 +37,7 @@ let theme = extendMuiTheme({
           inactiveTab: "hsl(200, 0%, 90%)",
         },
         divider: "hsl(200, 0%, 80%)",
+        dividerDisabled: "hsl(200, 0%, 85%)",
         danger: {
           plainColor: "hsl(0, 87%, 47%)",
         },
@@ -102,6 +103,7 @@ let theme = extendMuiTheme({
           paper: "hsl(200, 0%, 10%)",
         },
         divider: "hsl(200, 0%, 20%)",
+        dividerDisabled: "hsl(200, 0%, 15%)",
         danger: {
           plainColor: "hsl(0, 87%, 53%)",
         },

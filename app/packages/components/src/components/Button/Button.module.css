@@ -11,14 +11,15 @@
   color: var(--fo-palette-text-secondary);
 }
 
-.button:hover {
+.button:hover:enabled {
   background: var(--fo-palette-primary-plainColor);
   color: var(--fo-palette-text-buttonHighlight);
   border-color: var(--fo-palette-primary-plainColor);
 }
 
 .button:disabled {
-  border: 1px solid var(--fo-palette-primary-plainColor);
-  cursor: default;
-  background: var(--fo-palette-background-level2);
+  border-color: var(--fo-palette-dividerDisabled);
+  cursor: not-allowed;
+  color: var(--fo-palette-text-tertiary);
+  background: var(--fo-palette-background-level3);
 }
