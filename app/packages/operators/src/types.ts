@@ -254,6 +254,7 @@ export class View {
     this.description = options.description;
     this.caption = options.caption;
     this.space = options.space;
+    this.componentsProps = options.componentsProps;
     this.name = "View";
     this.options = options;
   }
@@ -262,6 +263,7 @@ export class View {
   caption?: string;
   space?: number;
   name?: string;
+  componentsProps?: unknown;
   static fromJSON(json: ViewProps) {
     return new View(json);
   }
