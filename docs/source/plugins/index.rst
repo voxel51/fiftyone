@@ -237,15 +237,33 @@ and refresh any connected browser clients to see the plugins show up.
 Downloading plugins via CLI or Python
 ------------------------------------
 
-If you see a plugin on GitHub you want to try out or have a direct link to a
-ZIP archive of a plugin, you can download and install it via the CLI
-command or Python SDK. simply via the CLI commandby calling
-`` from the
-command line or
-running: `
-You can download plugins from the command line
-or from within
-Python.
+To download and run a new plugin, all you need is a URL to
+the plugin packaged as a Zip archive or a link to a GitHub repo containing
+the source code. You can then download and install the plugin using either of
+the following methods:
+
+CLI:
+
+.. code-block:: shell
+
+    # Download all plugins
+    fiftyone plugins download <url>
+
+    # Download specific plugins
+    fiftyone plugins download <url> -n <name or list of
+    names>
+
+Python:
+
+.. code-block:: python
+
+    import fiftyone.plugins as fop
+
+    # Download all plugins
+    fop.download_plugin(url)
+
+    # Download specific plugins
+    fop.download_plugin(url, names=[name1, name2])
 
 
 Configuring plugins
