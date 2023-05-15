@@ -439,6 +439,7 @@ export const operatorChoiceState = atom({
 export const recentlyUsedOperatorsState = atom({
   key: "recentlyUsedOperators",
   default: [],
+  effects: [fos.getBrowserStorageEffectForKey("operators-recently-used")],
 });
 
 export function useOperatorBrowser() {
