@@ -12,7 +12,6 @@ import yaml
 import eta.core.serial as etas
 
 import fiftyone as fo
-import fiftyone.constants as foc
 
 
 class PluginDefinition(object):
@@ -78,7 +77,7 @@ class PluginDefinition(object):
     @property
     def fiftyone_compatibility(self):
         """The FiftyOne compatible version as a semver string."""
-        return self._metadata.get("fiftyone", {}).get("version", foc.Version)
+        return self._metadata.get("fiftyone", {}).get("version", None)
 
     @property
     def operators(self):
@@ -121,9 +120,8 @@ class PluginDefinition(object):
     @property
     def server_path(self):
         """The default server path to the plugin."""
-        return "/" + os.path.join(
-            "plugins", os.path.relpath(self.directory, fo.config.plugins_dir)
-        )
+        relpath = os.path.relpath(self.directory, fo.config.plugins_dir)
+        return "/" + os.path.join("plugins", relpath)
 
     @property
     def js_bundle_server_path(self):
