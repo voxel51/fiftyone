@@ -23,21 +23,27 @@ const useClearSessionColorScheme = () => {
   const defaultSetting = useRecoilValue(datasetAppConfig).colorScheme;
 
   function onClear(saveToApp: boolean) {
+    // when clear default, we reset to app default;
+    // when reset, we reset to appConfig default (if exisits) or app default.
     const combined = {
-      colorPool: defaultSetting
-        ? defaultSetting.colorPool
-        : DEFAULT_APP_COLOR_SCHEME.colorPool,
-      customizedColorSettings: defaultSetting?.customizedColorSettings
-        ? JSON.parse(defaultSetting.customizedColorSettings)
-        : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
+      colorPool:
+        defaultSetting && !saveToApp
+          ? defaultSetting.colorPool
+          : DEFAULT_APP_COLOR_SCHEME.colorPool,
+      customizedColorSettings:
+        defaultSetting?.customizedColorSettings && !saveToApp
+          ? JSON.parse(defaultSetting.customizedColorSettings)
+          : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
     };
     const api = {
-      colorPool: defaultSetting
-        ? defaultSetting.colorPool
-        : DEFAULT_APP_COLOR_SCHEME.colorPool,
-      customizedColorSettings: defaultSetting?.customizedColorSettings
-        ? defaultSetting.customizedColorSettings
-        : null,
+      colorPool:
+        defaultSetting && !saveToApp
+          ? defaultSetting.colorPool
+          : DEFAULT_APP_COLOR_SCHEME.colorPool,
+      customizedColorSettings:
+        defaultSetting?.customizedColorSettings && !saveToApp
+          ? defaultSetting.customizedColorSettings
+          : null,
     };
     setSessionColorSchemeState(combined);
 
