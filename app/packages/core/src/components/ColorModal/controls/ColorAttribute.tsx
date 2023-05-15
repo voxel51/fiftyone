@@ -28,6 +28,7 @@ const SelectButton = styled.div`
 
 type Prop = {
   fields: Field[];
+  style: React.CSSProperties;
 };
 
 type Option = {
@@ -35,7 +36,7 @@ type Option = {
   onClick: () => void;
 };
 
-const ColorAttribute: React.FC<Prop> = ({ fields }) => {
+const ColorAttribute: React.FC<Prop> = ({ fields, style }) => {
   const theme = useTheme();
   const ref = React.useRef<HTMLDivElement>();
   const [open, setOpen] = React.useState(false);
@@ -69,7 +70,7 @@ const ColorAttribute: React.FC<Prop> = ({ fields }) => {
     "Please select an attribute";
 
   return (
-    <div>
+    <div style={style}>
       Select an attribute to color by
       <ActionDiv ref={ref}>
         <Tooltip

@@ -103,7 +103,6 @@ const ColorModal = () => {
                 ["top"]: resizeHandle,
                 ["bottom"]: resizeHandle,
               }}
-              style={{ overflow: "auto" }}
             >
               <Container height={height} width={width}>
                 <DraggableModalTitle className="draggable-colorModal-handle">
@@ -116,7 +115,7 @@ const ColorModal = () => {
                       margin: "4px",
                     }}
                   >
-                    Color Scheme
+                    Color scheme
                   </Typography>
                   <CloseIcon
                     onClick={() => setActiveColorModalField(null)}

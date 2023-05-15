@@ -6,6 +6,7 @@ body {
   --fo-palette-text-primary: hsl(200, 0%, 100%);
   --fo-palette-text-secondary: hsl(200, 0%, 70%);
   --fo-palette-background-level3: hsl(200, 0%, 5%);
+  --fo-palette-primary-brand: hsl(25, 100%, 51%);
 
   padding: 0;
   margin: 0;

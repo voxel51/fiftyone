@@ -11,6 +11,7 @@ import {
 } from "../recoil";
 import useSendEvent from "./useSendEvent";
 import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
+import useSetDataset from "./useSetDataset";
 
 const useClearSessionColorScheme = () => {
   const send = useSendEvent(true);
@@ -18,6 +19,7 @@ const useClearSessionColorScheme = () => {
   const [commit] = useMutation<foq.setColorSchemeMutation>(foq.setColorScheme);
   const onError = useErrorHandler();
   const setSessionColorSchemeState = useSetRecoilState(sessionColorScheme);
+  const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName);
   const stages = useRecoilValue(view);
   const defaultSetting = useRecoilValue(datasetAppConfig).colorScheme;
@@ -45,11 +47,16 @@ const useClearSessionColorScheme = () => {
           ? defaultSetting.customizedColorSettings
           : null,
     };
-    setSessionColorSchemeState(combined);
 
     return send((session) =>
       commit({
         onError,
+        onCompleted: () => {
+          setSessionColorSchemeState(combined);
+          if (saveToApp) {
+            setDataset(dataset);
+          }
+        },
         variables: {
           subscription,
           session,
@@ -62,6 +69,7 @@ const useClearSessionColorScheme = () => {
       })
     );
   }
+
   return onClear;
 };
 

@@ -129,7 +129,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     }
   }, [values]);
 
-  if (!values || values.length == 0) return null;
+  if (!values) return null;
+
   return (
     <div style={style}>
       {values.map((value, index) => (
@@ -180,13 +181,18 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
           />
         </RowContainer>
       ))}
-      <AddContainer>
-        <Button
-          onClick={handleAdd}
-          text="Add a new pair"
-          title="add a new pair"
-        />
-      </AddContainer>
+      {Boolean(
+        setting?.attributeForColor ||
+          (setting?.labelColors && setting.labelColors.length > 0)
+      ) && (
+        <AddContainer>
+          <Button
+            onClick={handleAdd}
+            text="Add a new pair"
+            title="add a new pair"
+          />
+        </AddContainer>
+      )}
     </div>
   );
 };

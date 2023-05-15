@@ -45,7 +45,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     useLabelColors: Boolean(
       setting?.labelColors && setting.labelColors.length > 0
     ),
-    useCustomAttribute: Boolean(setting?.attributeForColor),
   });
   const defaultColor =
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
@@ -104,9 +103,9 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       setColorScheme(colorPool, newSetting, false);
     }
     setState({
-      useCustomAttribute: Boolean(setting?.attributeForColor),
       useLabelColors: Boolean(
-        setting?.labelColors && setting.labelColors.length > 0
+        (setting?.labelColors && setting.labelColors.length > 0) ||
+          setting?.attributeForColor
       ),
     });
   }, [path, customizedColorSettings]);
@@ -176,35 +175,16 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         </div>
       )}
       {coloring.by == "field" && !isTypeFieldSupported && (
-        <div>Color by field is not supported for this field type.</div>
+        <div>Color by field is not supported for this field type</div>
       )}
       {coloring.by == "value" && isTypeValueSupported && (
         <div>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
           >
-            {path && field.embeddedDocType && (
-              <Checkbox
-                name={`Use custom attribute for label`}
-                value={state.useCustomAttribute}
-                setValue={(v: boolean) => {
-                  if (!v) {
-                    const newSetting = cloneDeep(customizedColorSettings ?? []);
-                    const index = newSetting.findIndex((x) => x.field === path);
-                    newSetting[index].attributeForColor = undefined;
-                    setColorScheme(colorPool, newSetting, false);
-                  }
-                  setState((s) => ({ ...s, useCustomAttribute: v }));
-                }}
-              />
-            )}
-            {/* set the attribute used for color */}
-            {path && field.embeddedDocType && state.useCustomAttribute && (
-              <ColorAttribute fields={colorFields} />
-            )}
             {/* set attribute value - color */}
             <Checkbox
-              name={`Assign color based on selected color attribute's values`}
+              name={`Use custom colors for specific field values`}
               value={state.useLabelColors}
               setValue={(v: boolean) => {
                 const newSetting = cloneDeep(customizedColorSettings ?? []);
@@ -212,11 +192,18 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 newSetting[index].labelColors = v
                   ? [{ name: "", color: defaultColor }]
                   : [];
+                if (field.embeddedDocType && !v) {
+                  newSetting[index].attributeForColor = undefined;
+                }
                 setColorScheme(colorPool, newSetting, false);
                 setState((s) => ({ ...s, useLabelColors: v }));
               }}
             />
+            {/* set the attribute used for color */}
             <SectionWrapper>
+              {path && field.embeddedDocType && state.useLabelColors && (
+                <ColorAttribute fields={colorFields} style={FieldCHILD_STYLE} />
+              )}
               <AttributeColorSetting style={FieldCHILD_STYLE} />
             </SectionWrapper>
           </form>
@@ -224,10 +211,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       )}
 
       {coloring.by == "value" && !isTypeValueSupported && (
-        <div>
-          Color by attribute value is not supported for this field type at the
-          moment.
-        </div>
+        <div>Color by value is not supported for this field type</div>
       )}
     </div>
   );
