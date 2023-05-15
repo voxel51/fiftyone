@@ -155,6 +155,12 @@ def download_plugin(
     """Downloads the plugin(s) from the given location to your local plugins
     directory (``fo.config.plugins_dir``).
 
+    .. note::
+
+        To download a plugin from a private GitHub repo that you have access
+        to, provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
     Args:
         url_or_gh_repo: the location to download from, which can be:
 
@@ -227,7 +233,13 @@ def _download_plugin(
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
         archive_path = os.path.join(tmpdir, archive_name)
-        etaw.download_file(url, path=archive_path)
+        session = etaw.WebSession()
+        token = os.environ.get("GITHUB_TOKEN", None)
+        if token:
+            logger.debug("Using GitHub token as authorization for download")
+            session.sess.headers.update({"Authorization": "token " + token})
+
+        session.write(archive_path, url)
         etau.extract_archive(archive_path)
 
         metadata_paths = _find_plugin_metadata_files(
