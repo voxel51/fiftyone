@@ -44,8 +44,6 @@ export default function EmptySamples() {
     fos.count({ path: "", extended: true, modal: false })
   );
 
-  console.log({ totalSamples });
-
   const theme = useTheme();
   const setView = fos.useSetView();
 

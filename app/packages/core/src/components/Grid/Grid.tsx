@@ -148,14 +148,14 @@ const Grid: React.FC<{}> = () => {
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set }) =>
+      ({ snapshot, set, reset }) =>
         async (event: KeyboardEvent) => {
           if (event.key !== "Escape") {
             return;
           }
 
           if (!(await snapshot.getPromise(fos.modal))) {
-            set(fos.selectedSamples, new Set());
+            reset(fos.selectedSamples);
           }
         },
       []

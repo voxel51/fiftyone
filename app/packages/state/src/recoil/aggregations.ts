@@ -1,18 +1,12 @@
 import * as foq from "@fiftyone/relay";
-import { VALID_KEYPOINTS } from "@fiftyone/utilities";
+import { Stage, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
 import { GetRecoilValue, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
-import {
-  groupId,
-  groupSlice,
-  groupStatistics,
-  modalGroupSlice,
-} from "./groups";
+import { groupId, groupStatistics } from "./groups";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -33,6 +27,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     paths: string[];
     root?: boolean;
     mixed?: boolean;
+    customView?: Stage[];
   },
   ResponseFrom<foq.aggregationsQuery>
 >({
@@ -41,7 +36,14 @@ export const aggregationQuery = graphQLSelectorFamily<
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, paths, root = false, mixed = false }) =>
+    ({
+      extended,
+      modal,
+      paths,
+      root = false,
+      mixed = false,
+      customView = undefined,
+    }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
       if (!dataset) return null;
@@ -63,8 +65,8 @@ export const aggregationQuery = graphQLSelectorFamily<
         mixed,
         sampleIds:
           !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
-        slice: mixed ? null : get(modal ? modalGroupSlice : groupSlice) || null, // when mixed, slice is not needed
-        view: !root ? get(viewAtoms.view) : [],
+        slice: mixed ? null : get(currentSlices(modal)) || null, // when mixed, slice is not needed
+        view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
 
       return {
@@ -106,6 +108,26 @@ export const aggregation = selectorFamily({
       return get(
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
       ).filter((data) => data.path === path)[0];
+    },
+});
+
+export const dynamicGroupsElementCount = selectorFamily<
+  number,
+  { groupByValue: string }
+>({
+  key: "dynamicGroupsElementCount",
+  get:
+    ({ groupByValue }) =>
+    ({ get }) => {
+      const aggregations = get(
+        aggregationQuery({
+          customView: get(viewAtoms.dynamicGroupViewQuery(groupByValue)),
+          extended: false,
+          modal: false,
+          paths: [""],
+        })
+      ).aggregations;
+      return aggregations?.at(0)?.count ?? 0;
     },
 });
 

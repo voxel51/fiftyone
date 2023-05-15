@@ -4,10 +4,16 @@ import {
   GitHubLink,
   Header,
   IconButton,
-  iconContainer,
   SlackLink,
+  iconContainer,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
+import {
+  OperatorBrowser,
+  OperatorInvocationRequestExecutor,
+  OperatorPrompt,
+  OperatorViewModal,
+} from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
@@ -21,11 +27,11 @@ import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import ga from "../ga";
 import useRefresh from "../useRefresh";
+import DatasetSelector from "./DatasetSelector";
+import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
 import { NavGA$key } from "./__generated__/NavGA.graphql";
-import DatasetSelector from "./DatasetSelector";
-import Teams from "./Teams";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -155,7 +161,6 @@ const Nav: React.FC<{
           )}
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
-            disableRipple
             onClick={() => {
               const nextMode = mode === "dark" ? "light" : "dark";
               setMode(nextMode);
@@ -172,6 +177,10 @@ const Nav: React.FC<{
           <GitHubLink />
           <DocsLink />
         </div>
+        <OperatorBrowser />
+        <OperatorPrompt />
+        <OperatorViewModal />
+        <OperatorInvocationRequestExecutor />
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>

@@ -1,0 +1,660 @@
+{
+    "type": "object",
+    "view": {
+        "label": "Request Annotations",
+        "description": "You can request annotation using any of supported backends",
+        "caption": "Please fill out all the fields marked with asterisk",
+        "descriptionView": "tooltip",
+        "component": "ObjectView"
+    },
+    "required": false,
+    "properties": {
+        "cars": {
+            "type": "object",
+            "view": {
+                "name": "MapView",
+                "label": "Cars",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "read_only": null,
+                "key": {
+                    "name": "View",
+                    "label": "Id",
+                    "description": null,
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "read_only": null
+                },
+                "value": {
+                    "name": "View",
+                    "label": "Make and model",
+                    "description": null,
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "read_only": null
+                },
+                "component": "MapView"
+            },
+            "default": null,
+            "required": false,
+            "additionalProperties": {
+                "type": "string",
+                "view": {
+                    "name": "View",
+                    "label": "Make and model",
+                    "description": null,
+                    "caption": null,
+                    "space": null,
+                    "placeholder": null,
+                    "read_only": null,
+                    "component": "FieldView"
+                }
+            }
+        },
+        "pets": {
+            "type": "array",
+            "view": {
+                "name": "Dropdown",
+                "label": "Pets",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "placeholder": "Select one or more pet",
+                "read_only": null,
+                "choices": [
+                    {
+                        "name": "Choice",
+                        "label": "Cat",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "value": "cat"
+                    },
+                    {
+                        "name": "Choice",
+                        "label": "Dog",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "value": "dog"
+                    },
+                    {
+                        "name": "Choice",
+                        "label": "Other",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "value": "other"
+                    }
+                ],
+                "component": "DropdownView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "string",
+                "view": {
+                    "component": "FieldView"
+                }
+            }
+        },
+        "objectArray": {
+            "type": "array",
+            "view": {
+                "label": "List of objects",
+                "component": "ListView"
+            },
+            "default": null,
+            "required": false,
+            "items": {
+                "type": "object",
+                "view": {
+                    "component": "ObjectView"
+                },
+                "properties": {
+                    "first_name": {
+                        "type": "string",
+                        "view": {
+                            "name": "View",
+                            "label": "First name",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "FieldView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "view": {
+                            "name": "View",
+                            "label": "Last name",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "FieldView"
+                        },
+                        "default": null,
+                        "required": false
+                    },
+                    "age": {
+                        "type": "number",
+                        "view": {
+                            "name": "View",
+                            "label": "Age",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null,
+                            "component": "FieldView"
+                        },
+                        "default": null,
+                        "required": false
+                    }
+                }
+            }
+        },
+        "sampleFile": {
+            "type": "string",
+            "view": {
+                "name": "FileView",
+                "label": "Sample file",
+                "description": "Upload or provide a URL to a sample file",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "component": "FileView"
+            },
+            "default": null,
+            "required": false
+        },
+        "tags": {
+            "type": "string",
+            "view": {
+                "name": "AutocompleteView",
+                "label": "Tags",
+                "description": "Select a tag or type a custom tag",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "choices": [
+                    {
+                        "name": "Choice",
+                        "label": "Tag one",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "value": "one"
+                    },
+                    {
+                        "name": "Choice",
+                        "label": "Tag two",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "value": "two"
+                    },
+                    {
+                        "name": "Choice",
+                        "label": "Tag three",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "value": "three"
+                    }
+                ],
+                "component": "AutocompleteView"
+            },
+            "required": false
+        },
+        "json": {
+            "type": "string",
+            "view": {
+                "name": "JSONView",
+                "label": "JSON Viewer",
+                "description": "JSON Viewer with syntax highlighting",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "component": "JSONView"
+            },
+            "default": "{\"name\": \"Full Name\"}",
+            "required": false
+        },
+        "export": {
+            "type": "string",
+            "view": {
+                "name": "TabsView",
+                "label": "Export method",
+                "description": "Select your export method",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "choices": [
+                    {
+                        "name": "Choice",
+                        "label": "Direct export",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "value": "direct"
+                    },
+                    {
+                        "name": "Choice",
+                        "label": "Cloud export",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "value": "cloud"
+                    }
+                ],
+                "variant": "rounded",
+                "component": "TabsView"
+            },
+            "default": "direct",
+            "required": false
+        },
+        "color": {
+            "type": "string",
+            "view": {
+                "name": "ColorView",
+                "label": "Favorite color",
+                "description": "Pick your favorite color using the color picker",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "compact": false,
+                "variant": null,
+                "component": "ColorView"
+            },
+            "default": null,
+            "required": false
+        },
+        "jsEditor": {
+            "type": "string",
+            "view": {
+                "readOnly": false,
+                "name": "CodeView",
+                "label": "JS editor",
+                "description": "JS editor with auto-complete and syntax highlighting",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "language": "javascript",
+                "component": "CodeView"
+            },
+            "default": "Winter",
+            "required": false
+        },
+        "oneoffs": {
+            "type": "oneOf",
+            "view": {
+                "name": "OneOfView",
+                "label": "Number or string",
+                "description": null,
+                "caption": null,
+                "space": null,
+                "oneof": [
+                    {
+                        "name": "View",
+                        "label": "String",
+                        "description": "Please provide a string value",
+                        "caption": null,
+                        "space": null
+                    },
+                    {
+                        "name": "View",
+                        "label": "Number",
+                        "description": "Please provide a number value",
+                        "caption": null,
+                        "space": null
+                    }
+                ],
+                "component": "OneOfView"
+            },
+            "required": false,
+            "types": [
+                {
+                    "type": "string",
+                    "view": {
+                        "component": "FieldView"
+                    }
+                },
+                {
+                    "type": "number",
+                    "view": {
+                        "component": "FieldView"
+                    }
+                }
+            ]
+        },
+        "backend": {
+            "type": "string",
+            "view": {
+                "label": "Annotation Backend",
+                "name": "RadioGroup",
+                "choices": [
+                    {
+                        "value": "cvat",
+                        "label": "CVAT",
+                        "description": "Free and open source"
+                    },
+                    {
+                        "value": "labelbox",
+                        "label": "LabelBox",
+                        "description": "Annotations and collaboration"
+                    },
+                    {
+                        "value": "labelstudio",
+                        "label": "Label Studio",
+                        "description": "Data Labeling Platform"
+                    }
+                ],
+                "component": "RadioView"
+            },
+            "default": "cvat",
+            "required": true
+        },
+        "media_field": {
+            "type": "string",
+            "view": {
+                "label": "Media Field",
+                "choices": [
+                    {
+                        "value": "id",
+                        "label": "id"
+                    },
+                    {
+                        "value": "filepath",
+                        "label": "filepath"
+                    },
+                    {
+                        "value": "tags",
+                        "label": "tags"
+                    },
+                    {
+                        "value": "metadata",
+                        "label": "metadata"
+                    },
+                    {
+                        "value": "ground_truth",
+                        "label": "ground_truth"
+                    },
+                    {
+                        "value": "uniqueness",
+                        "label": "uniqueness"
+                    },
+                    {
+                        "value": "predictions",
+                        "label": "predictions"
+                    }
+                ],
+                "component": "DropdownView"
+            },
+            "default": "filepath",
+            "required": true
+        },
+        "tuples": {
+            "type": "array",
+            "view": {
+                "name": "TupleView",
+                "label": "The Tuple",
+                "description": "Tuple with string as the type for first item, number for second, and boolean for third",
+                "caption": null,
+                "space": null,
+                "placeholder": null,
+                "items": [
+                    {
+                        "name": "View",
+                        "label": "String item",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    },
+                    {
+                        "name": "View",
+                        "label": "Number Item",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    },
+                    {
+                        "name": "View",
+                        "label": "Boolean Item",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    }
+                ],
+                "component": "TupleView"
+            },
+            "required": false,
+            "items": [
+                {
+                    "type": "string",
+                    "view": {
+                        "component": "FieldView",
+                        "name": "View",
+                        "label": "String item",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    }
+                },
+                {
+                    "type": "number",
+                    "view": {
+                        "component": "FieldView",
+                        "name": "View",
+                        "label": "Number Item",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    }
+                },
+                {
+                    "type": "boolean",
+                    "view": {
+                        "component": "CheckboxView",
+                        "name": "View",
+                        "label": "Boolean Item",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    }
+                }
+            ]
+        },
+        "launch_editor": {
+            "type": "boolean",
+            "view": {
+                "label": "Launch Editor",
+                "space": "2",
+                "component": "CheckboxView"
+            },
+            "required": false
+        },
+        "use_custom_label_schema": {
+            "type": "boolean",
+            "view": {
+                "label": "Use Custom Label Schema",
+                "space": "10",
+                "component": "CheckboxView"
+            },
+            "required": false
+        },
+        "label_field": {
+            "type": "string",
+            "view": {
+                "label": "Label Field",
+                "component": "FieldView"
+            },
+            "required": true
+        },
+        "label_type": {
+            "type": "string",
+            "view": {
+                "label": "Label Type",
+                "name": "Dropdown",
+                "choices": [
+                    {
+                        "value": "classification",
+                        "label": "classification"
+                    },
+                    {
+                        "value": "classifications",
+                        "label": "classifications"
+                    },
+                    {
+                        "value": "detections",
+                        "label": "detections"
+                    },
+                    {
+                        "value": "polylines",
+                        "label": "polylines"
+                    },
+                    {
+                        "value": "polygons",
+                        "label": "polygons"
+                    },
+                    {
+                        "value": "keypoints",
+                        "label": "keypoints"
+                    },
+                    {
+                        "value": "segmentations",
+                        "label": "segmentations"
+                    }
+                ],
+                "component": "DropdownView"
+            },
+            "required": true
+        },
+        "override_attributes_for_classes": {
+            "type": "boolean",
+            "view": {
+                "label": "Override Attributes for Classes",
+                "component": "CheckboxView"
+            },
+            "required": false
+        },
+        "classes": {
+            "type": "array",
+            "view": {
+                "name": "AutocompleteView",
+                "label": "Classes",
+                "component": "AutocompleteView"
+            },
+            "required": true,
+            "items": {
+                "type": "string",
+                "view": {
+                    "component": "FieldView"
+                }
+            }
+        },
+        "attributes_style": {
+            "type": "string",
+            "view": {
+                "label": "Attributes Style",
+                "name": "RadioGroup",
+                "choices": [
+                    {
+                        "value": "defaultValue",
+                        "label": "defaultValue"
+                    },
+                    {
+                        "value": "list",
+                        "label": "list"
+                    },
+                    {
+                        "value": "dict",
+                        "label": "dict"
+                    }
+                ],
+                "component": "RadioView"
+            },
+            "required": false
+        },
+        "use_dataset_mask_targets": {
+            "type": "boolean",
+            "view": {
+                "label": "Use Dataset Mask Targets",
+                "component": "CheckboxView"
+            },
+            "required": false
+        },
+        "allow_additions": {
+            "type": "boolean",
+            "view": {
+                "label": "Allow Additions",
+                "component": "CheckboxView"
+            },
+            "default": true,
+            "required": false
+        },
+        "allow_deletions": {
+            "type": "boolean",
+            "view": {
+                "label": "Allow Deletions",
+                "component": "CheckboxView"
+            },
+            "default": true,
+            "required": false
+        },
+        "allow_label_edits": {
+            "type": "boolean",
+            "view": {
+                "label": "Allow Label Edits",
+                "component": "CheckboxView"
+            },
+            "default": true,
+            "required": false
+        },
+        "allow_index_edits": {
+            "type": "boolean",
+            "view": {
+                "label": "Allow Index Edits",
+                "component": "CheckboxView"
+            },
+            "default": true,
+            "required": false
+        },
+        "allow_spatial_edits": {
+            "type": "boolean",
+            "view": {
+                "label": "Allow Spatial Edits",
+                "component": "CheckboxView"
+            },
+            "default": true,
+            "required": false
+        }
+    }
+}

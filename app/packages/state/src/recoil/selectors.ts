@@ -10,6 +10,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { pathFilter } from "./pathFilters";
@@ -84,6 +85,7 @@ export const appConfigDefault = selectorFamily<
       return get(config)[key];
     },
 });
+
 export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {
     key: "appConfigOptions",
@@ -397,12 +399,19 @@ export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
+    const selectFieldsStage = get(selectedFieldsStageState) as {
+      _cls: string;
+      kwargs: string[];
+    };
 
     return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
+      ...(selectFieldsStage
+        ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
+        : {}),
     };
   },
 });

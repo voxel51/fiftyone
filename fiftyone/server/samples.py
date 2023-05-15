@@ -88,7 +88,11 @@ async def paginate_samples(
         media = root_view.group_media_types[root_view.default_group_slice]
 
     if media == fom.GROUP:
-        media = view.group_media_types[view.group_slice]
+        if view.group_slice is not None:
+            media = view.group_media_types[view.group_slice]
+        else:
+            # todo: this is a temp hack
+            media = fom.IMAGE
 
     # TODO: Remove this once we have a better way to handle large videos. This
     # is a temporary fix to reduce the $lookup overhead for sample frames on
@@ -102,13 +106,14 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = view._pipeline(
-        attach_frames=True,
+        attach_frames=media == fom.VIDEO,
         detach_frames=False,
         manual_group_select=sample_filter
         and sample_filter.group
-        and (sample_filter.group.id and not sample_filter.group.slice),
+        and (sample_filter.group.id and not sample_filter.group.slices),
         support=support,
     )
+
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
         pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})

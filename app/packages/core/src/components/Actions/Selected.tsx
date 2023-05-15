@@ -1,3 +1,11 @@
+import {
+  AbstractLooker,
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
+import { State, useEventHandler, useSetSelected } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   RefObject,
@@ -5,18 +13,6 @@ import React, {
   useLayoutEffect,
 } from "react";
 import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
-
-import {
-  AbstractLooker,
-  FrameLooker,
-  ImageLooker,
-  VideoLooker,
-} from "@fiftyone/looker";
-
-import { useEventHandler, useSetSelected } from "@fiftyone/state";
-
-import * as fos from "@fiftyone/state";
-import { State } from "@fiftyone/state";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 

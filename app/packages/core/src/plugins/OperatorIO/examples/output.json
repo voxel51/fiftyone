@@ -1,0 +1,671 @@
+{
+    "schema": {
+        "type": {
+            "name": "Object",
+            "properties": {
+                "linear": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "ProgressView",
+                        "label": "Loading...",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "variant": "linear"
+                    }
+                },
+                "circular": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "ProgressView",
+                        "label": "Loading...",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "variant": "circular"
+                    }
+                },
+                "plot": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Object",
+                            "properties": {},
+                            "needsResolution": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "PlotlyView",
+                        "label": "PlotX",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": true,
+                        "data": null,
+                        "config": null,
+                        "layout": null
+                    }
+                },
+                "string": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "String value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "number": {
+                    "type": {
+                        "name": "Number",
+                        "min": null,
+                        "max": null,
+                        "int": false,
+                        "float": false
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Number value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "float": {
+                    "type": {
+                        "name": "Number",
+                        "min": null,
+                        "max": null,
+                        "int": false,
+                        "float": false
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Float value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "boolean": {
+                    "type": { "name": "Boolean" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Boolean value",
+                        "description": null,
+                        "caption": null,
+                        "space": 3,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "nestedObject": {
+                    "type": {
+                        "name": "Object",
+                        "properties": {
+                            "id": {
+                                "type": {
+                                    "name": "Number",
+                                    "min": null,
+                                    "max": null,
+                                    "int": false,
+                                    "float": false
+                                },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Car ID",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "first_name": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Owner First Name",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "last_name": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Owner Last Name",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "email": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Owner Email",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "Year": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Year",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "Make": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Make",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            },
+                            "Model": {
+                                "type": { "name": "String" },
+                                "default": null,
+                                "required": false,
+                                "choices": null,
+                                "view": {
+                                    "name": "View",
+                                    "label": "Model",
+                                    "description": null,
+                                    "caption": null,
+                                    "space": null,
+                                    "placeholder": null,
+                                    "read_only": null
+                                }
+                            }
+                        },
+                        "needsResolution": false
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Car details",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfStrings": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "String" },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "String array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfNumbers": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Number",
+                            "min": null,
+                            "max": null,
+                            "int": false,
+                            "float": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Number array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfFloats": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Number",
+                            "min": null,
+                            "max": null,
+                            "int": false,
+                            "float": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Float array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "arrayOfBooleans": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "Boolean" },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "View",
+                        "label": "Boolean array",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null
+                    }
+                },
+                "table": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Object",
+                            "properties": {
+                                "id": {
+                                    "type": {
+                                        "name": "Number",
+                                        "min": null,
+                                        "max": null,
+                                        "int": false,
+                                        "float": false
+                                    },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Car ID",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "first_name": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Owner First Name",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "last_name": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Owner Last Name",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "email": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Owner Email",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "Year": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Year",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "Make": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Make",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "Model": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Model",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                }
+                            },
+                            "needsResolution": false
+                        },
+                        "min_items": null,
+                        "max_items": null
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "TableView",
+                        "label": "Table",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "columns": [
+                            {
+                                "name": "Column",
+                                "label": "ID",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "key": "id"
+                            },
+                            {
+                                "name": "Column",
+                                "label": "Owner First Name",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "key": "first_name"
+                            },
+                            {
+                                "name": "Column",
+                                "label": "Owner Last Name",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "key": "last_name"
+                            }
+                        ]
+                    }
+                }
+            },
+            "needsResolution": false
+        },
+        "default": null,
+        "required": false,
+        "choices": null,
+        "view": null
+    },
+    "data": {
+        "linear": 0,
+        "circular": 0,
+        "plot": [
+            {
+                "x": [1, 2, 3],
+                "y": [2, 6, 3],
+                "type": "scatter",
+                "mode": "lines+markers",
+                "marker": { "color": "red" }
+            }
+        ],
+        "string": "This is a string",
+        "number": 3,
+        "float": 3.3,
+        "boolean": true,
+        "nestedObject": {
+            "id": 1,
+            "first_name": "Jon",
+            "last_name": "Do",
+            "email": "jondo@voxel51.com",
+            "Year": 1996,
+            "Make": "Buick",
+            "Model": "Hearse"
+        },
+        "arrayOfStrings": [
+            "Item one",
+            "Item two",
+            "Item three",
+            "Item four",
+            "Item five",
+            "Item six",
+            "Item seven",
+            "Item eight",
+            "Item nine",
+            "Item ten"
+        ],
+        "arrayOfNumbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "arrayOfFloats": [
+            1.01, 2.02, 3.03, 4.04, 5.05, 6.06, 7.07, 8.07, 9.09, 10.1
+        ],
+        "arrayOfBooleans": [
+            true,
+            false,
+            true,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true
+        ],
+        "arrayOfArray": [
+            ["Item one", "Item two", "Item three"],
+            [true, false, true],
+            [1.01, 2.02, 3.03],
+            [1, 2, 3],
+            [
+                {
+                    "string": "This is a string",
+                    "number": 3,
+                    "float": 3.3,
+                    "boolean": true
+                },
+                {
+                    "string": "This is a string",
+                    "number": 3,
+                    "float": 3.3,
+                    "boolean": true
+                }
+            ]
+        ],
+        "arrayOfObjects": [
+            {
+                "string": "This is a string",
+                "number": 3,
+                "float": 3.3,
+                "boolean": true
+            },
+            {
+                "arrayOfStrings": [
+                    "Item one",
+                    "Item two",
+                    "Item three",
+                    "Item four",
+                    "Item five",
+                    "Item six",
+                    "Item seven",
+                    "Item eight",
+                    "Item nine",
+                    "Item ten"
+                ],
+                "arrayOfNumbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            }
+        ],
+        "table": [
+            {
+                "id": 1,
+                "first_name": "Kendrick",
+                "last_name": "Yegorchenkov",
+                "email": "kyegorchenkov0@woothemes.com",
+                "Year": 1996,
+                "Make": "Buick",
+                "Model": "Hearse"
+            },
+            {
+                "id": 2,
+                "first_name": "Graehme",
+                "last_name": "Gildersleeve",
+                "email": "ggildersleeve1@vk.com",
+                "Year": 1995,
+                "Make": "Dodge",
+                "Model": "Ram 1500 Club"
+            },
+            {
+                "id": 3,
+                "first_name": "Dionisio",
+                "last_name": "Toopin",
+                "email": "dtoopin2@feedburner.com",
+                "Year": 1993,
+                "Make": "Mazda",
+                "Model": "RX-7"
+            },
+            {
+                "id": 4,
+                "first_name": "Billie",
+                "last_name": "Renny",
+                "email": "brenny3@ucla.edu",
+                "Year": 2009,
+                "Make": "Audi",
+                "Model": "S4"
+            }
+        ]
+    }
+}

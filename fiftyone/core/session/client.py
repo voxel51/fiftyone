@@ -27,6 +27,7 @@ from fiftyone.core.session.events import (
     ListenPayload,
     dict_factory,
 )
+from fiftyone.core.utils import pprint
 
 
 logger = logging.getLogger(__name__)
@@ -130,7 +131,6 @@ class Client:
         """
         if not self._connected:
             raise RuntimeError("Client is not connected")
-
         self._post_event(event)
         self._dispatch_event(event)
 

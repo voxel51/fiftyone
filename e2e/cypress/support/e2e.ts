@@ -10,9 +10,3 @@ compareSnapshotCommand({
 });
 
 // todo: check if app port is available in beforeAll() and fail fast if not
-
-// before each test, reset to the root route and wait for the grid to be visible
-beforeEach(() => {
-  cy.visit("/");
-  cy.get("[data-cy=fo-grid]").should("be.visible");
-});

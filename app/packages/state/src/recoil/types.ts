@@ -16,6 +16,7 @@ export namespace State {
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
+    customizedColors: CustomizeColor[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
@@ -106,12 +107,18 @@ export namespace State {
     paths: string[];
   }
 
+  export interface DynamicGroupParameters {
+    groupBy: string;
+    orderBy?: string;
+  }
+
   export interface DatasetAppConfig {
     gridMediaField?: string;
     modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
     sidebarMode?: "all" | "best" | "fast";
+    colorScheme?: ColorSchemeSaved;
   }
 
   /**
@@ -198,5 +205,31 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
+    colorScheme?: ColorScheme | string;
   }
+}
+
+export interface ColorSchemeSaved {
+  colorPool: string[];
+  customizedColorSettings: string;
+}
+
+export interface CustomizeColor {
+  field: string;
+  useFieldColor: boolean;
+  fieldColor?: string;
+  attributeForColor?: string; // must be string field, int field, or boolean field
+  labelColors?: {
+    name: string;
+    color: string;
+  }[];
+}
+
+export interface ColorScheme {
+  colorPool: string[];
+  customizedColorSettings: CustomizeColor[];
+}
+
+export interface ColorSchemeSetting extends ColorScheme {
+  saveToApp?: boolean;
 }

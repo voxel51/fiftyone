@@ -1,6 +1,6 @@
 import { Apps } from "@mui/icons-material";
 import Color from "color";
-import React, { Suspense } from "react";
+import React, { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
@@ -12,7 +12,7 @@ import GroupSliceSelector from "./GroupSliceSelector";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup } from "@fiftyone/state";
+import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 export const SamplesHeader = styled.div`
@@ -62,8 +62,9 @@ const Count = () => {
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
-  const group = useRecoilValue(isGroup);
-  if (group) {
+  const isGroup = useRecoilValue(isGroupAtom);
+
+  if (isGroup) {
     element = {
       plural: "groups",
       singular: "group",
@@ -109,8 +110,14 @@ const ImageContainerHeader = () => {
   const setGridZoom = useSetRecoilState(gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
-  const group = useRecoilValue(isGroup);
+  const isGroup = useRecoilValue(isGroupAtom);
+  const groupSlices = useRecoilValue(fos.groupSlices);
   const groupStats = useRecoilValue(groupStatistics(false));
+
+  const shouldShowSliceSelector = useMemo(
+    () => isGroup && groupSlices.length > 1,
+    [isGroup, groupSlices]
+  );
 
   return (
     <SamplesHeader>
@@ -125,7 +132,7 @@ const ImageContainerHeader = () => {
         >
           {groupStats === "group" ? <GroupsCount /> : <Count />}
         </Suspense>
-        {group && (
+        {shouldShowSliceSelector && (
           <RightDiv>
             <GroupSliceSelector />
           </RightDiv>

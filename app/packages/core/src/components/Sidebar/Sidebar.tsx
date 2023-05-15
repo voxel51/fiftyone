@@ -1,19 +1,24 @@
-import { animated, config, Controller } from "@react-spring/web";
-import React, { useCallback, useRef, useState } from "react";
-import styled from "styled-components";
-
-import { move } from "@fiftyone/utilities";
-
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useEventHandler } from "@fiftyone/state";
+import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
+import { animated, config, Controller } from "@react-spring/web";
 import { Resizable } from "re-resizable";
+import {
+  default as React,
+  default as React,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { scrollbarStyles } from "../utils";
+import styled from "styled-components";
+import SchemaSettings from "../Schema/SchemaSettings";
 import { replace } from "./Entries/GroupEntries";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
+
 const MARGIN = 3;
 
 const fn = (
@@ -436,6 +441,8 @@ const InteractiveSidebar = ({
     () => new Controller({ minHeight: 0 })
   );
 
+  const modalContainer = document.getElementById("modal");
+
   if (entries instanceof Error) {
     throw entries;
   }
@@ -725,6 +732,7 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
+      {modalContainer && <SchemaSettings />}
       {!modal && (
         <Box
           style={{

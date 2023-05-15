@@ -1,12 +1,11 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-
-import { Option, Select } from "@mui/joy";
-import styled from "styled-components";
-
 import { IconButton, useTheme } from "@fiftyone/components";
 import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
+import { Option, Select } from "@mui/joy";
 import { debounce } from "lodash";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import styled from "styled-components";
+import { JoyThemeProvider } from "../ThemeProvider";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
@@ -65,7 +64,7 @@ type SelectionProps = {
 const VIEW_LIST_MAX_HEIGHT = "300px";
 const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
 
-export default function Selection(props: SelectionProps) {
+function Selection(props: SelectionProps) {
   const {
     items = [],
     headerComponent = null,
@@ -270,5 +269,14 @@ export default function Selection(props: SelectionProps) {
         )}
       </Select>
     </div>
+  );
+}
+
+// fix: wrapped with joy theme provider until component is refactored to use mui
+export default function SelectionWithJoy(props: SelectionProps) {
+  return (
+    <JoyThemeProvider>
+      <Selection {...props} />
+    </JoyThemeProvider>
   );
 }

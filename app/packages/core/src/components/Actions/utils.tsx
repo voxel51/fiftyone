@@ -1,18 +1,11 @@
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { State, groupId, groupStatistics, isGroup } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
 import { useState } from "react";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import {
-  groupId,
-  groupSlice,
-  groupStatistics,
-  isGroup,
-  State,
-} from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
@@ -84,7 +77,7 @@ export const tagStatistics = selectorFamily<
           groupData: get(isGroup)
             ? {
                 id: modal ? get(groupId) : null,
-                slice: get(modal ? fos.modalGroupSlice : groupSlice),
+                slices: [get(currentSlice(modal))],
                 mode: get(groupStatistics(modal)),
               }
             : null,
@@ -161,7 +154,7 @@ export const tagParameters = ({
   activeFields: string[];
   groupData: {
     id: string | null;
-    slice: string | null;
+    slices: string[] | null;
     mode: "group" | "slice";
   } | null;
   targetLabels: boolean;
@@ -173,7 +166,7 @@ export const tagParameters = ({
 
   const getSampleIds = () => {
     if (shouldShowCurrentSample && !groups) {
-      if (groupData?.slice) {
+      if (groupData?.slices) {
         return null;
       }
       return [sampleId];
@@ -187,7 +180,7 @@ export const tagParameters = ({
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    slice: !groups ? groupData?.slice : null,
+    slices: !groups ? groupData?.slices : null,
     group_id: params.modal ? groupData?.id : null,
     sample_ids: getSampleIds(),
     labels:

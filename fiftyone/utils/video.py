@@ -92,6 +92,7 @@ def reencode_videos(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -99,6 +100,10 @@ def reencode_videos(
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
     visualized in the FiftyOne App.
+
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
 
     By default, the re-encoding is performed via the following ``ffmpeg``
     command::
@@ -138,9 +143,10 @@ def reencode_videos(
             ``output_dir`` to generate an output path for each video. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original videos after
-            re-encoding. This parameter has no effect if the videos are being
-            updated in-place
+            re-encoding
         skip_failures (False): whether to gracefully continue without raising
             an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
@@ -157,6 +163,7 @@ def reencode_videos(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -178,6 +185,7 @@ def transform_videos(
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -185,6 +193,10 @@ def transform_videos(
 ):
     """Transforms the videos in the sample collection according to the provided
     parameters using ``ffmpeg``.
+
+    If no ``output_dir`` is specified and ``delete_originals`` is False, then
+    if a transformation would result in overwriting an existing file with the
+    same filename, the original file is renamed to ``<name>-original.<ext>``.
 
     In addition to the size and frame rate parameters, if ``reencode == True``,
     the following basic ``ffmpeg`` command structure is used to re-encode the
@@ -237,6 +249,8 @@ def transform_videos(
             ``output_dir`` to generate an output path for each video. This
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths
+        update_filepaths (True): whether to store the output paths on the
+            sample collection
         delete_originals (False): whether to delete the original videos after
             re-encoding
         skip_failures (False): whether to gracefully continue without raising
@@ -261,6 +275,7 @@ def transform_videos(
         output_field=output_field,
         output_dir=output_dir,
         rel_dir=rel_dir,
+        update_filepaths=update_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -279,11 +294,11 @@ def sample_videos(
     max_size=None,
     original_frame_numbers=True,
     force_sample=False,
-    save_filepaths=False,
     media_field="filepath",
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    save_filepaths=False,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -366,8 +381,6 @@ def sample_videos(
             the frames as 1, 2, ... (False)
         force_sample (False): whether to resample videos whose sampled frames
             already exist
-        save_filepaths (False): whether to save the sampled frame paths in the
-            ``output_field`` field of each frame of the input collection
         media_field ("filepath"): the input field containing the video paths to
             sample
         output_field (None): an optional frame field in which to store the
@@ -382,6 +395,8 @@ def sample_videos(
             the sampled frames to be written in a nested directory structure
             within ``output_dir`` matching the shape of the input video's
             folder structure
+        save_filepaths (False): whether to save the sampled frame paths in the
+            ``output_field`` field of each frame of the input collection
         delete_originals (False): whether to delete the original videos after
             sampling
         skip_failures (False): whether to gracefully continue without raising
@@ -700,11 +715,12 @@ def _transform_videos(
     original_frame_numbers=True,
     reencode=False,
     force_reencode=False,
-    save_filepaths=False,
     media_field="filepath",
     output_field=None,
     output_dir=None,
     rel_dir=None,
+    save_filepaths=False,
+    update_filepaths=True,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -782,7 +798,7 @@ def _transform_videos(
                         _frames = range(
                             1, sample.metadata.total_frame_count + 1
                         )
-                    except Exception as e:
+                    except BaseException as e:
                         if not skip_failures:
                             raise
 
@@ -796,7 +812,11 @@ def _transform_videos(
 
                 sample.save()
 
-            if (diff_field or outpath != inpath) and not sample_frames:
+            if (
+                update_filepaths
+                and not sample_frames
+                and (diff_field or outpath != inpath)
+            ):
                 sample[output_field] = outpath
                 sample.save()
 
@@ -837,6 +857,7 @@ def _transform_video(
         max_fps = None
 
     did_transform = False
+    moves = []
 
     try:
         if (
@@ -881,12 +902,11 @@ def _transform_video(
             or in_ext.lower() != out_ext.lower()
         )
 
-        if (inpath == outpath) and should_reencode:
-            _inpath = inpath
-            inpath = etau.make_unique_path(inpath, suffix="-original")
-            etau.move_file(_inpath, inpath)
-
-        diff_path = inpath != outpath
+        if should_reencode and inpath == outpath:
+            orig_path = etau.make_unique_path(inpath, suffix="-original")
+            etau.move_file(inpath, orig_path)
+            moves.append((inpath, orig_path))
+            inpath = orig_path
 
         if frames is not None:
             etav.sample_select_frames(
@@ -903,12 +923,19 @@ def _transform_video(
                 ffmpeg.run(inpath, outpath, verbose=verbose)
 
             did_transform = True
-        elif diff_path:
+        elif inpath != outpath:
             etau.copy_file(inpath, outpath)
 
-        if delete_original and diff_path:
+        if delete_original and inpath != outpath:
             etau.delete_file(inpath)
-    except Exception as e:
+    except BaseException as e:
+        try:
+            # Undo any moves
+            for from_path, to_path in moves:
+                etau.move_file(to_path, from_path)
+        except:
+            pass
+
         if not skip_failures:
             raise
 

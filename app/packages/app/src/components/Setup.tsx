@@ -1,19 +1,18 @@
-import { animated, useSpring } from "@react-spring/web";
-import React, { useState } from "react";
-import styled from "styled-components";
-
 import {
   DocsLink,
   GitHubLink,
   Header,
-  iconContainer,
   SlackLink,
+  iconContainer,
   useTheme,
 } from "@fiftyone/components";
 import { scrollbarStyles } from "@fiftyone/core/src/components/utils";
 import { isNotebook } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
+import { animated, useSpring } from "@react-spring/web";
+import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 
 const SectionTitle = styled.div`
   font-size: 2rem;

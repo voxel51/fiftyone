@@ -5,7 +5,8 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { RGB } from "@fiftyone/utilities";
-import { selector } from "recoil";
+import { atom, selector } from "recoil";
+import { sessionColorScheme } from "./atoms";
 
 const configData = graphQLSyncFragmentAtom<
   configFragment$key,
@@ -27,6 +28,16 @@ export const colorscale = selector<RGB[]>({
 export const config = selector({
   key: "config",
   get: ({ get }) => get(configData).config,
+});
+
+export const colorPalette = atom<string[]>({
+  key: "colorPalette",
+  default: selector({
+    key: "initial",
+    get: ({ get }) => {
+      return get(sessionColorScheme).colorPool;
+    },
+  }),
 });
 
 export const colorPool = selector({

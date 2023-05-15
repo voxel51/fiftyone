@@ -3,7 +3,7 @@ import dedent from "dedent";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { DEFAULT_APP_PORT } from "./constants";
+import { DEFAULT_APP_ADDRESS, DEFAULT_APP_PORT } from "./constants";
 
 export class PythonRunner {
   public static exec(sourceCode: string) {
@@ -17,12 +17,12 @@ export class PythonRunner {
       // todo: might want to set PYTHONPATH here to point to the python source code
       FIFTYONE_DATABASE_NAME: "cypress",
       FIFTYONE_DEFAULT_APP_PORT: String(DEFAULT_APP_PORT),
+      FIFTYONE_DEFAULT_APP_ADDRESS: DEFAULT_APP_ADDRESS,
     };
 
     const proc = spawn("python", [sourceFilePath], {
       env,
     });
-    const pId = proc.pid;
 
     console.log(`Spawning python process with source code:`);
     console.log("=====================================");
@@ -37,22 +37,26 @@ export class PythonRunner {
     });
     console.log("=====================================");
     console.log();
-    console.log("New python process spawned with pid:", pId);
+    console.log("New python process spawned with pid:", proc.pid);
 
     proc.stdout.on("data", (data) => {
-      console.log(`${pId}: ${data.toString()}`);
+      console.log(`${proc.pid}: ${data.toString()}`);
     });
 
     proc.stderr.on("data", (data) => {
-      console.error(`${pId} STDERR:`);
+      console.error(`${proc.pid} STDERR:`);
       console.error(data.toString());
     });
 
     proc.on("error", (data) => {
-      console.error(`${pId} STDERR:`);
+      console.error(`${proc.pid} STDERR:`);
       console.error(data.toString());
     });
 
-    return pId;
+    return new Promise<number>((resolve, reject) =>
+      proc.on("exit", (exitCode) =>
+        exitCode ? reject(exitCode) : resolve(exitCode)
+      )
+    );
   }
 }

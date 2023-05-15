@@ -1,5 +1,9 @@
 /**
+<<<<<<< HEAD
  * @generated SignedSource<<a88725179e39a8fa5bffd92af4b7696f>>
+=======
+ * @generated SignedSource<<c91e5d79145aa4baf8fddaed22355529>>
+>>>>>>> develop
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +13,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from 'relay-runtime';
-export type ColorBy = "field" | "instance" | "label" | "%future added value";
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 export type configQuery$variables = {};

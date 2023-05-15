@@ -7,6 +7,7 @@ import {
   DEFAULT_COLOR_OPTION,
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
 import * as fos from "@fiftyone/state";
+import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -110,7 +111,10 @@ export default function ViewDialog(props: Props) {
   }, [viewContent]);
 
   const view = useRecoilValue(fos.view);
-  const extendedViewExists = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+  const extendedStagesExists = useRecoilValue(extendedStages);
+  const extendedViewExists =
+    useRecoilValue(shouldToggleBookMarkIconOnSelector) ||
+    !!extendedStagesExists;
 
   const {
     handleDeleteView,

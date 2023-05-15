@@ -1,3 +1,8 @@
+import { Selector, useTheme } from "@fiftyone/components";
+import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
+import * as fos from "@fiftyone/state";
+import { groupId, groupStatistics } from "@fiftyone/state";
+import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
   RecoilState,
@@ -10,13 +15,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-
-import { Selector, useTheme } from "@fiftyone/components";
-import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
-import * as fos from "@fiftyone/state";
-import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
-
-import { groupId, groupSlice, groupStatistics } from "@fiftyone/state";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
@@ -26,7 +24,7 @@ import Wrapper from "./Wrapper";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--joy-palette-divider);
+  border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
@@ -92,7 +90,7 @@ const categoricalSearchResults = selectorFamily<
           selected,
           group_id: modal ? group : null,
           mixed,
-          slice: mixed ? null : get(modal ? fos.modalGroupSlice : groupSlice), // when mixed, slice is not needed
+          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
           sample_id: modal && !group && !mixed ? sampleId : null,
           ...sorting,
         });

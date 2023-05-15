@@ -7,13 +7,19 @@ Session class for interacting with the FiftyOne App.
 """
 from collections import defaultdict
 from functools import wraps
+
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
 import logging
-from packaging.version import Version
-import pkg_resources
+from packaging.requirements import Requirement
 import time
 import typing as t
 import webbrowser
 from uuid import uuid4
+from bson import json_util
 
 from bson import json_util
 
@@ -30,6 +36,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.colorscheme import default_color_scheme, ColorScheme
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -109,6 +116,7 @@ def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
     spaces: Space = None,
+    color_scheme: ColorScheme = None,
     plots: fop.PlotManager = None,
     port: int = None,
     address: str = None,
@@ -130,6 +138,7 @@ def launch_app(
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
+        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -171,6 +180,7 @@ def launch_app(
         dataset=dataset,
         view=view,
         spaces=spaces,
+        color_scheme=color_scheme,
         plots=plots,
         port=port,
         address=address,
@@ -280,6 +290,7 @@ class Session(object):
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
+        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -307,6 +318,7 @@ class Session(object):
         view: fov.DatasetView = None,
         view_name: str = None,
         spaces: Space = None,
+        color_scheme: ColorScheme = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -322,7 +334,7 @@ class Session(object):
             view = dataset
             dataset = dataset._root_dataset
 
-        self._validate(dataset, view, spaces, plots, config)
+        self._validate(dataset, view, spaces, color_scheme, plots, config)
 
         if port is None:
             port = fo.config.default_app_port
@@ -373,12 +385,17 @@ class Session(object):
         if spaces is None:
             spaces = default_spaces.copy()
 
+        if color_scheme is None:
+            # color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
+            color_scheme = default_color_scheme.copy()
+
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
             spaces=spaces,
+            color_scheme=color_scheme,
         )
         self._client = fosc.Client(
             address=address,
@@ -427,6 +444,7 @@ class Session(object):
         dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
         spaces: t.Optional[Space],
+        color_scheme: t.Optional[ColorScheme],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
     ) -> None:
@@ -446,6 +464,14 @@ class Session(object):
             raise ValueError(
                 "`spaces` must be a %s or None; found %s"
                 % (Space, type(spaces))
+            )
+
+        if color_scheme is not None and not isinstance(
+            color_scheme, ColorScheme
+        ):
+            raise ValueError(
+                "`color_scheme` must be a %s or None; found %s"
+                % (ColorScheme, type(color_scheme))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
@@ -565,6 +591,23 @@ class Session(object):
         self._client.send_event(SetSpaces(spaces=spaces.to_dict()))
 
     @property
+    def color_scheme(self) -> ColorScheme:
+        """The color scheme for the session."""
+        return self._state.color_scheme
+
+    @color_scheme.setter  # type: ignore
+    @update_state()
+    def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
+        if color_scheme is None:
+            color_scheme = default_color_scheme.copy()
+        if not isinstance(color_scheme, ColorScheme):
+            raise ValueError(
+                "`Session.color_scheme` must be a %s or None; found %s"
+                % (ColorScheme, type(color_scheme))
+            )
+        self._state.color_scheme = color_scheme
+
+    @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
         if self.view is not None:
             return self.view
@@ -593,6 +636,7 @@ class Session(object):
         self._state.selected = []
         self._state.selected_labels = []
         self._state.spaces = default_spaces
+        self._state.color_scheme = None
 
     @update_state()
     def clear_dataset(self) -> None:
@@ -1109,11 +1153,11 @@ def _attach_listeners(session: "Session"):
 
 
 def import_desktop() -> None:
-    """Attempts to import :mod:`fiftyone.desktop`
+    """Imports :mod:`fiftyone.desktop`.
 
     Raises:
-        RuntimeError: If matching ``fiftyone-desktop`` version is not
-        installed
+        RuntimeError: if a matching ``fiftyone-desktop`` version is not
+            installed
     """
     try:
         # pylint: disable=unused-import
@@ -1124,16 +1168,18 @@ def import_desktop() -> None:
             "desktop App"
         ) from e
 
+    fiftyone_dist = metadata.distribution("fiftyone")
+    desktop_dist = metadata.distribution("fiftyone-desktop")
+
     # Get `fiftyone-desktop` requirement for current `fiftyone` install
-    fiftyone_dist = pkg_resources.get_distribution("fiftyone")
-    requirements = fiftyone_dist.requires(extras=["desktop"])
-    desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
+    desktop_req = [
+        req
+        for req in fiftyone_dist.requires
+        if req.startswith("fiftyone-desktop")
+    ][0]
+    desktop_req = Requirement(desktop_req.split(";")[0])
 
-    desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
-
-    if not desktop_req.specifier.contains(
-        Version(desktop_dist.version).base_version
-    ):
+    if not desktop_req.specifier.contains(desktop_dist.version):
         raise RuntimeError(
             "fiftyone==%s requires fiftyone-desktop%s, but you have "
             "fiftyone-desktop==%s installed.\n"

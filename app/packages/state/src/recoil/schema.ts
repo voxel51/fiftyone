@@ -1,34 +1,33 @@
-import { RecoilState, selector, selectorFamily } from "recoil";
-
-import {
-  DETECTION,
-  DETECTIONS,
-  EMBEDDED_DOCUMENT_FIELD,
-  Field,
-  LABEL_LIST,
-  LABEL_LISTS,
-  LABELS,
-  LABELS_PATH,
-  LIST_FIELD,
-  meetsFieldType,
-  Schema,
-  StrictField,
-  VALID_PRIMITIVE_TYPES,
-  withPath,
-} from "@fiftyone/utilities";
-
 import { Sample } from "@fiftyone/looker/src/state";
 import {
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtomFamily,
 } from "@fiftyone/relay";
+import {
+  DETECTION,
+  DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
+  Field,
+  LABELS,
+  LABELS_PATH,
+  LABEL_LIST,
+  LABEL_LISTS,
+  LIST_FIELD,
+  Schema,
+  StrictField,
+  VALID_PRIMITIVE_TYPES,
+  meetsFieldType,
+  withPath,
+} from "@fiftyone/utilities";
 import _ from "lodash";
+import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { State } from "./types";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
-  schema[field.name] = {
+  schema[field.name || field.path] = {
     ...field,
     fields: field.fields?.reduce(schemaReduce, {}),
   };
@@ -56,18 +55,45 @@ export const filterPaths = (
     : [];
 };
 
-export const buildSchema = (
-  sampleFields: StrictField[],
-  frameFields: StrictField[]
-): Schema => {
-  const schema = sampleFields.reduce(schemaReduce, {});
+export const buildFlatExtendedSchema = (schema: Schema): Schema => {
+  const flatSchema = {} as Schema;
+  const fieldsQueue = [];
+  for (const fieldName in schema) {
+    const field = schema[fieldName];
+    fieldsQueue.push(field);
+  }
+  while (fieldsQueue?.length) {
+    const ff = fieldsQueue.shift();
+    const ffNest = ff?.fields;
+    const fieldPath = ff?.path;
 
-  if (frameFields && frameFields.length) {
+    if (ffNest) {
+      for (const fNested in ffNest) {
+        fieldsQueue.push(ffNest[fNested]);
+      }
+    }
+
+    flatSchema[fieldPath] = {
+      ...ff,
+      visible: false,
+    };
+  }
+
+  return flatSchema;
+};
+
+export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
+  const schema = dataset.sampleFields.reduce(schemaReduce, {});
+
+  // TODO: mixed datasets - test video
+  if (dataset.frameFields && dataset.frameFields.length) {
     schema.frames = {
       path: "frames",
       ftype: LIST_FIELD,
       name: "frames",
-      fields: frameFields.reduce(schemaReduce, {}),
+      fields: flat
+        ? buildFlatExtendedSchema(dataset.frameFields.reduce(schemaReduce, {}))
+        : dataset.frameFields.reduce(schemaReduce, {}),
       dbField: null,
       description: null,
       info: null,
@@ -76,13 +102,22 @@ export const buildSchema = (
     };
   }
 
+  if (flat) {
+    return buildFlatExtendedSchema(
+      dataset.sampleFields.reduce(schemaReduce, {})
+    );
+  }
+
   return schema;
 };
 
-export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
+export const fieldSchema = selectorFamily<
+  Schema,
+  { space: State.SPACE; flat?: boolean }
+>({
   key: "fieldSchema",
   get:
-    ({ space }) =>
+    ({ space, flat = false }) =>
     ({ get }) => {
       const dataset = get(atoms.dataset);
 
@@ -90,13 +125,18 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
         return {};
       }
 
-      const fields = (
-        space === State.SPACE.FRAME
-          ? get(atoms.frameFields)
-          : get(atoms.sampleFields)
-      ).reduce(schemaReduce, {});
+      if (flat) {
+        return buildFlatExtendedSchema(
+          (space === State.SPACE.FRAME
+            ? dataset.frameFields
+            : dataset.sampleFields
+          ).reduce(schemaReduce, {})
+        );
+      }
 
-      return fields;
+      return (
+        space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
+      ).reduce(schemaReduce, {});
     },
 });
 
@@ -176,12 +216,12 @@ export const fieldPaths = selectorFamily<
       }
 
       const sampleLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE }))
+        get(fieldSchema({ space: State.SPACE.SAMPLE, flat: true }))
       )
         .filter((l) => !l.startsWith("_"))
         .sort();
       const frameLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.FRAME }))
+        get(fieldSchema({ space: State.SPACE.FRAME, flat: true }))
       )
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
@@ -296,9 +336,22 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const paths = get(fieldPaths(params));
 
-      return paths.filter((path) =>
+      const flatLabelFields = paths.filter((path) =>
         LABELS.includes(get(field(path)).embeddedDocType)
       );
+      const dynamicLabelFields = paths
+        .filter(
+          (path) =>
+            get(field(path)).embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD
+        )
+        .map((p) =>
+          Object.values(get(field(p)).fields)
+            .filter((f) => LABELS.includes(f.embeddedDocType))
+            .map((f) => f.path)
+        )
+        .flat(1);
+
+      return [...flatLabelFields, ...dynamicLabelFields];
     },
 });
 

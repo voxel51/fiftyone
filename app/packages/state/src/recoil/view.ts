@@ -1,5 +1,3 @@
-import { atom, selector } from "recoil";
-
 import {
   datasetFragment,
   graphQLSyncFragmentAtom,
@@ -9,6 +7,7 @@ import {
   viewFragment,
   viewFragment$key,
 } from "@fiftyone/relay";
+import { atom, selector } from "recoil";
 import { State } from "./types";
 
 export const stageDefinitions = graphQLSyncFragmentAtom<
@@ -90,6 +89,10 @@ const FRAMES_VIEW = "fiftyone.core.video.FramesView";
 const EVALUATION_PATCHES_VIEW = "fiftyone.core.patches.EvaluationPatchesView";
 const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
 const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
+
+export const GROUP_BY_VIEW_STAGE = "fiftyone.core.stages.GroupBy";
+export const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
+export const SORT_VIEW_STAGE = "fiftyone.core.stages.SortBy";
 
 enum ELEMENT_NAMES {
   CLIP = "clip",
@@ -185,6 +188,104 @@ export const isFramesView = selector<boolean>({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const dynamicGroupCurrentElementIndex = atomFamily<number, string>({
+  key: "dynamicGroupCurrentElementIndex",
+  default: 1,
+});
+
+export const dynamicGroupParameters =
+  selector<State.DynamicGroupParameters | null>({
+    key: "dynamicGroupParameters",
+    get: ({ get }) => {
+      const viewArr = get(view);
+      if (!viewArr) return null;
+
+      const groupByViewStageNode = viewArr.find(
+        (view) => view._cls === GROUP_BY_VIEW_STAGE
+      );
+      if (!groupByViewStageNode) return null;
+
+      const isFlat = groupByViewStageNode.kwargs[2][1]; // third index is 'flat', we want it to be false for dynamic groups
+      if (isFlat) return null;
+
+      return {
+        groupBy: groupByViewStageNode.kwargs[0][1], // first index is 'field_or_expr', which defines group-by
+        orderBy: groupByViewStageNode.kwargs[1][1], // second index is 'order_by', which defines order-by
+      };
+    },
+  });
+
+export const isDynamicGroup = selector<boolean>({
+  key: "isDynamicGroup",
+  get: ({ get }) => {
+    return Boolean(get(dynamicGroupParameters));
+  },
+});
+
+export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
+  key: "dynamicGroupViewQuery",
+  get:
+    (fieldOrExpression) =>
+    ({ get }) => {
+      const params = get(dynamicGroupParameters);
+      if (!dynamicGroupParameters) return [];
+
+      const { groupBy, orderBy } = params;
+
+      // todo: fix sample_id issue
+      // todo: sanitize expressions
+      const groupBySanitized = getSanitizedGroupByExpression(groupBy);
+
+      const viewStages = [
+        {
+          _cls: MATCH_VIEW_STAGE,
+          kwargs: [
+            [
+              "filter",
+              {
+                $expr: {
+                  $let: {
+                    vars: {
+                      expr: `$${groupBySanitized}`,
+                    },
+                    in: {
+                      $in: [
+                        {
+                          $toString: "$$expr",
+                        },
+                        [fieldOrExpression],
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          ],
+        },
+      ];
+
+      if (orderBy?.length) {
+        viewStages.push({
+          _cls: SORT_VIEW_STAGE,
+          kwargs: [
+            ["field_or_expr", orderBy],
+            ["reverse", false],
+          ],
+        });
+      }
+
+      return viewStages;
+    },
+});
+
+export const currentViewSlug = selector<string>({
+  key: "currentViewSlug",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("view") || null;
   },
 });
 

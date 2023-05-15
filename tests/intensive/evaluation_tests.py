@@ -15,6 +15,7 @@ import unittest
 import numpy as np
 
 import eta.core.utils as etau
+import pytest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
@@ -592,7 +593,8 @@ def test_evaluate_detections_frames():
     dataset.delete_evaluations()
 
 
-def test_evaluate_segmentations():
+@pytest.mark.parametrize("compute_dice", [True, False])
+def test_evaluate_segmentations(compute_dice):
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
@@ -625,7 +627,7 @@ def test_evaluate_segmentations():
         "tvmonitor",
     ]
 
-    MASK_INDEX = {idx: label for idx, label in enumerate(CLASSES)}
+    MASK_TARGETS = {idx: label for idx, label in enumerate(CLASSES)}
 
     model = foz.load_zoo_model("deeplabv3-resnet50-coco-torch")
     dataset.apply_model(model, "resnet50")
@@ -643,7 +645,8 @@ def test_evaluate_segmentations():
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
+        compute_dice=compute_dice,
     )
 
     results.print_report()
@@ -651,6 +654,13 @@ def test_evaluate_segmentations():
     print(dataset.bounds("%s_accuracy" % EVAL_KEY))
     print(dataset.bounds("%s_precision" % EVAL_KEY))
     print(dataset.bounds("%s_recall" % EVAL_KEY))
+    if compute_dice:
+        print(dataset.bounds("%s_dice" % EVAL_KEY))
+        dice = results.dice_score()
+        assert 0 < dice <= 1
+    else:
+        assert dataset.has_field("%s_dice" % EVAL_KEY) is False
+
     print(dataset.get_evaluation_info(EVAL_KEY))
 
     #
@@ -663,7 +673,7 @@ def test_evaluate_segmentations():
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY_BW,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
         bandwidth=5,
     )
 
@@ -714,7 +724,7 @@ def test_evaluate_segmentations_on_disk():
         "tvmonitor",
     ]
 
-    MASK_INDEX = {idx: label for idx, label in enumerate(CLASSES)}
+    MASK_TARGETS = {idx: label for idx, label in enumerate(CLASSES)}
 
     # Store segmentations on disk rather than in-database
     etau.ensure_empty_dir("/tmp/resnet50", cleanup=True)
@@ -738,7 +748,7 @@ def test_evaluate_segmentations_on_disk():
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
     )
 
     results.print_report()
@@ -758,7 +768,7 @@ def test_evaluate_segmentations_on_disk():
         "resnet50",
         gt_field="resnet101",
         eval_key=EVAL_KEY_BW,
-        mask_index=MASK_INDEX,
+        mask_targets=MASK_TARGETS,
         bandwidth=5,
     )
 
@@ -780,7 +790,19 @@ def test_classification_results():
     ytrue = ["cat", "cat", "dog", "dog", "fox", "fox"]
     ypred = ["cat", "dog", "dog", "fox", "fox", "cat"]
 
-    results = fo.ClassificationResults(ytrue, ypred, None)
+    samples = []
+    for i, (yt, yp) in enumerate(zip(ytrue, ypred)):
+        sample = fo.Sample(
+            filepath="image%d.jpg" % i,
+            ground_truth=fo.Classification(label=yt),
+            predictions=fo.Classification(label=yp),
+        )
+        samples.append(sample)
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    results = dataset.evaluate_classifications("predictions")
 
     # Includes all 3 classes
     results.print_report()
@@ -811,7 +833,19 @@ def test_classification_results_missing_data():
     ytrue = ["cat", "cat", "cat", "dog", "dog", "dog", "fox", "fox", "fox"]
     ypred = ["cat", "dog", None, "dog", "fox", None, "fox", "cat", None]
 
-    results = fo.ClassificationResults(ytrue, ypred, None)
+    samples = []
+    for i, (yt, yp) in enumerate(zip(ytrue, ypred)):
+        sample = fo.Sample(
+            filepath="image%d.jpg" % i,
+            ground_truth=fo.Classification(label=yt),
+            predictions=fo.Classification(label=yp),
+        )
+        samples.append(sample)
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    results = dataset.evaluate_classifications("predictions")
 
     # No row for "missing" GT labels, since these entires represent false
     # positive predictions
