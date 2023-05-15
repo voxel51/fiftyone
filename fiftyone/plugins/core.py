@@ -274,6 +274,8 @@ def _download_plugin(
                 etau.delete_dir(existing_dir)
                 plugin_dir = existing_dir
             else:
+                # @todo maintain `<org>/<user>/<plugin_name>` structure for
+                # plugins downloaded from github?
                 plugin_dir = _recommend_plugin_dir(
                     plugin.name, src_dir=plugin.path
                 )
