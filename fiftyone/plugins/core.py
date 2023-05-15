@@ -65,7 +65,9 @@ def list_plugins(enabled=True):
         try:
             pd = PluginDefinition.from_disk(metadata_path)
         except:
-            logger.debug(f"Failed to load metadata from '{metadata_path}'")
+            logger.debug(
+                f"Failed to load plugin metadata from '{metadata_path}'"
+            )
             continue
 
         plugins.append(pd)
@@ -234,7 +236,7 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
             existing_dir = existing_plugin_dirs.get(plugin.name, None)
             if existing_dir is not None:
                 if not overwrite:
-                    logger.debug(f"Skipping existing plugin '{plugin.name}'")
+                    logger.info(f"Skipping existing plugin '{plugin.name}'")
                     continue
 
                 logger.debug(f"Overwriting existing plugin '{plugin.name}'")
@@ -245,7 +247,7 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
                     plugin.name, src_dir=plugin.path
                 )
 
-            logger.debug(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
+            logger.info(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
             etau.copy_dir(plugin.path, plugin_dir)
             downloaded_plugins[plugin.name] = plugin_dir
 
@@ -254,7 +256,6 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
 
 def create_plugin(
     plugin_name,
-    from_dir=None,
     from_files=None,
     outdir=None,
     label=None,
@@ -265,7 +266,7 @@ def create_plugin(
 ):
     """Creates a plugin with the given name.
 
-    If no input files are provided, a directory containing only the plugin's
+    If no ``from_files`` are provided, a directory containing only the plugin's
     metadata file will be created.
 
     If no ``outdir`` is specified, the plugin is created within your local
@@ -273,9 +274,8 @@ def create_plugin(
 
     Args:
         plugin_name: the name of the plugin
-        from_dir (None): the path to the directory containing the plugin
-        from_files (None): an explicit list of filepaths and/or directories to
-            include in the plugin
+        from_files (None): a directory or list of explicit filepaths to include
+            in the plugin
         outdir (None): the path at which to create the plugin directory. If
             not provided, the plugin is created within your
             ``fo_config.plugins_dir``
@@ -284,7 +284,7 @@ def create_plugin(
         version (None): an optional FiftyOne version requirement string
         overwrite (False): whether to overwrite a local plugin with the same
             name if one exists
-        **kwargs: optional keyword arguments to include in the plugin
+        **kwargs: additional keyword arguments to include in the plugin
             definition
 
     Returns:
@@ -296,26 +296,26 @@ def create_plugin(
             if not overwrite:
                 raise ValueError(f"Plugin '{plugin_name}' already exists")
 
-            logger.debug(f"Overwriting existing plugin '{plugin_name}'")
             plugin_dir = existing_plugin_dirs[plugin_name]
+            logger.info(f"Overwriting existing plugin '{plugin_name}'")
         else:
             plugin_dir = os.path.join(fo.config.plugins_dir, plugin_name)
     elif os.path.isdir(outdir):
         if not overwrite:
             raise ValueError(f"Directory '{outdir}' already exists")
 
-        logger.debug(f"Overwriting existing plugin directory '{outdir}'")
         plugin_dir = outdir
+        logger.debug(f"Overwriting existing plugin at '{plugin_dir}'")
     else:
         plugin_dir = _recommend_plugin_dir(plugin_name)
-        logger.debug(f"Creating plugin in '{plugin_dir}'")
+        logger.info(f"Creating plugin at '{plugin_dir}'")
 
     etau.ensure_empty_dir(plugin_dir, cleanup=True)
 
-    if from_dir:
-        from_files = [os.path.join(from_dir, f) for f in os.listdir(from_dir)]
+    if from_files is not None:
+        if etau.is_str(from_files):
+            from_files = [from_files]
 
-    if from_files:
         for from_path in from_files:
             if os.path.isfile(from_path):
                 shutil.copy(from_path, plugin_dir)

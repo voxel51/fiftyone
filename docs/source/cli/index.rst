@@ -791,7 +791,7 @@ Tools for working with FiftyOne plugins.
 
 .. code-block:: text
 
-    fiftyone plugins [-h] [--all-help] {list,download,enable,disable,delete} ...
+    fiftyone plugins [-h] [--all-help] {list,download,create,enable,disable,delete} ...
 
 **Arguments**
 
@@ -802,12 +802,13 @@ Tools for working with FiftyOne plugins.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,download,enable,disable,delete}
+      {list,download,create,enable,disable,delete}
         list                List plugins that you've downloaded or created locally.
         download            Download plugins from the web.
+        create              Creates or initializes a plugin.
         enable              Enables the given plugin(s).
         disable             Disables the given plugin(s).
-        delete              Deletes the local copy of the plugin on disk.
+        delete              Delete plugins from your local machine.
 
 .. _cli-fiftyone-plugins-list:
 
@@ -852,7 +853,11 @@ Download plugins from the web.
 
 .. code-block:: text
 
-    fiftyone plugins download [-h] [-n PLUGIN_NAMES] [-d MAX_DEPTH] [-o] URL_OR_GH_REPO
+    fiftyone plugins download [-h]
+                              [-n [PLUGIN_NAMES ...]]
+                              [-d MAX_DEPTH]
+                              [-o]
+                              URL_OR_GH_REPO
 
 **Arguments**
 
@@ -863,8 +868,8 @@ Download plugins from the web.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -n PLUGIN_NAMES, --plugin-names PLUGIN_NAMES
-                            a comma-separated list of plugin names to download
+      -n [PLUGIN_NAMES ...], --plugin-names [PLUGIN_NAMES ...]
+                            a plugin name or list of plugin names to download
       -d MAX_DEPTH, --max-depth MAX_DEPTH
                             a maximum depth to search for plugins
       -o, --overwrite       whether to overwrite existing plugins
@@ -878,6 +883,64 @@ Download plugins from the web.
 
     # Download plugins by specifying the GitHub repository details
     fiftyone plugins download <user>/<repo>[/<ref>]
+
+    # Download specific plugins from a URL with a custom search depth
+    fiftyone plugins download \
+        <url> \
+        --plugin-names <name1> <name2> <name3> \
+        --max-depth 2  # search nested directories for plugins
+
+.. _cli-fiftyone-plugins-create:
+
+Create plugins
+~~~~~~~~~~~~~~
+
+Creates or initializes a plugin.
+
+.. code-block:: text
+
+    fiftyone plugins create [-h]
+                            [-f [FILES ...]]
+                            [-d OUTDIR]
+                            [--label LABEL]
+                            [--description DESCRIPTION]
+                            [--version VERSION]
+                            [-o]
+                            [--kwargs KEY=VAL [KEY=VAL ...]]
+                            [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the plugin name(s)
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -f [FILES ...], --from-files [FILES ...]
+                            a directory or list of explicit filepaths to include in the plugin
+      -d OUTDIR, --outdir OUTDIR
+                            a directory in which to create the plugin
+      --label LABEL         a display name for the plugin
+      --description DESCRIPTION
+                            a description for the plugin
+      --version VERSION     an optional FiftyOne version requirement for the plugin
+      -o, --overwrite       whether to overwrite existing plugins
+      --kwargs KEY=VAL [KEY=VAL ...]
+                            additional keyword arguments to include in the plugin definition
+
+**Examples**
+
+    # Initialize a new plugin
+    fiftyone plugins create <name>
+
+    # Create a plugin from existing files
+    fiftyone plugins create \
+        <name> \
+        --from-files /path/to/dir \
+        --label <label> \
+        --description <description>
 
 .. _cli-fiftyone-plugins-enable:
 

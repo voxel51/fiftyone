@@ -2573,6 +2573,7 @@ class PluginsCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "list", PluginListCommand)
         _register_command(subparsers, "download", PluginDownloadCommand)
+        _register_command(subparsers, "create", PluginCreateCommand)
         _register_command(subparsers, "enable", PluginEnableCommand)
         _register_command(subparsers, "disable", PluginDisableCommand)
         _register_command(subparsers, "delete", PluginDeleteCommand)
@@ -2669,6 +2670,12 @@ class PluginDownloadCommand(Command):
 
         # Download plugins by specifying the GitHub repository details
         fiftyone plugins download <user>/<repo>[/<ref>]
+
+        # Download specific plugins from a URL with a custom search depth
+        fiftyone plugins download \\
+            <url> \\
+            --plugin-names <name1> <name2> <name3> \\
+            --max-depth 2  # search nested directories for plugins
     """
 
     @staticmethod
@@ -2681,9 +2688,11 @@ class PluginDownloadCommand(Command):
         parser.add_argument(
             "-n",
             "--plugin-names",
+            action="append",
+            nargs="*",
             default=None,
             metavar="PLUGIN_NAMES",
-            help="a comma-separated list of plugin names to download",
+            help="a plugin name or list of plugin names to download",
         )
         parser.add_argument(
             "-d",
@@ -2702,19 +2711,99 @@ class PluginDownloadCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        url_or_gh_repo = args.url_or_gh_repo
-        plugin_names = args.plugin_names
-        max_depth = args.max_depth
-        overwrite = args.overwrite
-
-        if plugin_names is not None:
-            plugin_names = [n.strip() for n in plugin_names.split(",")]
-
         fop.download_plugin(
-            url_or_gh_repo,
-            plugin_names=plugin_names,
-            max_depth=max_depth,
-            overwrite=overwrite,
+            args.url_or_gh_repo,
+            plugin_names=args.plugin_names,
+            max_depth=args.max_depth,
+            overwrite=args.overwrite,
+        )
+
+
+class PluginCreateCommand(Command):
+    """Creates or initializes a plugin.
+
+    Examples::
+
+        # Initialize a new plugin
+        fiftyone plugins create <name>
+
+        # Create a plugin from existing files
+        fiftyone plugins create \\
+            <name> \\
+            --from-files /path/to/dir \\
+            --label <label> \\
+            --description <description>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the plugin name(s)",
+        )
+        parser.add_argument(
+            "-f",
+            "--from-files",
+            action="append",
+            nargs="*",
+            default=None,
+            metavar="FILES",
+            help=(
+                "a directory or list of explicit filepaths to include in the "
+                "plugin"
+            ),
+        )
+        parser.add_argument(
+            "-d",
+            "--outdir",
+            metavar="OUTDIR",
+            help="a directory in which to create the plugin",
+        )
+        parser.add_argument(
+            "--label",
+            metavar="LABEL",
+            help="a display name for the plugin",
+        )
+        parser.add_argument(
+            "--description",
+            metavar="DESCRIPTION",
+            help="a description for the plugin",
+        )
+        parser.add_argument(
+            "--version",
+            metavar="VERSION",
+            help="an optional FiftyOne version requirement for the plugin",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite existing plugins",
+        )
+        parser.add_argument(
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional keyword arguments to include in the plugin "
+                "definition"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fop.create_plugin(
+            args.name,
+            from_files=args.from_files,
+            outdir=args.outdir,
+            label=args.label,
+            description=args.description,
+            version=args.version,
+            overwrite=args.overwrite,
+            **args.kwargs,
         )
 
 
