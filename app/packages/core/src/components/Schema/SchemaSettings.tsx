@@ -70,6 +70,7 @@ const SchemaSettings = () => {
     setFieldsOnly,
     setSelectedFieldsStage,
     datasetName,
+    setShowMetadata,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -143,9 +144,11 @@ const SchemaSettings = () => {
                     if (value === TAB_OPTIONS_MAP.SELECTION) {
                       setSearchTerm("");
                       setSearchResults([]);
+                      setShowMetadata(false);
                     }
                     if (value === TAB_OPTIONS_MAP.FILTER_RULE) {
                       setFieldsOnly(false);
+                      setShowMetadata(false);
                     }
                   },
                 };
