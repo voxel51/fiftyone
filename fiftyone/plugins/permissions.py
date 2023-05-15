@@ -23,6 +23,12 @@ class ManagedPlugins:
     def has_plugin(self, name):
         return self.get_plugin_definition(name) is not None
 
+    def has_enabled_plugin(self, name):
+        plugin = self.get_plugin_definition(name)
+        if plugin:
+            return plugin.enabled
+        return False
+
     @classmethod
     def from_json(cls, json):
         return ManagedPlugins(
