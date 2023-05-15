@@ -851,6 +851,14 @@ Download plugins
 
 Download plugins from the web.
 
+When downloading plugins from GitHub, you can provide any of the following
+formats::
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
 .. note::
 
     To download a plugin from a private GitHub repository that you have

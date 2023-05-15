@@ -164,10 +164,12 @@ def download_plugin(
     Args:
         url_or_gh_repo: the location to download from, which can be:
 
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
             -   a publicly accessible URL of an archive (eg zip or tar) file
-            -   a GitHub repository like ``https://github.com/<user>/<repo>``
-            -   a string with format ``<user>/<repo>[/<ref>]`` specifying the
-                GitHub repository to use
 
         plugin_names (None): a plugin name or iterable of plugin names to
             download. By default, all found plugins are downloaded
