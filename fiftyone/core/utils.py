@@ -1529,6 +1529,23 @@ class SuppressLogging(object):
         logging.disable(logging.NOTSET)
 
 
+class add_sys_path(object):
+    """Context manager that temporarily inserts a path to ``sys.path``."""
+
+    def __init__(self, path, index=0):
+        self.path = path
+        self.index = index
+
+    def __enter__(self):
+        sys.path.insert(self.index, self.path)
+
+    def __exit__(self, *args):
+        try:
+            sys.path.remove(self.path)
+        except:
+            pass
+
+
 def is_arm_mac():
     """Determines whether the system is an ARM-based Mac (Apple Silicon).
 
