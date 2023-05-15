@@ -152,6 +152,7 @@ function getViewSchema(property) {
     }
     view = { ...view, choices };
   }
+  view = { ...(view?.options || {}), ...view };
   return view;
 }
 
