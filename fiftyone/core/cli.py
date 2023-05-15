@@ -2731,7 +2731,6 @@ class PluginCreateCommand(Command):
         fiftyone plugins create \\
             <name> \\
             --from-files /path/to/dir \\
-            --label <label> \\
             --description <description>
     """
 
@@ -2760,11 +2759,6 @@ class PluginCreateCommand(Command):
             "--outdir",
             metavar="OUTDIR",
             help="a directory in which to create the plugin",
-        )
-        parser.add_argument(
-            "--label",
-            metavar="LABEL",
-            help="a display name for the plugin",
         )
         parser.add_argument(
             "--description",
@@ -2799,7 +2793,6 @@ class PluginCreateCommand(Command):
             args.name,
             from_files=args.from_files,
             outdir=args.outdir,
-            label=args.label,
             description=args.description,
             version=args.version,
             overwrite=args.overwrite,

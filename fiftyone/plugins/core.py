@@ -258,7 +258,6 @@ def create_plugin(
     plugin_name,
     from_files=None,
     outdir=None,
-    label=None,
     description=None,
     version=None,
     overwrite=False,
@@ -279,7 +278,6 @@ def create_plugin(
         outdir (None): the path at which to create the plugin directory. If
             not provided, the plugin is created within your
             ``fo_config.plugins_dir``
-        label (None): a display name for the plugin
         description (None): a description for the plugin
         version (None): an optional FiftyOne version requirement string
         overwrite (False): whether to overwrite a local plugin with the same
@@ -330,15 +328,8 @@ def create_plugin(
     if yaml_path is None:
         yaml_path = os.path.join(plugin_dir, _PLUGIN_METADATA_FILENAMES[0])
 
-    if label is None:
-        label = _recommend_plugin_label(plugin_name)
-
-    pd = {
-        "name": plugin_name,
-        "label": label,
-        "description": description,
-        **kwargs,
-    }
+    pd = dict(name=plugin_name, description=description)
+    pd.update(kwargs)
 
     if version is not None:
         if "fiftyone" not in pd:
@@ -489,7 +480,7 @@ def _recommend_plugin_dir(plugin_name, src_dir=None):
     return os.path.join(plugins_dir, unique_name)
 
 
-def _recommend_plugin_label(name):
+def _recommend_label(name):
     label = re.sub("[^A-Za-z0-9]+", " ", name)
     return " ".join([w.capitalize() for w in label.split()])
 
