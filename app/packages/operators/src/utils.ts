@@ -1,3 +1,4 @@
+import { getFetchOrigin } from "@fiftyone/utilities";
 import { KeyboardEventHandler } from "react";
 
 export function stringifyError(error, fallback?) {
@@ -23,5 +24,6 @@ export function onEnter(
 }
 
 export function resolveServerPath(plugin) {
-  return plugin.serverPath;
+  const origin = getFetchOrigin();
+  return origin + plugin.serverPath;
 }
