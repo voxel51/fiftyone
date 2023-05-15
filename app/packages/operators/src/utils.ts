@@ -21,3 +21,7 @@ export function onEnter(
     if (e.key === "Enter") handler(e);
   };
 }
+
+export function resolveServerPath(plugin) {
+  return plugin.serverPath;
+}
