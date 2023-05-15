@@ -27,7 +27,6 @@ from fiftyone.utils.github import GitHubRepository
 
 
 _PLUGIN_METADATA_FILENAMES = ["fiftyone.yaml", "fiftyone.yml"]
-_PLUGIN_DIRS = [fo.config.plugins_dir]
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +327,7 @@ def create_plugin(
         yaml.dump(pd, f)
 
 
-def _is_plugin_definition_file(path):
+def _is_plugin_metadata_file(path):
     return os.path.basename(path) in _PLUGIN_METADATA_FILENAMES
 
 
@@ -351,12 +350,12 @@ def _parse_plugin_metadata(metadata_path):
 
 def _list_plugins(enabled=None):
     plugins = []
-    for metadata_path in _iter_plugin_definition_files():
+    for metadata_path in _iter_plugin_metadata_files():
         try:
             plugin = _parse_plugin_metadata(metadata_path)
             plugins.append(plugin)
         except AttributeError:
-            logging.debug(f"Failed to parse {metadata_path}")
+            logging.debug(f"Failed to parse '{metadata_path}'")
             continue
 
     disabled = set(_list_disabled_plugins())
@@ -376,7 +375,7 @@ def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
     if check_for_duplicates:
         dups = [n for n, c in Counter(plugin_names).items() if c > 1]
         if dups:
-            raise ValueError(f"Plugin names ${dups} are not unique")
+            raise ValueError(f"Found multiple plugins with name ${dups}")
 
     return plugin_names
 
@@ -389,15 +388,7 @@ def _find_plugin_metadata_files(root_dir, max_depth=1):
     )
 
 
-def _iter_plugin_definition_files(filepaths=None):
-    if filepaths is not None:
-        for fpath in filter(
-            lambda x: _is_plugin_definition_file(x), filepaths
-        ):
-            yield fpath
-
-        return
-
+def _iter_plugin_metadata_files():
     if not fo.config.plugins_dir or not os.path.isdir(fo.config.plugins_dir):
         return
 
@@ -405,7 +396,7 @@ def _iter_plugin_definition_files(filepaths=None):
         # ignore hidden directories
         dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
         for file in files:
-            if _is_plugin_definition_file(file):
+            if _is_plugin_metadata_file(file):
                 yield os.path.join(root, file)
                 files[:] = []
 
@@ -472,7 +463,7 @@ def _recommend_plugin_label(name):
 
 def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
     # Ensure plugin actually exists
-    _find_plugin(plugin_name)
+    # _find_plugin(plugin_name)
 
     # Plugins are enabled by default, so if we can't read the App config or it
     # doesn't exist, don't do anything
