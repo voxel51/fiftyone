@@ -1040,10 +1040,14 @@ class ProgressView(View):
         import fiftyone.operators as foo
         import fiftyone.operators.types as types
 
-        class ProgressExample(foo.Operator):
-            def __init__(self):
-                super().__init__("progress-example", "Progress Example")
-                self.execute_as_generator = True
+        class ExampleProgress(foo.Operator):
+            @property
+            def config(self):
+                return foo.OperatorConfig(
+                    name="example_progress",
+                    label="Examples: Progress",
+                    execute_as_generator=True,
+                )
 
             async def execute(self, ctx):
                 outputs = types.Object()
