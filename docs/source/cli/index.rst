@@ -851,6 +851,12 @@ Download plugins
 
 Download plugins from the web.
 
+.. note::
+
+    To download a plugin from a private GitHub repository that you have
+    access to, provide your GitHub personal access token by setting the
+    ``GITHUB_TOKEN`` environment variable.
+
 .. code-block:: text
 
     fiftyone plugins download [-h]

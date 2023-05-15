@@ -2663,6 +2663,12 @@ def _print_plugins_info(enabled, names_only):
 class PluginDownloadCommand(Command):
     """Download plugins from the web.
 
+    .. note::
+
+        To download a plugin from a private GitHub repository that you have
+        access to, provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
     Examples::
 
         # Download plugins from a GitHub repository URL
