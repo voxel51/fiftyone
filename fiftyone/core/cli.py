@@ -2750,10 +2750,10 @@ class PluginDisableCommand(Command):
 
     Examples::
 
-        # Enable a plugin
+        # Disable a plugin
         fiftyone plugins disable <name>
 
-        # Enable multiple plugins
+        # Disable multiple plugins
         fiftyone plugins disable <name1> <name2> ...
     """
 
@@ -2773,14 +2773,14 @@ class PluginDisableCommand(Command):
 
 
 class PluginDeleteCommand(Command):
-    """Deletes the local copy of the plugin on disk.
+    """Delete plugins from your local machine.
 
     Examples::
 
-        # Delete a plugin from your local machine
-        fiftyone zoo datasets delete <name>
+        # Delete a plugin from local disk
+        fiftyone plugins delete <name>
 
-        # Delete multiple plugins from your local machine
+        # Delete multiple plugins from local disk
         fiftyone plugins delete <name1> <name2> ...
     """
 
