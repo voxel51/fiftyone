@@ -11,6 +11,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import date, datetime
+import glob
 import hashlib
 import importlib
 import inspect
@@ -305,6 +306,44 @@ def fill_patterns(string):
         a copy of string with any patterns replaced
     """
     return etau.fill_patterns(string, available_patterns())
+
+
+def find_files(root_dir, patt, max_depth=1):
+    """Finds all files in the given root directory whose filename matches the
+    given glob pattern(s).
+
+    Both ``root_dir`` and ``patt`` may contain glob patterns.
+
+    Exammples::
+
+        # Find .txt files in `/tmp`
+        find_files("/tmp", "*.txt")
+
+        # Find .txt files in subdirectories of `/tmp` that begin with `foo-`
+        find_files("/tmp/foo-*", "*.txt")
+
+        # Find .txt files in `/tmp` or its subdirectories
+        find_files("/tmp", "*.txt", max_depth=2)
+
+    Args:
+        root_dir: the root directory
+        patt: a glob pattern or list of patterns
+        max_depth (1): a maximum depth to search. 1 means ``root_dir`` only,
+            2 means ``root_dir`` and its immediate subdirectories, etc
+
+    Returns:
+        a list of matching paths
+    """
+    if etau.is_str(patt):
+        patt = [patt]
+
+    paths = []
+    for i in range(max_depth):
+        root = os.path.join(root_dir, *list("*" * i))
+        for p in patt:
+            paths += glob.glob(os.path.join(root, p))
+
+    return paths
 
 
 def normpath(path):
