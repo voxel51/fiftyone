@@ -154,14 +154,14 @@ def download_plugin(
     max_depth=3,
     overwrite=False,
 ):
-    """Downloads the given plugin(s) to your local plugins directory
-    (``fo.config.plugins_dir``).
+    """Downloads the plugin(s) from the given location to your local plugins
+    directory (``fo.config.plugins_dir``).
 
     Args:
-        url_or_gh_repo: the location to download the plugin from, which can be:
+        url_or_gh_repo: the location to download from, which can be:
 
-            -   a publicly accessible URL of an archive (eg zip) file
-            -   a GitHub repository like ``https://github.com/<org>/<repo>``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
+            -   a GitHub repository like ``https://github.com/<user>/<repo>``
             -   a string with format ``<user>/<repo>[/<ref>]`` specifying the
                 GitHub repository to use
 
@@ -179,7 +179,7 @@ def download_plugin(
             same name if it already exists
 
     Returns:
-        the path to the downloaded plugin
+        a dict mapping plugin names to plugin directories on disk
     """
     if etaw.is_url(url_or_gh_repo):
         if "github" in url_or_gh_repo:
@@ -207,6 +207,7 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
 
     existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
 
+    downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
         path = os.path.join(tmpdir, os.path.basename(url))
         etaw.download_file(url, path=path)
@@ -240,10 +241,15 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
                 etau.delete_dir(existing_dir)
                 plugin_dir = existing_dir
             else:
-                plugin_dir = _recommend_plugin_dir(plugin)
+                plugin_dir = _recommend_plugin_dir(
+                    plugin.name, src_dir=plugin.path
+                )
 
             logger.debug(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
             etau.copy_dir(plugin.path, plugin_dir)
+            downloaded_plugins[plugin.name] = plugin_dir
+
+    return downloaded_plugins
 
 
 def create_plugin(
@@ -282,7 +288,7 @@ def create_plugin(
             definition
 
     Returns:
-        the directory containing the plugin
+        the directory containing the created plugin
     """
     if outdir is None:
         existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
@@ -291,16 +297,20 @@ def create_plugin(
                 raise ValueError(f"Plugin '{plugin_name}' already exists")
 
             logger.debug(f"Overwriting existing plugin '{plugin_name}'")
-            outdir = existing_plugin_dirs[plugin_name]
+            plugin_dir = existing_plugin_dirs[plugin_name]
         else:
-            outdir = os.path.join(fo.config.plugins_dir, plugin_name)
+            plugin_dir = os.path.join(fo.config.plugins_dir, plugin_name)
     elif os.path.isdir(outdir):
         if not overwrite:
             raise ValueError(f"Directory '{outdir}' already exists")
 
         logger.debug(f"Overwriting existing plugin directory '{outdir}'")
+        plugin_dir = outdir
+    else:
+        plugin_dir = _recommend_plugin_dir(plugin_name)
+        logger.debug(f"Creating plugin in '{plugin_dir}'")
 
-    etau.ensure_empty_dir(outdir, cleanup=True)
+    etau.ensure_empty_dir(plugin_dir, cleanup=True)
 
     if from_dir:
         from_files = [os.path.join(from_dir, f) for f in os.listdir(from_dir)]
@@ -308,17 +318,17 @@ def create_plugin(
     if from_files:
         for from_path in from_files:
             if os.path.isfile(from_path):
-                shutil.copy(from_path, outdir)
+                shutil.copy(from_path, plugin_dir)
             elif os.path.isdir(from_path):
-                shutil.copytree(from_path, outdir)
+                shutil.copytree(from_path, plugin_dir)
             else:
                 logger.warning(
                     f"Skipping nonexistent file or directory '{from_path}'"
                 )
 
-    yaml_path = _find_plugin_metadata_file(outdir)
+    yaml_path = _find_plugin_metadata_file(plugin_dir)
     if yaml_path is None:
-        yaml_path = os.path.join(outdir, _PLUGIN_METADATA_FILENAMES[0])
+        yaml_path = os.path.join(plugin_dir, _PLUGIN_METADATA_FILENAMES[0])
 
     if label is None:
         label = _recommend_plugin_label(plugin_name)
@@ -343,6 +353,8 @@ def create_plugin(
 
     with open(yaml_path, "w") as f:
         yaml.dump(pd, f)
+
+    return plugin_dir
 
 
 def _is_plugin_metadata_file(path):
@@ -446,21 +458,25 @@ def _list_disabled_plugins():
     return [name for name, d in plugins.items() if d.get("enabled") == False]
 
 
-def _recommend_plugin_dir(plugin):
+def _recommend_plugin_dir(plugin_name, src_dir=None):
     plugins_dir = fo.config.plugins_dir
     if os.path.isdir(plugins_dir):
         existing_dirs = set(os.listdir(plugins_dir))
     else:
-        existing_dirs = {}
+        existing_dirs = set()
 
-    dirname = os.path.basename(plugin.path)
-    if dirname not in existing_dirs:
-        return os.path.join(plugins_dir, dirname)
+    # First maintain the input directory name
+    if src_dir is not None:
+        dirname = os.path.basename(src_dir)
+        if dirname not in existing_dirs:
+            return os.path.join(plugins_dir, dirname)
 
-    name = plugin.name
+    # Then use raw plugin name
+    name = plugin_name
     if name not in existing_dirs:
         return os.path.join(plugins_dir, name)
 
+    # Else generate a unique name based on the plugin's name
     unique_name = None
     i = 2
     while True:
