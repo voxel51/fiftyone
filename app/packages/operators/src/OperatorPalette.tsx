@@ -33,6 +33,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     allowPropagation,
     submitOnControlEnter,
     title,
+    disableSubmit,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
@@ -61,6 +62,11 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     },
     [onClose, onCancel, onSubmit, allowPropagation, submitOnControlEnter]
   );
+
+  const handleSubmit = useCallback(() => {
+    if (disableSubmit) return;
+    onSubmit();
+  }, [disableSubmit, onSubmit]);
 
   useEffect(() => {
     document.addEventListener("keydown", keyDownHandler);
@@ -109,7 +115,11 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
               </Button>
             )}
             {onSubmit && (
-              <Button onClick={onSubmit} onKeyDown={onEnter(onSubmit)}>
+              <Button
+                onClick={handleSubmit}
+                onKeyDown={onEnter(handleSubmit)}
+                disabled={disableSubmit}
+              >
                 {submitButtonText}
               </Button>
             )}
@@ -131,4 +141,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   allowPropagation?: boolean;
   submitOnControlEnter?: boolean;
   title?: ReactElement;
+  disableSubmit?: boolean;
 };
