@@ -232,6 +232,11 @@ export const hoveredSample = atom<Sample>({
   default: null,
 });
 
+export const lastLoadedDatasetNameState = atom<string>({
+  key: "lastLoadedDatasetNameState",
+  default: "",
+});
+
 export const lookerPanels = atom({
   key: "lookerPanels",
   default: {

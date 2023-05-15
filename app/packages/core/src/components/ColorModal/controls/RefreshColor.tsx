@@ -25,7 +25,6 @@ const ShuffleColor: React.FC = () => {
         style={{
           margin: "0.25rem -0.5rem",
           height: "2rem",
-          borderRadius: 0,
           textAlign: "center",
           flex: 1,
           width: "200px",

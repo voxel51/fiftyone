@@ -69,7 +69,8 @@ const SchemaSettings = () => {
     searchResults,
     setFieldsOnly,
     setSelectedFieldsStage,
-    mediatType,
+    datasetName,
+    setShowMetadata,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -143,9 +144,11 @@ const SchemaSettings = () => {
                     if (value === TAB_OPTIONS_MAP.SELECTION) {
                       setSearchTerm("");
                       setSearchResults([]);
+                      setShowMetadata(false);
                     }
                     if (value === TAB_OPTIONS_MAP.FILTER_RULE) {
                       setFieldsOnly(false);
+                      setShowMetadata(false);
                     }
                   },
                 };
@@ -178,9 +181,12 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
+                if (!selectedPaths) return;
                 let initialFieldNames = searchResults.length
-                  ? searchResults.filter((pp) => selectedPaths.has(pp))
-                  : [...selectedPaths];
+                  ? searchResults.filter((pp) =>
+                      selectedPaths?.[datasetName]?.has(pp)
+                    )
+                  : [...selectedPaths[datasetName]];
 
                 const stageKwargs = {
                   field_names: initialFieldNames.filter((pp) => !!pp),

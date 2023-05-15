@@ -37,14 +37,16 @@ export const promptingOperatorState = atom({
 
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
-  get: (operatorName) => ({ get }) => {
-    const promptingOperator = get(promptingOperatorState);
-    if (!promptingOperator) {
-      return {};
-    }
-    const { params } = promptingOperator;
-    return params;
-  },
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const promptingOperator = get(promptingOperatorState);
+      if (!promptingOperator) {
+        return {};
+      }
+      const { params } = promptingOperator;
+      return params;
+    },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -94,26 +96,22 @@ const globalContextSelector = selector({
 
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
-  get: (operatorName) => ({ get }) => {
-    const globalContext = get(globalContextSelector);
-    const params = get(currentOperatorParamsSelector(operatorName));
-    return {
-      ...globalContext,
-      params,
-    };
-  },
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const globalContext = get(globalContextSelector);
+      const params = get(currentOperatorParamsSelector(operatorName));
+      return {
+        ...globalContext,
+        params,
+      };
+    },
 });
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const {
-    datasetName,
-    view,
-    extended,
-    filters,
-    selectedSamples,
-    params,
-  } = curCtx;
+  const { datasetName, view, extended, filters, selectedSamples, params } =
+    curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -220,16 +218,17 @@ export const useOperatorPrompt = () => {
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => (fieldName, value) => {
-      const state = get(promptingOperatorState);
-      set(promptingOperatorState, {
-        ...state,
-        params: {
-          ...state.params,
-          [fieldName]: value,
-        },
-      });
-    }
+    ({ get, set }) =>
+      (fieldName, value) => {
+        const state = get(promptingOperatorState);
+        set(promptingOperatorState, {
+          ...state,
+          params: {
+            ...state.params,
+            [fieldName]: value,
+          },
+        });
+      }
   );
   const execute = useCallback(async () => {
     const resolved = await operator.resolveInput(ctx);
@@ -278,7 +277,7 @@ export const useOperatorPrompt = () => {
       "executor.hasExecuted": executor.hasExecuted,
       "executor.needsOutput": executor.needsOutput,
     });
-    if (executor.hasExecuted && !executor.needsOutput) {
+    if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       console.log("AUTO CLOSING");
       close();
     }
@@ -440,6 +439,7 @@ export const operatorChoiceState = atom({
 export const recentlyUsedOperatorsState = atom({
   key: "recentlyUsedOperators",
   default: [],
+  effects: [fos.getBrowserStorageEffectForKey("operators-recently-used")],
 });
 
 export function useOperatorBrowser() {
@@ -723,15 +723,17 @@ export const operatorPlacementsSelector = selector({
 
 export const placementsForPlaceSelector = selectorFamily({
   key: "operatorsForPlaceSelector",
-  get: (place: Places) => ({ get }) => {
-    const placements = get(operatorPlacementsSelector);
-    return placements
-      .filter((p) => p.placement.place === place)
-      .map((p) => ({
-        placement: p.placement,
-        operator: p.operator.operator,
-      }));
-  },
+  get:
+    (place: Places) =>
+    ({ get }) => {
+      const placements = get(operatorPlacementsSelector);
+      return placements
+        .filter((p) => p.placement.place === place)
+        .map((p) => ({
+          placement: p.placement,
+          operator: p.operator.operator,
+        }));
+    },
 });
 
 export function useOperatorPlacements(place: Place) {

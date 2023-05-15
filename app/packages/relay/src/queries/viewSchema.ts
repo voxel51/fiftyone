@@ -8,6 +8,8 @@ export default r(graphql`
     schemaForViewStages(datasetName: $name, viewStages: $viewStages) {
       path
       ftype
+      subfield
+      embeddedDocType
       info
       description
       subfield
