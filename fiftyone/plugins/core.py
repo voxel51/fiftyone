@@ -65,7 +65,8 @@ def list_plugins(enabled=True):
     for p in _list_plugins(enabled=enabled):
         metadata_path = _find_plugin_metadata_file(p.path)
         pd = fopd.load_plugin_definition(metadata_path)
-        plugins.append(pd)
+        if pd is not None:
+            plugins.append(pd)
 
     return fopd.validate_plugins(plugins)
 

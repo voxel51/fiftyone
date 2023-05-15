@@ -316,14 +316,16 @@ def find_files(root_dir, patt, max_depth=1):
 
     Exammples::
 
+        import fiftyone.core.utils as fou
+
         # Find .txt files in `/tmp`
-        find_files("/tmp", "*.txt")
+        fou.find_files("/tmp", "*.txt")
 
         # Find .txt files in subdirectories of `/tmp` that begin with `foo-`
-        find_files("/tmp/foo-*", "*.txt")
+        fou.find_files("/tmp/foo-*", "*.txt")
 
         # Find .txt files in `/tmp` or its subdirectories
-        find_files("/tmp", "*.txt", max_depth=2)
+        fou.find_files("/tmp", "*.txt", max_depth=2)
 
     Args:
         root_dir: the root directory
