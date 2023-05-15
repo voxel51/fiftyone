@@ -95,7 +95,9 @@ export const SchemaSelection = () => {
                     </Box>
                     <Box
                       style={{
-                        paddingLeft: `${(count - 1) * 15 + 5}px`,
+                        paddingLeft: `${
+                          isFilterRuleMode ? "1rem" : (count - 1) * 15 + 5
+                        }px`,
                         color: disabled
                           ? theme.text.tertiary
                           : theme.text.primary,
