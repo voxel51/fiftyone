@@ -328,7 +328,10 @@ def create_plugin(
     if yaml_path is None:
         yaml_path = os.path.join(plugin_dir, _PLUGIN_METADATA_FILENAMES[0])
 
-    pd = dict(name=plugin_name, description=description)
+    pd = {"name": plugin_name}
+    if description:
+        pd[description] = description
+
     pd.update(kwargs)
 
     if version is not None:

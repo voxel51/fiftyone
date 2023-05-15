@@ -2739,8 +2739,7 @@ class PluginCreateCommand(Command):
         parser.add_argument(
             "name",
             metavar="NAME",
-            nargs="*",
-            help="the plugin name(s)",
+            help="the plugin name",
         )
         parser.add_argument(
             "-f",
@@ -2796,7 +2795,7 @@ class PluginCreateCommand(Command):
             description=args.description,
             version=args.version,
             overwrite=args.overwrite,
-            **args.kwargs,
+            **args.kwargs or {},
         )
 
 
