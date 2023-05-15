@@ -5,7 +5,6 @@ Plugin definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import os
 
 import yaml
@@ -14,110 +13,47 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.core.utils as fou
-
-
-REQUIRED_PLUGIN_METADATA_KEYS = ["name"]
-
-
-logger = logging.getLogger(__name__)
-
-
-def load_plugin_definition(metadata_path):
-    """Loads the plugin definition from the given metadata file.
-
-    Args:
-        metadata_path: path to the plugin metadata
-
-    Returns:
-        a :class:`PluginDefinition`
-    """
-    try:
-        module_dir = os.path.dirname(metadata_path)
-        with open(metadata_path, "r") as f:
-            metadata_dict = yaml.safe_load(f)
-            return PluginDefinition(module_dir, metadata_dict)
-    except Exception as e:
-        logger.warning(
-            "Failed to load plugin metadata from '%s': %s", metadata_path, e
-        )
-        return None
-
-
-def validate_plugins(plugins):
-    """Validates the given plugin definitions, checking for things like missing
-    or duplicate names.
-
-    Args:
-        plugins: a list of :class:`PluginDefinition` instances
-
-    Returns:
-        a list of valid :class:`PluginDefinition` instances
-    """
-    results = []
-    names = set()
-    for plugin in plugins:
-        if not plugin.name:
-            raise InvalidPluginDefinition(
-                "Plugin definition in %s is missing a name" % plugin.directory
-            )
-        if plugin.name in names:
-            raise DuplicatePluginNameError(
-                "Plugin name %s is not unique" % plugin.name
-            )
-        else:
-            results.append(plugin)
-        names.add(plugin.name)
-
-    return results
 
 
 class PluginDefinition(object):
     """A plugin definition.
 
     Args:
+        metadata: a plugin metadata dict
         directory: the directory containing the plugin
-        metadata: a dict of plugin metadata
-
-    Attributes:
-        directory: the directory containing the plugin
-        js_bundle: relative path to the JS bundle file
-        js_bundle_path: absolute path to the JS bundle file
-        py_entry: relative path to the Python entry file
-        py_entry_path: absolute path to the Python entry file
     """
 
+    _REQUIRED_METADATA_KEYS = ["name"]
+
     def __init__(self, directory, metadata):
-        missing = []
-        if not directory:
-            missing.append("directory")
-        if not metadata:
-            missing.append("metadata")
-        if len(missing) > 0:
-            raise ValueError("Missing required fields: %s" % missing)
-
-        self.directory = directory
+        self._directory = directory
         self._metadata = metadata
+        self._validate()
 
-        missing_metadata_keys = [
-            k
-            for k in REQUIRED_PLUGIN_METADATA_KEYS
-            if not self._metadata.get(k, None)
+    def _validate(self):
+        missing = [
+            k for k in self._REQUIRED_METADATA_KEYS if k not in self._metadata
         ]
-        if len(missing_metadata_keys) > 0:
+        if missing:
             raise ValueError(
-                f"Plugin definition missing required fields: {missing_metadata_keys}"
+                f"Plugin metadata is missing required fields: {missing}"
             )
 
     def _get_abs_path(self, filename):
         if not filename:
             return None
+
         return os.path.join(self.directory, filename)
 
     @property
     def name(self):
         """The name of the plugin."""
         return self._metadata.get("name", None)
+
+    @property
+    def directory(self):
+        """The directory containing the plugin."""
+        return self._directory
 
     @property
     def author(self):
@@ -211,7 +147,12 @@ class PluginDefinition(object):
         """Whether the plugin has a JS bundle file."""
         return os.path.exists(self.js_bundle_path)
 
-    def to_json(self):
+    def to_dict(self):
+        """Returns a JSON dict representation of the plugin metadata.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "name": self.name,
             "author": self.author,
@@ -219,7 +160,7 @@ class PluginDefinition(object):
             "license": self.license,
             "description": self.description,
             "fiftyone_compatibility": self.fiftyone_compatibility,
-            "operators": self.operators or [],
+            "operators": self.operators,
             "js_bundle": self.js_bundle,
             "py_entry": self.py_entry,
             "js_bundle_exists": self.has_js,
@@ -229,10 +170,18 @@ class PluginDefinition(object):
             "server_path": self.server_path,
         }
 
+    @classmethod
+    def from_disk(cls, metadata_path):
+        """Creates a :class:`PluginDefinition` for the given metadata file.
 
-class DuplicatePluginNameError(ValueError):
-    pass
+        Args:
+            metadata_path: the path to a plugin ``.yaml`` file
 
+        Returns:
+            a :clss:`PluginDefinition`
+        """
+        dirpath = os.path.dirname(metadata_path)
+        with open(metadata_path, "r") as f:
+            metadata = yaml.safe_load(f)
 
-class InvalidPluginDefinition(ValueError):
-    pass
+        return cls(dirpath, metadata)

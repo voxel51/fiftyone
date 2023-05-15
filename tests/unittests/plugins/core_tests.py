@@ -119,7 +119,7 @@ def mock_plugin_package_name(plugin_name, plugin_path):
         plugin_name = "test-plugin1-name"
     if not plugin_path:
         plugin_path = "path/to/plugin"
-    return fop.core.plugin_package(plugin_name, plugin_path)
+    return fop.core.PluginPackage(plugin_name, plugin_path)
 
 
 def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
@@ -127,7 +127,7 @@ def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
 
     plugin_name = "test-plugin1"
     dup_plugin_dir = fiftyone_plugins_dir / "test-plugin2"
-    m = mock.Mock(spec=fop.core.plugin_package(plugin_name, "path/to/plugin"))
+    m = mock.Mock(spec=fop.core.PluginPackage(plugin_name, "path/to/plugin"))
     with open(os.path.join(dup_plugin_dir, "fiftyone.yml"), "w") as f:
         pd = {k: plugin_name + "-" + k for k in _REQUIRED_YML_KEYS}
         f.write(yaml.dump(pd))

@@ -21,7 +21,7 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.core.config as foc
 import fiftyone.core.utils as fou
-import fiftyone.plugins.definitions as fopd
+from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
 
 
@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class plugin_package:
-    """A plugin package.
+class PluginPackage:
+    """Plugin package.
 
     Args:
         name: the name of the plugin
@@ -47,10 +47,10 @@ class plugin_package:
 
 
 def list_plugins(enabled=True):
-    """Returns the list of enabled plugins.
+    """Returns the definitions of downloaded plugins.
 
     Args:
-        enabled (True): whether to show only enabled plugins (True) or only
+        enabled (True): whether to include only enabled plugins (True) or only
             disabled plugins (False) or all plugins ("all")
 
     Returns:
@@ -62,15 +62,19 @@ def list_plugins(enabled=True):
     plugins = []
     for p in _list_plugins(enabled=enabled):
         metadata_path = _find_plugin_metadata_file(p.path)
-        pd = fopd.load_plugin_definition(metadata_path)
-        if pd is not None:
-            plugins.append(pd)
+        try:
+            pd = PluginDefinition.from_disk(metadata_path)
+        except:
+            logger.debug(f"Failed to load metadata from '{metadata_path}'")
+            continue
 
-    return fopd.validate_plugins(plugins)
+        plugins.append(pd)
+
+    return plugins
 
 
 def enable_plugin(plugin_name):
-    """Enable the plugin in the app.
+    """Enables the given plugin in the FiftyOne App.
 
     Args:
         plugin_name: the plugin name
@@ -82,7 +86,7 @@ def enable_plugin(plugin_name):
 
 
 def disable_plugin(plugin_name):
-    """Disables the plugin in the app.
+    """Disables the given plugin in the FiftyOne App.
 
     Args:
         plugin_name: the plugin name
@@ -94,7 +98,7 @@ def disable_plugin(plugin_name):
 
 
 def delete_plugin(plugin_name):
-    """Deletes the plugin with the given name from local disk.
+    """Deletes the given plugin from local disk.
 
     Args:
         plugin_name: the plugin name
@@ -104,7 +108,7 @@ def delete_plugin(plugin_name):
 
 
 def list_downloaded_plugins():
-    """Returns a list of all downloaded plugins.
+    """Returns a list of all downloaded plugin names.
 
     Returns:
         a list of plugin names
@@ -113,7 +117,7 @@ def list_downloaded_plugins():
 
 
 def list_enabled_plugins():
-    """Returns a list of all enabled plugins.
+    """Returns a list of all enabled plugin names.
 
     Returns:
         a list of plugin names
@@ -122,7 +126,7 @@ def list_enabled_plugins():
 
 
 def list_disabled_plugins():
-    """Returns a list of all disabled plugins.
+    """Returns a list of all disabled plugin names.
 
     Returns:
         a list of plugin names
@@ -131,7 +135,7 @@ def list_disabled_plugins():
 
 
 def find_plugin(name, check_for_duplicates=True):
-    """Returns the path to the plugin's directory.
+    """Returns the path to the plugin on local disk.
 
     Args:
         name: the plugin name
@@ -140,10 +144,6 @@ def find_plugin(name, check_for_duplicates=True):
 
     Returns:
         the path to the plugin directory
-
-    Raises:
-        ValueError: if the plugin is not found or there are multiple plugins
-        with the same name
     """
     return _find_plugin(name, check_for_duplicates=check_for_duplicates)
 
@@ -221,7 +221,9 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
             try:
                 plugin = _parse_plugin_metadata(metadata_path)
             except AttributeError:
-                logging.debug(f"Failed to parse '{metadata_path}'")
+                logger.debug(
+                    f"Failed to load plugin name from '{metadata_path}'"
+                )
                 continue
 
             if plugin_names is not None and plugin.name not in plugin_names:
@@ -240,7 +242,7 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
             else:
                 plugin_dir = _recommend_plugin_dir(plugin)
 
-            logger.debug(f"Copying plugin '{plugin.name}' to '${plugin_dir}'")
+            logger.debug(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
             etau.copy_dir(plugin.path, plugin_dir)
 
 
@@ -286,17 +288,17 @@ def create_plugin(
         existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
         if plugin_name in existing_plugin_dirs:
             if not overwrite:
-                raise ValueError(f"Plugin '${plugin_name}' already exists")
+                raise ValueError(f"Plugin '{plugin_name}' already exists")
 
-            logger.debug(f"Overwriting existing plugin {plugin_name}")
+            logger.debug(f"Overwriting existing plugin '{plugin_name}'")
             outdir = existing_plugin_dirs[plugin_name]
         else:
             outdir = os.path.join(fo.config.plugins_dir, plugin_name)
     elif os.path.isdir(outdir):
         if not overwrite:
-            raise ValueError(f"Plugin directory '${outdir}' already exists")
+            raise ValueError(f"Directory '{outdir}' already exists")
 
-        logger.debug(f"Overwriting existing plugin directory '${outdir}'")
+        logger.debug(f"Overwriting existing plugin directory '{outdir}'")
 
     etau.ensure_empty_dir(outdir, cleanup=True)
 
@@ -305,7 +307,14 @@ def create_plugin(
 
     if from_files:
         for from_path in from_files:
-            shutil.copytree(from_path, outdir)
+            if os.path.isfile(from_path):
+                shutil.copy(from_path, outdir)
+            elif os.path.isdir(from_path):
+                shutil.copytree(from_path, outdir)
+            else:
+                logger.warning(
+                    f"Skipping nonexistent file or directory '{from_path}'"
+                )
 
     yaml_path = _find_plugin_metadata_file(outdir)
     if yaml_path is None:
@@ -354,7 +363,7 @@ def _parse_plugin_metadata(metadata_path):
         plugin_name = yaml.safe_load(f).get("name")
 
     plugin_path = os.path.dirname(metadata_path)
-    return plugin_package(plugin_name, plugin_path)
+    return PluginPackage(plugin_name, plugin_path)
 
 
 def _list_plugins(enabled=None):
@@ -363,8 +372,8 @@ def _list_plugins(enabled=None):
         try:
             plugin = _parse_plugin_metadata(metadata_path)
             plugins.append(plugin)
-        except AttributeError:
-            logging.debug(f"Failed to parse '{metadata_path}'")
+        except:
+            logger.debug(f"Failed to load plugin name from '{metadata_path}'")
             continue
 
     disabled = set(_list_disabled_plugins())
@@ -384,7 +393,7 @@ def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
     if check_for_duplicates:
         dups = [n for n, c in Counter(plugin_names).items() if c > 1]
         if dups:
-            raise ValueError(f"Found multiple plugins with name ${dups}")
+            raise ValueError(f"Found multiple plugins with name {dups}")
 
     return plugin_names
 
@@ -421,7 +430,7 @@ def _find_plugin(name, check_for_duplicates=False):
             plugin_dir = plugin.path
 
     if plugin_dir is None:
-        raise ValueError(f"Plugin '${name}' not found")
+        raise ValueError(f"Plugin '{name}' not found")
 
     return plugin_dir
 
@@ -465,14 +474,12 @@ def _recommend_plugin_dir(plugin):
 
 
 def _recommend_plugin_label(name):
-    # replace non-alphanumeric characters with spaces
     label = re.sub("[^A-Za-z0-9]+", " ", name)
-    # capitalize each word
     return " ".join([w.capitalize() for w in label.split()])
 
 
 def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
-    # Ensure plugin actually exists
+    # This would ensure that the plugin actually exists
     # _find_plugin(plugin_name)
 
     # Plugins are enabled by default, so if we can't read the App config or it
@@ -490,7 +497,7 @@ def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
                 return
 
             raise ValueError(
-                "Failed to parse App config at '%s'" % app_config_path
+                f"Failed to parse App config at '{app_config_path}'"
             ) from e
     elif okay_missing:
         return

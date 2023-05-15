@@ -19,6 +19,7 @@ from .core import (
     download_plugin,
     create_plugin,
 )
+from .definitions import PluginDefinition
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
