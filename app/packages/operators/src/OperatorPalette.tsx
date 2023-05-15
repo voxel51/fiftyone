@@ -81,7 +81,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
         open
         onClose={onClose || onOutsideClick}
         scroll={scroll}
-        maxWidth={maxWidth}
+        maxWidth={false}
         aria-labelledby=""
         aria-describedby="scroll-dialog-description"
         PaperProps={{ sx: { backgroundImage: "none" } }}
