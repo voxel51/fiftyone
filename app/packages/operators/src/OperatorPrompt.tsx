@@ -58,6 +58,7 @@ function ActualOperatorPrompt() {
       {...paletteProps}
       onClose={paletteProps.onCancel || operatorPrompt.close}
       submitOnControlEnter
+      disableSubmit={operatorPrompt.validationErrors?.length > 0}
     >
       <PaletteContentContainer>
         {operatorPrompt.showPrompt && (
