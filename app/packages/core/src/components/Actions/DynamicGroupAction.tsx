@@ -121,6 +121,7 @@ export const DynamicGroupAction = () => {
       }
       return newView;
     });
+    setOpen(false);
   }, [setView]);
 
   const pillComponent = useMemo(() => {
