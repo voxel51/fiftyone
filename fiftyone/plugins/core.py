@@ -234,6 +234,10 @@ def _download_plugin(
             os.path.join(tmpdir, "*"),
             max_depth=max_depth + 1,
         )
+        if not metadata_paths:
+            logger.info(
+                f"No {_PLUGIN_METADATA_FILENAMES} files found in {url} (max_depth={max_depth})"
+            )
 
         for metadata_path in metadata_paths:
             try:
