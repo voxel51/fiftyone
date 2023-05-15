@@ -38,7 +38,8 @@ def test_enable_plugin(mocker, app_config_path):
     fop.enable_plugin("my-plugin")
     with open(app_config_path, "r") as f:
         config = json.load(f)
-    assert config["plugins"]["my-plugin"]["enabled"] == True
+
+    assert config["plugins"].get("my-plugin", {}).get("enabled", True) == True
 
 
 def test_disable_plugin(mocker, app_config_path):
@@ -53,13 +54,12 @@ def test_disable_plugin(mocker, app_config_path):
 
 def test_delete_plugin_success(mocker, fiftyone_plugins_dir):
     mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
-    print(os.listdir(fiftyone_plugins_dir))
     assert fo.config.plugins_dir == fiftyone_plugins_dir
+    print(os.listdir(fiftyone_plugins_dir))
 
 
 def test_list_downloaded_plugins(mocker, fiftyone_plugins_dir):
     mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
-    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
     assert fo.config.plugins_dir == fiftyone_plugins_dir
 
     actual = fop.list_downloaded_plugins()
@@ -70,10 +70,8 @@ def test_list_downloaded_plugins(mocker, fiftyone_plugins_dir):
     assert set(actual) == set(expected)
 
 
-#
 def test_list_enabled_plugins(mocker, fiftyone_plugins_dir):
     mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
-    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
     assert fo.config.plugins_dir == fiftyone_plugins_dir
 
     # enable all
@@ -99,7 +97,7 @@ def test_list_enabled_plugins(mocker, fiftyone_plugins_dir):
 
 
 def test_find_plugin_success(mocker, fiftyone_plugins_dir):
-    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
+    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
     plugin_name = _DEFAULT_TEST_PLUGINS[0] + "-name"
     actual_path = fop.find_plugin(plugin_name)
     expected_path = os.path.join(
@@ -108,9 +106,8 @@ def test_find_plugin_success(mocker, fiftyone_plugins_dir):
     assert actual_path == expected_path
 
 
-#
 def test_find_plugin_error_not_found(mocker, fiftyone_plugins_dir):
-    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
+    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
     plugin_dir_name = _DEFAULT_TEST_PLUGINS[0]
     with pytest.raises(ValueError):
         _ = fop.find_plugin(plugin_dir_name)
@@ -122,17 +119,15 @@ def mock_plugin_package_name(plugin_name, plugin_path):
         plugin_name = "test-plugin1-name"
     if not plugin_path:
         plugin_path = "path/to/plugin"
-    return fop.core.plugin_package(plugin_name, plugin_path)
+    return fop.core.PluginPackage(plugin_name, plugin_path)
 
 
-def test_find_plugin_error_duplicate_name(
-    mocker,
-    fiftyone_plugins_dir,
-):
+def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
+    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
+
     plugin_name = "test-plugin1"
     dup_plugin_dir = fiftyone_plugins_dir / "test-plugin2"
-    mocker.patch("fiftyone.plugins.core._PLUGIN_DIRS", [fiftyone_plugins_dir])
-    m = mock.Mock(spec=fop.core.plugin_package(plugin_name, "path/to/plugin"))
+    m = mock.Mock(spec=fop.core.PluginPackage(plugin_name, "path/to/plugin"))
     with open(os.path.join(dup_plugin_dir, "fiftyone.yml"), "w") as f:
         pd = {k: plugin_name + "-" + k for k in _REQUIRED_YML_KEYS}
         f.write(yaml.dump(pd))

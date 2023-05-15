@@ -19,7 +19,8 @@ export const SchemaSearch = (props: Props) => {
     useMutation<foq.searchSelectFieldsMutation>(foq.searchSelectFields);
   const [error, setError] = useState<string>("");
 
-  const { setSearchResults, dataset } = useSchemaSettings();
+  const { setSearchResults, dataset, includeNestedFields } =
+    useSchemaSettings();
 
   return (
     <Box
@@ -57,7 +58,7 @@ export const SchemaSearch = (props: Props) => {
 
                 let props = finalSearchTerm.split(".");
                 const last = props[props.length - 1];
-                let object = {};
+                let object = { include_nested_fields: includeNestedFields };
                 let ref = object;
                 if (checkValue && props.length > 0) {
                   props.forEach((prop, index) => {
@@ -79,9 +80,7 @@ export const SchemaSearch = (props: Props) => {
                   onCompleted: (data, err) => {
                     if (data) {
                       const { searchSelectFields = [] } = data;
-                      setSearchResults(
-                        searchSelectFields.map((ss) => ss?.path) as string[]
-                      );
+                      setSearchResults(searchSelectFields as string[]);
                     }
                   },
                   onError: (e) => {

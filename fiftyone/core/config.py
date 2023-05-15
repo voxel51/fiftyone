@@ -253,6 +253,12 @@ class FiftyOneConfig(EnvConfig):
                 self.default_dataset_dir, "__models__"
             )
 
+        if self.plugins_dir is None:
+            self.plugins_dir = os.path.join(
+                self.default_dataset_dir,
+                "__plugins__",
+            )
+
         if self.default_ml_backend is None:
             installed_packages = _get_installed_packages()
 

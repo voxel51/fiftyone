@@ -28,6 +28,8 @@ export const SchemaSelectionControls = (props: Props) => {
     showMetadata,
     setShowMetadata,
     searchResults,
+    includeNestedFields,
+    setIncludeNestedFields,
   } = useSchemaSettings();
   const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
 
@@ -54,6 +56,26 @@ export const SchemaSelectionControls = (props: Props) => {
             />
           </FormGroup>
         </ContainerBox>
+        {isFilterRuleMode && (
+          <ContainerBox>
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    defaultChecked={true}
+                    value={includeNestedFields}
+                    checked={includeNestedFields}
+                    onChange={() =>
+                      setIncludeNestedFields(!includeNestedFields)
+                    }
+                    disabled={!searchResults.length}
+                  />
+                }
+                label="Include nested fields"
+              />
+            </FormGroup>
+          </ContainerBox>
+        )}
         {!isFilterRuleMode && (
           <ContainerBox>
             <FormGroup>
