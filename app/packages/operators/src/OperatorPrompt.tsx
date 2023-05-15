@@ -142,7 +142,8 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
 }
 
 function getPromptTitle(operatorPrompt) {
-  const definition =
-    operatorPrompt?.inputFields || operatorPrompt?.outputFields;
+  const definition = operatorPrompt.showPrompt
+    ? operatorPrompt?.inputFields
+    : operatorPrompt?.outputFields;
   return definition?.view?.label;
 }
