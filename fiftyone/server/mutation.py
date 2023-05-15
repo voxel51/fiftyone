@@ -462,10 +462,10 @@ class Mutation:
 
         res = []
         try:
-            schema = view.get_field_schema(flat=True)
+            schema = dataset.get_field_schema(flat=True)
             has_frames = dataset.media_type == "video"
             if has_frames:
-                schema = view.get_frame_field_schema(flat=True)
+                schema = dataset.get_frame_field_schema(flat=True)
 
             for stage in view._stages:
                 sf = stage.get_selected_fields(view, frames=has_frames)
