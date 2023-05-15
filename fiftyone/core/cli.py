@@ -2600,12 +2600,6 @@ class PluginListCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-n",
-            "--names-only",
-            action="store_true",
-            help="only show plugin names",
-        )
-        parser.add_argument(
             "-e",
             "--enabled",
             action="store_true",
@@ -2619,6 +2613,12 @@ class PluginListCommand(Command):
             default=None,
             help="only show disabled plugins",
         )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show plugin names",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2627,17 +2627,29 @@ class PluginListCommand(Command):
         elif args.disabled:
             enabled = False
         else:
-            enabled = None
+            enabled = "all"
 
-        plugin_defintions = fop.list_plugins(enabled=enabled)
-        _print_plugins_info(plugin_defintions)
+        _print_plugins_info(enabled, args.names_only)
 
 
-def _print_plugins_info(plugin_defintions):
-    # @todo implement enabled
+def _print_plugins_info(enabled, names_only):
+    plugin_defintions = fop.list_plugins(enabled=enabled)
+
+    if names_only:
+        for pd in plugin_defintions:
+            print(pd.name)
+
+        return
+
+    enabled = set(fop.list_enabled_plugins())
+
     headers = ["name", "directory", "enabled"]
     rows = [
-        {"name": pd.name, "directory": pd.directory, "enabled": "?"}
+        {
+            "name": pd.name,
+            "directory": pd.directory,
+            "enabled": pd.name in enabled,
+        }
         for pd in plugin_defintions
     ]
 

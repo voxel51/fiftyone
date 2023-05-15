@@ -52,12 +52,15 @@ def list_plugins(enabled=True):
     """Returns the list of enabled plugins.
 
     Args:
-        enabled (True): whether to include only enabled (True) or only disabled
-            (False) plugins. By default, all downloaded plugins are returned
+        enabled (True): whether to show only enabled plugins (True) or only
+            disabled plugins (False) or all plugins ("all")
 
     Returns:
         a list of :class:`PluginDefinition` instances
     """
+    if enabled == "all":
+        enabled = None
+
     plugins = []
     for p in _list_plugins(enabled=enabled):
         metadata_path = _find_plugin_metadata_file(p.path)
@@ -467,12 +470,15 @@ def _recommend_plugin_label(name):
 
 
 def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
-    app_config_path = focc.locate_app_config()
+    # Ensure plugin actually exists
+    _find_plugin(plugin_name)
 
     # Plugins are enabled by default, so if we can't read the App config or it
     # doesn't exist, don't do anything
     okay_missing = enabled in (True, None) and not kwargs
 
+    # Load existin App config, if any
+    app_config_path = focc.locate_app_config()
     if os.path.isfile(app_config_path):
         try:
             with open(app_config_path, "rt") as f:
