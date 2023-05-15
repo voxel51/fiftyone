@@ -409,7 +409,7 @@ def _find_plugin(name, check_for_duplicates=False):
             if check_for_duplicates and plugin_dir is not None:
                 raise ValueError(f"Multiple plugins found with name '{name}'")
 
-            plugin_dir = os.path.dirname(plugin.path)
+            plugin_dir = plugin.path
 
     if plugin_dir is None:
         raise ValueError(f"Plugin '${name}' not found")
