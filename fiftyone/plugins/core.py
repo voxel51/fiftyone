@@ -183,33 +183,52 @@ def download_plugin(
         if "github" in url_or_gh_repo:
             repo = GitHubRepository(url_or_gh_repo)
             url = repo.download_url
+            ext = ".zip"
         else:
             url = url_or_gh_repo
+            ext = None
     else:
         repo = GitHubRepository(url_or_gh_repo)
         url = repo.download_url
+        ext = ".zip"
 
     return _download_plugin(
         url,
+        ext=ext,
         plugin_names=plugin_names,
         max_depth=max_depth,
         overwrite=overwrite,
     )
 
 
-def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
+def _download_plugin(
+    url,
+    ext=None,
+    plugin_names=None,
+    max_depth=3,
+    overwrite=False,
+):
     if etau.is_str(plugin_names):
         plugin_names = {plugin_names}
     elif plugin_names is not None:
         plugin_names = set(plugin_names)
 
+    archive_name = os.path.basename(url)
+    if not os.path.splitext(archive_name)[1]:
+        if ext is None:
+            raise ValueError(
+                "Cannot infer an appropriate archive type for '{url}'"
+            )
+
+        archive_name += ext
+
     existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
 
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
-        path = os.path.join(tmpdir, os.path.basename(url))
-        etaw.download_file(url, path=path)
-        etau.extract_archive(path)
+        archive_path = os.path.join(tmpdir, archive_name)
+        etaw.download_file(url, path=archive_path)
+        etau.extract_archive(archive_path)
 
         metadata_paths = _find_plugin_metadata_files(
             os.path.join(tmpdir, "*"),
