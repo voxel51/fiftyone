@@ -19,8 +19,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.constants as foc
-import fiftyone.core.config as focc
+import fiftyone.core.config as foc
 import fiftyone.core.utils as fou
 import fiftyone.plugins.definitions as fopd
 from fiftyone.utils.github import GitHubRepository
@@ -247,11 +246,12 @@ def _download_plugin(url, plugin_names=None, max_depth=3, overwrite=False):
 
 def create_plugin(
     plugin_name,
-    label=None,
-    description=None,
     from_dir=None,
     from_files=None,
     outdir=None,
+    label=None,
+    description=None,
+    version=None,
     overwrite=False,
     **kwargs,
 ):
@@ -265,14 +265,15 @@ def create_plugin(
 
     Args:
         plugin_name: the name of the plugin
-        label (None): a display name for the plugin
-        description (None): a description for the plugin
         from_dir (None): the path to the directory containing the plugin
         from_files (None): an explicit list of filepaths and/or directories to
             include in the plugin
         outdir (None): the path at which to create the plugin directory. If
             not provided, the plugin is created within your
             ``fo_config.plugins_dir``
+        label (None): a display name for the plugin
+        description (None): a description for the plugin
+        version (None): an optional FiftyOne version requirement string
         overwrite (False): whether to overwrite a local plugin with the same
             name if one exists
         **kwargs: optional keyword arguments to include in the plugin
@@ -310,13 +311,21 @@ def create_plugin(
     if yaml_path is None:
         yaml_path = os.path.join(outdir, _PLUGIN_METADATA_FILENAMES[0])
 
+    if label is None:
+        label = _recommend_plugin_label(plugin_name)
+
     pd = {
         "name": plugin_name,
         "label": label,
         "description": description,
-        "fiftyone": {"version": foc.VERSION},
         **kwargs,
     }
+
+    if version is not None:
+        if "fiftyone" not in pd:
+            pd["fiftyone"] = {}
+
+        pd["fiftyone"]["version"] = version
 
     # Merge with existing YAML file, if necessary
     if os.path.isfile(yaml_path):
@@ -419,7 +428,7 @@ def _find_plugin(name, check_for_duplicates=False):
 
 def _list_disabled_plugins():
     try:
-        with open(focc.locate_app_config(), "r") as f:
+        with open(foc.locate_app_config(), "r") as f:
             app_config = json.load(f)
     except:
         return {}
@@ -471,7 +480,7 @@ def _update_plugin_settings(plugin_name, enabled=None, **kwargs):
     okay_missing = enabled in (True, None) and not kwargs
 
     # Load existin App config, if any
-    app_config_path = focc.locate_app_config()
+    app_config_path = foc.locate_app_config()
     if os.path.isfile(app_config_path):
         try:
             with open(app_config_path, "rt") as f:
