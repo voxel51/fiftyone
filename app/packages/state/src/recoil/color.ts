@@ -1,23 +1,19 @@
-import { DefaultValue, selector, selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
-  EMBEDDED_DOCUMENT_FIELD,
-  Field,
   getColor,
   hexToRgb,
   RGB,
-  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import * as atoms from "./atoms";
 import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
-import { State } from "./types";
 import { PathEntry, sidebarEntries } from "./sidebar";
 
 export const coloring = selectorFamily<Coloring, boolean>({
@@ -52,8 +48,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      get(selectors.appConfigOption({ key: "colorBy", modal }));
-      let pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
       const seed = get(atoms.colorSeed(modal));
       return createColorGenerator(pool, seed);
     },

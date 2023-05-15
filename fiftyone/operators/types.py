@@ -166,33 +166,34 @@ class Object(BaseType):
 
         return self.define_property(name, Object(), **kwargs)
 
-    def view(self, view):
+    def view(self, name, view, **kwargs):
         """Defines a :class:`Void` view-only property.
 
         Examples::
 
             import fiftyone.operator.types as types
 
+            notice = types.Notice(label="Notice Label", description="An Notice Description")
             inputs = types.Object()
-            inputs.view(types.Notice(label="Hello World"))
+            inputs.view("notice", notice)
 
         Args:
+            name: the name of the :class:`Property`
             view: the :class:`View` to define
         """
-        return Property(Void(), view=view)
+        return self.define_property(name, Void(), view=view, **kwargs)
 
-    def message(self, label, **kwargs):
+    def message(self, name, label, **kwargs):
         """Defines a message to display to the user.
 
         Args:
+            name: the name of the :class:`Property`
             label: the :class:`View`.label of the :class:`Notice`
             description (None): the :class:`View`.description of the :class:`Notice`
             view (None): the :class:`View` of the :class:`Notice`
         """
-        view = kwargs.get("view", Notice())
-        if label is None:
-            view.label = label
-        return self.view(view)
+        view = kwargs.get("view", Notice(label=label))
+        return self.view(name, view, **kwargs)
 
     def clone(self):
         """Clones the definition of the object."""
@@ -450,6 +451,7 @@ class View:
         placeholder (None): string to display placeholder text
         read_only (False): whether the :class:`View` is read-only
         component (None): specifying custom component to use as the view
+        componentProps (None): dict for providing props to components rendered by a :class:`View`
     """
 
     def __init__(self, **kwargs):
@@ -460,6 +462,7 @@ class View:
         self.placeholder = kwargs.get("placeholder", None)
         self.read_only = kwargs.get("read_only", None)
         self.component = kwargs.get("component", None)
+        self.componentProps = kwargs.get("componentProps", None)
         self._kwargs = kwargs
 
     def clone(self):
@@ -475,6 +478,7 @@ class View:
             "placeholder": self.placeholder,
             "read_only": self.read_only,
             "component": self.component,
+            "componentProps": self.componentProps,
             **self._kwargs,
         }
 

@@ -1,10 +1,19 @@
 import React from "react";
-import { Box } from "@mui/material";
+import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
 import { useTheme } from "@fiftyone/components";
 import { useSchemaSettings } from "@fiftyone/state";
 import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
+import styled from "styled-components";
+
+const ContainerBox = styled(Box)`
+  position: relative;
+  display: flex;
+  color: ${({ theme }) => theme.text.primary};
+  box-shadow: ${({ theme }) => `0px 1px 2px ${theme.divider}`};
+  padding: 0.35rem 1rem;
+`;
 
 interface Props {}
 
@@ -28,83 +37,56 @@ export const SchemaSelectionControls = (props: Props) => {
       flexDirection="column"
       sx={{ position: "relative !important" }}
     >
-      <Box display="flex" width="100%" flexDirection="column">
-        {isFilterRuleMode && (
-          <Box
-            style={{
-              position: "relative",
-              padding: "0.75rem 0.5rem 0 0.5rem",
-              color: !searchResults.length
-                ? theme.text.secondary
-                : theme.text.primary,
-              display: "flex",
-            }}
-          >
-            Show metadata
-            <Checkbox
-              name={"Carousel"}
-              value={showMetadata}
-              checked={showMetadata || !searchResults.length}
-              onChange={() => setShowMetadata(!showMetadata)}
-              style={{ padding: "4px" }}
-              disabled={!searchResults.length}
+      <Box display="flex" width="100%" flexDirection="row" marginTop="1rem">
+        <ContainerBox>
+          <FormGroup>
+            <FormControlLabel
+              control={
+                <Switch
+                  defaultChecked={false}
+                  value={showMetadata}
+                  checked={showMetadata}
+                  onChange={() => setShowMetadata(!showMetadata)}
+                  disabled={isFilterRuleMode && !searchResults.length}
+                />
+              }
+              label="Show metadata"
             />
-          </Box>
+          </FormGroup>
+        </ContainerBox>
+        {!isFilterRuleMode && (
+          <ContainerBox>
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    defaultChecked={false}
+                    value={!fieldsOnly}
+                    checked={!fieldsOnly}
+                    onChange={() => setFieldsOnly(!fieldsOnly)}
+                  />
+                }
+                label="Show nested fields"
+              />
+            </FormGroup>
+          </ContainerBox>
         )}
         {!isFilterRuleMode && (
-          <Box
-            style={{
-              position: "relative",
-              padding: "0.5rem 0",
-              color: theme.text.primary,
-              display: "flex",
-            }}
-          >
-            Show nested fields
-            <Checkbox
-              name={"Carousel"}
-              value={!fieldsOnly}
-              checked={!fieldsOnly}
-              onChange={() => setFieldsOnly(!fieldsOnly)}
-              style={{ padding: "4px" }}
-            />
-          </Box>
-        )}
-        {!allFieldsChecked && !isFilterRuleMode && (
-          <Box
-            style={{
-              position: "relative",
-              color: theme.text.primary,
-              display: "flex",
-            }}
-          >
-            Select All
-            <Checkbox
-              name={"Carousel"}
-              value={allFieldsChecked}
-              checked={allFieldsChecked}
-              onChange={() => setAllFieldsChecked(!allFieldsChecked)}
-              style={{ padding: "4px" }}
-            />
-          </Box>
-        )}
-        {allFieldsChecked && !isFilterRuleMode && (
-          <Box
-            style={{
-              position: "relative",
-              color: theme.text.primary,
-              display: "flex",
-            }}
-          >
-            Deselect All
-            <Checkbox
-              name={"Carousel"}
-              value={allFieldsChecked}
-              checked={allFieldsChecked}
-              onChange={() => setAllFieldsChecked(!allFieldsChecked)}
-              style={{ padding: "4px" }}
-            />
-          </Box>
+          <ContainerBox>
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    defaultChecked
+                    value={allFieldsChecked}
+                    checked={allFieldsChecked}
+                    onChange={() => setAllFieldsChecked(!allFieldsChecked)}
+                  />
+                }
+                label="Select all"
+              />
+            </FormGroup>
+          </ContainerBox>
         )}
       </Box>
     </Box>

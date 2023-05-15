@@ -6,6 +6,7 @@ FiftyOne Server routes
 |
 """
 from .aggregate import Aggregate
+from .dynamic_groups import DynamicGroupsRoutes
 from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
@@ -26,7 +27,8 @@ from fiftyone.operators.server import OperatorRoutes
 
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
-    EmbeddingsRoutes
+    DynamicGroupsRoutes
+    + EmbeddingsRoutes
     + OperatorRoutes
     + [
         ("/aggregate", Aggregate),

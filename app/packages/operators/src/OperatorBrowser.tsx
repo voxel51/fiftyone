@@ -1,5 +1,4 @@
 import { useTheme } from "@fiftyone/components";
-import { scrollbarStyles } from "@fiftyone/utilities";
 import { Close, Extension, Help, Lock } from "@mui/icons-material";
 import { Link } from "@mui/material";
 import { createPortal } from "react-dom";
@@ -8,16 +7,11 @@ import { initializationErrors } from "./operators";
 import { useOperatorBrowser } from "./state";
 
 // todo: use plugin component
+import { useEffect, useRef } from "react";
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorPalette from "./OperatorPalette";
-import { useEffect, useRef } from "react";
+import { PaletteContentContainer } from "./styled-components";
 
-const ResultsContainer = styled.div`
-  margin-top: 1rem;
-  max-height: calc(100% - 66px);
-  overflow: auto;
-  ${scrollbarStyles}
-`;
 const QueryInput = styled.input`
   width: 100%;
   background: none;
@@ -121,42 +115,46 @@ export default function OperatorBrowser() {
     return null;
   }
   return createPortal(
-    <OperatorPalette onOutsideClick={browser.close}>
-      <TopBarDiv>
-        <QueryDiv>
-          <QueryInput
-            ref={queryInputRef}
-            autoFocus
-            placeholder="Search operations by name..."
-            onChange={(e) => browser.onChangeQuery(e.target.value)}
-          />
-        </QueryDiv>
-        <IconsContainer>
-          {browser.hasQuery && (
-            <Close
-              onClick={() => browser.clear()}
-              style={{
-                cursor: "pointer",
-                color: theme.text.secondary,
-              }}
+    <OperatorPalette
+      onOutsideClick={browser.close}
+      title={
+        <TopBarDiv>
+          <QueryDiv>
+            <QueryInput
+              ref={queryInputRef}
+              autoFocus
+              placeholder="Search operations by name..."
+              onChange={(e) => browser.onChangeQuery(e.target.value)}
             />
-          )}
-          <ErrorView
-            schema={{
-              view: { detailed: true, popout: true, left: true },
-            }}
-            data={initializationErrors}
-          />
-          <Link
-            href="https://docs.voxel51.com/user_guide/app.html#operations"
-            style={{ display: "flex" }}
-            target="_blank"
-          >
-            <Help style={{ color: theme.text.secondary }} />
-          </Link>
-        </IconsContainer>
-      </TopBarDiv>
-      <ResultsContainer>
+          </QueryDiv>
+          <IconsContainer>
+            {browser.hasQuery && (
+              <Close
+                onClick={() => browser.clear()}
+                style={{
+                  cursor: "pointer",
+                  color: theme.text.secondary,
+                }}
+              />
+            )}
+            <ErrorView
+              schema={{
+                view: { detailed: true, popout: true, left: true },
+              }}
+              data={initializationErrors}
+            />
+            <Link
+              href="https://docs.voxel51.com/user_guide/app.html#operations"
+              style={{ display: "flex" }}
+              target="_blank"
+            >
+              <Help style={{ color: theme.text.secondary }} />
+            </Link>
+          </IconsContainer>
+        </TopBarDiv>
+      }
+    >
+      <PaletteContentContainer>
         {browser.choices.map((choice) => (
           <Choice
             onClick={() => browser.setSelectedAndSubmit(choice)}
@@ -173,7 +171,7 @@ export default function OperatorBrowser() {
             selected={false}
           />
         )}
-      </ResultsContainer>
+      </PaletteContentContainer>
     </OperatorPalette>,
     document.body
   );

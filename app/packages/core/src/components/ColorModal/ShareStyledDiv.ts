@@ -13,7 +13,12 @@ export const ModalWrapper = styled.div`
   background-color: ${({ theme }) => theme.neutral.softBg};
 `;
 
-export const Container = styled.div`
+type Props = {
+  height: number;
+  width: number;
+};
+
+export const Container = styled.div<Props>`
   background-color: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   position: relative;
@@ -22,12 +27,12 @@ export const Container = styled.div`
   justify-content: start;
   overflow: hidden;
   box-shadow: ${({ theme }) => `0 20px 25px -20px ${theme.background.level1}`};
-  width: 80vw;
-  height: 80vh;
+  width: ${(props) => props.width};
+  height: ${(props) => props.height};
 `;
 
-export const DraggableContent = styled.div`
-  height: calc(80vh - 6rem);
+export const DraggableContent = styled.div<Props>`
+  height: ${(props) => `calc(${props.height}px - 6.5rem)`};
   width: 100%;
   display: flex;
   flex-direction: row;
@@ -45,9 +50,8 @@ export const DraggableModalTitle = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
-  height: 2.5rem;
+  height: 3rem;
   background-color: ${({ theme }) => theme.background.level1};
-  padding: 2px;
   cursor: move;
   font-weight: 600;
 `;
@@ -166,7 +170,7 @@ export const Slider = styled.span`
     width: 26px;
     left: 4px;
     bottom: 4px;
-    background-color: ${({ theme }) => theme.background.level1}};
+    background-color: ${({ theme }) => theme.background.level1};
     transition: 0.4s;
     border-radius: 50%;
   }

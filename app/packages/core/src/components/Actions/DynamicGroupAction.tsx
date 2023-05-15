@@ -10,11 +10,21 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Alert } from "@mui/material";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ActionDiv } from "./ActionsRow";
+import { useDynamicGroupChoices } from "./DynamicGroupAction/useDynamicGroupChoices";
+
+const SELECTOR_RESULTS_ID = "dynamic-group-selector-results";
 
 const DynamicGroupContainer = styled.div`
   margin: 0.5rem 0;
@@ -39,6 +49,9 @@ export const DynamicGroupAction = () => {
 
   const ref = useRef<HTMLDivElement>(null);
   const [measureRef] = useMeasure();
+  fos.useOutsideClick(ref, () => setOpen(false), {
+    exceptionIds: [SELECTOR_RESULTS_ID],
+  });
 
   const onComplete = useCallback(() => {
     setIsFieldValidated(false);
@@ -47,7 +60,9 @@ export const DynamicGroupAction = () => {
 
   const setView = useSetView(true, false, onComplete);
 
-  const candidateFields = useRecoilValue(fos.dynamicGroupCandidateFields);
+  const [validationError, setValidationError] = useState<string>("");
+
+  const { availableFields, error, isLoading } = useDynamicGroupChoices();
 
   const canSubmitRequest = useMemo(() => {
     if (isProcessing) {
@@ -60,8 +75,19 @@ export const DynamicGroupAction = () => {
     return groupBy.length > 0;
   }, [useOrdered, groupBy, orderBy, isProcessing]);
 
+  useEffect(() => {
+    setOrderBy("");
+  }, [useOrdered]);
+
   const onSubmit = useCallback(() => {
     if (!canSubmitRequest) {
+      return;
+    }
+
+    setValidationError("");
+
+    if (groupBy === orderBy) {
+      setValidationError("Group by and order by fields must be different.");
       return;
     }
 
@@ -95,6 +121,7 @@ export const DynamicGroupAction = () => {
       }
       return newView;
     });
+    setOpen(false);
   }, [setView]);
 
   const pillComponent = useMemo(() => {
@@ -106,14 +133,14 @@ export const DynamicGroupAction = () => {
 
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
 
-  const searchSelector = useCallback(
+  const groupByOptionsSearchSelector = useCallback(
     (search: string) => {
-      const values = candidateFields.filter((name) => {
+      const values = availableFields?.filter((name) => {
         return name.includes(search);
       });
-      return { values, total: values.length };
+      return { values, total: values?.length ?? 0 };
     },
-    [candidateFields]
+    [availableFields]
   );
 
   return (
@@ -148,67 +175,92 @@ export const DynamicGroupAction = () => {
             ) : (
               <>
                 <PopoutSectionTitle>Group By</PopoutSectionTitle>
-                <Selector
-                  inputStyle={{ height: 28, width: "100%", fontSize: "medium" }}
-                  component={SelectorValueComponent}
-                  containerStyle={{
-                    marginLeft: "0.5rem",
-                    position: "relative",
-                  }}
-                  onSelect={setGroupBy}
-                  resultsPlacement="center"
-                  overflow={true}
-                  placeholder={"group by"}
-                  useSearch={searchSelector}
-                  value={groupBy ?? ""}
-                />
-                <TabOption
-                  active={useOrdered ? "ordered" : "unordered"}
-                  disabled={isProcessing}
-                  options={[
-                    {
-                      text: "ordered",
-                      title: "Ordered",
-                      onClick: () => setUseOrdered(true),
-                    },
-                    {
-                      text: "unordered",
-                      title: "Unordered",
-                      onClick: () => setUseOrdered(false),
-                    },
-                  ]}
-                />
-                {useOrdered && (
-                  <Selector
-                    inputStyle={{
-                      height: 28,
-                      width: "100%",
-                      fontSize: "medium",
-                    }}
-                    component={SelectorValueComponent}
-                    containerStyle={{
-                      marginLeft: "0.5rem",
-                      position: "relative",
-                    }}
-                    onSelect={setOrderBy}
-                    resultsPlacement="center"
-                    overflow={true}
-                    placeholder={"order by"}
-                    useSearch={searchSelector}
-                    value={orderBy ?? ""}
-                  />
+                {isLoading && <LoadingDots text="Loading fields" />}
+                {error && <Alert severity="error">{error}</Alert>}
+
+                {!isLoading && !error && availableFields && (
+                  <>
+                    <Selector
+                      id={SELECTOR_RESULTS_ID}
+                      inputStyle={{
+                        height: 28,
+                        width: "100%",
+                        fontSize: "medium",
+                      }}
+                      component={SelectorValueComponent}
+                      containerStyle={{
+                        marginLeft: "0.5rem",
+                        position: "relative",
+                      }}
+                      onSelect={setGroupBy}
+                      resultsPlacement="center"
+                      overflow={true}
+                      placeholder={"group by"}
+                      useSearch={groupByOptionsSearchSelector}
+                      value={groupBy ?? ""}
+                    />
+
+                    <TabOption
+                      active={useOrdered ? "ordered" : "unordered"}
+                      disabled={isProcessing}
+                      options={[
+                        {
+                          text: "ordered",
+                          title: "Ordered",
+                          onClick: () => setUseOrdered(true),
+                        },
+                        {
+                          text: "unordered",
+                          title: "Unordered",
+                          onClick: () => setUseOrdered(false),
+                        },
+                      ]}
+                    />
+                    {useOrdered && (
+                      <Selector
+                        id={SELECTOR_RESULTS_ID}
+                        inputStyle={{
+                          height: 28,
+                          width: "100%",
+                          fontSize: "medium",
+                        }}
+                        component={SelectorValueComponent}
+                        containerStyle={{
+                          marginLeft: "0.5rem",
+                          position: "relative",
+                        }}
+                        onSelect={setOrderBy}
+                        resultsPlacement="center"
+                        overflow={true}
+                        placeholder={"order by"}
+                        useSearch={groupByOptionsSearchSelector}
+                        value={orderBy ?? ""}
+                      />
+                    )}
+                    {validationError && (
+                      <Alert
+                        style={{ marginTop: "0.5rem" }}
+                        severity="error"
+                        onClose={() => {
+                          setValidationError("");
+                        }}
+                      >
+                        {validationError}
+                      </Alert>
+                    )}
+                    <Button
+                      style={{
+                        width: "100%",
+                        marginTop: "0.5rem",
+                        cursor: !canSubmitRequest ? "not-allowed" : "pointer",
+                      }}
+                      disabled={!canSubmitRequest}
+                      onClick={onSubmit}
+                    >
+                      {isProcessing ? "Processing..." : "Submit"}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  style={{
-                    width: "100%",
-                    marginTop: "0.5rem",
-                    cursor: !canSubmitRequest ? "not-allowed" : "pointer",
-                  }}
-                  disabled={!canSubmitRequest}
-                  onClick={onSubmit}
-                >
-                  {isProcessing ? "Processing..." : "Submit"}
-                </Button>
               </>
             )}
           </DynamicGroupContainer>

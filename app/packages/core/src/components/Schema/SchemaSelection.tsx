@@ -104,38 +104,36 @@ export const SchemaSelection = () => {
                       {pathLabelFinal}
                     </Box>
                   </Box>
-                  {isFilterRuleMode && (
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      sx={{ cursor: "pointer" }}
-                      onClick={() => {
-                        if (expandedPathsKeys.has(path)) {
-                          const newPaths = Object.assign({}, expandedPaths);
-                          delete newPaths[path];
-                          setEpandedPaths(newPaths);
-                        } else {
-                          const newPaths = Object.assign({}, expandedPaths);
-                          const element = finalSchema.filter(
-                            (sc) => sc.path === path
-                          )?.[0];
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    sx={{ cursor: "pointer" }}
+                    onClick={() => {
+                      if (expandedPathsKeys.has(path)) {
+                        const newPaths = Object.assign({}, expandedPaths);
+                        delete newPaths[path];
+                        setEpandedPaths(newPaths);
+                      } else {
+                        const newPaths = Object.assign({}, expandedPaths);
+                        const element = finalSchema.filter(
+                          (sc) => sc.path === path
+                        )?.[0];
 
-                          newPaths[path] = {
-                            info: element?.info || "None",
-                            description: element?.description || "None",
-                            name: element?.name || "None",
-                          };
-                          setEpandedPaths(newPaths);
-                        }
-                      }}
-                    >
-                      <ExpandMore />
-                    </Box>
-                  )}
+                        newPaths[path] = {
+                          info: element?.info || "None",
+                          description: element?.description || "None",
+                          name: element?.name || "None",
+                        };
+                        setEpandedPaths(newPaths);
+                      }
+                    }}
+                  >
+                    <ExpandMore />
+                  </Box>
                 </Box>
                 <Box>
                   {expandedPathsKeys.has(path) && (
-                    <Box>
+                    <Box maxHeight="200px" overflow="auto">
                       <CodeBlock
                         showLineNumbers={false}
                         text={`info: ${JSON.stringify(

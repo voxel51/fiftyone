@@ -100,7 +100,7 @@ async def execute_operator(operator_name, request_params):
         else:
             raw_result = operator.execute(ctx)
     except Exception as e:
-        return ExecutionResult(None, executor, str(e))
+        return ExecutionResult(None, executor, traceback.format_exc())
 
     return ExecutionResult(raw_result, executor, None)
 

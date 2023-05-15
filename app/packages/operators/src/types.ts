@@ -254,13 +254,16 @@ export class View {
     this.description = options.description;
     this.caption = options.caption;
     this.space = options.space;
-    this.name = this.constructor.name;
+    this.componentsProps = options.componentsProps;
+    this.name = "View";
+    this.options = options;
   }
   label?: string;
   description?: string;
   caption?: string;
   space?: number;
   name?: string;
+  componentsProps?: unknown;
   static fromJSON(json: ViewProps) {
     return new View(json);
   }
@@ -268,6 +271,7 @@ export class View {
 export class InferredView extends View {
   constructor(options?: ViewProps) {
     super(options);
+    this.name = "InferredView";
   }
 }
 export class Form extends View {
@@ -278,6 +282,7 @@ export class Form extends View {
     options: ViewProps
   ) {
     super(options);
+    this.name = "Form";
   }
   static fromJSON(json: ViewProps) {
     return new Form(
@@ -293,6 +298,7 @@ export class ReadonlyView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.readOnly = true;
+    this.name = "ReadonlyView";
   }
 }
 export class Choice extends View {
@@ -300,6 +306,7 @@ export class Choice extends View {
   constructor(value: string, options: ViewProps = {}) {
     super(options);
     this.value = value;
+    this.name = "Choice";
   }
   static fromJSON(json) {
     return new Choice(json.value, json);
@@ -311,6 +318,7 @@ export class Choices extends View {
     options = options || { choices: [] };
     super(options);
     this.choices = options.choices;
+    this.name = "Choices";
   }
   values() {
     return this.choices.map((c) => c.value);
@@ -330,6 +338,7 @@ export class RadioGroup extends Choices {
   constructor(options?: ChoicesOptions) {
     super(options);
     this.orientation = options.orientation as ViewOrientation;
+    this.name = "RadioGroup";
   }
   static fromJSON(json) {
     return new RadioGroup({
@@ -341,6 +350,7 @@ export class RadioGroup extends Choices {
 export class Dropdown extends Choices {
   constructor(options?: ChoicesOptions) {
     super(options);
+    this.name = "Dropdown";
   }
   static fromJSON(json) {
     return new Dropdown({
@@ -352,6 +362,7 @@ export class Dropdown extends Choices {
 export class Notice extends View {
   constructor(options: ViewProps = {}) {
     super(options);
+    this.name = "Notice";
   }
   static fromJSON(json) {
     return new Notice(json);
@@ -360,6 +371,7 @@ export class Notice extends View {
 export class Header extends View {
   constructor(options: ViewProps = {}) {
     super(options);
+    this.name = "Header";
   }
   static fromJSON(json) {
     return new Header(json);
@@ -368,6 +380,7 @@ export class Header extends View {
 export class Warning extends View {
   constructor(options: ViewProps = {}) {
     super(options);
+    this.name = "Warning";
   }
   static fromJSON(json) {
     return new Warning(json);
@@ -391,6 +404,7 @@ export class Button extends View {
     super(options);
     this.operator = options.operator as string;
     this.params = options.operator as object;
+    this.name = "Button";
   }
   static fromJSON(json) {
     return new Button(json);
@@ -401,6 +415,7 @@ export class OneOfView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.oneof = options.oneof as Array<View>;
+    this.name = "OneOfView";
   }
   static fromJSON(json) {
     return new OneOfView({ ...json, oneof: json.oneof.map(viewFromJSON) });
@@ -411,6 +426,7 @@ export class ListView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.items = options.items as View;
+    this.name = "ListView";
   }
   static fromJSON(json) {
     return new ListView({ ...json, items: viewFromJSON(json.items) });
@@ -421,6 +437,7 @@ export class TupleView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.items = options.items as Array<View>;
+    this.name = "TupleView";
   }
   static fromJSON(json) {
     return new TupleView({ ...json, items: json.items.map(viewFromJSON) });
@@ -431,6 +448,7 @@ export class CodeView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.language = options.language as string;
+    this.name = "CodeView";
   }
   static fromJSON(json) {
     return new CodeView(json);
@@ -443,6 +461,7 @@ export class ColorView extends View {
     super(options);
     this.compact = options.compact as boolean;
     this.variant = options.variant as string;
+    this.name = "ColorView";
   }
   static fromJSON(json) {
     return new ColorView(json);
@@ -453,6 +472,7 @@ export class TabsView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.variant = options.variant as string;
+    this.name = "TabsView";
   }
   static fromJSON(json) {
     return new TabsView(json);
@@ -461,6 +481,7 @@ export class TabsView extends View {
 export class JSONView extends View {
   constructor(options: ViewProps) {
     super(options);
+    this.name = "JSONView";
   }
   static fromJSON(json) {
     return new JSONView(json);
@@ -469,6 +490,7 @@ export class JSONView extends View {
 export class AutocompleteView extends Choices {
   constructor(options?: ChoicesOptions) {
     super(options);
+    this.name = "AutocompleteView";
   }
   static fromJSON(json) {
     return new AutocompleteView(json);
@@ -477,6 +499,7 @@ export class AutocompleteView extends Choices {
 export class FileView extends View {
   constructor(options: ViewProps) {
     super(options);
+    this.name = "FileView";
   }
   static fromJSON(json) {
     return new FileView(json);
@@ -487,6 +510,7 @@ export class LinkView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.href = options.href as string;
+    this.name = "LinkView";
   }
   static fromJSON(json) {
     return new LinkView(json);
@@ -495,6 +519,7 @@ export class LinkView extends View {
 export class HiddenView extends View {
   constructor(options: ViewProps) {
     super(options);
+    this.name = "HiddenView";
   }
   static fromJSON(json) {
     return new HiddenView(json);
@@ -503,6 +528,7 @@ export class HiddenView extends View {
 export class LoadingView extends View {
   constructor(options: ViewProps) {
     super(options);
+    this.name = "LoadingView";
   }
   static fromJSON(json) {
     return new LoadingView(json);
@@ -518,6 +544,7 @@ export class PlotlyView extends View {
     this.data = options.href as object;
     this.config = options.config as object;
     this.layout = options.layout as object;
+    this.name = "PlotlyView";
   }
   static fromJSON(json) {
     return new PlotlyView(json);
@@ -526,6 +553,7 @@ export class PlotlyView extends View {
 export class KeyValueView extends View {
   constructor(options: ViewProps) {
     super(options);
+    this.name = "KeyValueView";
   }
   static fromJSON(json) {
     return new KeyValueView(json);
@@ -534,6 +562,7 @@ export class KeyValueView extends View {
 export class Column extends View {
   constructor(public key: string, options: ViewProps) {
     super(options);
+    this.name = "Column";
   }
   clone() {
     return new Column(this.key, this.options);
@@ -547,6 +576,7 @@ export class TableView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.columns = options.columns as Array<Column>;
+    this.name = "TableView";
   }
   keys() {
     return this.columns.map((column) => column.key);
@@ -571,6 +601,7 @@ export class MapView extends View {
     super(options);
     this.key = options.key as string;
     this.value = options.value;
+    this.name = "MapView";
   }
   static fromJSON(json) {
     return new MapView(json);
@@ -581,6 +612,7 @@ export class ProgressView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.variant = options.variant as string;
+    this.name = "ProgressView";
   }
   static fromJSON(json) {
     return new ProgressView(json);
