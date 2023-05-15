@@ -216,7 +216,7 @@ export const Looker3d = () => {
   );
 
   const [hovering, setHovering] = useState(false);
-  const setAction = useSetRecoilState(currentActionAtom);
+  const setCurrentAction = useSetRecoilState(currentActionAtom);
 
   const timeout = useRef<NodeJS.Timeout>(null);
 
@@ -224,8 +224,8 @@ export const Looker3d = () => {
     if (hoveringRef.current) return;
     timeout.current && clearTimeout(timeout.current);
     setHovering(false);
-    setAction(null);
-  }, [setAction]);
+    setCurrentAction(null);
+  }, [setCurrentAction]);
 
   const update = useCallback(() => {
     !hovering && setHovering(true);
@@ -246,6 +246,11 @@ export const Looker3d = () => {
     "Escape",
     ({ get, set }) => {
       const panels = get(fos.lookerPanels);
+
+      if (get(currentActionAtom)) {
+        set(currentActionAtom, null);
+        return;
+      }
 
       for (const panel of ["help", "json"]) {
         if (panels[panel].isOpen) {
@@ -445,7 +450,7 @@ export const Looker3d = () => {
   return (
     <ErrorBoundary>
       <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
-        <Canvas onClick={() => setAction(null)} data-cy="looker3d">
+        <Canvas onClick={() => setCurrentAction(null)} data-cy="looker3d">
           <Screenshot />
           <Environment
             controlsRef={controlsRef}
