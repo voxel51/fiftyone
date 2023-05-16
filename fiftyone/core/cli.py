@@ -2676,8 +2676,8 @@ class PluginDownloadCommand(Command):
 
     .. note::
 
-        To download a plugin from a private GitHub repository that you have
-        access to, provide your GitHub personal access token by setting the
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
         ``GITHUB_TOKEN`` environment variable.
 
     Examples::
