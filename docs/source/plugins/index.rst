@@ -104,7 +104,31 @@ In some cases, coordination between operators is necessary. For example, when a 
 Operator Exceptions
 ~~~~~~~~~~~~~~~~~~~
 
-When an operator’s execute() method throws an error it will be returned to the browser and display as a result.
+When an operator’s execute() method throws an error it will be returned to the browser and displayed as a result.
+
+This behavior should only be used for uncaught errors.
+
+Operator Input Validation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to ensure proper values are provided to an operator, the operator definition will be used to validate the input.
+
+This validation is performed in the browser and can be used to ensure that the user has provided valid input before executing the operator.
+
+Operators that set `config.dynamic` to `True` can also use the `resolve_input()` method to determine whehter any given property is `invlaid`.
+
+Here is an example of how to use the `resolve_input()` method to validate input:
+
+.. code-block:: python
+
+    def resolve_input(self, ctx):
+        cur_message = ctx.params.get("message", None)
+        inputs = types.Object()
+        message_property = inputs.str("message", label="Message", required=True)
+        if cur_message == "bad":
+            message_property.invalid = True
+            message_property.error_message = "custom error message!"
+        return types.Property(inputs)
 
 Executing Operators from Code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
