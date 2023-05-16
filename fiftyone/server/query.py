@@ -490,7 +490,7 @@ class Query(fosa.AggregateQuery):
                 return serialize_fields(ds.get_frame_field_schema(flat=True))
 
             return serialize_fields(ds.get_field_schema(flat=True))
-        except Exception as e:
+        except Exception:
             return []
 
 
