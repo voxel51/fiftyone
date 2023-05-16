@@ -366,10 +366,66 @@ You should now have a running FiftyOne server and App, including your plugin.
     `yarn build`. You can setup a watcher to do this automatically. See
     `nodemon <https://www.npmjs.com/package/nodemon>`_.
 
-Publishing your plugin
-----------------------
+Plugin Files
+------------
 
-TBD
+The `fiftyone.yaml` file is used to define the plugin's metadata and operators.
+
+fiftyone.yaml (Plugin Metadata)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The plugin metadata is specified as a dictionary within the YAML file. The following fields are available for defining the plugin:
+
+- `name` (required): The name of the plugin. Usually in the form of `@org/plugin-name`.
+- `author`: The author or organization responsible for the plugin.
+- `version`: The version of the plugin. It should be a valid semantic version.
+- `license`: The license under which the plugin is distributed.
+- `description`: A brief description of the plugin.
+- `fiftyone`: A dictionary containing information about the compatibility of the plugin with FiftyOne.
+- `fiftyone.version`: A semver version range specifying the required FiftyOne version for the plugin to work properly.
+- `operators`: A list of operator names provided by the plugin.
+
+Optional Files
+~~~~~~~~~~~~~~
+
+The plugin directory may contain the following optional files:
+
+- `package.json`: A JSON file containing additional information about the plugin, including the JS bundle file path.
+- `__init__.py`: A Python entry file for the plugin.
+- `dist/index.umd.js`: A JS bundle file for the plugin.
+
+Publishing a FiftyOne Plugin
+----------------------------
+
+Publishing a plugin in FiftyOne allows you to share your custom functionality and operators with the community. This document outlines the steps required to publish a plugin by either committing the plugin files to a GitHub repository or uploading a zip file.
+
+Committing Plugin Files to GitHub
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To publish a plugin by committing the plugin files to a GitHub repository, follow these steps:
+
+1. Create a GitHub repository: Create a new repository on GitHub to host your plugin. Make sure to choose an appropriate name and provide a brief description of your plugin.
+
+2. Clone the repository: Clone the GitHub repository to your local machine using Git.
+
+3. Organize the plugin files: Ensure that all the necessary files for your plugin, including the plugin definition YAML file and any optional files like `package.json` or `__init__.py`, are present in the appropriate directory structure.
+
+4. Commit and push: Commit the plugin files to the local repository and push the changes to the GitHub repository.
+
+5. Publish the GitHub repository: Make the GitHub repository public to allow others to access and download your plugin.
+
+Publishing Plugin as a Zip File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you prefer not to use GitHub, you can publish your plugin by uploading a zip file to a location that allows downloads. Follow these steps:
+
+1. Package the plugin files: Create a zip file containing all the necessary plugin files, including the plugin definition YAML file and any optional files.
+
+2. Choose a hosting platform: Select a file hosting platform or service that allows file downloads. Examples include Dropbox, Google Drive, or a personal website.
+
+3. Upload the zip file: Upload the zip file containing the plugin files to the chosen hosting platform. Make sure to provide a clear and descriptive name for the zip file.
+
+4. Share the download link: Once the zip file is uploaded, generate a publicly accessible download link. You can share this link with others who want to install your plugin.
 
 How to write plugins
 --------------------
