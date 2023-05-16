@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<44362fad3a11a4ae873097ac23fb76aa>>
+ * @generated SignedSource<<2f57ddd9cb5b6d92483ba1b832efaa3e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type ColorBy = "field" | "instance" | "label" | "%future added value";
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 import { FragmentRefs } from "relay-runtime";

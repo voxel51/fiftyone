@@ -39,6 +39,5 @@ export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useToPatches } from "./useToPatches";
 export { default as useTooltip } from "./useTooltip";
-export { default as useUpdateSample } from "./useUpdateSample";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";

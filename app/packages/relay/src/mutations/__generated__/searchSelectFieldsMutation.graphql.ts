@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fc74ac51debe0ebc4fda5c7da7e8d743>>
+ * @generated SignedSource<<ce66a186bc81ad6e60fb7e27afd5e6f3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type searchSelectFieldsMutation$variables = {
 export type searchSelectFieldsMutation$data = {
   readonly searchSelectFields: ReadonlyArray<{
     readonly path: string;
-  } | null>;
+  }>;
 };
 export type searchSelectFieldsMutation = {
   response: searchSelectFieldsMutation$data;
