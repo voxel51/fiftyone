@@ -100,8 +100,7 @@ app = Starlette(
         Mount(
             "/plugins",
             app=Static(
-                directory=fo.config.plugins_dir,
-                html=True,
+                directory=fo.config.plugins_dir, html=True, check_dir=False
             ),
             name="plugins",
         ),
