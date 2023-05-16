@@ -529,7 +529,7 @@ def _update_plugin_settings(plugin_name, enabled=None, delete=False, **kwargs):
     # doesn't exist, don't do anything
     okay_missing = enabled in (True, None) and not kwargs
 
-    # Load existin App config, if any
+    # Load existing App config, if any
     app_config_path = foc.locate_app_config()
     if os.path.isfile(app_config_path):
         try:
