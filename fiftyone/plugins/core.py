@@ -157,8 +157,8 @@ def download_plugin(
 
     .. note::
 
-        To download a plugin from a private GitHub repository that you have
-        access to, provide your GitHub personal access token by setting the
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
         ``GITHUB_TOKEN`` environment variable.
 
     Args:
@@ -187,62 +187,29 @@ def download_plugin(
     Returns:
         a dict mapping plugin names to plugin directories on disk
     """
+    url = None
+    repo = None
     if etaw.is_url(url_or_gh_repo):
         if "github" in url_or_gh_repo:
             repo = GitHubRepository(url_or_gh_repo)
-            url = repo.download_url
-            ext = ".zip"
         else:
             url = url_or_gh_repo
-            ext = None
     else:
         repo = GitHubRepository(url_or_gh_repo)
-        url = repo.download_url
-        ext = ".zip"
 
-    return _download_plugin(
-        url,
-        ext=ext,
-        plugin_names=plugin_names,
-        max_depth=max_depth,
-        overwrite=overwrite,
-    )
-
-
-def _download_plugin(
-    url,
-    ext=None,
-    plugin_names=None,
-    max_depth=3,
-    overwrite=False,
-):
     if etau.is_str(plugin_names):
         plugin_names = {plugin_names}
     elif plugin_names is not None:
         plugin_names = set(plugin_names)
 
-    archive_name = os.path.basename(url)
-    if not os.path.splitext(archive_name)[1]:
-        if ext is None:
-            raise ValueError(
-                "Cannot infer an appropriate archive type for '{url}'"
-            )
-
-        archive_name += ext
-
     existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
 
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
-        archive_path = os.path.join(tmpdir, archive_name)
-        session = etaw.WebSession()
-        token = os.environ.get("GITHUB_TOKEN", None)
-        if token:
-            logger.debug("Using GitHub token as authorization for download")
-            session.sess.headers.update({"Authorization": "token " + token})
-
-        session.write(archive_path, url)
-        etau.extract_archive(archive_path)
+        if repo is not None:
+            repo.download(tmpdir)
+        else:
+            _download_archive(url, tmpdir)
 
         metadata_paths = _find_plugin_metadata_files(
             os.path.join(tmpdir, "*"),
@@ -276,17 +243,23 @@ def _download_plugin(
                 etau.delete_dir(existing_dir)
                 plugin_dir = existing_dir
             else:
-                # @todo maintain `<org>/<user>/<plugin_name>` structure for
-                # plugins downloaded from github?
-                plugin_dir = _recommend_plugin_dir(
-                    plugin.name, src_dir=plugin.path
-                )
+                plugin_dir = _recommend_plugin_dir(plugin.name)
 
             logger.info(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
             etau.copy_dir(plugin.path, plugin_dir)
             downloaded_plugins[plugin.name] = plugin_dir
 
     return downloaded_plugins
+
+
+def _download_archive(url, outdir):
+    archive_name = os.path.basename(url)
+    if not os.path.splitext(archive_name)[1]:
+        raise ValueError("Cannot infer appropriate archive type for '{url}'")
+
+    archive_path = os.path.join(outdir, archive_name)
+    etaw.download_file(url, path=archive_path)
+    etau.extract_archive(archive_path)
 
 
 def load_plugin_requirements(plugin_name):
@@ -558,22 +531,22 @@ def _list_disabled_plugins():
 def _recommend_plugin_dir(plugin_name, src_dir=None):
     plugins_dir = fo.config.plugins_dir
     if os.path.isdir(plugins_dir):
-        existing_dirs = set(os.listdir(plugins_dir))
+        existing_dirs = etau.list_subdirs(plugins_dir, recursive=True)
     else:
         existing_dirs = set()
 
-    # First maintain the input directory name
+    # Use `src_dir` if provided
     if src_dir is not None:
         dirname = os.path.basename(src_dir)
         if dirname not in existing_dirs:
             return os.path.join(plugins_dir, dirname)
 
-    # Then use raw plugin name
-    name = plugin_name
+    # Else use directory-ified plugin name
+    name = os.path.join(*plugin_name.split("/"))  # Windows compatibility
     if name not in existing_dirs:
         return os.path.join(plugins_dir, name)
 
-    # Else generate a unique name based on the plugin's name
+    # Else generate a unique name based on the plugin name
     unique_name = None
     i = 2
     while True:

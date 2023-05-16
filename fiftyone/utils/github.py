@@ -5,26 +5,36 @@ GitHub utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 import re
 import requests
 
+import eta.core.utils as etau
 import eta.core.web as etaw
+
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubRepository(object):
     """Utility class for interacting with a GitHub repository.
 
     Args:
-        repo: a URL like ``https://github.com/<user>/<repo>`` or an identifier
-            like ``<user>/<repo>[/<ref>]``
+        repo: the GitHub repository or identifier, which can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
     """
 
     def __init__(self, repo):
-        if not etaw.is_url(repo):
-            params = self.from_str(repo)
-        else:
+        if etaw.is_url(repo):
             params = self.from_url(repo)
+        else:
+            params = self.from_str(repo)
 
         self._user = params.get("user")
         self._name = params.get("repo")
@@ -89,6 +99,30 @@ class GitHubRepository(object):
             "is_gist": False,
             "path": "",
         }
+
+    def download(self, outdir):
+        """Downloads the repository to the specified root directory.
+
+        .. note::
+
+            To download from a private GitHub repository that you have access
+            to, provide your GitHub personal access token by setting the
+            ``GITHUB_TOKEN`` environment variable.
+
+        Args:
+            outdir: the output directory
+        """
+        zip_path = os.path.join(outdir, "download.zip")
+        url = self.download_url
+
+        session = etaw.WebSession()
+        token = os.environ.get("GITHUB_TOKEN", None)
+        if token:
+            logger.debug("Using GitHub token as authorization for download")
+            session.sess.headers.update({"Authorization": "token " + token})
+
+        session.write(zip_path, url)
+        etau.extract_zip(zip_path, delete_zip=True)
 
     def list_path_contents(self, path=None):
         """Returns the contents of the repo at the given path."""
