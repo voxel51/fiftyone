@@ -14,6 +14,7 @@ import eta.core.utils as etau
 from fiftyone.core.fields import (
     BooleanField,
     ClassesField,
+    ColorField,
     DateTimeField,
     DictField,
     EmbeddedDocumentField,
@@ -160,15 +161,32 @@ class SidebarGroupDocument(EmbeddedDocument):
     expanded = BooleanField(default=None)
 
 
-class ColorSchemeDocument(EmbeddedDocument):
+class ColorScheme(EmbeddedDocument):
     """Description of a color scheme in the App.
-    Args:
 
+    Example::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Store a custom color scheme for a dataset
+        dataset.app_config.color_scheme = fo.ColorScheme(
+            color_pool=["#ff0000", "#00ff00", "#0000ff"]
+        )
+        dataset.save()
+
+    Args:
+        color_pool (None): an optional list of colors to use as a color pool
+            for this dataset
+        customized_color_settings (None): optional per-field custom colors
     """
 
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
-    color_pool = ListField(StringField(), default=[])
+
+    color_pool = ListField(ColorField(), null=True)
     customized_color_settings = StringField(null=True)
 
 
@@ -234,7 +252,7 @@ class DatasetAppConfig(EmbeddedDocument):
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
-        color_scheme (None): an optional :class:`ColorScheme` of the color settings, with color pool and customized color settings for embedded documnet field
+        color_scheme (None): an optional :class:`ColorScheme` for the dataset
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -255,8 +273,7 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
-    color_scheme = EmbeddedDocumentField(ColorSchemeDocument, default=None)
-
+    color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
     plugins = DictField()
 
     @staticmethod

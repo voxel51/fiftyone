@@ -429,7 +429,7 @@ class Mutation:
         )
 
         if save_to_app:
-            view._dataset.app_config.color_scheme = foo.ColorSchemeDocument(
+            view._dataset.app_config.color_scheme = foo.ColorScheme(
                 color_pool=color_scheme_save_format.color_pool,
                 customized_color_settings=color_scheme_save_format.customized_color_settings,
             )
