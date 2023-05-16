@@ -33,7 +33,7 @@ const GlobalSetting: React.FC = ({}) => {
             setValue={(mode) => props.setColorBy(mode)}
           />
         </SectionWrapper>
-        {props.colorBy === "field" && <ShuffleColor />}
+        <ShuffleColor />
         <LabelTitle>Color Pool</LabelTitle>
         <SectionWrapper>
           <ColorPalette />

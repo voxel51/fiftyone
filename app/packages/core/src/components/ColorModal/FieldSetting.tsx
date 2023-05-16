@@ -108,7 +108,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
           setting?.attributeForColor
       ),
     });
-  }, [path, customizedColorSettings]);
+  }, [path, customizedColorSettings, setColorScheme, colorPool, color]);
 
   return (
     <div>
@@ -117,7 +117,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       {coloring.by == "field" && isTypeFieldSupported && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
-            name={`Use custom color for ${field.name} field`}
+            name={`Use custom color for ${field.path} field`}
             value={Boolean(setting?.useFieldColor)}
             setValue={(v: boolean) => {
               const newSetting = cloneDeep(customizedColorSettings ?? []);

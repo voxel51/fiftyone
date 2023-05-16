@@ -2,7 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { ActionOption } from "../Actions/Common";
@@ -14,7 +14,15 @@ const JSONViewer: React.FC = ({}) => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const setting = useRecoilValue(fos.sessionColorScheme);
+  const sessionColor = useRecoilValue(fos.sessionColorScheme);
+  const setting = useMemo(() => {
+    return {
+      colorPool: sessionColor.colorPool,
+      customizedColorSettings: validateJSONSetting(
+        sessionColor.customizedColorSettings
+      ),
+    };
+  }, [sessionColor]);
   const { setColorScheme } = fos.useSessionColorScheme();
   const [data, setData] = useState(setting);
 

@@ -18,18 +18,15 @@ import {
   ModalWrapper,
 } from "./ShareStyledDiv";
 
-import SidebarList from "./SidebarList";
-import { ACTIVE_FIELD } from "./utils";
-import Typography from "@mui/material/Typography";
 import { useTheme } from "@fiftyone/components";
+import Typography from "@mui/material/Typography";
 import { Resizable } from "re-resizable";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
+import SidebarList from "./SidebarList";
+import { ACTIVE_FIELD } from "./utils";
 
 const ColorModal = () => {
-  const ref = React.useRef<HTMLDivElement>();
   const theme = useTheme();
-  const [open, setOpen] = React.useState(false);
-  useOutsideClick(ref, () => open && setOpen(false));
   const field = useRecoilValue(fos.activeColorField);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
@@ -61,7 +58,10 @@ const ColorModal = () => {
       <Fragment>
         <ModalWrapper
           ref={wrapperRef}
-          onClick={(event) => event.target === wrapperRef.current}
+          onClick={(event) =>
+            event.target === wrapperRef.current &&
+            setActiveColorModalField(null)
+          }
           aria-labelledby="draggable-color-modal"
         >
           <Draggable bounds="parent" handle=".draggable-colorModal-handle">
