@@ -246,12 +246,17 @@ CLI:
 
 .. code-block:: shell
 
-    # Download all plugins
-    fiftyone plugins download <url>
+    # Download all plugins from a GitHub repository URL
+    fiftyone plugins download https://github.com/<user>/<repo>[/tree/branch]
+    # Download plugins by specifying the GitHub repository details
+    fiftyone plugins download <user>/<repo>[/<ref>]
 
-    # Download specific plugins
-    fiftyone plugins download <url> -n <name or list of
-    names>
+    # Download specific plugins from a URL with a custom search depth
+    fiftyone plugins download \\
+        https://github.com/<user>/<repo>[/tree/branch] \\
+        --plugin-names <name1> <name2> <name3> \\
+        --max-depth 2  # search nested directories for plugins
+
 
 Python:
 
@@ -260,10 +265,10 @@ Python:
     import fiftyone.plugins as fop
 
     # Download all plugins
-    fop.download_plugin(url)
+    fop.download_plugin(url_or_gh_repo)
 
     # Download specific plugins
-    fop.download_plugin(url, names=[name1, name2])
+    fop.download_plugin(url_or_gh_repo, plugin_names=[<name1>, <name2>][, max_depth=2])
 
 
 Configuring plugins
