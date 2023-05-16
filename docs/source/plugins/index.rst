@@ -270,6 +270,11 @@ Python:
     # Download specific plugins
     fop.download_plugin(url_or_gh_repo, plugin_names=[<name1>, <name2>][, max_depth=2])
 
+.. note::
+
+        To download a plugin from a private GitHub repository that you have
+        access to, provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
 
 Configuring plugins
 -------------------
