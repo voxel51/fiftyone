@@ -8,8 +8,14 @@ import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
 import { ExpandMore } from "@mui/icons-material";
 import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
+import styled from "styled-components";
 
 interface Props {}
+
+const InfoCell = styled(Box)`
+  display: flex;
+  border-bottom: ${({ theme }) => `1px solid ${theme.background.border}`};
+`;
 
 export const SchemaSelection = () => {
   const theme = useTheme();
@@ -19,6 +25,7 @@ export const SchemaSelection = () => {
     searchResults,
     selectedTab,
     showMetadata,
+    finalSchemaKeyByPath,
   } = useSchemaSettings();
   const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
   const [expandedPaths, setEpandedPaths] = useState({});
@@ -30,7 +37,9 @@ export const SchemaSelection = () => {
     if (showMetadata) {
       const res = {};
       finalSchema?.forEach((entry) => {
-        res[entry.path] = entry;
+        if (entry?.info || entry?.description) {
+          res[entry.path] = entry;
+        }
       });
       setEpandedPaths(res);
     } else {
@@ -62,6 +71,11 @@ export const SchemaSelection = () => {
               item;
 
             if (skip) return null;
+
+            const field = finalSchemaKeyByPath[path];
+            const fInfo = field?.info;
+            const fDesc = field?.description;
+            const isExpandable = fInfo || fDesc;
 
             return (
               <Box
@@ -96,8 +110,10 @@ export const SchemaSelection = () => {
                     <Box
                       style={{
                         paddingLeft: `${
-                          isFilterRuleMode ? "1rem" : (count - 1) * 15 + 5
-                        }px`,
+                          isFilterRuleMode
+                            ? "0.5rem"
+                            : `${(count - 1) * 15 + 5}px`
+                        }`,
                         color: disabled
                           ? theme.text.tertiary
                           : theme.text.primary,
@@ -106,48 +122,48 @@ export const SchemaSelection = () => {
                       {pathLabelFinal}
                     </Box>
                   </Box>
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    sx={{ cursor: "pointer" }}
-                    onClick={() => {
-                      if (expandedPathsKeys.has(path)) {
-                        const newPaths = Object.assign({}, expandedPaths);
-                        delete newPaths[path];
-                        setEpandedPaths(newPaths);
-                      } else {
-                        const newPaths = Object.assign({}, expandedPaths);
-                        const element = finalSchema.filter(
-                          (sc) => sc.path === path
-                        )?.[0];
+                  {isExpandable && (
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      sx={{ cursor: "pointer" }}
+                      onClick={() => {
+                        if (expandedPathsKeys.has(path)) {
+                          const newPaths = Object.assign({}, expandedPaths);
+                          delete newPaths[path];
+                          setEpandedPaths(newPaths);
+                        } else {
+                          const newPaths = Object.assign({}, expandedPaths);
+                          const element = finalSchema.filter(
+                            (sc) => sc.path === path
+                          )?.[0];
 
-                        newPaths[path] = {
-                          info: element?.info || "None",
-                          description: element?.description || "None",
-                          name: element?.name || "None",
-                        };
-                        setEpandedPaths(newPaths);
-                      }
-                    }}
-                  >
-                    <ExpandMore />
-                  </Box>
+                          newPaths[path] = {
+                            info: element?.info || "None",
+                            description: element?.description || "None",
+                            name: element?.name || "None",
+                          };
+                          setEpandedPaths(newPaths);
+                        }
+                      }}
+                    >
+                      <ExpandMore />
+                    </Box>
+                  )}
                 </Box>
                 <Box>
                   {expandedPathsKeys.has(path) && (
                     <Box maxHeight="200px" overflow="auto">
-                      <CodeBlock
-                        showLineNumbers={false}
-                        text={`info: ${JSON.stringify(
-                          expandedPaths[path]?.info || ""
-                        )}`}
-                        fontSize={12}
-                      />
-                      <CodeBlock
-                        showLineNumbers={false}
-                        text={`description: ${expandedPaths[path]?.description}`}
-                        fontSize={12}
-                      />
+                      {fInfo && (
+                        <InfoCell>info: {JSON.stringify(fInfo || "")}</InfoCell>
+                      )}
+                      {fDesc && (
+                        <CodeBlock
+                          showLineNumbers={false}
+                          text={`description: ${fDesc}`}
+                          fontSize={12}
+                        />
+                      )}
                     </Box>
                   )}
                 </Box>

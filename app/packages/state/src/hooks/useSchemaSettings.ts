@@ -70,7 +70,7 @@ export const schemaSelectedSettingsTab = atom<string>({
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
   default: {
-    open: false,
+    open: true,
   },
 });
 export const allFieldsCheckedState = atom<boolean>({
@@ -310,24 +310,24 @@ export default function useSchemaSettings() {
     }
   }, [selectedTab]);
 
-  const [finalSchema] = useMemo(() => {
-    if (!schema || !selectedPaths?.[datasetName]) return [[]];
-    let tmpSchema = {};
+  const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
+    if (!schema || !selectedPaths?.[datasetName]) return [[], {}];
+    let finalSchemaKeyByPath = {};
     if (dataset.mediaType === "video") {
       Object.keys(viewSchema).forEach((fieldPath) => {
-        tmpSchema[`frames.${fieldPath}`] = viewSchema[fieldPath];
+        finalSchemaKeyByPath[`frames.${fieldPath}`] = viewSchema[fieldPath];
       });
       Object.keys(schema).forEach((fieldPath) => {
-        tmpSchema[fieldPath] = schema[fieldPath];
+        finalSchemaKeyByPath[fieldPath] = schema[fieldPath];
       });
     } else {
-      tmpSchema = viewSchema;
+      finalSchemaKeyByPath = viewSchema;
     }
 
     const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
 
-    tmpSchema = keyBy(tmpSchema, "path");
-    const resSchema = Object.keys(tmpSchema)
+    finalSchemaKeyByPath = keyBy(finalSchemaKeyByPath, "path");
+    const resSchema = Object.keys(finalSchemaKeyByPath)
       .sort()
       .filter((path) => {
         if (path === "undefined") return false;
@@ -347,8 +347,8 @@ export default function useSchemaSettings() {
           ? `frames.${pathLabel[pathLabel.length - 1]}`
           : pathLabel[pathLabel.length - 1];
 
-        const ftype = tmpSchema[path].ftype;
-        const skip = skipFiled(path, ftype, tmpSchema);
+        const ftype = finalSchemaKeyByPath[path].ftype;
+        const skip = skipFiled(path, ftype, finalSchemaKeyByPath);
         const isGroupField = dataset?.groupField;
         const disabled =
           disabledField(path, ftype, isGroupField) || filterRuleTab;
@@ -368,9 +368,9 @@ export default function useSchemaSettings() {
           pathLabelFinal,
           skip,
           disabled,
-          info: tmpSchema[path].info,
-          description: tmpSchema[path].description,
-          name: tmpSchema[path].name,
+          info: finalSchemaKeyByPath[path].info,
+          description: finalSchemaKeyByPath[path].description,
+          name: finalSchemaKeyByPath[path].name,
         };
       })
       .filter((val) => {
@@ -380,7 +380,7 @@ export default function useSchemaSettings() {
         fieldsOnly ? (item.disabled ? 1 : -1) : item.path > item2.path ? 1 : -1
       );
 
-    return [resSchema];
+    return [resSchema, finalSchemaKeyByPath];
   }, [
     schema,
     searchTerm,
@@ -459,7 +459,6 @@ export default function useSchemaSettings() {
     (path: string, checked: boolean) => {
       if (!selectedPaths) return;
       const pathAndSubPaths = getSubPaths(path);
-      const currPathSplit = path.split(".");
 
       if (checked) {
         const newSelectedPaths = new Set(
@@ -467,17 +466,12 @@ export default function useSchemaSettings() {
             (path) => !pathAndSubPaths.has(path)
           )
         );
-
-        const parentPaths = parentPathList(currPathSplit, path);
-        newSelectedPaths.delete(parentPaths[0]);
         setSelectedPaths({ [datasetName]: newSelectedPaths });
       } else {
         const union = new Set<string>([
           ...selectedPaths[datasetName],
           ...pathAndSubPaths,
         ]);
-        const parentPaths = parentPathList(currPathSplit, path);
-        union.add(parentPaths[0]);
         setSelectedPaths({ [datasetName]: union });
       }
       setAllFieldsChecked(false);
@@ -557,5 +551,6 @@ export default function useSchemaSettings() {
     datasetName,
     includeNestedFields,
     setIncludeNestedFields,
+    finalSchemaKeyByPath,
   };
 }
