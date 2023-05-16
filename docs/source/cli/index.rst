@@ -87,6 +87,7 @@ The FiftyOne command-line interface.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         migrate             Tools for migrating the FiftyOne database.
+        plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Zoo.
 
@@ -780,6 +781,273 @@ FiftyOne deployments.
 
     # Update the database version without migrating any existing datasets
     fiftyone migrate
+
+.. _cli-fiftyone-plugins:
+
+FiftyOne plugins
+----------------
+
+Tools for working with FiftyOne plugins.
+
+.. code-block:: text
+
+    fiftyone plugins [-h] [--all-help] {list,download,create,enable,disable,delete} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {list,download,create,enable,disable,delete}
+        list                List plugins that you've downloaded or created locally.
+        download            Download plugins from the web.
+        create              Creates or initializes a plugin.
+        enable              Enables the given plugin(s).
+        disable             Disables the given plugin(s).
+        delete              Delete plugins from your local machine.
+
+.. _cli-fiftyone-plugins-list:
+
+List plugins
+~~~~~~~~~~~~
+
+List plugins that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone plugins list [-h] [-e] [-d] [-n]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help        show this help message and exit
+      -e, --enabled     only show enabled plugins
+      -d, --disabled    only show disabled plugins
+      -n, --names-only  only show plugin names
+
+**Examples**
+
+.. code-block:: shell
+
+    # List all locally available plugins
+    fiftyone plugins list
+
+    # List enabled plugins
+    fiftyone plugins list --enabled
+
+    # List disabled plugins
+    fiftyone plugins list --disabled
+
+.. _cli-fiftyone-plugins-download:
+
+Download plugins
+~~~~~~~~~~~~~~~~
+
+Download plugins from the web.
+
+When downloading plugins from GitHub, you can provide any of the following
+formats::
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+.. note::
+
+    To download a plugin from a private GitHub repository that you have
+    access to, provide your GitHub personal access token by setting the
+    ``GITHUB_TOKEN`` environment variable.
+
+.. code-block:: text
+
+    fiftyone plugins download [-h]
+                              [-n [PLUGIN_NAMES ...]]
+                              [-d MAX_DEPTH]
+                              [-o]
+                              URL_OR_GH_REPO
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URL_OR_GH_REPO        A URL or <user>/<repo>[/<ref>] of a GitHub repository
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -n [PLUGIN_NAMES ...], --plugin-names [PLUGIN_NAMES ...]
+                            a plugin name or list of plugin names to download
+      -d MAX_DEPTH, --max-depth MAX_DEPTH
+                            a maximum depth to search for plugins
+      -o, --overwrite       whether to overwrite existing plugins
+
+**Examples**
+
+.. code-block:: shell
+
+    # Download plugins from a GitHub repository URL
+    fiftyone plugins download <github-repo-url>
+
+    # Download plugins by specifying the GitHub repository details
+    fiftyone plugins download <user>/<repo>[/<ref>]
+
+    # Download specific plugins from a URL with a custom search depth
+    fiftyone plugins download \
+        <url> \
+        --plugin-names <name1> <name2> <name3> \
+        --max-depth 2  # search nested directories for plugins
+
+.. _cli-fiftyone-plugins-create:
+
+Create plugins
+~~~~~~~~~~~~~~
+
+Creates or initializes a plugin.
+
+.. code-block:: text
+
+    fiftyone plugins create [-h]
+                            [-f [FILES ...]]
+                            [-d OUTDIR]
+                            [--label LABEL]
+                            [--description DESCRIPTION]
+                            [--version VERSION]
+                            [-o]
+                            [--kwargs KEY=VAL [KEY=VAL ...]]
+                            [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the plugin name(s)
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -f [FILES ...], --from-files [FILES ...]
+                            a directory or list of explicit filepaths to include in the plugin
+      -d OUTDIR, --outdir OUTDIR
+                            a directory in which to create the plugin
+      --label LABEL         a display name for the plugin
+      --description DESCRIPTION
+                            a description for the plugin
+      --version VERSION     an optional FiftyOne version requirement for the plugin
+      -o, --overwrite       whether to overwrite existing plugins
+      --kwargs KEY=VAL [KEY=VAL ...]
+                            additional keyword arguments to include in the plugin definition
+
+**Examples**
+
+    # Initialize a new plugin
+    fiftyone plugins create <name>
+
+    # Create a plugin from existing files
+    fiftyone plugins create \
+        <name> \
+        --from-files /path/to/dir \
+        --label <label> \
+        --description <description>
+
+.. _cli-fiftyone-plugins-enable:
+
+Enable plugins
+~~~~~~~~~~~~~~
+
+Enables the given plugin(s).
+
+.. code-block:: text
+
+    fiftyone plugins enable [-h] [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the plugin name(s)
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Enable a plugin
+    fiftyone plugins enable <name>
+
+    # Enable multiple plugins
+    fiftyone plugins enable <name1> <name2> ...
+
+.. _cli-fiftyone-plugins-disable:
+
+Disable plugins
+~~~~~~~~~~~~~~~
+
+Disables the given plugin(s).
+
+.. code-block:: text
+
+    fiftyone plugins disable [-h] [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the plugin name(s)
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Disable a plugin
+    fiftyone plugins disable <name>
+
+    # Disable multiple plugins
+    fiftyone plugins disable <name1> <name2> ...
+
+.. _cli-fiftyone-plugins-delete:
+
+Delete plugins
+~~~~~~~~~~~~~~
+
+Delete plugins from your local machine.
+
+.. code-block:: text
+
+    fiftyone plugins delete [-h] [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the plugin name(s)
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete a plugin from local disk
+    fiftyone plugins delete <name>
+
+    # Delete multiple plugins from local disk
+    fiftyone plugins delete <name1> <name2> ...
 
 .. _cli-fiftyone-utils:
 

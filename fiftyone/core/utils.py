@@ -11,6 +11,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import date, datetime
+import glob
 import hashlib
 import importlib
 import inspect
@@ -303,6 +304,48 @@ def fill_patterns(string):
         a copy of string with any patterns replaced
     """
     return etau.fill_patterns(string, available_patterns())
+
+
+def find_files(root_dir, patt, max_depth=1):
+    """Finds all files in the given root directory whose filename matches the
+    given glob pattern(s).
+
+    Both ``root_dir`` and ``patt`` may contain glob patterns.
+
+    Exammples::
+
+        import fiftyone.core.utils as fou
+
+        # Find .txt files in `/tmp`
+        fou.find_files("/tmp", "*.txt")
+
+        # Find .txt files in subdirectories of `/tmp` that begin with `foo-`
+        fou.find_files("/tmp/foo-*", "*.txt")
+
+        # Find .txt files in `/tmp` or its subdirectories
+        fou.find_files("/tmp", "*.txt", max_depth=2)
+
+    Args:
+        root_dir: the root directory
+        patt: a glob pattern or list of patterns
+        max_depth (1): a maximum depth to search. 1 means ``root_dir`` only,
+            2 means ``root_dir`` and its immediate subdirectories, etc
+
+    Returns:
+        a list of matching paths
+    """
+    fos.ensure_local(root_dir)
+
+    if etau.is_str(patt):
+        patt = [patt]
+
+    paths = []
+    for i in range(max_depth):
+        root = os.path.join(root_dir, *list("*" * i))
+        for p in patt:
+            paths += glob.glob(os.path.join(root, p))
+
+    return paths
 
 
 def ensure_package(
@@ -1462,6 +1505,23 @@ class SuppressLogging(object):
 
     def __exit__(self, *args):
         logging.disable(logging.NOTSET)
+
+
+class add_sys_path(object):
+    """Context manager that temporarily inserts a path to ``sys.path``."""
+
+    def __init__(self, path, index=0):
+        self.path = path
+        self.index = index
+
+    def __enter__(self):
+        sys.path.insert(self.index, self.path)
+
+    def __exit__(self, *args):
+        try:
+            sys.path.remove(self.path)
+        except:
+            pass
 
 
 def is_arm_mac():

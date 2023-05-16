@@ -6,14 +6,12 @@ import {
   Schema,
   UNSUPPORTED_FILTER_TYPES,
 } from "@fiftyone/utilities";
-import { VECTOR_FIELD } from "@fiftyone/utilities";
 import {
-  DICT_FIELD,
   FRAME_NUMBER_FIELD,
   JUST_FIELD,
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
-import { keyBy, lastIndexOf } from "lodash";
+import { keyBy } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
@@ -84,7 +82,7 @@ export const schemaSearchRestuls = atom<string[]>({
   default: [],
   effects: [
     ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPaths) => {
+      onSet(async (newPaths = []) => {
         const viewSchema = await getPromise(viewSchemaState);
         const schema = await getPromise(schemaState);
 
@@ -130,7 +128,7 @@ export const selectedPathsState = atomFamily({
           }
         });
 
-        const newPaths = newPathsMap?.[dataset?.name];
+        const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter(
             (path) =>
@@ -168,6 +166,10 @@ export const viewSchemaState = atom({
 export const showMetadataState = atom({
   key: "showMetadataState",
   default: false,
+});
+export const includeNestedFieldsState = atom({
+  key: "includeNestedFieldsState",
+  default: true,
 });
 export const affectedPathCountState = atom({
   key: "affectedPathCountState",
@@ -252,6 +254,9 @@ export default function useSchemaSettings() {
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
   );
+  const [includeNestedFields, setIncludeNestedFields] = useRecoilState(
+    includeNestedFieldsState
+  );
 
   const [affectedPathCount, setAffectedPathCount] = useRecoilState(
     affectedPathCountState
@@ -334,10 +339,13 @@ export default function useSchemaSettings() {
       .map((path: string) => {
         const pathLabel = path.split(".");
         const count = pathLabel?.length;
-        const pathLabelFinal =
-          dataset.mediaType === "video" && viewSchema?.[path]
-            ? `frames.${pathLabel[pathLabel.length - 1]}`
-            : pathLabel[pathLabel.length - 1];
+        const pathLabelFinal = searchResults.length
+          ? dataset.mediaType === "video" && viewSchema?.[path]
+            ? `frames.${path}`
+            : path
+          : dataset.mediaType === "video" && viewSchema?.[path]
+          ? `frames.${pathLabel[pathLabel.length - 1]}`
+          : pathLabel[pathLabel.length - 1];
 
         const ftype = tmpSchema[path].ftype;
         const skip = skipFiled(path, ftype, tmpSchema);
@@ -493,24 +501,34 @@ export default function useSchemaSettings() {
   // updates the affected fields count
   useEffect(() => {
     if (finalSchema?.length) {
-      const unSelected = finalSchema.filter((field) => !field.isSelected);
-      const disabledCount = finalSchema.filter(
-        (field) => field.disabled
-      )?.length;
-      const subSelected = unSelected
-        .map((field) => [...getSubPaths(field.path)])
-        .flat()
-        .filter(
-          (path) => !skipFiled(path, finalSchema[path]?.ftype, finalSchema)
+      if (
+        selectedTab === TAB_OPTIONS_MAP.FILTER_RULE &&
+        searchResults?.length
+      ) {
+        setAffectedPathCount(
+          Object.keys(schema)?.length - searchResults.length
         );
-      const unSelectedCount =
-        subSelected.length - unSelected.length - disabledCount;
+      } else {
+        const unSelected = finalSchema.filter((field) => !field.isSelected);
+        const disabledCount = finalSchema.filter(
+          (field) => field.disabled
+        )?.length;
+        const subSelected = unSelected
+          .map((field) => [...getSubPaths(field.path)])
+          .flat()
+          .filter(
+            (path) => !skipFiled(path, finalSchema[path]?.ftype, finalSchema)
+          );
 
-      if (unSelectedCount !== affectedPathCount && unSelectedCount > 0) {
-        setAffectedPathCount(unSelectedCount);
+        const unSelectedCount =
+          subSelected.length - unSelected.length - disabledCount;
+
+        if (unSelectedCount !== affectedPathCount && unSelectedCount > 0) {
+          setAffectedPathCount(unSelectedCount);
+        }
       }
     }
-  }, [finalSchema]);
+  }, [finalSchema, selectedTab, searchResults, schema]);
 
   return {
     settingModal,
@@ -537,5 +555,7 @@ export default function useSchemaSettings() {
     dataset,
     resetTextFilter,
     datasetName,
+    includeNestedFields,
+    setIncludeNestedFields,
   };
 }

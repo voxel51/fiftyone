@@ -76,14 +76,17 @@ export const pathColor = selectorFamily<
     ({ modal, path }) =>
     ({ get }) => {
       // video path tweak
+      const field = get(schemaAtoms.field(path));
       const video = get(selectors.mediaTypeSelector) !== "image";
       const parentPath =
         video && path.startsWith("frames.")
           ? path.split(".").slice(0, 2).join(".")
           : path.split(".")[0];
-      const adjustedPath = parentPath.startsWith("frames.")
-        ? parentPath.slice("frames.".length)
-        : parentPath;
+      const adjustedPath = field?.embeddedDocType
+        ? parentPath.startsWith("frames.")
+          ? parentPath.slice("frames.".length)
+          : parentPath
+        : path;
 
       const setting = get(
         atoms.sessionColorScheme
