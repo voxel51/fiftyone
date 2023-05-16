@@ -20,7 +20,7 @@ const Teams = () => {
   const [teams, setTeams] = useRecoilState(fos.teams);
   const setOpen = useSetRecoilState(fos.appTeamsIsOpen);
   const portalId = 4972700;
-  const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
+  const formId = "bca87445-10be-424c-9c07-e2b16770caf6";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
   const [commit] = useMutation(graphql`
     mutation TeamsStoreTeamsSubmissionMutation {
