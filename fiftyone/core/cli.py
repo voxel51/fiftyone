@@ -2709,6 +2709,9 @@ class PluginsCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "list", PluginListCommand)
         _register_command(subparsers, "download", PluginDownloadCommand)
+        _register_command(
+            subparsers, "requirements", PluginRequirementsCommand
+        )
         _register_command(subparsers, "create", PluginCreateCommand)
         _register_command(subparsers, "enable", PluginEnableCommand)
         _register_command(subparsers, "disable", PluginDisableCommand)
@@ -2866,6 +2869,78 @@ class PluginDownloadCommand(Command):
             max_depth=args.max_depth,
             overwrite=args.overwrite,
         )
+
+
+class PluginRequirementsCommand(Command):
+    """Handles package requirements for plugins.
+
+    Examples::
+
+        # Print requirements for a plugin
+        fiftyone plugins requirements <name> --print
+
+        # Install any requirements for the plugin
+        fiftyone plugins requirements <name> --install
+
+        # Ensures that the requirements for the plugin are satisfied
+        fiftyone plugins requirements <name> --ensure
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+        parser.add_argument(
+            "-p",
+            "--print",
+            action="store_true",
+            help="print the requirements for the plugin",
+        )
+        parser.add_argument(
+            "-i",
+            "--install",
+            action="store_true",
+            help="install any requirements for the plugin",
+        )
+        parser.add_argument(
+            "-e",
+            "--ensure",
+            action="store_true",
+            help="ensure the requirements for the plugin are satisfied",
+        )
+        parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            type=int,
+            help=(
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring plugin requirements"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        error_level = args.error_level
+
+        if args.print or (not args.install and not args.ensure):
+            requirements = fop.load_plugin_requirements(name)
+            _print_plugin_requirements(requirements)
+
+        if args.install:
+            fop.install_plugin_requirements(name, error_level=error_level)
+
+        if args.ensure:
+            fop.ensure_plugin_requirements(
+                name, error_level=error_level, log_success=True
+            )
+
+
+def _print_plugin_requirements(requirements):
+    if requirements is None:
+        print("Plugin has no Python requirements declared")
+
+    for req_str in requirements:
+        print(req_str)
 
 
 class PluginCreateCommand(Command):

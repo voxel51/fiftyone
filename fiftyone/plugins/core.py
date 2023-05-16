@@ -289,6 +289,74 @@ def _download_plugin(
     return downloaded_plugins
 
 
+def load_plugin_requirements(plugin_name):
+    """Loads the Python package requirements associated with the given plugin,
+    if any.
+
+    Args:
+        plugin_name: the plugin name
+
+    Returns:
+        a list of requirement strings, or ``None``
+    """
+    req_path = _find_requirements(plugin_name)
+    return fou.load_requirements(req_path) if req_path else None
+
+
+def install_plugin_requirements(plugin_name, error_level=None):
+    """Installs any Python package requirements associated with the given
+    plugin.
+
+    Args:
+        plugin_name: the plugin name
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    req_path = _find_requirements(plugin_name)
+    if req_path:
+        fou.install_requirements(req_path, error_level=error_level)
+
+
+def ensure_plugin_requirements(
+    plugin_name, error_level=None, log_success=False
+):
+    """Ensures that any Python package requirements associated with the given
+    plugin are installed.
+
+    Args:
+        plugin_name: the plugin name
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+    req_path = _find_requirements(plugin_name)
+    if req_path:
+        fou.ensure_requirements(
+            req_path, error_level=error_level, log_success=log_success
+        )
+
+
+def _find_requirements(plugin_name):
+    plugin_dir = find_plugin(plugin_name)
+    req_path = os.path.join(plugin_dir, "requirements.txt")
+    if os.path.isfile(req_path):
+        return req_path
+
+    logger.info(f"No requirements.txt found for '{plugin_name}")
+    return None
+
+
 def create_plugin(
     plugin_name,
     from_files=None,
