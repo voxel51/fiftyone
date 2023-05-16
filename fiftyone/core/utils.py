@@ -334,6 +334,8 @@ def find_files(root_dir, patt, max_depth=1):
     Returns:
         a list of matching paths
     """
+    fos.ensure_local(root_dir)
+
     if etau.is_str(patt):
         patt = [patt]
 
