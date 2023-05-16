@@ -90,15 +90,21 @@ def register_module(plugin_definition, mod):
     Returns:
         the :class:`PluginContext` for the plugin
     """
+    pctx = None
     try:
         pctx = PluginContext(plugin_definition)
-        if pctx.errors:
-            # Don't register if there are errors
-            return pctx
         mod.register(pctx)
-        KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
     except Exception as e:
-        pctx.errors.append(traceback.format_exc())
+        if pctx:
+            pctx.errors.append(traceback.format_exc())
+    finally:
+        if pctx and pctx.name:
+            KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
+        else:
+            # If plugin context is None, then there is no plugin name to
+            # register so just silently fail
+            pass
+
     return pctx
 
 
@@ -137,7 +143,6 @@ def load_from_dir():
             try:
                 pctx = exec_module_from_dir(module_dir, plugin_definition)
                 plugin_contexts.append(pctx)
-                KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
             except ValueError as e:
                 print("Error loading plugin from %s" % module_dir)
                 pass
@@ -166,11 +171,8 @@ def exec_module_from_dir(module_dir, plugin_definition):
         pctx = register_module(plugin_definition, mod)
     except Exception as e:
         raise e
-    if pctx.has_errors():
-        raise ValueError(
-            f"Plugin {plugin_definition.name} has errors: {pctx.errors}"
-        )
-    # only add to sys.modules if there are no errors
-    sys.modules[mod.__name__] = mod
-    spec.loader.exec_module(mod)
+    if pctx and not pctx.has_errors():
+        # only add to sys.modules if there are no errors
+        sys.modules[mod.__name__] = mod
+        spec.loader.exec_module(mod)
     return pctx
