@@ -73,6 +73,7 @@ app = stra.Starlette(
             app=Static(
                 directory=fo.config.plugins_dir,
                 html=True,
+                check_dir=False,
             ),
             name="plugins",
         ),
