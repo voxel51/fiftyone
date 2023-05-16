@@ -15,4 +15,4 @@ from fiftyone.plugins import list_plugins
 class Plugins(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
-        return {"plugins": pd.to_dict() for pd in list_plugins()}
+        return {"plugins": [pd.to_dict() for pd in list_plugins()]}
