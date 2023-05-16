@@ -273,6 +273,7 @@ export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
+
 export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
@@ -280,6 +281,8 @@ export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const DETECTION_FILED = "fiftyone.core.labels.Detection";
+
+export const GROUP = "fiftyone.core.groups.Group";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 

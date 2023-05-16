@@ -29,7 +29,7 @@ export const DynamicGroupAction = () => {
         icon={pillComponent}
         open={open}
         onClick={() => {
-          setOpen((prev) => !prev);
+          !open && setOpen(true);
         }}
         highlight={open || isDynamicGroupViewStageActive}
         title={"Create dynamic groups"}

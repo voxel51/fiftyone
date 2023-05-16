@@ -12,7 +12,12 @@ import {
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 
-import { DYNAMIC_GROUP_FIELDS, LIST_FIELD } from "@fiftyone/utilities";
+import {
+  DYNAMIC_GROUP_FIELDS,
+  EMBEDDED_DOCUMENT_FIELD,
+  GROUP,
+  LIST_FIELD,
+} from "@fiftyone/utilities";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
@@ -406,22 +411,33 @@ export const groupStatistics = atomFamily<"group" | "slice", boolean>({
 export const dynamicGroupFields = selector<string[]>({
   key: "dynamicGroupFields",
   get: ({ get }) => {
-    const primitives = get(
-      fieldPaths({ ftype: DYNAMIC_GROUP_FIELDS, space: State.SPACE.SAMPLE })
+    const groups = get(
+      fieldPaths({
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+        embeddedDocType: GROUP,
+        space: State.SPACE.SAMPLE,
+      })
     );
     const lists = get(
       fieldPaths({ ftype: LIST_FIELD, space: State.SPACE.SAMPLE })
     );
-    const filtered = primitives.filter((path) =>
-      lists.every((list) => !path.startsWith(list))
-    );
+    const primitives = get(
+      fieldPaths({ ftype: DYNAMIC_GROUP_FIELDS, space: State.SPACE.SAMPLE })
+    ).filter((path) => path !== "filepath" && path !== "id");
 
+    const filtered = primitives.filter(
+      (path) =>
+        lists.every((list) => !path.startsWith(list)) &&
+        groups.every(
+          (group) => path !== `${group}.id` && path !== `${group}.name`
+        )
+    );
     const counts = get(aggregateSelectorFamily({ paths: filtered })).aggregate;
 
     return filtered.filter((_, index) => {
       const data = counts[index];
       if (data.__typename !== "CountResponse") {
-        throw new Error("expected count");
+        throw new Error("expected a CountResponse");
       }
 
       return data.count > 0;
