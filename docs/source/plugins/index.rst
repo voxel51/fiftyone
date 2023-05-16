@@ -327,68 +327,14 @@ Developing plugins
 
 In order to develop and test your plugin you will need the following:
 
--   A development install of FiftyOne
--   The FiftyOne App setup for development
--   A plugin skeleton (start with one of the plugins in
-    `voxel51/fiftyone-plugins`)
--   npm link / symlink to the `@fiftyone/plugins` package
--   npm link / symlink to the `@fiftyone/aggregations` package (optional)
--   npm link / symlink to the `@fiftyone/components` package (optional)
+- a dev install of FiftyOne Python Package
+- a dev install of FiftyOne App
+- For JS Plugins: a vite config that links modules to your FiftyoneApp directory.
 
 .. note::
-
-    You cannot use relative paths to load these modules. They must be loaded
-    using the `from '@fiftyone/$PKG_NAME'` syntax. This allows the build to
-    externalize them, so they are loaded at runtime by the parent application.
-
-For local testing, follow these basic steps:
-
-First ensure your plugin's `package.json` includes the path to the plugin
-script:
-
-.. code-block:: json
-
-    {
-        "fiftyone": {
-            "script": "dist/index.umd.js"
-        }
-    }
-
-Then follow the steps below, in separate terminal sessions as needed.
-
-.. code-block:: shell
-
-    # tell FiftyOne where you want to load plugins from
-    # this should be the parent directory to all your plugins
-    FIFTYONE_PLUGINS_DIR=/path/to/your/plugins
-
-    # start the FiftyOne App in dev mode
-    cd $FIFTYONE/app/packages/app
-    yarn dev
-
-    # start the FiftyOne python server (in a separate session)
-    cd $FIFTYONE
-    python fiftyone/server/main.py
-
-    # ensure your plugin has a symlink to the @fiftyone/plugins package
-    cd $FIFTYONE/app/packages/plugins
-    npm link
-    cd $MY_PLUGIN
-    npm link @fiftyone/plugins
-
-    # note: if you are using other @fiftyone/* packages
-    # you will need to follow the same linking steps for those packages
-
-    # now you can build your plugin for development
-    yarn build
-
-You should now have a running FiftyOne server and App, including your plugin.
-
-.. note::
-
-    Each time you change you plugin's source you must rebuild using
-    `yarn build`. You can setup a watcher to do this automatically. See
-    `nodemon <https://www.npmjs.com/package/nodemon>`_.
+   
+   For JS plugin vite configs we recommend forking the `voxel51/fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_ 
+   repository and following the conventions there to build your plugin.
 
 Plugin Files
 ------------
@@ -398,7 +344,7 @@ The `fiftyone.yaml` file is used to define the plugin's metadata and operators.
 fiftyone.yaml (Plugin Metadata)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The plugin metadata is specified as a dictionary within the YAML file. The following fields are available for defining the plugin:
+This file is required in order for FiftyOne to load your plugin. The following fields are available for defining the plugin:
 
 - `name` (required): The name of the plugin. Usually in the form of `@org/plugin-name`.
 - `author`: The author or organization responsible for the plugin.
@@ -436,7 +382,10 @@ To publish a plugin by committing the plugin files to a GitHub repository, follo
 
 4. Commit and push: Commit the plugin files to the local repository and push the changes to the GitHub repository.
 
-5. Publish the GitHub repository: Make the GitHub repository public to allow others to access and download your plugin.
+.. note::
+   
+    Public and Private Github Repositories are supported
+
 
 Publishing Plugin as a Zip File
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
