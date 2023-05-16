@@ -375,7 +375,7 @@ type Mutation {
     saveToApp: Boolean!
     colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
-  searchSelectFields(datasetName: String, metaFilter: JSON): [SampleField]!
+  searchSelectFields(datasetName: String!, metaFilter: JSON): [SampleField!]!
 }
 
 type NamedKeypointSkeleton {
@@ -423,7 +423,12 @@ type Query {
     after: String = null
     filter: SampleFilter = null
   ): SampleItemStrConnection!
-  sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
+  sample(
+    dataset: String!
+    view: BSONArray!
+    filter: SampleFilter!
+    index: Int = null
+  ): SampleItem
   stageDefinitions: [StageDefinition!]!
   teamsSubmission: Boolean!
   uid: String!
@@ -432,7 +437,7 @@ type Query {
   schemaForViewStages(
     datasetName: String!
     viewStages: BSONArray!
-  ): [SampleField!]
+  ): [SampleField!]!
 }
 
 type RootAggregation implements Aggregation {
