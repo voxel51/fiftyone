@@ -12,6 +12,7 @@ import sys
 import traceback
 import fiftyone.plugins as fop
 from .operator import Operator
+from ..plugins import PluginDefinition
 
 KNOWN_PLUGIN_CONTEXTS = {}
 
@@ -23,7 +24,9 @@ class PluginContext:
         plugin_definition: the :class:`PluginDefinition` for the plugin
     """
 
-    def __init__(self, plugin_definition):
+    def __init__(self, plugin_definition: PluginDefinition):
+        if not plugin_definition.name:
+            raise ValueError("PluginDefinition must include a name")
         self.name = plugin_definition.name
         self.plugin_definition = plugin_definition
         self.instances = []
@@ -89,11 +92,13 @@ def register_module(plugin_definition, mod):
     """
     try:
         pctx = PluginContext(plugin_definition)
-        KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
+        if pctx.errors:
+            # Don't register if there are errors
+            return pctx
         mod.register(pctx)
+        KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
     except Exception as e:
-        errors = [traceback.format_exc()]
-        pctx.errors = errors
+        pctx.errors.append(traceback.format_exc())
     return pctx
 
 
@@ -157,6 +162,15 @@ def exec_module_from_dir(module_dir, plugin_definition):
         )
     spec = importlib.util.spec_from_file_location(mod_dir, mod_filepath)
     mod = importlib.util.module_from_spec(spec)
+    try:
+        pctx = register_module(plugin_definition, mod)
+    except Exception as e:
+        raise e
+    if pctx.has_errors():
+        raise ValueError(
+            f"Plugin {plugin_definition.name} has errors: {pctx.errors}"
+        )
+    # only add to sys.modules if there are no errors
     sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
     return register_module(plugin_definition, mod)
