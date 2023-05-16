@@ -218,8 +218,10 @@ typical plugin directory.
         /__init__.py
 
 If the source code for a plugin already exists on the local filesystem, you can
-use
-the `fiftyone.core.plugins.create_plugin` function that will copy the source
+make it into a plugin using
+the `fiftyone.core.plugins.create_plugin` python function or the `fiftyone
+plugins create <name>` CLI command. This will copy the
+source
 code to the plugins directory and create a `fiftyone.yaml` file for you if
 one does not already exist.
 
