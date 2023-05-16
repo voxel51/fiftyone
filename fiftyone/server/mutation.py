@@ -447,7 +447,6 @@ class Mutation:
             try:
                 view = dataset.select_fields(meta_filter)
             except Exception as e:
-                print("failed to search select fields", e)
                 view = dataset
 
         res = []
@@ -458,7 +457,6 @@ class Mutation:
                 sf = stage.get_selected_fields(view, frames=has_frames)
                 res += [schema[st] for st in sf if st in schema]
         except Exception as e:
-            print("failed to get_selected_fields", e)
             res = []
 
         return res

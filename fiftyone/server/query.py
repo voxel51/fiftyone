@@ -491,7 +491,6 @@ class Query(fosa.AggregateQuery):
 
             return serialize_fields(ds.get_field_schema(flat=True))
         except Exception as e:
-            print("failed to get schema for view stages", str(e))
             return []
 
 

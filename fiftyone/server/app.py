@@ -44,7 +44,6 @@ class Static(StaticFiles):
         if response.status_code == 404:
             parts = pathlib.Path(path).parts
             path = pathlib.Path(*parts[1:])
-            print(parts)
             if parts and parts[0] == "datasets":
                 full_path, stat_result = self.lookup_path(path)
                 if stat_result and stat.S_ISREG(stat_result.st_mode):
