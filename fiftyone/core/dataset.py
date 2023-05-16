@@ -257,8 +257,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _virtual=False,
         **kwargs,
     ):
-        if name is None and _create:
-            name = get_default_dataset_name()
+        if name is None:
+            if _create:
+                name = get_default_dataset_name()
+            else:
+                raise ValueError("Dataset `name` is required")
 
         if overwrite and dataset_exists(name):
             delete_dataset(name)
