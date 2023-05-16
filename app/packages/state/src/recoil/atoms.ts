@@ -401,11 +401,6 @@ export const activeColorField = atom<Field | "global" | "json" | null>({
   default: null,
 });
 
-export const isUsingSessionColorScheme = atom<boolean>({
-  key: "isUsingSessionColorScheme",
-  default: false,
-});
-
 export const sessionColorScheme = atom<ColorSchemeSetting>({
   key: "sessionColorScheme",
   default: {

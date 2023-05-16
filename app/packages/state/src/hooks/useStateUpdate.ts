@@ -15,7 +15,6 @@ import {
   filters,
   groupSlice,
   groupStatistics,
-  isUsingSessionColorScheme,
   modal,
   patching,
   resolveGroups,
@@ -41,6 +40,7 @@ import {
 } from "../utils";
 
 import { selectedFieldsStageState } from "./useSchemaSettings";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -111,8 +111,18 @@ const useStateUpdate = (ignoreSpaces = false) => {
               ? JSON.parse(JSON.parse(state.colorScheme))
               : JSON.parse(state.colorScheme)
             : state.colorScheme;
+        console.log("parsed setting", parsedSetting);
+        let colorPool = parsedSetting["color_pool"];
+        colorPool =
+          Array.isArray(colorPool) && colorPool?.length > 0
+            ? colorPool
+            : DEFAULT_APP_COLOR_SCHEME.colorPool;
+        colorPool =
+          colorPool.filter((c) => isValidColor(c)).length > 0
+            ? colorPool.filter((c) => isValidColor(c))
+            : DEFAULT_APP_COLOR_SCHEME.colorPool;
         colorSetting = {
-          colorPool: parsedSetting["color_pool"] ?? parsedSetting?.colorPool,
+          colorPool,
           customizedColorSettings:
             parsedSetting["customized_color_settings"] ??
             parsedSetting?.customizedColorSettings?.length > 0
@@ -120,10 +130,8 @@ const useStateUpdate = (ignoreSpaces = false) => {
               : [],
         } as ColorScheme;
         set(sessionColorScheme, colorSetting);
-        set(isUsingSessionColorScheme, true);
       } else if (!ignoreSpaces) {
         reset(activeColorField);
-        reset(isUsingSessionColorScheme);
         set(sessionColorScheme, colorSetting);
       }
 
