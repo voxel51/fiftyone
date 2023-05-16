@@ -63,7 +63,6 @@ export class ClassificationsOverlay<
     // check if the field has a customized color, use it if it is a valid color
     if (
       coloring.by === "field" &&
-      setting?.useFieldColor &&
       setting?.fieldColor &&
       isValidColor(setting.fieldColor)
     ) {

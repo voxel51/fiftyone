@@ -386,12 +386,7 @@ export const Looker3d = () => {
           let color: string;
           const setting = colorScheme?.find((s) => s.field === path);
           if (coloring.by === "field") {
-            if (
-              setting &&
-              setting.useFieldColor &&
-              setting.fieldColor &&
-              isValidColor(setting.fieldColor)
-            ) {
+            if (isValidColor(setting?.fieldColor ?? "")) {
               color = setting.fieldColor;
             } else {
               color = getColor(path);

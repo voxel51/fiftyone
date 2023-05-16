@@ -226,7 +226,6 @@ export interface ColorSchemeSaved {
 
 export interface CustomizeColor {
   field: string;
-  useFieldColor: boolean;
   fieldColor?: string;
   attributeForColor?: string; // must be string field, int field, or boolean field
   labelColors?: {

@@ -66,9 +66,6 @@ export const validateJSONSetting = (json: unknown[]) => {
 
   const f = filtered?.map((input) => ({
     field: input["field"],
-    useFieldColor: isBoolean(input["useFieldColor"])
-      ? input["useFieldColor"]
-      : false,
     fieldColor: input["fieldColor"] ?? null,
     attributeForColor:
       isString(input["attributeForColor"]) &&
@@ -82,7 +79,7 @@ export const validateJSONSetting = (json: unknown[]) => {
 
   // remove default settings
   return f.filter((x) => {
-    const hasFieldSetting = x.useFieldColor && x.fieldColor;
+    const hasFieldSetting = x.fieldColor;
     const hasAttributeColor = x.attributeForColor;
     const hasLabelColors = x.labelColors && x.labelColors.length > 0;
     return hasFieldSetting || hasAttributeColor || hasLabelColors;

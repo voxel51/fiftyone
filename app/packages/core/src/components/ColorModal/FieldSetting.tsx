@@ -30,6 +30,11 @@ type Prop = {
   field: Field;
 };
 
+type State = {
+  useLabelColors: boolean;
+  useFieldColor: boolean;
+};
+
 const FieldSetting: React.FC<Prop> = ({ field }) => {
   const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
   const [showFieldPicker, setShowFieldPicker] = useState(false);
@@ -41,10 +46,11 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const { setColorScheme } = fos.useSessionColorScheme();
   const coloring = useRecoilValue(fos.coloring(false));
   const color = getColor(colorPool, coloring.seed, path);
-  const [state, setState] = useState({
+  const [state, setState] = useState<State>({
     useLabelColors: Boolean(
       setting?.labelColors && setting.labelColors.length > 0
     ),
+    useFieldColor: Boolean(setting?.fieldColor),
   });
   const defaultColor =
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
@@ -94,7 +100,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     if (!setting) {
       const defaultSetting = {
         field: path,
-        useFieldColor: false,
         fieldColor: color,
         attributeForColor: undefined,
         labelColors: [],
@@ -107,8 +112,9 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         (setting?.labelColors && setting.labelColors.length > 0) ||
           setting?.attributeForColor
       ),
+      useFieldColor: Boolean(setting?.fieldColor),
     });
-  }, [path, customizedColorSettings, setColorScheme, colorPool, color]);
+  }, [path, customizedColorSettings]);
 
   return (
     <div>
@@ -118,18 +124,20 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
             name={`Use custom color for ${field.path} field`}
-            value={Boolean(setting?.useFieldColor)}
+            value={state.useFieldColor}
             setValue={(v: boolean) => {
-              const newSetting = cloneDeep(customizedColorSettings ?? []);
-              const index = newSetting.findIndex((x) => x.field === path);
-              newSetting[index].useFieldColor = v;
-              newSetting[index].fieldColor = v
-                ? setting?.fieldColor
-                : undefined;
-              setColorScheme(colorPool, newSetting, false);
+              if (!v) {
+                const newSetting = cloneDeep(customizedColorSettings ?? []);
+                const index = newSetting.findIndex((x) => x.field === path);
+                newSetting[index].fieldColor = v
+                  ? setting?.fieldColor
+                  : undefined;
+                setColorScheme(colorPool, newSetting, false);
+              }
+              setState((s) => ({ ...s, useFieldColor: v }));
             }}
           />
-          {setting?.useFieldColor && (
+          {state?.useFieldColor && (
             <div
               style={{
                 margin: "1rem",

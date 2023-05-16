@@ -103,11 +103,7 @@ export abstract class CoordinateOverlay<
       : this.field;
     const field = customizeColorSetting.find((s) => s.field === path);
     if (coloring.by === "field") {
-      if (
-        field?.useFieldColor &&
-        field?.fieldColor &&
-        isValidColor(field.fieldColor)
-      ) {
+      if (field?.fieldColor && isValidColor(field.fieldColor)) {
         return field.fieldColor;
       }
       return getColor(coloring.pool, coloring.seed, this.field);

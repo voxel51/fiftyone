@@ -109,10 +109,8 @@ export const getColorFromOptions = ({
   let key;
   const setting = customizeColorSetting.find((s) => s.field === path);
   if (coloring.by === "field") {
-    const fieldColor = setting?.fieldColor;
-    const useFieldColor = setting?.useFieldColor;
-    if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
-      return fieldColor;
+    if (isValidColor(setting?.fieldColor ?? "")) {
+      return setting.fieldColor;
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
@@ -149,10 +147,8 @@ export const getColorFromOptionsPrimitives = ({
 }: PrimitiveParam) => {
   const setting = customizeColorSetting.find((s) => s.field === path);
   if (coloring.by === "field") {
-    const fieldColor = setting?.fieldColor;
-    const useFieldColor = setting?.useFieldColor;
-    if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
-      return fieldColor;
+    if (isValidColor(setting?.fieldColor ?? "")) {
+      return setting?.fieldColor;
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
