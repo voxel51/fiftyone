@@ -173,4 +173,4 @@ def exec_module_from_dir(module_dir, plugin_definition):
     # only add to sys.modules if there are no errors
     sys.modules[mod.__name__] = mod
     spec.loader.exec_module(mod)
-    return register_module(plugin_definition, mod)
+    return pctx
