@@ -12,8 +12,10 @@ import {
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 
+import { DYNAMIC_GROUP_FIELDS, LIST_FIELD } from "@fiftyone/utilities";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
+import { aggregateSelectorFamily } from "./aggregate";
 import {
   AppSample,
   SampleData,
@@ -23,7 +25,9 @@ import {
   refresher,
 } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
+import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
+import { State } from "./types";
 import { dynamicGroupViewQuery, view } from "./view";
 
 export type SliceName = string | undefined | null;
@@ -397,4 +401,30 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({
   key: "groupStatistics",
   default: "slice",
+});
+
+export const dynamicGroupFields = selector<string[]>({
+  key: "dynamicGroupFields",
+  get: ({ get }) => {
+    const primitives = get(
+      fieldPaths({ ftype: DYNAMIC_GROUP_FIELDS, space: State.SPACE.SAMPLE })
+    );
+    const lists = get(
+      fieldPaths({ ftype: LIST_FIELD, space: State.SPACE.SAMPLE })
+    );
+    const filtered = primitives.filter((path) =>
+      lists.every((list) => !path.startsWith(list))
+    );
+
+    const counts = get(aggregateSelectorFamily({ paths: filtered })).aggregate;
+
+    return filtered.filter((_, index) => {
+      const data = counts[index];
+      if (data.__typename !== "CountResponse") {
+        throw new Error("expected count");
+      }
+
+      return data.count > 0;
+    });
+  },
 });

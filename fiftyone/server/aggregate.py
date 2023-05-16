@@ -24,6 +24,11 @@ _DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 
 @gql.type
+class CountResponse:
+    count: int
+
+
+@gql.type
 class ValueCount(t.Generic[T]):
     key: t.Union[T, None]
     value: int
@@ -79,7 +84,7 @@ class IntHistogramValuesResponse(HistogramValuesResponse[int]):
 
 
 @gql.input
-class HistogramValues:
+class Count:
     field: str
 
 
@@ -89,7 +94,13 @@ class CountValues:
 
 
 @gql.input
+class HistogramValues:
+    field: str
+
+
+@gql.input
 class Aggregate:
+    count: t.Optional[Count] = None
     count_values: t.Optional[CountValues] = None
     histogram_values: t.Optional[HistogramValues] = None
 
@@ -125,6 +136,7 @@ class AggregateQuery:
         gql.union(
             "AggregationResponses",
             (
+                CountResponse,
                 BoolCountValuesResponse,
                 IntCountValuesResponse,
                 StrCountValuesResponse,
@@ -144,7 +156,9 @@ class AggregateQuery:
         resolvers = []
         aggs = []
         for input in aggregations:
-            if input.count_values:
+            if input.count:
+                resolve, agg = await _count(view, input.count)
+            elif input.count_values:
                 resolve, agg = await _count_values(view, input.count_values)
             elif input.histogram_values:
                 resolve, agg = await _histogram_values(
@@ -161,6 +175,20 @@ class AggregateQuery:
             responses.append(resolver(result))
 
         return responses
+
+
+async def _count(
+    view: foc.SampleCollection, input: Count
+) -> t.Tuple[t.Callable[[t.List], CountResponse], foa.Count]:
+    field = view.get_field(input.field)
+
+    while isinstance(field, fo.ListField):
+        field = field.field
+
+    def resolve(count: int):
+        return CountResponse(count=count)
+
+    return resolve, foa.Count(input.field)
 
 
 async def _count_values(
