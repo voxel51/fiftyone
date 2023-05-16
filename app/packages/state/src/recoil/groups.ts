@@ -8,16 +8,14 @@ import {
   pcdSample,
   pcdSampleQuery,
 } from "@fiftyone/relay";
-
-import { VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
-
 import {
   DYNAMIC_GROUP_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
 } from "@fiftyone/utilities";
+import { VariablesOf } from "react-relay";
+import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
