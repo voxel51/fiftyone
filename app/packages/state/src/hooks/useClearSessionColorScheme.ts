@@ -56,18 +56,8 @@ const useClearSessionColorScheme = () => {
               : DEFAULT_APP_COLOR_SCHEME.colorPool,
           customizedColorSettings:
             defaultSetting?.customizedColorSettings && !saveToApp
-              ? JSON.parse(defaultSetting.customizedColorSettings)
-              : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
-        };
-        const api = {
-          colorPool:
-            defaultSetting && !saveToApp
-              ? defaultSetting.colorPool
-              : DEFAULT_APP_COLOR_SCHEME.colorPool,
-          customizedColorSettings:
-            defaultSetting?.customizedColorSettings && !saveToApp
               ? defaultSetting.customizedColorSettings
-              : null,
+              : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
         };
 
         return send(async (session) => {
@@ -81,7 +71,6 @@ const useClearSessionColorScheme = () => {
               stages: await snapshot.getPromise(view),
               colorScheme: combined,
               saveToApp: saveToApp,
-              colorSchemeSaveFormat: api,
             },
           });
         });

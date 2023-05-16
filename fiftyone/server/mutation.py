@@ -30,7 +30,6 @@ from fiftyone.server.query import (
     Dataset,
     SidebarGroup,
     SavedView,
-    ColorSchemeStr,
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
@@ -68,11 +67,6 @@ class SavedViewInfo:
 class ColorSchemeInput:
     color_pool: t.Optional[t.List[str]] = None
     customized_color_settings: t.Optional[JSONArray] = None
-
-
-@gql.input
-class ColorSchemeSaveFormat(ColorSchemeStr):
-    pass
 
 
 @gql.type
@@ -419,7 +413,6 @@ class Mutation:
         stages: BSONArray,
         color_scheme: ColorSchemeInput,
         save_to_app: bool,
-        color_scheme_save_format: ColorSchemeSaveFormat,
     ) -> bool:
         state = get_state()
         view = get_view(dataset, stages=stages)
@@ -430,8 +423,8 @@ class Mutation:
 
         if save_to_app:
             view._dataset.app_config.color_scheme = foo.ColorScheme(
-                color_pool=color_scheme_save_format.color_pool,
-                customized_color_settings=color_scheme_save_format.customized_color_settings,
+                color_pool=color_scheme.color_pool,
+                customized_color_settings=color_scheme.customized_color_settings,
             )
             view._dataset.save()
             state.view = view

@@ -120,7 +120,7 @@ export namespace State {
     plugins?: PluginConfig;
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
-    colorScheme?: ColorSchemeSaved;
+    colorScheme?: ColorScheme;
   }
 
   /**
@@ -217,11 +217,6 @@ export namespace State {
     spaces?: SpaceNodeJSON;
     colorScheme?: ColorScheme | string;
   }
-}
-
-export interface ColorSchemeSaved {
-  colorPool: string[];
-  customizedColorSettings: string;
 }
 
 export interface CustomizeColor {

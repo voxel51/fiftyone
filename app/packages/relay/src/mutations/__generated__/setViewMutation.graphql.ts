@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<84b6945f52cb129737dbb209f822767d>>
+ * @generated SignedSource<<db7f38d864db99a2998e06f3c4a79a8d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -40,7 +40,15 @@ export type setViewMutation$data = {
       readonly appConfig: {
         readonly colorScheme: {
           readonly colorPool: ReadonlyArray<string> | null;
-          readonly customizedColorSettings: string | null;
+          readonly customizedColorSettings: ReadonlyArray<{
+            readonly attributeForColor: string | null;
+            readonly field: string;
+            readonly fieldColor: string | null;
+            readonly labelColors: ReadonlyArray<{
+              readonly color: string;
+              readonly name: string;
+            }> | null;
+          }> | null;
         } | null;
         readonly gridMediaField: string | null;
         readonly mediaFields: ReadonlyArray<string> | null;
@@ -276,66 +284,73 @@ v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "viewStages",
+  "name": "color",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "viewStages",
   "storageKey": null
 },
 v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "lastLoadedAt",
+  "name": "createdAt",
   "storageKey": null
 },
 v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "key",
+  "name": "lastLoadedAt",
   "storageKey": null
 },
 v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "version",
+  "name": "key",
   "storageKey": null
 },
 v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "timestamp",
+  "name": "version",
   "storageKey": null
 },
 v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "cls",
+  "name": "timestamp",
   "storageKey": null
 },
 v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "labels",
+  "name": "cls",
   "storageKey": null
 },
 v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "labels",
+  "storageKey": null
+},
+v21 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "edges",
   "storageKey": null
 },
-v21 = [
+v22 = [
   {
     "alias": null,
     "args": [
@@ -496,14 +511,8 @@ v21 = [
               (v6/*: any*/),
               (v7/*: any*/),
               (v9/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "color",
-                "storageKey": null
-              },
               (v12/*: any*/),
+              (v13/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -511,7 +520,7 @@ v21 = [
                 "name": "slug",
                 "storageKey": null
               },
-              (v13/*: any*/),
+              (v14/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -519,7 +528,7 @@ v21 = [
                 "name": "lastModifiedAt",
                 "storageKey": null
               },
-              (v14/*: any*/)
+              (v15/*: any*/)
             ],
             "storageKey": null
           },
@@ -531,10 +540,10 @@ v21 = [
             "name": "evaluations",
             "plural": true,
             "selections": [
-              (v15/*: any*/),
               (v16/*: any*/),
               (v17/*: any*/),
-              (v12/*: any*/),
+              (v18/*: any*/),
+              (v13/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -543,7 +552,7 @@ v21 = [
                 "name": "config",
                 "plural": false,
                 "selections": [
-                  (v18/*: any*/),
+                  (v19/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -572,10 +581,10 @@ v21 = [
             "name": "brainMethods",
             "plural": true,
             "selections": [
-              (v15/*: any*/),
               (v16/*: any*/),
               (v17/*: any*/),
-              (v12/*: any*/),
+              (v18/*: any*/),
+              (v13/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -584,7 +593,7 @@ v21 = [
                 "name": "config",
                 "plural": false,
                 "selections": [
-                  (v18/*: any*/),
+                  (v19/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -626,9 +635,9 @@ v21 = [
             ],
             "storageKey": null
           },
+          (v15/*: any*/),
           (v14/*: any*/),
-          (v13/*: any*/),
-          (v16/*: any*/),
+          (v17/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -652,8 +661,8 @@ v21 = [
             "plural": true,
             "selections": [
               (v7/*: any*/),
-              (v19/*: any*/),
-              (v20/*: any*/)
+              (v20/*: any*/),
+              (v21/*: any*/)
             ],
             "storageKey": null
           },
@@ -665,8 +674,8 @@ v21 = [
             "name": "defaultSkeleton",
             "plural": false,
             "selections": [
-              (v19/*: any*/),
-              (v20/*: any*/)
+              (v20/*: any*/),
+              (v21/*: any*/)
             ],
             "storageKey": null
           },
@@ -742,7 +751,7 @@ v21 = [
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "ColorSchemeStr",
+                "concreteType": "ColorScheme",
                 "kind": "LinkedField",
                 "name": "colorScheme",
                 "plural": false,
@@ -757,8 +766,46 @@ v21 = [
                   {
                     "alias": null,
                     "args": null,
-                    "kind": "ScalarField",
+                    "concreteType": "CustomizeColor",
+                    "kind": "LinkedField",
                     "name": "customizedColorSettings",
+                    "plural": true,
+                    "selections": [
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "field",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "fieldColor",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "attributeForColor",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "concreteType": "LabelSetting",
+                        "kind": "LinkedField",
+                        "name": "labelColors",
+                        "plural": true,
+                        "selections": [
+                          (v7/*: any*/),
+                          (v12/*: any*/)
+                        ],
+                        "storageKey": null
+                      }
+                    ],
                     "storageKey": null
                   }
                 ],
@@ -794,7 +841,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "setViewMutation",
-    "selections": (v21/*: any*/),
+    "selections": (v22/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
@@ -810,19 +857,19 @@ return {
     ],
     "kind": "Operation",
     "name": "setViewMutation",
-    "selections": (v21/*: any*/)
+    "selections": (v22/*: any*/)
   },
   "params": {
-    "cacheID": "1cee981195fed348d645ef002325b52f",
+    "cacheID": "2bc9e11e97d7589a726372bf86d0269b",
     "id": null,
     "metadata": {},
     "name": "setViewMutation",
     "operationKind": "mutation",
-    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String!\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      stages(slug: $savedViewSlug)\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      savedViews {\n        id\n        name\n        description\n        color\n        viewStages\n        slug\n        createdAt\n        lastModifiedAt\n        lastLoadedAt\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n          supportsPrompts\n          type\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        modalMediaField\n        plugins\n        sidebarGroups {\n          expanded\n          name\n          paths\n        }\n        sidebarMode\n        colorScheme {\n          colorPool\n          customizedColorSettings\n        }\n      }\n    }\n    view\n  }\n}\n"
+    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String!\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      stages(slug: $savedViewSlug)\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      savedViews {\n        id\n        name\n        description\n        color\n        viewStages\n        slug\n        createdAt\n        lastModifiedAt\n        lastLoadedAt\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n          supportsPrompts\n          type\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        modalMediaField\n        plugins\n        sidebarGroups {\n          expanded\n          name\n          paths\n        }\n        sidebarMode\n        colorScheme {\n          colorPool\n          customizedColorSettings {\n            field\n            fieldColor\n            attributeForColor\n            labelColors {\n              name\n              color\n            }\n          }\n        }\n      }\n    }\n    view\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c99ff791fd4ac632a21c5fd6c1537468";
+(node as any).hash = "cf4f2d7b1f08ff0e03ff86cfdd2650da";
 
 export default node;

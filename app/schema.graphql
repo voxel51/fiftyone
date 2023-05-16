@@ -113,31 +113,26 @@ enum ColorBy {
   value
 }
 
+type ColorScheme {
+  colorPool: [String!]
+  customizedColorSettings: [CustomizeColor!]
+}
+
 input ColorSchemeInput {
   colorPool: [String!] = null
   customizedColorSettings: JSONArray = null
 }
 
-input ColorSchemeSaveFormat {
-  colorPool: [String!] = null
-  customizedColorSettings: String = null
-}
-
-type ColorSchemeStr {
-  colorPool: [String!]
-  customizedColorSettings: String
-}
-
-input Count {
-  field: String!
-}
-
-type CountResponse {
-  count: Int!
-}
-
 input CountValues {
   field: String!
+}
+
+type CustomizeColor {
+  field: String!
+  fieldColor: String
+  attributeForColor: String
+  attributeForOpacity: String
+  labelColors: [LabelSetting!]
 }
 
 type DataAggregation implements Aggregation {
@@ -183,7 +178,7 @@ type DatasetAppConfig {
   modalMediaField: String
   gridMediaField: String
   spaces: JSON
-  colorScheme: ColorSchemeStr
+  colorScheme: ColorScheme
 }
 
 type DatasetStrConnection {
@@ -302,6 +297,11 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
+type LabelSetting {
+  name: String!
+  color: String!
+}
+
 enum MediaType {
   image
   group
@@ -385,7 +385,6 @@ type Mutation {
     stages: BSONArray!
     colorScheme: ColorSchemeInput!
     saveToApp: Boolean!
-    colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
   searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }

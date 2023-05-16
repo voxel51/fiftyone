@@ -33,11 +33,6 @@ const useSessionColorScheme = () => {
       customizedColorSettings,
     };
 
-    const saveFormat = {
-      colorPool,
-      customizedColorSettings: JSON.stringify(customizedColorSettings),
-    };
-
     return send((session) =>
       commit({
         onCompleted: () => {
@@ -54,7 +49,6 @@ const useSessionColorScheme = () => {
           stages,
           colorScheme: combined,
           saveToApp: saveToApp,
-          colorSchemeSaveFormat: saveFormat,
         },
       })
     );

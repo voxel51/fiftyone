@@ -86,19 +86,13 @@ export const validateJSONSetting = (json: unknown[]) => {
   }) as fos.CustomizeColor[];
 };
 
-type ColorSchemeStr = {
-  colorPool: string[];
-  customizedColorSettings: string;
-};
-
-export const isDefaultSetting = (savedSetting: ColorSchemeStr) => {
+export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
   return (
     isSameArray(
       savedSetting.colorPool,
       fos.DEFAULT_APP_COLOR_SCHEME.colorPool
     ) &&
-    (savedSetting.customizedColorSettings ==
-      JSON.stringify(fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings) ||
+    (savedSetting.customizedColorSettings?.length == 0 ||
       !savedSetting.customizedColorSettings)
   );
 };

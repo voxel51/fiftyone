@@ -469,7 +469,7 @@ export const GridActionsRow = () => {
           ? datasetColorScheme.colorPool
           : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
       const customizedColorSettings =
-        JSON.parse(datasetColorScheme.customizedColorSettings) ??
+        datasetColorScheme.customizedColorSettings ??
         fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
       setSessionColor({
         colorPool,

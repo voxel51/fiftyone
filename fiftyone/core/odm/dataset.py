@@ -173,7 +173,8 @@ class ColorScheme(EmbeddedDocument):
 
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
-            color_pool=["#ff0000", "#00ff00", "#0000ff"]
+            color_pool=["#ff0000", "#00ff00", "#0000ff"],
+            customized_color_settings=[]
         )
         dataset.save()
 
@@ -187,7 +188,7 @@ class ColorScheme(EmbeddedDocument):
     meta = {"strict": False}
 
     color_pool = ListField(ColorField(), null=True)
-    customized_color_settings = StringField(null=True)
+    customized_color_settings = ListField(DictField(), null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):
