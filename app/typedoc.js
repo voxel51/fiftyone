@@ -1,4 +1,11 @@
-const packages = ["plugins", "state", "aggregations", "utilities", "relay"];
+const packages = [
+  "plugins",
+  "state",
+  "aggregations",
+  "utilities",
+  "relay",
+  "operators",
+];
 
 /**
  * @type {import('typedoc').TypeDocOptions}
