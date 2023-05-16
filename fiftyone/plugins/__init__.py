@@ -18,6 +18,9 @@ from .core import (
     find_plugin,
     download_plugin,
     create_plugin,
+    load_plugin_requirements,
+    install_plugin_requirements,
+    ensure_plugin_requirements,
 )
 from .definitions import PluginDefinition
 

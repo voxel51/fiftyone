@@ -791,7 +791,7 @@ Tools for working with FiftyOne plugins.
 
 .. code-block:: text
 
-    fiftyone plugins [-h] [--all-help] {list,download,create,enable,disable,delete} ...
+    fiftyone plugins [-h] [--all-help] {list,download,requirements,create,enable,disable,delete} ...
 
 **Arguments**
 
@@ -805,6 +805,7 @@ Tools for working with FiftyOne plugins.
       {list,download,create,enable,disable,delete}
         list                List plugins that you've downloaded or created locally.
         download            Download plugins from the web.
+        requirements        Handles package requirements for plugins.
         create              Creates or initializes a plugin.
         enable              Enables the given plugin(s).
         disable             Disables the given plugin(s).
@@ -903,6 +904,44 @@ formats::
         <url> \
         --plugin-names <name1> <name2> <name3> \
         --max-depth 2  # search nested directories for plugins
+
+.. _cli-fiftyone-plugins-requirements:
+
+Plugin requirements
+~~~~~~~~~~~~~~~~~~~
+
+Handles package requirements for plugins.
+
+.. code-block:: text
+
+    fiftyone plugins requirements [-h] [-p] [-i] [-e] [--error-level LEVEL] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the plugin name
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -p, --print          print the requirements for the plugin
+      -i, --install        install any requirements for the plugin
+      -e, --ensure         ensure the requirements for the plugin are satisfied
+      --error-level LEVEL  the error level (0=error, 1=warn, 2=ignore) to use when installing or ensuring plugin requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print requirements for a plugin
+    fiftyone plugins requirements <name> --print
+
+    # Install any requirements for the plugin
+    fiftyone plugins requirements <name> --install
+
+    # Ensures that the requirements for the plugin are satisfied
+    fiftyone plugins requirements <name> --ensure
 
 .. _cli-fiftyone-plugins-create:
 
