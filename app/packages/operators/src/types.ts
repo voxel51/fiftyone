@@ -930,6 +930,19 @@ export class ProgressView extends View {
 }
 
 /**
+ * Operator class for rendering a string as markdown.
+ */
+export class MarkdownView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "MarkdownView";
+  }
+  static fromJSON(json) {
+    return new MarkdownView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -989,6 +1002,7 @@ const VIEWS = {
   TableView,
   MapView,
   ProgressView,
+  MarkdownView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {

@@ -9,6 +9,13 @@ export default function CodeView(props) {
   const { onChange, path, schema, data } = props;
   const { default: defaultValue, view = {} } = schema;
   const { language, read_only: readOnly } = view;
+  const src = data ?? defaultValue;
+  let height = view.height ?? 250;
+  if (view.height === "auto") {
+    const lineHeight = 19;
+    const numLines = src.split("\n").length;
+    height = lineHeight * numLines;
+  }
 
   return (
     <Box
@@ -24,10 +31,10 @@ export default function CodeView(props) {
     >
       <HeaderView {...props} />
       <Editor
-        height={250}
+        height={height}
         theme={mode === "dark" ? "vs-dark" : "light"}
         value={readOnly ? data : undefined}
-        defaultValue={data ?? defaultValue}
+        defaultValue={src}
         onChange={(value) => onChange(path, value)}
         language={language}
         options={{ readOnly }}
