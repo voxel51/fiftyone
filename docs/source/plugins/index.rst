@@ -45,6 +45,11 @@ Plugin Settings
 
 Python and JS plugins can read their settings at the dataset scope or app scope, allowing users to configure plugins in ways that match their workflows. This allows for settings that may correspond to data such as the default camera position in the Looker3D plugin.
 
+.. note::
+
+    Settings are readable by users in the browser. Use environment variables and Python Operators for sensitive/secret values.
+
+
 Operators
 ---------
 
@@ -101,7 +106,31 @@ In some cases, coordination between operators is necessary. For example, when a 
 Operator Exceptions
 ~~~~~~~~~~~~~~~~~~~
 
-When an operator’s execute() method throws an error it will be returned to the browser and display as a result.
+When an operator’s execute() method throws an error it will be returned to the browser and displayed as a result.
+
+This behavior should only be used for uncaught errors.
+
+Operator Input Validation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to ensure proper values are provided to an operator, the operator definition will be used to validate the input.
+
+This validation is performed in the browser and can be used to ensure that the user has provided valid input before executing the operator.
+
+Operators that set `config.dynamic` to `True` can also use the `resolve_input()` method to determine whehter any given property is `invlaid`.
+
+Here is an example of how to use the `resolve_input()` method to validate input:
+
+.. code-block:: python
+
+    def resolve_input(self, ctx):
+        cur_message = ctx.params.get("message", None)
+        inputs = types.Object()
+        message_property = inputs.str("message", label="Message", required=True)
+        if cur_message == "bad":
+            message_property.invalid = True
+            message_property.error_message = "custom error message!"
+        return types.Property(inputs)
 
 Executing Operators from Code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -199,11 +228,13 @@ restart it to pick up this new setting.
 
     Your plugins directory must be readable by the FiftyOne server.
 
-Installing plugins manually
+Installing local plugins
 ---------------------------
 
-Fiftyone will try and find your plugin's `fiftyone.yaml` file within the plugin
-directory described above. Below is an example of a typical plugin directory.
+In order for Fiftyone to recognize a plugin package, Fiftyone will try and
+find your plugin's `fiftyone.yaml` file
+within the `FIFTYONE_PLUGINS_DIR` described above. Below is an example of a
+typical plugin directory.
 
 .. code-block:: text
 
@@ -217,8 +248,16 @@ directory described above. Below is an example of a typical plugin directory.
         /fiftyone-plugin.yaml
         /__init__.py
 
-In order to manually install a plugin, you must copy the plugin's source directory
-into your plugin directory so that it matches the structure above.
+If the source code for a plugin already exists on the local filesystem, you can
+make it into a plugin using
+the `fiftyone.core.plugins.create_plugin` python function or the `fiftyone
+plugins create <name>` CLI command. This will copy the
+source
+code to the plugins directory and create a `fiftyone.yaml` file for you if
+one does not already exist.
+
+Alternatively, you can manually copy the plugin
+directory into your plugins directory so that it matches the structure above.
 
 If your FiftyOne App server is already running, you should restart the server
 and refresh any connected browser clients to see the plugins show up.
@@ -228,10 +267,47 @@ and refresh any connected browser clients to see the plugins show up.
     If you do not see your plugin, make sure the `fiftyone.yaml` file is
     present and defines all operators (python) and scripts (js).
 
-Installing plugins via CLI or Python
+Downloading plugins via CLI or Python
 ------------------------------------
 
-TBD
+To download and run a new plugin, all you need is a URL to
+the plugin packaged as a Zip archive or a link to a GitHub repo containing
+the source code. You can then download and install the plugin using either of
+the following methods:
+
+CLI:
+
+.. code-block:: shell
+
+    # Download all plugins from a GitHub repository URL
+    fiftyone plugins download https://github.com/<user>/<repo>[/tree/branch]
+    # Download plugins by specifying the GitHub repository details
+    fiftyone plugins download <user>/<repo>[/<ref>]
+
+    # Download specific plugins from a URL with a custom search depth
+    fiftyone plugins download \\
+        https://github.com/<user>/<repo>[/tree/branch] \\
+        --plugin-names <name1> <name2> <name3> \\
+        --max-depth 2  # search nested directories for plugins
+
+
+Python:
+
+.. code-block:: python
+
+    import fiftyone.plugins as fop
+
+    # Download all plugins
+    fop.download_plugin(url_or_gh_repo)
+
+    # Download specific plugins
+    fop.download_plugin(url_or_gh_repo, plugin_names=[<name1>, <name2>][, max_depth=2])
+
+.. note::
+
+        To download a plugin from a private GitHub repository that you have
+        access to, provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
 
 Configuring plugins
 -------------------
@@ -324,75 +400,150 @@ TBD
 How to write plugins
 --------------------
 
-Below are introductory examples to the FiftyOne plugin API.
+Creating your first plugin
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Hello world Operator - Python
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Before you define any piece of a plugin, such as an operator or panel, you must first create a `fiftyone.yml` file in the root of your plugin directory.
+
+.. code-block:: yaml
+
+    fiftyone:
+        # using semver, describe the compatible range of fiftyone versions
+        version: '~0.21.0'
+    name: "@my-org/my-plugin"
+    # JS plugins must include a script path to their bundle
+    js_bundle: "dist/index.umd.js"
+    description: "My plugin description"
+    # in order to load python operators they must be defined in the list below
+    operators:
+        - my_operator
+
+For Python plugins, you must include a `__init__.py` file. Below is a simple example.
 
 .. code-block:: python
 
+    # __init__.py
     import fiftyone.operators as foo
     import fiftyone.operators.types as types
 
-    class HelloWorld(foo.Operator):
-        def __init__(self):
-            super().__init__(
-                "hello_world",
-                "Hello World"
-            )
-
-        def resolve_input(self, ctx):
-            inputs = types.Object()
-            inputs.str("message", label="Message", default="Hello")
-            return types.Property(inputs, label="My Hello World Operator")
+    class Count(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="count", label="Count")
 
         def execute(self, ctx):
-            return {
-                "message": f"{ctx.params.get("message")} World!"
-            }
+            return {"count": len(ctx.view)}
+        
+        def resolve_output(self, ctx):
+            outputs = types.Object()
+            outputs.int("count")
+            return types.Property(outputs)
 
+    def register(p):
+        p.register(Count)
+
+
+For both JS and Python plugins, you can use the `Hello World <https://github.com/voxel51/fiftyone-plugins/tree/main/packages/hello-world>`_ as a starting point.
+
+Below are introductory examples to the FiftyOne plugin API.
+
+Building Operators
+------------------
+
+Example Python Operator
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example shows how to define a simple operator that accepts a string input.
+
+Typically an operator would use the input to perform some operation on the dataset or samples. In this case, we simply return the input string as the output.
+
+With this `OperatorConfig` we cannot dynamically specify the input. We'll cover that in another example below.
+
+.. code-block:: python
+
+    class SimpleInputExample(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="example_simple_input",
+                label="Examples: Simple Input",
+            )
+        
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.str("message", label="Message", required=True)
+            header = "Simple Input Example"
+            return types.Property(inputs, view=types.View(label=header))
+
+        def execute(self, ctx):
+            return {"message": ctx.params["message"]}
+        
         def resolve_output(self, ctx):
             outputs = types.Object()
             outputs.str("message", label="Message")
-            return types.Property(outputs, label="Success!")
+            header = "Simple Input Example: Success!"
+            return types.Property(outputs, view=types.View(label=header))
 
+    def register(p):
+        # NOTE: make sure to include your operator name
+        # in your fiftyone.yaml's operators list
+        p.register(SimpleInputExample)
 
 Hello world Operator - JS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Similarly to the example above, this JS example shows how to define a simple operator that accepts a string input.
+
+.. note::
+    
+    The JS and Python API for implementing operators is very similar.
+    
+Unlike Python operators, JS operators can use React hooks and the `@fiftyone/*` packages by defining a `useHook()` method.
+Any values return in this method will be available to the operator's `execute()` method via `ctx.hooks`.
+
+Also shown in the example below is the `unlisted` config option. In both JS and Python operators, this allows for operators to be ommitted from the Operator Browser.
+
 .. code-block:: typescript
 
-    import * as foo from "@fiftyone/operators";
-    const types = foo.types;
+    import {Operator, OperatorConfig, types, registerOperator} from "@fiftyone/operators";
+    const PLUGIN_NAME = "@my-org/my-plugin";
 
-    class HelloWorld extends foo.Operator {
-        constructor() {
-            super(
-                "hello_world",
-                "Hello World"
-            );
-            // You must provide your plugin name to ensure the uniqueness of this operator.uri
-            this.pluginName = "@fiftyone/example-plugin";
+    class SetSelectedSamples extends Operator {
+        get config(): OperatorConfig {
+            return new OperatorConfig({
+                name: "set_selected_samples",
+                label: "Set selected samples",
+                unlisted: true
+            });
         }
-
-        resolveInput(ctx: foo.ExecutionContext) {
-            const inputs = new types.ObjectType()
-            inputs.str("message", {label: "Message", default: "Hello"})
-            return new types.Property(inputs, {label: "My Hello World Operator"})
-        }
-
-        execute(ctx: foo.ExecutionContext) {
+        useHooks(): {} {
             return {
-                message: `${ctx.params.get("message")} World!`
-            }
+                setSelected: fos.useSetSelected(),
+            };
         }
-
-        resolveOutput(ctx: foo.ExecutionContext) {
-            const outputs = new types.ObjectType()
-            outputs.str("message", {label: "Message"})
-            return new types.Property(outputs, {label: "Success!"})
+        async execute({ hooks, params }: ExecutionContext) {
+            hooks.setSelected(params.samples);
         }
     }
+
+    registerOperator(SetSelectedSamples, PLUGIN_NAME);
+
+Using the Execution Context
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The execution context is passed to the operator's `execute()` method. It contains the following properties:
+
+- `params` - the operator's input values 
+- `dataset` - the current :class:`fiftyone.core.dataset.Dataset` instance
+- `view` - the current :class:`fiftyone.core.view.DatasetView` instance
+- `dataset_name` - the name of the current dataset
+- `hooks` - JS Only - the return value of the operator's `useHooks()` method
+
+
+Panels, Visualizers, and Custom Components
+------------------------------------------
+
+Below are examples of how add your own customer user interface and components to the FiftyOne App.
 
 Hello world Panel - JS
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -412,12 +563,6 @@ like this:
         copmponent: HelloWorld,
         type: PluginComponentTypes.Panel,
     });
-
-Installing the plugin above would require building a bundle JS file and placing
-in a directory with a `package.json` file.
-
-The FiftyOne python server will then detect this as an installed plugin and the
-App will load it and render it.
 
 Adding a custom FiftyOne Visualizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -505,33 +650,11 @@ Adding a custom Plot
     The `PluginComponentType.Plot` type is deprecated. Use
     `PluginComponentType.Panel` instead.
 
-.. Reacting to state changes
-.. ~~~~~~~~~~~~~~~~~~~~~~~~~
+Fiftyone App State
+------------------
 
-.. .. code-block:: jsx
-
-..     import * as fos from '@fiftyone/state'
-..     import * as recoil from 'recoil'
-
-..     // this example demonstrates handling updates to
-..     // filters/sidebar, but applies to everything
-..     // listed under "state" below
-..     function MyPlugin() {
-..       const activeFields = recoil.useRecoilValue(fos.activeFields)
-
-..       return <ul>{activeFields.map(f => <li>{f.name}</li>)}
-..     }
-
-Interactivity and state
-~~~~~~~~~~~~~~~~~~~~~~~
-
-If your plugin only has internal state, you can use existing state management
-to achieve your desired ux. For example, in a 3D visualizer, you might want to
-use Thee.js and its object model, events, and state management. Or just use
-your own React hooks to maintain your plugin components internal state.
-
-If you want to allow users to interact with other aspects of FiftyOne through
-your plugin, you can use the `@fiftyone/state` package:
+There are a few ways to manage the state of your plugin. By default you should defer to existing state management in the FiftyOne App.
+For example, if you want to allow users to select samples, you can use the `@fiftyone/state` package:
 
 .. code-block:: jsx
 
@@ -543,6 +666,37 @@ your plugin, you can use the `@fiftyone/state` package:
 
     // in a callback
     selectLabel({ id: "labelId", field: "fieldName" });
+
+The example above shows how you can coordinate or surface existing features of FiftyOne through
+your plugin via the `@fiftyone/state` package. This package provides hooks to access and modify
+the state of the FiftyOne App.
+
+Recoil, Atoms, and Selectors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also use a combination of your own and fiftyone's recoil `atoms` and `selectors`.
+
+Here's an example the combines both approaches in a hook that you could call from anywhere where hooks are supported (almost all plugin component types).
+
+.. code-block:: jsx
+
+    import {atom, useRecoilValue, useRecoilState} from 'recoil';
+
+    const myPluginmyPluginFieldsState = atom({
+        key: 'myPluginFields',
+        default: []
+    })
+    
+    function useMyHook() {
+        const dataset = useRecoilValue(fos.dataset);
+        const [fields, setFields] = useRecoilState(myPluginFieldsState);
+
+        return {
+            dataset,
+            fields,
+            addField: (field) => setFields([...fields, field])
+        }
+    }
 
 Panel state
 -----------
