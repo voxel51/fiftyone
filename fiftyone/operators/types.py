@@ -1233,3 +1233,10 @@ class ButtonView(Button):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class MarkdownView(View):
+    """Renders a string of markdown as html."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

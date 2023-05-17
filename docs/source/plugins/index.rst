@@ -228,7 +228,7 @@ restart it to pick up this new setting.
     Your plugins directory must be readable by the FiftyOne server.
 
 Installing local plugins
----------------------------
+------------------------
 
 In order for Fiftyone to recognize a plugin package, Fiftyone will try and
 find your plugin's `fiftyone.yaml` file
@@ -267,7 +267,7 @@ and refresh any connected browser clients to see the plugins show up.
     present and defines all operators (python) and scripts (js).
 
 Downloading plugins via CLI or Python
-------------------------------------
+-------------------------------------
 
 To download and run a new plugin, all you need is a URL to
 the plugin packaged as a Zip archive or a link to a GitHub repo containing

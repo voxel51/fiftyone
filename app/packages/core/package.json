@@ -43,6 +43,7 @@
         "react-input-autosize": "^3.0.0",
         "react-is": "^17.0.1",
         "react-laag": "^2.0.3",
+        "react-markdown": "^8.0.7",
         "react-relay": "^14.0.0",
         "react-use-measure": "^2.0.1",
         "react-uuid": "^1.0.2",
