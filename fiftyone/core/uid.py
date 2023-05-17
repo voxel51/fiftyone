@@ -34,11 +34,13 @@ Welcome to
 
 If you're finding FiftyOne helpful, here's how you can get involved:
 
-    ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
-    https://github.com/voxel51/fiftyone
-
-    🚀🚀🚀 Join the FiftyOne Slack community 🚀🚀🚀
-    https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ
+|
+|  ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
+|  https://github.com/voxel51/fiftyone
+|
+|  🚀🚀🚀 Join the FiftyOne Slack community 🚀🚀🚀
+|  https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ
+|
 """
 
 _FIRST_IMPORT = "FIFTYONE_FIRST_IMPORT"
