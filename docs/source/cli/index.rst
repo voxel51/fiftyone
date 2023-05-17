@@ -820,7 +820,7 @@ List plugins that you've downloaded or created locally.
 
 .. code-block:: text
 
-    fiftyone plugins list [-h] [-e] [-d] [-n]
+    fiftyone plugins list [-h] [-o] [-e] [-d] [-n]
 
 **Arguments**
 
@@ -828,6 +828,7 @@ List plugins that you've downloaded or created locally.
 
     optional arguments:
       -h, --help        show this help message and exit
+      -o, --operators   list operators within the plugins
       -e, --enabled     only show enabled plugins
       -d, --disabled    only show disabled plugins
       -n, --names-only  only show plugin names
@@ -838,6 +839,9 @@ List plugins that you've downloaded or created locally.
 
     # List all locally available plugins
     fiftyone plugins list
+
+    # List operators within the plugins
+    fiftyone plugins list --operators
 
     # List enabled plugins
     fiftyone plugins list --enabled

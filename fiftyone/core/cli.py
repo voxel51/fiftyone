@@ -2594,6 +2594,9 @@ class PluginListCommand(Command):
         # List all locally available plugins
         fiftyone plugins list
 
+        # List operators within the plugins
+        fiftyone plugins list --operators
+
         # List enabled plugins
         fiftyone plugins list --enabled
 
@@ -2603,6 +2606,13 @@ class PluginListCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-o",
+            "--operators",
+            action="store_true",
+            default=None,
+            help="list operators within the plugins",
+        )
         parser.add_argument(
             "-e",
             "--enabled",
@@ -2621,7 +2631,7 @@ class PluginListCommand(Command):
             "-n",
             "--names-only",
             action="store_true",
-            help="only show plugin names",
+            help="only show names",
         )
 
     @staticmethod
@@ -2633,12 +2643,48 @@ class PluginListCommand(Command):
         else:
             enabled = "all"
 
-        _print_plugins_info(enabled, args.names_only)
+        plugin_defintions = fop.list_plugins(enabled=enabled)
+
+        if args.operators:
+            _print_operators_info(plugin_defintions, args.names_only)
+        else:
+            _print_plugins_info(plugin_defintions, args.names_only)
 
 
-def _print_plugins_info(enabled, names_only):
-    plugin_defintions = fop.list_plugins(enabled=enabled)
+def _print_operators_info(plugin_defintions, names_only):
+    if names_only:
+        for pd in plugin_defintions:
+            print(pd.name)
+            if pd.operators:
+                for o in pd.operators:
+                    print("    " + o)
+            else:
+                print("    -")
 
+        return
+
+    enabled = set(fop.list_enabled_plugins())
+
+    headers = ["plugin", "operator", "directory", "enabled"]
+    rows = []
+    for pd in plugin_defintions:
+        for o in pd.operators:
+            rows.append(
+                {
+                    "plugin": pd.name,
+                    "operator": o,
+                    "directory": pd.directory,
+                    "enabled": pd.name in enabled,
+                }
+            )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+def _print_plugins_info(plugin_defintions, names_only):
     if names_only:
         for pd in plugin_defintions:
             print(pd.name)
@@ -2648,14 +2694,15 @@ def _print_plugins_info(enabled, names_only):
     enabled = set(fop.list_enabled_plugins())
 
     headers = ["name", "directory", "enabled"]
-    rows = [
-        {
-            "name": pd.name,
-            "directory": pd.directory,
-            "enabled": pd.name in enabled,
-        }
-        for pd in plugin_defintions
-    ]
+    rows = []
+    for pd in plugin_defintions:
+        rows.append(
+            {
+                "name": pd.name,
+                "directory": pd.directory,
+                "enabled": pd.name in enabled,
+            }
+        )
 
     records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
 
