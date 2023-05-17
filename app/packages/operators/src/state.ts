@@ -26,6 +26,7 @@ import {
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
+  resolveLocalPlacements,
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
@@ -716,8 +717,9 @@ export const operatorPlacementsSelector = selector({
   get: async ({ get }) => {
     const throttledContext = get(operatorThrottledContext);
     const ctx = new ExecutionContext({}, throttledContext);
-    const placements = await fetchRemotePlacements(ctx);
-    return placements;
+    const remotePlacements = await fetchRemotePlacements(ctx);
+    const localPlacements = await resolveLocalPlacements(ctx);
+    return [...remotePlacements, ...localPlacements];
   },
 });
 
