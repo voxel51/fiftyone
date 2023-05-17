@@ -8,6 +8,7 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
   (props, ref) => {
     const {
       onClick,
+      id,
       open,
       text,
       icon,
@@ -32,6 +33,7 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
         onMouseDown={(e: MouseEvent) => {
           e.stopPropagation();
         }}
+        id={id}
         ref={ref}
         style={{ ...baseStyles, ...style }}
         title={title}
@@ -47,6 +49,7 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
 
 type PillButtonProps = {
   onClick: (event: Event) => void;
+  id?: string;
   open?: boolean;
   highlight?: boolean;
   text?: string;

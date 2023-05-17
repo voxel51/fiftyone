@@ -1,3 +1,10 @@
+import { PillButton, useTheme } from "@fiftyone/components";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import * as fos from "@fiftyone/state";
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
+import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   Bookmark,
   Check,
@@ -28,13 +35,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-
-import { PillButton, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { OperatorPlacements, types } from "@fiftyone/operators";
-import { useOperatorBrowser } from "@fiftyone/operators/src/state";
-import * as fos from "@fiftyone/state";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
@@ -44,7 +44,6 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",

@@ -1,4 +1,5 @@
 input Aggregate {
+  count: Count = null
   countValues: CountValues = null
   histogramValues: HistogramValues = null
 }
@@ -33,7 +34,8 @@ input AggregationForm {
 }
 
 union AggregationResponses =
-    BoolCountValuesResponse
+    CountResponse
+  | BoolCountValuesResponse
   | IntCountValuesResponse
   | StrCountValuesResponse
   | DatetimeHistogramValuesResponse
@@ -124,6 +126,14 @@ input ColorSchemeSaveFormat {
 type ColorSchemeStr {
   colorPool: [String!]
   customizedColorSettings: String
+}
+
+input Count {
+  field: String!
+}
+
+type CountResponse {
+  count: Int!
 }
 
 input CountValues {
@@ -377,7 +387,7 @@ type Mutation {
     saveToApp: Boolean!
     colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
-  searchSelectFields(datasetName: String, metaFilter: JSON): [String]!
+  searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
 type NamedKeypointSkeleton {
@@ -406,7 +416,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset!
+  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -438,7 +448,7 @@ type Query {
   schemaForViewStages(
     datasetName: String!
     viewStages: BSONArray!
-  ): [SampleField!]
+  ): [SampleField!]!
 }
 
 type RootAggregation implements Aggregation {

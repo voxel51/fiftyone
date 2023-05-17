@@ -281,6 +281,7 @@ export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 
+export const GROUP = "fiftyone.core.groups.Group";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
@@ -323,6 +324,15 @@ export const UNSUPPORTED_FILTER_TYPES = [
   VECTOR_FIELD,
   null,
   undefined,
+];
+
+export const DYNAMIC_GROUP_FIELDS = [
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
 ];
 
 export const LABELS_PATH = "fiftyone.core.labels";
