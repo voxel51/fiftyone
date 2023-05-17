@@ -34,7 +34,7 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Overview
-    :description: What's FiftyOne Teams? We think you'll be glad you asksed!
+    :description: What's FiftyOne Teams? We think you'll be glad you asked!
     :button_text: Learn the basics
     :button_link: overview.html
 
@@ -63,6 +63,12 @@ pages on this site apply to Teams deployments as well.
     :button_link: teams_app.html
 
 .. customcalloutitem::
+    :header: Plugins
+    :description: Learn how to install and manage shared plugins for your Teams deployment.
+    :button_text: Get started with plugins for Teams
+    :button_link: teams_plugins.html
+
+.. customcalloutitem::
     :header: Migrations
     :description: Learn how to migrate to FiftyOne Teams and manage your Teams deployment.
     :button_text: Migrate to Teams
@@ -86,4 +92,5 @@ pages on this site apply to Teams deployments as well.
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
+    Plugins <teams_plugins>
     Migrations <migrations>

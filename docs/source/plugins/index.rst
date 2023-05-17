@@ -63,9 +63,11 @@ An operator consists of a Definition and a method that executes the operation. T
 
 1. Render a prompt to collect information from the user needed to execute the operation
 2. As the user inputs information, and based on the user input aka “params”
+
    a. Resolve the definition of the input, allowing the form to change based on the user input
    b. Validate the user input
 3. Execute the operation
+
    a. Return a “result”
 4. Resolve the output definition based on the params and result of the operation
 5. Render the output
@@ -325,7 +327,7 @@ How to write plugins
 Below are introductory examples to the FiftyOne plugin API.
 
 Hello world Operator - Python
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -356,7 +358,7 @@ Hello world Operator - Python
 
 
 Hello world Operator - JS
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: typescript
 
@@ -393,7 +395,7 @@ Hello world Operator - JS
     }
 
 Hello world Panel - JS
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 A simple hello world JS plugin, that renders "hello world" in a panel, would look
 like this:

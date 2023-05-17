@@ -6,4 +6,4 @@
       @fiftyone/plugins <api/fiftyone.plugins>
       @fiftyone/aggregations <api/fiftyone.aggregations>
       @fiftyone/relay <api/fiftyone.relay>
-      @fiftyone/utils <api/fiftyone.utils>
+      @fiftyone/utilities <api/fiftyone.utilities>
