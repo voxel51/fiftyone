@@ -57,6 +57,9 @@ let theme = extendMuiTheme({
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
         },
+        secondary: {
+          main: "hsl(200, 0%, 30%)",
+        },
         focusVisible: "hsl(212, 97%, 57%, 0.3)",
         text: {
           buttonHighlight: "hsl(200, 0%, 100%)",
@@ -76,6 +79,9 @@ let theme = extendMuiTheme({
         },
         error: {
           main: "hsl(0, 87%, 53%)",
+        },
+        Avatar: {
+          defaultBg: "hsl(200, 0%, 85%)",
         },
       },
     },
