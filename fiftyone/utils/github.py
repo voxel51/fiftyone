@@ -81,54 +81,43 @@ class GitHubRepository(object):
         Returns:
             an info dict
         """
-        session = self._get_session()
-        info_url = f"https://api.github.com/repos/{self.user}/{self.repo}"
-        return session.get(info_url).json()
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}"
+        return self._get(url)
 
     def list_path_contents(self, path=None):
         """Returns the contents of the repo rooted at the given path.
 
         Args:
-            path (None): an optional root path
+            path (None): an optional root path to start the search from
 
         Returns:
-            the list of contents
+            a list of file info dicts
         """
-        session = self._get_session()
-
-        content_url = (
-            f"https://api.github.com/repos/{self.user}/{self.repo}/contents"
-        )
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}/contents"
         if path:
-            content_url += "/" + path
+            url += "/" + path
 
         if self.ref:
-            content_url += "?ref=" + self.ref
+            url += "?ref=" + self.ref
 
-        return session.get(content_url).json()
+        return self._get(url)
 
     def list_repo_contents(self, recursive=True):
         """Returns a flat list of the repository's contents.
 
         Args:
-            recursive (True): whether to
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
-            the list of contents
+            a list of file info dicts
         """
-        session = self._get_session()
-
         if self.ref:
             ref = self.ref
         else:
             ref = self.get_repo_info()["default_branch"]
 
-        content_url = f"https://api.github.com/repos/{self.user}/{self.repo}/git/trees/{ref}?recursive={int(recursive)}"
-        resp = session.get(content_url).json()
-        if "message" in resp:
-            raise ValueError(resp["message"])
-
-        return resp.get("tree")
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}/git/trees/{ref}?recursive={int(recursive)}"
+        return self._get(url)["tree"]
 
     def download(self, outdir):
         """Downloads the repository to the specified root directory.
@@ -136,8 +125,6 @@ class GitHubRepository(object):
         Args:
             outdir: the output directory
         """
-        session = self._get_session()
-
         zip_path = os.path.join(outdir, "download.zip")
         zip_url = (
             f"https://api.github.com/repos/{self.user}/{self.repo}/zipball"
@@ -146,10 +133,34 @@ class GitHubRepository(object):
             zip_url += "/" + self.ref
 
         web_session = etaw.WebSession()
-        web_session.sess = session
+        web_session.sess = self._get_session()
         web_session.write(zip_path, zip_url)
 
         etau.extract_zip(zip_path, delete_zip=True)
+
+    def _get_session(self):
+        if self._session is None:
+            self._session = self._make_session()
+
+        return self._session
+
+    def _make_session(self):
+        session = requests.Session()
+        token = os.environ.get("GITHUB_TOKEN", None)
+        if token:
+            logger.debug("Using GitHub token as authorization")
+            session.headers.update({"Authorization": "token " + token})
+
+        return session
+
+    def _get(self, url):
+        session = self._get_session()
+        resp = session.get(url).json()
+        if isinstance(resp, dict) and "message" in resp:
+            error = resp["message"]
+            raise ValueError(f"{error}: {self.identifier}")
+
+        return resp
 
     def _parse_url(self, url):
         return re.search(
@@ -170,18 +181,3 @@ class GitHubRepository(object):
             repo=params[1],
             ref=params[2] if len(params) > 2 else None,
         )
-
-    def _get_session(self):
-        if self._session is None:
-            self._session = self._make_session()
-
-        return self._session
-
-    def _make_session(self):
-        session = requests.Session()
-        token = os.environ.get("GITHUB_TOKEN", None)
-        if token:
-            logger.debug("Using GitHub token as authorization")
-            session.headers.update({"Authorization": "token " + token})
-
-        return session
