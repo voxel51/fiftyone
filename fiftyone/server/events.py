@@ -91,14 +91,14 @@ async def add_event_listener(
     data = await _initialize_listener(payload)
     try:
         if data.is_app:
-            d = asdict(
-                StateUpdate(state=data.state),
-                dict_factory=dict_factory,
-            )
-
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
-                data=FiftyOneJSONEncoder.dumps(d),
+                data=FiftyOneJSONEncoder.dumps(
+                    asdict(
+                        StateUpdate(state=data.state),
+                        dict_factory=dict_factory,
+                    )
+                ),
             )
 
         while True:
@@ -118,11 +118,11 @@ async def add_event_listener(
             events = sorted(events, key=lambda event: event[0])
 
             for _, event in events:
-                d = asdict(event, dict_factory=dict_factory)
-
                 yield ServerSentEvent(
                     event=event.get_event_name(),
-                    data=FiftyOneJSONEncoder.dumps(d),
+                    data=FiftyOneJSONEncoder.dumps(
+                        asdict(event, dict_factory=dict_factory)
+                    ),
                 )
 
             await asyncio.sleep(0.2)
