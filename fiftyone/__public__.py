@@ -128,7 +128,7 @@ from .core.models import (
     ModelManager,
 )
 from .core.odm import (
-    ColorScheme,
+    ColorSchemeDocument,
     DatasetAppConfig,
     DynamicEmbeddedDocument,
     EmbeddedDocument,

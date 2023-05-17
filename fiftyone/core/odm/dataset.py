@@ -29,8 +29,6 @@ from fiftyone.core.fields import (
 )
 import fiftyone.core.utils as fou
 
-# import fiftyone.core.colorscheme as foc
-
 from .database import (
     patch_saved_views,
     patch_annotation_runs,
@@ -161,7 +159,7 @@ class SidebarGroupDocument(EmbeddedDocument):
     expanded = BooleanField(default=None)
 
 
-class ColorScheme(EmbeddedDocument):
+class ColorSchemeDocument(EmbeddedDocument):
     """Description of a color scheme in the App.
 
     Example::
@@ -172,8 +170,10 @@ class ColorScheme(EmbeddedDocument):
         dataset = foz.load_zoo_dataset("quickstart")
 
         # Store a custom color scheme for a dataset
-        dataset.app_config.color_scheme = fo.ColorScheme(
-            color_pool=["#ff0000", "#00ff00", "#0000ff"],
+        ground_truth_setting = {{'field': 'ground_truth', 'fieldColor': '#ff00ff', 'attributeForColor': 'label' : [{'name': 'dog', 'color': 'yellow'}]}}
+
+        dataset.app_config.color_scheme = fo.ColorSchemeDocument(
+            color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             customized_color_settings=[]
         )
         dataset.save()
@@ -274,7 +274,7 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
-    color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
+    color_scheme = EmbeddedDocumentField(ColorSchemeDocument, default=None)
     plugins = DictField()
 
     @staticmethod

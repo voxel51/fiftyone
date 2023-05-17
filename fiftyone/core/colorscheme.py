@@ -5,7 +5,6 @@ Color Scheme configuration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.constants import DEFAULT_APP_COLOR_POOL
 import fiftyone.core.fields as fof
 from fiftyone.core.odm import EmbeddedDocument
 
@@ -23,8 +22,3 @@ class ColorScheme(EmbeddedDocument):
     meta = {"strict": False}
     color_pool = fof.ListField(fof.StringField(), default=[])
     customized_color_settings = fof.ListField(fof.DictField(), default=[])
-
-
-default_color_scheme = ColorScheme(
-    color_pool=DEFAULT_APP_COLOR_POOL, customized_color_settings=[]
-)
