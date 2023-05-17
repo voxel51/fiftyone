@@ -213,6 +213,9 @@ export class Operator {
     }
     return null;
   }
+  async resolvePlacement(
+    ctx: ExecutionContext
+  ): Promise<void | types.Placement> {}
   async execute(ctx: ExecutionContext) {
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
@@ -553,6 +556,23 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
     placement: types.Placement.fromJSON(p.placement),
   }));
 }
+
+export async function resolveLocalPlacements(ctx: ExecutionContext) {
+  const localOperators = Array.from(localRegistry.operators.values());
+  const localPlacements = [];
+
+  for (const operator of localOperators) {
+    const placement = await operator.resolvePlacement(ctx);
+    if (placement)
+      localPlacements.push({
+        operator: { operator, isRemote: false },
+        placement,
+      });
+  }
+
+  return localPlacements;
+}
+
 // and allows for the execution of the requests in order of arrival
 // and removing the requests that have been completed
 
