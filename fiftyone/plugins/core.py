@@ -207,8 +207,10 @@ def download_plugin(
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
         if repo is not None:
+            logger.info(f"Downloading {repo.identifier}...")
             repo.download(tmpdir)
         else:
+            logger.info(f"Downloading {url}...")
             _download_archive(url, tmpdir)
 
         metadata_paths = _find_plugin_metadata_files(
@@ -248,6 +250,11 @@ def download_plugin(
             logger.info(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
             etau.copy_dir(plugin.path, plugin_dir)
             downloaded_plugins[plugin.name] = plugin_dir
+
+    if plugin_names is not None:
+        missing_plugins = set(plugin_names) - set(downloaded_plugins.keys())
+        if missing_plugins:
+            logger.warning(f"Plugins not found: {missing_plugins}")
 
     return downloaded_plugins
 
@@ -494,12 +501,13 @@ def _iter_plugin_metadata_files():
         return
 
     for root, dirs, files in os.walk(plugins_dir, followlinks=True):
-        # ignore hidden directories
-        dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
+        # Ignore hidden directories
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
         for file in files:
             if _is_plugin_metadata_file(file):
                 yield os.path.join(root, file)
-                files[:] = []
+                dirs[:] = []  # stop traversing `root` once we find a plugin
+                break
 
 
 def _find_plugin(name, check_for_duplicates=False):
