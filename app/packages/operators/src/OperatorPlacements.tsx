@@ -1,5 +1,9 @@
 import { ErrorBoundary, PillButton } from "@fiftyone/components";
-import { useOperatorPlacements, usePromptOperatorInput } from "./state";
+import {
+  useOperatorExecutor,
+  useOperatorPlacements,
+  usePromptOperatorInput,
+} from "./state";
 import { Placement, Places } from "./types";
 import { Link } from "@fiftyone/components";
 import styled from "styled-components";
@@ -46,17 +50,22 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   const { uri, pluginName } = operator;
   const { view = {} } = placement;
   const { label } = view;
-  const { icon, darkIcon, lightIcon } = view?.options || {};
+  const { icon, darkIcon, lightIcon, prompt = true } = view?.options || {};
   const plugin = usePluginDefinition(pluginName);
   const serverPath = resolveServerPath(plugin);
   const iconPath = mode === "dark" && darkIcon ? darkIcon : lightIcon || icon;
+  const { execute } = useOperatorExecutor(uri);
 
   const IconComponent = icon && (
     <img src={`${serverPath}/${iconPath}`} width={21} height={21} />
   );
 
   const handleClick = () => {
-    promptForInput(uri);
+    if (prompt) {
+      promptForInput(uri);
+    } else {
+      execute({});
+    }
   };
 
   if (
