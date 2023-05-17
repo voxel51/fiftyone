@@ -95,16 +95,6 @@ async def add_event_listener(
                 StateUpdate(state=data.state),
                 dict_factory=dict_factory,
             )
-            if data.state.dataset is not None:
-                d["dataset"] = await serialize_dataset(
-                    dataset_name=data.state.dataset.name,
-                    serialized_view=data.state.view._serialize()
-                    if data.state.view is not None
-                    else [],
-                    saved_view_slug=fou.to_slug(data.state.view.name)
-                    if data.state.view is not None and data.state.view.name
-                    else None,
-                )
 
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
@@ -127,24 +117,8 @@ async def add_event_listener(
 
             events = sorted(events, key=lambda event: event[0])
 
-            for (_, event) in events:
+            for _, event in events:
                 d = asdict(event, dict_factory=dict_factory)
-
-                if (
-                    data.is_app
-                    and isinstance(event, StateUpdate)
-                    and event.state.dataset is not None
-                ):
-                    d["dataset"] = await serialize_dataset(
-                        dataset_name=event.state.dataset.name,
-                        serialized_view=event.state.view._serialize()
-                        if event.state.view is not None
-                        else [],
-                        saved_view_slug=fou.to_slug(event.state.view.name)
-                        if event.state.view is not None
-                        and event.state.view.name
-                        else None,
-                    )
 
                 yield ServerSentEvent(
                     event=event.get_event_name(),
