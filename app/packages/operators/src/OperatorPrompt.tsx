@@ -103,7 +103,9 @@ export function OperatorViewModal() {
 
   return createPortal(
     <OperatorPalette onSubmit={io.hide} submitButtonText="Done">
-      <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
+      <PaletteContentContainer>
+        <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
+      </PaletteContentContainer>
     </OperatorPalette>,
     document.body
   );
