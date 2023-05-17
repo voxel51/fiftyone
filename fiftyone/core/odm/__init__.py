@@ -46,7 +46,7 @@ from .database import (
 )
 from .dataset import (
     SampleFieldDocument,
-    ColorSchemeDocument,
+    ColorScheme,
     KeypointSkeleton,
     DatasetAppConfig,
     DatasetDocument,

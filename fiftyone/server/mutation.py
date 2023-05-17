@@ -18,7 +18,6 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.colorscheme import ColorScheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -416,13 +415,13 @@ class Mutation:
     ) -> bool:
         state = get_state()
         view = get_view(dataset, stages=stages)
-        state.color_scheme = ColorScheme(
+        state.color_scheme = foo.ColorScheme(
             color_pool=color_scheme.color_pool,
             customized_color_settings=color_scheme.customized_color_settings,
         )
 
         if save_to_app:
-            view._dataset.app_config.color_scheme = foo.ColorSchemeDocument(
+            view._dataset.app_config.color_scheme = foo.ColorScheme(
                 color_pool=color_scheme.color_pool,
                 customized_color_settings=color_scheme.customized_color_settings,
             )

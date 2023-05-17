@@ -159,7 +159,7 @@ class SidebarGroupDocument(EmbeddedDocument):
     expanded = BooleanField(default=None)
 
 
-class ColorSchemeDocument(EmbeddedDocument):
+class ColorScheme(EmbeddedDocument):
     """Description of a color scheme in the App.
 
     Example::
@@ -172,7 +172,7 @@ class ColorSchemeDocument(EmbeddedDocument):
         # Store a custom color scheme for a dataset
         ground_truth_setting = {{'field': 'ground_truth', 'fieldColor': '#ff00ff', 'attributeForColor': 'label' : [{'name': 'dog', 'color': 'yellow'}]}}
 
-        dataset.app_config.color_scheme = fo.ColorSchemeDocument(
+        dataset.app_config.color_scheme = fo.ColorScheme(
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             customized_color_settings=[]
         )
@@ -274,7 +274,7 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
-    color_scheme = EmbeddedDocumentField(ColorSchemeDocument, default=None)
+    color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
     plugins = DictField()
 
     @staticmethod

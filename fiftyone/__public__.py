@@ -30,7 +30,6 @@ from .core.aggregations import (
     Sum,
     Values,
 )
-from .core.colorscheme import ColorScheme
 from .core.collections import SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
@@ -128,7 +127,7 @@ from .core.models import (
     ModelManager,
 )
 from .core.odm import (
-    ColorSchemeDocument,
+    ColorScheme,
     DatasetAppConfig,
     DynamicEmbeddedDocument,
     EmbeddedDocument,
