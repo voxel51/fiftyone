@@ -69,9 +69,7 @@ async def load_view(
 
             return view
 
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
+    return await fosu.run_sync_task(run)
 
 
 def get_view(

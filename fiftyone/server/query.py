@@ -41,7 +41,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
-from fiftyone.server.utils import from_dict
+from fiftyone.server.utils import from_dict, run_sync_task
 
 
 ID = gql.scalar(
@@ -582,6 +582,4 @@ async def serialize_dataset(
 
         return data
 
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
+    return await run_sync_task(run)
