@@ -55,7 +55,7 @@ Operators
 
 Operators are a powerful feature in FiftyOne that allow plugin developers to define custom operations that can be executed by users of the FiftyOne App. They can be defined in either Python or JS, and are typically triggered by the user clicking a button or using the Operator Browser. Operators can execute other operators and custom code with custom dependencies.
 
-The Operator Browser allows users to search through all available operations without having to find them in a menu or remember the corresponding keyboard shortcuts. You can open the Operator Browser using the "\`" key or by clicking on the Operator Browser icon in the Samples Grid.
+The Operator Browser allows users to search through all available operations without having to find them in a menu or remember the corresponding keyboard shortcuts. You can open the Operator Browser using the backtick key (`````) or by clicking on the Operator Browser icon in the Samples Grid.
 
 Instead of building a user interface from scratch, Operators are built using Operator Types, which define the input and output properties of the operator. At runtime, these types are used to facilitate the execution of the operation by collecting information from the user, validating the user input, and executing the operation. The execution step is the only required step; all other steps are optional and can be customized as needed.
 
@@ -82,7 +82,8 @@ Operator Types
 ~~~~~~~~~~~~~~
 
 :mod:`Python API Reference <fiftyone.operators.types>`
-:mod:`Typescript API Reference <@fiftyone/operators>`
+
+:js:mod:`Typescript API Reference <fiftyone.operators>`
 
 The operator definition is constructed using the types defined below. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
 
@@ -558,9 +559,13 @@ like this:
     }
 
     registerComponent({
-        copmponent: HelloWorld,
+        name: "HelloWorld",
+        label: "HelloWorld",
+        component: HelloWorld,
         type: PluginComponentTypes.Panel,
+        activator: () => true
     });
+
 
 Adding a custom FiftyOne Visualizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -586,7 +591,7 @@ Adding a custom FiftyOne Visualizer
 
     fop.registerComponent({
         // component to delegate to
-        copmponent: CustomVisualizer,
+        component: CustomVisualizer,
         // tell FiftyOne you want to provide a Visualizer
         type: PluginComponentTypes.Visualizer,
         // activate this plugin when the mediaType is PointCloud
@@ -634,7 +639,7 @@ Adding a custom Plot
 
     fop.registerComponent({
         // component to delegate to
-        copmponent: CustomPlot,
+        component: CustomPlot,
         // tell FiftyOne you want to provide a custom Panel
         type: PluginComponentTypes.Panel,
         // used for the plot selector button
@@ -648,11 +653,124 @@ Adding a custom Plot
     The `PluginComponentType.Plot` type is deprecated. Use
     `PluginComponentType.Panel` instead.
 
+Custom operator view using Component plugin
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. **Creating and registering a custom component with plugin component**
+
+.. code-block:: jsx
+
+    import * as fop from "@fiftyone/plugins";
+    import { useState } from "react"
+
+    function CustomOperatorView(props) {
+        // These props are provided to the component used as the view for an
+        // operator input/output field
+        const { errors, data, id, onChange, path, schema } = props
+
+        // schema may optionally include a view property which contains
+        // attributes such label, description, caption for
+        // the field. Schema will also provide a type property to indicate the type
+        // of value expected for the field (i.e. string, number, object, array, etc.)
+        const { default: defaultValue, view, type } = schema
+
+        // Schema may also provide a default value for the field
+        const [value, setValue] = useState(defaultValue)
+
+        return (
+            <div>
+                <label htmlFor={id}>{view.label}</label>
+                <input
+                    value={value}
+                    id={id}
+                    type={type}
+                    onChange={(e) => {
+                        // onChange function passed as a prop can be called with
+                        // path and value to set the current value for a field
+                        onChange(path, e.target.value)
+                    }}
+                />
+            </div>
+        )
+    }
+
+    fop.registerComponent({
+        // Unique name you can use later to refer to the component plugin
+        name: "CustomOperatorView",
+        // component to delegate to
+        component: CustomOperatorView,
+        // tell FiftyOne you want to provide a custom component
+        type: PluginComponentTypes.Component,
+        // activate this plugin unconditionally
+        activator: () => true,
+    });
+
+1. **Using the plugin component as the view for an operator field**
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class CustomViewOperator(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="custom_view_operator",
+                label="Custom View Operator",
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.str(
+                "name",
+                label="Name",
+                default="Fiftyone",
+                # provide the name of a registered component plugin
+                view=types.View(component="CustomOperatorView")
+            )
+            return types.Property(inputs)
+
+        def execute(self, ctx):
+            return {}
+
+
+
 Fiftyone App State
 ------------------
 
 There are a few ways to manage the state of your plugin. By default you should defer to existing state management in the FiftyOne App.
 For example, if you want to allow users to select samples, you can use the `@fiftyone/state` package:
+
+
+.. Reacting to state changes
+.. ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. .. code-block:: jsx
+
+..     import * as fos from '@fiftyone/state'
+..     import * as recoil from 'recoil'
+
+..     // this example demonstrates handling updates to
+..     // filters/sidebar, but applies to everything
+..     // listed under "state" below
+..     function MyPlugin() {
+..       const activeFields = recoil.useRecoilValue(fos.activeFields)
+
+..       return <ul>{activeFields.map(f => <li>{f.name}</li>)}
+..     }
+
+
+Interactivity and state
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If your plugin only has internal state, you can use existing state management
+to achieve your desired ux. For example, in a 3D visualizer, you might want to
+use Thee.js and its object model, events, and state management. Or just use
+your own React hooks to maintain your plugin components internal state.
+
+If you want to allow users to interact with other aspects of FiftyOne through
+your plugin, you can use the `@fiftyone/state` package:
 
 .. code-block:: jsx
 
