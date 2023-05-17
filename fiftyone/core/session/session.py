@@ -34,7 +34,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.colorscheme import default_color_scheme, ColorScheme
+from fiftyone.core.colorscheme import ColorScheme
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -173,7 +173,11 @@ def launch_app(
         dataset=dataset,
         view=view,
         spaces=spaces,
-        color_scheme=color_scheme,
+        color_scheme=make_color_scheme(
+            color_scheme,
+            dataset,
+            config if config is not None else fo.app_config,
+        ),
         plots=plots,
         port=port,
         address=address,
@@ -377,12 +381,6 @@ class Session(object):
 
         if spaces is None:
             spaces = default_spaces.copy()
-
-        if color_scheme is None:
-            if dataset.app_config.color_scheme is not None:
-                color_scheme = dataset.app_config.color_scheme.copy()
-            else:
-                color_scheme = default_color_scheme.copy()
 
         self._state = StateDescription(
             config=config,
@@ -593,8 +591,6 @@ class Session(object):
     @color_scheme.setter  # type: ignore
     @update_state()
     def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
-        if color_scheme is None:
-            color_scheme = default_color_scheme.copy()
         if not isinstance(color_scheme, ColorScheme):
             raise ValueError(
                 "`Session.color_scheme` must be a %s or None; found %s"
@@ -1179,3 +1175,29 @@ def _unregister_session(session: Session) -> None:
         if session.server_port in _server_services:
             service = _server_services.pop(session.server_port)
             service.stop()
+
+
+def make_color_scheme(
+    color_scheme: ColorScheme, dataset: fod.Dataset, config: AppConfig
+) -> ColorScheme:
+    if (
+        color_scheme is None
+        or color_scheme.color_pool is None
+        or len(color_scheme.color_pool) == 0
+    ):
+        if dataset.app_config.color_scheme is not None:
+            color_scheme = ColorScheme(
+                color_pool=dataset.app_config.color_scheme.color_pool,
+                customized_color_settings=dataset.app_config.color_scheme.customized_color_settings,
+            )
+        else:
+            color_scheme = ColorScheme()
+        if (
+            color_scheme.color_pool is None
+            or len(color_scheme.color_pool) == 0
+        ):
+            color_scheme.color_pool = (
+                config.color_pool if config is not None else None
+            )
+
+    return color_scheme

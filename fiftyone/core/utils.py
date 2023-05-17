@@ -1808,7 +1808,7 @@ def validate_color(value):
         or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
     ):
         raise ValueError(
-            "%s is not a valid css color name (eg: 'red') or valid hex color(eg. '#00ff00')"
+            "%s is neither a valid CSS color name in all lowercase (eg: 'yellowgreen') nor a hex color(eg. '#00ff00')"
             % value
         )
 
