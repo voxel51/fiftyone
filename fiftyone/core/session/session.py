@@ -379,8 +379,10 @@ class Session(object):
             spaces = default_spaces.copy()
 
         if color_scheme is None:
-            # color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
-            color_scheme = default_color_scheme.copy()
+            if dataset.app_config.color_scheme is not None:
+                color_scheme = dataset.app_config.color_scheme.copy()
+            else:
+                color_scheme = default_color_scheme.copy()
 
         self._state = StateDescription(
             config=config,

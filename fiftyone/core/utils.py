@@ -1802,9 +1802,10 @@ def validate_color(value):
     Raises:
         ValueError: if ``value`` is not a valid css color name.
     """
-    if not etau.is_str(value) or (
-        not value in mcolors.CSS4_COLORS
-        or not re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
+
+    if not etau.is_str(value) or not (
+        value in mcolors.CSS4_COLORS
+        or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
     ):
         raise ValueError(
             "%s is not a valid css color name (eg: 'red') or valid hex color(eg. '#00ff00')"
