@@ -14,7 +14,6 @@ import { Box, Typography } from "@mui/material";
 import {
   affectedPathCountState,
   selectedFieldsStageState,
-  selectedPathsState,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import { Tooltip, useTheme } from "@fiftyone/components";
 
@@ -27,10 +26,14 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const resetSelectedFieldStages = useResetRecoilState(
     selectedFieldsStageState
   );
-  const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
   const affectedPathCount = useRecoilValue(affectedPathCountState);
 
-  const { setSelectedFieldsStage, resetTextFilter } = fos.useSchemaSettings();
+  const {
+    setSelectedFieldsStage,
+    resetTextFilter,
+    resetExcludedPaths,
+    resetSelectedPaths,
+  } = fos.useSchemaSettings();
 
   useDebounce(
     () => {
@@ -69,7 +72,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 onClick={() => {
                   resetSelectedFieldStages();
                   setSelectedFieldsStage(undefined);
-                  resetSelectedPaths();
+                  resetExcludedPaths();
                 }}
               >
                 {affectedPathCount > 0 && (

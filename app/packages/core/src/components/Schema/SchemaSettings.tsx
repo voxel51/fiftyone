@@ -64,13 +64,13 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    selectedPaths,
     setSearchResults,
-    searchResults,
-    setFieldsOnly,
+    setShowNestedFields,
     setSelectedFieldsStage,
     datasetName,
     setShowMetadata,
+    excludedPaths,
+    resetExcludedPaths,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -147,7 +147,7 @@ const SchemaSettings = () => {
                       setShowMetadata(false);
                     }
                     if (value === TAB_OPTIONS_MAP.FILTER_RULE) {
-                      setFieldsOnly(false);
+                      setShowNestedFields(false);
                       setShowMetadata(false);
                     }
                   },
@@ -181,18 +181,15 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
-                if (!selectedPaths) return;
-                let initialFieldNames = searchResults.length
-                  ? searchResults.filter((pp) =>
-                      selectedPaths?.[datasetName]?.has(pp)
-                    )
-                  : [...selectedPaths[datasetName]];
-
+                // TODO: search stuff commented below should integrate here
                 const stageKwargs = {
-                  field_names: initialFieldNames.filter((pp) => !!pp),
+                  field_names: [...excludedPaths[datasetName]].filter(
+                    (pp) => !!pp
+                  ),
                   _allow_missing: true,
                 };
-                const stageCls = "fiftyone.core.stages.SelectFields";
+
+                const stageCls = "fiftyone.core.stages.ExcludeFields";
                 const stage = {
                   _cls: stageCls,
                   kwargs: stageKwargs,
@@ -200,10 +197,34 @@ const SchemaSettings = () => {
                 try {
                   setSelectedFieldsStage(stage);
                 } catch (e) {
-                  console.log("error setting selected field stages", e);
+                  console.log("error setting field visibility", e);
                 } finally {
                   setSettingsModal({ open: false });
                 }
+
+                // if (!selectedPaths) return;
+                // let initialFieldNames = searchResults.length
+                //   ? searchResults.filter((pp) =>
+                //       selectedPaths?.[datasetName]?.has(pp)
+                //     )
+                //   : [...selectedPaths[datasetName]];
+
+                // const stageKwargs = {
+                //   field_names: initialFieldNames.filter((pp) => !!pp),
+                //   _allow_missing: true,
+                // };
+                // const stageCls = "fiftyone.core.stages.SelectFields";
+                // const stage = {
+                //   _cls: stageCls,
+                //   kwargs: stageKwargs,
+                // };
+                // try {
+                //   setSelectedFieldsStage(stage);
+                // } catch (e) {
+                //   console.log("error setting selected field stages", e);
+                // } finally {
+                //   setSettingsModal({ open: false });
+                // }
               }}
             >
               Apply
@@ -219,6 +240,7 @@ const SchemaSettings = () => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
+                resetExcludedPaths();
               }}
             >
               Reset

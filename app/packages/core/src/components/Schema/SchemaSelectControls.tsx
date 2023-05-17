@@ -20,8 +20,8 @@ interface Props {}
 export const SchemaSelectionControls = (props: Props) => {
   const theme = useTheme();
   const {
-    fieldsOnly,
-    setFieldsOnly,
+    showNestedFields,
+    setShowNestedFields,
     allFieldsChecked,
     setAllFieldsChecked,
     selectedTab,
@@ -83,9 +83,9 @@ export const SchemaSelectionControls = (props: Props) => {
                 control={
                   <Switch
                     defaultChecked={false}
-                    value={!fieldsOnly}
-                    checked={!fieldsOnly}
-                    onChange={() => setFieldsOnly(!fieldsOnly)}
+                    value={showNestedFields}
+                    checked={showNestedFields}
+                    onChange={() => setShowNestedFields(!showNestedFields)}
                   />
                 }
                 label="Show nested fields"

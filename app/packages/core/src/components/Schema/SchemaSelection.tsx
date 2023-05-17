@@ -28,7 +28,7 @@ export const SchemaSelection = () => {
     finalSchemaKeyByPath,
   } = useSchemaSettings();
   const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
-  const [expandedPaths, setEpandedPaths] = useState({});
+  const [expandedPaths, setExpandedPaths] = useState({});
   const showSearchHelp = isFilterRuleMode && !searchResults?.length;
   const showSelection = !showSearchHelp;
   const expandedPathsKeys = new Set(Object.keys(expandedPaths));
@@ -41,9 +41,9 @@ export const SchemaSelection = () => {
           res[entry.path] = entry;
         }
       });
-      setEpandedPaths(res);
+      setExpandedPaths(res);
     } else {
-      setEpandedPaths({});
+      setExpandedPaths({});
     }
   }, [showMetadata]);
 
@@ -131,7 +131,7 @@ export const SchemaSelection = () => {
                         if (expandedPathsKeys.has(path)) {
                           const newPaths = Object.assign({}, expandedPaths);
                           delete newPaths[path];
-                          setEpandedPaths(newPaths);
+                          setExpandedPaths(newPaths);
                         } else {
                           const newPaths = Object.assign({}, expandedPaths);
                           const element = finalSchema.filter(
@@ -143,7 +143,7 @@ export const SchemaSelection = () => {
                             description: element?.description || "None",
                             name: element?.name || "None",
                           };
-                          setEpandedPaths(newPaths);
+                          setExpandedPaths(newPaths);
                         }
                       }}
                     >

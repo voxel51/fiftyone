@@ -519,6 +519,7 @@ async def serialize_dataset(
             view = dataset.load_saved_view(doc.name)
             view_name = view.name
             if serialized_view:
+                print("serialized_view\n", serialized_view)
                 for stage in serialized_view:
                     view = view.add_stage(fosg.ViewStage._from_dict(stage))
         except:
