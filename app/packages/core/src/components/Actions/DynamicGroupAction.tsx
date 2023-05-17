@@ -2,11 +2,13 @@ import { PillButton } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import { ActionDiv } from "./ActionsRow";
 import DynamicGroup from "./DynamicGroup";
+
+const DYNAMIC_GROUP_PILL_BUTTON_ID = "dynamic-group-pill-button";
 
 export const DynamicGroupAction = () => {
   const [open, setOpen] = useState(false);
@@ -23,13 +25,28 @@ export const DynamicGroupAction = () => {
 
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
 
+  const onCloseHandler = useCallback((e?: React.MouseEvent<Element>) => {
+    const pillButtonElement = document.getElementById(
+      DYNAMIC_GROUP_PILL_BUTTON_ID
+    );
+    if (
+      e &&
+      pillButtonElement &&
+      pillButtonElement.contains(e.target as HTMLElement)
+    ) {
+      return;
+    }
+    setOpen(false);
+  }, []);
+
   return (
     <ActionDiv>
       <PillButton
+        id={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}
         open={open}
         onClick={() => {
-          !open && setOpen(true);
+          setOpen((prev) => !prev);
         }}
         highlight={open || isDynamicGroupViewStageActive}
         title={"Create dynamic groups"}
@@ -40,7 +57,7 @@ export const DynamicGroupAction = () => {
       />
       {open && (
         <DynamicGroup
-          close={() => setOpen(false)}
+          close={onCloseHandler}
           setIsProcessing={(value) => setIsProcessing(value)}
           isProcessing={isProcessing}
         />

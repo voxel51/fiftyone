@@ -35,7 +35,7 @@ export default ({
   isProcessing,
   setIsProcessing,
 }: {
-  close: () => void;
+  close: (e?: React.MouseEvent<Element>) => void;
   isProcessing: boolean;
   setIsProcessing: (value: boolean) => void;
 }) => {
@@ -52,7 +52,7 @@ export default ({
           return;
         }
 
-        close();
+        close(event);
       },
       [close]
     )
