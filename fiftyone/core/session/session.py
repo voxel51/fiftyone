@@ -37,6 +37,7 @@ import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
+from fiftyone.core.uid import log_welcome_message_if_allowed
 import fiftyone.core.view as fov
 
 import fiftyone.core.session.client as fosc
@@ -195,6 +196,8 @@ def launch_app(
             logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
         logger.info(_APP_WEB_MESSAGE.strip().format(_session.server_port))
+
+    log_welcome_message_if_allowed()
 
     return _session
 
