@@ -32,7 +32,7 @@ Welcome to
 ██║     ██║██║        ██║      ██║   ╚██████╔╝██║ ╚████║███████╗
 ╚═╝     ╚═╝╚═╝        ╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝ v{0}
 
-If you find FiftyOne helpful for your work, here's how you can get involved:
+If you're finding FiftyOne helpful, here's how you can get involved:
 
     ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
     https://github.com/voxel51/fiftyone
@@ -132,7 +132,11 @@ def log_welcome_message_if_allowed():
         return
 
     logger.info(_WELCOME_MESSAGE.format(foc.VERSION))
-    etas.write_json({"version": foc.VERSION}, foc.WELCOME_PATH)
+
+    try:
+        etas.write_json({"version": foc.VERSION}, foc.WELCOME_PATH)
+    except:
+        pass
 
 
 def _allow_logging():
