@@ -7,6 +7,7 @@ FiftyOne Server utils.
 """
 import typing as t
 
+import asyncio
 import cachetools
 from dacite import Config, from_dict as _from_dict
 from dacite.core import T
@@ -143,6 +144,27 @@ def meets_type(field: fof.Field, type_or_types):
         isinstance(field, fof.ListField)
         and isinstance(field.field, type_or_types)
     )
+
+
+T = t.TypeVar("T")
+P = t.ParamSpec("P")
+
+
+async def run_sync_task(
+    func: t.Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> asyncio.Future[T]:
+    """
+    Run a synchronous function as an async background task
+
+    Args:
+        run: a synchronous callable
+    """
+    if kwargs:
+        raise ValueError("kwargs not allowed in task")
+
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, func, *args)
 
 
 def _parse_changes(changes):
