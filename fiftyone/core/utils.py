@@ -5,6 +5,7 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -33,6 +34,8 @@ import timeit
 import types
 from xml.parsers.expat import ExpatError
 import zlib
+
+import asyncio
 
 try:
     import pprintpp as _pprint
@@ -1790,6 +1793,27 @@ def to_slug(name):
         )
 
     return slug
+
+
+_T = t.TypeVar("_T")
+_P = t.ParamSpec("_P")
+
+
+async def run_sync_task(
+    func: t.Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs
+) -> asyncio.Future[_T]:
+    """
+    Run a synchronous function as an async background task
+
+    Args:
+        run: a synchronous callable
+    """
+    if kwargs:
+        raise ValueError("kwargs are not allowed in a sync task")
+
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, func, *args)
 
 
 def validate_hex_color(value):

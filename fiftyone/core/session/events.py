@@ -17,6 +17,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.json as foj
 import fiftyone.core.state as fos
+from fiftyone.core.utils import run_sync_task
 
 
 EventType = t.Union[
@@ -63,8 +64,7 @@ class Event:
         def run():
             return Event.from_data(event_name, data)
 
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, run)
+        return await run_sync_task(run)
 
 
 @dataclass

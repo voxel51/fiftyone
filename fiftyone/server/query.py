@@ -10,7 +10,6 @@ from datetime import date, datetime
 from enum import Enum
 import os
 
-import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
@@ -26,6 +25,7 @@ from fiftyone.core.odm import SavedViewDocument
 import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
+from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
@@ -41,7 +41,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSONArray, JSON
-from fiftyone.server.utils import from_dict, run_sync_task
+from fiftyone.server.utils import from_dict
 
 
 ID = gql.scalar(
