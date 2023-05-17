@@ -123,6 +123,14 @@ input ColorSchemeInput {
   customizedColorSettings: JSONArray = null
 }
 
+input Count {
+  field: String!
+}
+
+type CountResponse {
+  count: Int!
+}
+
 input CountValues {
   field: String!
 }
