@@ -5,7 +5,6 @@ FiftyOne Server view.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio
 import strawberry as gql
 from typing import List, Optional
 
@@ -69,9 +68,7 @@ async def load_view(
 
             return view
 
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
+    return await fou.run_sync_task(run)
 
 
 def get_view(
