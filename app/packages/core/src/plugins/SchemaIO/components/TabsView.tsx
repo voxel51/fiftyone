@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import HeaderView from "./HeaderView";
 import HelpTooltip from "./HelpTooltip";
 import RoundedTabs from "./RoundedTabs";
+import { getComponentProps } from "../utils";
 
 export default function TabsView(props) {
   const { onChange, path, schema, data } = props;
@@ -15,8 +16,8 @@ export default function TabsView(props) {
   }, [tab]);
 
   return (
-    <Box>
-      <HeaderView {...props} />
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} nested />
       {variant === "rounded" && (
         <RoundedTabs
           tabs={choices.map((choice) => ({ id: choice.value, ...choice }))}
@@ -31,6 +32,7 @@ export default function TabsView(props) {
           scrollButtons="auto"
           onChange={(e, value) => setTab(value)}
           sx={{ borderBottom: 1, borderColor: "divider" }}
+          {...getComponentProps(props, "tabs")}
         >
           {choices.map(({ value, label, description }) => (
             <Tab
@@ -40,6 +42,7 @@ export default function TabsView(props) {
               icon={description && <HelpTooltip title={description} />}
               iconPosition="end"
               sx={{ minHeight: 48 }}
+              {...getComponentProps(props, "tab")}
             />
           ))}
         </Tabs>
