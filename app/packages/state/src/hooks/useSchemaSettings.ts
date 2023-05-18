@@ -7,6 +7,7 @@ import {
   DETECTIONS_FIELD,
   DETECTION_FIELD,
   DETECTION_FILED,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
@@ -66,7 +67,7 @@ const disabledField = (
   groupField?: string
 ) => {
   const currField = combinedSchema?.[path] || ({} as Field);
-  const { ftype, subfield, embeddedDocType } = currField;
+  const { ftype } = currField;
 
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema?.[parentPath];
@@ -247,15 +248,25 @@ export const excludedPathsState = atomFamily({
           );
         }
 
-        // // embedded document would break an exclude_field() call
-        // finalGreenPaths = finalGreenPaths.filter((path) =>
-        //   ( // a top-level embedded document
-        //     combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
-        //     isVideo
-        //       ? (!(path.split(".").length === 2 && path.startsWith("frames.")) || !path.includes("."))
-        //       : !path.includes(".")
-        //   )
-        // )
+        // embedded document could break an exclude_field() call
+        finalGreenPaths =
+          showNestedField || isInSearchMode
+            ? finalGreenPaths.filter(
+                (path) =>
+                  !(
+                    // a top-level embedded document
+                    (combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
+                    combinedSchema[path]?.embeddedDocType ===
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD &&
+                    isVideo
+                      ? !(
+                          path.split(".").length === 2 &&
+                          path.startsWith("frames.")
+                        ) || !path.includes(".")
+                      : !path.includes("."))
+                  )
+              )
+            : finalGreenPaths;
 
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),

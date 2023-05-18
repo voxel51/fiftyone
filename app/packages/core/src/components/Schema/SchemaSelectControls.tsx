@@ -46,7 +46,6 @@ export const SchemaSelectionControls = (props: Props) => {
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked={false}
                     value={showMetadata}
                     checked={showMetadata}
                     onChange={() => setShowMetadata(!showMetadata)}
@@ -63,7 +62,6 @@ export const SchemaSelectionControls = (props: Props) => {
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked={true}
                     value={includeNestedFields}
                     checked={includeNestedFields}
                     onChange={() =>
@@ -83,7 +81,6 @@ export const SchemaSelectionControls = (props: Props) => {
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked={false}
                     value={showNestedFields}
                     checked={showNestedFields}
                     onChange={() => setShowNestedFields(!showNestedFields)}
@@ -100,7 +97,6 @@ export const SchemaSelectionControls = (props: Props) => {
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked
                     value={allFieldsChecked}
                     checked={allFieldsChecked}
                     onChange={() => setAllFieldsChecked(!allFieldsChecked)}
