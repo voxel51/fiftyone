@@ -71,6 +71,7 @@ const SchemaSettings = () => {
     setShowMetadata,
     excludedPaths,
     resetExcludedPaths,
+    isVideo,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -183,8 +184,12 @@ const SchemaSettings = () => {
               onClick={() => {
                 // TODO: search stuff commented below should integrate here
                 const stageKwargs = {
-                  field_names: [...excludedPaths[datasetName]].filter(
-                    (pp) => !!pp
+                  field_names: [...excludedPaths[datasetName]].filter((pp) =>
+                    !!pp && isVideo
+                      ? (pp.split(".").length === 2 &&
+                          pp.startsWith("frames.")) ||
+                        !pp.includes(".")
+                      : !pp.includes(".")
                   ),
                   _allow_missing: true,
                 };

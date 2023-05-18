@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Box } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
-import { CodeBlock, useTheme } from "@fiftyone/components";
+import { CodeBlock, JSONIcon, useTheme } from "@fiftyone/components";
 import { useSchemaSettings } from "@fiftyone/state";
 import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
@@ -14,7 +14,7 @@ interface Props {}
 
 const InfoCell = styled(Box)`
   display: flex;
-  border-bottom: ${({ theme }) => `1px solid ${theme.background.border}`};
+  padding: 0 0.25rem;
 `;
 
 export const SchemaSelection = () => {
@@ -32,6 +32,7 @@ export const SchemaSelection = () => {
   const showSearchHelp = isFilterRuleMode && !searchResults?.length;
   const showSelection = !showSearchHelp;
   const expandedPathsKeys = new Set(Object.keys(expandedPaths));
+  const [JSONifiedPaths, setJSONifiedPaths] = useState(new Set());
 
   useEffect(() => {
     if (showMetadata) {
@@ -46,6 +47,86 @@ export const SchemaSelection = () => {
       setExpandedPaths({});
     }
   }, [showMetadata]);
+
+  const renderInfo = useCallback(
+    (fInfo, path: string) => {
+      if (fInfo) {
+        switch (typeof fInfo) {
+          case "number":
+            return (
+              <CodeBlock
+                showLineNumbers={false}
+                text={Number.isInteger(fInfo) ? fInfo : fInfo.toFixed(3)}
+                fontSize={12}
+                key={fInfo}
+              />
+            );
+          case "string":
+            return (
+              <CodeBlock
+                showLineNumbers={false}
+                text={fInfo.length ? fInfo : '""'}
+                fontSize={12}
+                key={fInfo}
+              />
+            );
+          case "boolean":
+            <CodeBlock
+              showLineNumbers={false}
+              text={fInfo ? "True" : "False"}
+              fontSize={12}
+              key={`${fInfo}`}
+            />;
+          case "object":
+            try {
+              const obj = fInfo;
+              if (Array.isArray(obj)) {
+                return obj.map((key) => {
+                  return <InfoCell key={key}>{key}</InfoCell>;
+                });
+              } else {
+                const res = Object.keys(obj)
+                  .map((key) => {
+                    const val = obj[key] || "";
+                    return `${key}: ${
+                      JSONifiedPaths.has(path)
+                        ? JSON.stringify(val, null, 1)
+                        : JSON.stringify(val)
+                    }`;
+                  })
+                  .join("\n");
+                return (
+                  <CodeBlock
+                    showLineNumbers={false}
+                    text={res}
+                    fontSize={12}
+                    key={`${fInfo}`}
+                  />
+                );
+              }
+            } catch (e) {
+              return <InfoCell>{fInfo}</InfoCell>;
+            }
+          default:
+            return <InfoCell>None</InfoCell>;
+        }
+      }
+    },
+    [JSONifiedPaths]
+  );
+
+  const handleJSONify = useCallback(
+    (path: string) => {
+      const newJSONifiedPaths = new Set([...JSONifiedPaths]);
+      if (JSONifiedPaths.has(path)) {
+        newJSONifiedPaths.delete(path);
+      } else {
+        newJSONifiedPaths.add(path);
+      }
+      setJSONifiedPaths(newJSONifiedPaths);
+    },
+    [JSONifiedPaths]
+  );
 
   return (
     <Box
@@ -84,6 +165,7 @@ export const SchemaSelection = () => {
                   borderBottom: `1px solid ${theme.primary.plainBorder}`,
                   display: "flex",
                   flexDirection: "column",
+                  position: "relative",
                   background:
                     theme.mode === "light"
                       ? theme.background.level2
@@ -125,6 +207,7 @@ export const SchemaSelection = () => {
                   {isExpandable && (
                     <Box
                       display="flex"
+                      position="relative"
                       alignItems="center"
                       sx={{ cursor: "pointer" }}
                       onClick={() => {
@@ -153,10 +236,8 @@ export const SchemaSelection = () => {
                 </Box>
                 <Box>
                   {expandedPathsKeys.has(path) && (
-                    <Box maxHeight="200px" overflow="auto">
-                      {fInfo && (
-                        <InfoCell>info: {JSON.stringify(fInfo || "")}</InfoCell>
-                      )}
+                    <Box maxHeight="200px" overflow="auto" position="relative">
+                      {renderInfo(fInfo, path)}
                       {fDesc && (
                         <CodeBlock
                           showLineNumbers={false}
@@ -164,6 +245,22 @@ export const SchemaSelection = () => {
                           fontSize={12}
                         />
                       )}
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          right: "0.5rem",
+                          bottom: "20%",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleJSONify(path)}
+                      >
+                        <JSONIcon
+                          sx={{
+                            color: (theme) => theme.typography.body2,
+                            fontSize: "1rem",
+                          }}
+                        />
+                      </Box>
                     </Box>
                   )}
                 </Box>

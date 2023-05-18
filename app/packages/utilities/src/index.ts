@@ -270,7 +270,9 @@ export const AGGS = {
 };
 
 export const CLASSIFICATION_FIELD = "fiftyone.core.labels.Classification";
+export const CLASSIFICATIONS_FIELD = "fiftyone.core.labels.Classifications";
 export const DETECTION_FIELD = "fiftyone.core.labels.Detection";
+export const DETECTIONS_FIELD = "fiftyone.core.labels.Detections";
 export const TEMPORAL_DETECTION_FIELD =
   "fiftyone.core.labels.TemporalDetection";
 export const ARRAY_FIELD = "fiftyone.core.fields.ArrayField";

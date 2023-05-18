@@ -2,7 +2,9 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
+  CLASSIFICATIONS_FIELD,
   CLASSIFICATION_FIELD,
+  DETECTIONS_FIELD,
   DETECTION_FIELD,
   DETECTION_FILED,
   FRAME_SUPPORT_FIELD,
@@ -58,7 +60,7 @@ const disabledField = (
   groupField?: string
 ) => {
   const currField = combinedSchema?.[path] || ({} as Field);
-  const { ftype } = currField;
+  const { ftype, subfield, embeddedDocType } = currField;
 
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema?.[parentPath];
@@ -77,7 +79,9 @@ const disabledField = (
     [
       TEMPORAL_DETECTION_FIELD,
       DETECTION_FIELD,
+      DETECTIONS_FIELD,
       CLASSIFICATION_FIELD,
+      CLASSIFICATIONS_FIELD,
       KEYPOINT_FILED,
       REGRESSION_FILED,
     ].includes(parentEmbeddedDocType)
@@ -291,7 +295,6 @@ export default function useSchemaSettings() {
   const datasetName = useRecoilValue(fos.datasetName);
 
   const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
-  const resetExcludedPathsRaw = useResetRecoilState(excludedPathsState({}));
 
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -333,7 +336,6 @@ export default function useSchemaSettings() {
   const [schema, setSchema] = useRecoilState(schemaState);
   useEffect(() => {
     if (datasetName) {
-      // console.log("schema", buildSchema(dataset, true));
       setSchema(dataset ? buildSchema(dataset, true) : null);
     }
   }, [datasetName]);
@@ -361,11 +363,11 @@ export default function useSchemaSettings() {
   >(foq.viewSchema, null);
 
   useEffect(() => {
-    if (datasetName) {
+    if (datasetName && vStages) {
       refetch(
         { name: datasetName, viewStages: vStages || [] },
         {
-          fetchPolicy: "network-only",
+          fetchPolicy: "store-and-network",
           onComplete: (err) => {
             if (err) {
               console.error("failed to fetch view schema", err);
@@ -697,5 +699,6 @@ export default function useSchemaSettings() {
     excludedPaths,
     resetSelectedPaths,
     resetExcludedPaths,
+    isVideo: dataset?.mediaType === "video",
   };
 }
