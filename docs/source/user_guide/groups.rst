@@ -1000,7 +1000,7 @@ Dynamic Groups in the App
 ________________
 
 You can create :ref:`dynamic groups <view-groups>` either using the SDK or
-using the dynamic groups shortcut show below:
+using the dynamic groups shortcut shown below:
 
 .. image:: /images/groups/dynamic-groups-intro.gif
    :alt: dynamic-groups-intro
@@ -1012,7 +1012,7 @@ samples within a dynamic group.
 Fiftyone also allows you to dynamically group :ref:`grouped datasets <groups>`.
 
 .. image:: /images/groups/dynamic-groups-groups.gif
-   :alt: dynamic-groups-intro
+   :alt: dynamic-groups-groups
    :align: center
 
 A pagination bar at the bottom of the modal allows you to navigate between
