@@ -29,12 +29,12 @@ and permissions of each.
    :alt: teams-plugins-page
    :align: center
 
+.. _teams-plugins-install:
+
 Installing a Plugin
 ___________________
 
 Admins can install a plugin through the Teams UI or Management SDK.
-
-.. _teams-plugins-install-ui:
 
 Teams UI
 ---------
@@ -71,11 +71,6 @@ Alternatively, use the management SDK function
     #2.a Upload a plugin dir as ZIP file
     fom.upload_plugin("/path/to/plugin.zip")
 
-Troubleshooting
-----------------
-
-``!!!!! TBD !!!!!!!``
-
 Upgrading a Plugin
 ___________________
 
@@ -91,7 +86,7 @@ To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
    :align: center
 
 Then upload or drag and drop the plugin contents as a ZIP file and click upgrade.
-This is a similar process as :ref:`installing a plugin <teams-plugins-install-ui>`
+This is a similar process to :ref:`installing a plugin <teams-plugins-install>`.
 
 .. image:: /images/teams/plugins_upgrade_page.png
    :alt: teams-plugins-page-upgrade-page
@@ -217,12 +212,12 @@ Enabled plugin operators can be run by FiftyOne Teams users if they have the
 permissions to do so. There are two configurable components to the operator
 permission model, which can be updated separately for each operator.
 
-Minimum Role
-    The minimum role a user must have to perform the operation.
-
-Minimum Dataset Permission
-    The minimum dataset permission a user must have to perform the operation
-    in the context of a particular dataset.
++-------------------------------+----------------------------------------------------------------------------+
+| Minimum Role                  | The minimum role a user must have to perform the operation.                |
++-------------------------------+----------------------------------------------------------------------------+
+| Minimum Dataset Permission    | The minimum dataset permission a user must have to perform the operation   |
+|                               | in the context of a particular dataset.                                    |
++-------------------------------+----------------------------------------------------------------------------+
 
 .. note::
     Only operators can have usage permissions attached to them; plugins themselves
@@ -266,7 +261,7 @@ Alternatively, use the management SDK function
         plugin_name,
         operator_name,
         minimum_role=fom.MEMBER
-        )
+    )
 
     # Set minimum dataset permission only
     fom.set_plugin_operator_enabled(
@@ -298,7 +293,7 @@ these values are set to:
 These settings can be changed for any newly installed plugins by changing the
 organization-wide setting.
 
-First you navigate to the page at Settings > Security and look under the Plugins
+First navigate to the page at Settings > Security and look under the Plugins
 header. Then click the dropdown for the permission you want to change and select
 the new value.
 

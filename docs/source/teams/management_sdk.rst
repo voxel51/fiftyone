@@ -57,6 +57,13 @@ Dataset Permission Management Methods
    :members:
    :undoc-members:
 
+Organization Settings Methods
+------------------------------
+
+.. automodule:: fiftyone.management.organization
+   :members:
+   :undoc-members:
+
 Plugin Management Methods
 -------------------------------------
 .. automodule:: fiftyone.management.plugin
