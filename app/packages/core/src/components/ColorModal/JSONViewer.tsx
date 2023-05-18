@@ -15,7 +15,7 @@ const JSONViewer: React.FC = () => {
   const theme = useTheme();
   const editorRef = useRef(null);
   const sessionColor = useRecoilValue(fos.sessionColorScheme);
-  console.info(sessionColor);
+
   const setting = useMemo(() => {
     return {
       colorPool: sessionColor?.colorPool ?? [],
@@ -62,8 +62,10 @@ const JSONViewer: React.FC = () => {
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
-        You can use the JSON editor below to copy/edit your current color
-        scheme, or you can paste in a pre-built color scheme to apply.
+        <p style={{ margin: 0 }}>
+          You can use the JSON editor below to copy/edit your current color
+          scheme, or you can paste in a pre-built color scheme to apply.
+        </p>
         <ActionOption
           href={COLOR_SCHEME}
           text={"Read more"}
@@ -73,10 +75,9 @@ const JSONViewer: React.FC = () => {
             color: theme.text.primary,
             paddingTop: 0,
             paddingBottom: 0,
-            marginLeft: 5,
             display: "inline-block",
           }}
-          svgStyles={{ height: "1rem", marginTop: 7.5 }}
+          svgStyles={{ height: "1rem", marginTop: 2 }}
         />{" "}
         about custom color schemes.
       </SectionWrapper>

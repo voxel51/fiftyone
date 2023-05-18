@@ -86,6 +86,7 @@ export const ControlGroupWrapper = styled.div`
 
 export const SectionWrapper = styled.div`
   margin: 0.5rem 1rem;
+  line-height: 1.2em;
 `;
 
 export const LabelTitle = styled.div`
