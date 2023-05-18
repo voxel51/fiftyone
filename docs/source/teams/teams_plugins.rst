@@ -57,10 +57,19 @@ You should then see a success message and the newly installed plugin listed on t
    :alt: teams-plugins-page-install-success-page
    :align: center
 
-CLI
+SDK
 ----
+Alternatively, use the management SDK function
+:meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>`.
 
-``!!!!! TBD !!!!!!!``
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    fom.upload_plugin("/path/to/plugin_dir")
+
+    #2.a Upload a plugin dir as ZIP file
+    fom.upload_plugin("/path/to/plugin.zip")
 
 Troubleshooting
 ----------------
@@ -100,9 +109,19 @@ plugin on the plugins page.
    :alt: teams-plugins-page-upgrade-success-page
    :align: center
 
-CLI
+SDK
 ----
-``!!!!! TBD !!!!!!!``
+Alternatively, use the management SDK function
+:meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>`.
+
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    fom.upload_plugin("/path/to/plugin_dir", overwrite=True)
+
+    #2.a Upload a plugin dir as ZIP file
+    fom.upload_plugin("/path/to/plugin.zip", overwrite=True)
 
 Uninstalling a Plugin
 ______________________
@@ -127,9 +146,17 @@ To uninstall a plugin, click the plugin's dropdown and select "Uninstall plugin"
    :alt: teams-plugins-page-uninstall-btn
    :align: center
 
-CLI
+SDK
 ----
-``!!!!! TBD !!!!!!!``
+Alternatively, use the management SDK function
+:meth:`delete_plugin() <fiftyone.management.plugin.delete_plugin>`.
+
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    plugin_name = "special-plugin"
+    fom.delete_plugin(plugin_name)
 
 .. _teams-plugins-enable-disable:
 
@@ -161,10 +188,27 @@ Then toggle the enabled / disabled switch for the operator you wish to change.
    :alt: teams-plugins-page-operators-disable
    :align: center
 
-CLI
+SDK
 ----
-``!!!!! TBD !!!!!!!``
+Alternatively, use the management SDK function
+:meth:`set_plugin_enabled() <fiftyone.management.plugin.set_plugin_enabled>`.
 
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    # Disable whole plugin
+    fom.set_plugin_enabled("special-plugin", False)
+
+And management SDK function
+:meth:`set_plugin_operator_enabled() <fiftyone.management.plugin.set_plugin_operator_enabled>`.
+
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    # Disable a particular operator
+    fom.set_plugin_operator_enabled("special-plugin", "special-operator", False)
 
 Permissions
 ___________
@@ -205,9 +249,39 @@ Then change the dropdown for the operator to reflect the desired permission leve
    :align: right
    :width: 49%
 
-CLI
+SDK
 ----
-``!!!!! TBD !!!!!!!``
+Alternatively, use the management SDK function
+:meth:`set_plugin_operator_permissions() <fiftyone.management.plugin.set_plugin_operator_permissions>`.
+
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    plugin_name = "special-plugin"
+    operator_name = "special-operator"
+
+    # Set minimum role permission only
+    fom.set_plugin_operator_enabled(
+        plugin_name,
+        operator_name,
+        minimum_role=fom.MEMBER
+        )
+
+    # Set minimum dataset permission only
+    fom.set_plugin_operator_enabled(
+        plugin_name,
+        operator_name,
+        minimum_dataset_permission=fom.EDIT
+    )
+
+    # Set both minimum role and minimum dataset permissions
+    fom.set_plugin_operator_enabled(
+        plugin_name,
+        operator_name,
+        minimum_role=fom.EDIT,
+        minimum_dataset_permission=fom.EDIT
+    )
 
 Default Operator Permissions
 -----------------------------
@@ -231,3 +305,18 @@ the new value.
 .. image:: /images/teams/plugins_org_settings.png
    :alt: teams-plugins-page-org-settings
    :align: center
+
+Alternatively, use the management SDK function
+:meth:`set_organization_settings() <fiftyone.management.organization.set_organization_settings>`.
+
+.. code-block:: python
+
+    import fiftyone.management as fom
+
+    user_role = fom.MEMBER
+    dataset_perm = fom.EDIT
+
+    fom.set_organization_settings(
+        default_operator_minimum_role=user_role,
+        default_operator_minimum_dataset_permission=dataset_perm,
+    )
