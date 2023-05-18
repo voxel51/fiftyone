@@ -227,7 +227,7 @@ def get_extended_view(
             view,
             filters,
             label_tags=label_tags,
-            hide_result=count_label_tags,
+            count_label_tags=count_label_tags,
         )
 
         for stage in stages:
@@ -353,7 +353,7 @@ def _make_filter_stages(
     view,
     filters,
     label_tags=None,
-    hide_result=False,
+    count_label_tags=False,
 ):
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
@@ -380,7 +380,6 @@ def _make_filter_stages(
         if label_tags_exclude and not label_tags_is_matching
         else tag_expr
     )
-    cache = {}
     stages = []
     cleanup = set()
     filtered_labels = set()
@@ -420,92 +419,57 @@ def _make_filter_stages(
                 )
 
             if expr is not None:
-                if hide_result:
-                    new_field = "___%s" % path.split(".")[1 if frames else 0]
-                    if frames:
-                        new_field = "%s%s" % (
-                            view._FRAMES_PREFIX,
-                            new_field,
-                        )
-                else:
-                    new_field = None
-
                 if is_keypoints:
                     if is_list_field:
                         stage = fosg.FilterKeypoints(
                             prefix + parent.name,
-                            _new_field=new_field,
                             only_matches=only_matches,
                             **expr,
                         )
                     else:
-                        _field = prefix + parent.name
-                        _field = cache.get(_field, _field)
-
                         stage = fosg.FilterLabels(
-                            _field,
+                            prefix + parent.name,
                             expr,
                             only_matches=only_matches,
-                            _new_field=new_field,
                         )
                 elif is_matching:
-                    _field = prefix + parent.name
-                    _field = cache.get(_field, _field)
                     stage = fosg.MatchLabels(
-                        fields=_field,
+                        fields=prefix + parent.name,
                         filter=expr,
                         bool=(not args["exclude"]),
                     )
                 else:
-                    _field = prefix + parent.name
-                    _field = cache.get(_field, _field)
-
                     stage = fosg.FilterLabels(
-                        _field,
+                        prefix + parent.name,
                         expr,
                         only_matches=only_matches,
-                        _new_field=new_field,
                     )
 
                 stages.append(stage)
                 filtered_labels.add(path)
-                if new_field and (not is_matching or is_keypoints):
-                    cache[prefix + parent.name] = new_field
-                    cleanup.add(new_field)
         else:
             expr = _make_expression(view, path, args)
             if expr is not None:
                 stages.append(fosg.Match(expr))
 
-    if label_tags is not None and hide_result:
+    if label_tags is not None and count_label_tags:
         is_matching = label_tags.get("isMatching", False)
         exclude = label_tags.get("exclude", False)
 
         for path, _ in fosu.iter_label_fields(view):
-            if hide_result:
-                new_field = _get_filtered_path(
-                    view, path, filtered_labels, label_tags
-                )
-            else:
-                new_field = None
-
             stages.append(
                 fosg.FilterLabels(
-                    cache.get(path, path),
+                    path,
                     tag_expr,
                     only_matches=False,
-                    _new_field=new_field,
                 )
             )
-            if new_field:
-                cache[path] = new_field
-                cleanup.add(new_field)
 
         match_exprs = []
         for path, _ in fosu.iter_label_fields(view):
             expr = fosg._get_label_field_only_matches_expr(
                 view,
-                cache.get(path, path),
+                path,
             )
             if exclude and is_matching:
                 # pylint: disable=invalid-unary-operand-type
