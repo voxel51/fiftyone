@@ -2,9 +2,18 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
+  CLASSIFICATION_FIELD,
+  DETECTION_FIELD,
   DETECTION_FILED,
+  FRAME_SUPPORT_FIELD,
+  Field,
+  KEYPOINT_FILED,
+  REGRESSION_FILED,
+  RESERVED_FIELD_KEYS,
   Schema,
+  TEMPORAL_DETECTION_FIELD,
   UNSUPPORTED_FILTER_TYPES,
+  VECTOR_FIELD,
 } from "@fiftyone/utilities";
 import {
   FRAME_NUMBER_FIELD,
@@ -35,7 +44,7 @@ const skipFiled = (path: string, ftype: string, schema: {}) => {
   const parentPath = path.substring(0, path.lastIndexOf("."));
 
   return (
-    UNSUPPORTED_FILTER_TYPES.includes(path) ||
+    UNSUPPORTED_FILTER_TYPES.includes(ftype) ||
     ftype === JUST_FIELD ||
     (parentPath &&
       schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
@@ -43,16 +52,35 @@ const skipFiled = (path: string, ftype: string, schema: {}) => {
     path.endsWith(".index")
   );
 };
-const disabledField = (path: string, ftype: string, groupField?: string) => {
+const disabledField = (
+  path: string,
+  combinedSchema: Schema,
+  groupField?: string
+) => {
+  const currField = combinedSchema?.[path] || ({} as Field);
+  const { ftype } = currField;
+
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+  const parentField = combinedSchema?.[parentPath];
+  const parentEmbeddedDocType = parentField?.embeddedDocType;
+
   return (
-    path === "tags" ||
-    path === "filepath" ||
-    (ftype === OBJECT_ID_FIELD && path === "id") ||
-    ftype === FRAME_NUMBER_FIELD ||
-    groupField === path ||
-    path === "sample_id" ||
+    [
+      OBJECT_ID_FIELD,
+      FRAME_NUMBER_FIELD,
+      FRAME_SUPPORT_FIELD,
+      VECTOR_FIELD,
+    ].includes(ftype) ||
+    [path, parentPath].includes(groupField) ||
+    RESERVED_FIELD_KEYS.includes(path) ||
     path.startsWith("metadata") ||
-    path.endsWith("frames.frame_number")
+    [
+      TEMPORAL_DETECTION_FIELD,
+      DETECTION_FIELD,
+      CLASSIFICATION_FIELD,
+      KEYPOINT_FILED,
+      REGRESSION_FILED,
+    ].includes(parentEmbeddedDocType)
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -138,11 +166,7 @@ export const selectedPathsState = atomFamily({
                 viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
                 viewSchema
               ) &&
-              !disabledField(
-                path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-                dataset?.groupField
-              )
+              !disabledField(path, combinedSchema, dataset?.groupField)
           )
           .map((path) => mapping?.[path] || path);
 
@@ -188,11 +212,7 @@ export const excludedPathsState = atomFamily({
                 viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
                 viewSchema
               ) &&
-              !disabledField(
-                path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-                dataset?.groupField
-              )
+              !disabledField(path, combinedSchema, dataset?.groupField)
           )
           .map((path) => mapping?.[path] || path);
 
@@ -313,7 +333,7 @@ export default function useSchemaSettings() {
   const [schema, setSchema] = useRecoilState(schemaState);
   useEffect(() => {
     if (datasetName) {
-      console.log("schema", buildSchema(dataset, true));
+      // console.log("schema", buildSchema(dataset, true));
       setSchema(dataset ? buildSchema(dataset, true) : null);
     }
   }, [datasetName]);
@@ -449,7 +469,8 @@ export default function useSchemaSettings() {
         const skip = skipFiled(path, ftype, finalSchemaKeyByPath);
         const isGroupField = dataset?.groupField;
         const disabled =
-          disabledField(path, ftype, isGroupField) || filterRuleTab;
+          disabledField(path, { ...viewSchema, ...schema }, isGroupField) ||
+          filterRuleTab;
 
         const fullPath =
           dataset.mediaType === "video" && viewSchema?.[path]
@@ -538,11 +559,7 @@ export default function useSchemaSettings() {
         if (
           currPath.startsWith(path + ".") &&
           !skipFiled(currPath, mergedSchema?.[currPath]?.ftype, mergedSchema) &&
-          !disabledField(
-            currPath,
-            mergedSchema?.[currPath]?.ftype,
-            dataset?.groupField
-          )
+          !disabledField(currPath, mergedSchema, dataset?.groupField)
         ) {
           subPaths.add(getPath(currPath));
         }
@@ -555,7 +572,7 @@ export default function useSchemaSettings() {
   useEffect(() => {
     if (viewPaths.length && datasetName && !selectedPaths?.[datasetName]) {
       setSelectedPaths((prevValue) => {
-        console.log("prevValue", prevValue);
+        // console.log("prevValue", prevValue);
         return {
           [datasetName]: new Set([...viewPaths, ...Object.keys(schema)]),
         };

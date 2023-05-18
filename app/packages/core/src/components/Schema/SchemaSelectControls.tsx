@@ -40,23 +40,24 @@ export const SchemaSelectionControls = (props: Props) => {
       sx={{ position: "relative !important" }}
     >
       <Box display="flex" width="100%" flexDirection="row" marginTop="1rem">
-        <ContainerBox>
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Switch
-                  defaultChecked={false}
-                  value={showMetadata}
-                  checked={showMetadata}
-                  onChange={() => setShowMetadata(!showMetadata)}
-                  disabled={isFilterRuleMode && !searchResults.length}
-                />
-              }
-              label="Show metadata"
-            />
-          </FormGroup>
-        </ContainerBox>
-        {isFilterRuleMode && (
+        {!!!(isFilterRuleMode && !searchResults.length) && (
+          <ContainerBox>
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    defaultChecked={false}
+                    value={showMetadata}
+                    checked={showMetadata}
+                    onChange={() => setShowMetadata(!showMetadata)}
+                  />
+                }
+                label="Show metadata"
+              />
+            </FormGroup>
+          </ContainerBox>
+        )}
+        {!!(isFilterRuleMode && searchResults.length) && (
           <ContainerBox>
             <FormGroup>
               <FormControlLabel
