@@ -15,6 +15,7 @@ Options:
 -f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
 -s      Copy static files only (CSS, JS).
+-t      Link additional FiftyOne Teams code (path to fiftyone-teams as argument)
 "
 }
 
@@ -24,17 +25,18 @@ SHOW_HELP=false
 FAST_BUILD=false
 CLEAN_BUILD=false
 STATIC_ONLY=false
-while getopts "hfcs" FLAG; do
+PATH_TO_TEAMS=""
+while getopts "hfcst:" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         f) FAST_BUILD=true ;;
         c) CLEAN_BUILD=true ;;
         s) STATIC_ONLY=true ;;
+        t) PATH_TO_TEAMS=$OPTARG;;
         *) usage; exit 2 ;;
     esac
 done
 [ ${SHOW_HELP} = true ] && usage && exit 0
-
 
 set -e
 
@@ -77,6 +79,13 @@ cd "${THIS_DIR}/.."
 # Symlink to fiftyone-brain
 ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
 
+# Symlink to fiftyone-management
+if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+  ln -sf "${PATH_TO_TEAMS}/fiftyone/management" fiftyone/management
+  ln -sf "${PATH_TO_TEAMS}/fiftyone/api" fiftyone/api
+  echo "${PATH_TO_TEAMS}"
+fi
+
 echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 sphinx-apidoc --force --no-toc --separate --follow-links \
@@ -84,7 +93,9 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
     -o docs/source/api fiftyone \
         fiftyone/brain/internal \
         fiftyone/server \
-        fiftyone/service
+        fiftyone/service \
+        fiftyone/management \
+        fiftyone/api
 
 # Remove symlink
 rm fiftyone/brain
@@ -104,6 +115,12 @@ fi
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS
+
+# Remove symlink to fiftyone-management
+if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+  unlink ../fiftyone/management
+  unlink ../fiftyone/api
+fi
 
 echo "**** Documentation complete ****"
 printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

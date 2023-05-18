@@ -218,7 +218,7 @@ class DatasetMixin(object):
 
         Args:
             schema: a dictionary mapping field names or
-                ``embedded.field.names``to
+                ``embedded.field.names`` to
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that fields already exist with

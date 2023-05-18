@@ -63,6 +63,12 @@ pages on this site apply to Teams deployments as well.
     :button_link: teams_app.html
 
 .. customcalloutitem::
+    :header: Management SDK
+    :description: Learn how to manage your Teams deployment via code with the Management SDK.
+    :button_text: Manage your Teams deployment with code
+    :button_link: management_sdk.html
+
+.. customcalloutitem::
     :header: Plugins
     :description: Learn how to install and manage shared plugins for your Teams deployment.
     :button_text: Get started with plugins for Teams
@@ -92,5 +98,6 @@ pages on this site apply to Teams deployments as well.
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
+    Management SDK <management_sdk>
     Plugins <teams_plugins>
     Migrations <migrations>
