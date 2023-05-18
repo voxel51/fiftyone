@@ -1,6 +1,13 @@
+"""
+Builtin operators.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-import fiftyone as fo
 
 
 class CloneSelectedSamples(foo.Operator):
@@ -37,6 +44,7 @@ class CloneSelectedSamples(foo.Operator):
                 label="You must select a sample in the grid to clone.",
                 view=types.Warning(),
             )
+
         return types.Property(inputs, view=types.View(label=header))
 
     def execute(self, ctx):
@@ -53,6 +61,7 @@ class CloneSelectedSamples(foo.Operator):
                 "show_samples",
                 {"samples": [sample.id for sample in cloned_samples]},
             )
+
         return {}
 
 
@@ -75,6 +84,7 @@ class CloneSampleField(foo.Operator):
         field_selector = types.AutocompleteView()
         for key in field_keys:
             field_selector.add_choice(key, label=key)
+
         inputs.enum(
             "field_name",
             field_keys,
@@ -105,6 +115,7 @@ class CloneSampleField(foo.Operator):
                         description=f"The Field name '{new_field_name}' already exists. You must choose a new Field name.",
                     ),
                 )
+
         return types.Property(
             inputs, view=types.View(label="Clone Sample Field")
         )
@@ -134,6 +145,7 @@ class RenameSampleField(foo.Operator):
         field_selector = types.AutocompleteView()
         for key in field_keys:
             field_selector.add_choice(key, label=key)
+
         inputs.enum(
             "field_name",
             field_keys,
@@ -164,6 +176,7 @@ class RenameSampleField(foo.Operator):
                         description=f"The Field name '{new_field_name}' already exists. You must choose a new Field name.",
                     ),
                 )
+
         return types.Property(
             inputs, view=types.View(label="Rename Sample Field")
         )
@@ -211,6 +224,7 @@ class DeleteSelectedSamples(foo.Operator):
                 label="You must select a sample in the grid to clone.",
                 view=types.Warning(),
             )
+
         return types.Property(inputs, view=types.View(label=header))
 
     def execute(self, ctx):
@@ -236,14 +250,14 @@ class PrintStdout(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="print_stdout",
-            label="Print to Stdout",
+            label="Print to stdout",
             unlisted=True,
         )
 
     def resolve_input(self, ctx):
         inputs = types.Object()
         inputs.str("msg", label="Message", required=True)
-        return types.Property(inputs, view=types.View(label="Print to Stdout"))
+        return types.Property(inputs, view=types.View(label="Print to stdout"))
 
     def execute(self, ctx):
         print(ctx.params.get("msg", None))
@@ -251,9 +265,9 @@ class PrintStdout(foo.Operator):
 
 
 BUILTIN_OPERATORS = [
-    CloneSelectedSamples(_built_in=True),
-    CloneSampleField(_built_in=True),
-    RenameSampleField(_built_in=True),
-    DeleteSelectedSamples(_built_in=True),
-    PrintStdout(_built_in=True),
+    CloneSelectedSamples(_builtin=True),
+    CloneSampleField(_builtin=True),
+    RenameSampleField(_builtin=True),
+    DeleteSelectedSamples(_builtin=True),
+    PrintStdout(_builtin=True),
 ]

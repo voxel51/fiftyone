@@ -225,7 +225,7 @@ export class Operator {
   static fromJSON(json: any) {
     const { inputs, outputs } = json.definition.properties;
     const config = OperatorConfig.fromJSON(json.config);
-    const operator = new Operator(json.plugin_name, json._built_in, config);
+    const operator = new Operator(json.plugin_name, json._builtin, config);
     if (inputs) {
       operator.definition.addProperty(
         "inputs",
