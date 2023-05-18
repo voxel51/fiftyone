@@ -852,12 +852,12 @@ Download plugins
 Download plugins from the web.
 
 When downloading plugins from GitHub, you can provide any of the following
-formats::
+formats:
 
--   a GitHub repo URL like ``https://github.com/<user>/<repo>``
--   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
-    ``https://github.com/<user>/<repo>/commit/<commit>``
--   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+* a GitHub repo URL like ``https://github.com/<user>/<repo>``
+* a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+  ``https://github.com/<user>/<repo>/commit/<commit>``
+* a GitHub ref string like ``<user>/<repo>[/<ref>]``
 
 .. note::
 
@@ -945,6 +945,8 @@ Creates or initializes a plugin.
                             additional keyword arguments to include in the plugin definition
 
 **Examples**
+
+.. code-block:: text
 
     # Initialize a new plugin
     fiftyone plugins create <name>

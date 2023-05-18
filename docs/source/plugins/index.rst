@@ -68,9 +68,11 @@ An operator consists of a Definition and a method that executes the operation. T
 
 1. Render a prompt to collect information from the user needed to execute the operation
 2. As the user inputs information, and based on the user input aka “params”
+
    a. Resolve the definition of the input, allowing the form to change based on the user input
    b. Validate the user input
 3. Execute the operation
+
    a. Return a “result”
 4. Resolve the output definition based on the params and result of the operation
 5. Render the output
@@ -488,7 +490,7 @@ With this `OperatorConfig` we cannot dynamically specify the input. We'll cover 
         p.register(SimpleInputExample)
 
 Hello world Operator - JS
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Similarly to the example above, this JS example shows how to define a simple operator that accepts a string input.
 
