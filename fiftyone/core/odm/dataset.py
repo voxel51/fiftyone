@@ -170,25 +170,23 @@ class ColorScheme(EmbeddedDocument):
         dataset = foz.load_zoo_dataset("quickstart")
 
         # Store a custom color scheme for a dataset
-        ground_truth_setting = {{'field': 'ground_truth', 'fieldColor': '#ff00ff', 'attributeForColor': 'label' : [{'name': 'dog', 'color': 'yellow'}]}}
-
         dataset.app_config.color_scheme = fo.ColorScheme(
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
-            customized_color_settings=[]
+            fields=[{'path': 'ground_truth', 'fieldColor': '#ff00ff', 'colorByAttribute': 'label' : [{'value': 'dog', 'color': 'yellow'}]}]
         )
         dataset.save()
 
     Args:
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
-        customized_color_settings (None): optional per-field custom colors
+        fields (None): optional per-field custom colors
     """
 
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
     color_pool = ListField(ColorField(), null=True)
-    customized_color_settings = ListField(DictField(), null=True)
+    fields = ListField(DictField(), null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):

@@ -123,10 +123,9 @@ const useStateUpdate = (ignoreSpaces = false) => {
             : DEFAULT_APP_COLOR_SCHEME.colorPool;
         colorSetting = {
           colorPool,
-          customizedColorSettings:
-            parsedSetting["customized_color_settings"] ??
-            parsedSetting?.customizedColorSettings?.length > 0
-              ? parsedSetting.customized_color_settings
+          fields:
+            parsedSetting["fields"] ?? parsedSetting?.fields?.length > 0
+              ? parsedSetting.fields
               : [],
         } as ColorScheme;
         set(sessionColorScheme, colorSetting);

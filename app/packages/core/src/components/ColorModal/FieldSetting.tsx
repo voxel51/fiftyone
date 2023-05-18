@@ -1,6 +1,7 @@
 import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
+  FLOAT_FIELD,
   Field,
   INT_FIELD,
   NOT_VISIBLE_LIST,
@@ -39,16 +40,14 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const path = field.path;
-  const { colorPool, customizedColorSettings } = useRecoilValue(
-    fos.sessionColorScheme
-  );
-  const setting = (customizedColorSettings ?? []).find((x) => x.field == path!);
+  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
   const coloring = useRecoilValue(fos.coloring(false));
   const color = getColor(colorPool, coloring.seed, path);
   const [state, setState] = useState<State>({
     useLabelColors: Boolean(
-      setting?.labelColors && setting.labelColors.length > 0
+      setting?.valueColors && setting.valueColors.length > 0
     ),
     useFieldColor: Boolean(setting?.fieldColor),
   });
@@ -61,7 +60,8 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     field.embeddedDocType &&
     VALID_MASK_TYPES.some((x) => field.embeddedDocType?.includes(x));
   const isNoShowType = NOT_VISIBLE_LIST.some((t) => field?.ftype?.includes(t));
-  const isTypeValueSupported = !isMaskType && !isNoShowType;
+  const isTypeValueSupported =
+    !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
   const isTypeFieldSupported = !isNoShowType;
 
   const colorFields = useRecoilValue(
@@ -72,10 +72,10 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   ).filter((field) => field.dbField !== "tags");
 
   const onChangeFieldColor = (color) => {
-    const newSetting = cloneDeep(customizedColorSettings ?? []);
-    const index = newSetting.findIndex((x) => x.field == path!);
+    const newSetting = cloneDeep(fields ?? []);
+    const index = newSetting.findIndex((x) => x.path == path!);
     newSetting[index].fieldColor = color;
-    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
+    setColorScheme(false, { colorPool, fields: newSetting });
   };
 
   const toggleColorPicker = (e) => {
@@ -95,26 +95,26 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   // on initial load, if the tem
   useEffect(() => {
     // check setting to see if custom setting exists
-    const setting = customizedColorSettings.find((x) => x.field === path);
-    const copy = cloneDeep(customizedColorSettings) ?? [];
+    const setting = fields.find((x) => x.path === path);
+    const copy = cloneDeep(fields) ?? [];
     if (!setting) {
       const defaultSetting = {
-        field: path,
+        path: path,
         fieldColor: undefined,
-        attributeForColor: undefined,
-        labelColors: [],
+        colorByAttribute: undefined,
+        valueColors: [],
       } as fos.CustomizeColor;
       const newSetting = [...copy, defaultSetting];
-      setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
+      setColorScheme(false, { colorPool, fields: newSetting });
     }
     setState({
       useLabelColors: Boolean(
-        (setting?.labelColors && setting.labelColors.length > 0) ||
-          setting?.attributeForColor
+        (setting?.valueColors && setting.valueColors.length > 0) ||
+          setting?.colorByAttribute
       ),
       useFieldColor: Boolean(setting?.fieldColor),
     });
-  }, [path, customizedColorSettings]);
+  }, [path, fields]);
 
   return (
     <div>
@@ -127,14 +127,14 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
             value={state.useFieldColor}
             setValue={(v: boolean) => {
               if (!v) {
-                const newSetting = cloneDeep(customizedColorSettings ?? []);
-                const index = newSetting.findIndex((x) => x.field === path);
+                const newSetting = cloneDeep(fields ?? []);
+                const index = newSetting.findIndex((x) => x.path === path);
                 newSetting[index].fieldColor = v
                   ? setting?.fieldColor
                   : undefined;
                 setColorScheme(false, {
                   colorPool,
-                  customizedColorSettings: newSetting,
+                  fields: newSetting,
                 });
               }
               setState((s) => ({ ...s, useFieldColor: v }));
@@ -197,17 +197,17 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
               name={`Use custom colors for specific field values`}
               value={state.useLabelColors}
               setValue={(v: boolean) => {
-                const newSetting = cloneDeep(customizedColorSettings ?? []);
-                const index = newSetting.findIndex((x) => x.field === path);
-                newSetting[index].labelColors = v
-                  ? [{ name: "", color: defaultColor }]
+                const newSetting = cloneDeep(fields ?? []);
+                const index = newSetting.findIndex((x) => x.path === path);
+                newSetting[index].valueColors = v
+                  ? [{ value: "", color: defaultColor }]
                   : [];
                 if (field.embeddedDocType && !v) {
-                  newSetting[index].attributeForColor = undefined;
+                  newSetting[index].colorByAttribute = undefined;
                 }
                 setColorScheme(false, {
                   colorPool,
-                  customizedColorSettings: newSetting,
+                  fields: newSetting,
                 });
                 setState((s) => ({ ...s, useLabelColors: v }));
               }}
@@ -217,7 +217,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
               {path && field.embeddedDocType && state.useLabelColors && (
                 <>
                   <ColorAttribute
-                    fields={colorFields}
+                    eligibleFields={colorFields}
                     style={FieldCHILD_STYLE}
                   />
                   <br />

@@ -15,12 +15,11 @@ const JSONViewer: React.FC = () => {
   const theme = useTheme();
   const editorRef = useRef(null);
   const sessionColor = useRecoilValue(fos.sessionColorScheme);
+  console.info(sessionColor);
   const setting = useMemo(() => {
     return {
       colorPool: sessionColor?.colorPool ?? [],
-      customizedColorSettings: validateJSONSetting(
-        sessionColor?.customizedColorSettings ?? []
-      ),
+      fields: validateJSONSetting(sessionColor?.fields ?? []),
     };
   }, [sessionColor]);
   const setColorScheme = fos.useSetSessionColorScheme();
@@ -36,21 +35,21 @@ const JSONViewer: React.FC = () => {
       typeof data !== "object" ||
       !data?.colorPool ||
       !Array.isArray(data?.colorPool) ||
-      !data?.customizedColorSettings ||
-      !Array.isArray(data?.customizedColorSettings) ||
-      !data?.customizedColorSettings
+      !data?.fields ||
+      !Array.isArray(data?.fields) ||
+      !data?.fields
     )
       return;
-    const { colorPool, customizedColorSettings } = data;
+    const { colorPool, fields } = data;
     const validColors = colorPool?.filter((c) => isValidColor(c));
-    const validatedSetting = validateJSONSetting(customizedColorSettings);
+    const validatedSetting = validateJSONSetting(fields);
     setData({
       colorPool: validColors,
-      customizedColorSettings: validatedSetting,
+      fields: validatedSetting,
     });
     setColorScheme(false, {
       colorPool: validColors,
-      customizedColorSettings: validatedSetting,
+      fields: validatedSetting,
     });
   };
 

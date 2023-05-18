@@ -19,7 +19,7 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
 
-    const setting = customizeColorSetting?.find((s) => s.field === field);
+    const setting = customizeColorSetting?.find((s) => s.path === field);
     let color;
     if (coloring.by === "field") {
       if (setting?.fieldColor) {
@@ -30,13 +30,13 @@ export const PainterFactory = (requestColor) => ({
     }
     if (coloring.by === "value") {
       if (setting) {
-        const key = setting.attributeForColor
-          ? setting.attributeForColor === "index"
+        const key = setting.colorByAttribute
+          ? setting.colorByAttribute === "index"
             ? "id"
-            : setting.attributeForColor
+            : setting.colorByAttribute
           : "label";
-        const labelColor = setting.labelColors?.find(
-          (l) => l.name === label[key]?.toString()
+        const labelColor = setting.valueColors?.find(
+          (l) => l.value?.toString() === label[key]?.toString()
         )?.color;
 
         color = labelColor
@@ -101,7 +101,7 @@ export const PainterFactory = (requestColor) => ({
       ? [0, 1]
       : [0, 255];
 
-    const setting = customizeColorSetting?.find((s) => s.field === field);
+    const setting = customizeColorSetting?.find((s) => s.path === field);
 
     const color =
       setting?.fieldColor ??
@@ -162,7 +162,7 @@ export const PainterFactory = (requestColor) => ({
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
-    const setting = customizeColorSetting?.find((s) => s.field === field);
+    const setting = customizeColorSetting?.find((s) => s.path === field);
     // each field may have its own target map
     let maskTargets: MaskTargets = coloring.maskTargets[field];
 

@@ -1188,7 +1188,7 @@ def make_color_scheme(
         if dataset.app_config.color_scheme is not None:
             color_scheme = food.ColorScheme(
                 color_pool=dataset.app_config.color_scheme.color_pool,
-                customized_color_settings=dataset.app_config.color_scheme.customized_color_settings,
+                fields=dataset.app_config.color_scheme.fields,
             )
         else:
             color_scheme = food.ColorScheme()

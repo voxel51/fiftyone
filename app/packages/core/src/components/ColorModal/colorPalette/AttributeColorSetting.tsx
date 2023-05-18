@@ -52,79 +52,71 @@ type ColorPickerRowProps = {
 const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
-  const { colorPool, customizedColorSettings } = useRecoilValue(
-    fos.sessionColorScheme
-  );
+  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
-  const setting = customizedColorSettings.find(
-    (s) => s.field == (activeField as Field).path
-  );
+  const setting = fields.find((s) => s.path == (activeField as Field).path);
 
-  const newSetting = cloneDeep(customizedColorSettings);
-  const index = customizedColorSettings.findIndex(
-    (s) => s.field == (activeField as Field).path
-  );
+  const newSetting = cloneDeep(fields);
+  const index = fields.findIndex((s) => s.path == (activeField as Field).path);
 
   const defaultValue = {
-    name: "",
+    value: "",
     color: colorPool[Math.floor(Math.random() * colorPool.length)],
   };
 
-  const values = setting?.labelColors;
+  const values = setting?.valueColors;
 
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
 
   const handleAdd = () => {
-    newSetting[index].labelColors = setting?.labelColors
-      ? [...setting.labelColors, defaultValue]
+    newSetting[index].valueColors = setting?.valueColors
+      ? [...setting.valueColors, defaultValue]
       : [defaultValue];
-    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
+    setColorScheme(false, { colorPool, fields: newSetting });
     setShowPicker([...showPicker, false]);
   };
 
   const handleDelete = (colorIdx: number) => {
     const labelValues = values ? [...cloneDeep(values)] : [];
-    newSetting[index].labelColors = [
+    newSetting[index].valueColors = [
       ...labelValues.slice(0, colorIdx),
       ...labelValues.slice(colorIdx + 1),
     ];
-    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
+    setColorScheme(false, { colorPool, fields: newSetting });
   };
 
   const hanldeColorChange = (color: any, colorIdx: number) => {
     setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
     const labelValues = values ? [...cloneDeep(values)] : [];
     labelValues[colorIdx].color = color?.hex;
-    newSetting[index].labelColors = labelValues;
-    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
+    newSetting[index].valueColors = labelValues;
+    setColorScheme(false, { colorPool, fields: newSetting });
   };
 
   const handleChange = (
     changeIdx: number,
-    key: "name" | "color",
+    key: "value" | "color",
     value: string
   ) => {
-    const copy = cloneDeep(customizedColorSettings);
-    const idx = customizedColorSettings.findIndex(
-      (s) => s.field == (activeField as Field).path
-    );
-    const current = cloneDeep(copy[idx].labelColors!);
+    const copy = cloneDeep(fields);
+    const idx = fields.findIndex((s) => s.path == (activeField as Field).path);
+    const current = cloneDeep(copy[idx].valueColors!);
     current[changeIdx][key] = value;
-    newSetting[idx].labelColors = current;
-    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
+    newSetting[idx].valueColors = current;
+    setColorScheme(false, { colorPool, fields: newSetting });
   };
 
   useEffect(() => {
     if (!values) {
-      const copy = cloneDeep(customizedColorSettings);
-      const idx = customizedColorSettings.findIndex(
-        (s) => s.field == (activeField as Field).path
+      const copy = cloneDeep(fields);
+      const idx = fields.findIndex(
+        (s) => s.path == (activeField as Field).path
       );
       if (idx > -1) {
-        copy[idx].labelColors = [defaultValue];
-        setColorScheme(false, { colorPool, customizedColorSettings: copy });
+        copy[idx].valueColors = [defaultValue];
+        setColorScheme(false, { colorPool, fields: copy });
       }
     }
   }, [values]);
@@ -133,18 +125,18 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
 
   return (
     <div style={style}>
-      {values.map((value, index) => (
+      {values.map((v, index) => (
         <RowContainer key={index}>
           <Input
             placeholder="Value (e.g. 'car')"
-            value={value.name ?? ""}
-            setter={(v) => handleChange(index, "name", v)}
+            value={v.value ?? ""}
+            setter={(v) => handleChange(index, "value", v)}
             style={{ width: "8rem" }}
           />
           :
           <ColorSquare
             key={index}
-            color={value.color}
+            color={v.color}
             onClick={() => {
               setShowPicker((prev) =>
                 prev.map((_, i) => (i === index ? !prev[index] : _))
@@ -154,7 +146,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
             {showPicker[index] && (
               <ChromePickerWrapper>
                 <ChromePicker
-                  color={value.color}
+                  color={v.color}
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   popperProps={{ positionFixed: true }}
                   ref={pickerRef}
@@ -170,7 +162,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
             )}
           </ColorSquare>
           <Input
-            value={value.color ?? ""}
+            value={v.color ?? ""}
             setter={(v) => handleChange(index, "color", v)}
             style={{ width: "5rem" }}
           />
@@ -182,8 +174,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
         </RowContainer>
       ))}
       {Boolean(
-        setting?.attributeForColor ||
-          (setting?.labelColors && setting.labelColors.length > 0)
+        setting?.colorByAttribute ||
+          (setting?.valueColors && setting.valueColors.length > 0)
       ) && (
         <AddContainer>
           <Button

@@ -65,7 +65,7 @@ class SavedViewInfo:
 @gql.input
 class ColorSchemeInput:
     color_pool: t.Optional[t.List[str]] = None
-    customized_color_settings: t.Optional[JSONArray] = None
+    fields: t.Optional[JSONArray] = None
 
 
 @gql.type
@@ -417,13 +417,13 @@ class Mutation:
         view = get_view(dataset, stages=stages)
         state.color_scheme = foo.ColorScheme(
             color_pool=color_scheme.color_pool,
-            customized_color_settings=color_scheme.customized_color_settings,
+            fields=color_scheme.fields,
         )
 
         if save_to_app:
             view._dataset.app_config.color_scheme = foo.ColorScheme(
                 color_pool=color_scheme.color_pool,
-                customized_color_settings=color_scheme.customized_color_settings,
+                fields=color_scheme.fields,
             )
             view._dataset.save()
             state.view = view

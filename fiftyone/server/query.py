@@ -192,23 +192,22 @@ class SidebarGroup:
 
 @gql.type
 class LabelSetting:
-    name: str
+    value: str
     color: str
 
 
 @gql.type
 class CustomizeColor:
-    field: str
+    path: str
     field_color: t.Optional[str]
-    attribute_for_color: t.Optional[str]
-    attribute_for_opacity: t.Optional[str]
-    label_colors: t.Optional[t.List[LabelSetting]]
+    color_by_attribute: t.Optional[str]
+    value_colors: t.Optional[t.List[LabelSetting]]
 
 
 @gql.type
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
-    customized_color_settings: t.Optional[t.List[CustomizeColor]] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
 
 
 @gql.type

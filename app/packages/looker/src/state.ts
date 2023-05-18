@@ -22,12 +22,12 @@ export interface Coloring {
   targets: string[];
 }
 export interface CustomizeColor {
-  field: string;
+  path: string;
   fieldColor?: string;
-  attributeForColor?: string;
+  colorByAttribute?: string;
   // attributeForOpacity?: string;
-  labelColors?: {
-    name: string;
+  valueColors?: {
+    value: string;
     color: string;
   }[];
 }

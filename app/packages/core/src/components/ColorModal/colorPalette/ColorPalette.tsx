@@ -51,8 +51,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
       setShowPicker(false);
       setColorScheme(false, {
         colorPool: newColors,
-        customizedColorSettings:
-          computedSessionColorScheme.customizedColorSettings,
+        fields: computedSessionColorScheme.fields,
       });
     }
   };
@@ -62,8 +61,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
     newColors.splice(index, 1);
     setColorScheme(false, {
       colorPool: newColors,
-      customizedColorSettings:
-        computedSessionColorScheme.customizedColorSettings,
+      fields: computedSessionColorScheme.fields,
     });
   };
 
@@ -71,8 +69,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
     if (colors?.length < maxColors) {
       setColorScheme(false, {
         colorPool: [...colors, "#ffffff"],
-        customizedColorSettings:
-          computedSessionColorScheme.customizedColorSettings,
+        fields: computedSessionColorScheme.fields,
       });
     }
   };
@@ -138,8 +135,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             v &&
             setColorScheme(false, {
               colorPool: fiftyoneDefaultColorPalette,
-              customizedColorSettings:
-                computedSessionColorScheme.customizedColorSettings,
+              fields: computedSessionColorScheme.fields,
             })
           }
         />
@@ -152,8 +148,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             v &&
             setColorScheme(false, {
               colorPool: colorBlindFriendlyPalette,
-              customizedColorSettings:
-                computedSessionColorScheme.customizedColorSettings,
+              fields: computedSessionColorScheme.fields,
             })
           }
         />

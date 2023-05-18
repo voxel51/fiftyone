@@ -68,9 +68,7 @@ export const Looker3d = () => {
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
   const getColor = useRecoilValue(fos.colorMap(true));
-  const colorScheme = useRecoilValue(
-    fos.sessionColorScheme
-  ).customizedColorSettings;
+  const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(
@@ -384,7 +382,7 @@ export const Looker3d = () => {
         .map((l) => {
           const path = l.path.join(".");
           let color: string;
-          const setting = colorScheme?.find((s) => s.field === path);
+          const setting = colorScheme?.find((s) => s.path === path);
           if (coloring.by === "field") {
             if (isValidColor(setting?.fieldColor ?? "")) {
               color = setting.fieldColor;
@@ -394,18 +392,18 @@ export const Looker3d = () => {
           }
           if (coloring.by === "value") {
             const key =
-              setting.attributeForColor === "index"
+              setting.colorByAttribute === "index"
                 ? l._id
-                : setting.attributeForColor === "label"
+                : setting.colorByAttribute === "label"
                 ? l.label
-                : l.attributes[setting.attributeForColor] ?? l.label;
+                : l.attributes[setting.colorByAttribute] ?? l.label;
             if (
               setting &&
-              setting.labelColors &&
-              setting.labelColors.length > 0
+              setting.valueColors &&
+              setting.valueColors.length > 0
             ) {
-              const labelColor = setting.labelColors.find(
-                (s) => s.name === key
+              const labelColor = setting.valueColors.find(
+                (s) => s.value?.toString() === key?.toString()
               )?.color;
               if (isValidColor(labelColor)) {
                 color = labelColor;

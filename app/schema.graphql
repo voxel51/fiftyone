@@ -115,12 +115,12 @@ enum ColorBy {
 
 type ColorScheme {
   colorPool: [String!]
-  customizedColorSettings: [CustomizeColor!]
+  fields: [CustomizeColor!]
 }
 
 input ColorSchemeInput {
   colorPool: [String!] = null
-  customizedColorSettings: JSONArray = null
+  fields: JSONArray = null
 }
 
 input Count {
@@ -136,11 +136,10 @@ input CountValues {
 }
 
 type CustomizeColor {
-  field: String!
+  path: String!
   fieldColor: String
-  attributeForColor: String
-  attributeForOpacity: String
-  labelColors: [LabelSetting!]
+  colorByAttribute: String
+  valueColors: [LabelSetting!]
 }
 
 type DataAggregation implements Aggregation {
@@ -306,7 +305,7 @@ type KeypointSkeleton {
 }
 
 type LabelSetting {
-  name: String!
+  value: String!
   color: String!
 }
 

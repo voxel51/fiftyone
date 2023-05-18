@@ -215,23 +215,23 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
-    colorScheme?: ColorScheme | string;
+    colorScheme?: ColorScheme;
   }
 }
 
 export interface CustomizeColor {
-  field: string;
+  path: string;
   fieldColor?: string;
-  attributeForColor?: string; // must be string field, int field, or boolean field
-  labelColors?: {
-    name: string;
+  colorByAttribute?: string; // must be string field, int field, or boolean field
+  valueColors?: {
+    value: string;
     color: string;
   }[];
 }
 
 export interface ColorScheme {
   colorPool: string[];
-  customizedColorSettings: CustomizeColor[];
+  fields: CustomizeColor[];
 }
 
 export interface ColorSchemeSetting extends ColorScheme {

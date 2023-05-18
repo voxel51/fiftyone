@@ -30,7 +30,7 @@ const useSetSessionColorScheme = () => {
                 ...current.appConfig,
                 colorScheme: {
                   colorPool: setting.colorPool,
-                  customizedColorSettings: setting.customizedColorSettings,
+                  fields: setting.fields,
                 },
               },
             };
@@ -53,10 +53,10 @@ const useSetSessionColorScheme = () => {
             defaultSetting && !saveToApp
               ? defaultSetting.colorPool
               : DEFAULT_APP_COLOR_SCHEME.colorPool,
-          customizedColorSettings:
-            defaultSetting?.customizedColorSettings && !saveToApp
-              ? defaultSetting.customizedColorSettings
-              : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
+          fields:
+            defaultSetting?.fields && !saveToApp
+              ? defaultSetting.fields
+              : DEFAULT_APP_COLOR_SCHEME.fields,
         };
 
         if (colorScheme == null) {

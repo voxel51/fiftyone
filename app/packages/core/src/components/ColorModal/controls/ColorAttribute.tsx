@@ -27,7 +27,7 @@ const SelectButton = styled.div`
 `;
 
 type Prop = {
-  fields: Field[];
+  eligibleFields: Field[];
   style: React.CSSProperties;
 };
 
@@ -36,7 +36,7 @@ type Option = {
   onClick: () => void;
 };
 
-const ColorAttribute: React.FC<Prop> = ({ fields, style }) => {
+const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
   const theme = useTheme();
   const ref = React.useRef<HTMLDivElement>();
   const [open, setOpen] = React.useState(false);
@@ -45,29 +45,24 @@ const ColorAttribute: React.FC<Prop> = ({ fields, style }) => {
 
   const setColorScheme = fos.useSetSessionColorScheme();
   const activeField = useRecoilValue(fos.activeColorField) as Field;
-  const { colorPool, customizedColorSettings } = useRecoilValue(
-    fos.sessionColorScheme
-  );
-  const index = customizedColorSettings.findIndex(
-    (s) => s.field == activeField.path
-  );
+  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const index = fields.findIndex((s) => s.path == activeField.path);
 
-  const options = fields.map((field) => ({
+  const options = eligibleFields.map((field) => ({
     value: field.path?.split(".").slice(-1),
     onClick: (e) => {
       e.preventDefault();
-      const copy = cloneDeep(customizedColorSettings);
+      const copy = cloneDeep(fields);
       if (index > -1) {
-        copy[index].attributeForColor = field.path?.split(".").slice(-1)[0];
-        setColorScheme(false, { colorPool, customizedColorSettings: copy });
+        copy[index].colorByAttribute = field.path?.split(".").slice(-1)[0];
+        setColorScheme(false, { colorPool, fields: copy });
         setOpen(false);
       }
     },
   }));
 
   const selected =
-    customizedColorSettings[index]?.attributeForColor ??
-    "Please select an attribute";
+    fields[index]?.colorByAttribute ?? "Please select an attribute";
 
   return (
     <div style={style}>

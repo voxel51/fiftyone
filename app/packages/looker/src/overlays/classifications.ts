@@ -59,7 +59,7 @@ export class ClassificationsOverlay<
     const f = field.startsWith("frames.")
       ? field.slice("frames.".length)
       : field;
-    const setting = customizeColorSetting.find((s) => s.field === f);
+    const setting = customizeColorSetting.find((s) => s.path === f);
     // check if the field has a customized color, use it if it is a valid color
     if (
       coloring.by === "field" &&
@@ -70,10 +70,10 @@ export class ClassificationsOverlay<
     }
 
     if (coloring.by !== "field") {
-      key = setting?.attributeForColor ?? key;
+      key = setting?.colorByAttribute ?? key;
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting?.labelColors?.find(
-        (l) => l.name == label[key]?.toString()
+      const labelColor = setting?.valueColors?.find(
+        (l) => l.value?.toString() == label[key]?.toString()
       )?.color;
       if (isValidColor(labelColor)) {
         return labelColor;

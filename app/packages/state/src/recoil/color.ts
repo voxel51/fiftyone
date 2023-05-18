@@ -88,9 +88,9 @@ export const pathColor = selectorFamily<
           : parentPath
         : path;
 
-      const setting = get(
-        atoms.sessionColorScheme
-      )?.customizedColorSettings?.find((x) => x.field === adjustedPath);
+      const setting = get(atoms.sessionColorScheme)?.fields?.find(
+        (x) => x.path === adjustedPath
+      );
 
       if (isValidColor(setting?.fieldColor)) {
         return setting.fieldColor;

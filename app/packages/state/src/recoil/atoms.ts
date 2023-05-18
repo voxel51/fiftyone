@@ -405,6 +405,6 @@ export const sessionColorScheme = atom<ColorSchemeSetting>({
   key: "sessionColorScheme",
   default: {
     colorPool: [],
-    customizedColorSettings: [],
+    fields: [],
   },
 });
