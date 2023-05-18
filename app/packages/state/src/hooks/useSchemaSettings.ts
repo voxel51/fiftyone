@@ -221,15 +221,7 @@ export const excludedPathsState = atomFamily({
             (path) =>
               !!path &&
               !skipFiled(path, combinedSchema?.[path]?.ftype, viewSchema) &&
-              !disabledField(path, combinedSchema, dataset?.groupField) &&
-              (isInSearchMode
-                ? combinedSchema[path]?.ftype !== EMBEDDED_DOCUMENT_FIELD &&
-                  isVideo
-                  ? !(
-                      path.split(".").length === 2 && path.startsWith("frames.")
-                    ) || path.includes(".")
-                  : path.includes(".")
-                : true)
+              !disabledField(path, combinedSchema, dataset?.groupField)
           )
           .map((path) => mapping?.[path] || path);
 
@@ -244,6 +236,13 @@ export const excludedPathsState = atomFamily({
               : !path.includes(".")
           );
         }
+
+        // finalGreenPaths = finalGreenPaths.filter((path) =>
+        //   combinedSchema[path]?.ftype !== EMBEDDED_DOCUMENT_FIELD &&
+        //     isVideo
+        //       ? !(path.split(".").length === 2 && path.startsWith("frames.")) || !path.includes(".")
+        //       : !path.includes(".")
+        // )
 
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
