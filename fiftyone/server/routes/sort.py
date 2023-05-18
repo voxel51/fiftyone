@@ -10,6 +10,7 @@ from dataclasses import asdict
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
+from fiftyone.core.json import stringify
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.decorators import route
@@ -43,12 +44,14 @@ class Sort(HTTPEndpoint):
 
         await fose.dispatch_event(subscription, fose.StateUpdate(state))
 
-        dataset = asdict(
-            await serialize_dataset(
-                dataset_name=dataset_name,
-                serialized_view=stages,
+        dataset = stringify(
+            asdict(
+                await serialize_dataset(
+                    dataset_name=dataset_name,
+                    serialized_view=stages,
+                )
             )
         )
 
-        del dataset["stages"]
+        dataset["stages"] = None
         return {"dataset": dataset}

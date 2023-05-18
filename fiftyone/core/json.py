@@ -7,16 +7,11 @@ FiftyOne JSON handling
 """
 import dataclasses
 from datetime import date, datetime
-from json import JSONEncoder
 import math
 
-from bson import ObjectId, json_util
+from bson import ObjectId
 import numpy as np
 
-import eta.core.serial as etas
-
-from fiftyone.core.sample import Sample, SampleView
-from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
 
 
