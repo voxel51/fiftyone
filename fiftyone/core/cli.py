@@ -31,6 +31,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
+import fiftyone.operators as foo
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
@@ -2801,16 +2802,35 @@ def _print_operators_info(plugin_defintions, names_only):
 
     enabled = set(fop.list_enabled_plugins())
 
-    headers = ["plugin", "operator", "directory", "enabled"]
+    registry = foo.OperatorRegistry()
+    operators_map = defaultdict(list)
+    for operator in registry.list_operators():
+        operators_map[operator.plugin_name].append(operator)
+
+    headers = [
+        "plugin",
+        "operator",
+        "directory",
+        "enabled",
+        "dynamic",
+        "generator",
+        "unlisted",
+        "on_startup",
+    ]
+
     rows = []
     for pd in plugin_defintions:
-        for o in pd.operators:
+        for operator in operators_map.get(pd.name, []):
             rows.append(
                 {
                     "plugin": pd.name,
-                    "operator": o,
+                    "operator": operator.config.name,
                     "directory": pd.directory,
                     "enabled": pd.name in enabled,
+                    "dynamic": operator.config.dynamic,
+                    "generator": operator.config.execute_as_generator,
+                    "unlisted": operator.config.unlisted,
+                    "on_startup": operator.config.on_startup,
                 }
             )
 
@@ -2829,12 +2849,12 @@ def _print_plugins_info(plugin_defintions, names_only):
 
     enabled = set(fop.list_enabled_plugins())
 
-    headers = ["name", "directory", "enabled"]
+    headers = ["plugin", "directory", "enabled"]
     rows = []
     for pd in plugin_defintions:
         rows.append(
             {
-                "name": pd.name,
+                "plugin": pd.name,
                 "directory": pd.directory,
                 "enabled": pd.name in enabled,
             }
