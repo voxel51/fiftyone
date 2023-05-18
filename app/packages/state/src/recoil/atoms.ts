@@ -10,16 +10,6 @@ export interface AppSample extends Sample {
   support?: [number, number];
 }
 
-export interface SampleData {
-  sample: AppSample;
-  aspectRatio: number;
-  frameRate?: number;
-  frameNumber?: number;
-  urls: {
-    [field: string]: string;
-  };
-}
-
 export interface ModalNavigation {
   index: number;
   setIndex: (index: number) => void;
@@ -44,8 +34,8 @@ export const useRefresh = () => {
   );
 };
 
-export const modal = atom<ModalSample | null>({
-  key: "modal",
+export const modalSampleId = atom<ModalSample | null>({
+  key: "modalSampleId",
   default: null,
 });
 
