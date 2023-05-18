@@ -10,7 +10,7 @@ import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
 
-const JSONViewer: React.FC = ({}) => {
+const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
@@ -23,7 +23,7 @@ const JSONViewer: React.FC = ({}) => {
       ),
     };
   }, [sessionColor]);
-  const { setColorScheme } = fos.useSessionColorScheme();
+  const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
@@ -48,7 +48,10 @@ const JSONViewer: React.FC = ({}) => {
       colorPool: validColors,
       customizedColorSettings: validatedSetting,
     });
-    setColorScheme(validColors, validatedSetting, false);
+    setColorScheme(false, {
+      colorPool: validColors,
+      customizedColorSettings: validatedSetting,
+    });
   };
 
   useEffect(() => {

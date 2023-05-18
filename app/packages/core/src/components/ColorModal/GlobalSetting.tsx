@@ -16,7 +16,7 @@ import {
 import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting: React.FC = ({}) => {
-  const { props } = fos.useSessionColorScheme();
+  const { props } = fos.useGlobalColorSetting();
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     props.setOpacity(newValue as number);
   };

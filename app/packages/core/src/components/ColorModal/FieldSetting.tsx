@@ -43,7 +43,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     fos.sessionColorScheme
   );
   const setting = (customizedColorSettings ?? []).find((x) => x.field == path!);
-  const { setColorScheme } = fos.useSessionColorScheme();
+  const setColorScheme = fos.useSetSessionColorScheme();
   const coloring = useRecoilValue(fos.coloring(false));
   const color = getColor(colorPool, coloring.seed, path);
   const [state, setState] = useState<State>({
@@ -75,7 +75,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     const newSetting = cloneDeep(customizedColorSettings ?? []);
     const index = newSetting.findIndex((x) => x.field == path!);
     newSetting[index].fieldColor = color;
-    setColorScheme(colorPool, newSetting, false);
+    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
   };
 
   const toggleColorPicker = (e) => {
@@ -105,7 +105,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
         labelColors: [],
       } as fos.CustomizeColor;
       const newSetting = [...copy, defaultSetting];
-      setColorScheme(colorPool, newSetting, false);
+      setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
     }
     setState({
       useLabelColors: Boolean(
@@ -132,7 +132,10 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 newSetting[index].fieldColor = v
                   ? setting?.fieldColor
                   : undefined;
-                setColorScheme(colorPool, newSetting, false);
+                setColorScheme(false, {
+                  colorPool,
+                  customizedColorSettings: newSetting,
+                });
               }
               setState((s) => ({ ...s, useFieldColor: v }));
             }}
@@ -163,7 +166,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                       color={setting?.fieldColor ?? color}
                       colors={colorPool}
                       onChange={(color) => onChangeFieldColor(color.hex)}
-                      id={"twitter-color-picker"}
                       className={colorPicker}
                     />
                   </PickerWrapper>
@@ -203,7 +205,10 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 if (field.embeddedDocType && !v) {
                   newSetting[index].attributeForColor = undefined;
                 }
-                setColorScheme(colorPool, newSetting, false);
+                setColorScheme(false, {
+                  colorPool,
+                  customizedColorSettings: newSetting,
+                });
                 setState((s) => ({ ...s, useLabelColors: v }));
               }}
             />

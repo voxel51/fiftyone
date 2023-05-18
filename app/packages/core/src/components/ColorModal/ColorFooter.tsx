@@ -12,23 +12,21 @@ import {
 import { isDefaultSetting } from "./utils";
 
 const ColorFooter: React.FC = () => {
-  const setting = useRecoilValue(fos.sessionColorScheme);
   const canEdit = useRecoilValue(fos.canEditCustomColors);
-  const { setColorScheme } = fos.useSessionColorScheme();
-  const clearSetting = fos.useClearSessionColorScheme();
+  const setColorScheme = fos.useSetSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
   const savedSettings = useRecoilValue(fos.datasetAppConfig).colorScheme;
+  const colorScheme = useRecoilValue(fos.sessionColorScheme);
 
   const onSave = () => {
-    setColorScheme(setting.colorPool, setting.customizedColorSettings, true);
+    setColorScheme(true, colorScheme);
     setActiveColorModalField(null);
   };
 
   const onClearSave = () => {
-    clearSetting(true);
-    setActiveColorModalField(null);
+    setColorScheme(true, null);
   };
 
   const hasSavedSettings = useMemo(() => {
@@ -45,7 +43,7 @@ const ColorFooter: React.FC = () => {
         <Button
           text={"Reset"}
           title={`Clear session settings and revert to default settings`}
-          onClick={() => clearSetting(false)}
+          onClick={() => setColorScheme(false, null)}
           style={BUTTON_STYLE}
         />
         {canEdit && (

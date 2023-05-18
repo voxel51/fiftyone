@@ -43,7 +43,7 @@ const ColorAttribute: React.FC<Prop> = ({ fields, style }) => {
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
-  const { setColorScheme } = fos.useSessionColorScheme();
+  const setColorScheme = fos.useSetSessionColorScheme();
   const activeField = useRecoilValue(fos.activeColorField) as Field;
   const { colorPool, customizedColorSettings } = useRecoilValue(
     fos.sessionColorScheme
@@ -59,7 +59,7 @@ const ColorAttribute: React.FC<Prop> = ({ fields, style }) => {
       const copy = cloneDeep(customizedColorSettings);
       if (index > -1) {
         copy[index].attributeForColor = field.path?.split(".").slice(-1)[0];
-        setColorScheme(colorPool, copy, false);
+        setColorScheme(false, { colorPool, customizedColorSettings: copy });
         setOpen(false);
       }
     },

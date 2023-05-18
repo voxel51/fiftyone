@@ -55,7 +55,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const { colorPool, customizedColorSettings } = useRecoilValue(
     fos.sessionColorScheme
   );
-  const { setColorScheme } = fos.useSessionColorScheme();
+  const setColorScheme = fos.useSetSessionColorScheme();
   const setting = customizedColorSettings.find(
     (s) => s.field == (activeField as Field).path
   );
@@ -80,7 +80,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     newSetting[index].labelColors = setting?.labelColors
       ? [...setting.labelColors, defaultValue]
       : [defaultValue];
-    setColorScheme(colorPool, newSetting, false);
+    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
     setShowPicker([...showPicker, false]);
   };
 
@@ -90,7 +90,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
       ...labelValues.slice(0, colorIdx),
       ...labelValues.slice(colorIdx + 1),
     ];
-    setColorScheme(colorPool, newSetting, false);
+    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
   };
 
   const hanldeColorChange = (color: any, colorIdx: number) => {
@@ -98,7 +98,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     const labelValues = values ? [...cloneDeep(values)] : [];
     labelValues[colorIdx].color = color?.hex;
     newSetting[index].labelColors = labelValues;
-    setColorScheme(colorPool, newSetting, false);
+    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
   };
 
   const handleChange = (
@@ -113,7 +113,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     const current = cloneDeep(copy[idx].labelColors!);
     current[changeIdx][key] = value;
     newSetting[idx].labelColors = current;
-    setColorScheme(colorPool, newSetting, false);
+    setColorScheme(false, { colorPool, customizedColorSettings: newSetting });
   };
 
   useEffect(() => {
@@ -124,7 +124,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
       );
       if (idx > -1) {
         copy[idx].labelColors = [defaultValue];
-        setColorScheme(colorPool, copy, false);
+        setColorScheme(false, { colorPool, customizedColorSettings: copy });
       }
     }
   }, [values]);
