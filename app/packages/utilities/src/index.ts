@@ -269,6 +269,11 @@ export const AGGS = {
   DISTINCT: "Distinct",
 };
 
+export const POLYLINE_FIELD = "fiftyone.core.labels.Polyline";
+export const GEO_LOCATIONS_FIELD = "fiftyone.core.labels.GeoLocations";
+export const GEO_LOCATION_FIELD = "fiftyone.core.labels.GeoLocation";
+export const SEGMENTATION_FIELD = "fiftyone.core.labels.Segmentation";
+export const HEATMAP_FIELD = "fiftyone.core.labels.Heatmap";
 export const CLASSIFICATION_FIELD = "fiftyone.core.labels.Classification";
 export const CLASSIFICATIONS_FIELD = "fiftyone.core.labels.Classifications";
 export const DETECTION_FIELD = "fiftyone.core.labels.Detection";

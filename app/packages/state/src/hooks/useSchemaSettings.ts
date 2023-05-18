@@ -10,9 +10,14 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
+  GEO_LOCATIONS_FIELD,
+  GEO_LOCATION_FIELD,
+  HEATMAP_FIELD,
   KEYPOINT_FILED,
+  POLYLINE_FIELD,
   REGRESSION_FILED,
   RESERVED_FIELD_KEYS,
+  SEGMENTATION_FIELD,
   Schema,
   TEMPORAL_DETECTION_FIELD,
   UNSUPPORTED_FILTER_TYPES,
@@ -85,6 +90,11 @@ const disabledField = (
       CLASSIFICATIONS_FIELD,
       KEYPOINT_FILED,
       REGRESSION_FILED,
+      HEATMAP_FIELD,
+      SEGMENTATION_FIELD,
+      GEO_LOCATIONS_FIELD,
+      GEO_LOCATION_FIELD,
+      POLYLINE_FIELD,
     ].includes(parentEmbeddedDocType)
   );
 };
@@ -237,11 +247,14 @@ export const excludedPathsState = atomFamily({
           );
         }
 
+        // // embedded document would break an exclude_field() call
         // finalGreenPaths = finalGreenPaths.filter((path) =>
-        //   combinedSchema[path]?.ftype !== EMBEDDED_DOCUMENT_FIELD &&
+        //   ( // a top-level embedded document
+        //     combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
         //     isVideo
-        //       ? !(path.split(".").length === 2 && path.startsWith("frames.")) || !path.includes(".")
+        //       ? (!(path.split(".").length === 2 && path.startsWith("frames.")) || !path.includes("."))
         //       : !path.includes(".")
+        //   )
         // )
 
         setSelf({
