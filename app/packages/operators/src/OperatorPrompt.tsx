@@ -86,14 +86,14 @@ function Prompting({ operatorPrompt }) {
   }, []);
 
   return (
-    <form onSubmit={operatorPrompt.onSubmit}>
+    <Box component={"form"} p={2} onSubmit={operatorPrompt.onSubmit}>
       <OperatorIO
         schema={operatorPrompt.inputFields}
         onChange={setFormState}
         data={operatorPrompt.promptingOperator.params}
         errors={operatorPrompt?.validationErrors || []}
       />
-    </form>
+    </Box>
   );
 }
 
@@ -119,7 +119,7 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
   const { result } = operatorPrompt.executor;
 
   return (
-    <Box>
+    <Box p={2}>
       {outputFields && (
         <OperatorIO
           type="output"
