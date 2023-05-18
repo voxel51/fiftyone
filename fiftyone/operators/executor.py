@@ -171,7 +171,7 @@ class ExecutionContext(object):
 
     def __init__(self, request_params=None, executor=None):
         self.request_params = request_params or {}
-        self.params = request_params.get("params", {})
+        self.params = self.request_params.get("params", {})
         self.executor = executor
 
     @property
