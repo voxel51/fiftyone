@@ -3,6 +3,16 @@ import { Typography, Box, Link } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import CodeView from "./CodeView";
 import { HeaderView } from ".";
+import styled from "styled-components";
+
+const InlineCode = styled.span`
+  background: ${({ theme }) => theme.background.level1};
+  color: ${({ theme }) => theme.voxel[500]};
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-size: 85%;
+  font-family: Monaco, Consolas, "Andale Mono", "DejaVu Sans Mono", monospace;
+`;
 
 const componenntMap = {
   a({ children, ...props }) {
@@ -22,9 +32,7 @@ const componenntMap = {
         data={String(children).replace(/\n$/, "")}
       />
     ) : (
-      <code {...props} className={className}>
-        {children}
-      </code>
+      <InlineCode className={className}>{children}</InlineCode>
     );
   },
 };
