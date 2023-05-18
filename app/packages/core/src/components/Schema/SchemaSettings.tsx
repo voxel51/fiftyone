@@ -65,14 +65,10 @@ const SchemaSettings = () => {
     setSelectedTab,
     selectedTab,
     setSearchResults,
-    setShowNestedFields,
     setSelectedFieldsStage,
     datasetName,
-    setShowMetadata,
     excludedPaths,
     resetExcludedPaths,
-    isVideo,
-    searchResults,
   } = useSchemaSettings();
 
   const { open: isSettingsModalOpen } = settingModal || {};
@@ -143,15 +139,6 @@ const SchemaSettings = () => {
                   title: `Fiele ${value}`,
                   onClick: () => {
                     setSelectedTab(value);
-                    if (value === TAB_OPTIONS_MAP.SELECTION) {
-                      setSearchTerm("");
-                      setSearchResults([]);
-                      setShowMetadata(false);
-                    }
-                    if (value === TAB_OPTIONS_MAP.FILTER_RULE) {
-                      setShowNestedFields(false);
-                      setShowMetadata(false);
-                    }
                   },
                 };
               })}
@@ -183,18 +170,10 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
-                console.log("initialFieldNames", excludedPaths);
                 const initialFieldNames = [...excludedPaths[datasetName]];
-                console.log("initialFieldNames", initialFieldNames);
 
                 const stageKwargs = {
-                  field_names: initialFieldNames.filter((pp) =>
-                    !!pp && isVideo
-                      ? (pp.split(".").length === 2 &&
-                          pp.startsWith("frames.")) ||
-                        !pp.includes(".")
-                      : !pp.includes(".")
-                  ),
+                  field_names: initialFieldNames,
                   _allow_missing: true,
                 };
 
@@ -226,6 +205,7 @@ const SchemaSettings = () => {
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
+                setSearchResults([]);
               }}
             >
               Reset

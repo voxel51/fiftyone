@@ -28,12 +28,8 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
   const affectedPathCount = useRecoilValue(affectedPathCountState);
 
-  const {
-    setSelectedFieldsStage,
-    resetTextFilter,
-    resetExcludedPaths,
-    resetSelectedPaths,
-  } = fos.useSchemaSettings();
+  const { setSelectedFieldsStage, resetTextFilter, resetExcludedPaths } =
+    fos.useSchemaSettings();
 
   useDebounce(
     () => {

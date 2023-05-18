@@ -7,6 +7,7 @@ import {
   DETECTIONS_FIELD,
   DETECTION_FIELD,
   DETECTION_FILED,
+  EMBEDDED_DOCUMENT_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
   KEYPOINT_FILED,
@@ -97,7 +98,7 @@ export const showNestedFieldsState = atom<boolean>({
 });
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: TAB_OPTIONS_MAP.SELECTION,
+  default: TAB_OPTIONS_MAP.FILTER_RULE,
 });
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
@@ -162,8 +163,8 @@ export const selectedPathsState = atomFamily({
 
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
-          .filter(
-            (path) =>
+          .filter((path) => {
+            return (
               !!path &&
               !skipFiled(
                 path,
@@ -171,11 +172,11 @@ export const selectedPathsState = atomFamily({
                 viewSchema
               ) &&
               !disabledField(path, combinedSchema, dataset?.groupField)
-          )
+            );
+          })
           .map((path) => mapping?.[path] || path);
 
         setSelf({
-          ...newPathsMap,
           [dataset?.name]: new Set(greenPaths),
         });
       });
@@ -193,14 +194,21 @@ export const excludedPathsState = atomFamily({
         const dataset = await getPromise(fos.dataset);
         const showNestedField = await getPromise(showNestedFieldsState);
         const searchResults = await getPromise(schemaSearchRestuls);
+        const isVideo = dataset.mediaType === "video";
+        const isImage = dataset.mediaType === "image";
+        const isInSearchMode = !!searchResults?.length;
+
+        if (!dataset) {
+          return;
+        }
 
         const combinedSchema = { ...schema, ...viewSchema };
         const mapping = {};
         Object.keys(combinedSchema).forEach((path) => {
-          if (dataset.mediaType === "image") {
+          if (isImage) {
             mapping[path] = path;
           }
-          if (dataset.mediaType === "video" && viewSchema) {
+          if (isVideo && viewSchema) {
             Object.keys(viewSchema).forEach((path) => {
               mapping[path] = `frames.${path}`;
             });
@@ -212,34 +220,33 @@ export const excludedPathsState = atomFamily({
           .filter(
             (path) =>
               !!path &&
-              !skipFiled(
-                path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-                viewSchema
-              ) &&
-              !disabledField(path, combinedSchema, dataset?.groupField)
+              !skipFiled(path, combinedSchema?.[path]?.ftype, viewSchema) &&
+              !disabledField(path, combinedSchema, dataset?.groupField) &&
+              (isInSearchMode
+                ? combinedSchema[path]?.ftype !== EMBEDDED_DOCUMENT_FIELD &&
+                  isVideo
+                  ? !(
+                      path.split(".").length === 2 && path.startsWith("frames.")
+                    ) || path.includes(".")
+                  : path.includes(".")
+                : true)
           )
           .map((path) => mapping?.[path] || path);
 
         // if top level only, count should be top-level too
         // if nested fields are shown, exclude more granular
-        let finalGreenPaths = [];
-        if (searchResults?.length) {
-          finalGreenPaths = greenPaths;
-        } else if (!showNestedField) {
+        let finalGreenPaths = greenPaths;
+        if (!showNestedField && !isInSearchMode) {
           finalGreenPaths = greenPaths.filter((path) =>
-            dataset.mediaType === "video"
+            isVideo
               ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
                 !path.includes(".")
               : !path.includes(".")
           );
-        } else {
-          finalGreenPaths = greenPaths;
         }
 
-        console.log("final excluded paths", finalGreenPaths);
         setSelf({
-          [dataset?.name]: new Set(finalGreenPaths),
+          [dataset.name]: new Set(finalGreenPaths),
         });
       });
     },
@@ -542,46 +549,6 @@ export default function useSchemaSettings() {
     foq.searchSelectFields
   );
 
-  const searchSchemaFields = useCallback(
-    (object) => {
-      if (!finalSchema) {
-        return;
-      }
-      searchSchemaFieldsRaw({
-        variables: { datasetName, metaFilter: object },
-        onCompleted: (data) => {
-          if (data) {
-            const { searchSelectFields = [] } = data;
-            const res = searchSelectFields as string[];
-            setSearchResults(res);
-            setSearchMetaFilter(object);
-            const diff = finalSchema
-              ?.map((field) => field.path)
-              .filter((path) => {
-                return !searchSelectFields?.includes(path);
-              });
-            console.log("diff", diff);
-            setExcludedPaths({ [datasetName]: diff });
-          }
-        },
-        onError: (e) => {
-          console.error("failed to search schema fields", e);
-        },
-      });
-    },
-    [datasetName, finalSchema]
-  );
-
-  const setIncludeNestedFields = useCallback(
-    (val: boolean) => {
-      const currentMetaFilter = { ...searchMetaFilter };
-      currentMetaFilter["include_nested_fields"] = val;
-      searchSchemaFields(currentMetaFilter);
-      setIncludeNestedFieldsRaw(val);
-    },
-    [searchMetaFilter]
-  );
-
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
   const getPath = useCallback(
     (path: string) => {
@@ -600,14 +567,68 @@ export default function useSchemaSettings() {
     [viewSchema, schema]
   );
 
+  const searchSchemaFields = useCallback(
+    (object) => {
+      if (!mergedSchema) {
+        return;
+      }
+      searchSchemaFieldsRaw({
+        variables: { datasetName, metaFilter: object },
+        onCompleted: (data) => {
+          if (data) {
+            const { searchSelectFields = [] } = data;
+            const res = searchSelectFields as string[];
+            setSearchResults(res);
+            setSearchMetaFilter(object);
+
+            const shouldExcludePaths = Object.keys(mergedSchema)
+              .filter((path) => !searchSelectFields?.includes(path))
+              .filter((path) => {
+                const childPathsInSearchResults = searchSelectFields.filter(
+                  (pp) => pp.startsWith(`${path}.`)
+                );
+                return !childPathsInSearchResults.length;
+              });
+            setExcludedPaths({ [datasetName]: shouldExcludePaths });
+
+            const shouldSelectPaths = Object.keys(mergedSchema)
+              .filter((path) => searchSelectFields?.includes(path))
+              .filter((path) => {
+                const childPathsInSearchResults = searchSelectFields.filter(
+                  (pp) => pp.startsWith(`${path}.`)
+                );
+                return !childPathsInSearchResults.length;
+              });
+            setSelectedPaths({ [datasetName]: shouldSelectPaths });
+          }
+        },
+        onError: (e) => {
+          console.error("failed to search schema fields", e);
+        },
+      });
+    },
+    [datasetName, mergedSchema]
+  );
+
+  const setIncludeNestedFields = useCallback(
+    (val: boolean) => {
+      if (searchMetaFilter) {
+        const currentMetaFilter = { ...searchMetaFilter };
+        currentMetaFilter["include_nested_fields"] = val;
+        searchSchemaFields(currentMetaFilter);
+        setIncludeNestedFieldsRaw(val);
+      }
+    },
+    [searchMetaFilter]
+  );
+
   const resetExcludedPaths = useCallback(() => {
-    setSelectedPaths({
-      [datasetName]: new Set(finalSchema.map((field) => field.path) || []),
-    });
     setSelectedPaths({
       [datasetName]: new Set([...viewPaths, ...Object.keys(schema)]),
     });
     setExcludedPaths({ [datasetName]: new Set() });
+    setSearchResults([]);
+    setSearchTerm("");
   }, [datasetName, viewPaths, schema]);
 
   const getSubPaths = useCallback(
@@ -633,11 +654,9 @@ export default function useSchemaSettings() {
 
   useEffect(() => {
     if (viewPaths.length && datasetName && !selectedPaths?.[datasetName]) {
-      setSelectedPaths(() => {
-        return {
-          [datasetName]: new Set([...viewPaths, ...Object.keys(schema)]),
-        };
-      });
+      setSelectedPaths(() => ({
+        [datasetName]: new Set([...viewPaths, ...Object.keys(schema)]),
+      }));
     }
   }, [viewPaths, datasetName]);
 
