@@ -5,13 +5,26 @@ FiftyOne operator registry.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from .operator import Operator
+from .builtin import BUILTIN_OPERATORS
 from .loader import load_from_dir
-from .built_in import BUILTIN_OPERATORS
+from .operator import Operator
 
 
-class OperatorRegistry:
+def register_operator(operator):
+    """Registers a builtin operator. For internal use only.
+
+    Args:
+        operator: the operator to register
+    """
+    if operator.name in BUILTIN_OPERATORS:
+        raise ValueError("Operator '%s' already exists" % operator.name)
+
+    BUILTIN_OPERATORS[operator.name] = operator
+
+
+class OperatorRegistry(object):
+    """Operator registry."""
+
     def __init__(self):
         self.plugin_contexts = load_from_dir()
 
@@ -27,6 +40,7 @@ class OperatorRegistry:
             for operator in plugin_context.instances:
                 if isinstance(operator, Operator):
                     operators.append(operator)
+
         return operators + BUILTIN_OPERATORS
 
     def list_errors(self):
@@ -39,6 +53,7 @@ class OperatorRegistry:
         errors = []
         for plugin_context in plugin_contexts:
             errors.extend(plugin_context.errors)
+
         return errors
 
     def operator_exists(self, operator_uri):
@@ -48,12 +63,23 @@ class OperatorRegistry:
             operator_uri: the URI of the operator
 
         Returns:
-            ``True`` if the operator exists, ``False`` otherwise
+            True/False
         """
-        operators = self.list_operators()
-        return operator_uri in [o.uri for o in operators]
+        for operator in self.list_operators():
+            if operator_uri == operator.uri:
+                return True
+
+        return False
 
     def get_operator(self, operator_uri):
+        """Retrieves an :class:`Operator` by its URI.
+
+        Args:
+            operator_uri: the URI of an operator
+
+        Returns:
+            an :class:`Operator`, or None
+        """
         operators = self.list_operators()
         for operator in operators:
             if operator_uri == operator.uri:
