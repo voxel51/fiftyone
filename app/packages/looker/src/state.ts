@@ -26,7 +26,6 @@ export interface CustomizeColor {
   fieldColor?: string;
   attributeForColor?: string;
   // attributeForOpacity?: string;
-  colors?: string[];
   labelColors?: {
     name: string;
     color: string;
