@@ -9,20 +9,25 @@ import {
 } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
+import { getComponentProps } from "../utils";
 
 export default function KeyValueView(props) {
   const { path, schema, data, nested } = props;
 
   return (
-    <Box>
-      <HeaderView {...props} divider />
-      <TableContainer component={nested ? Box : Paper}>
-        <Table>
-          <TableBody>
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} divider nested />
+      <TableContainer
+        component={nested ? Box : Paper}
+        {...getComponentProps(props, "tableContainer")}
+      >
+        <Table {...getComponentProps(props, "table")}>
+          <TableBody {...getComponentProps(props, "tableBody")}>
             {Object.entries(data).map(([key, value]) => (
               <TableRow
                 key={`${path}-${key}`}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                {...getComponentProps(props, "tableRow")}
               >
                 <TableCell
                   sx={{
@@ -34,10 +39,13 @@ export default function KeyValueView(props) {
                     color: (theme) => theme.palette.text.secondary,
                     textAlign: "right",
                   }}
+                  {...getComponentProps(props, "key")}
                 >
                   {getLabel(schema, key)}
                 </TableCell>
-                <TableCell align="left">{value}</TableCell>
+                <TableCell align="left" {...getComponentProps(props, "value")}>
+                  {value}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

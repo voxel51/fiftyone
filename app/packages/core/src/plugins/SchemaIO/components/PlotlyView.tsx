@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import React from "react";
 import Plot from "react-plotly.js";
 import { HeaderView } from ".";
+import { getComponentProps } from "../utils";
 
 export default function PlotlyView(props) {
   const { data, schema } = props;
@@ -17,8 +18,8 @@ export default function PlotlyView(props) {
   }
 
   return (
-    <Box>
-      <HeaderView {...props} />
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} nested />
       <Plot
         data={data || defaultData}
         style={{ zIndex: 1 }}
@@ -59,6 +60,7 @@ export default function PlotlyView(props) {
           },
           ...layout,
         }}
+        {...getComponentProps(props, "plotly")}
       />
     </Box>
   );

@@ -3,6 +3,7 @@ import { Typography, Box, Link } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import CodeView from "./CodeView";
 import { HeaderView } from ".";
+import { getComponentProps } from "../utils";
 
 const componenntMap = {
   a({ children, ...props }) {
@@ -30,14 +31,17 @@ const componenntMap = {
 };
 
 export default function MarkdownView(props) {
-  const { schema, data } = props;
-  const { view = {} } = schema;
-  const { label, description } = view;
+  const { data } = props;
 
   return (
-    <Box>
-      <HeaderView {...props} />
-      <ReactMarkdown components={componenntMap}>{data}</ReactMarkdown>
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} nested />
+      <ReactMarkdown
+        components={componenntMap}
+        {...getComponentProps(props, "markdown")}
+      >
+        {data}
+      </ReactMarkdown>
     </Box>
   );
 }

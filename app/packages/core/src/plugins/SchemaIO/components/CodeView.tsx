@@ -3,6 +3,7 @@ import { Box, useColorScheme } from "@mui/material";
 import React from "react";
 import HeaderView from "./HeaderView";
 import autoFocus from "../utils/auto-focus";
+import { getComponentProps } from "../utils";
 
 export default function CodeView(props) {
   const { mode } = useColorScheme();
@@ -28,8 +29,9 @@ export default function CodeView(props) {
             }
           : {}),
       }}
+      {...getComponentProps(props, "container")}
     >
-      <HeaderView {...props} />
+      <HeaderView {...props} nested />
       <Editor
         height={height}
         theme={mode === "dark" ? "vs-dark" : "light"}
@@ -43,6 +45,7 @@ export default function CodeView(props) {
             editor.focus();
           }
         }}
+        {...getComponentProps(props, "editor")}
       />
     </Box>
   );
