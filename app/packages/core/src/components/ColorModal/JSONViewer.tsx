@@ -17,9 +17,9 @@ const JSONViewer: React.FC = () => {
   const sessionColor = useRecoilValue(fos.sessionColorScheme);
   const setting = useMemo(() => {
     return {
-      colorPool: sessionColor.colorPool,
+      colorPool: sessionColor?.colorPool ?? [],
       customizedColorSettings: validateJSONSetting(
-        sessionColor.customizedColorSettings
+        sessionColor?.customizedColorSettings ?? []
       ),
     };
   }, [sessionColor]);

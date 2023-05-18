@@ -111,7 +111,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
               ? JSON.parse(JSON.parse(state.colorScheme))
               : JSON.parse(state.colorScheme)
             : state.colorScheme;
-        console.log("parsed setting", parsedSetting);
+
         let colorPool = parsedSetting["color_pool"];
         colorPool =
           Array.isArray(colorPool) && colorPool?.length > 0
