@@ -9,7 +9,8 @@ import traceback
 import typing as t
 import logging
 
-from fiftyone.core.json import FiftyOneJSONEncoder
+from bson import json_util
+
 from fiftyone.core.utils import run_sync_task
 
 from starlette.endpoints import HTTPEndpoint
@@ -24,15 +25,13 @@ def route(func):
         try:
             body = await request.body()
             payload = body.decode("utf-8")
-            data = FiftyOneJSONEncoder.loads(payload) if payload else {}
+            data = json_util.loads(payload) if payload else {}
             response = await func(endpoint, request, data, *args)
             if isinstance(response, Response):
                 return response
 
             return Response(
-                await run_sync_task(
-                    lambda: FiftyOneJSONEncoder.dumps(response)
-                )
+                await run_sync_task(lambda: json_util.dumps(response))
             )
         except Exception as e:
             logging.exception(e)

@@ -5,11 +5,12 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import json_util
 import json
 import logging
 import typing as t
 
+from bson import json_util
+from dataclasses import asdict
 from mongoengine.base import BaseDict
 import strawberry as gql
 
@@ -85,21 +86,25 @@ class StateDescription(etas.Serializable):
                     else:
                         _view_cls = etau.get_class_name(self.view)
 
-                    d["view"] = json.loads(
-                        json_util.dumps(self.view._serialize())
-                    )
+                    d["view"] = self.view._serialize()
                     d["view_cls"] = _view_cls
 
                     d["view_name"] = self.view.name  # None for unsaved views
                     if d.get("view_name") is not None:
                         d["saved_view_slug"] = fou.to_slug(self.view.name)
 
-                d["sample_fields"] = serialize_fields(
-                    collection.get_field_schema(flat=True)
-                )
-                d["frame_fields"] = serialize_fields(
-                    collection.get_frame_field_schema(flat=True)
-                )
+                d["sample_fields"] = [
+                    asdict(field)
+                    for field in serialize_fields(
+                        collection.get_field_schema(flat=True)
+                    )
+                ]
+                d["frame_fields"] = [
+                    asdict(field)
+                    for field in serialize_fields(
+                        collection.get_frame_field_schema(flat=True)
+                    )
+                ]
 
                 view = self.view if self.view is not None else self.dataset
                 if view.media_type == fom.GROUP:
