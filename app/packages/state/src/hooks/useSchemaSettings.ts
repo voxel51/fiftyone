@@ -192,6 +192,7 @@ export const excludedPathsState = atomFamily({
         const schema = await getPromise(schemaState);
         const dataset = await getPromise(fos.dataset);
         const showNestedField = await getPromise(showNestedFieldsState);
+        const searchResults = await getPromise(schemaSearchRestuls);
 
         const combinedSchema = { ...schema, ...viewSchema };
         const mapping = {};
@@ -223,7 +224,9 @@ export const excludedPathsState = atomFamily({
         // if top level only, count should be top-level too
         // if nested fields are shown, exclude more granular
         let finalGreenPaths = [];
-        if (!showNestedField) {
+        if (searchResults?.length) {
+          finalGreenPaths = greenPaths;
+        } else if (!showNestedField) {
           finalGreenPaths = greenPaths.filter((path) =>
             dataset.mediaType === "video"
               ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
@@ -234,6 +237,7 @@ export const excludedPathsState = atomFamily({
           finalGreenPaths = greenPaths;
         }
 
+        console.log("final excluded paths", finalGreenPaths);
         setSelf({
           [dataset?.name]: new Set(finalGreenPaths),
         });
@@ -261,6 +265,10 @@ export const includeNestedFieldsState = atom({
 export const affectedPathCountState = atom({
   key: "affectedPathCountState",
   default: 0,
+});
+export const searchMetaFilterState = atom({
+  key: "searchMetaFilterState",
+  default: {},
 });
 
 export const selectedFieldsStageState = atom<any>({
@@ -343,7 +351,7 @@ export default function useSchemaSettings() {
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
   );
-  const [includeNestedFields, setIncludeNestedFields] = useRecoilState(
+  const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
     includeNestedFieldsState
   );
 
@@ -353,6 +361,9 @@ export default function useSchemaSettings() {
 
   const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
     showNestedFieldsState
+  );
+  const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
+    searchMetaFilterState
   );
 
   const allPaths = schema ? Object.keys(schema) : [];
@@ -451,9 +462,6 @@ export default function useSchemaSettings() {
       .sort()
       .filter((path) => {
         if (path === "undefined") return false;
-        if (filterRuleTab) {
-          return searchResults.includes(path);
-        }
         return true;
       })
       .map((path: string) => {
@@ -479,13 +487,15 @@ export default function useSchemaSettings() {
             ? `frames.${path}`
             : path;
 
+        const isInSearchResult = searchResults.includes(path);
         const isSelected =
-          selectedPaths?.[datasetName]?.has(fullPath) || filterRuleTab;
+          (filterRuleTab && isInSearchResult) ||
+          (!filterRuleTab && selectedPaths?.[datasetName]?.has(fullPath));
 
         return {
           path,
           count,
-          isSelected: isSelected || disabled,
+          isSelected: filterRuleTab ? isSelected : isSelected || disabled,
           pathLabelFinal,
           skip,
           disabled,
@@ -495,10 +505,16 @@ export default function useSchemaSettings() {
         };
       })
       .filter((val) => {
-        return !showNestedFields ? !val.path.includes(".") : true;
+        return showNestedFields || (filterRuleTab && searchResults.length)
+          ? true
+          : !val.path.includes(".");
       })
       .sort((item, item2) =>
-        !showNestedFields
+        filterRuleTab && searchResults.length
+          ? searchResults.includes(item.path)
+            ? -1
+            : 1
+          : !showNestedFields
           ? item.disabled
             ? 1
             : -1
@@ -521,6 +537,50 @@ export default function useSchemaSettings() {
     searchResults,
     datasetName,
   ]);
+
+  const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
+    foq.searchSelectFields
+  );
+
+  const searchSchemaFields = useCallback(
+    (object) => {
+      if (!finalSchema) {
+        return;
+      }
+      searchSchemaFieldsRaw({
+        variables: { datasetName, metaFilter: object },
+        onCompleted: (data) => {
+          if (data) {
+            const { searchSelectFields = [] } = data;
+            const res = searchSelectFields as string[];
+            setSearchResults(res);
+            setSearchMetaFilter(object);
+            const diff = finalSchema
+              ?.map((field) => field.path)
+              .filter((path) => {
+                return !searchSelectFields?.includes(path);
+              });
+            console.log("diff", diff);
+            setExcludedPaths({ [datasetName]: diff });
+          }
+        },
+        onError: (e) => {
+          console.error("failed to search schema fields", e);
+        },
+      });
+    },
+    [datasetName, finalSchema]
+  );
+
+  const setIncludeNestedFields = useCallback(
+    (val: boolean) => {
+      const currentMetaFilter = { ...searchMetaFilter };
+      currentMetaFilter["include_nested_fields"] = val;
+      searchSchemaFields(currentMetaFilter);
+      setIncludeNestedFieldsRaw(val);
+    },
+    [searchMetaFilter]
+  );
 
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
   const getPath = useCallback(
@@ -573,8 +633,7 @@ export default function useSchemaSettings() {
 
   useEffect(() => {
     if (viewPaths.length && datasetName && !selectedPaths?.[datasetName]) {
-      setSelectedPaths((prevValue) => {
-        // console.log("prevValue", prevValue);
+      setSelectedPaths(() => {
         return {
           [datasetName]: new Set([...viewPaths, ...Object.keys(schema)]),
         };
@@ -700,5 +759,7 @@ export default function useSchemaSettings() {
     resetSelectedPaths,
     resetExcludedPaths,
     isVideo: dataset?.mediaType === "video",
+    setExcludedPaths,
+    searchSchemaFields,
   };
 }
