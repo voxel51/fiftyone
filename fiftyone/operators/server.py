@@ -5,11 +5,10 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from .registry import OperatorRegistry
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-from fiftyone.server.decorators import route, FiftyOneResponse
+from starlette.responses import JSONResponse
+from fiftyone.server.decorators import route
 from .executor import (
     execute_operator,
     resolve_type,
@@ -93,7 +92,7 @@ async def create_response_generator(generator):
 
 
 def create_permission_error(uri):
-    return FiftyOneResponse(
+    return JSONResponse(
         {
             "error": {
                 "message": "User does not have permission to execute operator '%s'"

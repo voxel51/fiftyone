@@ -247,7 +247,7 @@ class Mutation:
             saved_view_slug=fou.to_slug(view_name)
             if view_name
             else fou.to_slug(state.view.name)
-            if state.view
+            if state.view is not None and state.view.name
             else None,
             info=info,
         )

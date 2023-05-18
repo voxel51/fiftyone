@@ -5,10 +5,12 @@ FiftyOne JSON handling
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId, json_util
+import dataclasses
 from datetime import date, datetime
 from json import JSONEncoder
 import math
+
+from bson import ObjectId, json_util
 import numpy as np
 
 import eta.core.serial as etas
@@ -66,11 +68,22 @@ def stringify(d, _cls=None):
     Returns:
         a stringified version of the data
     """
-    if isinstance(d, dict):
-        return {k: stringify(v, d.get("_cls", None)) for k, v in d.items()}
+    if dataclasses.is_dataclass(d):
+        d = dataclasses.asdict(d)
 
-    if isinstance(d, (list, tuple)):
-        return [stringify(v) for v in d]
+    if isinstance(d, dict):
+        for k in d:
+            d[k] = stringify(d[k], d.get("_cls", None))
+        return d
+
+    if isinstance(d, tuple):
+        return (stringify(v) for v in d)
+
+    if isinstance(d, list):
+        for i, v in enumerate(d):
+            d[i] = stringify(v)
+
+        return d
 
     if isinstance(d, bytes):
         return _handle_numpy_array(d, _cls)
@@ -119,13 +132,7 @@ class FiftyOneJSONEncoder(JSONEncoder):
     @staticmethod
     def dumps(data, *args, **kwargs) -> str:
         kwargs["cls"] = FiftyOneJSONEncoder
-        return json_util.dumps(
-            json_util.loads(
-                json_util.dumps(data, *args, **kwargs),
-                parse_constant=lambda c: c,
-            ),
-            **kwargs
-        )
+        return json_util.dumps(data, *args, **kwargs)
 
     @staticmethod
     def loads(*args, **kwargs) -> dict:

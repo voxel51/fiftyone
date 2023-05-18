@@ -76,7 +76,7 @@ def get_view(
     view_name=None,
     stages=None,
     filters=None,
-    count_label_tags=False,
+    pagination_data=False,
     extended_stages=None,
     sample_filter=None,
 ):
@@ -88,8 +88,9 @@ def get_view(
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
-        count_label_tags (False): whether to set the hidden ``_label_tags``
-            field with counts of tags with respect to all label fields
+        pagination_data (False): whether process samples as pagination data
+            - includes hidden ``_label_tags`` counts on sample documents
+            - excludes all :class:`fiftyone.core.fields.DictField` values
         only_matches (True): whether to filter unmatches samples when filtering
             labels
         extended_stages (None): extended view stages
@@ -122,11 +123,26 @@ def get_view(
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    if filters or extended_stages or count_label_tags:
+    # omit all dict field values for performance, not needed by grid
+    if pagination_data:
+        excluded = [
+            path
+            for path, field in view.get_field_schema(flat=True).items()
+            if isinstance(field, fof.DictField)
+        ]
+        view = view.select_fields(
+            [
+                path
+                for path in view.get_field_schema(flat=True)
+                if all(not path.startswith(exclude) for exclude in excluded)
+            ]
+        )
+
+    if filters or extended_stages or pagination_data:
         view = get_extended_view(
             view,
             filters,
-            count_label_tags=count_label_tags,
+            count_label_tags=pagination_data,
             extended_stages=extended_stages,
         )
 

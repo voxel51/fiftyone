@@ -9,18 +9,12 @@ import traceback
 import typing as t
 import logging
 
-from fiftyone.core.json import FiftyOneJSONEncoder, stringify
+from fiftyone.core.json import FiftyOneJSONEncoder
+from fiftyone.core.utils import run_sync_task
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
-
-
-class FiftyOneResponse(JSONResponse):
-    def render(self, content: t.Any) -> bytes:
-        return bytes(
-            FiftyOneJSONEncoder.dumps(stringify(content)), encoding="utf-8"
-        )
 
 
 def route(func):
@@ -35,10 +29,14 @@ def route(func):
             if isinstance(response, Response):
                 return response
 
-            return FiftyOneResponse(response)
+            return Response(
+                await run_sync_task(
+                    lambda: FiftyOneJSONEncoder.dumps(response)
+                )
+            )
         except Exception as e:
             logging.exception(e)
-            return FiftyOneResponse(
+            return JSONResponse(
                 {
                     "kind": "Server Error",
                     "stack": traceback.format_exc(),

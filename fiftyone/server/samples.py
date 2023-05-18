@@ -11,7 +11,6 @@ import typing as t
 
 
 from fiftyone.core.collections import SampleCollection
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.server.filters import SampleFilter
@@ -76,7 +75,7 @@ async def paginate_samples(
         dataset,
         stages=stages,
         filters=filters,
-        count_label_tags=True,
+        pagination_data=True,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
     )
