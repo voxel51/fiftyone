@@ -70,14 +70,15 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
+  const activePath = useMemo(() => activeField.field.path, [activeField]);
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
-    () => fields.find((s) => s.path == activeField.field.path),
+    () => fields.find((s) => s.path == activePath),
     [activeField, fields]
   );
   const index = useMemo(
-    () => fields.findIndex((s) => s.path == activeField.field.path),
+    () => fields.findIndex((s) => s.path == activePath),
     [activeField, fields]
   );
 
@@ -169,7 +170,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(fields);
-      const idx = fields.findIndex((s) => s.path == activeField.field.path);
+      const idx = fields.findIndex((s) => s.path == activePath);
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
         setColorScheme(false, { colorPool, fields: copy });
@@ -182,7 +183,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     setInput(values ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor), activeField.field.path]);
+  }, [useRecoilValue(resetColor), activePath]);
 
   useEffect(() => {
     if (!useLabelColors) setInput([]);
