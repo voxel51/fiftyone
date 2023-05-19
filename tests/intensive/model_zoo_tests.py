@@ -43,7 +43,11 @@ def test_semantic_segmentation_models():
 
 def test_sam():
     models = ["segment-anything-vit_b-torch"]
-    _apply_models(models, max_samples=1)
+    _apply_models(
+        models,
+        max_samples=1,
+        model_kwargs=dict(pred_iou_thresh=0.9, min_mask_region_area=200),
+    )
 
 
 def test_keypoint_models():
@@ -106,6 +110,7 @@ def _apply_models(
     confidence_thresh=None,
     pass_confidence_thresh=False,
     max_samples=10,
+    model_kwargs=None,
 ):
     if pass_confidence_thresh:
         kwargs = {"confidence_thresh": confidence_thresh}
@@ -125,7 +130,7 @@ def _apply_models(
             "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
         )
 
-        model = foz.load_zoo_model(model_name)
+        model = foz.load_zoo_model(model_name, **(model_kwargs or {}))
 
         label_field = model_name.lower().replace("-", "_").replace(".", "_")
 
