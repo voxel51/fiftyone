@@ -9,6 +9,7 @@ import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
+import colorString from "color-string";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
@@ -41,7 +42,9 @@ const JSONViewer: React.FC = () => {
     )
       return;
     const { colorPool, fields } = data;
-    const validColors = colorPool?.filter((c) => isValidColor(c));
+    const validColors = colorPool
+      ?.filter((c) => isValidColor(c))
+      .map((c) => colorString.to.hex(colorString.get(c).value));
     const validatedSetting = validateJSONSetting(fields);
     setData({
       colorPool: validColors,

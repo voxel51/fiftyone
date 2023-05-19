@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import { useOutsideClick } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import CloseIcon from "@mui/icons-material/Close";
 import React, { Fragment, useCallback, useRef, useState } from "react";
@@ -82,7 +81,6 @@ const ColorModal = () => {
               onResizeStop={(e, direction, ref, { width: dw, height: dh }) => {
                 setWidth(width + dw);
                 setHeight(height + dh);
-                // reset sidebar width on double click
                 if (e.detail === 2) {
                   setWidth(860);
                   setHeight(680);
@@ -126,7 +124,7 @@ const ColorModal = () => {
                     {field === ACTIVE_FIELD.global && <GlobalSetting />}
                     {field === ACTIVE_FIELD.json && <JSONViewer />}
                     {typeof field !== "string" && field && (
-                      <FieldSetting field={activeColorModalField as Field} />
+                      <FieldSetting prop={activeColorModalField} />
                     )}
                   </Display>
                 </DraggableContent>

@@ -44,7 +44,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
   const [mRef, bounds] = useMeasure();
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const activeField = useRecoilValue(fos.activeColorField) as Field;
+  const activeField = useRecoilValue(fos.activeColorField).field as Field;
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const index = fields.findIndex((s) => s.path == activeField.path);
 
