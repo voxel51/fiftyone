@@ -192,7 +192,7 @@ const SchemaSettings = () => {
                 try {
                   setSelectedFieldsStage(stage);
                 } catch (e) {
-                  console.log("error setting field visibility", e);
+                  console.error("error setting field visibility", e);
                 } finally {
                   setSettingsModal({ open: false });
                 }
