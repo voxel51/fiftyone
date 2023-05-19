@@ -39,7 +39,7 @@ const OpacityAttribute: React.FC<Prop> = ({ fields }) => {
   const [open, setOpen] = React.useState(false);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-  const field = useRecoilValue(fos.activeColorField) as Field;
+  const field = useRecoilValue(fos.activeColorField).field as Field;
   const setting = useRecoilValue(fos.sessionColorScheme)?.fields?.find(
     (f) => f.path === field.path
   );

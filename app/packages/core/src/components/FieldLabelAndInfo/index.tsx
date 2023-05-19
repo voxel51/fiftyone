@@ -263,7 +263,7 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor(field);
+    setIsCustomizingColor({ field, expandedPath });
   };
 
   const isNotTag = field.path !== "tags";

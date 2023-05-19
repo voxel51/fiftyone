@@ -56,6 +56,7 @@ const ChromePickerWrapper = styled.div`
 
 type ColorPickerRowProps = {
   style?: React.CSSProperties;
+  useLabelColors?: boolean;
 };
 
 type Input = {
@@ -63,17 +64,21 @@ type Input = {
   color: string;
 };
 
-const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
+const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
+  style,
+  useLabelColors,
+}) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
+  const activePath = useMemo(() => activeField.field.path, [activeField]);
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
-    () => fields.find((s) => s.path == (activeField as Field).path),
+    () => fields.find((s) => s.path == activePath),
     [activeField, fields]
   );
   const index = useMemo(
-    () => fields.findIndex((s) => s.path == (activeField as Field).path),
+    () => fields.findIndex((s) => s.path == activePath),
     [activeField, fields]
   );
 
@@ -165,9 +170,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(fields);
-      const idx = fields.findIndex(
-        (s) => s.path == (activeField as Field).path
-      );
+      const idx = fields.findIndex((s) => s.path == activePath);
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
         setColorScheme(false, { colorPool, fields: copy });
@@ -178,15 +181,19 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
 
   // on reset, sync local state with new session values
   useEffect(() => {
-    setInput(values);
+    setInput(values ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor)]);
+  }, [useRecoilValue(resetColor), activePath]);
+
+  useEffect(() => {
+    if (!useLabelColors) setInput([]);
+  }, [useLabelColors]);
 
   if (!values) return null;
 
   return (
     <div style={style}>
-      {input.map((v, index) => (
+      {input?.map((v, index) => (
         <RowContainer key={index}>
           <Input
             placeholder="Value (e.g. 'car')"

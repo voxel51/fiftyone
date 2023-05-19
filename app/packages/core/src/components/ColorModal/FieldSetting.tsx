@@ -31,7 +31,7 @@ import ModeControl from "./controls/ModeControl";
 import { resetColor } from "./ColorFooter";
 
 type Prop = {
-  field: Field;
+  prop: { field: Field; expandedPath: string };
 };
 
 type State = {
@@ -39,9 +39,10 @@ type State = {
   useFieldColor: boolean;
 };
 
-const FieldSetting: React.FC<Prop> = ({ field }) => {
+const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
-  const path = field.path;
+  const { field, expandedPath } = prop;
+  const path = field?.path;
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
@@ -59,7 +60,6 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
 
   const defaultColor =
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
-  const expandedPath = useRecoilValue(fos.expandPath(path!));
   const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
   const isMaskType =
@@ -69,10 +69,14 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
   const isTypeValueSupported =
     !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
   const isTypeFieldSupported = !isNoShowType;
+  // non video frames. field expanded path
+  const commonExpandedPath = useRecoilValue(
+    fos.expandPath(expandedPath.startsWith("frames.") ? expandedPath : path)
+  );
 
   const colorFields = useRecoilValue(
     fos.fields({
-      path: expandedPath,
+      path: commonExpandedPath,
       ftype: VALID_COLOR_ATTRIBUTE_TYPES,
     })
   ).filter((field) => field.dbField !== "tags");
@@ -264,7 +268,10 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 </>
               )}
 
-              <AttributeColorSetting style={FieldCHILD_STYLE} />
+              <AttributeColorSetting
+                style={FieldCHILD_STYLE}
+                useLabelColors={state.useLabelColors}
+              />
             </SectionWrapper>
           </form>
         </div>
