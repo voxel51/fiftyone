@@ -162,7 +162,7 @@ const SchemaSettings = () => {
             style={{
               position: "sticky",
               display: "flex",
-              padding: "1rem 1.5rem",
+              padding: "1rem 0",
               bottom: "-20px",
               background: theme.background.level2,
               left: 0,
