@@ -15,6 +15,7 @@ import {
   GEO_LOCATION_FIELD,
   HEATMAP_FIELD,
   KEYPOINT_FILED,
+  LIST_FIELD,
   POLYLINE_FIELD,
   REGRESSION_FILED,
   RESERVED_FIELD_KEYS,
@@ -256,8 +257,12 @@ export const excludedPathsState = atomFamily({
                   !(
                     // a top-level embedded document
                     (combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
-                    combinedSchema[path]?.embeddedDocType ===
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD &&
+                    combinedSchema[path]?.subfield &&
+                    [
+                      EMBEDDED_DOCUMENT_FIELD,
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+                      LIST_FIELD,
+                    ].includes(combinedSchema[path]?.subfield) &&
                     isVideo
                       ? !(
                           path.split(".").length === 2 &&
