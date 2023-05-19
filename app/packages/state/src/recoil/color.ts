@@ -88,11 +88,11 @@ export const pathColor = selectorFamily<
           : parentPath
         : path;
 
-      const setting = get(atoms.sessionColorScheme)?.fields?.find(
-        (x) => x.path === adjustedPath
-      );
+      const setting = get(
+        atoms.sessionColorScheme
+      )?.customizedColorSettings?.find((x) => x.field === adjustedPath);
 
-      if (isValidColor(setting?.fieldColor)) {
+      if (setting?.useFieldColor && isValidColor(setting?.fieldColor)) {
         return setting.fieldColor;
       }
 

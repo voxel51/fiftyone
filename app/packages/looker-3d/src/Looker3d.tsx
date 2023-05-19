@@ -68,7 +68,9 @@ export const Looker3d = () => {
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
   const getColor = useRecoilValue(fos.colorMap(true));
-  const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
+  const colorScheme = useRecoilValue(
+    fos.sessionColorScheme
+  ).customizedColorSettings;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(
@@ -382,9 +384,14 @@ export const Looker3d = () => {
         .map((l) => {
           const path = l.path.join(".");
           let color: string;
-          const setting = colorScheme?.find((s) => s.path === path);
+          const setting = colorScheme?.find((s) => s.field === path);
           if (coloring.by === "field") {
-            if (isValidColor(setting?.fieldColor ?? "")) {
+            if (
+              setting &&
+              setting.useFieldColor &&
+              setting.fieldColor &&
+              isValidColor(setting.fieldColor)
+            ) {
               color = setting.fieldColor;
             } else {
               color = getColor(path);
@@ -392,18 +399,18 @@ export const Looker3d = () => {
           }
           if (coloring.by === "value") {
             const key =
-              setting.colorByAttribute === "index"
+              setting.attributeForColor === "index"
                 ? l._id
-                : setting.colorByAttribute === "label"
+                : setting.attributeForColor === "label"
                 ? l.label
-                : l.attributes[setting.colorByAttribute] ?? l.label;
+                : l.attributes[setting.attributeForColor] ?? l.label;
             if (
               setting &&
-              setting.valueColors &&
-              setting.valueColors.length > 0
+              setting.labelColors &&
+              setting.labelColors.length > 0
             ) {
-              const labelColor = setting.valueColors.find(
-                (s) => s.value?.toString() === key?.toString()
+              const labelColor = setting.labelColors.find(
+                (s) => s.name === key
               )?.color;
               if (isValidColor(labelColor)) {
                 color = labelColor;

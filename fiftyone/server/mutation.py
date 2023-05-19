@@ -18,6 +18,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.colorscheme import ColorScheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -29,6 +30,7 @@ from fiftyone.server.query import (
     Dataset,
     SidebarGroup,
     SavedView,
+    ColorSchemeStr,
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
@@ -65,7 +67,12 @@ class SavedViewInfo:
 @gql.input
 class ColorSchemeInput:
     color_pool: t.Optional[t.List[str]] = None
-    fields: t.Optional[JSONArray] = None
+    customized_color_settings: t.Optional[JSONArray] = None
+
+
+@gql.input
+class ColorSchemeSaveFormat(ColorSchemeStr):
+    pass
 
 
 @gql.type
@@ -412,18 +419,19 @@ class Mutation:
         stages: BSONArray,
         color_scheme: ColorSchemeInput,
         save_to_app: bool,
+        color_scheme_save_format: ColorSchemeSaveFormat,
     ) -> bool:
         state = get_state()
         view = get_view(dataset, stages=stages)
-        state.color_scheme = foo.ColorScheme(
+        state.color_scheme = ColorScheme(
             color_pool=color_scheme.color_pool,
-            fields=color_scheme.fields,
+            customized_color_settings=color_scheme.customized_color_settings,
         )
 
         if save_to_app:
-            view._dataset.app_config.color_scheme = foo.ColorScheme(
-                color_pool=color_scheme.color_pool,
-                fields=color_scheme.fields,
+            view._dataset.app_config.color_scheme = foo.ColorSchemeDocument(
+                color_pool=color_scheme_save_format.color_pool,
+                customized_color_settings=color_scheme_save_format.customized_color_settings,
             )
             view._dataset.save()
             state.view = view

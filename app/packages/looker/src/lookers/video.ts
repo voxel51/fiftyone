@@ -8,7 +8,6 @@ import {
   BufferRange,
   Buffers,
   Coloring,
-  CustomizeColor,
   DEFAULT_VIDEO_OPTIONS,
   FrameChunkResponse,
   FrameSample,
@@ -46,7 +45,6 @@ interface AcquireReaderOptions {
   update: StateUpdate<VideoState>;
   dispatchEvent: (eventType: string, detail: any) => void;
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
 }
 
 const { acquireReader, addFrame } = (() => {
@@ -85,7 +83,6 @@ const { acquireReader, addFrame } = (() => {
     update,
     dispatchEvent,
     coloring,
-    customizeColorSetting,
     dataset,
     view,
   }: AcquireReaderOptions): string => {
@@ -158,7 +155,6 @@ const { acquireReader, addFrame } = (() => {
       frameNumber,
       uuid: subscription,
       coloring,
-      customizeColorSetting,
       dataset,
       view,
     });
@@ -440,7 +436,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       update: this.updater,
       dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       coloring: this.state.options.coloring,
-      customizeColorSetting: this.state.options.customizeColorSetting,
       dataset: this.state.config.dataset,
       view: this.state.config.view,
     });

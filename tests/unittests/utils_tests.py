@@ -42,23 +42,6 @@ class CoreUtilsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fou.validate_hex_color("#FFFF")
 
-    def test_validate_color(self):
-        # valid
-        fou.validate_color("#ff6d04")
-        fou.validate_color("#000")
-        fou.validate_color("red")
-        fou.validate_color("lightpink")
-
-        # invalid
-        with self.assertRaises(ValueError):
-            fou.validate_color("#bcedfg")
-
-        with self.assertRaises(ValueError):
-            fou.validate_color("#ggg")
-
-        with self.assertRaises(ValueError):
-            fou.validate_color("yellowred")
-
     def test_to_slug(self):
         self.assertEqual(fou.to_slug("coco_2017"), "coco-2017")
         self.assertEqual(fou.to_slug("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")

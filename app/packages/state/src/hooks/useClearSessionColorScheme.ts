@@ -3,7 +3,6 @@ import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import {
-  ColorScheme,
   dataset,
   datasetAppConfig,
   datasetName,
@@ -14,13 +13,13 @@ import {
 import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import useSendEvent from "./useSendEvent";
 
-const useSetSessionColorScheme = () => {
+const useClearSessionColorScheme = () => {
   const send = useSendEvent(true);
   const [commit] = useMutation<foq.setColorSchemeMutation>(foq.setColorScheme);
   const onError = useErrorHandler();
   const update = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      (saveToApp: boolean, setting: ColorScheme) => {
+      (saveToApp: boolean, setting: any) => {
         set(sessionColorScheme, setting);
         if (saveToApp) {
           set(dataset, (current) => {
@@ -30,7 +29,9 @@ const useSetSessionColorScheme = () => {
                 ...current.appConfig,
                 colorScheme: {
                   colorPool: setting.colorPool,
-                  fields: setting.fields,
+                  customizedColorSettings: JSON.stringify(
+                    setting.customizedColorSettings
+                  ),
                 },
               },
             };
@@ -42,7 +43,7 @@ const useSetSessionColorScheme = () => {
 
   return useRecoilCallback(
     ({ snapshot }) =>
-      async (saveToApp: boolean, colorScheme: ColorScheme) => {
+      async (saveToApp: boolean) => {
         // when clear default, we reset to app default;
         // when reset, we reset to appConfig default (if exisits) or app default.
         const defaultSetting = (await snapshot.getPromise(datasetAppConfig))
@@ -53,27 +54,34 @@ const useSetSessionColorScheme = () => {
             defaultSetting && !saveToApp
               ? defaultSetting.colorPool
               : DEFAULT_APP_COLOR_SCHEME.colorPool,
-          fields:
-            defaultSetting?.fields && !saveToApp
-              ? defaultSetting.fields
-              : DEFAULT_APP_COLOR_SCHEME.fields,
+          customizedColorSettings:
+            defaultSetting?.customizedColorSettings && !saveToApp
+              ? JSON.parse(defaultSetting.customizedColorSettings)
+              : DEFAULT_APP_COLOR_SCHEME.customizedColorSettings,
         };
-
-        if (colorScheme == null) {
-          colorScheme = combined;
-        }
+        const api = {
+          colorPool:
+            defaultSetting && !saveToApp
+              ? defaultSetting.colorPool
+              : DEFAULT_APP_COLOR_SCHEME.colorPool,
+          customizedColorSettings:
+            defaultSetting?.customizedColorSettings && !saveToApp
+              ? defaultSetting.customizedColorSettings
+              : null,
+        };
 
         return send(async (session) => {
           commit({
             onError,
-            onCompleted: () => update(saveToApp, colorScheme),
+            onCompleted: () => update(saveToApp, combined),
             variables: {
               subscription: await snapshot.getPromise(stateSubscription),
               session,
               dataset: await snapshot.getPromise(datasetName),
               stages: await snapshot.getPromise(view),
-              colorScheme: colorScheme,
+              colorScheme: combined,
               saveToApp: saveToApp,
+              colorSchemeSaveFormat: api,
             },
           });
         });
@@ -82,4 +90,4 @@ const useSetSessionColorScheme = () => {
   );
 };
 
-export default useSetSessionColorScheme;
+export default useClearSessionColorScheme;

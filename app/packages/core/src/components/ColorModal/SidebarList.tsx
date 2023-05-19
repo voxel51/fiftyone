@@ -110,9 +110,6 @@ const SidebarList: React.FC = () => {
                         "&.Mui-selected": {
                           backgroundColor: theme.primary.main,
                         },
-                        "&.Mui-selected:hover": {
-                          backgroundColor: theme.primary.main,
-                        },
                       }}
                       key={`menu-${pathIdx}`}
                       selected={path === getCurrentField(activeField)}

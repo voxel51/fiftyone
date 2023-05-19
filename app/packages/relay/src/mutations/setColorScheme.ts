@@ -10,6 +10,7 @@ export default r(graphql`
     $stages: BSONArray!
     $colorScheme: ColorSchemeInput!
     $saveToApp: Boolean!
+    $colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ) {
     setColorScheme(
       subscription: $subscription
@@ -18,6 +19,7 @@ export default r(graphql`
       stages: $stages
       colorScheme: $colorScheme
       saveToApp: $saveToApp
+      colorSchemeSaveFormat: $colorSchemeSaveFormat
     )
   }
 `);

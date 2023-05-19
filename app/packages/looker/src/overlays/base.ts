@@ -101,23 +101,27 @@ export abstract class CoordinateOverlay<
     const path = this.field.startsWith("frames.")
       ? this.field.slice("frames.".length)
       : this.field;
-    const field = customizeColorSetting.find((s) => s.path === path);
+    const field = customizeColorSetting.find((s) => s.field === path);
     if (coloring.by === "field") {
-      if (isValidColor(field?.fieldColor)) {
+      if (
+        field?.useFieldColor &&
+        field?.fieldColor &&
+        isValidColor(field.fieldColor)
+      ) {
         return field.fieldColor;
       }
       return getColor(coloring.pool, coloring.seed, this.field);
     }
     if (coloring.by === "value") {
       if (field) {
-        key = field.colorByAttribute
-          ? field.colorByAttribute === "index"
+        key = field.attributeForColor
+          ? field.attributeForColor === "index"
             ? "id"
-            : field.colorByAttribute
+            : field.attributeForColor
           : "label";
         // check if this label has a assigned color, use it if it is a valid color
-        const labelColor = field.valueColors?.find(
-          (l) => l.value?.toString() == this.label[key]?.toString()
+        const labelColor = field.labelColors?.find(
+          (l) => l.name == this.label[key]?.toString()
         )?.color;
 
         return isValidColor(labelColor)

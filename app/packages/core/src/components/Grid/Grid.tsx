@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
@@ -14,6 +20,7 @@ import useResize from "./useResize";
 
 import * as fos from "@fiftyone/state";
 import { deferrer, stringifyObj } from "@fiftyone/state";
+import EmptySamples from "../EmptySamples";
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());
@@ -134,19 +141,6 @@ const Grid: React.FC<{}> = () => {
     }),
     [lookerOptions, selected]
   );
-
-  // useEffect(
-  //   deferred(() => {
-  //     // flashlight.updateItems((sampleId) => {
-  //     //   const sample = store.samples.get(sampleId);
-  //     //   store.lookers.get(sampleId)?.updateSample(sample);
-  //     // });
-  //     store.samples.forEach((sample, sampleId) => {
-  //       store.lookers.get(sampleId)?.updateSample(sample);
-  //     });
-  //   }),
-  //   [useRecoilValue(fos.sessionColorScheme)]
-  // );
 
   useLayoutEffect(() => {
     flashlight.attach(id);

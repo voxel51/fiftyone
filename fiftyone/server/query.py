@@ -191,23 +191,9 @@ class SidebarGroup:
 
 
 @gql.type
-class LabelSetting:
-    value: str
-    color: str
-
-
-@gql.type
-class CustomizeColor:
-    path: str
-    field_color: t.Optional[str]
-    color_by_attribute: t.Optional[str]
-    value_colors: t.Optional[t.List[LabelSetting]]
-
-
-@gql.type
-class ColorScheme:
+class ColorSchemeStr:
     color_pool: t.Optional[t.List[str]] = None
-    fields: t.Optional[t.List[CustomizeColor]] = None
+    customized_color_settings: t.Optional[str] = None
 
 
 @gql.type
@@ -237,7 +223,7 @@ class DatasetAppConfig:
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
-    color_scheme: t.Optional[ColorScheme]
+    color_scheme: t.Optional[ColorSchemeStr]
 
 
 @gql.type
@@ -339,6 +325,24 @@ class Theme(Enum):
     browser = "browser"
     dark = "dark"
     light = "light"
+
+
+@gql.type
+class LabelSetting:
+    name: str
+    color: str
+
+
+@gql.type
+class CustomizeColor:
+    field: str
+    use_field_color: t.Optional[bool]
+    field_color: t.Optional[str]
+    attribute_for_color: t.Optional[str]
+    use_opacity: t.Optional[bool]
+    attribute_for_Opacity: t.Optional[str]
+    use_label_colors: t.Optional[bool]
+    label_colors: t.Optional[t.List[LabelSetting]]
 
 
 @gql.type

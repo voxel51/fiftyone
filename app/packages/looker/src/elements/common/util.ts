@@ -107,19 +107,21 @@ export const getColorFromOptions = ({
   labelDefault,
 }: Param) => {
   let key;
-  const setting = customizeColorSetting.find((s) => s.path === path);
+  const setting = customizeColorSetting.find((s) => s.field === path);
   if (coloring.by === "field") {
-    if (isValidColor(setting?.fieldColor ?? "")) {
-      return setting.fieldColor;
+    const fieldColor = setting?.fieldColor;
+    const useFieldColor = setting?.useFieldColor;
+    if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
+      return fieldColor;
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
   if (coloring.by === "value") {
     if (setting) {
-      key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
+      key = setting.attributeForColor ?? labelDefault ? "label" : "value";
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.valueColors?.find(
-        (l) => l.value?.toString() == param[key]?.toString()
+      const labelColor = setting.labelColors?.find(
+        (l) => l.name == param[key]?.toString()
       )?.color;
       if (isValidColor(labelColor)) {
         return labelColor;
@@ -145,19 +147,20 @@ export const getColorFromOptionsPrimitives = ({
   value,
   customizeColorSetting,
 }: PrimitiveParam) => {
-  const setting = customizeColorSetting.find((s) => s.path === path);
+  const setting = customizeColorSetting.find((s) => s.field === path);
   if (coloring.by === "field") {
-    if (isValidColor(setting?.fieldColor ?? "")) {
-      return setting?.fieldColor;
+    const fieldColor = setting?.fieldColor;
+    const useFieldColor = setting?.useFieldColor;
+    if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
+      return fieldColor;
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
   if (coloring.by === "value") {
-    debugger;
     if (setting) {
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.valueColors?.find(
-        (l) => l.value?.toString() == value?.toString()
+      const labelColor = setting.labelColors?.find(
+        (l) => l.name == value
       )?.color;
       if (isValidColor(labelColor)) {
         return labelColor;

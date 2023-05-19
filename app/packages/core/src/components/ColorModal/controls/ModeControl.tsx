@@ -16,7 +16,7 @@ const Text = styled.div`
 `;
 
 const ModeControl: React.FC = () => {
-  const { props } = fos.useGlobalColorSetting();
+  const { props } = fos.useSessionColorScheme();
 
   return (
     <ModeControlContainer>

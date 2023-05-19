@@ -1,51 +1,23 @@
 import { get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import { isRgbMaskTargets } from "../overlays/util";
-import {
-  Coloring,
-  CustomizeColor,
-  MaskTargets,
-  RgbMaskTargets,
-} from "../state";
+import { Coloring, MaskTargets, RgbMaskTargets } from "../state";
 
 export const PainterFactory = (requestColor) => ({
-  Detection: async (
-    field,
-    label,
-    coloring: Coloring,
-    customizeColorSetting: CustomizeColor[]
-  ) => {
+  Detection: async (field, label, coloring: Coloring) => {
     if (!label.mask) {
       return;
     }
 
-    const setting = customizeColorSetting?.find((s) => s.path === field);
-    let color;
-    if (coloring.by === "field") {
-      if (setting?.fieldColor) {
-        color = setting.fieldColor;
-      } else {
-        color = await requestColor(coloring.pool, coloring.seed, field);
-      }
-    }
-    if (coloring.by === "value") {
-      if (setting) {
-        const key = setting.colorByAttribute
-          ? setting.colorByAttribute === "index"
-            ? "id"
-            : setting.colorByAttribute
-          : "label";
-        const labelColor = setting.valueColors?.find(
-          (l) => l.value?.toString() === label[key]?.toString()
-        )?.color;
-
-        color = labelColor
-          ? labelColor
-          : await requestColor(coloring.pool, coloring.seed, label[key]);
-      } else {
-        color = await requestColor(coloring.pool, coloring.seed, label.label);
-      }
-    }
+    const color = await requestColor(
+      coloring.pool,
+      coloring.seed,
+      coloring.by === "value"
+        ? label.label
+        : coloring.by === "field"
+        ? field
+        : label.id
+    );
 
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
@@ -60,29 +32,14 @@ export const PainterFactory = (requestColor) => ({
       }
     }
   },
-  Detections: async (
-    field,
-    labels,
-    coloring: Coloring,
-    customizeColorSetting: CustomizeColor[]
-  ) => {
+  Detections: async (field, labels, coloring: Coloring) => {
     const promises = labels.detections.map((label) =>
-      PainterFactory(requestColor)[label._cls](
-        field,
-        label,
-        coloring,
-        customizeColorSetting
-      )
+      PainterFactory(requestColor)[label._cls](field, label, coloring)
     );
 
     await Promise.all(promises);
   },
-  Heatmap: async (
-    field,
-    label,
-    coloring: Coloring,
-    customizeColorSetting: CustomizeColor[]
-  ) => {
+  Heatmap: async (field, label, coloring: Coloring) => {
     if (!label.map) {
       return;
     }
@@ -100,12 +57,7 @@ export const PainterFactory = (requestColor) => ({
       : isFloatArray(targets)
       ? [0, 1]
       : [0, 255];
-
-    const setting = customizeColorSetting?.find((s) => s.path === field);
-
-    const color =
-      setting?.fieldColor ??
-      (await requestColor(coloring.pool, coloring.seed, field));
+    const color = await requestColor(coloring.pool, coloring.seed, field);
 
     const getColor =
       coloring.by === "value"
@@ -150,19 +102,14 @@ export const PainterFactory = (requestColor) => ({
       }
     }
   },
-  Segmentation: async (
-    field,
-    label,
-    coloring,
-    customizeColorSetting: CustomizeColor[]
-  ) => {
+  Segmentation: async (field, label, coloring) => {
     if (!label.mask) {
       return;
     }
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
-    const setting = customizeColorSetting?.find((s) => s.path === field);
+
     // each field may have its own target map
     let maskTargets: MaskTargets = coloring.maskTargets[field];
 
@@ -218,8 +165,7 @@ export const PainterFactory = (requestColor) => ({
       let color;
       if (maskTargets && Object.keys(maskTargets).length === 1) {
         color = get32BitColor(
-          setting?.fieldColor ??
-            (await requestColor(coloring.pool, coloring.seed, field))
+          await requestColor(coloring.pool, coloring.seed, field)
         );
       }
 

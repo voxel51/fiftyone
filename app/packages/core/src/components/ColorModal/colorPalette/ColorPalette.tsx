@@ -13,7 +13,6 @@ import {
   fiftyoneDefaultColorPalette,
   isSameArray,
 } from "../utils";
-import { useRecoilValue } from "recoil";
 
 interface ColorPaletteProps {
   maxColors?: number;
@@ -24,8 +23,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const computedSessionColorScheme = useRecoilValue(fos.sessionColorScheme);
-  const setColorScheme = fos.useSetSessionColorScheme();
+  const { computedSessionColorScheme, setColorScheme } =
+    fos.useSessionColorScheme();
   const colors = computedSessionColorScheme.colorPool;
 
   const isUsingColorBlindOption = isSameArray(
@@ -49,28 +48,31 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
       newColors[activeIndex] = color.hex;
       setActiveIndex(null);
       setShowPicker(false);
-      setColorScheme(false, {
-        colorPool: newColors,
-        fields: computedSessionColorScheme.fields,
-      });
+      setColorScheme(
+        newColors,
+        computedSessionColorScheme.customizedColorSettings,
+        false
+      );
     }
   };
 
   const handleColorDelete = (index: number) => {
     const newColors = colors ? [...colors] : [];
     newColors.splice(index, 1);
-    setColorScheme(false, {
-      colorPool: newColors,
-      fields: computedSessionColorScheme.fields,
-    });
+    setColorScheme(
+      newColors,
+      computedSessionColorScheme.customizedColorSettings,
+      false
+    );
   };
 
   const handleColorAdd = () => {
     if (colors?.length < maxColors) {
-      setColorScheme(false, {
-        colorPool: [...colors, "#ffffff"],
-        fields: computedSessionColorScheme.fields,
-      });
+      setColorScheme(
+        [...colors, "#ffffff"],
+        computedSessionColorScheme.customizedColorSettings,
+        false
+      );
     }
   };
 
@@ -112,6 +114,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                 <ChromePicker
                   color={color}
                   onChangeComplete={handleColorChange}
+                  popperProps={{ positionFixed: true }}
                   ref={pickerRef}
                   disableAlpha={true}
                   className={colorPicker}
@@ -133,10 +136,11 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           value={isUsingFiftyoneClassic}
           setValue={(v) =>
             v &&
-            setColorScheme(false, {
-              colorPool: fiftyoneDefaultColorPalette,
-              fields: computedSessionColorScheme.fields,
-            })
+            setColorScheme(
+              fiftyoneDefaultColorPalette,
+              computedSessionColorScheme.customizedColorSettings,
+              false
+            )
           }
         />
       )}
@@ -146,10 +150,11 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           value={isUsingColorBlindOption}
           setValue={(v) =>
             v &&
-            setColorScheme(false, {
-              colorPool: colorBlindFriendlyPalette,
-              fields: computedSessionColorScheme.fields,
-            })
+            setColorScheme(
+              colorBlindFriendlyPalette,
+              computedSessionColorScheme.customizedColorSettings,
+              false
+            )
           }
         />
       )}

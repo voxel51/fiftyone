@@ -123,15 +123,7 @@ export default r(graphql`
           sidebarMode
           colorScheme {
             colorPool
-            fields {
-              path
-              fieldColor
-              colorByAttribute
-              valueColors {
-                value
-                color
-              }
-            }
+            customizedColorSettings
           }
         }
       }

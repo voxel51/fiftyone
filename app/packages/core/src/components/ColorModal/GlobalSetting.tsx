@@ -16,7 +16,7 @@ import {
 import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting: React.FC = ({}) => {
-  const { props } = fos.useGlobalColorSetting();
+  const { props } = fos.useSessionColorScheme();
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     props.setOpacity(newValue as number);
   };
@@ -33,7 +33,7 @@ const GlobalSetting: React.FC = ({}) => {
             setValue={(mode) => props.setColorBy(mode)}
           />
         </SectionWrapper>
-        <ShuffleColor />
+        {props.colorBy === "field" && <ShuffleColor />}
         <LabelTitle>Color Pool</LabelTitle>
         <SectionWrapper>
           <ColorPalette />

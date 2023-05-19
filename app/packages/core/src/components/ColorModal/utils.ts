@@ -51,47 +51,57 @@ const getValidLabelColors = (labelColors: unknown[]) => {
     return (
       x &&
       isObject(x) &&
-      isString(x["value"]) &&
-      x["value"] !== "" &&
+      isString(x["name"]) &&
+      x["name"] !== "" &&
       isString(x["color"])
     );
-  }) as { value: string; color: string }[];
+  }) as { name: string; color: string }[];
 };
 
 // should return a valid customize color object that can be used to setCustomizeColor
 export const validateJSONSetting = (json: unknown[]) => {
   const filtered = json?.filter(
-    (s) => s && isObject(s) && isString(s["path"])
+    (s) => s && isObject(s) && isString(s["field"])
   ) as {}[];
 
   const f = filtered?.map((input) => ({
-    path: input["path"],
+    field: input["field"],
+    useFieldColor: isBoolean(input["useFieldColor"])
+      ? input["useFieldColor"]
+      : false,
     fieldColor: input["fieldColor"] ?? null,
-    colorByAttribute:
-      isString(input["colorByAttribute"]) &&
-      input["colorByAttribute"] !== "label"
-        ? input["colorByAttribute"]
+    attributeForColor:
+      isString(input["attributeForColor"]) &&
+      input["attributeForColor"] !== "label"
+        ? input["attributeForColor"]
         : null,
-    valueColors: Array.isArray(input["valueColors"])
-      ? getValidLabelColors(input["valueColors"])
+    labelColors: Array.isArray(input["labelColors"])
+      ? getValidLabelColors(input["labelColors"])
       : null,
   })) as fos.CustomizeColor[];
 
   // remove default settings
   return f.filter((x) => {
-    const hasFieldSetting = x.fieldColor;
-    const hasAttributeColor = x.colorByAttribute;
-    const hasLabelColors = x.valueColors && x.valueColors.length > 0;
+    const hasFieldSetting = x.useFieldColor && x.fieldColor;
+    const hasAttributeColor = x.attributeForColor;
+    const hasLabelColors = x.labelColors && x.labelColors.length > 0;
     return hasFieldSetting || hasAttributeColor || hasLabelColors;
   }) as fos.CustomizeColor[];
 };
 
-export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
+type ColorSchemeStr = {
+  colorPool: string[];
+  customizedColorSettings: string;
+};
+
+export const isDefaultSetting = (savedSetting: ColorSchemeStr) => {
   return (
     isSameArray(
       savedSetting.colorPool,
       fos.DEFAULT_APP_COLOR_SCHEME.colorPool
     ) &&
-    (savedSetting.fields?.length == 0 || !savedSetting.fields)
+    (savedSetting.customizedColorSettings ==
+      JSON.stringify(fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings) ||
+      !savedSetting.customizedColorSettings)
   );
 };
