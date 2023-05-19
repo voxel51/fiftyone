@@ -53,10 +53,6 @@ const SchemaSettings = () => {
   const schemaModalWrapperRef = useRef<HTMLDivElement>(null);
   const schemaModalRef = useRef<HTMLDivElement>(null);
 
-  useOutsideClick(schemaModalRef, (_) => {
-    close();
-  });
-
   const {
     settingModal,
     setSettingsModal,
@@ -68,8 +64,17 @@ const SchemaSettings = () => {
     setSelectedFieldsStage,
     datasetName,
     excludedPaths,
+    selectedPaths,
     resetExcludedPaths,
+    setSelectedPaths,
+    setLastAppliedPaths,
+    lastAppliedPaths,
+    setExcludedPaths,
   } = useSchemaSettings();
+
+  useOutsideClick(schemaModalRef, (_) => {
+    close();
+  });
 
   const { open: isSettingsModalOpen } = settingModal || {};
   if (!isSettingsModalOpen) {
@@ -80,6 +85,8 @@ const SchemaSettings = () => {
     setSearchTerm("");
     setSearchResults([]);
     setSettingsModal({ ...settingModal, open: false });
+    setSelectedPaths({ [datasetName]: lastAppliedPaths.selected });
+    setExcludedPaths({ [datasetName]: lastAppliedPaths.excluded });
   };
 
   return (
@@ -153,10 +160,10 @@ const SchemaSettings = () => {
           {selectedTab === TAB_OPTIONS_MAP.SELECTION && <SchemaSelection />}
           <Box
             style={{
-              position: "absolute",
+              position: "sticky",
               display: "flex",
               padding: "1rem 1.5rem",
-              bottom: 0,
+              bottom: "-20px",
               background: theme.background.level2,
               left: 0,
             }}
@@ -189,6 +196,10 @@ const SchemaSettings = () => {
                 } finally {
                   setSettingsModal({ open: false });
                 }
+                setLastAppliedPaths({
+                  selected: selectedPaths[datasetName],
+                  excluded: excludedPaths[datasetName],
+                });
               }}
             >
               Apply

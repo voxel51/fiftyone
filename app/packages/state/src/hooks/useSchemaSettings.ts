@@ -122,6 +122,7 @@ export const allFieldsCheckedState = atom<boolean>({
   key: "allFieldsCheckedState",
   default: true,
 });
+
 export const schemaSearchRestuls = atom<string[]>({
   key: "schemaSearchRestuls",
   default: [],
@@ -305,6 +306,13 @@ export const searchMetaFilterState = atom({
   key: "searchMetaFilterState",
   default: {},
 });
+export const lastAppliedPathsState = atom({
+  key: "lastAppliedExcludedPathsState",
+  default: {
+    excluded: [],
+    selected: [],
+  },
+});
 
 export const selectedFieldsStageState = atom<any>({
   key: "selectedFieldsStageState",
@@ -392,6 +400,9 @@ export default function useSchemaSettings() {
 
   const [affectedPathCount, setAffectedPathCount] = useRecoilState(
     affectedPathCountState
+  );
+  const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
+    lastAppliedPathsState
   );
 
   const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
@@ -808,5 +819,7 @@ export default function useSchemaSettings() {
     isVideo: dataset?.mediaType === "video",
     setExcludedPaths,
     searchSchemaFields,
+    setLastAppliedPaths,
+    lastAppliedPaths,
   };
 }

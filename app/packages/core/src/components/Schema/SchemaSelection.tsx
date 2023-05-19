@@ -138,7 +138,7 @@ export const SchemaSelection = () => {
       <Box
         style={{
           position: "relative",
-          height: "45vh",
+          height: "100%",
           marginTop: "1rem",
           overflow: "auto",
           color: "#232323",
