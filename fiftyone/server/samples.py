@@ -70,12 +70,13 @@ async def paginate_samples(
     after: t.Optional[str] = None,
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
+    pagination_data: t.Optional[bool] = True,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
-        pagination_data=True,
+        pagination_data=pagination_data,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
     )
