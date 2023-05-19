@@ -18,9 +18,16 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
     arguments.
+
+    Args:
+        amg_kwargs: a dictionary of keyword arguments to pass to
+            ``SamAutomaticMaskGenerator``
     """
 
-    pass
+    def __init__(self, d):
+        d = self.init(d)
+        super().__init__(d)
+        self.amg_kwargs = self.parse_dict(d, "amg_kwargs", default={})
 
 
 class SegmentAnythingModel(fout.TorchImageModel):
@@ -67,12 +74,7 @@ class SegmentAnythingModel(fout.TorchImageModel):
     def _forward_pass(self, inputs):
         mask_generator = SamAutomaticMaskGenerator(
             self._model,
-            points_per_side=32,
-            pred_iou_thresh=0.9,
-            stability_score_thresh=0.92,
-            crop_n_layers=1,
-            crop_n_points_downscale_factor=2,
-            min_mask_region_area=400,
+            **self.config.amg_kwargs,
         )
         masks = [
             mask_generator.generate(
