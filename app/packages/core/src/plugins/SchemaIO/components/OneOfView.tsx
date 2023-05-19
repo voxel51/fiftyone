@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { HeaderView } from ".";
 import DynamicIO from "./DynamicIO";
 import HelpTooltip from "./HelpTooltip";
+import { getComponentProps } from "../utils";
 
 export default function OneOfView(props) {
   const { schema, path, onChange, data, errors } = props;
@@ -11,8 +12,8 @@ export default function OneOfView(props) {
   const [tab, setTab] = useState(0);
 
   return (
-    <Box>
-      <HeaderView {...props} />
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} nested />
       <Tabs
         value={tab}
         onChange={(e, tab) => {
@@ -22,6 +23,7 @@ export default function OneOfView(props) {
         variant="scrollable"
         scrollButtons={false}
         sx={{ borderBottom: 1, borderColor: "divider" }}
+        {...getComponentProps(props, "tabs")}
       >
         {types.map((type, i) => {
           const label = oneof[i]?.label || `${view?.label} type ${i}`;
@@ -34,11 +36,12 @@ export default function OneOfView(props) {
               icon={description && <HelpTooltip title={description} />}
               iconPosition="end"
               sx={{ minHeight: 48 }}
+              {...getComponentProps(props, "tab")}
             />
           );
         })}
       </Tabs>
-      <Box sx={{ p: 1 }}>
+      <Box sx={{ p: 1 }} {...getComponentProps(props, "tabContainer")}>
         <DynamicIO
           {...props}
           key={`${path}-${tab}-content`}

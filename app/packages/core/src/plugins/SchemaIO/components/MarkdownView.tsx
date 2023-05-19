@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import CodeView from "./CodeView";
 import { HeaderView } from ".";
 import styled from "styled-components";
+import { getComponentProps } from "../utils";
 
 const InlineCode = styled.span`
   background: ${({ theme }) => theme.background.level1};
@@ -32,7 +33,7 @@ const componenntMap = {
         data={String(children).replace(/\n$/, "")}
       />
     ) : (
-      <InlineCode className={className}>{children}</InlineCode>
+      <InlineCode className={className} {...props}>{children}</InlineCode>
     );
   },
 };
@@ -43,9 +44,14 @@ export default function MarkdownView(props) {
   const { label, description } = view;
 
   return (
-    <Box>
-      <HeaderView {...props} />
-      <ReactMarkdown components={componenntMap}>{data}</ReactMarkdown>
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} nested />
+      <ReactMarkdown
+        components={componenntMap}
+        {...getComponentProps(props, "markdown")}
+      >
+        {data}
+      </ReactMarkdown>
     </Box>
   );
 }

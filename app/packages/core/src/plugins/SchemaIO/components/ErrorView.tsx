@@ -2,6 +2,7 @@ import { Box, Stack, Typography } from "@mui/material";
 import React, { useState } from "react";
 import PopoutButton from "./PopoutButton";
 import { Error } from "@mui/icons-material";
+import { getComponentProps } from "../utils";
 
 export default function ErrorView(props) {
   const { schema, data } = props;
@@ -15,11 +16,17 @@ export default function ErrorView(props) {
   if (errors.length === 0) return null;
 
   if (detailed) {
-    return <DetailedErrors errors={errors} popout={popout} left={left} />;
+    return (
+      <DetailedErrors popout={popout} left={left} {...props} errors={errors} />
+    );
   }
 
   return (
-    <Typography variant="body2" color="error.main">
+    <Typography
+      variant="body2"
+      color="error.main"
+      {...getComponentProps(props, "container")}
+    >
       {errors.map(({ reason }) => reason).join(", ")}
     </Typography>
   );
@@ -44,7 +51,7 @@ function DetailedErrors(props) {
     : {};
 
   return (
-    <Wrapper {...wrapperProps}>
+    <Wrapper {...wrapperProps} {...getComponentProps(props, "container")}>
       {errors.map((error) => (
         <DetailedError {...error} />
       ))}
