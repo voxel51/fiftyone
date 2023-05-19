@@ -13,6 +13,9 @@ import traceback
 import fiftyone.plugins as fop
 from .operator import Operator
 from ..plugins import PluginDefinition
+import logging
+
+logger = logging.getLogger(__name__)
 
 KNOWN_PLUGIN_CONTEXTS = {}
 
@@ -67,7 +70,7 @@ class PluginContext:
                 instance.plugin_name = self.name
                 self.instances.append(instance)
         except Exception as e:
-            print(f"{cls.__name__} could not be registered!")
+            logging.error(f"{cls.__name__} could not be registered!")
             self.errors.append(traceback.format_exc())
 
     def unregister_inst(self, inst):
@@ -103,6 +106,10 @@ def register_module(plugin_definition, mod):
         else:
             # If plugin context is None, then there is no plugin name to
             # register so just silently fail
+            logging.error(
+                "Error registering module `%s` (%s)" % mod.__name__,
+                mod.__file__,
+            )
             pass
 
     return pctx
@@ -127,8 +134,8 @@ def dispose_all(plugin_contexts):
         try:
             pctx.dispose()
         except Exception as e:
-            print("Error disposing plugin context: %s" % name)
-            print(e)
+            logging.error("Error disposing plugin context: %s" % name)
+            logging.error(e)
     KNOWN_PLUGIN_CONTEXTS = {}
 
 
@@ -144,7 +151,7 @@ def load_from_dir():
                 pctx = exec_module_from_dir(module_dir, plugin_definition)
                 plugin_contexts.append(pctx)
             except ValueError as e:
-                print("Error loading plugin from %s" % module_dir)
+                logging.error("Error loading plugin from %s" % module_dir)
                 pass
     return plugin_contexts
 
