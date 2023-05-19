@@ -16,6 +16,7 @@ import {
   HEATMAP_FIELD,
   KEYPOINT_FILED,
   LIST_FIELD,
+  POLYLINES_FIELD,
   POLYLINE_FIELD,
   REGRESSION_FILED,
   RESERVED_FIELD_KEYS,
@@ -97,6 +98,7 @@ const disabledField = (
       GEO_LOCATIONS_FIELD,
       GEO_LOCATION_FIELD,
       POLYLINE_FIELD,
+      POLYLINES_FIELD,
     ].includes(parentEmbeddedDocType)
   );
 };

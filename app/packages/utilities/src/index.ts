@@ -270,6 +270,7 @@ export const AGGS = {
 };
 
 export const POLYLINE_FIELD = "fiftyone.core.labels.Polyline";
+export const POLYLINES_FIELD = "fiftyone.core.labels.Polylines";
 export const GEO_LOCATIONS_FIELD = "fiftyone.core.labels.GeoLocations";
 export const GEO_LOCATION_FIELD = "fiftyone.core.labels.GeoLocation";
 export const SEGMENTATION_FIELD = "fiftyone.core.labels.Segmentation";
