@@ -303,7 +303,7 @@ export const Looker3d = () => {
   useEffect(() => {
     if (isPointcloudDataset) {
       setCustomColorMap((prev) => {
-        if (Object.hasOwn(prev, "default")) {
+        if (prev && Object.hasOwn(prev, "default")) {
           return prev;
         }
         return { ...(prev ?? {}), default: DEFAULT_GREEN };
