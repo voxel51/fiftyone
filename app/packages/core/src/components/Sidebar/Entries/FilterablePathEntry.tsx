@@ -30,7 +30,7 @@ import {
 } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
 import Color from "color";
-import React, { useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -188,7 +188,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     (path) =>
     ({ set, get }, value) => {
       const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modalSample);
+      const sampleId = get(fos.modalSampleId);
 
       set(fos.pathHiddenLabelsMap, {
         ...data,
@@ -200,7 +200,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     },
 });
 
-const useHidden = (path: string) => {
+const Hidden = ({ path }: { path: string }) => {
   const [hidden, set] = useRecoilState(hiddenPathLabels(path));
   const num = hidden.length;
   const text = num.toLocaleString();
@@ -298,8 +298,6 @@ const FilterableEntry = ({
 
   const active = useRecoilValue(fos.activeField({ modal, path }));
 
-  const hidden = modal ? useHidden(path) : null;
-
   const onClick = useOnClick({ disabled, modal, path });
 
   return (
@@ -338,7 +336,11 @@ const FilterableEntry = ({
                       {PATH_OVERRIDES[path] || path}
                     </span>
                   </span>
-                  {hidden}
+                  {modal && (
+                    <Suspense>
+                      <Hidden path={path} />
+                    </Suspense>
+                  )}
                   <PathEntryCounts
                     key="count"
                     modal={modal}

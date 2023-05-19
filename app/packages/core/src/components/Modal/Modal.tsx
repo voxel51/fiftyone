@@ -202,7 +202,9 @@ const SampleModal = () => {
       async () => {
         jsonPanel.close();
         helpPanel.close();
-        set(fos.modalSampleIndex, (cur) => (cur > 0 ? cur - 1 : cur));
+        set(fos.modalSampleIndex, (i) => {
+          return i + 1;
+        });
       },
     [jsonPanel, helpPanel]
   );
@@ -213,7 +215,7 @@ const SampleModal = () => {
         jsonPanel.close();
         helpPanel.close();
 
-        set(fos.modalSampleIndex, (cur) => (cur > 0 ? cur - 1 : cur));
+        set(fos.modalSampleIndex, (cur) => cur--);
       },
     [jsonPanel, helpPanel]
   );

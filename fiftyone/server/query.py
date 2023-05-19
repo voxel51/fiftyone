@@ -425,7 +425,7 @@ class Query(fosa.AggregateQuery):
         index: t.Optional[int] = None,
     ) -> t.Optional[SampleItem]:
         samples = await paginate_samples(
-            dataset, view, None, 1, sample_filter=filter
+            dataset, view, None, 1, after=index - 1, sample_filter=filter
         )
         if samples.edges:
             return samples.edges[0].node
