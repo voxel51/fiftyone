@@ -618,7 +618,9 @@ export default function useSchemaSettings() {
         onCompleted: (data) => {
           if (data) {
             const { searchSelectFields = [] } = data;
-            const res = searchSelectFields as string[];
+            const res = (searchSelectFields as string[]).map((p) =>
+              p.replace("._cls", "")
+            );
             setSearchResults(res);
             setSearchMetaFilter(object);
 
