@@ -162,6 +162,18 @@ let theme = extendMuiTheme({
         disableRipple: true,
       },
     },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "var(--fo-palette-text-secondary)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "var(--fo-palette-text-tertiary)",
+          },
+        },
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
