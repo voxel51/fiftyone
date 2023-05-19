@@ -27,3 +27,5 @@ dist/
 coverage.xml
 .coverage.*
 pyvenv.cfg
+
+.chroma

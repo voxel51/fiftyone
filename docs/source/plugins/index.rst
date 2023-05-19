@@ -55,7 +55,7 @@ Operators
 
 Operators are a powerful feature in FiftyOne that allow plugin developers to define custom operations that can be executed by users of the FiftyOne App. They can be defined in either Python or JS, and are typically triggered by the user clicking a button or using the Operator Browser. Operators can execute other operators and custom code with custom dependencies.
 
-The Operator Browser allows users to search through all available operations without having to find them in a menu or remember the corresponding keyboard shortcuts. You can open the Operator Browser using the "\`" key or by clicking on the Operator Browser icon in the Samples Grid.
+The Operator Browser allows users to search through all available operations without having to find them in a menu or remember the corresponding keyboard shortcuts. You can open the Operator Browser using the backtick key (`````) or by clicking on the Operator Browser icon in the Samples Grid.
 
 Instead of building a user interface from scratch, Operators are built using Operator Types, which define the input and output properties of the operator. At runtime, these types are used to facilitate the execution of the operation by collecting information from the user, validating the user input, and executing the operation. The execution step is the only required step; all other steps are optional and can be customized as needed.
 
@@ -82,7 +82,8 @@ Operator Types
 ~~~~~~~~~~~~~~
 
 :mod:`Python API Reference <fiftyone.operators.types>`
-:mod:`Typescript API Reference <@fiftyone/operators>`
+
+:js:mod:`Typescript API Reference <fiftyone.operators>`
 
 The operator definition is constructed using the types defined below. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
 
@@ -104,7 +105,31 @@ In some cases, coordination between operators is necessary. For example, when a 
 Operator Exceptions
 ~~~~~~~~~~~~~~~~~~~
 
-When an operator’s execute() method throws an error it will be returned to the browser and display as a result.
+When an operator’s execute() method throws an error it will be returned to the browser and displayed as a result.
+
+This behavior should only be used for uncaught errors.
+
+Operator Input Validation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to ensure proper values are provided to an operator, the operator definition will be used to validate the input.
+
+This validation is performed in the browser and can be used to ensure that the user has provided valid input before executing the operator.
+
+Operators that set `config.dynamic` to `True` can also use the `resolve_input()` method to determine whehter any given property is `invlaid`.
+
+Here is an example of how to use the `resolve_input()` method to validate input:
+
+.. code-block:: python
+
+    def resolve_input(self, ctx):
+        cur_message = ctx.params.get("message", None)
+        inputs = types.Object()
+        message_property = inputs.str("message", label="Message", required=True)
+        if cur_message == "bad":
+            message_property.invalid = True
+            message_property.error_message = "custom error message!"
+        return types.Property(inputs)
 
 Executing Operators from Code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,7 +228,7 @@ restart it to pick up this new setting.
     Your plugins directory must be readable by the FiftyOne server.
 
 Installing local plugins
----------------------------
+------------------------
 
 In order for Fiftyone to recognize a plugin package, Fiftyone will try and
 find your plugin's `fiftyone.yaml` file
@@ -242,7 +267,7 @@ and refresh any connected browser clients to see the plugins show up.
     present and defines all operators (python) and scripts (js).
 
 Downloading plugins via CLI or Python
-------------------------------------
+-------------------------------------
 
 To download and run a new plugin, all you need is a URL to
 the plugin packaged as a Zip archive or a link to a GitHub repo containing
@@ -303,73 +328,78 @@ Developing plugins
 
 In order to develop and test your plugin you will need the following:
 
--   A development install of FiftyOne
--   The FiftyOne App setup for development
--   A plugin skeleton (start with one of the plugins in
-    `voxel51/fiftyone-plugins`)
--   npm link / symlink to the `@fiftyone/plugins` package
--   npm link / symlink to the `@fiftyone/aggregations` package (optional)
--   npm link / symlink to the `@fiftyone/components` package (optional)
+- a dev install of FiftyOne Python Package
+- a dev install of FiftyOne App
+- For JS Plugins: a vite config that links modules to your FiftyoneApp directory.
 
 .. note::
+   
+   For JS plugin vite configs we recommend forking the `voxel51/fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_ 
+   repository and following the conventions there to build your plugin.
 
-    You cannot use relative paths to load these modules. They must be loaded
-    using the `from '@fiftyone/$PKG_NAME'` syntax. This allows the build to
-    externalize them, so they are loaded at runtime by the parent application.
+Plugin Files
+------------
 
-For local testing, follow these basic steps:
+The `fiftyone.yaml` file is used to define the plugin's metadata and operators.
 
-First ensure your plugin's `package.json` includes the path to the plugin
-script:
+fiftyone.yaml (Plugin Metadata)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: json
+This file is required in order for FiftyOne to load your plugin. The following fields are available for defining the plugin:
 
-    {
-        "fiftyone": {
-            "script": "dist/index.umd.js"
-        }
-    }
+- `name` (required): The name of the plugin. Usually in the form of `@org/plugin-name`.
+- `author`: The author or organization responsible for the plugin.
+- `version`: The version of the plugin. It should be a valid semantic version.
+- `license`: The license under which the plugin is distributed.
+- `description`: A brief description of the plugin.
+- `fiftyone`: A dictionary containing information about the compatibility of the plugin with FiftyOne.
+- `fiftyone.version`: A semver version range specifying the required FiftyOne version for the plugin to work properly.
+- `operators`: A list of operator names provided by the plugin.
 
-Then follow the steps below, in separate terminal sessions as needed.
+Optional Files
+~~~~~~~~~~~~~~
 
-.. code-block:: shell
+The plugin directory may contain the following optional files:
 
-    # tell FiftyOne where you want to load plugins from
-    # this should be the parent directory to all your plugins
-    FIFTYONE_PLUGINS_DIR=/path/to/your/plugins
+- `package.json`: A JSON file containing additional information about the plugin, including the JS bundle file path.
+- `__init__.py`: A Python entry file for the plugin.
+- `dist/index.umd.js`: A JS bundle file for the plugin.
 
-    # start the FiftyOne App in dev mode
-    cd $FIFTYONE/app/packages/app
-    yarn dev
+Publishing a FiftyOne Plugin
+----------------------------
 
-    # start the FiftyOne python server (in a separate session)
-    cd $FIFTYONE
-    python fiftyone/server/main.py
+Publishing a plugin in FiftyOne allows you to share your custom functionality and operators with the community. This document outlines the steps required to publish a plugin by either committing the plugin files to a GitHub repository or uploading a zip file.
 
-    # ensure your plugin has a symlink to the @fiftyone/plugins package
-    cd $FIFTYONE/app/packages/plugins
-    npm link
-    cd $MY_PLUGIN
-    npm link @fiftyone/plugins
+Committing Plugin Files to GitHub
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    # note: if you are using other @fiftyone/* packages
-    # you will need to follow the same linking steps for those packages
+To publish a plugin by committing the plugin files to a GitHub repository, follow these steps:
 
-    # now you can build your plugin for development
-    yarn build
+1. Create a GitHub repository: Create a new repository on GitHub to host your plugin. Make sure to choose an appropriate name and provide a brief description of your plugin.
 
-You should now have a running FiftyOne server and App, including your plugin.
+2. Clone the repository: Clone the GitHub repository to your local machine using Git.
+
+3. Organize the plugin files: Ensure that all the necessary files for your plugin, including the plugin definition YAML file and any optional files like `package.json` or `__init__.py`, are present in the appropriate directory structure.
+
+4. Commit and push: Commit the plugin files to the local repository and push the changes to the GitHub repository.
 
 .. note::
+   
+    Public and Private Github Repositories are supported
 
-    Each time you change you plugin's source you must rebuild using
-    `yarn build`. You can setup a watcher to do this automatically. See
-    `nodemon <https://www.npmjs.com/package/nodemon>`_.
 
-Publishing your plugin
-----------------------
+Publishing Plugin as a Zip File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TBD
+If you prefer not to use GitHub, you can publish your plugin by uploading a zip file to a location that allows downloads. Follow these steps:
+
+1. Package the plugin files: Create a zip file containing all the necessary plugin files, including the plugin definition YAML file and any optional files.
+
+2. Choose a hosting platform: Select a file hosting platform or service that allows file downloads. Examples include Dropbox, Google Drive, or a personal website.
+
+3. Upload the zip file: Upload the zip file containing the plugin files to the chosen hosting platform. Make sure to provide a clear and descriptive name for the zip file.
+
+4. Share the download link: Once the zip file is uploaded, generate a publicly accessible download link. You can share this link with others who want to install your plugin.
 
 How to write plugins
 --------------------
@@ -534,9 +564,13 @@ like this:
     }
 
     registerComponent({
-        copmponent: HelloWorld,
+        name: "HelloWorld",
+        label: "HelloWorld",
+        component: HelloWorld,
         type: PluginComponentTypes.Panel,
+        activator: () => true
     });
+
 
 Adding a custom FiftyOne Visualizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -562,7 +596,7 @@ Adding a custom FiftyOne Visualizer
 
     fop.registerComponent({
         // component to delegate to
-        copmponent: CustomVisualizer,
+        component: CustomVisualizer,
         // tell FiftyOne you want to provide a Visualizer
         type: PluginComponentTypes.Visualizer,
         // activate this plugin when the mediaType is PointCloud
@@ -610,7 +644,7 @@ Adding a custom Plot
 
     fop.registerComponent({
         // component to delegate to
-        copmponent: CustomPlot,
+        component: CustomPlot,
         // tell FiftyOne you want to provide a custom Panel
         type: PluginComponentTypes.Panel,
         // used for the plot selector button
@@ -624,11 +658,124 @@ Adding a custom Plot
     The `PluginComponentType.Plot` type is deprecated. Use
     `PluginComponentType.Panel` instead.
 
+Custom operator view using Component plugin
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. **Creating and registering a custom component with plugin component**
+
+.. code-block:: jsx
+
+    import * as fop from "@fiftyone/plugins";
+    import { useState } from "react"
+
+    function CustomOperatorView(props) {
+        // These props are provided to the component used as the view for an
+        // operator input/output field
+        const { errors, data, id, onChange, path, schema } = props
+
+        // schema may optionally include a view property which contains
+        // attributes such label, description, caption for
+        // the field. Schema will also provide a type property to indicate the type
+        // of value expected for the field (i.e. string, number, object, array, etc.)
+        const { default: defaultValue, view, type } = schema
+
+        // Schema may also provide a default value for the field
+        const [value, setValue] = useState(defaultValue)
+
+        return (
+            <div>
+                <label htmlFor={id}>{view.label}</label>
+                <input
+                    value={value}
+                    id={id}
+                    type={type}
+                    onChange={(e) => {
+                        // onChange function passed as a prop can be called with
+                        // path and value to set the current value for a field
+                        onChange(path, e.target.value)
+                    }}
+                />
+            </div>
+        )
+    }
+
+    fop.registerComponent({
+        // Unique name you can use later to refer to the component plugin
+        name: "CustomOperatorView",
+        // component to delegate to
+        component: CustomOperatorView,
+        // tell FiftyOne you want to provide a custom component
+        type: PluginComponentTypes.Component,
+        // activate this plugin unconditionally
+        activator: () => true,
+    });
+
+1. **Using the plugin component as the view for an operator field**
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class CustomViewOperator(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="custom_view_operator",
+                label="Custom View Operator",
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.str(
+                "name",
+                label="Name",
+                default="Fiftyone",
+                # provide the name of a registered component plugin
+                view=types.View(component="CustomOperatorView")
+            )
+            return types.Property(inputs)
+
+        def execute(self, ctx):
+            return {}
+
+
+
 Fiftyone App State
 ------------------
 
 There are a few ways to manage the state of your plugin. By default you should defer to existing state management in the FiftyOne App.
 For example, if you want to allow users to select samples, you can use the `@fiftyone/state` package:
+
+
+.. Reacting to state changes
+.. ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. .. code-block:: jsx
+
+..     import * as fos from '@fiftyone/state'
+..     import * as recoil from 'recoil'
+
+..     // this example demonstrates handling updates to
+..     // filters/sidebar, but applies to everything
+..     // listed under "state" below
+..     function MyPlugin() {
+..       const activeFields = recoil.useRecoilValue(fos.activeFields)
+
+..       return <ul>{activeFields.map(f => <li>{f.name}</li>)}
+..     }
+
+
+Interactivity and state
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If your plugin only has internal state, you can use existing state management
+to achieve your desired ux. For example, in a 3D visualizer, you might want to
+use Thee.js and its object model, events, and state management. Or just use
+your own React hooks to maintain your plugin components internal state.
+
+If you want to allow users to interact with other aspects of FiftyOne through
+your plugin, you can use the `@fiftyone/state` package:
 
 .. code-block:: jsx
 

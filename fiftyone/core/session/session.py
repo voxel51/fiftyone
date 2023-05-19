@@ -27,6 +27,7 @@ except:
     pass
 
 import fiftyone as fo
+import fiftyone.core.odm.dataset as food
 import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 from fiftyone.core.config import AppConfig
@@ -34,7 +35,6 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.colorscheme import default_color_scheme, ColorScheme
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -109,7 +109,7 @@ def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
     spaces: Space = None,
-    color_scheme: ColorScheme = None,
+    color_scheme: food.ColorScheme = None,
     plots: fop.PlotManager = None,
     port: int = None,
     address: str = None,
@@ -131,7 +131,7 @@ def launch_app(
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
+        color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme` instance defining the color pool and customized color settings
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -173,7 +173,11 @@ def launch_app(
         dataset=dataset,
         view=view,
         spaces=spaces,
-        color_scheme=color_scheme,
+        color_scheme=make_color_scheme(
+            color_scheme,
+            dataset,
+            config if config is not None else fo.app_config,
+        ),
         plots=plots,
         port=port,
         address=address,
@@ -311,7 +315,7 @@ class Session(object):
         view: fov.DatasetView = None,
         view_name: str = None,
         spaces: Space = None,
-        color_scheme: ColorScheme = None,
+        color_scheme: food.ColorScheme = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -378,10 +382,6 @@ class Session(object):
         if spaces is None:
             spaces = default_spaces.copy()
 
-        if color_scheme is None:
-            # color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
-            color_scheme = default_color_scheme.copy()
-
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
@@ -437,7 +437,7 @@ class Session(object):
         dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
         spaces: t.Optional[Space],
-        color_scheme: t.Optional[ColorScheme],
+        color_scheme: t.Optional[food.ColorScheme],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
     ) -> None:
@@ -460,11 +460,11 @@ class Session(object):
             )
 
         if color_scheme is not None and not isinstance(
-            color_scheme, ColorScheme
+            color_scheme, food.ColorScheme
         ):
             raise ValueError(
                 "`color_scheme` must be a %s or None; found %s"
-                % (ColorScheme, type(color_scheme))
+                % (food.ColorScheme, type(color_scheme))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
@@ -584,19 +584,17 @@ class Session(object):
         self._state.spaces = spaces
 
     @property
-    def color_scheme(self) -> ColorScheme:
+    def color_scheme(self) -> food.ColorScheme:
         """The color scheme for the session."""
         return self._state.color_scheme
 
     @color_scheme.setter  # type: ignore
     @update_state()
-    def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
-        if color_scheme is None:
-            color_scheme = default_color_scheme.copy()
-        if not isinstance(color_scheme, ColorScheme):
+    def color_scheme(self, color_scheme: t.Optional[food.ColorScheme]) -> None:
+        if not isinstance(color_scheme, food.ColorScheme):
             raise ValueError(
                 "`Session.color_scheme` must be a %s or None; found %s"
-                % (ColorScheme, type(color_scheme))
+                % (food.ColorScheme, type(color_scheme))
             )
         self._state.color_scheme = color_scheme
 
@@ -1177,3 +1175,29 @@ def _unregister_session(session: Session) -> None:
         if session.server_port in _server_services:
             service = _server_services.pop(session.server_port)
             service.stop()
+
+
+def make_color_scheme(
+    color_scheme: food.ColorScheme, dataset: fod.Dataset, config: AppConfig
+) -> food.ColorScheme:
+    if (
+        color_scheme is None
+        or color_scheme.color_pool is None
+        or len(color_scheme.color_pool) == 0
+    ):
+        if dataset.app_config.color_scheme is not None:
+            color_scheme = food.ColorScheme(
+                color_pool=dataset.app_config.color_scheme.color_pool,
+                fields=dataset.app_config.color_scheme.fields,
+            )
+        else:
+            color_scheme = food.ColorScheme()
+        if (
+            color_scheme.color_pool is None
+            or len(color_scheme.color_pool) == 0
+        ):
+            color_scheme.color_pool = (
+                config.color_pool if config is not None else None
+            )
+
+    return color_scheme

@@ -19,14 +19,10 @@ export function EmbeddingsPlot({
 }) {
   const theme = useTheme();
   const getColor = useRecoilValue(fos.colorMap(false));
-  const customizedColorSettings = useRecoilValue(
-    fos.sessionColorScheme
-  ).customizedColorSettings;
+  const fields = useRecoilValue(fos.sessionColorScheme).fields;
   const setting = useMemo(() => {
-    return customizedColorSettings.find((setting) =>
-      labelField?.includes(setting.field)
-    );
-  }, [customizedColorSettings, labelField]);
+    return fields.find((setting) => labelField?.includes(setting?.path ?? ""));
+  }, [fields, labelField]);
 
   const {
     setPlotSelection,

@@ -3,12 +3,20 @@ import { Box, useColorScheme } from "@mui/material";
 import React from "react";
 import HeaderView from "./HeaderView";
 import autoFocus from "../utils/auto-focus";
+import { getComponentProps } from "../utils";
 
 export default function CodeView(props) {
   const { mode } = useColorScheme();
   const { onChange, path, schema, data } = props;
   const { default: defaultValue, view = {} } = schema;
   const { language, read_only: readOnly } = view;
+  const src = data ?? defaultValue;
+  let height = view.height ?? 250;
+  if (view.height === "auto") {
+    const lineHeight = 19;
+    const numLines = src.split("\n").length;
+    height = lineHeight * numLines;
+  }
 
   return (
     <Box
@@ -21,13 +29,14 @@ export default function CodeView(props) {
             }
           : {}),
       }}
+      {...getComponentProps(props, "container")}
     >
-      <HeaderView {...props} />
+      <HeaderView {...props} nested />
       <Editor
-        height={250}
+        height={height}
         theme={mode === "dark" ? "vs-dark" : "light"}
         value={readOnly ? data : undefined}
-        defaultValue={data ?? defaultValue}
+        defaultValue={src}
         onChange={(value) => onChange(path, value)}
         language={language}
         options={{ readOnly }}
@@ -36,6 +45,7 @@ export default function CodeView(props) {
             editor.focus();
           }
         }}
+        {...getComponentProps(props, "editor")}
       />
     </Box>
   );

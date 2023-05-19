@@ -1,14 +1,23 @@
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import DeleteIcon from "@material-ui/icons/Delete";
+import colorString from "color-string";
 import { cloneDeep } from "lodash";
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
 import { colorPicker } from "./Colorpicker.module.css";
+import { resetColor } from "../ColorFooter";
 
 const RowContainer = styled.div`
   display: flex;
@@ -49,102 +58,153 @@ type ColorPickerRowProps = {
   style?: React.CSSProperties;
 };
 
+type Input = {
+  value: string;
+  color: string;
+};
+
 const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
-  const { colorPool, customizedColorSettings } = useRecoilValue(
-    fos.sessionColorScheme
+  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const setColorScheme = fos.useSetSessionColorScheme();
+  const setting = useMemo(
+    () => fields.find((s) => s.path == (activeField as Field).path),
+    [activeField, fields]
   );
-  const { setColorScheme } = fos.useSessionColorScheme();
-  const setting = customizedColorSettings.find(
-    (s) => s.field == (activeField as Field).path
-  );
-
-  const newSetting = cloneDeep(customizedColorSettings);
-  const index = customizedColorSettings.findIndex(
-    (s) => s.field == (activeField as Field).path
+  const index = useMemo(
+    () => fields.findIndex((s) => s.path == (activeField as Field).path),
+    [activeField, fields]
   );
 
   const defaultValue = {
-    name: "",
+    value: "",
     color: colorPool[Math.floor(Math.random() * colorPool.length)],
   };
 
-  const values = setting?.labelColors;
-
+  const values = setting?.valueColors;
+  const [input, setInput] = useState<Input[]>(values);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
 
-  const handleAdd = () => {
-    newSetting[index].labelColors = setting?.labelColors
-      ? [...setting.labelColors, defaultValue]
-      : [defaultValue];
-    setColorScheme(colorPool, newSetting, false);
+  const handleAdd = useCallback(() => {
+    const newValue = {
+      value: "",
+      color: colorPool[Math.floor(Math.random() * colorPool.length)],
+    };
+    const newInput = input.length > 0 ? [...input, newValue] : [newValue];
+    const newSetting = cloneDeep(fields);
+    newSetting[index].valueColors = newInput;
+    setInput(newInput);
+    setColorScheme(false, { colorPool, fields: newSetting });
     setShowPicker([...showPicker, false]);
-  };
+  }, [colorPool, input, index, fields, setColorScheme, showPicker]);
 
-  const handleDelete = (colorIdx: number) => {
-    const labelValues = values ? [...cloneDeep(values)] : [];
-    newSetting[index].labelColors = [
-      ...labelValues.slice(0, colorIdx),
-      ...labelValues.slice(colorIdx + 1),
-    ];
-    setColorScheme(colorPool, newSetting, false);
-  };
+  const handleDelete = useCallback(
+    (colorIdx: number) => {
+      const valueColors = [
+        ...input.slice(0, colorIdx),
+        ...input.slice(colorIdx + 1),
+      ];
+      setInput(valueColors);
+      const newSetting = cloneDeep(fields);
+      newSetting[index].valueColors = valueColors;
+      setColorScheme(false, { colorPool, fields: newSetting });
+    },
+    [colorPool, index, fields, setColorScheme, input]
+  );
 
-  const hanldeColorChange = (color: any, colorIdx: number) => {
-    setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
-    const labelValues = values ? [...cloneDeep(values)] : [];
-    labelValues[colorIdx].color = color?.hex;
-    newSetting[index].labelColors = labelValues;
-    setColorScheme(colorPool, newSetting, false);
-  };
+  const onSyncUpdate = useCallback(
+    (copy: Input[]) => {
+      const newSetting = cloneDeep(fields);
+      newSetting[index].valueColors = copy;
+      setInput(copy);
+      setColorScheme(false, { colorPool, fields: newSetting });
+    },
+    [colorPool, fields, index, setColorScheme]
+  );
 
-  const handleChange = (
-    changeIdx: number,
-    key: "name" | "color",
-    value: string
-  ) => {
-    const copy = cloneDeep(customizedColorSettings);
-    const idx = customizedColorSettings.findIndex(
-      (s) => s.field == (activeField as Field).path
-    );
-    const current = cloneDeep(copy[idx].labelColors!);
-    current[changeIdx][key] = value;
-    newSetting[idx].labelColors = current;
-    setColorScheme(colorPool, newSetting, false);
-  };
+  // color picker selection and sync with session
+  const hanldeColorChange = useCallback(
+    (color: any, colorIdx: number) => {
+      setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
+      const copy = input ? [...cloneDeep(input)] : [];
+      copy[colorIdx].color = color?.hex;
+      onSyncUpdate(copy);
+    },
+    [input, onSyncUpdate]
+  );
+
+  // onBlur and onEnter in textfield to validate color and sync with session
+  const onSyncColor = useCallback(
+    (changeIdx: number, color: string) => {
+      if (!isValidColor(color)) {
+        // revert the input state value as color is not CSS invalid
+        const warning = cloneDeep(values);
+        warning[changeIdx].color = "invalid";
+        setInput(warning);
+        setTimeout(() => {
+          setInput(() => {
+            const prev = cloneDeep(values);
+            prev[changeIdx].color = values[changeIdx].color;
+            return prev;
+          });
+        }, 1000);
+      } else {
+        // convert to hex code
+        const hexColor = colorString.to.hex(colorString.get(color)?.value);
+        const copy = cloneDeep(input);
+        copy[changeIdx].color = hexColor;
+        onSyncUpdate(copy);
+      }
+    },
+    [input, values, onSyncUpdate]
+  );
 
   useEffect(() => {
     if (!values) {
-      const copy = cloneDeep(customizedColorSettings);
-      const idx = customizedColorSettings.findIndex(
-        (s) => s.field == (activeField as Field).path
+      const copy = cloneDeep(fields);
+      const idx = fields.findIndex(
+        (s) => s.path == (activeField as Field).path
       );
       if (idx > -1) {
-        copy[idx].labelColors = [defaultValue];
-        setColorScheme(colorPool, copy, false);
+        copy[idx].valueColors = [defaultValue];
+        setColorScheme(false, { colorPool, fields: copy });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
+
+  // on reset, sync local state with new session values
+  useEffect(() => {
+    setInput(values);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useRecoilValue(resetColor)]);
 
   if (!values) return null;
 
   return (
     <div style={style}>
-      {values.map((value, index) => (
+      {input.map((v, index) => (
         <RowContainer key={index}>
           <Input
             placeholder="Value (e.g. 'car')"
-            value={value.name ?? ""}
-            setter={(v) => handleChange(index, "name", v)}
-            style={{ width: "8rem" }}
+            value={input[index].value ?? ""}
+            setter={(v) =>
+              setInput((p) => {
+                const copy = cloneDeep(p);
+                copy[index].value = v;
+                return copy;
+              })
+            }
+            onBlur={() => onSyncUpdate(input)}
+            style={{ width: "12rem" }}
           />
           :
           <ColorSquare
             key={index}
-            color={value.color}
+            color={input[index].color}
             onClick={() => {
               setShowPicker((prev) =>
                 prev.map((_, i) => (i === index ? !prev[index] : _))
@@ -154,7 +214,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
             {showPicker[index] && (
               <ChromePickerWrapper>
                 <ChromePicker
-                  color={value.color}
+                  color={input[index].color}
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   popperProps={{ positionFixed: true }}
                   ref={pickerRef}
@@ -170,9 +230,17 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
             )}
           </ColorSquare>
           <Input
-            value={value.color ?? ""}
-            setter={(v) => handleChange(index, "color", v)}
-            style={{ width: "5rem" }}
+            value={input[index].color ?? ""}
+            setter={(v) =>
+              setInput((prev) => {
+                const copy = cloneDeep(prev);
+                copy[index].color = v;
+                return copy;
+              })
+            }
+            style={{ width: "150px" }}
+            onBlur={() => onSyncColor(index, input[index].color)}
+            onEnter={() => onSyncColor(index, input[index].color)}
           />
           <DeleteButton
             onClick={() => {
@@ -182,8 +250,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
         </RowContainer>
       ))}
       {Boolean(
-        setting?.attributeForColor ||
-          (setting?.labelColors && setting.labelColors.length > 0)
+        setting?.colorByAttribute ||
+          (setting?.valueColors && setting.valueColors.length > 0)
       ) && (
         <AddContainer>
           <Button

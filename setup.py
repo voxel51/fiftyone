@@ -67,15 +67,15 @@ INSTALL_REQUIRES = [
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
-    "starlette>=0.20.4,<0.27",
+    "starlette>=0.24.0,<0.27",
     "strawberry-graphql==0.138.1",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.11,<0.12",
+    "fiftyone-brain>=0.12,<0.13",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.9,<0.10",
+    "voxel51-eta>=0.10,<0.11",
 ]
 
 
