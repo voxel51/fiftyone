@@ -64,7 +64,6 @@ const categoricalSearchResults = selectorFamily<
       const search = get(categoricalSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
       const mixed = get(groupStatistics(modal)) === "group";
-      const group = get(groupId) || null;
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
@@ -84,10 +83,11 @@ const categoricalSearchResults = selectorFamily<
           path,
           search,
           selected,
-          group_id: modal ? group : null,
+          group_id: modal ? get(groupId) || null : null,
           mixed,
           slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
-          sample_id: modal && !group && !mixed ? get(fos.modalSampleId) : null,
+          sample_id:
+            modal && get(groupId) && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }
