@@ -12,7 +12,7 @@ const InlineCode = styled.span`
   border-radius: 3px;
   padding: 0.2em 0.4em;
   font-size: 85%;
-  font-family: Monaco, Consolas, "Andale Mono", "DejaVu Sans Mono", monospace;
+  font-family: Roboto Mono, monospace;
 `;
 
 const componenntMap = {
@@ -33,7 +33,9 @@ const componenntMap = {
         data={String(children).replace(/\n$/, "")}
       />
     ) : (
-      <InlineCode className={className} {...props}>{children}</InlineCode>
+      <InlineCode className={className} {...props}>
+        {children}
+      </InlineCode>
     );
   },
 };
