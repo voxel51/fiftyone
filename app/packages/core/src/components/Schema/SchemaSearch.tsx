@@ -20,8 +20,6 @@ export const SchemaSearch = (props: Props) => {
     setSearchResults,
     datasetName,
     includeNestedFields,
-    setExcludedPaths,
-    setSelectedPaths,
   } = useSchemaSettings();
 
   return (

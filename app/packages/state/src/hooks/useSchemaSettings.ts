@@ -638,7 +638,7 @@ export default function useSchemaSettings() {
                 );
                 return !childPathsInSearchResults.length;
               });
-            setSelectedPaths({ [datasetName]: shouldSelectPaths });
+            setSelectedPaths({ [datasetName]: new Set(shouldSelectPaths) });
           }
         },
         onError: (e) => {
