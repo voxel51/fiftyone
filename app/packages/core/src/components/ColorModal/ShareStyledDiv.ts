@@ -51,7 +51,8 @@ export const DraggableModalTitle = styled.div`
   justify-content: space-between;
   width: 100%;
   height: 3rem;
-  background-color: ${({ theme }) => theme.background.level1};
+  padding: 0.75rem;
+  background-color: ${({ theme }) => theme.background.level2};
   cursor: move;
   font-weight: 600;
 `;
@@ -85,6 +86,7 @@ export const ControlGroupWrapper = styled.div`
 
 export const SectionWrapper = styled.div`
   margin: 0.5rem 1rem;
+  line-height: 1.2em;
 `;
 
 export const LabelTitle = styled.div`

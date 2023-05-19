@@ -248,7 +248,13 @@ export const LABEL_LIST = {
   TemporalDetections: "detections",
 };
 
-export const NOT_VISIBLE_LIST = ["DictField", "ArrayField", "VectorField"];
+export const NOT_VISIBLE_LIST = [
+  "DictField",
+  "ArrayField",
+  "VectorField",
+  "FrameNumberField",
+  "ObjectIdField",
+];
 
 export const LABEL_DOC_TYPES = VALID_LABEL_TYPES.filter(
   (label) => !LABEL_LISTS.includes(label)
