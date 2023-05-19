@@ -1,3 +1,4 @@
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
@@ -10,8 +11,9 @@ import {
   getColor,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
+import colorString from "color-string";
 import { cloneDeep } from "lodash";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { TwitterPicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
@@ -23,9 +25,10 @@ import {
   SectionWrapper,
 } from "./ShareStyledDiv";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
+import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
-import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import { resetColor } from "./ColorFooter";
 
 type Prop = {
   field: Field;
@@ -38,19 +41,22 @@ type State = {
 
 const FieldSetting: React.FC<Prop> = ({ field }) => {
   const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
-  const [showFieldPicker, setShowFieldPicker] = useState(false);
   const path = field.path;
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
   const coloring = useRecoilValue(fos.coloring(false));
   const color = getColor(colorPool, coloring.seed, path);
+
+  const [showFieldPicker, setShowFieldPicker] = useState(false);
+  const [input, setInput] = useState(color);
   const [state, setState] = useState<State>({
     useLabelColors: Boolean(
       setting?.valueColors && setting.valueColors.length > 0
     ),
     useFieldColor: Boolean(setting?.fieldColor),
   });
+
   const defaultColor =
     coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
   const expandedPath = useRecoilValue(fos.expandPath(path!));
@@ -71,18 +77,40 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     })
   ).filter((field) => field.dbField !== "tags");
 
-  const onChangeFieldColor = (color) => {
-    const newSetting = cloneDeep(fields ?? []);
-    const index = newSetting.findIndex((x) => x.path == path!);
-    newSetting[index].fieldColor = color;
-    setColorScheme(false, { colorPool, fields: newSetting });
-  };
+  const onChangeFieldColor = useCallback(
+    (color) => {
+      const newSetting = cloneDeep(fields ?? []);
+      const index = newSetting.findIndex((x) => x.path == path!);
+      newSetting[index].fieldColor = color;
+      setColorScheme(false, { colorPool, fields: newSetting });
+    },
+    [fields, path, setColorScheme, colorPool]
+  );
+
+  const onValidateColor = useCallback(
+    (input) => {
+      if (isValidColor(input)) {
+        const hexColor = colorString.to.hex(colorString.get(input).value);
+        onChangeFieldColor(hexColor);
+        setInput(hexColor);
+      } else {
+        // revert input to previous value
+        setInput("invalid");
+        const idx = fields.findIndex((x) => x.path == path!);
+        setTimeout(() => {
+          setInput(fields[idx].fieldColor);
+        }, 1000);
+      }
+    },
+    [fields, path, onChangeFieldColor]
+  );
 
   const toggleColorPicker = (e) => {
     if (e.target.id == "color-square") {
       setShowFieldPicker(!showFieldPicker);
     }
   };
+
   const hideFieldColorPicker = (e) => {
     if (
       e.target.id != "twitter-color-container" &&
@@ -92,7 +120,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
     }
   };
 
-  // on initial load, if the tem
+  // initialize field settings
   useEffect(() => {
     // check setting to see if custom setting exists
     const setting = fields.find((x) => x.path === path);
@@ -114,7 +142,14 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
       ),
       useFieldColor: Boolean(setting?.fieldColor),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, fields]);
+
+  // on reset, sync local state input with session values
+  useEffect(() => {
+    setInput(color);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useRecoilValue(resetColor)]);
 
   return (
     <div>
@@ -150,7 +185,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
               }}
             >
               <FieldColorSquare
-                color={setting?.fieldColor ?? color}
+                color={setting?.fieldColor ?? input}
                 onClick={toggleColorPicker}
                 id="color-square"
               >
@@ -163,7 +198,7 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                     ref={colorContainer}
                   >
                     <TwitterPicker
-                      color={setting?.fieldColor ?? color}
+                      color={setting?.fieldColor ?? input}
                       colors={colorPool}
                       onChange={(color) => onChangeFieldColor(color.hex)}
                       className={colorPicker}
@@ -172,10 +207,12 @@ const FieldSetting: React.FC<Prop> = ({ field }) => {
                 )}
               </FieldColorSquare>
               <Input
-                value={setting?.fieldColor ?? color}
-                setter={(v) => onChangeFieldColor(v)}
+                value={input}
+                setter={(v) => setInput(v)}
+                onBlur={() => onValidateColor(input)}
+                onEnter={() => onValidateColor(input)}
                 style={{
-                  width: 100,
+                  width: 120,
                   display: "inline-block",
                   margin: 3,
                 }}

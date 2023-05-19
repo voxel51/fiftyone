@@ -1,15 +1,26 @@
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 import { Button } from "../utils";
 import {
+  BUTTON_STYLE,
   ButtonGroup,
   LONG_BUTTON_STYLE,
   ModalActionButtonContainer,
-  BUTTON_STYLE,
 } from "./ShareStyledDiv";
 import { isDefaultSetting } from "./utils";
+
+// this reset is used to trigger a sync of local state input with the session color values
+export const resetColor = atom<number>({
+  key: "resetColor",
+  default: 0,
+});
 
 const ColorFooter: React.FC = () => {
   const canEdit = useRecoilValue(fos.canEditCustomColors);
@@ -19,15 +30,7 @@ const ColorFooter: React.FC = () => {
   );
   const savedSettings = useRecoilValue(fos.datasetAppConfig).colorScheme;
   const colorScheme = useRecoilValue(fos.sessionColorScheme);
-
-  const onSave = () => {
-    setColorScheme(true, colorScheme);
-    setActiveColorModalField(null);
-  };
-
-  const onClearSave = () => {
-    setColorScheme(true, null);
-  };
+  const setReset = useSetRecoilState(resetColor);
 
   const hasSavedSettings = useMemo(() => {
     if (!savedSettings) return false;
@@ -43,14 +46,20 @@ const ColorFooter: React.FC = () => {
         <Button
           text={"Reset"}
           title={`Clear session settings and revert to default settings`}
-          onClick={() => setColorScheme(false, null)}
+          onClick={() => {
+            setColorScheme(false, null);
+            setReset((prev) => prev + 1);
+          }}
           style={BUTTON_STYLE}
         />
         {canEdit && (
           <Button
             text={"Save as default"}
             title={`Save to dataset appConfig`}
-            onClick={onSave}
+            onClick={() => {
+              setColorScheme(true, colorScheme);
+              setActiveColorModalField(null);
+            }}
             style={LONG_BUTTON_STYLE}
           />
         )}
@@ -58,7 +67,10 @@ const ColorFooter: React.FC = () => {
           <Button
             text={"Clear default"}
             title={`Clear`}
-            onClick={onClearSave}
+            onClick={() => {
+              setColorScheme(true, null);
+              setReset((prev) => prev + 1);
+            }}
             style={LONG_BUTTON_STYLE}
           />
         )}

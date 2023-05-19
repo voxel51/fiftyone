@@ -4,13 +4,20 @@ import { Field } from "@fiftyone/utilities";
 import DeleteIcon from "@material-ui/icons/Delete";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
 import { colorPicker } from "./Colorpicker.module.css";
+import { resetColor } from "../ColorFooter";
 
 const RowContainer = styled.div`
   display: flex;
@@ -61,8 +68,14 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
   const activeField = useRecoilValue(fos.activeColorField);
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
-  const setting = fields.find((s) => s.path == (activeField as Field).path);
-  const index = fields.findIndex((s) => s.path == (activeField as Field).path);
+  const setting = useMemo(
+    () => fields.find((s) => s.path == (activeField as Field).path),
+    [activeField, fields]
+  );
+  const index = useMemo(
+    () => fields.findIndex((s) => s.path == (activeField as Field).path),
+    [activeField, fields]
+  );
 
   const defaultValue = {
     value: "",
@@ -112,6 +125,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     [colorPool, fields, index, setColorScheme]
   );
 
+  // color picker selection and sync with session
   const hanldeColorChange = useCallback(
     (color: any, colorIdx: number) => {
       setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
@@ -122,27 +136,21 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     [input, onSyncUpdate]
   );
 
-  const onSyncSession = useCallback(
-    (input) => {
-      const copy = cloneDeep(fields);
-      const idx = fields.findIndex(
-        (s) => s.path == (activeField as Field).path
-      );
-      copy[idx].valueColors = input;
-      setColorScheme(false, { colorPool, fields: copy });
-    },
-    [activeField, colorPool, fields, setColorScheme]
-  );
-
+  // onBlur and onEnter in textfield to validate color and sync with session
   const onSyncColor = useCallback(
     (changeIdx: number, color: string) => {
       if (!isValidColor(color)) {
-        // revert to input state value as color is not CSS invalid
-        setInput((s) => {
-          const prev = cloneDeep(s);
-          prev[changeIdx].color = values[changeIdx].color;
-          return prev;
-        });
+        // revert the input state value as color is not CSS invalid
+        const warning = cloneDeep(values);
+        warning[changeIdx].color = "invalid";
+        setInput(warning);
+        setTimeout(() => {
+          setInput(() => {
+            const prev = cloneDeep(values);
+            prev[changeIdx].color = values[changeIdx].color;
+            return prev;
+          });
+        }, 1000);
       } else {
         // convert to hex code
         const hexColor = colorString.to.hex(colorString.get(color)?.value);
@@ -168,6 +176,12 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
 
+  // on reset, sync local state with new session values
+  useEffect(() => {
+    setInput(values);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useRecoilValue(resetColor)]);
+
   if (!values) return null;
 
   return (
@@ -184,8 +198,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
                 return copy;
               })
             }
-            onBlur={() => onSyncSession(input)}
-            style={{ width: "8rem" }}
+            onBlur={() => onSyncUpdate(input)}
+            style={{ width: "12rem" }}
           />
           :
           <ColorSquare
@@ -224,8 +238,9 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({ style }) => {
                 return copy;
               })
             }
-            style={{ width: "5rem" }}
+            style={{ width: "150px" }}
             onBlur={() => onSyncColor(index, input[index].color)}
+            onEnter={() => onSyncColor(index, input[index].color)}
           />
           <DeleteButton
             onClick={() => {
