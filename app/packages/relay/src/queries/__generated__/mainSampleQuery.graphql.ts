@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2f2a9564820bafc39ad053149180bf38>>
+ * @generated SignedSource<<db6c5e51a0149510460a52970649c85f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,13 +25,26 @@ export type mainSampleQuery$variables = {
 };
 export type mainSampleQuery$data = {
   readonly sample: {
-    readonly frameRate?: number;
-    readonly id?: string;
-    readonly sample?: object;
-    readonly urls?: ReadonlyArray<{
+    readonly __typename: "ImageSample";
+    readonly id: string;
+    readonly sample: object;
+    readonly urls: ReadonlyArray<{
       readonly field: string;
       readonly url: string | null;
     }>;
+  } | {
+    readonly __typename: "VideoSample";
+    readonly frameRate: number;
+    readonly id: string;
+    readonly sample: object;
+    readonly urls: ReadonlyArray<{
+      readonly field: string;
+      readonly url: string | null;
+    }>;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
   } | null;
 };
 export type mainSampleQuery = {
@@ -86,17 +99,24 @@ v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "__typename",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sample",
+  "name": "id",
   "storageKey": null
 },
 v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "sample",
+  "storageKey": null
+},
+v8 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -121,21 +141,21 @@ v7 = {
   ],
   "storageKey": null
 },
-v8 = {
+v9 = {
   "kind": "InlineFragment",
   "selections": [
-    (v5/*: any*/),
     (v6/*: any*/),
-    (v7/*: any*/)
+    (v7/*: any*/),
+    (v8/*: any*/)
   ],
   "type": "ImageSample",
   "abstractKey": null
 },
-v9 = {
+v10 = {
   "kind": "InlineFragment",
   "selections": [
-    (v5/*: any*/),
     (v6/*: any*/),
+    (v7/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -143,7 +163,7 @@ v9 = {
       "name": "frameRate",
       "storageKey": null
     },
-    (v7/*: any*/)
+    (v8/*: any*/)
   ],
   "type": "VideoSample",
   "abstractKey": null
@@ -168,8 +188,9 @@ return {
         "name": "sample",
         "plural": false,
         "selections": [
-          (v8/*: any*/),
-          (v9/*: any*/)
+          (v5/*: any*/),
+          (v9/*: any*/),
+          (v10/*: any*/)
         ],
         "storageKey": null
       }
@@ -196,19 +217,13 @@ return {
         "name": "sample",
         "plural": false,
         "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "__typename",
-            "storageKey": null
-          },
-          (v8/*: any*/),
+          (v5/*: any*/),
           (v9/*: any*/),
+          (v10/*: any*/),
           {
             "kind": "InlineFragment",
             "selections": [
-              (v5/*: any*/)
+              (v6/*: any*/)
             ],
             "type": "PointCloudSample",
             "abstractKey": null
@@ -229,6 +244,6 @@ return {
 };
 })();
 
-(node as any).hash = "eddbf046c706c32c00db34b4c1c9d2b0";
+(node as any).hash = "0d109ba0bd7d1a9df954199a1af114be";
 
 export default node;

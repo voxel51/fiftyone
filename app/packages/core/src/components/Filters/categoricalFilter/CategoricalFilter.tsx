@@ -1,3 +1,8 @@
+import { Selector, useTheme } from "@fiftyone/components";
+import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
+import * as fos from "@fiftyone/state";
+import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
+import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
   RecoilState,
@@ -10,13 +15,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-
-import { Selector, useTheme } from "@fiftyone/components";
-import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
-import * as fos from "@fiftyone/state";
-import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
-
-import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
@@ -67,11 +65,7 @@ const categoricalSearchResults = selectorFamily<
       const sorting = get(fos.sortFilterResults(modal));
       const mixed = get(groupStatistics(modal)) === "group";
       const group = get(groupId) || null;
-      let sampleId: string | undefined = undefined;
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
-      if (modal) {
-        sampleId = get(fos.modal)?.sample._id;
-      }
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
@@ -93,7 +87,7 @@ const categoricalSearchResults = selectorFamily<
           group_id: modal ? group : null,
           mixed,
           slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
-          sample_id: modal && !group && !mixed ? sampleId : null,
+          sample_id: modal && !group && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }

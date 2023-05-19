@@ -174,14 +174,13 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
           return;
         }
 
-        const modalSample = await snapshot.getPromise(fos.modal);
+        const modalSampleId = await snapshot.getPromise(fos.modalSampleId);
 
-        if (!modalSample) {
+        if (!modalSampleId) {
           return;
         }
 
-        const currentSampleIndex =
-          flashlight.itemIndexes[modalSample?.sample._id];
+        const currentSampleIndex = flashlight.itemIndexes[modalSampleId];
         const nextSampleIndex = currentSampleIndex + (isPrevious ? -1 : 1);
         const nextSampleId = store.indices.get(nextSampleIndex);
 
@@ -295,7 +294,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
         store.lookers.get(id)?.updateOptions({
           ...opts,
           selected: snapshot.getLoadable(fos.selectedSamples).contents.has(id),
-          highlight: (await snapshot.getPromise(fos.modal))?.sample._id === id,
+          highlight: (await snapshot.getPromise(fos.modalSampleId)) === id,
         });
       },
     [opts]
@@ -309,7 +308,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     useRecoilValueLoadable(
       fos.lookerOptions({ modal: true, withFilter: true })
     ),
-    useRecoilValue(fos.modal),
+    useRecoilValue(fos.modalSample),
     useRecoilValue(fos.selectedSamples),
   ]);
 

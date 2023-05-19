@@ -1,4 +1,3 @@
-import { Apps } from "@mui/icons-material";
 import Color from "color";
 import React, { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -59,9 +58,11 @@ const SliderContainer = styled.div`
 
 const Count = () => {
   let element = useRecoilValue(fos.elementNames);
+
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
+
   const isGroup = useRecoilValue(isGroupAtom);
 
   if (isGroup) {
@@ -156,9 +157,7 @@ const ImageContainerHeader = () => {
               setGridZoom(Math.max(gridZoomRangeValue[0], 5));
             }}
             style={{ cursor: "pointer", display: "flex" }}
-          >
-            <Apps />
-          </div>
+          ></div>
         </SliderContainer>
       </RightContainer>
     </SamplesHeader>

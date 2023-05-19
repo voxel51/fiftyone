@@ -1,22 +1,18 @@
 import { useRelayEnvironment } from "react-relay";
 import { RecoilState, useRecoilCallback } from "recoil";
-
 import { groupSlice, groupStatistics } from "../recoil";
-
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
-import useSetExpandedSample from "./useSetExpandedSample";
 
 export default () => {
   const environment = useRelayEnvironment();
-  const setExpandedSample = useSetExpandedSample();
 
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (sample: atoms.SampleData, navigation?: atoms.ModalNavigation) => {
+      async (index: number) => {
         const data = [
           [filterAtoms.modalFilters, filterAtoms.filters],
           ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
@@ -57,7 +53,7 @@ export default () => {
           set(data[i][0], results[i]);
         }
 
-        setExpandedSample(sample, navigation);
+        set(atoms.modalSampleIndex, index);
       },
     [environment]
   );

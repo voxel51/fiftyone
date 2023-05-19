@@ -7,17 +7,18 @@ import {
 } from "@fiftyone/components";
 import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { modalNavigation, useEventHandler } from "@fiftyone/state";
+import { useEventHandler } from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
   Fragment,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
@@ -93,8 +94,6 @@ const SampleModal = () => {
   const mode = useRecoilValue(fos.groupStatistics(true));
 
   const lookerRef = useRef<AbstractLooker>();
-
-  const navigation = useRecoilValue(modalNavigation);
   const renderEntry = useCallback(
     (
       key: string,
@@ -198,20 +197,26 @@ const SampleModal = () => {
 
   const [isNavigationHidden, setIsNavigationHidden] = useState(false);
 
-  const navigateNext = useCallback(() => {
-    jsonPanel.close();
-    helpPanel.close();
-    navigation.setIndex(navigation.index + 1);
-  }, [navigation, jsonPanel, helpPanel]);
+  const navigateNext = useRecoilCallback(
+    ({ set }) =>
+      async () => {
+        jsonPanel.close();
+        helpPanel.close();
+        set(fos.modalSampleIndex, (cur) => (cur > 0 ? cur - 1 : cur));
+      },
+    [jsonPanel, helpPanel]
+  );
 
-  const navigatePrevious = useCallback(() => {
-    jsonPanel.close();
-    helpPanel.close();
+  const navigatePrevious = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        jsonPanel.close();
+        helpPanel.close();
 
-    if (navigation.index > 0) {
-      navigation.setIndex(navigation.index - 1);
-    }
-  }, [navigation, jsonPanel, helpPanel]);
+        set(fos.modalSampleIndex, (cur) => (cur > 0 ? cur - 1 : cur));
+      },
+    [jsonPanel, helpPanel]
+  );
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
@@ -263,6 +268,10 @@ const SampleModal = () => {
         lookerRef.current.removeEventListener("tooltip", eventHandler);
     };
   }, [eventHandler]);
+  const count = useRecoilValue(
+    fos.count({ path: "", extended: true, modal: false })
+  );
+  const index = useRecoilValue(fos.modalSampleIndex);
 
   return ReactDOM.createPortal(
     <Fragment>
@@ -273,7 +282,7 @@ const SampleModal = () => {
         <Container style={{ ...screen, zIndex: 10001 }}>
           <TooltipInfo coordinates={tooltip.coordinates} />
           <ContentColumn>
-            {!isNavigationHidden && navigation.index > 0 && (
+            {!isNavigationHidden && index > 0 && (
               <Arrow>
                 <LookerArrowLeftIcon
                   data-cy="nav-left-button"
@@ -281,7 +290,7 @@ const SampleModal = () => {
                 />
               </Arrow>
             )}
-            {!isNavigationHidden && (
+            {!isNavigationHidden && index < count - 1 && (
               <Arrow isRight>
                 <LookerArrowRightIcon
                   data-cy="nav-right-button"
@@ -290,30 +299,32 @@ const SampleModal = () => {
               </Arrow>
             )}
             <ErrorBoundary onReset={() => {}}>
-              {isGroup ? (
-                <GroupContextProvider lookerRefCallback={lookerRefCallback}>
-                  <Group />
-                </GroupContextProvider>
-              ) : isPcd ? (
-                <Sample3d />
-              ) : (
-                <Sample lookerRefCallback={lookerRefCallback} />
-              )}
-              {jsonPanel.isOpen && (
-                <JSONPanel
-                  containerRef={jsonPanel.containerRef}
-                  onClose={() => jsonPanel.close()}
-                  onCopy={() => jsonPanel.copy()}
-                  json={jsonPanel.json}
-                />
-              )}
-              {helpPanel.isOpen && (
-                <HelpPanel
-                  containerRef={helpPanel.containerRef}
-                  onClose={() => helpPanel.close()}
-                  items={helpPanel.items}
-                />
-              )}
+              <Suspense>
+                {isGroup ? (
+                  <GroupContextProvider lookerRefCallback={lookerRefCallback}>
+                    <Group />
+                  </GroupContextProvider>
+                ) : isPcd ? (
+                  <Sample3d />
+                ) : (
+                  <Sample lookerRefCallback={lookerRefCallback} />
+                )}
+                {jsonPanel.isOpen && (
+                  <JSONPanel
+                    containerRef={jsonPanel.containerRef}
+                    onClose={() => jsonPanel.close()}
+                    onCopy={() => jsonPanel.copy()}
+                    json={jsonPanel.json}
+                  />
+                )}
+                {helpPanel.isOpen && (
+                  <HelpPanel
+                    containerRef={helpPanel.containerRef}
+                    onClose={() => helpPanel.close()}
+                    items={helpPanel.items}
+                  />
+                )}
+              </Suspense>
             </ErrorBoundary>
           </ContentColumn>
           <Sidebar render={renderEntry} modal={true} />

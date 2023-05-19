@@ -61,7 +61,7 @@ const useClearSelectedLabels = () => {
 };
 
 interface LookerProps {
-  sample?: fos.SampleData;
+  sample?: fos.ModalSample;
   urls?: { field: string; url: string }[];
   lookerRef?: MutableRefObject<any>;
   lookerRefCallback?: (looker: AbstractLooker) => void;
@@ -78,16 +78,17 @@ const Looker = ({
 }: LookerProps) => {
   const [id] = useState(() => uuid());
 
-  const modalSampleData = useRecoilValue(fos.modal);
+  const modalSampleData = useRecoilValue(fos.modalSample);
 
   if (!modalSampleData && !propsSampleData) {
     throw new Error("bad");
   }
 
   const sampleData = useMemo(() => {
-    let transformedUrls = modalSampleData?.urls
-      ? { ...modalSampleData.urls }
-      : {};
+    let transformedUrls =
+      Object.fromEntries(
+        modalSampleData?.urls.map(({ field, url }) => [field, url])
+      ) || {};
     if (urls) {
       if (Array.isArray(urls)) {
         for (const { field, url } of urls) {

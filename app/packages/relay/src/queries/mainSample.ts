@@ -10,6 +10,7 @@ export default r(graphql`
     $index: Int!
   ) {
     sample(dataset: $dataset, view: $view, filter: $filter, index: $index) {
+      __typename
       ... on ImageSample {
         id
         sample

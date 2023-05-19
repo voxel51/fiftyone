@@ -36,7 +36,7 @@ const Network: React.FC<{
 export const NetworkRenderer = ({ makeRoutes }) => {
   const { context, environment } = fos.useRouter(makeRoutes, []);
 
-  const isModalActive = Boolean(useRecoilValue(fos.modal));
+  const isModalActive = useRecoilValue(fos.modalSampleIndex) !== null;
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);

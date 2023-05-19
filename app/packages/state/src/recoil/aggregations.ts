@@ -7,7 +7,7 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
-import { currentSlices, groupId, groupStatistics } from "./groups";
+import { groupId, groupStatistics } from "./groups";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -47,7 +47,6 @@ export const aggregationQuery = graphQLSelectorFamily<
     }) =>
     ({ get }) => {
       mixed = mixed || get(groupStatistics(modal)) === "group";
-      const group = get(groupId) || null;
       const aggForm = {
         index: get(refresher),
         dataset: get(selectors.datasetName),
@@ -56,13 +55,15 @@ export const aggregationQuery = graphQLSelectorFamily<
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal ? group : null,
+        groupId: !root && modal ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
         sampleIds:
-          !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
-        slices: mixed ? null : get(currentSlices(modal)), // when mixed, slice is not needed
+          !root && modal && !get(groupId) && !mixed
+            ? [get(sidebarSampleId)]
+            : [],
+        slices: null, // when mixed, slice is not needed
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
 

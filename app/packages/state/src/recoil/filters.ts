@@ -1,10 +1,8 @@
-import { atom, selectorFamily } from "recoil";
-
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-
+import { atom, selectorFamily } from "recoil";
 import { expandPath, fields } from "./schema";
-import { State } from "./types";
 import { hiddenLabelIds } from "./selectors";
+import { State } from "./types";
 
 export const modalFilters = atom<State.Filters>({
   key: "modalFilters",

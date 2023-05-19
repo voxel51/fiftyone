@@ -1,3 +1,8 @@
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { activeColorField, coloring } from "@fiftyone/state";
+import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
+import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
   useEffect,
@@ -5,6 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import ReactDOM from "react-dom";
 import {
   atom,
   useRecoilState,
@@ -12,13 +18,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import * as fos from "@fiftyone/state";
-import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import { coloring, activeColorField } from "@fiftyone/state";
-import ReactDOM from "react-dom";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -271,7 +271,7 @@ function FieldInfoExpanded({
   };
   const colorSettings = useRecoilValue(coloring(false));
 
-  const isModal = useRecoilValue(fos.modal);
+  const isModal = useRecoilValue(fos.modalSampleIndex) !== null;
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status

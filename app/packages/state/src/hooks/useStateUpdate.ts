@@ -16,7 +16,7 @@ import {
   groupSlice,
   groupStatistics,
   isUsingSessionColorScheme,
-  modal,
+  modalSampleIndex,
   patching,
   resolveGroups,
   savingFilters,
@@ -32,14 +32,12 @@ import {
   tagging,
   theme,
 } from "../recoil";
-
 import * as viewAtoms from "../recoil/view";
 import {
   DEFAULT_APP_COLOR_SCHEME,
   collapseFields,
   viewsAreEqual,
 } from "../utils";
-
 import { selectedFieldsStageState } from "./useSchemaSettings";
 
 export interface StateUpdate {
@@ -188,7 +186,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
         set(datasetAtom, dataset);
       }
 
-      set(modal, null);
+      set(modalSampleIndex, null);
 
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>

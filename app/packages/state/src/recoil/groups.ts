@@ -1,6 +1,5 @@
 import {
   mainSample,
-  mainSampleQuery$data,
   mainSampleQuery as mainSampleQueryGraphQL,
   paginateGroup,
   paginateGroupQuery,
@@ -19,14 +18,8 @@ import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
-import {
-  AppSample,
-  SampleData,
-  dataset,
-  modal as modalAtom,
-  pinned3DSample,
-  refresher,
-} from "./atoms";
+import { dataset, pinned3DSample, refresher } from "./atoms";
+import { ModalSample, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
@@ -118,7 +111,7 @@ export const activePcdSliceToSampleMap = selector({
     const activePcdSlicesValue = get(activePcdSlices);
     if (!activePcdSlicesValue || activePcdSlicesValue.length === 0)
       return {
-        default: get(modalAtom),
+        default: get(modalSample),
       };
 
     const samples = get(
@@ -201,7 +194,7 @@ export const groupField = selector<string>({
 export const groupId = selector<string>({
   key: "groupId",
   get: ({ get }) => {
-    return get(modalAtom)?.sample[get(groupField)]?._id;
+    return get(modalSample).sample[get(groupField)]?._id;
   },
 });
 
@@ -219,7 +212,7 @@ export const groupQuery = graphQLSelector<
   mapResponse: (response) => response,
   query: paginateGroup,
   variables: ({ get }) => {
-    const sample = get(modalAtom).sample;
+    const sample = get(modalSample).sample;
 
     const group = get(groupField);
 
@@ -256,8 +249,8 @@ export const dynamicGroupPaginationQuery = graphQLSelectorFamily<
     },
 });
 
-const mapSampleResponse = (response: mainSampleQuery$data) => {
-  const actualRawSample = response?.sample?.sample;
+const mapSampleResponse = (response: ModalSample) => {
+  const actualRawSample = response?.sample;
 
   // This value may be a string that needs to be deserialized
   // Only occurs after calling useUpdateSample for pcd sample
@@ -307,12 +300,12 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
 });
 
 export const dynamicGroupSamplesStoreMap = atomFamily<
-  Map<number, SampleData>,
+  Map<number, ModalSample>,
   string
 >({
   key: "dynamicGroupSamplesStoreMap",
   // todo: use map with LRU cache
-  default: new Map<number, SampleData>(),
+  default: new Map<number, ModalSample>(),
 });
 
 export const dynamicGroupPaginationFragment = selectorFamily<
@@ -332,7 +325,7 @@ export const dynamicGroupPaginationFragment = selectorFamily<
 });
 
 export const activeModalSample = selectorFamily<
-  AppSample | ResponseFrom<pcdSampleQuery>["sample"],
+  ResponseFrom<pcdSampleQuery>["sample"]["sample"],
   SliceName
 >({
   key: "activeModalSample",
@@ -340,7 +333,7 @@ export const activeModalSample = selectorFamily<
     (sliceName) =>
     ({ get }) => {
       if (!sliceName || !get(isGroup)) {
-        return get(modalAtom).sample;
+        return get(modalSample).sample;
       }
 
       if (get(pinned3DSample) || get(activePcdSlices)?.includes(sliceName)) {
@@ -354,7 +347,7 @@ export const activeModalSample = selectorFamily<
 const groupSampleQuery = graphQLSelectorFamily<
   VariablesOf<mainSampleQueryGraphQL>,
   SliceName,
-  ResponseFrom<mainSampleQueryGraphQL>["sample"]
+  ModalSample
 >({
   environment: RelayEnvironmentKey,
   key: "mainSampleQuery",
@@ -370,14 +363,14 @@ const groupSampleQuery = graphQLSelectorFamily<
         filter: {
           group: {
             slices: [slice ?? get(groupSlice(true))],
-            id: get(modalAtom)?.sample[get(groupField)]._id as string,
+            id: get(modalSample)?.sample[get(groupField)]._id as string,
           },
         },
       };
     },
 });
 
-export const groupSample = selectorFamily<SampleData, SliceName>({
+export const groupSample = selectorFamily<ModalSample, SliceName>({
   key: "mainGroupSample",
   get:
     (sliceName) =>
@@ -389,7 +382,7 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
       const field = get(groupField);
       const group = get(isGroup);
 
-      const sample = get(modalAtom);
+      const sample = get(modalSample);
 
       if (!field || !group) return sample;
 
