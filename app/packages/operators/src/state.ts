@@ -175,7 +175,7 @@ export const useOperatorPrompt = () => {
       setTimeout(() => {
         const validationContext = new ValidationContext(ctx, resolved);
         const validationErrors = validationContext.toProps().errors;
-        console.log({ validationContext });
+        console.log({ ctx, resolved, validationContext });
         setValidationErrors(validationErrors);
         resolve({
           invalid: validationContext.invalid,
