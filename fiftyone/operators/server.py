@@ -20,12 +20,31 @@ from starlette.exceptions import HTTPException
 from starlette.responses import StreamingResponse
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
+from fiftyone.utils.decorators import route_requires_auth
+
+
+def _get_operator_registry_for_route(
+    RouteClass, request: Request, dataset_ids=None, is_list=False
+):
+    requires_authentication = route_requires_auth(RouteClass)
+    if requires_authentication:
+        if is_list:
+            registry = PermissionedOperatorRegistry.from_list_request(request)
+        else:
+            registry = PermissionedOperatorRegistry.from_exec_request(
+                request, dataset_ids
+            )
+    else:
+        registry = OperatorRegistry()
+    return registry
 
 
 class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
-        registry = PermissionedOperatorRegistry.from_list_request(request)
+        registry = _get_operator_registry_for_route(
+            self.__class__, request, is_list=True
+        )
         ctx = ExecutionContext()
         operators_as_json = [
             operator.to_json(ctx) for operator in registry.list_operators()
@@ -47,8 +66,8 @@ class ResolvePlacements(HTTPEndpoint):
             raise ValueError("Dataset name must be provided")
 
         dataset_ids = [dataset_name]
-        registry = PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = _get_operator_registry_for_route(
+            ResolvePlacements, request, dataset_ids=dataset_ids
         )
         placements = []
         for operator in registry.list_operators():
@@ -71,8 +90,8 @@ class ExecuteOperator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
@@ -116,8 +135,8 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
@@ -154,8 +173,8 @@ class ResolveType(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)

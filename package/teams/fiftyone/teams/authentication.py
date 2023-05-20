@@ -213,6 +213,9 @@ def authenticate_route(endpoint):
 
         return endpoint
 
+    if isclass(endpoint):
+        setattr(endpoint, "requires_authentication", True)
+
     if isclass(endpoint) and issubclass(endpoint, HTTPEndpoint):
         return set_methods(["get", "post"])
 
