@@ -12,6 +12,10 @@ import sys
 import traceback
 import fiftyone.plugins as fop
 from .operator import Operator
+from ..plugins import PluginDefinition
+import logging
+
+logger = logging.getLogger(__name__)
 
 KNOWN_PLUGIN_CONTEXTS = {}
 
@@ -23,7 +27,9 @@ class PluginContext:
         plugin_definition: the :class:`PluginDefinition` for the plugin
     """
 
-    def __init__(self, plugin_definition):
+    def __init__(self, plugin_definition: PluginDefinition):
+        if not plugin_definition.name:
+            raise ValueError("PluginDefinition must include a name")
         self.name = plugin_definition.name
         self.plugin_definition = plugin_definition
         self.instances = []
@@ -64,7 +70,7 @@ class PluginContext:
                 instance.plugin_name = self.name
                 self.instances.append(instance)
         except Exception as e:
-            print(f"{cls.__name__} could not be registered!")
+            logging.error(f"{cls.__name__} could not be registered!")
             self.errors.append(traceback.format_exc())
 
     def unregister_inst(self, inst):
@@ -87,13 +93,25 @@ def register_module(plugin_definition, mod):
     Returns:
         the :class:`PluginContext` for the plugin
     """
+    pctx = None
     try:
         pctx = PluginContext(plugin_definition)
-        KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
         mod.register(pctx)
     except Exception as e:
-        errors = [traceback.format_exc()]
-        pctx.errors = errors
+        if pctx:
+            pctx.errors.append(traceback.format_exc())
+    finally:
+        if pctx and pctx.name:
+            KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
+        else:
+            # If plugin context is None, then there is no plugin name to
+            # register so just silently fail
+            logging.error(
+                "Error registering module `%s` (%s)" % mod.__name__,
+                mod.__file__,
+            )
+            pass
+
     return pctx
 
 
@@ -116,8 +134,8 @@ def dispose_all(plugin_contexts):
         try:
             pctx.dispose()
         except Exception as e:
-            print("Error disposing plugin context: %s" % name)
-            print(e)
+            logging.error("Error disposing plugin context: %s" % name)
+            logging.error(e)
     KNOWN_PLUGIN_CONTEXTS = {}
 
 
@@ -132,9 +150,8 @@ def load_from_dir():
             try:
                 pctx = exec_module_from_dir(module_dir, plugin_definition)
                 plugin_contexts.append(pctx)
-                KNOWN_PLUGIN_CONTEXTS[plugin_definition.name] = pctx
             except ValueError as e:
-                print("Error loading plugin from %s" % module_dir)
+                logging.error("Error loading plugin from %s" % module_dir)
                 pass
     return plugin_contexts
 
@@ -157,6 +174,12 @@ def exec_module_from_dir(module_dir, plugin_definition):
         )
     spec = importlib.util.spec_from_file_location(mod_dir, mod_filepath)
     mod = importlib.util.module_from_spec(spec)
-    sys.modules[mod.__name__] = mod
-    spec.loader.exec_module(mod)
-    return register_module(plugin_definition, mod)
+    try:
+        pctx = register_module(plugin_definition, mod)
+    except Exception as e:
+        raise e
+    if pctx and not pctx.has_errors():
+        # only add to sys.modules if there are no errors
+        sys.modules[mod.__name__] = mod
+        spec.loader.exec_module(mod)
+    return pctx
