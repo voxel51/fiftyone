@@ -8,18 +8,7 @@ FiftyOne operator permissions.
 from enum import Enum
 from .registry import OperatorRegistry
 from .loader import load_from_dir
-
-# OSS Polyfill for ManagedOperators
-class ManagedOperators:
-    def __init__(self, managed_operators=None):
-        self.managed_operators = managed_operators
-
-    def has_operator(self, operator_uri):
-        return True
-
-    @classmethod
-    def for_request(cls, request, dataset_ids=None):
-        return cls()
+from fiftyone.plugins.permissions import ManagedOperators
 
 
 class PermissionedOperatorRegistry(OperatorRegistry):

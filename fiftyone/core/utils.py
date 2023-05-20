@@ -19,9 +19,7 @@ import io
 import itertools
 import logging
 import multiprocessing
-import ntpath
 import os
-import posixpath
 import platform
 import re
 import signal
@@ -337,6 +335,8 @@ def find_files(root_dir, patt, max_depth=1):
     Returns:
         a list of matching paths
     """
+    fos.ensure_local(root_dir)
+
     if etau.is_str(patt):
         patt = [patt]
 
@@ -347,38 +347,6 @@ def find_files(root_dir, patt, max_depth=1):
             paths += glob.glob(os.path.join(root, p))
 
     return paths
-
-
-def normpath(path):
-    """Normalizes the given path by converting all slashes to forward slashes
-    on Unix and backslashes on Windows and removing duplicate slashes.
-
-    Use this function when you need a version of ``os.path.normpath`` that
-    converts ``\\`` to ``/`` on Unix.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    if os.name == "nt":
-        return ntpath.normpath(path)
-
-    return posixpath.normpath(path.replace("\\", "/"))
-
-
-def normalize_path(path):
-    """Normalizes the given path by converting it to an absolute path and
-    expanding the user directory, if necessary.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    return os.path.abspath(os.path.expanduser(path))
 
 
 def ensure_package(
@@ -719,7 +687,7 @@ def load_xml_as_json_dict(xml_path):
         a JSON dict
     """
     try:
-        with open(xml_path, "rb") as f:
+        with fos.open_file(xml_path, "rb") as f:
             return xmltodict.parse(f.read())
     except ExpatError as ex:
         raise ExpatError(f"Failed to read {xml_path}: {ex}")
@@ -1113,7 +1081,7 @@ class UniqueFilenameMaker(object):
         output_dir (None): a directory in which to generate output paths
         rel_dir (None): an optional relative directory to strip from each path.
             The path is converted to an absolute path (if necessary) via
-            :func:`normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         alt_dir (None): an optional alternate directory in which to generate
             paths when :meth:`get_alt_path` is called
         default_ext (None): the file extension to use when generating default
@@ -1138,7 +1106,7 @@ class UniqueFilenameMaker(object):
         idempotent=True,
     ):
         if rel_dir is not None:
-            rel_dir = normalize_path(rel_dir)
+            rel_dir = fos.normalize_path(rel_dir)
 
         self.output_dir = output_dir
         self.rel_dir = rel_dir
@@ -1161,13 +1129,13 @@ class UniqueFilenameMaker(object):
         if not self.output_dir:
             return
 
-        etau.ensure_dir(self.output_dir)
+        fos.ensure_dir(self.output_dir)
 
         if self.ignore_existing:
             return
 
         recursive = self.rel_dir is not None
-        filenames = etau.list_files(self.output_dir, recursive=recursive)
+        filenames = fos.list_files(self.output_dir, recursive=recursive)
 
         self._idx = len(filenames)
         for filename in filenames:
@@ -1182,7 +1150,7 @@ class UniqueFilenameMaker(object):
         Returns:
             True/False
         """
-        return normalize_path(input_path) in self._filepath_map
+        return fos.normalize_path(input_path) in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
@@ -1197,7 +1165,7 @@ class UniqueFilenameMaker(object):
         found_input = bool(input_path)
 
         if found_input:
-            input_path = normalize_path(input_path)
+            input_path = fos.normalize_path(input_path)
 
             if self.idempotent and input_path in self._filepath_map:
                 return self._filepath_map[input_path]
@@ -1231,7 +1199,7 @@ class UniqueFilenameMaker(object):
             filename = name + ("-%d" % count) + ext
 
         if self.output_dir:
-            output_path = os.path.join(self.output_dir, filename)
+            output_path = fos.join(self.output_dir, filename)
         else:
             output_path = filename
 
@@ -1254,13 +1222,16 @@ class UniqueFilenameMaker(object):
         """
         root_dir = alt_dir or self.alt_dir or self.output_dir
         rel_path = os.path.relpath(output_path, self.output_dir)
-        return os.path.join(root_dir, rel_path)
+        return fos.join(root_dir, rel_path)
 
 
 def safe_relpath(path, start=None, default=None):
     """A safe version of ``os.path.relpath`` that returns a configurable
     default value if the given path if it does not lie within the given
     relative start.
+
+    When dealing with cloud paths, the provided paths may be any mix of cloud
+    paths and corresponding local cache paths.
 
     Args:
         path: a path
@@ -1271,7 +1242,14 @@ def safe_relpath(path, start=None, default=None):
     Returns:
         the relative path
     """
-    relpath = os.path.relpath(path, start)
+    _path = foca.media_cache.get_local_path(path, download=False)
+
+    if start:
+        _start = foca.media_cache.get_local_path(start, download=False)
+    else:
+        _start = start
+
+    relpath = os.path.relpath(_path, _start)
     if relpath.startswith(".."):
         if default is not None:
             return default
@@ -1301,14 +1279,14 @@ def compute_filehash(filepath, method=None, chunk_size=None):
         the hash
     """
     if method is None:
-        with open(filepath, "rb") as f:
+        with fos.open_file(filepath, "rb") as f:
             return hash(f.read())
 
     if chunk_size is None:
         chunk_size = 65536
 
     hasher = getattr(hashlib, method)()
-    with open(filepath, "rb") as f:
+    with fos.open_file(filepath, "rb") as f:
         while True:
             data = f.read(chunk_size)
             if not data:
@@ -1828,3 +1806,7 @@ def validate_hex_color(value):
         raise ValueError(
             "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )
+
+
+fos = lazy_import("fiftyone.core.storage")
+foca = lazy_import("fiftyone.core.cache")

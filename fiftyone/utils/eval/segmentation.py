@@ -317,6 +317,8 @@ class SimpleEvaluation(SegmentationEvaluation):
             values, classes = _get_mask_values(samples, pred_field, gt_field)
 
         _samples = samples.select_fields([gt_field, pred_field])
+        _samples.download_media(media_fields=[gt_field, pred_field])
+
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
         gt_field, _ = samples._handle_frame_field(gt_field)
 

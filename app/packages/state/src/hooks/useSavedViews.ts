@@ -15,7 +15,7 @@ export default function useSavedViews() {
   const savedViews = useRecoilValue(fos.savedViewsSelector);
   const datasetNameValue = useRecoilValue(fos.datasetName);
   const refresh = useRecoilRefresher_UNSTABLE(fos.savedViewsSelector);
-  const send = fos.useSendEvent();
+  const send = fos.useSendEvent(true);
   const onError = useErrorHandler();
   const subscription = useRecoilValue(fos.stateSubscription);
 

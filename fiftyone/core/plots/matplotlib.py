@@ -22,6 +22,7 @@ import sklearn.metrics as skm
 import eta.core.utils as etau
 
 import fiftyone.core.context as foc
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .base import InteractivePlot
@@ -932,8 +933,9 @@ class InteractiveMatplotlibPlot(InteractivePlot):
         if dpi is not None:
             kwargs["dpi"] = dpi
 
-        etau.ensure_basedir(path)
-        self._figure.savefig(path, **kwargs)
+        fos.ensure_basedir(path)
+        with fos.LocalFile(path, "w") as local_path:
+            self._figure.savefig(local_path, **kwargs)
 
     def _show(self, **_):
         plt.show(block=False)

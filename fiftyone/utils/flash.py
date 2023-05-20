@@ -95,6 +95,9 @@ def apply_flash_model(
 
     datamodule_cls = _MODEL_TO_DATAMODULE_MAP[type(model)]
 
+    # @todo add support for cloud-backed datasets
+    # One possibility is to manually pass local paths here
+    # Another is to just natively suppoort Teams installs in the Flash repo
     datamodule = datamodule_cls.from_fiftyone(
         predict_dataset=samples, **data_kwargs
     )
@@ -191,6 +194,7 @@ def compute_flash_embeddings(
     if transform_kwargs:
         data_kwargs["transform_kwargs"] = transform_kwargs
 
+    # @todo add support for cloud-backed datasets
     datamodule = fi.ImageClassificationData.from_fiftyone(
         predict_dataset=samples, **data_kwargs
     )

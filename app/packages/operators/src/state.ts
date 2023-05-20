@@ -716,6 +716,9 @@ export const operatorPlacementsSelector = selector({
   key: "operatorPlacementsSelector",
   get: async ({ get }) => {
     const throttledContext = get(operatorThrottledContext);
+    if (!throttledContext || !throttledContext.datasetName) {
+      return [];
+    }
     const ctx = new ExecutionContext({}, throttledContext);
     const remotePlacements = await fetchRemotePlacements(ctx);
     const localPlacements = await resolveLocalPlacements(ctx);

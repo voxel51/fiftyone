@@ -22,6 +22,7 @@ dist/
 /docs/build/
 /docs/source/api/
 
+/docker/README.pdf
 /bin
 /lib
 coverage.xml
@@ -29,3 +30,7 @@ coverage.xml
 pyvenv.cfg
 
 .chroma
+.python-version
+
+*.whl
+/deployment/docker/__models__

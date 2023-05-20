@@ -12,6 +12,7 @@ import os
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 
@@ -29,7 +30,11 @@ def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         cleanup (True): whether to cleanup the scratch directory after
             extraction
     """
-    if scratch_dir is None:
+    fos.ensure_local(dataset_dir)
+
+    if scratch_dir is not None:
+        fos.ensure_local(scratch_dir)
+    else:
         scratch_dir = os.path.join(dataset_dir, "scratch")
 
     # Download dataset

@@ -12,11 +12,59 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.cache as foc
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 
 logger = logging.getLogger(__name__)
+
+
+def read(path, include_alpha=False, flag=None):
+    """Reads the image from the given path as a numpy array.
+
+    Color images are returned as RGB arrays.
+
+    Args:
+        path: the path to the image
+        include_alpha (False): whether to include the alpha channel of the
+            image, if present, in the returned array
+        flag (None): an optional OpenCV image format flag to use. If provided,
+            this flag takes precedence over ``include_alpha``
+
+    Returns:
+        a uint8 numpy array containing the image
+    """
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        return etai.read(path, include_alpha=include_alpha, flag=flag)
+
+    client = fos.get_client(path=path)
+    b = client.download_bytes(path)
+
+    return etai.decode(b, include_alpha=include_alpha, flag=flag)
+
+
+def write(img, path):
+    """Writes image to file.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    """
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        etai.write(img, path)
+        return
+
+    ext = os.path.splitext(path)[1]
+    b = etai.encode(img, ext)
+
+    client = fos.get_client(path=path)
+    client.upload_bytes(b, path)
 
 
 def reencode_images(
@@ -310,6 +358,7 @@ def _transform_images_single(
     diff_field = output_field != media_field
 
     view = sample_collection.select_fields(media_field)
+    stale_paths = []
 
     with fou.ProgressBar() as pb:
         for sample in pb(view):
@@ -322,7 +371,7 @@ def _transform_images_single(
             if ext is not None:
                 outpath = os.path.splitext(outpath)[0] + ext
 
-            _transform_image(
+            did_transform = _transform_image(
                 inpath,
                 outpath,
                 size=size,
@@ -334,9 +383,17 @@ def _transform_images_single(
                 skip_failures=skip_failures,
             )
 
-            if update_filepaths and (diff_field or outpath != inpath):
-                sample[output_field] = outpath
-                sample.save()
+            if diff_field or outpath != inpath:
+                if update_filepaths:
+                    sample[output_field] = outpath
+                    sample.save()
+
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_images_multi(
@@ -386,22 +443,31 @@ def _transform_images_multi(
         )
 
     outpaths = {}
+    stale_paths = []
 
     try:
         with fou.ProgressBar(inputs) as pb:
             with fou.get_multiprocessing_context().Pool(
                 processes=num_workers
             ) as pool:
-                for sample_id, inpath, outpath, _ in pb(
+                for sample_id, inpath, outpath, did_transform in pb(
                     pool.imap_unordered(_do_transform, inputs)
                 ):
-                    if update_filepaths and (diff_field or outpath != inpath):
-                        outpaths[sample_id] = outpath
+                    if diff_field or outpath != inpath:
+                        if update_filepaths:
+                            outpaths[sample_id] = outpath
+
+                        if delete_originals:
+                            stale_paths.append(inpath)
+                    elif did_transform:
+                        stale_paths.append(inpath)
     finally:
         if outpaths:
             sample_collection.set_values(
                 output_field, outpaths, key_field="id"
             )
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _do_transform(args):
@@ -421,8 +487,8 @@ def _transform_image(
     delete_original=False,
     skip_failures=False,
 ):
-    inpath = fou.normalize_path(inpath)
-    outpath = fou.normalize_path(outpath)
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -439,12 +505,13 @@ def _transform_image(
         )
 
         if should_reencode:
-            img = etai.read(inpath)
+            img = read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
 
         if should_reencode and inpath == outpath and not delete_original:
-            orig_path = etau.make_unique_path(inpath, suffix="-original")
-            etau.move_file(inpath, orig_path)
+            root, ext = os.path.splitext(inpath)
+            orig_path = root + "-original" + ext
+            fos.move_file(inpath, orig_path)
             moves.append((inpath, orig_path))
             inpath = orig_path
 
@@ -455,21 +522,21 @@ def _transform_image(
                 kwargs = {}
 
             img = etai.resize(img, width=size[0], height=size[1], **kwargs)
-            etai.write(img, outpath)
+            write(img, outpath)
             did_transform = True
         elif should_reencode:
-            etai.write(img, outpath)
+            write(img, outpath)
             did_transform = True
         elif inpath != outpath:
-            etau.copy_file(inpath, outpath)
+            fos.copy_file(inpath, outpath)
 
         if delete_original and inpath != outpath:
-            etau.delete_file(inpath)
+            fos.delete_file(inpath)
     except BaseException as e:
         try:
             # Undo any moves
             for from_path, to_path in moves:
-                etau.move_file(to_path, from_path)
+                fos.move_file(to_path, from_path)
         except:
             pass
 
@@ -509,9 +576,9 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
         return inpath
 
     if rel_dir is not None:
-        rel_dir = fou.normalize_path(rel_dir)
+        rel_dir = fos.normalize_path(rel_dir)
         filename = os.path.relpath(inpath, rel_dir)
     else:
         filename = os.path.basename(inpath)
 
-    return os.path.join(output_dir, filename)
+    return fos.join(output_dir, filename)
