@@ -59,6 +59,9 @@ class OperatorRegistry:
             if operator_uri == operator.uri:
                 return operator
 
+    def can_execute(self, ctx):
+        return True
+
 
 def register_operator(operator):
     """Registers a built-in operator. For internal use only.

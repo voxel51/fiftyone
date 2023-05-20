@@ -121,10 +121,9 @@ def get_token_from_request(request):
     header = request.headers.get("Authorization", None)
     cookie = request.cookies.get("fiftyone-token", None)
     if header:
-        token = get_header_token(header)
+        return get_header_token(header)
     elif cookie:
-        token = cookie
-    return token
+        return cookie
 
 
 # an example using the requests module to make an request to a graphql
