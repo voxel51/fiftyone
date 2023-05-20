@@ -12,12 +12,20 @@ _DEFAULT_APP_CONFIG = {}
 _REQUIRED_YML_KEYS = ["name", "label", "version"]
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(autouse=True, scope="function")
 def app_config_path(tmp_path_factory):
     fn = tmp_path_factory.mktemp(".fiftyone") / "app_config.json"
     with open(fn, "w") as f:
         f.write(json.dumps(_DEFAULT_APP_CONFIG))
-    return fn
+    return str(fn)
+
+
+@pytest.fixture(autouse=True)
+def mock_app_config_env_var(app_config_path):
+    with mock.patch.dict(
+        os.environ, {"FIFTYONE_APP_CONFIG_PATH": app_config_path}
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -31,10 +39,7 @@ def fiftyone_plugins_dir(tmp_path_factory):
     return fn
 
 
-def test_enable_plugin(mocker, app_config_path):
-    mocker.patch(
-        "fiftyone.core.config.locate_app_config", return_value=app_config_path
-    )
+def test_enable_plugin(app_config_path):
     fop.enable_plugin("my-plugin")
     with open(app_config_path, "r") as f:
         config = json.load(f)
@@ -42,10 +47,7 @@ def test_enable_plugin(mocker, app_config_path):
     assert config["plugins"].get("my-plugin", {}).get("enabled", True) == True
 
 
-def test_disable_plugin(mocker, app_config_path):
-    mocker.patch(
-        "fiftyone.core.config.locate_app_config", return_value=app_config_path
-    )
+def test_disable_plugin(app_config_path):
     fop.disable_plugin("my-plugin")
     with open(app_config_path, "r") as f:
         config = json.load(f)
@@ -55,7 +57,12 @@ def test_disable_plugin(mocker, app_config_path):
 def test_delete_plugin_success(mocker, fiftyone_plugins_dir):
     mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
     assert fo.config.plugins_dir == fiftyone_plugins_dir
-    print(os.listdir(fiftyone_plugins_dir))
+    before_delete = fop.list_downloaded_plugins()
+    to_delete = before_delete.pop()
+    fop.delete_plugin(to_delete)
+    after_delete = fop.list_downloaded_plugins()
+    assert to_delete not in after_delete
+    assert set(before_delete) == set(after_delete)
 
 
 def test_list_downloaded_plugins(mocker, fiftyone_plugins_dir):

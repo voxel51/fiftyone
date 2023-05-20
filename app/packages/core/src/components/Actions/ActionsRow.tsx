@@ -1,3 +1,4 @@
+import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   ArrowDownward,
   Bookmark,
@@ -26,7 +27,6 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
@@ -46,7 +46,6 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -475,33 +474,7 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
-
-  const isUsingSessionColorScheme = useRecoilValue(
-    fos.isUsingSessionColorScheme
-  );
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
-
-  // if the session color scheme is not applied to the dataset,
-  // check to see if dataset.appConfig has applicable settings
-  useEffect(() => {
-    if (!isUsingSessionColorScheme && datasetColorScheme) {
-      const colorPool =
-        datasetColorScheme.colorPool?.length > 0
-          ? datasetColorScheme.colorPool
-          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const customizedColorSettings =
-        JSON.parse(datasetColorScheme.customizedColorSettings) ??
-        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
-      setSessionColor({
-        colorPool,
-        customizedColorSettings,
-      });
-    }
-  }, [isUsingSessionColorScheme, datasetColorScheme]);
-
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
@@ -526,7 +499,6 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
   isGroup?: boolean;
 }) => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
   return (

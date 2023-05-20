@@ -84,7 +84,7 @@ DEFAULT_APP_COLOR_POOL = [
 
 DEFAULT_COLOR_SCHEME = {
     "color_pool": DEFAULT_APP_COLOR_POOL,
-    "customized_color_settings": [],
+    "fields": [],
 }
 
 # MongoDB setup

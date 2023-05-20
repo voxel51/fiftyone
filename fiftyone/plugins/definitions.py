@@ -18,8 +18,8 @@ class PluginDefinition(object):
     """A plugin definition.
 
     Args:
-        metadata: a plugin metadata dict
         directory: the directory containing the plugin
+        metadata: a plugin metadata dict
     """
 
     _REQUIRED_METADATA_KEYS = ["name"]

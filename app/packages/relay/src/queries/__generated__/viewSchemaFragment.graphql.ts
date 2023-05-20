@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b736b15dd60e3bd66872789202320661>>
+ * @generated SignedSource<<e82807cf666ed1de0d6560ab526a0a33>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type viewSchemaFragment$data = {
     readonly info: object | null;
     readonly path: string;
     readonly subfield: string | null;
-  }> | null;
+  }>;
   readonly " $fragmentType": "viewSchemaFragment";
 };
 export type viewSchemaFragment$key = {

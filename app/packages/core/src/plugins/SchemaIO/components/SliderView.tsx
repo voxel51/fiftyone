@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Slider } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
-import { autoFocus } from "../utils";
+import { autoFocus, getComponentProps } from "../utils";
 
 export default function SliderView(props) {
   const { data, onChange, path, schema } = props;
@@ -23,6 +23,7 @@ export default function SliderView(props) {
           onChange(path, value);
         }}
         ref={sliderRef}
+        {...getComponentProps(props, "slider")}
       />
     </FieldWrapper>
   );

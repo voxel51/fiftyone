@@ -35,10 +35,10 @@ const SidebarList: React.FC = () => {
     ({ set, snapshot }) =>
       async (path: string) => {
         if ([ACTIVE_FIELD.global, ACTIVE_FIELD.json].includes(path)) {
-          set(fos.activeColorField, path);
+          set(fos.activeColorField, path as "global" | "json");
         } else {
           const field = await snapshot.getPromise(fos.field(path));
-          set(fos.activeColorField, field);
+          set(fos.activeColorField, { field, expandedPath: path });
         }
       },
     []
@@ -47,7 +47,7 @@ const SidebarList: React.FC = () => {
   const getCurrentField = (activeField) => {
     if (activeField === ACTIVE_FIELD.global) return ACTIVE_FIELD.global;
     if (activeField === ACTIVE_FIELD.json) return ACTIVE_FIELD.json;
-    return activeField?.path;
+    return activeField?.expandedPath;
   };
   return (
     <Resizable
@@ -108,6 +108,9 @@ const SidebarList: React.FC = () => {
                         pl: 4,
                         margin: "-0.25rem",
                         "&.Mui-selected": {
+                          backgroundColor: theme.primary.main,
+                        },
+                        "&.Mui-selected:hover": {
                           backgroundColor: theme.primary.main,
                         },
                       }}

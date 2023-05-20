@@ -26,6 +26,7 @@ import {
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
+  resolveLocalPlacements,
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
@@ -175,7 +176,7 @@ export const useOperatorPrompt = () => {
       setTimeout(() => {
         const validationContext = new ValidationContext(ctx, resolved);
         const validationErrors = validationContext.toProps().errors;
-        console.log({ validationContext });
+        console.log({ ctx, resolved, validationContext });
         setValidationErrors(validationErrors);
         resolve({
           invalid: validationContext.invalid,
@@ -719,8 +720,9 @@ export const operatorPlacementsSelector = selector({
       return [];
     }
     const ctx = new ExecutionContext({}, throttledContext);
-    const placements = await fetchRemotePlacements(ctx);
-    return placements;
+    const remotePlacements = await fetchRemotePlacements(ctx);
+    const localPlacements = await resolveLocalPlacements(ctx);
+    return [...remotePlacements, ...localPlacements];
   },
 });
 
