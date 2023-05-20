@@ -51,7 +51,7 @@ export const TAB_OPTIONS_MAP = {
 
 export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 
-const skipFiled = (path: string, ftype: string, schema: {}) => {
+const skipField = (path: string, ftype: string, schema: {}) => {
   const parentPath = path.substring(0, path.lastIndexOf("."));
 
   return (
@@ -142,7 +142,7 @@ export const schemaSearchRestuls = atom<string[]>({
                 path.startsWith("frames.") ? path.replace("frames.", "") : path
               ]?.ftype ||
                 schema?.[path]?.ftype) &&
-              !skipFiled(path, viewSchema?.[path]?.ftype, viewSchema)
+              !skipField(path, viewSchema?.[path]?.ftype, viewSchema)
           )
           .map((path) =>
             path.startsWith("frames.") ? path.replace("frames.", "") : path
@@ -179,15 +179,19 @@ export const selectedPathsState = atomFamily({
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
-            return (
-              !!path &&
-              !skipFiled(
-                path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-                viewSchema
-              ) &&
-              !disabledField(path, combinedSchema, dataset?.groupField)
+            const skip = skipField(
+              path,
+              viewSchema?.[path]?.ftype ||
+                viewSchema?.[path.replace("frames.", "")]?.ftype ||
+                schema?.[path]?.ftype,
+              viewSchema
             );
+            const disable = disabledField(
+              path,
+              combinedSchema,
+              dataset?.groupField
+            );
+            return !!path && !skip && !disable;
           })
           .map((path) => mapping?.[path] || path);
 
@@ -235,7 +239,11 @@ export const excludedPathsState = atomFamily({
           .filter(
             (path) =>
               !!path &&
-              !skipFiled(path, combinedSchema?.[path]?.ftype, viewSchema) &&
+              !skipField(
+                path,
+                combinedSchema?.[path.replace("frames.", "")]?.ftype,
+                viewSchema
+              ) &&
               !disabledField(path, combinedSchema, dataset?.groupField)
           )
           .map((path) => mapping?.[path] || path);
@@ -252,29 +260,27 @@ export const excludedPathsState = atomFamily({
           );
         }
 
+        const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
         // embedded document could break an exclude_field() call
-        finalGreenPaths =
-          showNestedField || isInSearchMode
-            ? finalGreenPaths.filter(
-                (path) =>
-                  !(
-                    // a top-level embedded document
-                    (combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
-                    combinedSchema[path]?.subfield &&
-                    [
-                      EMBEDDED_DOCUMENT_FIELD,
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-                      LIST_FIELD,
-                    ].includes(combinedSchema[path]?.subfield) &&
-                    isVideo
+        finalGreenPaths = shouldFilterTopLevelFields
+          ? finalGreenPaths.filter(
+              (path) =>
+                !(
+                  // a top-level embedded document with dynamic embed type which
+                  (
+                    combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
+                    combinedSchema[path]?.embeddedDocType ===
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD &&
+                    (isVideo
                       ? !(
                           path.split(".").length === 2 &&
                           path.startsWith("frames.")
                         ) || !path.includes(".")
                       : !path.includes("."))
                   )
-              )
-            : finalGreenPaths;
+                )
+            )
+          : finalGreenPaths;
 
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
@@ -524,7 +530,7 @@ export default function useSchemaSettings() {
           : pathLabel[pathLabel.length - 1];
 
         const ftype = finalSchemaKeyByPath[path].ftype;
-        const skip = skipFiled(path, ftype, finalSchemaKeyByPath);
+        const skip = skipField(path, ftype, finalSchemaKeyByPath);
         const isGroupField = dataset?.groupField;
         const disabled =
           disabledField(path, { ...viewSchema, ...schema }, isGroupField) ||
@@ -684,7 +690,7 @@ export default function useSchemaSettings() {
       Object.keys(mergedSchema).forEach((currPath: string) => {
         if (
           currPath.startsWith(path + ".") &&
-          !skipFiled(currPath, mergedSchema?.[currPath]?.ftype, mergedSchema) &&
+          !skipField(currPath, mergedSchema?.[currPath]?.ftype, mergedSchema) &&
           !disabledField(currPath, mergedSchema, dataset?.groupField)
         ) {
           subPaths.add(getPath(currPath));
@@ -697,9 +703,19 @@ export default function useSchemaSettings() {
 
   useEffect(() => {
     if (viewPaths.length && datasetName && !selectedPaths?.[datasetName]) {
+      const combinedSchema = new Set([...viewPaths, ...Object.keys(schema)]);
       setSelectedPaths(() => ({
-        [datasetName]: new Set([...viewPaths, ...Object.keys(schema)]),
+        [datasetName]: combinedSchema,
       }));
+      if (
+        !lastAppliedPaths.selected.length &&
+        !lastAppliedPaths.excluded.length
+      ) {
+        setLastAppliedPaths({
+          selected: [...combinedSchema],
+          excluded: [],
+        });
+      }
     }
   }, [viewPaths, datasetName]);
 
