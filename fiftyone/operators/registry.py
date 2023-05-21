@@ -29,14 +29,14 @@ def get_operator(operator_uri):
 
 
 def list_operators(enabled=True):
-    """Returns the definitions of downloaded plugins.
+    """Returns all available operators.
 
     Args:
-        enabled (True): whether to include only enabled plugins (True) or only
-            disabled plugins (False) or all plugins ("all")
+        enabled (True): whether to include only enabled operators (True) or
+            only disabled operators (False) or all operators ("all")
 
     Returns:
-        a list of :class:`fiftyone.plugins.PluginDefinition` instances
+        a list of :class:`fiftyone.operators.Operator` instances
     """
     plugin_contexts = build_plugin_contexts(enabled=enabled)
     registry = OperatorRegistry(plugin_contexts=plugin_contexts)
