@@ -595,7 +595,7 @@ class ColorField(StringField):
 
     def validate(self, value):
         try:
-            fou.validate_hex_color(value)
+            fou.validate_color(value)
         except ValueError as e:
             self.error(str(e))
 

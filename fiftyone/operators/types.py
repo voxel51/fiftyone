@@ -285,20 +285,12 @@ class Property(BaseType):
 
     def __init__(self, type, **kwargs):
         self.type = type
-        invalid_descendants = self.has_invalid_descendants()
-        self.invalid = kwargs.get("invalid", invalid_descendants)
+        self.invalid = kwargs.get("invalid", False)
         self.default = kwargs.get("default", None)
         self.required = kwargs.get("required", False)
         self.choices = kwargs.get("choices", None)
-        self.error_message = kwargs.get("error_message", "Invalid")
+        self.error_message = kwargs.get("error_message", "Invalid property")
         self.view = kwargs.get("view", None)
-
-    def has_invalid_descendants(self):
-        if isinstance(self.type, Object):
-            for property in self.type.properties.values():
-                if property.invalid or property.has_invalid_descendants():
-                    return True
-        return False
 
     def to_json(self):
         return {

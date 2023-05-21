@@ -2,13 +2,11 @@ import { Box, Typography } from "@mui/material";
 import React from "react";
 import ErrorView from "./ErrorView";
 import HeaderView from "./HeaderView";
-import { getComponentProps } from "../utils";
+import { getComponentProps, getErrorsForView } from "../utils";
 
 export default function FieldWrapper(props) {
   const { schema, children, errors, path } = props;
   const { view = {} } = schema;
-
-  const fieldErrors = errors?.[path] || [];
 
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -24,7 +22,7 @@ export default function FieldWrapper(props) {
           {view.caption}
         </Typography>
       )}
-      <ErrorView schema={{}} data={fieldErrors} />
+      <ErrorView schema={{}} data={getErrorsForView(props)} />
     </Box>
   );
 }

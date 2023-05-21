@@ -20,11 +20,11 @@ import fiftyone as fo
 import fiftyone.core.clips as foc
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.odm.dataset as food
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.core.spaces import Space
-from fiftyone.core.colorscheme import ColorScheme
 from fiftyone.server.scalars import JSON
 
 
@@ -113,7 +113,7 @@ class StateDescription(etas.Serializable):
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()
 
-            if isinstance(self.color_scheme, ColorScheme):
+            if isinstance(self.color_scheme, food.ColorScheme):
                 d["color_scheme"] = self.color_scheme.to_json()
 
             return d

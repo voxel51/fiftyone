@@ -396,21 +396,17 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
 });
 
 // the active field for customize color modal
-export const activeColorField = atom<Field | "global" | "json" | null>({
+export const activeColorField = atom<
+  { field: Field; expandedPath: string } | "global" | "json" | null
+>({
   key: "activeColorField",
   default: null,
-});
-
-export const isUsingSessionColorScheme = atom<boolean>({
-  key: "isUsingSessionColorScheme",
-  default: false,
 });
 
 export const sessionColorScheme = atom<ColorSchemeSetting>({
   key: "sessionColorScheme",
   default: {
     colorPool: [],
-    customizedColorSettings: [],
-    saveToApp: false,
+    fields: [],
   },
 });

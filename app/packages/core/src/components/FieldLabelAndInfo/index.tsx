@@ -207,15 +207,10 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => {
-      if (theme.mode === "light") {
-        return theme.background.level1;
-      }
-      return theme.background.level1;
-    }};
+    background: ${({ theme }) => theme.background.level1};
   }
   tr {
-    border-top: solid 2px ${getBorderColor};
+    border-top: solid 2px ${({ theme }) => theme.background.header};
   }
   a,
   a:visited {
@@ -238,13 +233,6 @@ const ShowMoreLink = styled.a`
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
-
-function getBorderColor({ theme, color }) {
-  if (theme.mode === "light") {
-    return theme.background.header;
-  }
-  return color;
-}
 
 function FieldInfoExpanded({
   field,
@@ -275,7 +263,7 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor(field);
+    setIsCustomizingColor({ field, expandedPath });
   };
 
   const isNotTag = field.path !== "tags";

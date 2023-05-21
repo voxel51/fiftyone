@@ -1,9 +1,3 @@
-import { PillButton, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { OperatorPlacements, types } from "@fiftyone/operators";
-import { useOperatorBrowser } from "@fiftyone/operators/src/state";
-import * as fos from "@fiftyone/state";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   Bookmark,
@@ -32,9 +26,15 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
+
+import { PillButton, useTheme } from "@fiftyone/components";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import * as fos from "@fiftyone/state";
+import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
@@ -451,33 +451,7 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
-
-  const isUsingSessionColorScheme = useRecoilValue(
-    fos.isUsingSessionColorScheme
-  );
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
-
-  // if the session color scheme is not applied to the dataset,
-  // check to see if dataset.appConfig has applicable settings
-  useEffect(() => {
-    if (!isUsingSessionColorScheme && datasetColorScheme) {
-      const colorPool =
-        datasetColorScheme.colorPool?.length > 0
-          ? datasetColorScheme.colorPool
-          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const customizedColorSettings =
-        JSON.parse(datasetColorScheme.customizedColorSettings) ??
-        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
-      setSessionColor({
-        colorPool,
-        customizedColorSettings,
-      });
-    }
-  }, [isUsingSessionColorScheme, datasetColorScheme]);
-
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
@@ -502,7 +476,6 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
   isGroup?: boolean;
 }) => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
   return (

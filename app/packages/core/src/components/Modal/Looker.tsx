@@ -77,7 +77,7 @@ const Looker = ({
   onClose,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-
+  const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
   const modalSampleData = useRecoilValue(fos.modal);
 
   if (!modalSampleData && !propsSampleData) {
@@ -138,7 +138,7 @@ const Looker = ({
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sample]);
+  }, [sample, sessionColorScheme]);
 
   useEffect(() => {
     return () => looker && looker.destroy();
