@@ -123,7 +123,6 @@ class CloneSampleField(foo.Operator):
             ctx.params.get("new_field_name", None),
         )
         ctx.trigger("reload_dataset")
-        return {"created_field": ctx.params.get("new_field_name", None)}
 
 
 class RenameSampleField(foo.Operator):
@@ -183,7 +182,6 @@ class RenameSampleField(foo.Operator):
             ctx.params.get("new_field_name", None),
         )
         ctx.trigger("reload_dataset")
-        return {"created_field": ctx.params.get("new_field_name", None)}
 
 
 class DeleteSelectedSamples(foo.Operator):
@@ -224,22 +222,13 @@ class DeleteSelectedSamples(foo.Operator):
         return types.Property(inputs, view=types.View(label=header))
 
     def execute(self, ctx):
-        ctx.dataset.delete_samples(ctx.selected)
-        ctx.trigger("reload_samples")
-        return {"deleted_samples": ctx.selected}
+        num_samples = len(ctx.selected)
+        if num_samples == 0:
+            return
 
-    def resolve_output(self, ctx):
-        count = len(ctx.results.get("deleted_samples", []))
-        sample_text = "sample" if count == 1 else "samples"
-        outputs = types.Object()
-        outputs.str(
-            "deleted_samples",
-            label=f"Deleted {count} {sample_text}",
-            view=types.Notice(),
-        )
-        return types.Property(
-            outputs, view=types.View(label="Deleted samples")
-        )
+        ctx.dataset.delete_samples(ctx.selected)
+        ctx.trigger("clear_selected_samples")
+        ctx.trigger("reload_samples")
 
 
 class DeleteSampleField(foo.Operator):
