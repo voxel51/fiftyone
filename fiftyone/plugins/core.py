@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import json
 import logging
 import os
+from packaging.requirements import Requirement
 import re
 import shutil
 
@@ -19,7 +20,8 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.core.config as foc
+import fiftyone.constants as foc
+from fiftyone.core.config import locate_app_config
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
@@ -61,16 +63,10 @@ def list_plugins(enabled=True):
 
     plugins = []
     for p in _list_plugins(enabled=enabled):
-        metadata_path = _find_plugin_metadata_file(p.path)
         try:
-            pd = PluginDefinition.from_disk(metadata_path)
+            plugins.append(_load_plugin_definition(p))
         except:
-            logger.debug(
-                f"Failed to load plugin metadata from '{metadata_path}'"
-            )
-            continue
-
-        plugins.append(pd)
+            logger.debug(f"Failed to parse plugin at '{p.path}'")
 
     return plugins
 
@@ -99,10 +95,9 @@ def delete_plugin(plugin_name):
     Args:
         plugin_name: the plugin name
     """
-    plugin_dir = _find_plugin(plugin_name)
-
+    plugin = _get_plugin(plugin_name)
     _update_plugin_settings(plugin_name, delete=True)
-    etau.delete_dir(plugin_dir)
+    etau.delete_dir(plugin.path)
 
 
 def list_downloaded_plugins():
@@ -132,18 +127,30 @@ def list_disabled_plugins():
     return _list_plugins_by_name(enabled=False)
 
 
-def find_plugin(name, check_for_duplicates=True):
+def get_plugin(name):
+    """Gets the definition for the given plugin.
+
+    Args:
+        name: the plugin name
+
+    Returns:
+        a :class:`PluginDefinition`
+    """
+    plugin = _get_plugin(name)
+    return _load_plugin_definition(plugin)
+
+
+def find_plugin(name):
     """Returns the path to the plugin on local disk.
 
     Args:
         name: the plugin name
-        check_for_duplicates (True): whether to ensure that multiple plugins
-            with the given name do not exist
 
     Returns:
         the path to the plugin directory
     """
-    return _find_plugin(name, check_for_duplicates=check_for_duplicates)
+    plugin = _get_plugin(name)
+    return plugin.path
 
 
 def download_plugin(
@@ -320,6 +327,7 @@ def ensure_plugin_requirements(
         log_success (False): whether to generate a log message if a requirement
             is satisifed
     """
+
     req_path = _find_requirements(plugin_name)
     if req_path:
         fou.ensure_requirements(
@@ -335,6 +343,51 @@ def _find_requirements(plugin_name):
 
     logger.info(f"No requirements.txt found for '{plugin_name}")
     return None
+
+
+def ensure_plugin_compatibility(
+    plugin_name, error_level=None, log_success=False
+):
+    """Ensures that the given plugin is compatibile with your current FiftyOne
+    pacakge version.
+
+    Args:
+        plugin_name: the plugin name
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if plugin is not compatibile
+            -   1: log warning if plugin is not satisifed
+            -   2: ignore fiftyone compatibility requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if the plugin is
+            compatible
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    pd = get_plugin(plugin_name)
+    req_str = pd.fiftyone_requirement
+    if req_str is None:
+        return
+
+    try:
+        req = Requirement(req_str)
+    except:
+        logger.warning(
+            f"Unable to understand plugin {plugin_name}'s fiftyone version '{pd.fiftyone_compatibility}'"
+        )
+        return
+
+    if not req.specifier.contains(foc.VERSION):
+        exception = ImportError(
+            f"Plugin {plugin_name} requires {req_str} but you are running {foc.VERSION}, which is not compatible"
+        )
+        fou.handle_error(exception, error_level)
+    elif log_success:
+        logger.info(
+            f"Plugin {plugin_name} is compatible: requires {req_str} (found {foc.VERSION})"
+        )
 
 
 def create_plugin(
@@ -510,24 +563,29 @@ def _iter_plugin_metadata_files():
                 break
 
 
-def _find_plugin(name, check_for_duplicates=False):
-    plugin_dir = None
-    for plugin in _list_plugins():
-        if name == plugin.name:
-            if check_for_duplicates and plugin_dir is not None:
+def _get_plugin(name, enabled=None, check_for_duplicates=True):
+    plugin = None
+    for _plugin in _list_plugins(enabled=enabled):
+        if _plugin.name == name:
+            if check_for_duplicates and plugin is not None:
                 raise ValueError(f"Multiple plugins found with name '{name}'")
 
-            plugin_dir = plugin.path
+            plugin = _plugin
 
-    if plugin_dir is None:
+    if plugin is None:
         raise ValueError(f"Plugin '{name}' not found")
 
-    return plugin_dir
+    return plugin
+
+
+def _load_plugin_definition(plugin):
+    metadata_path = _find_plugin_metadata_file(plugin.path)
+    return PluginDefinition.from_disk(metadata_path)
 
 
 def _list_disabled_plugins():
     try:
-        with open(foc.locate_app_config(), "r") as f:
+        with open(locate_app_config(), "r") as f:
             app_config = json.load(f)
     except:
         return {}
@@ -574,14 +632,14 @@ def _recommend_label(name):
 
 def _update_plugin_settings(plugin_name, enabled=None, delete=False, **kwargs):
     # This would ensure that the plugin actually exists
-    # _find_plugin(plugin_name)
+    # _get_plugin(plugin_name)
 
     # Plugins are enabled by default, so if we can't read the App config or it
     # doesn't exist, don't do anything
     okay_missing = enabled in (True, None) and not kwargs
 
     # Load existing App config, if any
-    app_config_path = foc.locate_app_config()
+    app_config_path = locate_app_config()
     if os.path.isfile(app_config_path):
         try:
             with open(app_config_path, "rt") as f:

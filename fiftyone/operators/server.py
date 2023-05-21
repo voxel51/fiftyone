@@ -5,19 +5,19 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from .registry import OperatorRegistry
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
+from starlette.responses import StreamingResponse
+
 from fiftyone.server.decorators import route, FiftyOneResponse
+
 from .executor import (
     execute_operator,
     resolve_type,
     resolve_placement,
     ExecutionContext,
 )
-from starlette.exceptions import HTTPException
-from starlette.responses import StreamingResponse
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 from fiftyone.utils.decorators import route_requires_auth
@@ -52,6 +52,7 @@ class ListOperators(HTTPEndpoint):
         for operator in operators_as_json:
             config = operator["config"]
             config["can_execute"] = registry.can_execute(operator["uri"])
+
         return {
             "operators": operators_as_json,
             "errors": registry.list_errors(),
@@ -79,6 +80,7 @@ class ResolvePlacements(HTTPEndpoint):
                         "placement": placement.to_json(),
                     }
                 )
+
         return {"placements": placements}
 
 
@@ -96,15 +98,15 @@ class ExecuteOperator(HTTPEndpoint):
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
         if registry.operator_exists(operator_uri) is False:
-            erroDetail = {
+            error_detail = {
                 "message": "Operator '%s' does not exist" % operator_uri
                 or "None",
                 "loading_errors": registry.list_errors(),
             }
-            raise HTTPException(status_code=404, detail=erroDetail)
+            raise HTTPException(status_code=404, detail=error_detail)
+
         result = await execute_operator(operator_uri, data)
-        json = result.to_json()
-        return json
+        return result.to_json()
 
 
 async def create_response_generator(generator):
@@ -115,16 +117,11 @@ async def create_response_generator(generator):
 
 
 def create_permission_error(uri):
+    message = "User does not have permission to execute operator '%s'" % uri
     return FiftyOneResponse(
-        {
-            "error": {
-                "message": "User does not have permission to execute operator '%s'"
-                % uri
-            }
-        },
+        {"error": {"message": message}},
         status_code=403,
     )
-    return
 
 
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
@@ -142,12 +139,12 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             return create_permission_error(operator_uri)
 
         if registry.operator_exists(operator_uri) is False:
-            erroDetail = {
+            error_detail = {
                 "message": "Operator '%s' does not exist" % operator_uri
                 or "None",
                 "loading_errors": registry.list_errors(),
             }
-            raise HTTPException(status_code=404, detail=erroDetail)
+            raise HTTPException(status_code=404, detail=error_detail)
 
         execution_result = await execute_operator(operator_uri, data)
         if execution_result.is_generator:
@@ -161,8 +158,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
                 },
             )
         else:
-            json = execution_result.to_json()
-            return json
+            return execution_result.to_json()
 
 
 class ResolveType(HTTPEndpoint):
@@ -178,17 +174,16 @@ class ResolveType(HTTPEndpoint):
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
+
         if registry.operator_exists(operator_uri) is False:
-            erroDetail = {
+            error_detail = {
                 "message": "Operator '%s' does not exist" % operator_uri,
                 "loading_errors": registry.list_errors(),
             }
-            raise HTTPException(status_code=404, detail=erroDetail)
+            raise HTTPException(status_code=404, detail=error_detail)
+
         result = resolve_type(registry, operator_uri, data)
-        if result:
-            return result.to_json()
-        else:
-            return {}
+        return result.to_json() if result else {}
 
 
 OperatorRoutes = [

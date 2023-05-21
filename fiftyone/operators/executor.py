@@ -57,7 +57,8 @@ class Executor(object):
             params (None): a dictionary of parameters for the operator
 
         Returns:
-            a :class:`GeneratedMessage` containing the result of the invocation
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            the result of the invocation
         """
         inv_req = InvocationRequest(operator_name, params=params)
         self._requests.append(inv_req)
@@ -98,7 +99,9 @@ async def execute_operator(operator_name, request_params):
 
     validation_ctx = ValidationContext(ctx, inputs)
     if validation_ctx.invalid:
-        return ExecutionResult(None, None, "Validation Error", validation_ctx)
+        return ExecutionResult(
+            error="Validation Error", validation_ctx=validation_ctx
+        )
 
     try:
         if asyncio.iscoroutinefunction(operator.execute):
@@ -106,9 +109,9 @@ async def execute_operator(operator_name, request_params):
         else:
             raw_result = operator.execute(ctx)
     except Exception as e:
-        return ExecutionResult(None, executor, traceback.format_exc())
+        return ExecutionResult(executor=executor, error=traceback.format_exc())
 
-    return ExecutionResult(raw_result, executor, None)
+    return ExecutionResult(result=raw_result, executor=executor)
 
 
 def _is_generator(value):
@@ -121,12 +124,13 @@ def resolve_type(registry, operator_uri, request_params):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
-        registry: an :class:`OperatorRegistry`
+        registry: an :class:`fiftyone.operators.registry.OperatorRegistry`
         operator_uri: the URI of the operator
         request_params: a dictionary of request parameters
 
     Returns:
-        the type of the inputs :class:`Property` of the operator or ``None``
+        the type of the inputs :class:`fiftyone.operators.types.Property` of
+        the operator, or None
     """
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -138,14 +142,14 @@ def resolve_type(registry, operator_uri, request_params):
             ctx, request_params.get("target", "inputs")
         )
     except Exception as e:
-        return ExecutionResult(None, None, traceback.format_exc())
+        return ExecutionResult(error=traceback.format_exc())
 
 
 def resolve_placement(operator, request_params):
     """Resolves the placement of the operator with the given name.
 
     Args:
-        operator: the :class:`Operator`
+        operator: the :class:`fiftyone.operators.operator.Operator`
         request_params: a dictionary of request parameters
 
     Returns:
@@ -155,7 +159,7 @@ def resolve_placement(operator, request_params):
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
-        return ExecutionResult(None, None, str(e))
+        return ExecutionResult(error=str(e))
 
 
 class ExecutionContext(object):
@@ -241,10 +245,10 @@ class ExecutionResult(object):
     """Represents the result of an operator execution.
 
     Args:
-        result (None): the result of the operator
-        executor (None): an optional :class:`Executor`
-        error (None): an optional error message
-        validation_ctx (None): an optional :class:`ValidationContext`
+        result (None): the execution result
+        executor (None): an :class:`Executor`
+        error (None): an error message
+        validation_ctx (None): a :class:`ValidationContext`
     """
 
     def __init__(
@@ -312,7 +316,8 @@ class ValidationContext(object):
 
     Args:
         ctx: the :class:`ExecutionContext`
-        inputs_property: the :class:`Property` of the operator inputs
+        inputs_property: the :class:`fiftyone.operators.types.Property` of the
+            operator inputs
     """
 
     def __init__(self, ctx, inputs_property):
@@ -361,7 +366,7 @@ class ValidationContext(object):
 
         Args:
             path: the path to the property
-            property: the :class:`Property`
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
@@ -376,7 +381,7 @@ class ValidationContext(object):
 
         Args:
             path: the path to the property
-            property: the :class:`Property`
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
@@ -402,7 +407,7 @@ class ValidationContext(object):
 
         Args:
             path: the path to the property
-            property: the :class:`Property`
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
@@ -431,7 +436,7 @@ class ValidationContext(object):
 
         Args:
             path: the path to the property
-            property: the :class:`Property`
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
@@ -454,7 +459,7 @@ class ValidationContext(object):
 
         Args:
             path: the path to the property
-            property: the :class:`Property`
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:

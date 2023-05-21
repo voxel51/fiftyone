@@ -87,6 +87,7 @@ The FiftyOne command-line interface.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         migrate             Tools for migrating the FiftyOne database.
+        operators           Tools for working with FiftyOne operators.
         plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Zoo.
@@ -782,6 +783,92 @@ FiftyOne deployments.
     # Update the database version without migrating any existing datasets
     fiftyone migrate
 
+.. _cli-fiftyone-operators:
+
+FiftyOne operators
+------------------
+
+Tools for working with FiftyOne operators.
+
+.. code-block:: text
+
+    fiftyone operators [-h] [--all-help] {list,info} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help   show this help message and exit
+      --all-help   show help recursively and exit
+
+    available commands:
+      {list,info}
+        list       List operators that you've downloaded or created locally.
+        info       Prints information about operators that you've downloaded or created
+
+.. _cli-fiftyone-operators-list:
+
+List operators
+~~~~~~~~~~~~~~
+
+List operators that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone operators list [-h] [-e] [-d] [-n]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help        show this help message and exit
+      -e, --enabled     only show enabled operators
+      -d, --disabled    only show disabled operators
+      -n, --names-only  only show names
+
+**Examples**
+
+.. code-block:: shell
+
+    # List all locally available operators
+    fiftyone operators list
+
+    # List enabled operators
+    fiftyone operators list --enabled
+
+    # List disabled operators
+    fiftyone operators list --disabled
+
+.. _cli-fiftyone-operators-info:
+
+Operator info
+~~~~~~~~~~~~~
+
+Prints information about operators that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone operators info [-h] URI
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URI         the operator URI
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Prints information about an operator
+    fiftyone operators info <uri>
+
 .. _cli-fiftyone-plugins:
 
 FiftyOne plugins
@@ -791,7 +878,7 @@ Tools for working with FiftyOne plugins.
 
 .. code-block:: text
 
-    fiftyone plugins [-h] [--all-help] {list,download,requirements,create,enable,disable,delete} ...
+    fiftyone plugins [-h] [--all-help] {list,info,download,requirements,create,enable,disable,delete} ...
 
 **Arguments**
 
@@ -802,8 +889,9 @@ Tools for working with FiftyOne plugins.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,download,create,enable,disable,delete}
+      {list,info,download,requirements,create,enable,disable,delete}
         list                List plugins that you've downloaded or created locally.
+        info                Prints information about plugins that you've downloaded or created
         download            Download plugins from the web.
         requirements        Handles package requirements for plugins.
         create              Creates or initializes a plugin.
@@ -820,7 +908,7 @@ List plugins that you've downloaded or created locally.
 
 .. code-block:: text
 
-    fiftyone plugins list [-h] [-o] [-e] [-d] [-n]
+    fiftyone plugins list [-h] [-e] [-d] [-n]
 
 **Arguments**
 
@@ -828,7 +916,6 @@ List plugins that you've downloaded or created locally.
 
     optional arguments:
       -h, --help        show this help message and exit
-      -o, --operators   list operators within the plugins
       -e, --enabled     only show enabled plugins
       -d, --disabled    only show disabled plugins
       -n, --names-only  only show plugin names
@@ -840,14 +927,39 @@ List plugins that you've downloaded or created locally.
     # List all locally available plugins
     fiftyone plugins list
 
-    # List operators within the plugins
-    fiftyone plugins list --operators
-
     # List enabled plugins
     fiftyone plugins list --enabled
 
     # List disabled plugins
     fiftyone plugins list --disabled
+
+.. _cli-fiftyone-plugins-info:
+
+Plugin info
+~~~~~~~~~~~
+
+List plugins that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone plugins info [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the plugin name
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Prints information about a plugin
+    fiftyone plugins info <name>
 
 .. _cli-fiftyone-plugins-download:
 

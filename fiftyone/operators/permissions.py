@@ -5,7 +5,6 @@ FiftyOne operator permissions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from enum import Enum
 from .registry import OperatorRegistry
 from .loader import load_from_dir
 from fiftyone.plugins.permissions import ManagedOperators
@@ -17,14 +16,6 @@ class PermissionedOperatorRegistry(OperatorRegistry):
         super().__init__()
 
     def can_execute(self, operator_uri):
-        """Checks if the operator can be executed.
-
-        Args:
-            operator_uri: the URI of the operator
-
-        Returns:
-            ``True`` if the operator can be executed, ``False`` otherwise
-        """
         return self.managed_operators.has_operator(operator_uri)
 
     @classmethod

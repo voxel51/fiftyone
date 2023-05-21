@@ -94,6 +94,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
+        _register_command(subparsers, "operators", OperatorsCommand)
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
@@ -2702,37 +2703,170 @@ class ModelZooDeleteCommand(Command):
         fozm.delete_zoo_model(name)
 
 
-class PluginsCommand(Command):
-    """Tools for working with FiftyOne plugins."""
+class OperatorsCommand(Command):
+    """Tools for working with FiftyOne operators."""
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "list", PluginListCommand)
-        _register_command(subparsers, "download", PluginDownloadCommand)
-        _register_command(
-            subparsers, "requirements", PluginRequirementsCommand
-        )
-        _register_command(subparsers, "create", PluginCreateCommand)
-        _register_command(subparsers, "enable", PluginEnableCommand)
-        _register_command(subparsers, "disable", PluginDisableCommand)
-        _register_command(subparsers, "delete", PluginDeleteCommand)
+        _register_command(subparsers, "list", OperatorsListCommand)
+        _register_command(subparsers, "info", OperatorsInfoCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
 
 
-class PluginListCommand(Command):
+class OperatorsListCommand(Command):
+    """List operators that you've downloaded or created locally.
+
+    Examples::
+
+        # List all locally available operators
+        fiftyone operators list
+
+        # List enabled operators
+        fiftyone operators list --enabled
+
+        # List disabled operators
+        fiftyone operators list --disabled
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-e",
+            "--enabled",
+            action="store_true",
+            default=None,
+            help="only show enabled operators",
+        )
+        parser.add_argument(
+            "-d",
+            "--disabled",
+            action="store_true",
+            default=None,
+            help="only show disabled operators",
+        )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.enabled:
+            enabled = True
+        elif args.disabled:
+            enabled = False
+        else:
+            enabled = "all"
+
+        _print_operators_list(enabled, args.names_only)
+
+
+def _print_operators_list(enabled, names_only):
+    operators = foo.list_operators(enabled=enabled)
+
+    if names_only:
+        operators_map = defaultdict(list)
+        for operator in operators:
+            operators_map[operator.plugin_name].append(operator)
+
+        for pname, ops in operators_map.items():
+            print(pname)
+            for op in ops:
+                print("    " + op.name)
+
+        return
+
+    headers = [
+        "uri",
+        "enabled",
+        "builtin",
+        "on_startup",
+        "unlisted",
+        "dynamic",
+    ]
+
+    enabled_plugins = set(fop.list_enabled_plugins())
+
+    rows = []
+    for op in operators:
+        rows.append(
+            {
+                "uri": op.uri,
+                "enabled": op.builtin or op.plugin_name in enabled_plugins,
+                "builtin": op.builtin,
+                "on_startup": op.config.on_startup,
+                "unlisted": op.config.unlisted,
+                "dynamic": op.config.dynamic,
+            }
+        )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class OperatorsInfoCommand(Command):
+    """Prints information about operators that you've downloaded or created
+    locally.
+
+    Examples::
+
+        # Prints information about an operator
+        fiftyone operators info <uri>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("uri", metavar="URI", help="the operator URI")
+
+    @staticmethod
+    def execute(parser, args):
+        _print_operator_info(args.uri)
+
+
+def _print_operator_info(operator_uri):
+    operator = foo.get_operator(operator_uri)
+
+    d = operator.config.to_json()
+    _print_dict_as_table(d)
+
+
+class PluginsCommand(Command):
+    """Tools for working with FiftyOne plugins."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", PluginsListCommand)
+        _register_command(subparsers, "info", PluginsInfoCommand)
+        _register_command(subparsers, "download", PluginsDownloadCommand)
+        _register_command(
+            subparsers, "requirements", PluginsRequirementsCommand
+        )
+        _register_command(subparsers, "create", PluginsCreateCommand)
+        _register_command(subparsers, "enable", PluginsEnableCommand)
+        _register_command(subparsers, "disable", PluginsDisableCommand)
+        _register_command(subparsers, "delete", PluginsDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class PluginsListCommand(Command):
     """List plugins that you've downloaded or created locally.
 
     Examples::
 
         # List all locally available plugins
         fiftyone plugins list
-
-        # List operators within the plugins
-        fiftyone plugins list --operators
 
         # List enabled plugins
         fiftyone plugins list --enabled
@@ -2743,13 +2877,6 @@ class PluginListCommand(Command):
 
     @staticmethod
     def setup(parser):
-        parser.add_argument(
-            "-o",
-            "--operators",
-            action="store_true",
-            default=None,
-            help="list operators within the plugins",
-        )
         parser.add_argument(
             "-e",
             "--enabled",
@@ -2780,83 +2907,29 @@ class PluginListCommand(Command):
         else:
             enabled = "all"
 
-        plugin_defintions = fop.list_plugins(enabled=enabled)
-
-        if args.operators:
-            _print_operators_info(plugin_defintions, args.names_only)
-        else:
-            _print_plugins_info(plugin_defintions, args.names_only)
+        _print_plugins_list(enabled, args.names_only)
 
 
-def _print_operators_info(plugin_defintions, names_only):
-    if names_only:
-        for pd in plugin_defintions:
-            print(pd.name)
-            if pd.operators:
-                for o in pd.operators:
-                    print("    " + o)
-            else:
-                print("    -")
+def _print_plugins_list(enabled, names_only):
+    plugin_defintions = fop.list_plugins(enabled=enabled)
 
-        return
-
-    enabled = set(fop.list_enabled_plugins())
-
-    registry = foo.OperatorRegistry()
-    operators_map = defaultdict(list)
-    for operator in registry.list_operators():
-        operators_map[operator.plugin_name].append(operator)
-
-    headers = [
-        "plugin",
-        "operator",
-        "directory",
-        "enabled",
-        "dynamic",
-        "generator",
-        "unlisted",
-        "on_startup",
-    ]
-
-    rows = []
-    for pd in plugin_defintions:
-        for operator in operators_map.get(pd.name, []):
-            rows.append(
-                {
-                    "plugin": pd.name,
-                    "operator": operator.config.name,
-                    "directory": pd.directory,
-                    "enabled": pd.name in enabled,
-                    "dynamic": operator.config.dynamic,
-                    "generator": operator.config.execute_as_generator,
-                    "unlisted": operator.config.unlisted,
-                    "on_startup": operator.config.on_startup,
-                }
-            )
-
-    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
-
-    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
-    print(table_str)
-
-
-def _print_plugins_info(plugin_defintions, names_only):
     if names_only:
         for pd in plugin_defintions:
             print(pd.name)
 
         return
 
-    enabled = set(fop.list_enabled_plugins())
+    enabled_plugins = set(fop.list_enabled_plugins())
 
-    headers = ["plugin", "directory", "enabled"]
+    headers = ["plugin", "version", "enabled", "directory"]
     rows = []
     for pd in plugin_defintions:
         rows.append(
             {
                 "plugin": pd.name,
+                "version": pd.version or "",
+                "enabled": pd.name in enabled_plugins,
                 "directory": pd.directory,
-                "enabled": pd.name in enabled,
             }
         )
 
@@ -2866,7 +2939,34 @@ def _print_plugins_info(plugin_defintions, names_only):
     print(table_str)
 
 
-class PluginDownloadCommand(Command):
+class PluginsInfoCommand(Command):
+    """Prints information about plugins that you've downloaded or created
+    locally.
+
+    Examples::
+
+        # Prints information about a plugin
+        fiftyone plugins info <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+
+    @staticmethod
+    def execute(parser, args):
+        _print_plugin_info(args.name)
+
+
+def _print_plugin_info(name):
+    plugin_defintion = fop.get_plugin(name)
+
+    d = plugin_defintion.to_dict()
+    d["directory"] = plugin_defintion.directory
+    _print_dict_as_table(d)
+
+
+class PluginsDownloadCommand(Command):
     """Download plugins from the web.
 
     When downloading plugins from GitHub, you can provide any of the following
@@ -2938,7 +3038,7 @@ class PluginDownloadCommand(Command):
         )
 
 
-class PluginRequirementsCommand(Command):
+class PluginsRequirementsCommand(Command):
     """Handles package requirements for plugins.
 
     Examples::
@@ -2990,27 +3090,36 @@ class PluginRequirementsCommand(Command):
         error_level = args.error_level
 
         if args.print or (not args.install and not args.ensure):
-            requirements = fop.load_plugin_requirements(name)
-            _print_plugin_requirements(requirements)
+            _print_plugin_requirements(name)
 
         if args.install:
+            fop.ensure_plugin_compatibility(
+                name, error_level=error_level, log_success=True
+            )
             fop.install_plugin_requirements(name, error_level=error_level)
 
         if args.ensure:
+            fop.ensure_plugin_compatibility(
+                name, error_level=error_level, log_success=True
+            )
             fop.ensure_plugin_requirements(
                 name, error_level=error_level, log_success=True
             )
 
 
-def _print_plugin_requirements(requirements):
-    if requirements is None:
-        print("Plugin has no Python requirements declared")
-
-    for req_str in requirements:
+def _print_plugin_requirements(name):
+    pd = fop.get_plugin(name)
+    req_str = pd.fiftyone_requirement
+    if req_str is not None:
         print(req_str)
 
+    requirements = fop.load_plugin_requirements(name)
+    if requirements is not None:
+        for req_str in requirements:
+            print(req_str)
 
-class PluginCreateCommand(Command):
+
+class PluginsCreateCommand(Command):
     """Creates or initializes a plugin.
 
     Examples::
@@ -3089,7 +3198,7 @@ class PluginCreateCommand(Command):
         )
 
 
-class PluginEnableCommand(Command):
+class PluginsEnableCommand(Command):
     """Enables the given plugin(s).
 
     Examples::
@@ -3116,7 +3225,7 @@ class PluginEnableCommand(Command):
             fop.enable_plugin(name)
 
 
-class PluginDisableCommand(Command):
+class PluginsDisableCommand(Command):
     """Disables the given plugin(s).
 
     Examples::
@@ -3143,7 +3252,7 @@ class PluginDisableCommand(Command):
             fop.disable_plugin(name)
 
 
-class PluginDeleteCommand(Command):
+class PluginsDeleteCommand(Command):
     """Delete plugins from your local machine.
 
     Examples::
