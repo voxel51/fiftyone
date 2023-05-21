@@ -62,8 +62,6 @@ class CloneSelectedSamples(foo.Operator):
                 {"samples": [sample.id for sample in cloned_samples]},
             )
 
-        return {}
-
 
 class CloneSampleField(foo.Operator):
     @property
@@ -244,6 +242,40 @@ class DeleteSelectedSamples(foo.Operator):
         )
 
 
+class DeleteSampleField(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="delete_sample_field",
+            label="Delete sample field",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        fields = ctx.dataset.get_field_schema(flat=True)
+        field_keys = list(fields.keys())
+        field_selector = types.AutocompleteView()
+        for key in field_keys:
+            field_selector.add_choice(key, label=key)
+
+        inputs.enum(
+            "field_name",
+            field_keys,
+            label="Field to delete",
+            view=field_selector,
+            required=True,
+        )
+
+        return types.Property(
+            inputs, view=types.View(label="Delete sample field")
+        )
+
+    def execute(self, ctx):
+        ctx.dataset.delete_sample_field(ctx.params.get("field_name", None))
+        ctx.trigger("reload_dataset")
+
+
 class PrintStdout(foo.Operator):
     @property
     def config(self):
@@ -268,5 +300,6 @@ BUILTIN_OPERATORS = [
     CloneSampleField(_builtin=True),
     RenameSampleField(_builtin=True),
     DeleteSelectedSamples(_builtin=True),
+    DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
 ]
