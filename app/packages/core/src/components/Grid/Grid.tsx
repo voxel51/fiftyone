@@ -125,28 +125,15 @@ const Grid: React.FC<{}> = () => {
 
   useLayoutEffect(
     deferred(() => {
-      flashlight.updateItems((sampleId) =>
+      flashlight.updateItems((sampleId) => {
         store.lookers.get(sampleId)?.updateOptions({
           ...lookerOptions,
           selected: selected.has(sampleId),
-        })
-      );
+        });
+      });
     }),
     [lookerOptions, selected]
   );
-
-  // useEffect(
-  //   deferred(() => {
-  //     // flashlight.updateItems((sampleId) => {
-  //     //   const sample = store.samples.get(sampleId);
-  //     //   store.lookers.get(sampleId)?.updateSample(sample);
-  //     // });
-  //     store.samples.forEach((sample, sampleId) => {
-  //       store.lookers.get(sampleId)?.updateSample(sample);
-  //     });
-  //   }),
-  //   [useRecoilValue(fos.sessionColorScheme)]
-  // );
 
   useLayoutEffect(() => {
     flashlight.attach(id);

@@ -397,7 +397,7 @@ export const sessionSpaces = atom<SpaceNodeJSON>({
 
 // the active field for customize color modal
 export const activeColorField = atom<
-  { field: Field; expandedPath: string } | "global" | "json" | null
+  { field: Field; expandedPath: string } | string | null
 >({
   key: "activeColorField",
   default: null,
