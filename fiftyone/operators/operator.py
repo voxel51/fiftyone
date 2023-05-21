@@ -8,6 +8,9 @@ FiftyOne operators.
 from .types import Object, Form, Property
 
 
+BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
+
+
 class OperatorConfig(object):
     """A configuration for an operator.
 
@@ -61,14 +64,14 @@ class Operator(object):
 
     FiftyOne operators contain enough information for a user interface to
     render a form or button allowing a user to execute the operation.
-
-    Args:
-        _builtin (False): for internal use only
     """
 
     def __init__(self, _builtin=False):
+        # Plugin names are populated when the operators are registered
+        plugin_name = BUILTIN_OPERATOR_PREFIX if _builtin else None
+
         self._builtin = _builtin
-        self.plugin_name = "@voxel51/operators" if _builtin else None
+        self.plugin_name = plugin_name
         self.definition = Object()
         self.definition.define_property("inputs", Object())
         self.definition.define_property("outputs", Object())
@@ -85,6 +88,11 @@ class Operator(object):
         return "%s/%s" % (self.plugin_name, self.name)
 
     @property
+    def builtin(self):
+        """Whether the operator is builtin."""
+        return self._builtin
+
+    @property
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
@@ -94,7 +102,7 @@ class Operator(object):
 
         The resolved definition is a clone of the default definition using
         :meth:`resolve_input` and :meth:`resolve_output` to resolve the inputs
-        and output :class:`Property` instances.
+        and output properties of the operator.
 
         Passing ``resolve_dynamic=False`` allows resolution of dynamic
         operators to be deferred to execution time. If the operator
@@ -103,7 +111,10 @@ class Operator(object):
 
         Args:
             resolve_dynamic: whether to resolve dynamic inputs and outputs
-            ctx: the :class:`ExecutionContext`
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a definition :class:`fiftyone.operators.types.Object`
         """
         definition = self.definition.clone()
         if self.config.dynamic and not resolve_dynamic:
@@ -113,7 +124,6 @@ class Operator(object):
         input_property = self.resolve_input(ctx)
         output_property = self.resolve_output(ctx)
 
-        # pylint: enable=assignment-from-none
         if input_property is not None:
             definition.add_property("inputs", input_property)
 
@@ -123,28 +133,31 @@ class Operator(object):
         return definition
 
     def execute(self, ctx):
-        """Executes the operator. Subclasses must implement this method.
+        """Executes the operator.
+
+        Subclasses must implement this method.
 
         Args:
-            ctx: the :class:`ExecutionContext`
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
         """
         raise NotImplementedError("subclass must implement execute()")
 
     def resolve_type(self, ctx, type):
-        """Returns the resolved input or output :class:`Property`.
+        """Returns the resolved input or output property.
 
         Args:
-            ctx: the :class:`ExecutionContext`
-            type: the type of property to resolve, either "inputs" or "outputs"
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+            type: the type of property to resolve, either ``"inputs"`` or
+                ``"outputs"``
+
+        Returns:
+            a :class:`fiftyone.operators.types.Property`, or None
         """
         if type == "inputs":
-            # pylint: disable=assignment-from-none
-            resolved_input_property = self.resolve_input(ctx)
-            # pylint: enable=assignment-from-none
-            # TODO support Form in UI
-            # if resolved_input_property.view is None:
-            #     resolved_input_property.view = Form()
-            return resolved_input_property
+            # @todo support forms in UI
+            # if input_property.view is None:
+            #     input_property.view = Form()
+            return self.resolve_input(ctx)
 
         if type == "outputs":
             return self.resolve_output(ctx)
@@ -152,40 +165,38 @@ class Operator(object):
         raise ValueError("Invalid type '%s'" % type)
 
     def resolve_input(self, ctx):
-        """Returns the resolved input :class:`Property`.
+        """Returns the resolved input property.
 
         Subclasses can implement this method to define the inputs to the
         operator.
 
-        By default this method is called once when the operator is created.
-
+        By default, this method is called once when the operator is created.
         If the operator is dynamic, this method is called each time the input
         changes.
 
         Args:
-            ctx: the :class:`ExecutionContext`
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            the resolved input
+            a :class:`fiftyone.operators.types.Property`, or None
         """
         return None
 
     def resolve_output(self, ctx):
-        """Returns the resolved output :class:`Property`.
+        """Returns the resolved output property.
 
         Subclasses can implement this method to define the outputs of the
         operator.
 
-        By default this method is called once when the operator is created.
-
+        By default, this method is called once when the operator is created.
         If the operator is dynamic, this method is called after the operator is
         executed.
 
         Args:
-            ctx: the :class:`ExecutionContext`
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            the resolved output
+            a :class:`fiftyone.operators.types.Property`, or None
         """
         return None
 
@@ -196,10 +207,10 @@ class Operator(object):
         operator.
 
         Args:
-            ctx: the :class:`ExecutionContext`
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            the resolved placement
+            a :class:`fiftyone.operators.types.Placement`, or None
         """
         return None
 
@@ -207,7 +218,7 @@ class Operator(object):
         """Returns a JSON representation of the operator.
 
         Args:
-            ctx: the :class:`ExecutionContext`
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
             resolve_dynamic (False): whether to resolve dynamic inputs and
                 outputs
 

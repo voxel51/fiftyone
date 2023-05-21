@@ -15,7 +15,7 @@ class CloneSelectedSamples(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="clone_selected_samples",
-            label="Clone Selected Samples",
+            label="Clone selected samples",
             dynamic=True,
         )
 
@@ -23,25 +23,25 @@ class CloneSelectedSamples(foo.Operator):
         inputs = types.Object()
         sample_ids = ctx.selected
         count = len(sample_ids)
-        header = "Clone Sample"
+        header = "Clone sample"
         if count > 0:
             sample_text = "sample" if count == 1 else "samples"
             header = f"Clone {count} {sample_text}?"
             inputs.str(
                 "msg",
-                label=f"Press 'Execute' to create a copy of the {count} selected {sample_text}.",
+                label=f"Press 'Execute' to clone {count} selected {sample_text}",
                 view=types.Notice(space=6),
             )
             inputs.str(
                 "btn",
-                label="View Selected Samples",
+                label="Show selected samples",
                 view=types.Button(operator="show_selected_samples", space=3),
             )
         else:
-            header = f"No Samples Selected to Clone!"
+            header = "No selected samples"
             inputs.str(
                 "msg",
-                label="You must select a sample in the grid to clone.",
+                label="You must select samples in the grid to clone",
                 view=types.Warning(),
             )
 
@@ -70,7 +70,7 @@ class CloneSampleField(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="clone_sample_field",
-            label="Clone a Sample Field",
+            label="Clone sample field",
             dynamic=True,
         )
 
@@ -88,36 +88,35 @@ class CloneSampleField(foo.Operator):
         inputs.enum(
             "field_name",
             field_keys,
-            label="Choose a Field",
-            description="The field to copy into a new field of the dataset. You can use dot notation (embedded.field.name) to clone embedded fields.",
+            label="Choose a field",
+            description="The field to copy. You can use dot notation (embedded.field.name) to clone embedded fields",
             view=field_selector,
             required=True,
         )
         if has_valid_field_name:
-            field_name_default = f"{field_name}_copy"
             new_field_prop = inputs.str(
                 "new_field_name",
                 required=True,
-                label="New Field",
-                description="The name of the new field to create. Use dot notation (embedded.field.name) to create embedded fields.",
-                default=field_name_default,
+                label="New field",
+                description="The new field to create. You can use dot notation (embedded.field.name) to create embedded fields",
+                default=f"{field_name}_copy",
             )
             if new_field_name and new_field_name in field_keys:
                 new_field_prop.invalid = True
                 new_field_prop.error_message = (
-                    f"Field name '{new_field_name}' already exists."
+                    f"Field '{new_field_name}' already exists"
                 )
                 inputs.str(
                     "error",
                     label="Error",
                     view=types.Error(
-                        label="Field name already exists.",
-                        description=f"The Field name '{new_field_name}' already exists. You must choose a new Field name.",
+                        label="Field already exists",
+                        description=f"Field '{new_field_name}' already exists",
                     ),
                 )
 
         return types.Property(
-            inputs, view=types.View(label="Clone Sample Field")
+            inputs, view=types.View(label="Clone sample field")
         )
 
     def execute(self, ctx):
@@ -134,7 +133,7 @@ class RenameSampleField(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="rename_sample_field",
-            label="Rename a Sample Field",
+            label="Rename sample field",
             dynamic=True,
         )
 
@@ -149,36 +148,35 @@ class RenameSampleField(foo.Operator):
         inputs.enum(
             "field_name",
             field_keys,
-            label="Field Name to Rename",
+            label="Field to rename",
             view=field_selector,
             required=True,
         )
         field_name = ctx.params.get("field_name", None)
         new_field_name = ctx.params.get("new_field_name", None)
         if field_name and field_name in field_keys:
-            field_name_default = f"{field_name}_copy"
             new_field_prop = inputs.str(
                 "new_field_name",
                 required=True,
-                label="New Field Name",
-                default=field_name_default,
+                label="New field name",
+                default=f"{field_name}_copy",
             )
             if new_field_name and new_field_name in field_keys:
                 new_field_prop.invalid = True
                 new_field_prop.error_message = (
-                    f"Field name '{new_field_name}' already exists."
+                    f"Field '{new_field_name}' already exists"
                 )
                 inputs.str(
                     "error",
                     label="Error",
                     view=types.Error(
-                        label="Field name already exists.",
-                        description=f"The Field name '{new_field_name}' already exists. You must choose a new Field name.",
+                        label="Field already exists",
+                        description=f"Field '{new_field_name}' already exists",
                     ),
                 )
 
         return types.Property(
-            inputs, view=types.View(label="Rename Sample Field")
+            inputs, view=types.View(label="Rename sample field")
         )
 
     def execute(self, ctx):
@@ -195,7 +193,7 @@ class DeleteSelectedSamples(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="delete_selected_samples",
-            label="Delete Selected Samples",
+            label="Delete selected samples",
             dynamic=True,
         )
 
@@ -203,25 +201,25 @@ class DeleteSelectedSamples(foo.Operator):
         inputs = types.Object()
         sample_ids = ctx.selected
         count = len(sample_ids)
-        header = "Delete Samples"
+        header = "Delete samples"
         if count > 0:
             sample_text = "sample" if count == 1 else "samples"
             header = f"Delete {count} {sample_text}?"
             inputs.str(
                 "msg",
-                label=f"Press 'Execute' to remove the {count} selected {sample_text}.",
+                label=f"Press 'Execute' to delete {count} selected {sample_text}",
                 view=types.Notice(space=6),
             )
             inputs.str(
                 "btn",
-                label="Click to View Selected Samples",
+                label="Show selected samples",
                 view=types.Button(operator="show_selected_samples", space=3),
             )
         else:
-            header = f"No Samples Selected to Delete!"
+            header = "No selected samples"
             inputs.str(
                 "msg",
-                label="You must select a sample in the grid to clone.",
+                label="You must select samples in the grid to delete",
                 view=types.Warning(),
             )
 
@@ -234,14 +232,15 @@ class DeleteSelectedSamples(foo.Operator):
 
     def resolve_output(self, ctx):
         count = len(ctx.results.get("deleted_samples", []))
+        sample_text = "sample" if count == 1 else "samples"
         outputs = types.Object()
         outputs.str(
             "deleted_samples",
-            label=f"Deleted {count} Samples",
+            label=f"Deleted {count} {sample_text}",
             view=types.Notice(),
         )
         return types.Property(
-            outputs, view=types.View(label="Deleted Samples")
+            outputs, view=types.View(label="Deleted samples")
         )
 
 

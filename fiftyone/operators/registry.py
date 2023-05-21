@@ -6,42 +6,69 @@ FiftyOne operator registry.
 |
 """
 from .builtin import BUILTIN_OPERATORS
-from .loader import load_from_dir
+from .loader import build_plugin_contexts, register_all
 from .operator import Operator
 
 
-def register_operator(operator):
-    """Registers a builtin operator. For internal use only.
+def get_operator(operator_uri):
+    """Gets the operator with the given URI.
 
     Args:
-        operator: the operator to register
-    """
-    if operator.name in BUILTIN_OPERATORS:
-        raise ValueError("Operator '%s' already exists" % operator.name)
+        operator_uri: the operator URI
 
-    BUILTIN_OPERATORS[operator.name] = operator
+    Returns:
+        an :class:`fiftyone.operators.Operator`
+    """
+    plugin_contexts = build_plugin_contexts(enabled="all")
+    registry = OperatorRegistry(plugin_contexts=plugin_contexts)
+    operator = registry.get_operator(operator_uri)
+    if operator is None:
+        raise ValueError(f"Operator '{operator_uri}' not found")
+
+    return operator
+
+
+def list_operators(enabled=True):
+    """Returns the definitions of downloaded plugins.
+
+    Args:
+        enabled (True): whether to include only enabled plugins (True) or only
+            disabled plugins (False) or all plugins ("all")
+
+    Returns:
+        a list of :class:`fiftyone.plugins.PluginDefinition` instances
+    """
+    plugin_contexts = build_plugin_contexts(enabled=enabled)
+    registry = OperatorRegistry(plugin_contexts=plugin_contexts)
+    return registry.list_operators(include_builtin=enabled != False)
 
 
 class OperatorRegistry(object):
     """Operator registry."""
 
-    def __init__(self):
-        self.plugin_contexts = load_from_dir()
+    def __init__(self, plugin_contexts=None):
+        if plugin_contexts is None:
+            plugin_contexts = register_all()
 
-    def list_operators(self):
+        self.plugin_contexts = plugin_contexts
+
+    def list_operators(self, include_builtin=True):
         """Lists the available FiftyOne operators.
 
-        Returns:
-            a list of operators
-        """
-        plugin_contexts = self.plugin_contexts
-        operators = []
-        for plugin_context in plugin_contexts:
-            for operator in plugin_context.instances:
-                if isinstance(operator, Operator):
-                    operators.append(operator)
+        Args:
+            include_builtin (True): whether to include builtin operators
 
-        return operators + BUILTIN_OPERATORS
+        Returns:
+            a list of :class:`fiftyone.operators.Operator` instances
+        """
+        operators = []
+        for pctx in self.plugin_contexts:
+            operators.extend(pctx.instances)
+
+        if include_builtin:
+            operators.extend(BUILTIN_OPERATORS)
+
+        return operators
 
     def list_errors(self):
         """Lists the errors that occurred during operator loading.
@@ -49,9 +76,8 @@ class OperatorRegistry(object):
         Returns:
             a list of errors
         """
-        plugin_contexts = self.plugin_contexts
         errors = []
-        for plugin_context in plugin_contexts:
+        for plugin_context in self.plugin_contexts:
             errors.extend(plugin_context.errors)
 
         return errors
@@ -72,15 +98,16 @@ class OperatorRegistry(object):
         return False
 
     def get_operator(self, operator_uri):
-        """Retrieves an :class:`Operator` by its URI.
+        """Retrieves an operator by its URI.
 
         Args:
             operator_uri: the URI of an operator
 
         Returns:
-            an :class:`Operator`, or None
+            an :class:`fiftyone.operators.Operator`, or None
         """
-        operators = self.list_operators()
-        for operator in operators:
+        for operator in self.list_operators():
             if operator_uri == operator.uri:
                 return operator
+
+        return None

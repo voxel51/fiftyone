@@ -15,12 +15,14 @@ from .core import (
     list_disabled_plugins,
     list_downloaded_plugins,
     list_enabled_plugins,
+    get_plugin,
     find_plugin,
     download_plugin,
     create_plugin,
     load_plugin_requirements,
     install_plugin_requirements,
     ensure_plugin_requirements,
+    ensure_plugin_compatibility,
 )
 from .definitions import PluginDefinition
 
