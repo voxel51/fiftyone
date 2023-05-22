@@ -12,6 +12,7 @@ import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 const StringFieldFilter = ({
   path,
   modal,
+  color,
   ...rest
 }: {
   path: string;
@@ -34,6 +35,7 @@ const StringFieldFilter = ({
       })}
       path={path}
       modal={modal}
+      color={color}
       {...rest}
     />
   );

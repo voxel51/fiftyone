@@ -261,7 +261,6 @@ export const NOT_VISIBLE_LIST = [
   "ArrayField",
   "VectorField",
   "FrameNumberField",
-  "ObjectIdField",
 ];
 
 export const LABEL_DOC_TYPES = VALID_LABEL_TYPES.filter(
