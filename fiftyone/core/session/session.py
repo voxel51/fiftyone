@@ -622,22 +622,27 @@ class Session(object):
                 % (fod.Dataset, type(dataset))
             )
 
-        if dataset is not None:
-            dataset._reload()
-
-        self._state.dataset = dataset
-        self._state.view = None
-        self._state.selected = []
-        self._state.selected_labels = []
-        self._state.spaces = default_spaces
-        self._state.color_scheme = None
+        self._set_dataset(dataset)
 
     @update_state()
     def clear_dataset(self) -> None:
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
         """
-        self._state.dataset = None
+        self._set_dataset(None)
+
+    def _set_dataset(self, dataset):
+        if dataset is not None:
+            dataset._reload()
+
+        self._state.dataset = dataset
+        self._state.view = None
+        self._state.spaces = default_spaces.copy()
+        self._state.color_scheme = build_color_scheme(
+            None, dataset, self.config
+        )
+        self._state.selected = []
+        self._state.selected_labels = []
 
     @property
     def view(self) -> t.Union[fov.DatasetView, None]:
@@ -655,22 +660,28 @@ class Session(object):
                 % (fov.DatasetView, type(view))
             )
 
-        self._state.view = view
-
-        if view is not None:
-            view._root_dataset._reload()
-            self._state.dataset = view._root_dataset
-            self._state.view_name = view.name
-
-        self._state.selected = []
-        self._state.selected_labels = []
+        self._set_view(view)
 
     @update_state()
     def clear_view(self) -> None:
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
-        self._state.view = None
+        self._set_view(None)
+
+    def _set_view(self, view):
+        if view is None:
+            self._state.view = None
+            self._state.view_name = None
+        else:
+            if view._root_dataset != self.dataset:
+                self._set_dataset(view._root_dataset)
+
+            self._state.view = view
+            self._state.view_name = view.name
+
+        self._state.selected = []
+        self._state.selected_labels = []
 
     @property
     def has_plots(self) -> bool:
