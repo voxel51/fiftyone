@@ -184,7 +184,7 @@ class PluginDefinition(object):
             metadata_path: the path to a plugin ``.yaml`` file
 
         Returns:
-            a :clss:`PluginDefinition`
+            a :class:`PluginDefinition`
         """
         dirpath = os.path.dirname(metadata_path)
         with open(metadata_path, "r") as f:

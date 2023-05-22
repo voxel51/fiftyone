@@ -2970,7 +2970,7 @@ class PluginsDownloadCommand(Command):
     """Download plugins from the web.
 
     When downloading plugins from GitHub, you can provide any of the following
-    formats::
+    formats:
 
     -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
     -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
