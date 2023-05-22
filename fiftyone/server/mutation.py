@@ -17,6 +17,7 @@ import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
+from fiftyone.core.session.session import build_color_scheme
 from fiftyone.core.spaces import default_spaces, Space
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -86,6 +87,9 @@ class Mutation:
         state.view = None
         state.view_name = view_name if view_name is not None else None
         state.spaces = default_spaces
+        state.color_scheme = build_color_scheme(
+            None, state.dataset, state.config
+        )
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
