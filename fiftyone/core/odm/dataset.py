@@ -172,7 +172,14 @@ class ColorScheme(EmbeddedDocument):
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
-            fields=[{'path': 'ground_truth', 'fieldColor': '#ff00ff', 'colorByAttribute': 'label' : [{'value': 'dog', 'color': 'yellow'}]}]
+            fields=[
+                {
+                    "path": "ground_truth",
+                    "fieldColor": "#ff00ff",
+                    "colorByAttribute": "label",
+                    "valueColors": [{"value": "dog", "color": "yellow"}],
+                }
+            ]
         )
         dataset.save()
 
