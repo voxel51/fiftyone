@@ -18,6 +18,7 @@ import { TwitterPicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
+import { resetColor } from "./ColorFooter";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
@@ -28,7 +29,6 @@ import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
-import { resetColor } from "./ColorFooter";
 
 type Prop = {
   prop: { field: Field; expandedPath: string };
@@ -40,7 +40,8 @@ type State = {
 };
 
 const FieldSetting: React.FC<Prop> = ({ prop }) => {
-  const colorContainer: React.RefObject<HTMLDivElement> = React.createRef();
+  const wrapperRef: React.RefObject<HTMLDivElement> = React.useRef();
+  const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
   const { field, expandedPath } = prop;
   const path = field?.path;
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
@@ -51,6 +52,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(color);
+  const [colors, setColors] = useState(colorPool);
   const [state, setState] = useState<State>({
     useLabelColors: Boolean(
       setting?.valueColors && setting.valueColors.length > 0
@@ -94,9 +96,12 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const onValidateColor = useCallback(
     (input) => {
       if (isValidColor(input)) {
-        const hexColor = colorString.to.hex(colorString.get(input).value);
+        const hexColor = colorString.to.hex(
+          colorString.get(input)?.value ?? []
+        );
         onChangeFieldColor(hexColor);
         setInput(hexColor);
+        setColors([...new Set([...colors, hexColor])]);
       } else {
         // revert input to previous value
         setInput("invalid");
@@ -106,7 +111,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
         }, 1000);
       }
     },
-    [fields, path, onChangeFieldColor]
+    [fields, path, onChangeFieldColor, colors]
   );
 
   const toggleColorPicker = (e) => {
@@ -155,6 +160,10 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useRecoilValue(resetColor)]);
 
+  fos.useOutsideClick(wrapperRef, () => {
+    setShowFieldPicker(false);
+  });
+
   return (
     <div>
       <ModeControl />
@@ -199,13 +208,18 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
                     onBlur={hideFieldColorPicker}
                     visible={showFieldPicker}
                     tabIndex={0}
-                    ref={colorContainer}
+                    ref={wrapperRef}
                   >
                     <TwitterPicker
-                      color={setting?.fieldColor ?? input}
-                      colors={colorPool}
-                      onChange={(color) => onChangeFieldColor(color.hex)}
+                      color={input ?? setting?.fieldColor}
+                      colors={colors}
+                      onChange={(color) => setInput(color.hex)}
+                      onChangeComplete={(color) => {
+                        onChangeFieldColor(color.hex);
+                        setColors([...new Set([...colors, color.hex])]);
+                      }}
                       className={colorPicker}
+                      ref={pickerRef}
                     />
                   </PickerWrapper>
                 )}

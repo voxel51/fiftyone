@@ -35,7 +35,7 @@ const SidebarList: React.FC = () => {
     ({ set, snapshot }) =>
       async (path: string) => {
         if ([ACTIVE_FIELD.global, ACTIVE_FIELD.json].includes(path)) {
-          set(fos.activeColorField, path as "global" | "json");
+          set(fos.activeColorField, path);
         } else {
           const field = await snapshot.getPromise(fos.field(path));
           set(fos.activeColorField, { field, expandedPath: path });

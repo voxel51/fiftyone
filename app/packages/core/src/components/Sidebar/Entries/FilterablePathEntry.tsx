@@ -282,6 +282,7 @@ const FilterableEntry = ({
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
   const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
+
   const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(
     fos.fields({
@@ -382,6 +383,7 @@ const FilterableEntry = ({
             onFocus,
             onBlur,
             title: title || (listField ? `${LIST_FIELD}(${ftype})` : ftype),
+            color: activeColor,
             ...props,
           });
         })}

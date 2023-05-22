@@ -153,7 +153,6 @@ export const getColorFromOptionsPrimitives = ({
     return getColor(coloring.pool, coloring.seed, path);
   }
   if (coloring.by === "value") {
-    debugger;
     if (setting) {
       // check if this label has a assigned color, use it if it is a valid color
       const labelColor = setting.valueColors?.find(
