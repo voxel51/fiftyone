@@ -1,5 +1,8 @@
 .. default-role:: code
 
+API Connection and Keys
+========================
+
 .. _configuring-api-connection:
 
 Configuring an API connection
