@@ -66,6 +66,17 @@ const CopyButton = ({ content, children }) => {
 
 const componenntMap = {
   a({ children, ...props }) {
+    if (
+      props.href &&
+      props.href.startsWith("http") &&
+      !props.href.includes(window.location.host)
+    ) {
+      props = {
+        ...props,
+        target: "_blank",
+      };
+    }
+
     return <Link {...props}>{children}</Link>;
   },
   code({ node, inline, className, children, ...props }) {
