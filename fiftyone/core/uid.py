@@ -5,7 +5,6 @@ Utilities for usage analytics.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import os
 import multiprocessing
 from socket import gaierror
@@ -15,38 +14,13 @@ import uuid
 from httpx import HTTPError
 import universal_analytics as ua
 
-import eta.core.serial as etas
-
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.context import _get_context
 
 
-_WELCOME_MESSAGE = """
-Welcome to
-
-███████╗██╗███████╗████████╗██╗   ██╗ ██████╗ ███╗   ██╗███████╗
-██╔════╝██║██╔════╝╚══██╔══╝╚██╗ ██╔╝██╔═══██╗████╗  ██║██╔════╝
-█████╗  ██║█████╗     ██║    ╚████╔╝ ██║   ██║██╔██╗ ██║█████╗
-██╔══╝  ██║██╔══╝     ██║     ╚██╔╝  ██║   ██║██║╚██╗██║██╔══╝
-██║     ██║██║        ██║      ██║   ╚██████╔╝██║ ╚████║███████╗
-╚═╝     ╚═╝╚═╝        ╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝ v{0}
-
-If you're finding FiftyOne helpful, here's how you can get involved:
-
-|
-|  ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
-|  https://github.com/voxel51/fiftyone
-|
-|  🚀🚀🚀 Join the FiftyOne Slack community 🚀🚀🚀
-|  https://slack.voxel51.com
-|
-"""
-
 _FIRST_IMPORT = "FIFTYONE_FIRST_IMPORT"
 _import_logged = False
-
-logger = logging.getLogger(__name__)
 
 
 def get_user_id():
@@ -88,7 +62,16 @@ def log_import_if_allowed(test=False):
     Args:
         test (False): whether to use the "test" uid
     """
-    if fo.config.do_not_track or not _allow_logging():
+    if fo.config.do_not_track:
+        return
+
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", None):
+        return
+
+    if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
+    if multiprocessing.current_process().name != "MainProcess":
         return
 
     if test:
@@ -116,39 +99,3 @@ def log_import_if_allowed(test=False):
 
     th = threading.Thread(target=send_import_event)
     th.start()
-
-
-def log_welcome_message_if_allowed():
-    """Logs a welcome message the first time this function is called on a
-    machine with a new FiftyOne version installed, if allowed.
-    """
-    if not _allow_logging():
-        return
-
-    try:
-        last_version = etas.load_json(foc.WELCOME_PATH)["version"]
-    except:
-        last_version = None
-
-    if foc.VERSION == last_version:
-        return
-
-    logger.info(_WELCOME_MESSAGE.format(foc.VERSION))
-
-    try:
-        etas.write_json({"version": foc.VERSION}, foc.WELCOME_PATH)
-    except:
-        pass
-
-
-def _allow_logging():
-    if os.environ.get("FIFTYONE_DISABLE_SERVICES", None):
-        return False
-
-    if os.environ.get("FIFTYONE_SERVER", None):
-        return False
-
-    if multiprocessing.current_process().name != "MainProcess":
-        return False
-
-    return True
