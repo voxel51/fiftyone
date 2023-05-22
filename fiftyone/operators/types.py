@@ -752,7 +752,7 @@ class Error(View):
 class Button(View):
     """Represents a button in a :class:`View`.
 
-    Example:
+    Examples::
 
         import fiftyone.operators.types as types
 
