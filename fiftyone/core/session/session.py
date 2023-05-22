@@ -131,7 +131,9 @@ def launch_app(
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme` instance defining the color pool and customized color settings
+        color_scheme (None): an optional
+            :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
+            color scheme to use
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -173,11 +175,7 @@ def launch_app(
         dataset=dataset,
         view=view,
         spaces=spaces,
-        color_scheme=make_color_scheme(
-            color_scheme,
-            dataset,
-            config if config is not None else fo.app_config,
-        ),
+        color_scheme=color_scheme,
         plots=plots,
         port=port,
         address=address,
@@ -287,7 +285,8 @@ class Session(object):
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
+        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme`
+            defining a custom color scheme to use
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -388,7 +387,7 @@ class Session(object):
             view=view,
             view_name=final_view_name,
             spaces=spaces,
-            color_scheme=color_scheme,
+            color_scheme=build_color_scheme(color_scheme, dataset, config),
         )
         self._client = fosc.Client(
             address=address,
@@ -591,11 +590,15 @@ class Session(object):
     @color_scheme.setter  # type: ignore
     @update_state()
     def color_scheme(self, color_scheme: t.Optional[food.ColorScheme]) -> None:
+        if color_scheme is None:
+            color_scheme = build_color_scheme(None, self.dataset, self.config)
+
         if not isinstance(color_scheme, food.ColorScheme):
             raise ValueError(
                 "`Session.color_scheme` must be a %s or None; found %s"
                 % (food.ColorScheme, type(color_scheme))
             )
+
         self._state.color_scheme = color_scheme
 
     @property
@@ -1177,27 +1180,16 @@ def _unregister_session(session: Session) -> None:
             service.stop()
 
 
-def make_color_scheme(
-    color_scheme: food.ColorScheme, dataset: fod.Dataset, config: AppConfig
+def build_color_scheme(
+    color_scheme: food.ColorScheme, dataset: fod.Dataset, app_config: AppConfig
 ) -> food.ColorScheme:
-    if (
-        color_scheme is None
-        or color_scheme.color_pool is None
-        or len(color_scheme.color_pool) == 0
-    ):
-        if dataset.app_config.color_scheme is not None:
-            color_scheme = food.ColorScheme(
-                color_pool=dataset.app_config.color_scheme.color_pool,
-                fields=dataset.app_config.color_scheme.fields,
-            )
+    if color_scheme is None:
+        if dataset is not None and dataset.app_config.color_scheme is not None:
+            color_scheme = dataset.app_config.color_scheme.copy()
         else:
             color_scheme = food.ColorScheme()
-        if (
-            color_scheme.color_pool is None
-            or len(color_scheme.color_pool) == 0
-        ):
-            color_scheme.color_pool = (
-                config.color_pool if config is not None else None
-            )
+
+    if not color_scheme.color_pool:
+        color_scheme.color_pool = app_config.color_pool
 
     return color_scheme
