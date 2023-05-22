@@ -4392,6 +4392,7 @@ __metadata:
     react-laag: ^2.0.3
     react-markdown: ^8.0.7
     react-relay: ^14.0.0
+    react-syntax-highlighter: ^15.5.0
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: 2.0.9
