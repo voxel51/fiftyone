@@ -1,9 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Typography, Box, Link, Button } from "@mui/material";
 import ReactMarkdown from "react-markdown";
-import CodeView from "./CodeView";
 import { HeaderView } from ".";
-import styled, { useTheme } from "styled-components";
+import styled from "styled-components";
 import { getComponentProps } from "../utils";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
@@ -14,6 +13,7 @@ import vs2015 from "react-syntax-highlighter/dist/esm/styles/hljs/vs2015";
 import CopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/DoneOutlined";
 import copyToClipboard from "copy-to-clipboard";
+import { useTheme } from "@fiftyone/components";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("typescript", ts);
@@ -46,8 +46,12 @@ const CodeHeader = styled.div`
   background: ${({ theme }) => theme.background.level2};
 `;
 
-const CopyButton = ({ content, children }) => {
-  const [copied, setCopied] = React.useState(false);
+type CopyButtonProps = {
+  content: string;
+  children: React.ReactNode;
+};
+const CopyButton = ({ content, children }: CopyButtonProps) => {
+  const [copied, setCopied] = useState(false);
   const handleClick = useCallback(() => {
     copyToClipboard(content);
     setCopied(true);
