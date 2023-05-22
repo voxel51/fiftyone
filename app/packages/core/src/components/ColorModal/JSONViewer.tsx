@@ -65,7 +65,7 @@ const JSONViewer: React.FC = () => {
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
-        <p style={{ margin: 0 }}>
+        <p style={{ margin: 0, lineHeight: "1.2rem" }}>
           You can use the JSON editor below to copy/edit your current color
           scheme, or you can paste in a pre-built color scheme to apply.
         </p>
