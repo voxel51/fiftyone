@@ -410,3 +410,8 @@ export const sessionColorScheme = atom<ColorSchemeSetting>({
     fields: [],
   },
 });
+
+export const isUsingSessionColorScheme = atom<boolean>({
+  key: "isUsingSessionColorScheme",
+  default: false,
+});

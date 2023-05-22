@@ -26,6 +26,7 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
@@ -452,6 +453,29 @@ export const BrowseOperations = () => {
 
 export const GridActionsRow = () => {
   const hideTagging = useRecoilValue(fos.readOnly);
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
+
+  // In teams environment if the session color scheme is not applied to the dataset,
+  // check to see if dataset.appConfig has applicable settings
+  useEffect(() => {
+    if (!isUsingSessionColorScheme && datasetColorScheme) {
+      const colorPool =
+        datasetColorScheme.colorPool?.length > 0
+          ? datasetColorScheme.colorPool
+          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const fields =
+        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
+      setSessionColor({
+        colorPool,
+        fields,
+      });
+    }
+  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
+
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
