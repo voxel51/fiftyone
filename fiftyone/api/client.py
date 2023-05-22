@@ -137,7 +137,7 @@ class Client:
         )
 
         if response.status_code == 401:
-            raise errors.APIAuthenticationError
+            raise errors.APIAuthenticationError(response.text)
 
         if response.status_code == 403:
             raise errors.APIForbiddenError(response.text)

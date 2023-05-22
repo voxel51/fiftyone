@@ -11,6 +11,7 @@ from fiftyone.management.connection import (
     test_api_connection,
 )
 from fiftyone.management.dataset import *
+from fiftyone.management.organization import *
 from fiftyone.management.plugin import *
 from fiftyone.management.users import *
 
