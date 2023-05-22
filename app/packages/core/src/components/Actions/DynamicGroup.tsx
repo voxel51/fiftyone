@@ -162,6 +162,7 @@ export default ({
             <PopoutSectionTitle>Group By</PopoutSectionTitle>
             <Selector
               id={SELECTOR_RESULTS_ID}
+              data-cy="group-by-selector"
               inputStyle={{
                 fontSize: "1rem",
                 minWidth: "100%",
@@ -192,6 +193,7 @@ export default ({
             {useOrdered && (
               <Selector
                 id={SELECTOR_RESULTS_ID}
+                data-cy="order-by-selector"
                 inputStyle={{ fontSize: "1rem", minWidth: "100%" }}
                 component={SelectorValueComponent}
                 onSelect={setOrderBy}
@@ -213,6 +215,7 @@ export default ({
               </Alert>
             )}
             <Button
+              data-cy="dynamic-group-btn-submit"
               style={{
                 width: "100%",
                 marginTop: "0.5rem",

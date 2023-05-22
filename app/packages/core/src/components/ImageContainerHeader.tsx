@@ -72,10 +72,10 @@ const Count = () => {
   }
 
   return (
-    <RightDiv>
+    <RightDiv data-cy="entry-counts">
       <div>
         <PathEntryCounts modal={false} path={""} />
-        &nbsp;
+        {` `}
         {total === 1 ? element.singular : element.plural}
       </div>
     </RightDiv>
@@ -93,13 +93,13 @@ const GroupsCount = () => {
   );
 
   return (
-    <RightDiv>
+    <RightDiv data-cy="entry-counts">
       <div>
         <PathEntryCounts modal={false} path={"_"} />
-        &nbsp;
+        {` `}
         {total === 1 ? "group" : "groups"}
-        &nbsp; (<PathEntryCounts modal={false} path={""} />
-        &nbsp;
+        {` `}(<PathEntryCounts modal={false} path={""} />
+        {` `}
         {elementTotal === 1 ? element.singular : element.plural})
       </div>
     </RightDiv>

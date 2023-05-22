@@ -176,32 +176,28 @@ const getFilterData = (
 
 const hiddenPathLabels = selectorFamily<string[], string>({
   key: "hiddenPathLabels",
-  get:
-    (path) =>
-    ({ get }) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+  get: (path) => ({ get }) => {
+    const data = get(fos.pathHiddenLabelsMap);
+    const sampleId = get(fos.modal).sample._id;
 
-      if (data[sampleId]) {
-        return data[sampleId][path] || [];
-      }
+    if (data[sampleId]) {
+      return data[sampleId][path] || [];
+    }
 
-      return [];
-    },
-  set:
-    (path) =>
-    ({ set, get }, value) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+    return [];
+  },
+  set: (path) => ({ set, get }, value) => {
+    const data = get(fos.pathHiddenLabelsMap);
+    const sampleId = get(fos.modal).sample._id;
 
-      set(fos.pathHiddenLabelsMap, {
-        ...data,
-        [sampleId]: {
-          ...data[sampleId],
-          [path]: value instanceof DefaultValue ? [] : value,
-        },
-      });
-    },
+    set(fos.pathHiddenLabelsMap, {
+      ...data,
+      [sampleId]: {
+        ...data[sampleId],
+        [path]: value instanceof DefaultValue ? [] : value,
+      },
+    });
+  },
 });
 
 const useHidden = (path: string) => {
@@ -237,12 +233,11 @@ const useOnClick = ({
   path: string;
 }) => {
   return useRecoilCallback<[React.MouseEvent<HTMLButtonElement>], void>(
-    ({ set }) =>
-      async (event) => {
-        if (disabled) return;
-        const checked = (event.target as HTMLInputElement).checked;
-        set(fos.activeField({ modal, path }), checked);
-      },
+    ({ set }) => async (event) => {
+      if (disabled) return;
+      const checked = (event.target as HTMLInputElement).checked;
+      set(fos.activeField({ modal, path }), checked);
+    },
     [disabled, modal, path]
   );
 };
@@ -327,6 +322,7 @@ const FilterableEntry = ({
                 padding: 0,
               }}
               key="checkbox"
+              data-cy={`checkbox-${path}`}
               onClick={onClick}
             />
           )}

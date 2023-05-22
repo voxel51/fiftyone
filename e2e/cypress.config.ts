@@ -20,7 +20,7 @@ export default defineConfig({
     experimentalInteractiveRunEvents: true,
     // retry once on test failure to account for random errors
     // note: this is a global config, this can be configured per-test as well
-    retries: 1,
+    retries: 0,
     setupNodeEvents(on, config) {
       getCompareSnapshotsPlugin(on, config);
 

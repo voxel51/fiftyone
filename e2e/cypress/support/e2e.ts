@@ -9,4 +9,13 @@ compareSnapshotCommand({
   errorThreshold: 0,
 });
 
-// todo: check if app port is available in beforeAll() and fail fast if not
+// delete all datasets before running tests
+// todo: investigate, this is flaky, sometimes singleton state doesn't reflect dataset deletion
+before(() => {
+  cy.executePythonCode(
+    `
+    import fiftyone as fo
+    fo.delete_datasets("*")
+    `
+  );
+});

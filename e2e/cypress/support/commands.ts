@@ -14,14 +14,22 @@ Cypress.Commands.add("executePythonCode", (sourceCode) =>
   cy.task("executePythonProcessTask", sourceCode)
 );
 
-Cypress.Commands.add("waitForGridToBeVisible", (datasetName?: string) => {
-  if (datasetName) {
-    cy.visit(`/datasets/${datasetName}`);
-  } else {
+Cypress.Commands.add("waitForGridToBeVisible", (datasetName: string) => {
+  const forceDatasetFromSelector = () => {
     cy.visit("/");
     cy.get(`[data-cy="selector-Select dataset"]`).click();
-    cy.get("[data-cy=selector-result]").first().click();
-  }
+
+    cy.get(`[data-cy=selector-result-${datasetName}]`).click();
+  };
+
+  cy.visit(`/datasets/${datasetName}`).then(() => {
+    const location = window.location.href;
+
+    // behavior of directly visiting the dataset page is sometimes flaky
+    if (!location.includes("datasets")) {
+      forceDatasetFromSelector();
+    }
+  });
 
   cy.get("[data-cy=fo-grid]").should("be.visible");
 });
