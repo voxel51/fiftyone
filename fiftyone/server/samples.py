@@ -65,18 +65,19 @@ MEDIA_TYPES = {
 async def paginate_samples(
     dataset: str,
     stages: BSONArray,
-    filters: BSON,
+    filters: JSON,
     first: int,
     after: t.Optional[str] = None,
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
-    pagination_data: t.Optional[bool] = True,
+    pagination_data: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
         pagination_data=pagination_data,
+        count_label_tags=True,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
     )
@@ -113,6 +114,9 @@ async def paginate_samples(
         and (sample_filter.group.id and not sample_filter.group.slices),
         support=support,
     )
+    from fiftyone import pprint
+
+    not pagination_data and pprint(pipeline)
 
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
