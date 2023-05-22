@@ -285,7 +285,7 @@ class Session(object):
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme`
+        color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme`
             defining a custom color scheme to use
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
