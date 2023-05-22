@@ -68,7 +68,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   style,
   useLabelColors,
 }) => {
-  const pickerRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
   const activePath = useMemo(() => activeField.field.path, [activeField]);
@@ -193,20 +193,9 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
     if (!useLabelColors) setInput([]);
   }, [useLabelColors]);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        setShowPicker(Array(values?.length ?? 0).fill(false));
-      }
-    }
-
-    // Bind the event listener
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      // Unbind the event listener on clean up
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [wrapperRef, values?.length]);
+  fos.useOutsideClick(wrapperRef, () => {
+    setShowPicker(Array(values?.length ?? 0).fill(false));
+  });
 
   if (!values) return null;
 

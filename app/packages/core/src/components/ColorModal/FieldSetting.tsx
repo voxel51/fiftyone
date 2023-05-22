@@ -40,8 +40,8 @@ type State = {
 };
 
 const FieldSetting: React.FC<Prop> = ({ prop }) => {
-  const wrapperRef: React.RefObject<HTMLDivElement> = React.createRef();
-  const pickerRef: React.RefObject<TwitterPicker> = React.createRef();
+  const wrapperRef: React.RefObject<HTMLDivElement> = React.useRef();
+  const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
   const { field, expandedPath } = prop;
   const path = field?.path;
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
@@ -111,7 +111,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
         }, 1000);
       }
     },
-    [fields, path, onChangeFieldColor]
+    [fields, path, onChangeFieldColor, colors]
   );
 
   const toggleColorPicker = (e) => {
@@ -160,20 +160,9 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useRecoilValue(resetColor)]);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        setShowFieldPicker(false);
-      }
-    }
-
-    // Bind the event listener
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      // Unbind the event listener on clean up
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [wrapperRef]);
+  fos.useOutsideClick(wrapperRef, () => {
+    setShowFieldPicker(false);
+  });
 
   return (
     <div>

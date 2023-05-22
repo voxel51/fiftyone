@@ -43,7 +43,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const pickerRef = useRef<ChromePicker>(null);
-  const wrapperRef = useRef<ChromePicker>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const handleColorChange = (color: any) => {
     if (activeIndex !== null && color) {
@@ -74,21 +74,10 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
     }
   };
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        setShowPicker(false);
-        setActiveIndex(null);
-      }
-    }
-
-    // Bind the event listener
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      // Unbind the event listener on clean up
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [wrapperRef]);
+  fos.useOutsideClick(wrapperRef, () => {
+    setShowPicker(false);
+    setActiveIndex(null);
+  });
 
   useEffect(() => {
     if (!showPicker) setPickerColor(null);
