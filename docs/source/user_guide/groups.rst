@@ -994,30 +994,21 @@ by selecting `group` mode under the App's settings menu:
    :alt: groups-stats
    :align: center
 
-.. _groups-app-dynamic:
+You can also use the App's :ref:`dynamic groups <app-dynamic-groups>` feature
+to view *groups of groups* organized by a field of your choice.
 
-Dynamic Groups in the App
-_________________________
+For example, if you have a grouped dataset whose group slices contain different
+sensor modalities for each `frame_number` of a scene with a given `scene_id`,
+you can use the dynamic grouping action to playback scenes in sequential order:
 
-You can create :ref:`dynamic groups <view-groups>` either using the SDK or
-using the dynamic groups shortcut shown below:
-
-.. image:: /images/groups/dynamic-groups-intro.gif
-   :alt: dynamic-groups-intro
+.. image:: /images/groups/dynamic-groups.gif
+   :alt: dynamic-groups
    :align: center
 
-A carousel at the top of the modal allows you navigate between different
-samples within a dynamic group.
+.. note::
 
-Fiftyone also allows you to dynamically group :ref:`grouped datasets <groups>`.
-
-.. image:: /images/groups/dynamic-groups-groups.gif
-   :alt: dynamic-groups-groups
-   :align: center
-
-A pagination bar at the bottom of the modal allows you to navigate between
-different samples within a dynamic group of groups. The pagination bar
-supports both sequential as well as random access.
+    Did you know? You can also create :ref:`dynamic group views <view-groups>`
+    into your grouped datasets via Python.
 
 .. _groups-importing:
 

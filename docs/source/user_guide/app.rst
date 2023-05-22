@@ -467,6 +467,32 @@ the App.
     :alt: app-views2
     :align: center
 
+.. _app-dynamic-groups:
+
+Grouping samples
+________________
+
+You can use the group action in the App's menu to
+:ref:`dynamically group <view-groups>` your samples by a field of your choice:
+
+.. image:: /images/app/dynamic-groups.gif
+   :alt: dynamic-groups
+   :align: center
+
+In this mode, the App's grid shows the first sample from each group, and you
+can click on a sample to view all elements of the group in the modal.
+
+When viewing *unordered* groups, the modal will show a carousel at the
+top that you can use to navigate between different samples within a group.
+
+When viewing *ordered* groups, the modal will show a pagination UI at the
+bottom that you can use to navigate sequentially or via random access through
+the elements of the group.
+
+.. image:: /images/groups/dynamic-groups.gif
+   :alt: dynamic-groups
+   :align: center
+
 .. _app-saving-views:
 
 Saving views
