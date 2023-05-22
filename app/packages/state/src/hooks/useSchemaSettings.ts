@@ -8,6 +8,7 @@ import {
   DETECTION_FIELD,
   DETECTION_FILED,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   EMBEDDED_DOCUMENT_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
@@ -266,11 +267,13 @@ export const excludedPathsState = atomFamily({
           ? finalGreenPaths.filter(
               (path) =>
                 !(
-                  // a top-level embedded document with dynamic embed type which
+                  // a top-level embedded document with dynamic embed type
                   (
                     combinedSchema[path]?.ftype === EMBEDDED_DOCUMENT_FIELD &&
-                    combinedSchema[path]?.embeddedDocType ===
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD &&
+                    [
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+                    ].includes(combinedSchema[path]?.embeddedDocType) &&
                     (isVideo
                       ? !(
                           path.split(".").length === 2 &&
