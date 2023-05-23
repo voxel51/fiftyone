@@ -322,6 +322,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
 
+          if (!value.classifications?.length) continue;
+
           if (classifications) {
             pushList(
               LABEL_RENDERERS[field.embeddedDocType],
