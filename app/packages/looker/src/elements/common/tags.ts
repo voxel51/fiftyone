@@ -262,7 +262,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, tag),
+              color: getColor(coloring.pool, coloring.seed, "tags"),
               title: tag,
               value: tag,
             });
