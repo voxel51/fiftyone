@@ -84,7 +84,7 @@ const SchemaSettings = () => {
   const close = () => {
     setSearchTerm("");
     setSearchResults([]);
-    setSettingsModal({ ...settingModal, open: false });
+    setSettingsModal({ open: false });
     setSelectedPaths({ [datasetName]: new Set(lastAppliedPaths.selected) });
     setExcludedPaths({ [datasetName]: new Set(lastAppliedPaths.excluded) });
   };
