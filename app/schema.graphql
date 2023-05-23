@@ -454,7 +454,7 @@ type Query {
   schemaForViewStages(
     datasetName: String!
     viewStages: BSONArray!
-  ): [SampleField!]!
+  ): SchemaResult
 }
 
 type RootAggregation implements Aggregation {
@@ -493,6 +493,11 @@ type SampleField {
   dbField: String
   description: String
   info: JSON
+}
+
+type SchemaResult {
+  fieldSchema: [SampleField]!
+  frameFieldSchema: [SampleField]!
 }
 
 input SampleFilter {
