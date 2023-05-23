@@ -7,7 +7,7 @@ export type PopoutProps = PropsWithChildren<{
   modal?: boolean;
 }>;
 
-function Popout({ children, style = {}, modal }: PopoutProps) {
+function Popout({ children, style = {}, modal, ...props }: PopoutProps) {
   const show = useSpring({
     opacity: 1,
     from: {
@@ -20,6 +20,7 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
 
   return (
     <PopoutDiv
+      {...props}
       style={{ ...show, zIndex: 100001, right: modal ? 0 : "unset", ...style }}
     >
       {children}

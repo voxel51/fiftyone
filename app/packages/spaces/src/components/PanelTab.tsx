@@ -41,6 +41,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         if (!active) spaces.setNodeActive(node);
       }}
       active={active}
+      data-cy="panel-tab"
     >
       <PanelIcon name={panelName as string} />
       {title || panel.label || panel.name}
@@ -58,6 +59,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
           }}
           sx={{ pb: 0, mr: "-8px" }}
           title="Close"
+          data-cy="close-panel-button"
         >
           <Close sx={{ fontSize: 16 }} />
         </IconButton>

@@ -11,14 +11,16 @@ export default function SplitPanelButton({
 }: SplitPanelButtonProps) {
   const { spaces } = useSpaces(spaceId);
   const vertical = layout === Layout.Vertical;
+  const splitLabel = vertical ? "vertically" : "horizontally";
 
   return (
     <IconButton
-      title={`Split ${vertical ? "vertically" : "horizontally"}`}
+      title={`Split ${splitLabel}`}
       sx={{ rotate: vertical ? "" : "90deg" }}
       onClick={() => {
         spaces.splitLayout(node, layout);
       }}
+      data-cy={`split-panel-${splitLabel}-button`}
     >
       <Splitscreen sx={{ fontSize: 16 }} />
     </IconButton>

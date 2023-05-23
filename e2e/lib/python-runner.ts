@@ -6,7 +6,7 @@ import path from "path";
 import { DEFAULT_APP_ADDRESS, DEFAULT_APP_PORT } from "./constants";
 
 export class PythonRunner {
-  public static exec(sourceCode: string) {
+  public static exec(sourceCode: string, args: string[] = []) {
     const dedentedSourceCode = dedent(sourceCode);
     const randomFileName = Math.random().toString(36).substring(8);
     const sourceFilePath = path.join(os.tmpdir(), `${randomFileName}.py`);
@@ -20,7 +20,7 @@ export class PythonRunner {
       FIFTYONE_DEFAULT_APP_ADDRESS: DEFAULT_APP_ADDRESS,
     };
 
-    const proc = spawn("python", [sourceFilePath], {
+    const proc = spawn("python", [sourceFilePath, ...args], {
       env,
     });
 

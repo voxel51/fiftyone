@@ -3,15 +3,18 @@
 // to run code in node, delegate to `cy.task`
 
 import { Duration } from "./utils";
+import "./commands/index";
 
-Cypress.Commands.add("executePythonFixture", (pythonFixture) =>
+Cypress.Commands.add("executePythonFixture", (pythonFixture, args: string[]) =>
   cy
     .fixture(pythonFixture)
-    .then((sourceCode) => cy.task("executePythonProcessTask", sourceCode))
+    .then((sourceCode) =>
+      cy.task("executePythonProcessTask", { sourceCode, args })
+    )
 );
 
 Cypress.Commands.add("executePythonCode", (sourceCode) =>
-  cy.task("executePythonProcessTask", sourceCode)
+  cy.task("executePythonProcessTask", { sourceCode })
 );
 
 Cypress.Commands.add("waitForGridToBeVisible", (datasetName?: string) => {
@@ -85,4 +88,27 @@ Cypress.Commands.add("clearViewStages", () => {
 Cypress.Commands.add("consoleLog", (message) => {
   console.log(message);
   cy.task("logTask", message);
+});
+
+Cypress.Commands.add(
+  "loadZooDataset",
+  (datasetName: string, maxSamples?: number, persistent?: boolean) => {
+    const args = ["--dataset", datasetName];
+    if (maxSamples) args.push("--max-samples", maxSamples.toString());
+    if (persistent) args.push("--persistent", persistent.toString());
+    return cy
+      .fixture("common/load_zoo_dataset.py")
+      .then((sourceCode) =>
+        cy.task("executePythonProcessTask", { sourceCode, args })
+      );
+  }
+);
+
+Cypress.Commands.add("deleteDataset", (datasetName: string) => {
+  const args = ["--dataset", datasetName];
+  return cy
+    .fixture("common/delete_dataset.py")
+    .then((sourceCode) =>
+      cy.task("executePythonProcessTask", { sourceCode, args })
+    );
 });

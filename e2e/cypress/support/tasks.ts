@@ -6,6 +6,12 @@ import { PythonRunner } from "../../lib/python-runner";
 
 export const customTasks = {
   // task that executes arbitrary python process
-  executePythonProcessTask: (sourceCode: string) =>
-    PythonRunner.exec(sourceCode),
+  executePythonProcessTask: ({ sourceCode, args }: Options) => {
+    return PythonRunner.exec(sourceCode, args);
+  },
+};
+
+type Options = {
+  sourceCode: string;
+  args: string[];
 };
