@@ -18,6 +18,7 @@ const StringFieldFilter = ({
   path: string;
   modal: boolean;
   name?: boolean;
+  color: string;
   onFocus?: () => void;
   onBlur?: () => void;
   title: string;
