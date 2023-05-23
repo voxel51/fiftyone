@@ -133,17 +133,17 @@ export const schemaSearchRestuls = atom<string[]>({
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPaths = []) => {
         const viewSchema = await getPromise(viewSchemaState);
-        const schema = await getPromise(schemaState);
+        const fieldSchema = await getPromise(fieldSchemaState);
+        const combinedSchema = { ...fieldSchema, ...viewSchema };
 
         const greenPaths = [...newPaths]
           .filter(
             (path) =>
               path &&
-              (viewSchema?.[
+              combinedSchema?.[
                 path.startsWith("frames.") ? path.replace("frames.", "") : path
-              ]?.ftype ||
-                schema?.[path]?.ftype) &&
-              !skipField(path, viewSchema?.[path]?.ftype, viewSchema)
+              ]?.ftype &&
+              !skipField(path, combinedSchema?.[path]?.ftype, combinedSchema)
           )
           .map((path) =>
             path.startsWith("frames.") ? path.replace("frames.", "") : path
@@ -522,7 +522,7 @@ export default function useSchemaSettings() {
     let finalSchemaKeyByPath = {};
     if (dataset.mediaType === "video") {
       Object.keys(viewSchema).forEach((fieldPath) => {
-        finalSchemaKeyByPath[`frames.${fieldPath}`] = viewSchema[fieldPath];
+        finalSchemaKeyByPath[fieldPath] = viewSchema[fieldPath];
       });
       Object.keys(fieldSchema).forEach((fieldPath) => {
         finalSchemaKeyByPath[fieldPath] = fieldSchema[fieldPath];
@@ -649,9 +649,9 @@ export default function useSchemaSettings() {
         onCompleted: (data) => {
           if (data) {
             const { searchSelectFields = [] } = data;
-            const res = (searchSelectFields as string[]).map((p) =>
-              p.replace("._cls", "")
-            );
+            const res = (searchSelectFields as string[])
+              .map((p) => p.replace("._cls", ""))
+              .filter((pp) => !pp.startsWith("_"));
             setSearchResults(res);
             setSearchMetaFilter(object);
 

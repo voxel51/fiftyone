@@ -1,5 +1,7 @@
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
 import styled from "styled-components";
+
+import * as fos from "@fiftyone/state";
 
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
@@ -75,6 +77,22 @@ const SchemaSettings = () => {
   useOutsideClick(schemaModalRef, (_) => {
     close();
   });
+
+  const keyboardHandler = useCallback(
+    (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
+          return;
+        }
+      }
+      if (e.key === "Escape") {
+        setSettingsModal({ open: false });
+      }
+    },
+    [setSettingsModal]
+  );
+  fos.useEventHandler(document, "keydown", keyboardHandler);
 
   const { open: isSettingsModalOpen } = settingModal || {};
   if (!isSettingsModalOpen) {
