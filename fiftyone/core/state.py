@@ -20,7 +20,7 @@ import fiftyone as fo
 import fiftyone.core.clips as foc
 
 import fiftyone.core.dataset as fod
-import fiftyone.core.odm.dataset as food
+from fiftyone.core.odm.dataset import ColorScheme
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -39,7 +39,8 @@ class StateDescription(etas.Serializable):
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
-        spaces (None): spaces config
+        spaces (None): a :class:`fiftyone.core.spaces.Space`
+        color_scheme (None): a :class:`fiftyone.core.odm.dataset.ColorScheme`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
             saved view
@@ -51,8 +52,8 @@ class StateDescription(etas.Serializable):
         dataset=None,
         selected=None,
         selected_labels=None,
-        color_scheme=None,
         spaces=None,
+        color_scheme=None,
         view=None,
         view_name=None,
     ):
@@ -112,7 +113,7 @@ class StateDescription(etas.Serializable):
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()
 
-            if isinstance(self.color_scheme, food.ColorScheme):
+            if isinstance(self.color_scheme, ColorScheme):
                 d["color_scheme"] = self.color_scheme.to_json()
 
             return d
@@ -167,13 +168,12 @@ class StateDescription(etas.Serializable):
         fo.config.timezone = d.get("config", {}).get("timezone", None)
 
         spaces = d.get("spaces", None)
-        color_scheme = d.get("color_scheme", None)
-
-        if color_scheme:
-            color_scheme = json_util.dumps(color_scheme)
-
         if spaces is not None:
             spaces = Space.from_dict(json_util.loads(spaces))
+
+        color_scheme = d.get("color_scheme", None)
+        if color_scheme:
+            color_scheme = ColorScheme.from_dict(json_util.loads(color_scheme))
 
         return cls(
             config=config,

@@ -15,6 +15,7 @@ import {
   filters,
   groupSlice,
   groupStatistics,
+  isUsingSessionColorScheme,
   modal,
   patching,
   resolveGroups,
@@ -129,8 +130,10 @@ const useStateUpdate = (ignoreSpaces = false) => {
               : [],
         } as ColorScheme;
         set(sessionColorScheme, colorSetting);
+        set(isUsingSessionColorScheme, true);
       } else if (!ignoreSpaces) {
         reset(activeColorField);
+        reset(isUsingSessionColorScheme);
         set(sessionColorScheme, colorSetting);
       }
 

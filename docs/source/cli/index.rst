@@ -87,6 +87,7 @@ The FiftyOne command-line interface.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         migrate             Tools for migrating the FiftyOne database.
+        operators           Tools for working with FiftyOne operators.
         plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Zoo.
@@ -782,6 +783,92 @@ FiftyOne deployments.
     # Update the database version without migrating any existing datasets
     fiftyone migrate
 
+.. _cli-fiftyone-operators:
+
+FiftyOne operators
+------------------
+
+Tools for working with FiftyOne operators.
+
+.. code-block:: text
+
+    fiftyone operators [-h] [--all-help] {list,info} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help   show this help message and exit
+      --all-help   show help recursively and exit
+
+    available commands:
+      {list,info}
+        list       List operators that you've downloaded or created locally.
+        info       Prints information about operators that you've downloaded or created
+
+.. _cli-fiftyone-operators-list:
+
+List operators
+~~~~~~~~~~~~~~
+
+List operators that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone operators list [-h] [-e] [-d] [-n]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help        show this help message and exit
+      -e, --enabled     only show enabled operators
+      -d, --disabled    only show disabled operators
+      -n, --names-only  only show names
+
+**Examples**
+
+.. code-block:: shell
+
+    # List all locally available operators
+    fiftyone operators list
+
+    # List enabled operators
+    fiftyone operators list --enabled
+
+    # List disabled operators
+    fiftyone operators list --disabled
+
+.. _cli-fiftyone-operators-info:
+
+Operator info
+~~~~~~~~~~~~~
+
+Prints information about operators that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone operators info [-h] URI
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URI         the operator URI
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Prints information about an operator
+    fiftyone operators info <uri>
+
 .. _cli-fiftyone-plugins:
 
 FiftyOne plugins
@@ -791,7 +878,7 @@ Tools for working with FiftyOne plugins.
 
 .. code-block:: text
 
-    fiftyone plugins [-h] [--all-help] {list,download,create,enable,disable,delete} ...
+    fiftyone plugins [-h] [--all-help] {list,info,download,requirements,create,enable,disable,delete} ...
 
 **Arguments**
 
@@ -802,9 +889,11 @@ Tools for working with FiftyOne plugins.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,download,create,enable,disable,delete}
+      {list,info,download,requirements,create,enable,disable,delete}
         list                List plugins that you've downloaded or created locally.
+        info                Prints information about plugins that you've downloaded or created
         download            Download plugins from the web.
+        requirements        Handles package requirements for plugins.
         create              Creates or initializes a plugin.
         enable              Enables the given plugin(s).
         disable             Disables the given plugin(s).
@@ -844,6 +933,34 @@ List plugins that you've downloaded or created locally.
     # List disabled plugins
     fiftyone plugins list --disabled
 
+.. _cli-fiftyone-plugins-info:
+
+Plugin info
+~~~~~~~~~~~
+
+List plugins that you've downloaded or created locally.
+
+.. code-block:: text
+
+    fiftyone plugins info [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the plugin name
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Prints information about a plugin
+    fiftyone plugins info <name>
+
 .. _cli-fiftyone-plugins-download:
 
 Download plugins
@@ -852,7 +969,7 @@ Download plugins
 Download plugins from the web.
 
 When downloading plugins from GitHub, you can provide any of the following
-formats::
+formats:
 
 -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
 -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
@@ -861,9 +978,9 @@ formats::
 
 .. note::
 
-    To download a plugin from a private GitHub repository that you have
-    access to, provide your GitHub personal access token by setting the
-    ``GITHUB_TOKEN`` environment variable.
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
 
 .. code-block:: text
 
@@ -903,6 +1020,44 @@ formats::
         <url> \
         --plugin-names <name1> <name2> <name3> \
         --max-depth 2  # search nested directories for plugins
+
+.. _cli-fiftyone-plugins-requirements:
+
+Plugin requirements
+~~~~~~~~~~~~~~~~~~~
+
+Handles package requirements for plugins.
+
+.. code-block:: text
+
+    fiftyone plugins requirements [-h] [-p] [-i] [-e] [--error-level LEVEL] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the plugin name
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -p, --print          print the requirements for the plugin
+      -i, --install        install any requirements for the plugin
+      -e, --ensure         ensure the requirements for the plugin are satisfied
+      --error-level LEVEL  the error level (0=error, 1=warn, 2=ignore) to use when installing or ensuring plugin requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print requirements for a plugin
+    fiftyone plugins requirements <name> --print
+
+    # Install any requirements for the plugin
+    fiftyone plugins requirements <name> --install
+
+    # Ensures that the requirements for the plugin are satisfied
+    fiftyone plugins requirements <name> --ensure
 
 .. _cli-fiftyone-plugins-create:
 

@@ -20,6 +20,7 @@ const BooleanFieldFilter = ({
   onFocus?: () => void;
   onBlur?: () => void;
   title: string;
+  color: string;
 }) => {
   return (
     <CategoricalFilter<{ value: boolean | null; count: number }>
@@ -34,6 +35,7 @@ const BooleanFieldFilter = ({
       })}
       modal={modal}
       path={path}
+      color={color}
       {...rest}
     />
   );

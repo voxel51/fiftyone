@@ -67,11 +67,9 @@ export const validateJSONSetting = (json: unknown[]) => {
   const f = filtered?.map((input) => ({
     path: input["path"],
     fieldColor: input["fieldColor"] ?? null,
-    colorByAttribute:
-      isString(input["colorByAttribute"]) &&
-      input["colorByAttribute"] !== "label"
-        ? input["colorByAttribute"]
-        : null,
+    colorByAttribute: isString(input["colorByAttribute"])
+      ? input["colorByAttribute"]
+      : null,
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
       : null,

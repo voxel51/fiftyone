@@ -349,6 +349,67 @@ def find_files(root_dir, patt, max_depth=1):
     return paths
 
 
+def normpath(path):
+    """Normalizes the given path by converting all slashes to forward slashes
+    on Unix and backslashes on Windows and removing duplicate slashes.
+
+    Use this function when you need a version of ``os.path.normpath`` that
+    converts ``\\`` to ``/`` on Unix.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    if os.name == "nt":
+        return ntpath.normpath(path)
+
+    return posixpath.normpath(path.replace("\\", "/"))
+
+
+def normalize_path(path):
+    """Normalizes the given path by converting it to an absolute path and
+    expanding the user directory, if necessary.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def install_package(requirement_str, error_level=None, error_msg=None):
+    """Installs the given package via ``pip``.
+
+    Installation is performed via::
+
+        python -m pip install <requirement_str>
+
+    Args:
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
+            "tensorflow>=1.13,<1.15"
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+        error_msg (None): an optional custom error message to use
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    return etau.install_package(
+        requirement_str,
+        error_level=error_level,
+        error_msg=error_msg,
+    )
+
+
 def ensure_package(
     requirement_str, error_level=None, error_msg=None, log_success=False
 ):
@@ -392,6 +453,80 @@ def ensure_package(
         error_suffix=_REQUIREMENT_ERROR_SUFFIX,
         log_success=log_success,
     )
+
+
+def load_requirements(requirements_path):
+    """Loads the package requirements from a ``requirements.txt`` file on disk.
+
+    Comments and extra whitespace are automatically stripped.
+
+    Args:
+        requirements_path: the path to a requirements file
+
+    Returns:
+        a list of requirement strings
+    """
+    requirements = []
+    with open(requirements_path, "rt") as f:
+        for line in f:
+            line = _strip_comments(line)
+            if line:
+                requirements.append(line)
+
+    return requirements
+
+
+def _strip_comments(requirement_str):
+    chunks = []
+    for chunk in requirement_str.strip().split():
+        if chunk.startswith("#"):
+            break
+
+        chunks.append(chunk)
+
+    return " ".join(chunks)
+
+
+def install_requirements(requirements_path, error_level=None):
+    """Installs the package requirements from a ``requirements.txt`` file on
+    disk.
+
+    Args:
+        requirements_path: the path to a requirements file
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    for req_str in load_requirements(requirements_path):
+        install_package(req_str, error_level=error_level)
+
+
+def ensure_requirements(
+    requirements_path, error_level=None, log_success=False
+):
+    """Verifies that the package requirements from a ``requirements.txt`` file
+    on disk are installed.
+
+    Args:
+        requirements_path: the path to a requirements file
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+    for req_str in load_requirements(requirements_path):
+        ensure_package(
+            req_str, error_level=error_level, log_success=log_success
+        )
 
 
 def ensure_import(

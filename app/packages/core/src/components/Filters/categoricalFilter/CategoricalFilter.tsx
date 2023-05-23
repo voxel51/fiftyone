@@ -189,6 +189,7 @@ interface Props<T extends V = V> {
   modal: boolean;
   path: string;
   named?: boolean;
+  color: string;
 }
 
 const CategoricalFilter = <T extends V = V>({
@@ -200,6 +201,7 @@ const CategoricalFilter = <T extends V = V>({
   path,
   modal,
   named = true,
+  color,
 }: Props<T>) => {
   let name = path.split(".").slice(-1)[0];
   name = path.startsWith("tags")
@@ -207,7 +209,6 @@ const CategoricalFilter = <T extends V = V>({
     : path.startsWith("_label_tags")
     ? "label tag"
     : name;
-  const color = useRecoilValue(fos.pathColor({ modal, path }));
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });

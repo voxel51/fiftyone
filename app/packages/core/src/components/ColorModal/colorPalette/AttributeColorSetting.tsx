@@ -68,7 +68,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   style,
   useLabelColors,
 }) => {
-  const pickerRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<ChromePicker>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
   const activePath = useMemo(() => activeField.field.path, [activeField]);
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
@@ -147,6 +148,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       if (!isValidColor(color)) {
         // revert the input state value as color is not CSS invalid
         const warning = cloneDeep(values);
+        if (!values || !warning) return;
         warning[changeIdx].color = "invalid";
         setInput(warning);
         setTimeout(() => {
@@ -158,7 +160,9 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
         }, 1000);
       } else {
         // convert to hex code
-        const hexColor = colorString.to.hex(colorString.get(color)?.value);
+        const hexColor = colorString.to.hex(
+          colorString.get(color)?.value ?? []
+        );
         const copy = cloneDeep(input);
         copy[changeIdx].color = hexColor;
         onSyncUpdate(copy);
@@ -188,6 +192,10 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!useLabelColors) setInput([]);
   }, [useLabelColors]);
+
+  fos.useOutsideClick(wrapperRef, () => {
+    setShowPicker(Array(values?.length ?? 0).fill(false));
+  });
 
   if (!values) return null;
 
@@ -219,9 +227,16 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
             }}
           >
             {showPicker[index] && (
-              <ChromePickerWrapper>
+              <ChromePickerWrapper ref={wrapperRef}>
                 <ChromePicker
                   color={input[index].color}
+                  onChange={(color) =>
+                    setInput((prev) => {
+                      const copy = cloneDeep(prev);
+                      copy[index].color = color.hex;
+                      return copy;
+                    })
+                  }
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   popperProps={{ positionFixed: true }}
                   ref={pickerRef}
