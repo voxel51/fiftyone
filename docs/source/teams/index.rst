@@ -87,3 +87,4 @@ pages on this site apply to Teams deployments as well.
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
     Migrations <migrations>
+    API Connection <api_connection>
