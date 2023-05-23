@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 
 import {
@@ -19,7 +21,6 @@ import {
 } from "@fiftyone/utilities";
 
 import { Sample } from "@fiftyone/looker/src/state";
-import _ from "lodash";
 import * as atoms from "./atoms";
 import { State } from "./types";
 
@@ -211,14 +212,17 @@ export const fieldPaths = selectorFamily<
         throw new Error("path and space provided");
       }
 
-      const sampleLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE, flat: true }))
-      )
+      const sampleFields = get(
+        fieldSchema({ space: State.SPACE.SAMPLE, flat: true })
+      );
+      const frameFields = get(
+        fieldSchema({ space: State.SPACE.FRAME, flat: true })
+      );
+
+      const sampleLabels = Object.keys(sampleFields)
         .filter((l) => !l.startsWith("_"))
         .sort();
-      const frameLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.FRAME, flat: true }))
-      )
+      const frameLabels = Object.keys(frameFields)
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
         .sort();
@@ -331,9 +335,26 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const paths = get(fieldPaths(params));
 
-      const flatLabelFields = paths.filter((path) =>
+      const flatLabelFields1 = paths.filter((path) =>
         LABELS.includes(get(field(path)).embeddedDocType)
       );
+
+      /* Remove any paths from the label paths if a parent path exists.
+      ex: parent path: custom_document.detections | type Detections
+          child path: custom_document.detections.detections | type Detection (singular)
+          having both in labelPaths can cause some issues like,
+          - duplicate count of labels
+          - unwanted filtering causing some operations that depend on labelPaths
+            (such as tagging) to fail. */
+      const allSet = new Set(flatLabelFields1);
+      const flatLabelFields = flatLabelFields1.filter((pp) => {
+        const parentPath = pp.substring(0, pp.lastIndexOf("."));
+        if (parentPath && parentPath !== pp && allSet.has(parentPath)) {
+          return false;
+        }
+        return true;
+      });
+
       const dynamicLabelFields = paths
         .filter(
           (path) =>
@@ -393,7 +414,7 @@ export const labelValues = selectorFamily<
 
       for (const path of paths) {
         const convert = convertToLabelValue(sample._id, path);
-        const value = _.get(sample, path, null);
+        const value = get(sample, path, null);
         if (value !== null) {
           if (Array.isArray(value)) {
             results = [...results, ...value.map(convert)];
@@ -456,12 +477,11 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
   get:
     ({ modal }) =>
-    ({ get }) => {
-      return filterPaths(
+    ({ get }) =>
+      filterPaths(
         get(_activeFields({ modal })) || get(labelFields({})),
         buildSchema(get(atoms.dataset))
-      );
-    },
+      ),
   set:
     ({ modal }) =>
     ({ set }, value) => {
@@ -515,12 +535,7 @@ export const activeLabelFields = selectorFamily<
     ({ modal }) =>
     ({ get }) => {
       const active = new Set(get(activeFields({ modal })));
-      // added split by '.' rule to remove groups like 'ground_truth' and 'predictions',
-      // but this need to be verified on dynamic embeddedDoc fields
-      const fields = get(labelFields({})).filter(
-        (field) => active.has(field) && field.split(".").length > 1
-      );
-      return fields;
+      return get(labelFields({})).filter((field) => active.has(field));
     },
 });
 
@@ -533,10 +548,9 @@ export const activeLabelPaths = selectorFamily<
     ({ modal }) =>
     ({ get }) => {
       const active = new Set(get(activeFields({ modal })));
-      const paths = get(labelFields({}))
+      return get(labelFields({}))
         .filter((field) => active.has(field))
         .map((field) => get(labelPath(field)));
-      return [...new Set(paths)];
     },
 });
 
