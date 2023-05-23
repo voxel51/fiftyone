@@ -59,16 +59,38 @@ export const loadOverlays = <State extends BaseState>(
       continue;
     }
 
-    if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](field, label, this);
-      overlays = [...overlays, ...labelOverlays];
-    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
-      classifications.push([
-        field,
-        label._cls in LABEL_LISTS_MAP
-          ? label[LABEL_LISTS_MAP[label._cls]]
-          : [label],
-      ]);
+    if (label._cls === "DynamicEmbeddedDocument") {
+      const [key, element] = Object.entries(label)[1];
+      const dynamicField = [field, key].join(".");
+      const dynamicLabel = element;
+
+      if (dynamicLabel["_cls"] in FROM_FO) {
+        const labelOverlays = FROM_FO[dynamicLabel["_cls"]](
+          dynamicField,
+          dynamicLabel,
+          this
+        );
+        overlays = [...overlays, ...labelOverlays];
+      } else if (LABEL_TAGS_CLASSES.includes(dynamicLabel["_cls"])) {
+        classifications.push([
+          field,
+          dynamicLabel["_cls"] in LABEL_LISTS_MAP
+            ? label[LABEL_LISTS_MAP[dynamicLabel["_cls"]]]
+            : [label],
+        ]);
+      }
+    } else {
+      if (label._cls in FROM_FO) {
+        const labelOverlays = FROM_FO[label._cls](field, label, this);
+        overlays = [...overlays, ...labelOverlays];
+      } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
+        classifications.push([
+          field,
+          label._cls in LABEL_LISTS_MAP
+            ? label[LABEL_LISTS_MAP[label._cls]]
+            : [label],
+        ]);
+      }
     }
   }
 
