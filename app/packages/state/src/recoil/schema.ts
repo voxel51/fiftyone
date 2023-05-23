@@ -335,7 +335,7 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const paths = get(fieldPaths(params));
 
-      const flatLabelFields1 = paths.filter((path) =>
+      const flatLabelFieldsBase = paths.filter((path) =>
         LABELS.includes(get(field(path)).embeddedDocType)
       );
 
@@ -346,8 +346,8 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
           - duplicate count of labels
           - unwanted filtering causing some operations that depend on labelPaths
             (such as tagging) to fail. */
-      const allSet = new Set(flatLabelFields1);
-      const flatLabelFields = flatLabelFields1.filter((pp) => {
+      const allSet = new Set(flatLabelFieldsBase);
+      const flatLabelFields = flatLabelFieldsBase.filter((pp) => {
         const parentPath = pp.substring(0, pp.lastIndexOf("."));
         if (parentPath && parentPath !== pp && allSet.has(parentPath)) {
           return false;
