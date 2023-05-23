@@ -6,7 +6,6 @@ FiftyOne operator permissions.
 |
 """
 from .registry import OperatorRegistry
-from .loader import load_from_dir
 from fiftyone.plugins.permissions import ManagedOperators
 
 
