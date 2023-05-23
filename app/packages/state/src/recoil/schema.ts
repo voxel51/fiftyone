@@ -1,33 +1,27 @@
-import {
-  atomFamily,
-  RecoilState,
-  RecoilValueReadOnly,
-  selector,
-  selectorFamily,
-} from "recoil";
+import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 
 import {
   DETECTION,
   DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
-  LABELS,
-  LABELS_PATH,
   LABEL_LIST,
   LABEL_LISTS,
+  LABELS,
+  LABELS_PATH,
   LIST_FIELD,
   meetsFieldType,
   Schema,
   StrictField,
   VALID_PRIMITIVE_TYPES,
   withPath,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
 } from "@fiftyone/utilities";
 
+import { Sample } from "@fiftyone/looker/src/state";
+import _ from "lodash";
 import * as atoms from "./atoms";
 import { State } from "./types";
-import _ from "lodash";
-import { Sample } from "@fiftyone/looker/src/state";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name || field.path] = {
@@ -85,11 +79,8 @@ export const buildFlatExtendedSchema = (schema: Schema): Schema => {
   return flatSchema;
 };
 
-export const buildSchema = (
-  dataset: State.Dataset,
-  flat: boolean = false
-): Schema => {
-  let schema = dataset.sampleFields.reduce(schemaReduce, {});
+export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
+  const schema = dataset.sampleFields.reduce(schemaReduce, {});
 
   // TODO: mixed datasets - test video
   if (dataset.frameFields && dataset.frameFields.length) {
@@ -524,7 +515,12 @@ export const activeLabelFields = selectorFamily<
     ({ modal }) =>
     ({ get }) => {
       const active = new Set(get(activeFields({ modal })));
-      return get(labelFields({})).filter((field) => active.has(field));
+      // added split by '.' rule to remove groups like 'ground_truth' and 'predictions',
+      // but this need to be verified on dynamic embeddedDoc fields
+      const fields = get(labelFields({})).filter(
+        (field) => active.has(field) && field.split(".").length > 1
+      );
+      return fields;
     },
 });
 
@@ -537,9 +533,10 @@ export const activeLabelPaths = selectorFamily<
     ({ modal }) =>
     ({ get }) => {
       const active = new Set(get(activeFields({ modal })));
-      return get(labelFields({}))
+      const paths = get(labelFields({}))
         .filter((field) => active.has(field))
         .map((field) => get(labelPath(field)));
+      return [...new Set(paths)];
     },
 });
 
