@@ -12,6 +12,7 @@ import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 const BooleanFieldFilter = ({
   path,
   modal,
+  color,
   ...rest
 }: {
   path: string;
