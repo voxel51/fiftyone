@@ -332,8 +332,11 @@ def upload_plugin(
         plugin_path: the path to a plugin zip or directory
         overwrite (False): whether to overwrite an existing plugin with same
             name
-        optimize (False): whether to optimize the created zip file by pruning
-            various known system-generated files and directories such as `.git/`.
+        optimize (False): whether to optimize the created zip file before uploading.
+            If a .gitignore file exists, an attempt will first be made to use
+            `git archive` to create the zip. If not or this doesn't work, a zip
+            will be created by pruning various known system-generated files and
+            directories such as `.git/` and `__pycache__/`.
             This arg has no effect if `plugin_path` does not point to a directory.
     """
     client = connection.APIClientConnection().client
