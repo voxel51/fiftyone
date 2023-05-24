@@ -143,55 +143,136 @@ Regardless of operator type, all operators can be executed from code. For exampl
  - NOT Py to Py
  - NOT Py to JS
 
-Placements (Menus and Options)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Placements
+~~~~~~~~~~
 
-Operator placement provides a mechanism to add a visual element in the FiftyOne
-associated to an operator. As of right now, operator only supports button
-placement that can invoke the associated operator on click. Below are list of
-places you can display your operator placement in the app:
+Operator placement lets you add a button in various places of the FiftyOne app
+to invoke your operator from outside of Operator Browser. Below is a list of
+places you can add your operator placement to in the FiftyOne app:
 
-  - SAMPLES_GRID_ACTIONS
-  - SAMPLES_GRID_SECONDARY_ACTIONS
-  - SAMPLES_VIEWER_ACTIONS
-  - EMBEDDINGS_ACTIONS
-  - HISTOGRAM_ACTIONS
-  - MAP_ACTIONS
-  - MAP_SECONDARY_ACTIONS
-  - DISPLAY_OPTIONS
+   - SAMPLES_GRID_ACTIONS
+  
+     .. image:: /images/plugins/operators/placements/samples_grid_actions.png
+        :alt: SAMPLES_GRID_ACTIONS placement preview
+        :align: center
 
+   - SAMPLES_GRID_SECONDARY_ACTIONS
+  
+     .. image:: /images/plugins/operators/placements/samples_grid_secondary_actions.png
+        :alt: SAMPLES_GRID_SECONDARY_ACTIONS placement preview
+        :align: center
+
+   - SAMPLES_VIEWER_ACTIONS
+  
+     .. image:: /images/plugins/operators/placements/samples_viewer_actions.png
+        :alt: SAMPLES_VIEWER_ACTIONS placement preview
+        :align: center
+
+   - EMBEDDINGS_ACTIONS
+  
+     .. image:: /images/plugins/operators/placements/embeddings_actions.png
+        :alt: EMBEDDINGS_ACTIONS placement preview
+        :align: center
+
+   - HISTOGRAM_ACTIONS
+  
+     .. image:: /images/plugins/operators/placements/histograms_actions.png
+        :alt: HISTOGRAM_ACTIONS placement preview
+        :align: center
+
+   - MAP_ACTIONS
+  
+     .. image:: /images/plugins/operators/placements/map_actions.png
+        :alt: MAP_ACTIONS placement preview
+        :align: center
 
 To add a placement for an operator to one of these places in the app, your
-operator class should implement method `resolve_placement` as demonstrated below:
+operator class should implement `resolve_placement` method as shown in example
+below:
 
 .. tabs::
     .. code-tab:: python
-        def resolve_placement(self, ctx):
-        return types.Placement(
-            # Display placement in the actions row of samples grid
-            types.Places.SAMPLES_GRID_ACTIONS,
-            # Display a button as the placement
-            types.Button(
-                # label for placement button visible on hover
-                label="Open My Panel",
-                # icon for placement button. If not provided, button with label
-                # will be displayed
-                icon="/assets/placement-icon.svg",
-                # skip operator prompt when we do not require an input from the user
-                prompt=False
-            )
-        )
-    
+
+        import fiftyone.operators as foo
+        import fiftyone.operators.types as types
+
+        class OpenHistogramsPanel(foo.Operator):
+            @property
+            def config(self):
+                return foo.OperatorConfig(
+                    name="example_open_histograms_panel",
+                    label="Examples: open Histograms panel"
+                )
+
+            def resolve_placement(self, ctx):
+                return types.Placement(
+                    # Display placement in the actions row of samples grid
+                    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS,
+                    # Display a button as the placement
+                    types.Button(
+                        # label for placement button visible on hover
+                        label="Open Histograms Panel",
+                        # icon for placement button. If not provided, button with label
+                        # will be displayed
+                        icon="/assets/histograms.svg",
+                        # skip operator prompt when we do not require an input from the user
+                        prompt=False
+                    )
+                )
+
+            def execute(self, ctx):
+                # Use the built-in operator "open_panel" to launch Histograms
+                #  panel in horizontally split mode
+                return ctx.trigger(
+                    "open_panel",
+                    params=dict(name="Histograms", isActive=True, layout="horizontal"),
+                )
+                
+        def register(p):
+            p.register(OpenHistogramsPanel)
+
     .. code-tab:: javascript
-        async resolvePlacement(ctx: ExecutionContext): Promise<types.Placement> {
-            return new types.Placement(
-                types.Places.SAMPLES_GRID_ACTIONS,
-                new types.Button({
-                    label: "Open My Panel",
-                    icon: "/assets/placement-icon.svg",
-                })
-            );
+
+        import {
+            Operator,
+            OperatorConfig,
+            registerOperator,
+            useOperatorExecutor,
+            types,
+        } from "@fiftyone/operators";
+
+        class OpenEmbeddingsPanel extends Operator {
+            get config() {
+                return new OperatorConfig({
+                    name: "example_open_embeddings_panel",
+                    label: "Example: open Embeddings panel",
+                });
+            }
+            useHooks(): {
+                const openPanelOperator = useOperatorExecutor("open_panel");
+                return { openPanelOperator };
+            }
+            async resolvePlacement() {
+                return new types.Placement(
+                    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS,
+                    new types.Button({
+                        label: "Open Embeddings Panel",
+                        icon: "/assets/embeddings.svg",
+                    })
+                );
+            }
+            async execute({ hooks }) {
+                const { openPanelOperator } = hooks;
+                openPanelOperator.execute({
+                    name: "Embeddings",
+                    isActive: true,
+                    layout: "horizontal",
+                });
+            }
         }
+
+        registerOperator(OpenEmbeddingsPanel, "@voxel51/examples");
+
 
 
 Plugin Runtime
@@ -753,7 +834,7 @@ Custom operator view using Component plugin
         activator: () => true,
     });
 
-1. **Using the plugin component as the view for an operator field**
+2. **Using the plugin component as the view for an operator field**
 
 .. code-block:: python
 
