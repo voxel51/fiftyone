@@ -85,32 +85,15 @@ const Looker = ({
   }
 
   const sampleData = useMemo(() => {
-    let transformedUrls = modalSampleData?.urls
-      ? { ...modalSampleData.urls }
-      : {};
-    if (urls) {
-      if (Array.isArray(urls)) {
-        for (const { field, url } of urls) {
-          transformedUrls[field] = url;
-        }
-      } else {
-        transformedUrls = urls;
-      }
-    }
-
     if (propsSampleData) {
       return {
         ...modalSampleData,
         sample: propsSampleData,
-        urls: transformedUrls,
       };
     }
 
-    return {
-      ...modalSampleData,
-      urls: transformedUrls,
-    };
-  }, [propsSampleData, modalSampleData, urls]);
+    return modalSampleData;
+  }, [propsSampleData, modalSampleData]);
 
   const { sample } = sampleData;
 
