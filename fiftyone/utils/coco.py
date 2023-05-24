@@ -2133,7 +2133,7 @@ def _get_polygons_for_segmentation(segmentation, frame_size, tolerance):
             rle = segmentation
 
         mask = mask_utils.decode(rle)
-        abs_points = _mask_to_polygons(mask, tolerance)
+        abs_points = _mask_to_polygons(mask, tolerance, [0, 0, width, height])
 
     # Convert to [[(x1, y1), (x2, y2), ...]] in relative coordinates
 
@@ -2198,20 +2198,24 @@ def _instance_to_coco_segmentation(
     detection, frame_size, iscrowd="iscrowd", tolerance=None
 ):
     dobj = foue.to_detected_object(detection, extra_attrs=False)
-
+    width, height = frame_size
     try:
         mask = etai.render_instance_image(
             dobj.mask, dobj.bounding_box, frame_size
         )
     except:
         # Either mask or bounding box is too small to render
-        width, height = frame_size
         mask = np.zeros((height, width), dtype=bool)
 
     if detection.get_attribute_value(iscrowd, None):
         return _mask_to_rle(mask)
 
-    return _mask_to_polygons(mask, tolerance)
+    x, y, w, h = detection.bounding_box
+    boundaries = [x * width, y * height]
+    boundaries.append(boundaries[0] + w * width)
+    boundaries.append(boundaries[1] + h * height)
+
+    return _mask_to_polygons(mask, tolerance, boundaries)
 
 
 def _make_coco_keypoints(keypoint, frame_size):
@@ -2238,7 +2242,7 @@ def _mask_to_rle(mask):
     return {"counts": counts, "size": list(mask.shape)}
 
 
-def _mask_to_polygons(mask, tolerance):
+def _mask_to_polygons(mask, tolerance, boundaries):
     if tolerance is None:
         tolerance = 2
 
@@ -2256,6 +2260,21 @@ def _mask_to_polygons(mask, tolerance):
             continue
 
         contour = np.flip(contour, axis=1)
+
+        contour[:, 0] = np.where(
+            contour[:, 0] < boundaries[0], boundaries[0], contour[:, 0]
+        )
+        contour[:, 0] = np.where(
+            contour[:, 0] > boundaries[2], boundaries[2], contour[:, 0]
+        )
+
+        contour[:, 1] = np.where(
+            contour[:, 1] < boundaries[1], boundaries[1], contour[:, 1]
+        )
+        contour[:, 1] = np.where(
+            contour[:, 1] > boundaries[3], boundaries[3], contour[:, 1]
+        )
+
         segmentation = contour.ravel().tolist()
 
         # After padding and subtracting 1 there may be -0.5 points
