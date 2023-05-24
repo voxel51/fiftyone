@@ -3,7 +3,6 @@ import { selector, selectorFamily } from "recoil";
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   getColor,
   hexToRgb,
@@ -93,10 +92,8 @@ export const pathColor = selectorFamily<
         : path;
 
       if (
-        [
-          DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-          DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
-        ].includes(get(schemaAtoms.field(adjustedPath))?.embeddedDocType ?? "")
+        get(schemaAtoms.field(adjustedPath))?.embeddedDocType ===
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2
       ) {
         adjustedPath = path;
       }
