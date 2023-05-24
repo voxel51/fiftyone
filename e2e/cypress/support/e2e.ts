@@ -9,7 +9,7 @@ compareSnapshotCommand({
   errorThreshold: 0,
 });
 
-// delete all datasets before running tests
+// delete all datasets before each spec runs
 // todo: investigate, this is flaky, sometimes singleton state doesn't reflect dataset deletion
 before(() => {
   cy.executePythonCode(
