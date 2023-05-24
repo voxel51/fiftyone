@@ -328,6 +328,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
                 value?.classifications
               );
           } else {
+            // remove undefined classifications - can show up as None
+            if (
+              "_cls" in (value as Object) &&
+              typeof value._cls === "undefined"
+            ) {
+              continue;
+            }
             elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
           }
           continue;
