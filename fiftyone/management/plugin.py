@@ -259,7 +259,6 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
                     return zip_name
             except FileNotFoundError:
                 ...
-        print("doing normal")
 
         # Second, we'll give best attempt at optimizing it ourselves
         prune_dirs = {
@@ -289,7 +288,6 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
                             os.path.join(rel_path, file),
                         )
             size = sum(zi.file_size for zi in zf.infolist())
-            print("size MB: ", size / 1024**2)
 
     else:
         zip_name = shutil.make_archive(
