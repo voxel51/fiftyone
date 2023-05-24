@@ -66,6 +66,9 @@ This will generate and display a new key.
 Copy the key and paste it in your :ref:`FiftyOne config file <configuring-api-connection>`
 or `FIFTYONE_API_KEY` environment variable.
 
+Alternatively, an admin can use the management SDK method
+:meth:`generate_api_key() <fiftyone.management.api_key.generate_api_key>`.
+
 Deleting a Key
 ---------------
 
@@ -74,3 +77,6 @@ To delete a key and remove its access, find the key to delete in the list and cl
 .. image:: /images/teams/api_key_delete.png
    :alt: api-key-delete
    :align: center
+
+Alternatively, an admin can use the management SDK method
+:meth:`delete_api_key() <fiftyone.management.api_key.delete_api_key>`.
