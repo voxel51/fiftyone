@@ -35,8 +35,10 @@ export const PainterFactory = (requestColor) => ({
             ? "id"
             : setting.colorByAttribute
           : "label";
-        const labelColor = setting.valueColors?.find(
-          (l) => l.value?.toString() === label[key]?.toString()
+        const labelColor = setting.valueColors?.find((l) =>
+          ["none", "null", "undefined"].includes(l.value?.toLowerCase())
+            ? !label[key]
+            : l.value?.toString() == label[key]?.toString()
         )?.color;
 
         color = labelColor
