@@ -233,7 +233,7 @@ describe("dynamic groups", () => {
       });
     });
 
-    context.only("ordered", () => {
+    context("ordered", () => {
       it("should create dynamic groups based on scene_id and ordered by timestamp", () => {
         // todo: investigate, "first()" is used to suppress this flakiness;
         // sometimes an extra element is rendered and the test fails
