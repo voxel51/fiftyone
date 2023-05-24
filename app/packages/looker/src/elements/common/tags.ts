@@ -118,7 +118,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -132,7 +132,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -146,7 +146,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -160,7 +160,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -174,7 +174,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -187,7 +187,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -276,7 +276,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements.push({
             color: getColor(coloring.pool, coloring.seed, v),
             title: value,
-            value,
+            value: tag,
           });
         });
       } else {
@@ -321,14 +321,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
-
-          if (!value.classifications?.length) continue;
-
           if (classifications) {
-            pushList(
-              LABEL_RENDERERS[field.embeddedDocType],
-              value.classifications
-            );
+            !value?.classifications?.length &&
+              pushList(
+                LABEL_RENDERERS[field.embeddedDocType],
+                value?.classifications
+              );
           } else {
             elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
           }
