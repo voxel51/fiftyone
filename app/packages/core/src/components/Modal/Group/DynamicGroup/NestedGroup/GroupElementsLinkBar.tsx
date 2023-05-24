@@ -215,7 +215,7 @@ const GroupElementsLinkBarImpl: React.FC<{
   fos.useEventHandler(document, "keydown", keyNavigationHandler);
 
   return (
-    <BarContainer>
+    <BarContainer data-cy="dynamic-group-pagination-bar">
       <Pagination
         count={elementsCount}
         siblingCount={1}
@@ -243,6 +243,7 @@ const GroupElementsLinkBarImpl: React.FC<{
 
       {elementsCount >= 10 && (
         <input
+          data-cy="dynamic-group-pagination-bar-input"
           ref={textBoxRef}
           className={style.currentPageInput}
           value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
