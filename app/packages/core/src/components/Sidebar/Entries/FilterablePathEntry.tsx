@@ -318,7 +318,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!disabled && !isLabelTag && (
+          {!disabled && !(modal && isLabelTag) && (
             <Checkbox
               checked={active}
               title={`Show ${path}`}
