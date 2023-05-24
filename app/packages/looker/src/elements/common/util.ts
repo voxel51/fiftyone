@@ -118,8 +118,10 @@ export const getColorFromOptions = ({
     if (setting) {
       key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.valueColors?.find(
-        (l) => l.value?.toString() == param[key]?.toString()
+      const labelColor = setting.valueColors?.find((l) =>
+        ["none", "null", "undefined"].includes(l.value?.toLowerCase())
+          ? !param[key]
+          : l.value?.toString() == param[key]?.toString()
       )?.color;
       if (isValidColor(labelColor)) {
         return labelColor;

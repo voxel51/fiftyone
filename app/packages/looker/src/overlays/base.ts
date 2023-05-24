@@ -116,8 +116,10 @@ export abstract class CoordinateOverlay<
             : field.colorByAttribute
           : "label";
         // check if this label has a assigned color, use it if it is a valid color
-        const labelColor = field.valueColors?.find(
-          (l) => l.value?.toString() == this.label[key]?.toString()
+        const labelColor = field.valueColors?.find((l) =>
+          ["none", "null", "undefined"].includes(l.value?.toLowerCase())
+            ? !this.label[key]
+            : l.value?.toString() == this.label[key]?.toString()
         )?.color;
 
         return isValidColor(labelColor)
