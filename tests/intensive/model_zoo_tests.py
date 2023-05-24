@@ -43,9 +43,17 @@ def test_semantic_segmentation_models():
 
 def test_sam():
     models = ["segment-anything-vit_b-torch"]
+    # box prompts
     _apply_models(
         models,
-        max_samples=1,
+        max_samples=3,
+        batch_size=2,
+        apply_kwargs=dict(boxes_from="ground_truth"),
+    )
+    # auto mask generation
+    _apply_models(
+        models,
+        max_samples=2,
         model_kwargs=dict(pred_iou_thresh=0.9, min_mask_region_area=200),
     )
 
@@ -111,11 +119,14 @@ def _apply_models(
     pass_confidence_thresh=False,
     max_samples=10,
     model_kwargs=None,
+    apply_kwargs=None,
 ):
     if pass_confidence_thresh:
         kwargs = {"confidence_thresh": confidence_thresh}
     else:
         kwargs = {}
+    if apply_kwargs:
+        kwargs.update(apply_kwargs)
 
     dataset = foz.load_zoo_dataset(
         "coco-2017",
