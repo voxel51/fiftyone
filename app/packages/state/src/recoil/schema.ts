@@ -212,6 +212,7 @@ export const fieldPaths = selectorFamily<
         throw new Error("path and space provided");
       }
 
+      // use { flat: true } to get schema's dynamic fields included
       const sampleFields = get(
         fieldSchema({ space: State.SPACE.SAMPLE, flat: true })
       );
