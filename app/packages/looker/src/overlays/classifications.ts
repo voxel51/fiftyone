@@ -201,11 +201,13 @@ export class ClassificationsOverlay<
   protected getFiltered(state: Readonly<State>): Labels<Label> {
     return this.labels.map(([field, labels]) => [
       field,
-      labels.filter(
-        (label) =>
-          MOMENT_CLASSIFICATIONS.includes(label._cls) &&
-          isShown(state, field, label)
-      ),
+      Array.isArray(labels)
+        ? labels.filter(
+            (label) =>
+              MOMENT_CLASSIFICATIONS.includes(label._cls) &&
+              isShown(state, field, label)
+          )
+        : [],
     ]);
   }
 
