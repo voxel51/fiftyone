@@ -21,6 +21,7 @@ from .executor import (
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 from fiftyone.utils.decorators import route_requires_auth
+from .registry import OperatorRegistry
 
 
 def _get_operator_registry_for_route(
