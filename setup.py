@@ -73,9 +73,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.11,<0.12",
+    "fiftyone-brain>=0.12,<0.13",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.9,<0.10",
+    "voxel51-eta>=0.10,<0.11",
 ]
 
 

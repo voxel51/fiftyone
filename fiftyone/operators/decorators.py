@@ -1,7 +1,14 @@
+"""
+FiftyOne operator decorators.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import asyncio
-import signal
 from contextlib import contextmanager
 from functools import wraps
+import signal
 
 
 def coroutine_timeout(seconds):

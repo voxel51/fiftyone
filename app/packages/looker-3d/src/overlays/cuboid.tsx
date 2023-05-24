@@ -21,6 +21,13 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
+  const geo = React.useMemo(
+    () => dimensions && new THREE.BoxGeometry(...dimensions),
+    [dimensions]
+  );
+
+  if (!location || !dimensions) return null;
+
   const [x, y, z] = location;
 
   // @todo: add comment to add more context on what legacy coordinates means
@@ -31,11 +38,6 @@ export const Cuboid = ({
   const itemRotationVec = new THREE.Vector3(...itemRotation);
   const resolvedRotation = new THREE.Vector3(...rotation);
   const actualRotation = resolvedRotation.add(itemRotationVec).toArray();
-
-  const geo = React.useMemo(
-    () => new THREE.BoxGeometry(...dimensions),
-    [dimensions]
-  );
 
   return (
     <>

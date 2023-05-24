@@ -261,8 +261,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
+            const v = coloring.by === "value" ? tag : "tags";
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, tag),
+              color: getColor(coloring.pool, coloring.seed, v),
               title: tag,
               value: tag,
             });
@@ -271,8 +272,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       } else if (path === "_label_tags") {
         Object.entries(sample._label_tags).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
+          const v = coloring.by === "value" ? tag : path;
           elements.push({
-            color: getColor(coloring.pool, coloring.seed, path),
+            color: getColor(coloring.pool, coloring.seed, v),
             title: value,
             value,
           });
@@ -319,6 +321,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
+
+          if (!value.classifications?.length) continue;
 
           if (classifications) {
             pushList(

@@ -101,3 +101,4 @@ pages on this site apply to Teams deployments as well.
     Management SDK <management_sdk>
     Plugins <teams_plugins>
     Migrations <migrations>
+    API Connection <api_connection>

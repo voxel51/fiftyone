@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import json
 import logging
 import os
+from packaging.requirements import Requirement
 import re
 import shutil
 
@@ -19,7 +20,8 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.core.config as foc
+import fiftyone.constants as foc
+from fiftyone.core.config import locate_app_config
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
@@ -61,16 +63,10 @@ def list_plugins(enabled=True):
 
     plugins = []
     for p in _list_plugins(enabled=enabled):
-        metadata_path = _find_plugin_metadata_file(p.path)
         try:
-            pd = PluginDefinition.from_disk(metadata_path)
+            plugins.append(_load_plugin_definition(p))
         except:
-            logger.debug(
-                f"Failed to load plugin metadata from '{metadata_path}'"
-            )
-            continue
-
-        plugins.append(pd)
+            logger.debug(f"Failed to parse plugin at '{p.path}'")
 
     return plugins
 
@@ -99,10 +95,9 @@ def delete_plugin(plugin_name):
     Args:
         plugin_name: the plugin name
     """
-    plugin_dir = _find_plugin(plugin_name)
-
+    plugin = _get_plugin(plugin_name)
     _update_plugin_settings(plugin_name, delete=True)
-    etau.delete_dir(plugin_dir)
+    etau.delete_dir(plugin.path)
 
 
 def list_downloaded_plugins():
@@ -132,18 +127,30 @@ def list_disabled_plugins():
     return _list_plugins_by_name(enabled=False)
 
 
-def find_plugin(name, check_for_duplicates=True):
+def get_plugin(name):
+    """Gets the definition for the given plugin.
+
+    Args:
+        name: the plugin name
+
+    Returns:
+        a :class:`PluginDefinition`
+    """
+    plugin = _get_plugin(name)
+    return _load_plugin_definition(plugin)
+
+
+def find_plugin(name):
     """Returns the path to the plugin on local disk.
 
     Args:
         name: the plugin name
-        check_for_duplicates (True): whether to ensure that multiple plugins
-            with the given name do not exist
 
     Returns:
         the path to the plugin directory
     """
-    return _find_plugin(name, check_for_duplicates=check_for_duplicates)
+    plugin = _get_plugin(name)
+    return plugin.path
 
 
 def download_plugin(
@@ -157,8 +164,8 @@ def download_plugin(
 
     .. note::
 
-        To download a plugin from a private GitHub repository that you have
-        access to, provide your GitHub personal access token by setting the
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
         ``GITHUB_TOKEN`` environment variable.
 
     Args:
@@ -187,62 +194,31 @@ def download_plugin(
     Returns:
         a dict mapping plugin names to plugin directories on disk
     """
+    url = None
+    repo = None
     if etaw.is_url(url_or_gh_repo):
         if "github" in url_or_gh_repo:
             repo = GitHubRepository(url_or_gh_repo)
-            url = repo.download_url
-            ext = ".zip"
         else:
             url = url_or_gh_repo
-            ext = None
     else:
         repo = GitHubRepository(url_or_gh_repo)
-        url = repo.download_url
-        ext = ".zip"
 
-    return _download_plugin(
-        url,
-        ext=ext,
-        plugin_names=plugin_names,
-        max_depth=max_depth,
-        overwrite=overwrite,
-    )
-
-
-def _download_plugin(
-    url,
-    ext=None,
-    plugin_names=None,
-    max_depth=3,
-    overwrite=False,
-):
     if etau.is_str(plugin_names):
         plugin_names = {plugin_names}
     elif plugin_names is not None:
         plugin_names = set(plugin_names)
 
-    archive_name = os.path.basename(url)
-    if not os.path.splitext(archive_name)[1]:
-        if ext is None:
-            raise ValueError(
-                "Cannot infer an appropriate archive type for '{url}'"
-            )
-
-        archive_name += ext
-
     existing_plugin_dirs = {p.name: p.path for p in _list_plugins()}
 
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
-        archive_path = os.path.join(tmpdir, archive_name)
-        session = etaw.WebSession()
-        token = os.environ.get("GITHUB_TOKEN", None)
-        if token:
-            logger.debug("Using GitHub token as authorization for download")
-            session.sess.headers.update({"Authorization": "token " + token})
-
-        session.write(archive_path, url)
-        etau.extract_archive(archive_path)
+        if repo is not None:
+            logger.info(f"Downloading {repo.identifier}...")
+            repo.download(tmpdir)
+        else:
+            logger.info(f"Downloading {url}...")
+            _download_archive(url, tmpdir)
 
         metadata_paths = _find_plugin_metadata_files(
             os.path.join(tmpdir, "*"),
@@ -276,17 +252,142 @@ def _download_plugin(
                 etau.delete_dir(existing_dir)
                 plugin_dir = existing_dir
             else:
-                # @todo maintain `<org>/<user>/<plugin_name>` structure for
-                # plugins downloaded from github?
-                plugin_dir = _recommend_plugin_dir(
-                    plugin.name, src_dir=plugin.path
-                )
+                plugin_dir = _recommend_plugin_dir(plugin.name)
 
             logger.info(f"Copying plugin '{plugin.name}' to '{plugin_dir}'")
             etau.copy_dir(plugin.path, plugin_dir)
             downloaded_plugins[plugin.name] = plugin_dir
 
+    if plugin_names is not None:
+        missing_plugins = set(plugin_names) - set(downloaded_plugins.keys())
+        if missing_plugins:
+            logger.warning(f"Plugins not found: {missing_plugins}")
+
     return downloaded_plugins
+
+
+def _download_archive(url, outdir):
+    archive_name = os.path.basename(url)
+    if not os.path.splitext(archive_name)[1]:
+        raise ValueError("Cannot infer appropriate archive type for '{url}'")
+
+    archive_path = os.path.join(outdir, archive_name)
+    etaw.download_file(url, path=archive_path)
+    etau.extract_archive(archive_path)
+
+
+def load_plugin_requirements(plugin_name):
+    """Loads the Python package requirements associated with the given plugin,
+    if any.
+
+    Args:
+        plugin_name: the plugin name
+
+    Returns:
+        a list of requirement strings, or ``None``
+    """
+    req_path = _find_requirements(plugin_name)
+    return fou.load_requirements(req_path) if req_path else None
+
+
+def install_plugin_requirements(plugin_name, error_level=None):
+    """Installs any Python package requirements associated with the given
+    plugin.
+
+    Args:
+        plugin_name: the plugin name
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    req_path = _find_requirements(plugin_name)
+    if req_path:
+        fou.install_requirements(req_path, error_level=error_level)
+
+
+def ensure_plugin_requirements(
+    plugin_name, error_level=None, log_success=False
+):
+    """Ensures that any Python package requirements associated with the given
+    plugin are installed.
+
+    Args:
+        plugin_name: the plugin name
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+
+    req_path = _find_requirements(plugin_name)
+    if req_path:
+        fou.ensure_requirements(
+            req_path, error_level=error_level, log_success=log_success
+        )
+
+
+def _find_requirements(plugin_name):
+    plugin_dir = find_plugin(plugin_name)
+    req_path = os.path.join(plugin_dir, "requirements.txt")
+    if os.path.isfile(req_path):
+        return req_path
+
+    logger.info(f"No requirements.txt found for '{plugin_name}")
+    return None
+
+
+def ensure_plugin_compatibility(
+    plugin_name, error_level=None, log_success=False
+):
+    """Ensures that the given plugin is compatibile with your current FiftyOne
+    pacakge version.
+
+    Args:
+        plugin_name: the plugin name
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if plugin is not compatibile
+            -   1: log warning if plugin is not satisifed
+            -   2: ignore fiftyone compatibility requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if the plugin is
+            compatible
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    pd = get_plugin(plugin_name)
+    req_str = pd.fiftyone_requirement
+    if req_str is None:
+        return
+
+    try:
+        req = Requirement(req_str)
+    except:
+        logger.warning(
+            f"Unable to understand plugin {plugin_name}'s fiftyone version '{pd.fiftyone_compatibility}'"
+        )
+        return
+
+    if not req.specifier.contains(foc.VERSION):
+        exception = ImportError(
+            f"Plugin {plugin_name} requires {req_str} but you are running {foc.VERSION}, which is not compatible"
+        )
+        fou.handle_error(exception, error_level)
+    elif log_success:
+        logger.info(
+            f"Plugin {plugin_name} is compatible: requires {req_str} (found {foc.VERSION})"
+        )
 
 
 def create_plugin(
@@ -453,32 +554,38 @@ def _iter_plugin_metadata_files():
         return
 
     for root, dirs, files in os.walk(plugins_dir, followlinks=True):
-        # ignore hidden directories
-        dirs[:] = [d for d in dirs if not re.search(r"^[._]", d)]
+        # Ignore hidden directories
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
         for file in files:
             if _is_plugin_metadata_file(file):
                 yield os.path.join(root, file)
-                files[:] = []
+                dirs[:] = []  # stop traversing `root` once we find a plugin
+                break
 
 
-def _find_plugin(name, check_for_duplicates=False):
-    plugin_dir = None
-    for plugin in _list_plugins():
-        if name == plugin.name:
-            if check_for_duplicates and plugin_dir is not None:
+def _get_plugin(name, enabled=None, check_for_duplicates=True):
+    plugin = None
+    for _plugin in _list_plugins(enabled=enabled):
+        if _plugin.name == name:
+            if check_for_duplicates and plugin is not None:
                 raise ValueError(f"Multiple plugins found with name '{name}'")
 
-            plugin_dir = plugin.path
+            plugin = _plugin
 
-    if plugin_dir is None:
+    if plugin is None:
         raise ValueError(f"Plugin '{name}' not found")
 
-    return plugin_dir
+    return plugin
+
+
+def _load_plugin_definition(plugin):
+    metadata_path = _find_plugin_metadata_file(plugin.path)
+    return PluginDefinition.from_disk(metadata_path)
 
 
 def _list_disabled_plugins():
     try:
-        with open(foc.locate_app_config(), "r") as f:
+        with open(locate_app_config(), "r") as f:
             app_config = json.load(f)
     except:
         return {}
@@ -490,22 +597,22 @@ def _list_disabled_plugins():
 def _recommend_plugin_dir(plugin_name, src_dir=None):
     plugins_dir = fo.config.plugins_dir
     if os.path.isdir(plugins_dir):
-        existing_dirs = set(os.listdir(plugins_dir))
+        existing_dirs = etau.list_subdirs(plugins_dir, recursive=True)
     else:
         existing_dirs = set()
 
-    # First maintain the input directory name
+    # Use `src_dir` if provided
     if src_dir is not None:
         dirname = os.path.basename(src_dir)
         if dirname not in existing_dirs:
             return os.path.join(plugins_dir, dirname)
 
-    # Then use raw plugin name
-    name = plugin_name
+    # Else use directory-ified plugin name
+    name = os.path.join(*plugin_name.split("/"))  # Windows compatibility
     if name not in existing_dirs:
         return os.path.join(plugins_dir, name)
 
-    # Else generate a unique name based on the plugin's name
+    # Else generate a unique name based on the plugin name
     unique_name = None
     i = 2
     while True:
@@ -525,14 +632,14 @@ def _recommend_label(name):
 
 def _update_plugin_settings(plugin_name, enabled=None, delete=False, **kwargs):
     # This would ensure that the plugin actually exists
-    # _find_plugin(plugin_name)
+    # _get_plugin(plugin_name)
 
     # Plugins are enabled by default, so if we can't read the App config or it
     # doesn't exist, don't do anything
     okay_missing = enabled in (True, None) and not kwargs
 
     # Load existing App config, if any
-    app_config_path = foc.locate_app_config()
+    app_config_path = locate_app_config()
     if os.path.isfile(app_config_path):
         try:
             with open(app_config_path, "rt") as f:

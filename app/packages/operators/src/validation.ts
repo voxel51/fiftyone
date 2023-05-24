@@ -45,7 +45,13 @@ export class ValidationContext {
     const { type } = property;
     const valueIsNullish = isNullish(value);
     if (property.invalid) {
-      this.addError(new ValidationError("Invalid property", property, path));
+      this.addError(
+        new ValidationError(
+          property.errorMessage || "Invalid property",
+          property,
+          path
+        )
+      );
     } else if (property.required && valueIsNullish) {
       this.addError(new ValidationError("Required property", property, path));
     } else if (type instanceof Enum && !valueIsNullish) {

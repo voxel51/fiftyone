@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b736b15dd60e3bd66872789202320661>>
+ * @generated SignedSource<<7ef0138316d531c3ab955081d6692334>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,14 +11,24 @@
 import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type viewSchemaFragment$data = {
-  readonly schemaForViewStages: ReadonlyArray<{
-    readonly description: string | null;
-    readonly embeddedDocType: string | null;
-    readonly ftype: string;
-    readonly info: object | null;
-    readonly path: string;
-    readonly subfield: string | null;
-  }> | null;
+  readonly schemaForViewStages: {
+    readonly fieldSchema: ReadonlyArray<{
+      readonly description: string | null;
+      readonly embeddedDocType: string | null;
+      readonly ftype: string;
+      readonly info: object | null;
+      readonly path: string;
+      readonly subfield: string | null;
+    } | null>;
+    readonly frameFieldSchema: ReadonlyArray<{
+      readonly description: string | null;
+      readonly embeddedDocType: string | null;
+      readonly ftype: string;
+      readonly info: object | null;
+      readonly path: string;
+      readonly subfield: string | null;
+    } | null>;
+  } | null;
   readonly " $fragmentType": "viewSchemaFragment";
 };
 export type viewSchemaFragment$key = {
@@ -28,7 +38,52 @@ export type viewSchemaFragment$key = {
 
 import viewSchemaFragmentQuery_graphql from './viewSchemaFragmentQuery.graphql';
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = [
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "path",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "ftype",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "subfield",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "embeddedDocType",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "info",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "description",
+    "storageKey": null
+  }
+];
+return {
   "argumentDefinitions": [
     {
       "kind": "RootArgument",
@@ -63,51 +118,29 @@ const node: ReaderFragment = {
           "variableName": "viewStages"
         }
       ],
-      "concreteType": "SampleField",
+      "concreteType": "SchemaResult",
       "kind": "LinkedField",
       "name": "schemaForViewStages",
-      "plural": true,
+      "plural": false,
       "selections": [
         {
           "alias": null,
           "args": null,
-          "kind": "ScalarField",
-          "name": "path",
+          "concreteType": "SampleField",
+          "kind": "LinkedField",
+          "name": "fieldSchema",
+          "plural": true,
+          "selections": (v0/*: any*/),
           "storageKey": null
         },
         {
           "alias": null,
           "args": null,
-          "kind": "ScalarField",
-          "name": "ftype",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "subfield",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "embeddedDocType",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "info",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "description",
+          "concreteType": "SampleField",
+          "kind": "LinkedField",
+          "name": "frameFieldSchema",
+          "plural": true,
+          "selections": (v0/*: any*/),
           "storageKey": null
         }
       ],
@@ -117,7 +150,8 @@ const node: ReaderFragment = {
   "type": "Query",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "f0d986e992cfda1ea89e036a79e55e81";
+(node as any).hash = "b744bc5d77c4fb64ec357da7669d4f0f";
 
 export default node;

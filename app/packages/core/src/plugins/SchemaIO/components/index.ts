@@ -27,6 +27,7 @@ export { default as LinkView } from "./LinkView";
 export { default as ListView } from "./ListView";
 export { default as LoadingView } from "./LoadingView";
 export { default as MapView } from "./MapView";
+export { default as MarkdownView } from "./MarkdownView";
 export { default as ObjectView } from "./ObjectView";
 export { default as OneOfView } from "./OneOfView";
 export { default as PlotlyView } from "./PlotlyView";
