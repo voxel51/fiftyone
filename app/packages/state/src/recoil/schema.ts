@@ -349,10 +349,7 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
       const allSet = new Set(flatLabelFieldsBase);
       const flatLabelFields = flatLabelFieldsBase.filter((pp) => {
         const parentPath = pp.substring(0, pp.lastIndexOf("."));
-        if (parentPath && parentPath !== pp && allSet.has(parentPath)) {
-          return false;
-        }
-        return true;
+        return !(parentPath && parentPath !== pp && allSet.has(parentPath));
       });
 
       const dynamicLabelFields = paths

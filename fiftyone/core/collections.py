@@ -9559,7 +9559,8 @@ class SampleCollection(object):
     def _get_sample_label_fields(self):
         return list(
             self.get_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+                ftype=fof.EmbeddedDocumentField,
+                embedded_doc_type=fol.Label,
             ).keys()
         )
 
@@ -9570,7 +9571,8 @@ class SampleCollection(object):
         return [
             self._FRAMES_PREFIX + field
             for field in self.get_frame_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+                ftype=fof.EmbeddedDocumentField,
+                embedded_doc_type=fol.Label,
             ).keys()
         ]
 
@@ -9658,7 +9660,12 @@ class SampleCollection(object):
         label_type = self._get_label_field_type(field_name)
 
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-            field_name += "." + label_type._LABEL_LIST_FIELD
+            # some fields (including dynamic fields) with labels might
+            # come daisy.chained already. ex: custom_document.detections
+            if not "." in field_name:
+                field_name += "." + label_type._LABEL_LIST_FIELD
+            else:
+                field_name = field_name[0 : field_name.index(".")]
 
         if subfield:
             field_path = field_name + "." + subfield
