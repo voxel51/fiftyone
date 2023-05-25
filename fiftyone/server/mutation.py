@@ -253,7 +253,7 @@ class Mutation:
             saved_view_slug=fou.to_slug(view_name)
             if view_name
             else fou.to_slug(state.view.name)
-            if state.view
+            if state.view and state.view.name
             else None,
             info=info,
         )
@@ -453,11 +453,13 @@ class Mutation:
 
         state = get_state()
         dataset = state.dataset
+        isVideo = dataset.media_type == "video"
         if dataset is None:
             dataset = fod.load_dataset(dataset_name)
 
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
+            print("\nmeta_filter\n", meta_filter)
         except Exception as e:
             try:
                 view = dataset.select_fields(meta_filter)
@@ -470,9 +472,7 @@ class Mutation:
             for stage in view._stages:
                 res += [
                     st
-                    for st in stage.get_selected_fields(
-                        view, frames=dataset.media_type == "video"
-                    )
+                    for st in stage.get_selected_fields(view, frames=isVideo)
                 ]
         except Exception as e:
             print("failed to get_selected_fields", e)

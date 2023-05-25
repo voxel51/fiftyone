@@ -2,12 +2,12 @@ import {
   FrameLooker,
   ImageLooker,
   PcdLooker,
-  VideoLooker
+  VideoLooker,
 } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   getMimeType,
-  LIST_FIELD
+  LIST_FIELD,
 } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -47,7 +47,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   );
 
   const create = useCallback(
-    ({ frameNumber, frameRate, sample, urls }: SampleData): T => {
+    ({ frameNumber, frameRate, sample, urls: rawUrls }: SampleData): T => {
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
@@ -55,6 +55,19 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         | typeof VideoLooker = ImageLooker;
 
       const mimeType = getMimeType(sample);
+
+      let urls = {};
+
+      // sometimes the urls are an array of objects, sometimes they are just an object
+      // this is a workaround to make sure we can handle both cases
+      // todo: investigate why this is the case
+      if (Array.isArray(rawUrls)) {
+        for (const { field, url } of rawUrls) {
+          urls[field] = url;
+        }
+      } else {
+        urls = rawUrls;
+      }
 
       // checking for pcd extension instead of media_type because this also applies for group slices
       if (urls.filepath?.endsWith(".pcd")) {

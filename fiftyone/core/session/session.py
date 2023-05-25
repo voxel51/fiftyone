@@ -14,6 +14,7 @@ except ImportError:
     import importlib_metadata as metadata
 
 import logging
+import os
 from packaging.requirements import Requirement
 import time
 import typing as t
@@ -25,6 +26,8 @@ try:
     import IPython.display
 except:
     pass
+
+import eta.core.serial as etas
 
 import fiftyone as fo
 import fiftyone.core.odm.dataset as food
@@ -102,6 +105,27 @@ _WAIT_INSTRUCTIONS = """
 A session appears to have terminated shortly after it was started. If you
 intended to start an App instance or a remote session from a script, you should
 call `session.wait()` to keep the session (and the script) alive.
+"""
+
+_WELCOME_MESSAGE = """
+Welcome to
+
+███████╗██╗███████╗████████╗██╗   ██╗ ██████╗ ███╗   ██╗███████╗
+██╔════╝██║██╔════╝╚══██╔══╝╚██╗ ██╔╝██╔═══██╗████╗  ██║██╔════╝
+█████╗  ██║█████╗     ██║    ╚████╔╝ ██║   ██║██╔██╗ ██║█████╗
+██╔══╝  ██║██╔══╝     ██║     ╚██╔╝  ██║   ██║██║╚██╗██║██╔══╝
+██║     ██║██║        ██║      ██║   ╚██████╔╝██║ ╚████║███████╗
+╚═╝     ╚═╝╚═╝        ╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝ v{0}
+
+If you're finding FiftyOne helpful, here's how you can get involved:
+
+|
+|  ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
+|  https://github.com/voxel51/fiftyone
+|
+|  🚀🚀🚀 Join the FiftyOne Slack community 🚀🚀🚀
+|  https://slack.voxel51.com
+|
 """
 
 
@@ -195,6 +219,8 @@ def launch_app(
             logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
         logger.info(_APP_WEB_MESSAGE.strip().format(_session.server_port))
+
+    _log_welcome_message_if_allowed()
 
     return _session
 
@@ -1204,3 +1230,26 @@ def build_color_scheme(
         color_scheme.color_pool = app_config.color_pool
 
     return color_scheme
+
+
+def _log_welcome_message_if_allowed():
+    """Logs a welcome message the first time this function is called on a
+    machine with a new FiftyOne version installed, if allowed.
+    """
+    if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
+    try:
+        last_version = etas.load_json(focn.WELCOME_PATH)["version"]
+    except:
+        last_version = None
+
+    if focn.VERSION == last_version:
+        return
+
+    logger.info(_WELCOME_MESSAGE.format(focn.VERSION))
+
+    try:
+        etas.write_json({"version": focn.VERSION}, focn.WELCOME_PATH)
+    except:
+        pass

@@ -32,6 +32,7 @@ const LabelTagFieldFilter = ({
       countsAtom={labelTagsCount({ modal, extended: false })}
       path={path}
       modal={modal}
+      color={color}
       {...rest}
     />
   );

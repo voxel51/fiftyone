@@ -3,6 +3,7 @@ import { selector, selectorFamily } from "recoil";
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   getColor,
   hexToRgb,
   RGB,
@@ -78,22 +79,31 @@ export const pathColor = selectorFamily<
       // video path tweak
       const field = get(schemaAtoms.field(path));
       const video = get(selectors.mediaTypeSelector) !== "image";
+
       const parentPath =
         video && path.startsWith("frames.")
           ? path.split(".").slice(0, 2).join(".")
           : path.split(".")[0];
-      const adjustedPath = field?.embeddedDocType
+
+      let adjustedPath = field?.embeddedDocType
         ? parentPath.startsWith("frames.")
           ? parentPath.slice("frames.".length)
           : parentPath
         : path;
 
+      if (
+        get(schemaAtoms.field(adjustedPath))?.embeddedDocType ===
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2
+      ) {
+        adjustedPath = path;
+      }
+
       const setting = get(atoms.sessionColorScheme)?.fields?.find(
         (x) => x.path === adjustedPath
       );
 
-      if (isValidColor(setting?.fieldColor)) {
-        return setting.fieldColor;
+      if (isValidColor(setting?.fieldColor ?? "")) {
+        return setting!.fieldColor;
       }
 
       const map = get(colorMap(modal));

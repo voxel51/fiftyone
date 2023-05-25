@@ -60,6 +60,7 @@ export class ClassificationsOverlay<
       ? field.slice("frames.".length)
       : field;
     const setting = customizeColorSetting.find((s) => s.path === f);
+
     // check if the field has a customized color, use it if it is a valid color
     if (
       coloring.by === "field" &&
@@ -71,12 +72,25 @@ export class ClassificationsOverlay<
 
     if (coloring.by !== "field") {
       key = setting?.colorByAttribute ?? key;
+
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting?.valueColors?.find(
-        (l) => l.value?.toString() == label[key]?.toString()
-      )?.color;
-      if (isValidColor(labelColor)) {
-        return labelColor;
+      const valueColor = setting?.valueColors?.find((l) => {
+        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+          return typeof label[key] === "string"
+            ? l.value?.toLowerCase === label[key]
+            : !label[key];
+        }
+        if (["True", "False"].includes(l.value?.toString())) {
+          return (
+            l.value?.toString().toLowerCase() ==
+            label[key]?.toString().toLowerCase()
+          );
+        }
+        return l.value?.toString() == label[key]?.toString();
+      })?.color;
+
+      if (isValidColor(valueColor)) {
+        return valueColor;
       }
 
       // fallback to use label as default attribute
@@ -189,11 +203,13 @@ export class ClassificationsOverlay<
   protected getFiltered(state: Readonly<State>): Labels<Label> {
     return this.labels.map(([field, labels]) => [
       field,
-      labels.filter(
-        (label) =>
-          MOMENT_CLASSIFICATIONS.includes(label._cls) &&
-          isShown(state, field, label)
-      ),
+      Array.isArray(labels)
+        ? labels.filter(
+            (label) =>
+              MOMENT_CLASSIFICATIONS.includes(label._cls) &&
+              isShown(state, field, label)
+          )
+        : [],
     ]);
   }
 

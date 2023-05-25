@@ -35,12 +35,22 @@ export const PainterFactory = (requestColor) => ({
             ? "id"
             : setting.colorByAttribute
           : "label";
-        const labelColor = setting.valueColors?.find(
-          (l) => l.value?.toString() === label[key]?.toString()
-        )?.color;
-
-        color = labelColor
-          ? labelColor
+        const valueColor = setting?.valueColors?.find((l) => {
+          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+            return typeof label[key] === "string"
+              ? l.value?.toLowerCase === label[key]
+              : !label[key];
+          }
+          if (["True", "False"].includes(l.value?.toString())) {
+            return (
+              l.value?.toString().toLowerCase() ==
+              label[key]?.toString().toLowerCase()
+            );
+          }
+          return l.value?.toString() == label[key]?.toString();
+        })?.color;
+        color = valueColor
+          ? valueColor
           : await requestColor(coloring.pool, coloring.seed, label[key]);
       } else {
         color = await requestColor(coloring.pool, coloring.seed, label.label);

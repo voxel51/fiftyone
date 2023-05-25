@@ -102,3 +102,14 @@ export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
   });
   return normalizedMaskTargets;
 }
+
+export const convertId = (obj: Record<string, any>): Record<string, any> => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => {
+      if (Array.isArray(value)) {
+        return [key, value.map((item) => ({ ...item, id: item["_id"] }))];
+      }
+      return [key, value];
+    })
+  );
+};

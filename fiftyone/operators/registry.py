@@ -110,16 +110,4 @@ class OperatorRegistry(object):
             if operator_uri == operator.uri:
                 return operator
 
-    def can_execute(self, ctx):
-        return True
-
-
-def register_operator(operator):
-    """Registers a built-in operator. For internal use only.
-
-    Args:
-        operator: the operator to register
-    """
-    if operator.name in BUILTIN_OPERATORS:
-        raise ValueError("Operator '%s' already exists" % operator.name)
-    BUILTIN_OPERATORS[operator.name] = operator
+        return None

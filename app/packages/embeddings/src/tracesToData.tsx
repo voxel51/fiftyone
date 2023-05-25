@@ -79,11 +79,11 @@ export function tracesToData(
 }
 
 const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
-  if (!setting || !setting.labelColors) {
+  if (!setting || !setting.valueColors) {
     return null;
   }
 
-  const color = setting.labelColors.find((x) => x.name === key)?.color;
+  const color = setting.valueColors.find((x) => x.value === key)?.color;
   return getConvertedColor(color);
 };
 
