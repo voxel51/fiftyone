@@ -82,8 +82,8 @@ export const loadOverlays = <State extends BaseState>(
       classifications.push([
         dynamicField,
         dynamicLabel._cls in LABEL_LISTS_MAP
-          ? label[LABEL_LISTS_MAP[dynamicLabel._cls]]
-          : [label],
+          ? dynamicLabel[LABEL_LISTS_MAP[dynamicLabel._cls]]
+          : [dynamicLabel],
       ]);
     }
   }
