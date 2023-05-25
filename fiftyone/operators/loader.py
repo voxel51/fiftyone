@@ -15,7 +15,7 @@ import fiftyone as fo
 import fiftyone.plugins as fop
 
 from .operator import Operator
-from .decorators import cached_based_on_dir
+from .decorators import plugins_cache
 
 KNOWN_PLUGIN_CONTEXTS = {}
 
@@ -137,7 +137,7 @@ def build_plugin_contexts(enabled=True):
     return plugin_contexts
 
 
-@cached_based_on_dir(fo.config.plugins_dir)
+@plugins_cache
 def register_all():
     """Registers all operators associated with all enabled plugins.
 

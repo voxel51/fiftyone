@@ -12,6 +12,8 @@ import signal
 import os
 from typing import Callable
 
+import fiftyone as fo
+
 
 def coroutine_timeout(seconds):
     def decorator(func):
@@ -58,13 +60,14 @@ def dir_state(dir_path: str) -> float:
     )
 
 
-def cached_based_on_dir(dir_path):
+def plugins_cache(func: Callable):
     cache = {}
     dir_state_cache = {"state": None}
+    dir_path = fo.config.plugins_dir
 
-    def decorator(func: Callable):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if fo.config.plugins_cache_enabled:
             # Get the modification time of the directory.
             current_dir_state = dir_state(dir_path)
             if current_dir_state != dir_state_cache["state"]:
@@ -73,7 +76,7 @@ def cached_based_on_dir(dir_path):
                 cache[current_dir_state] = func(*args, **kwargs)
                 dir_state_cache["state"] = current_dir_state
             return cache[current_dir_state]
+        else:
+            return func(*args, **kwargs)
 
-        return wrapper
-
-    return decorator
+    return wrapper
