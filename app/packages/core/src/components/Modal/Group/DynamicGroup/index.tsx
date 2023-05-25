@@ -3,7 +3,7 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { NestedGroup } from "./nested";
 import { UnorderedDynamicGroup } from "./simple/UnorderedDynamicGroup";
-import { OrderedDynamicGroup } from "./simple/OrderedDynamicGroup";
+import { OrderedDynamicGroup } from "./simple/ordered/OrderedDynamicGroup";
 
 export const DynamicGroup = () => {
   /**

@@ -73,7 +73,10 @@ const TabOption = ({
 
   return (
     <TabOptionDiv
-      style={style}
+      style={{
+        ...style,
+        ...(propStyle ?? {}),
+      }}
       onMouseEnter={() => set({ background: theme.background.body })}
       onMouseLeave={() => set({ background: theme.background.level1 })}
     >
@@ -85,7 +88,6 @@ const TabOption = ({
           title={title}
           style={{
             ...styles[i],
-            ...(propStyle ?? {}),
             cursor: text === active ? "default" : "pointer",
           }}
           onMouseEnter={() =>
