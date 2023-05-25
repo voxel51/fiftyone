@@ -509,7 +509,7 @@ def _parse_plugin_metadata(metadata_path):
     return PluginPackage(plugin_name, plugin_path)
 
 
-@cachetools.func.ttl_cache(ttl=60)
+@cachetools.func.ttl_cache(ttl=15)  # only reload from disk every 15 seconds
 def _list_plugins(enabled=None):
     plugins = []
     for metadata_path in _iter_plugin_metadata_files():

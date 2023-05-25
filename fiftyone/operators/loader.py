@@ -20,7 +20,7 @@ from .operator import Operator
 logger = logging.getLogger(__name__)
 
 
-@cachetools.func.ttl_cache(ttl=60)
+@cachetools.func.ttl_cache(ttl=15)  # only import modules every 15 seconds
 def build_plugin_contexts(enabled=True):
     """Returns contexts for all available plugins.
 
