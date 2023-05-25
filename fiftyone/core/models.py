@@ -363,13 +363,9 @@ def _apply_image_model_data_loader(
 
     samples = samples.select_fields(extra_fields)
     # we need to make sure classes are available in the samples
-    if (
-        extra_fields
-        and model.field_type == "detections"
-        and not samples.classes
-    ):
+    if extra_fields:
         class_labels = samples.values(
-            f"{model.needs_fields[0]}.detections.label"
+            f"{model.needs_fields[0]}.{model.field_type}.label"
         )
         class_labels = list(
             set(one for labels in class_labels for one in labels)
