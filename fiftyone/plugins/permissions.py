@@ -63,9 +63,11 @@ class ManagedOperators:
         )
 
     @classmethod
-    def for_request(cls, request, dataset_ids=None):
+    async def for_request(cls, request, dataset_ids=None):
         token = get_token_from_request(request)
-        raw_operators = get_available_operators(token, dataset_ids=dataset_ids)
+        raw_operators = await get_available_operators(
+            token, dataset_ids=dataset_ids
+        )
         return ManagedOperators.from_json(raw_operators)
 
 
