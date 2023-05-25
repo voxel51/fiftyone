@@ -100,10 +100,7 @@
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_b",
                     "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
-                    "image_dim": 1024,
-                    "image_mean": [123.675, 116.28, 103.53],
-                    "image_std": [58.395, 57.12, 57.375]
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
@@ -136,10 +133,7 @@
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_h",
                     "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
-                    "image_dim": 1024,
-                    "image_mean": [123.675, 116.28, 103.53],
-                    "image_std": [58.395, 57.12, 57.375]
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
@@ -172,10 +166,7 @@
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_l",
                     "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
-                    "image_dim": 1024,
-                    "image_mean": [123.675, 116.28, 103.53],
-                    "image_std": [58.395, 57.12, 57.375]
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
