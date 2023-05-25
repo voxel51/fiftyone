@@ -29,13 +29,15 @@ class PermissionedOperatorRegistry(OperatorRegistry):
         return self.managed_operators.has_operator(operator_uri)
 
     @classmethod
-    def from_list_request(cls, request):
+    async def from_list_request(cls, request):
         return PermissionedOperatorRegistry(
-            ManagedOperators.for_request(request),
+            await ManagedOperators.for_request(request),
         )
 
     @classmethod
-    def from_exec_request(cls, request, dataset_ids=None):
+    async def from_exec_request(cls, request, dataset_ids=None):
         return PermissionedOperatorRegistry(
-            ManagedOperators.for_request(request, dataset_ids=dataset_ids),
+            await ManagedOperators.for_request(
+                request, dataset_ids=dataset_ids
+            ),
         )

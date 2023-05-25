@@ -7,7 +7,8 @@ FiftyOne operator permissions.
 """
 from enum import Enum
 import os
-import requests
+import aiohttp
+import json
 
 
 class ManagedPlugins:
@@ -36,9 +37,9 @@ class ManagedPlugins:
         )
 
     @classmethod
-    def for_request(cls, request):
+    async def for_request(cls, request):
         token = get_token_from_request(request)
-        raw_plugins = get_available_plugins(token)
+        raw_plugins = await get_available_plugins(token)
         return ManagedPlugins.from_json(raw_plugins)
 
 
@@ -62,9 +63,11 @@ class ManagedOperators:
         )
 
     @classmethod
-    def for_request(cls, request, dataset_ids=None):
+    async def for_request(cls, request, dataset_ids=None):
         token = get_token_from_request(request)
-        raw_operators = get_available_operators(token, dataset_ids=dataset_ids)
+        raw_operators = await get_available_operators(
+            token, dataset_ids=dataset_ids
+        )
         return ManagedOperators.from_json(raw_operators)
 
 
@@ -128,25 +131,26 @@ def get_token_from_request(request):
 
 # an example using the requests module to make an request to a graphql
 # server returning the results in a dictionary
-def make_request(url, access_token, query, variables=None):
+async def make_request(url, access_token, query, variables=None):
     headers = {
         "Content-Type": "application/json",
         "Authorization": access_token,
     }
-    request = requests.post(
-        url, headers=headers, json={"query": query, "variables": variables}
-    )
-    if request.status_code == 200:
-        result = request.json()
-        if "errors" in result:
-            for error in result["errors"]:
-                print(error)
-            raise Exception(f"Query failed with errors. {query}")
-        return result
-    else:
-        raise Exception(
-            f"Query failed to run by returning code of {request.status_code}. {query}"
-        )
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            url, headers=headers, json={"query": query, "variables": variables}
+        ) as resp:
+            if resp.status == 200:
+                result = await resp.json()
+                if "errors" in result:
+                    for error in result["errors"]:
+                        print(error)
+                    raise Exception(f"Query failed with errors. {query}")
+                return result
+            else:
+                raise Exception(
+                    f"Query failed to run by returning code of {resp.status}. {query}"
+                )
 
 
 _AVAIL_OPERATORS_QUERY = """
@@ -171,8 +175,8 @@ query ListAvailablePlugins {
 _API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 
-def get_available_operators(token, dataset_ids=None, only_enabled=True):
-    result = make_request(
+async def get_available_operators(token, dataset_ids=None, only_enabled=True):
+    result = await make_request(
         f"{_API_URL}/graphql/v1",
         token,
         _AVAIL_OPERATORS_QUERY,
@@ -181,8 +185,8 @@ def get_available_operators(token, dataset_ids=None, only_enabled=True):
     return result.get("data", {}).get("operators", [])
 
 
-def get_available_plugins(token):
-    result = make_request(
+async def get_available_plugins(token):
+    result = await make_request(
         f"{_API_URL}/graphql/v1", token, _AVAIL_PLUGINS_QUERY
     )
     return result.get("data", {}).get("plugins", [])

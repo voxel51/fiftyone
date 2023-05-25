@@ -11,10 +11,11 @@ import os
 import sys
 import traceback
 
+import fiftyone as fo
 import fiftyone.plugins as fop
 
 from .operator import Operator
-
+from .decorators import plugins_cache
 
 KNOWN_PLUGIN_CONTEXTS = {}
 
@@ -136,6 +137,7 @@ def build_plugin_contexts(enabled=True):
     return plugin_contexts
 
 
+@plugins_cache
 def register_all():
     """Registers all operators associated with all enabled plugins.
 
