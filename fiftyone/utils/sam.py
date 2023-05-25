@@ -23,12 +23,18 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     Args:
         amg_kwargs: a dictionary of keyword arguments to pass to
             ``SamAutomaticMaskGenerator``
+        points_mask_index: an optional index of the mask to use for each Keypoint output
     """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
         self.amg_kwargs = self.parse_dict(d, "amg_kwargs", default={})
+        self.points_mask_index = self.parse_int(
+            d, "points_mask_index", default=None
+        )
+        if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
+            raise ValueError("mask_index must be 0, 1, or 2")
 
 
 class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
@@ -96,18 +102,58 @@ class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
         return dict(out=masks)
 
     def _forward_pass_points(self, inputs):
+        # we will change to instance segmentations
+        self._output_processor = fout.InstanceSegmenterOutputProcessor(
+            self.class_labels
+        )
+
         sam_predictor = SamPredictor(self._model)
-        for inp in inputs:
+        outputs = []
+        for inp, keypoints in zip(inputs, self.prompts):
             sam_predictor.set_image(self._to_numpy_input(inp))
+            h, w = inp.size(1), inp.size(2)
 
-    def predict_all(self, imgs, samples=None):
-        if samples is not None:
-            self.prompts = [
-                self.get_labels(samples)
-            ]  # tolist because ragged_batches=True
-            self.class_labels = self.get_classes(samples)
+            boxes, labels, scores, masks = [], [], [], []
 
-        return self._predict_all(imgs)
+            # each keypoints object will generate its own instance segmentation
+            for kp in keypoints.keypoints:
+                sam_points, sam_labels = generate_sam_points(kp.points, w, h)
+
+                multi_mask, mask_scores, _ = sam_predictor.predict(
+                    point_coords=sam_points,
+                    point_labels=sam_labels,
+                    multimask_output=True,
+                )
+                mask_index = (
+                    self.config.points_mask_index
+                    if self.config.points_mask_index
+                    else np.argmax(mask_scores)
+                )
+                mask = multi_mask[mask_index].astype(int)
+
+                # add boxes, labels, scores, and masks
+                if mask.any():
+                    boxes.append(_mask_to_box(mask))
+                    labels.append(self.class_labels.index(kp.label))
+                    scores.append(min(1.0, np.max(mask_scores)))
+                    masks.append(mask)
+
+            outputs.append(
+                {
+                    "boxes": torch.tensor(boxes, device=sam_predictor.device),
+                    "labels": torch.tensor(
+                        labels, device=sam_predictor.device
+                    ),
+                    "scores": torch.tensor(
+                        scores, device=sam_predictor.device
+                    ),
+                    "masks": torch.tensor(
+                        np.array(masks), device=sam_predictor.device
+                    ).unsqueeze(1),
+                }
+            )
+
+        return outputs
 
     def _forward_pass_boxes(self, inputs):
         # we have to change it to instance segmentations
@@ -156,19 +202,21 @@ class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
 
         return outputs
 
+    def predict_all(self, imgs, samples=None):
+        if samples is not None:
+            self.prompts = [
+                self.get_labels(samples)
+            ]  # tolist because ragged_batches=True
+            self.class_labels = self.get_classes(samples)
 
-def generate_sam_points(keypoints, label, w, h):
-    # Written by Jacob Marks
-    def scale_keypoint(p):
-        return [p[0] * w, p[1] * h]
+        return self._predict_all(imgs)
 
-    sam_points, sam_labels = [], []
-    for kp in keypoints:
-        if kp.label == label and kp.estimated_yes_no != "unsure":
-            sam_points.append(scale_keypoint(kp.points[0]))
-            sam_labels.append(bool(kp.estimated_yes_no == "yes"))
 
-    return np.array(sam_points), np.array(sam_labels)
+def generate_sam_points(points, w, h):
+    # Written by Jacob Marks, modified by me
+    scaled_points = np.array(points) * np.array([w, h])
+    labels = np.ones(len(points))
+    return scaled_points, labels
 
 
 def fo_to_sam(box, img_width, img_height):
@@ -181,3 +229,12 @@ def fo_to_sam(box, img_width, img_height):
     new_box[2] += new_box[0]
     new_box[3] += new_box[1]
     return np.round(new_box).astype(int)
+
+
+def _mask_to_box(mask):
+    pos_indices = np.where(mask)
+    minx = np.min(pos_indices[1])
+    maxx = np.max(pos_indices[1])
+    miny = np.min(pos_indices[0])
+    maxy = np.max(pos_indices[0])
+    return [minx, miny, maxx, maxy]

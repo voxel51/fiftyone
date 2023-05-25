@@ -9,6 +9,7 @@ All of these tests are designed to be run manually via::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import random
 import unittest
 
 import fiftyone as fo
@@ -41,19 +42,32 @@ def test_semantic_segmentation_models():
     _apply_models(models)
 
 
-def test_sam():
+def test_sam_keypoints():
     models = ["segment-anything-vit_b-torch"]
-    # box prompts
+    _apply_models(
+        models,
+        max_samples=3,
+        batch_size=2,
+        model_kwargs=dict(mask_index=1.05),
+        apply_kwargs=dict(points_from="ground_truth"),
+    )
+
+
+def test_sam_boxes():
+    models = ["segment-anything-vit_b-torch"]
     _apply_models(
         models,
         max_samples=3,
         batch_size=2,
         apply_kwargs=dict(boxes_from="ground_truth"),
     )
-    # auto mask generation
+
+
+def test_sam_amg():
+    models = ["segment-anything-vit_b-torch"]
     _apply_models(
         models,
-        max_samples=2,
+        max_samples=3,
         model_kwargs=dict(pred_iou_thresh=0.9, min_mask_region_area=200),
     )
 
@@ -112,6 +126,22 @@ def _get_models_with_tag(tag):
     return model_names
 
 
+def _detections_to_keypoint(detection_list):
+    """Create random points for each detection object and return Keypoints"""
+    results = []
+    for detection in detection_list:
+        n_points = random.randint(1, 5)
+        x1, y1, w, h = detection.bounding_box
+        rand_point = lambda: (
+            random.uniform(x1, x1 + w),
+            random.uniform(y1, y1 + h),
+        )
+        points = [rand_point() for _ in range(n_points)]
+        keypoint = fo.Keypoint(points=points, label=detection.label)
+        results.append(keypoint)
+    return fo.Keypoints(keypoints=results)
+
+
 def _apply_models(
     model_names,
     batch_size=None,
@@ -135,6 +165,13 @@ def _apply_models(
         shuffle=True,
         max_samples=max_samples,
     )
+    # generate keypoints for sam keypoints testing
+    if "points_from" in kwargs:
+        field = kwargs["points_from"]
+        detections = dataset.values(f"{field}.detections")
+        keypoints = [_detections_to_keypoint(d) for d in detections]
+        dataset.set_values(f"{field}-points", keypoints)
+        kwargs["points_from"] = f"{field}-points"
 
     for idx, model_name in enumerate(model_names, 1):
         print(
