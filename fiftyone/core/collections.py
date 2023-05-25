@@ -9660,12 +9660,7 @@ class SampleCollection(object):
         label_type = self._get_label_field_type(field_name)
 
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-            # some fields (including dynamic fields) with labels might
-            # come daisy.chained already. ex: custom_document.detections
-            if not "." in field_name:
-                field_name += "." + label_type._LABEL_LIST_FIELD
-            else:
-                field_name = field_name[0 : field_name.index(".")]
+            field_name += "." + label_type._LABEL_LIST_FIELD
 
         if subfield:
             field_path = field_name + "." + subfield
