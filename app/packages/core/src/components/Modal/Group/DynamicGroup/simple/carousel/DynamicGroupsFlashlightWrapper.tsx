@@ -19,7 +19,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import { useGroupContext } from "../../GroupContextProvider";
+import { useGroupContext } from "../../../GroupContextProvider";
 
 export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =
   "dynamic-groups-flashlight-container";

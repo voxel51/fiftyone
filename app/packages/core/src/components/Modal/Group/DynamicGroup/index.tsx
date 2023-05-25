@@ -1,8 +1,9 @@
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import { NestedGroup } from "./NestedGroup";
-import { UnorderedDynamicGroup } from "./UnorderedDynamicGroup";
+import { NestedGroup } from "./nested";
+import { UnorderedDynamicGroup } from "./simple/UnorderedDynamicGroup";
+import { OrderedDynamicGroup } from "./simple/OrderedDynamicGroup";
 
 export const DynamicGroup = () => {
   /**
@@ -17,8 +18,13 @@ export const DynamicGroup = () => {
 
   return (
     <>
-      {/* todo: different component for ordered dynamic group */}
-      {hasGroupSlices ? <NestedGroup /> : <UnorderedDynamicGroup />}
+      {hasGroupSlices ? (
+        <NestedGroup />
+      ) : orderBy ? (
+        <OrderedDynamicGroup />
+      ) : (
+        <UnorderedDynamicGroup />
+      )}
     </>
   );
 };

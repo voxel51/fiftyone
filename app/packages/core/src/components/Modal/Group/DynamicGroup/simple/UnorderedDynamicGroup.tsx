@@ -1,6 +1,6 @@
 import React from "react";
-import Sample from "../../Sample";
-import { useGroupContext } from "../GroupContextProvider";
+import Sample from "../../../Sample";
+import { useGroupContext } from "../../GroupContextProvider";
 import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
 
 export const UnorderedDynamicGroup = () => {
