@@ -14,6 +14,7 @@ import HeatmapOverlay, { getHeatmapPoints } from "./heatmap";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
+import { convertId } from "./util";
 
 const fromLabel = (overlayType) => (field, label) =>
   [new overlayType(field, label)];
@@ -63,7 +64,7 @@ export const loadOverlays = <State extends BaseState>(
 
     const dynamicLabel =
       label._cls === "DynamicEmbeddedDocument"
-        ? Object.entries(label)[1][1]
+        ? convertId(Object.entries(label)[1][1])
         : label;
     const dynamicField =
       label._cls === "DynamicEmbeddedDocument"

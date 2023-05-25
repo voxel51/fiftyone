@@ -124,7 +124,9 @@ export const getColorFromOptions = ({
       // check if this label has a assigned color, use it if it is a valid color
       const valueColor = setting?.valueColors?.find((l) => {
         if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-          return !param[key];
+          return typeof param[key] === "string"
+            ? l.value?.toLowerCase === param[key]
+            : !param[key];
         }
         if (["True", "False"].includes(l.value?.toString())) {
           return (
@@ -171,7 +173,9 @@ export const getColorFromOptionsPrimitives = ({
       // check if this label has a assigned color, use it if it is a valid color
       const valueColor = setting.valueColors?.find((l) => {
         if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-          return !value;
+          return typeof value === "string"
+            ? l.value?.toLowerCase === value
+            : !value;
         }
         if (["True", "False"].includes(l.value?.toString())) {
           return (

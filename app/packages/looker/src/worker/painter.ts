@@ -37,7 +37,9 @@ export const PainterFactory = (requestColor) => ({
           : "label";
         const valueColor = setting?.valueColors?.find((l) => {
           if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-            return !label[key];
+            return typeof label[key] === "string"
+              ? l.value?.toLowerCase === label[key]
+              : !label[key];
           }
           if (["True", "False"].includes(l.value?.toString())) {
             return (

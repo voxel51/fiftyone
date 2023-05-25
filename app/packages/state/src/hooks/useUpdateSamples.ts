@@ -17,7 +17,7 @@ export const useUpdateSamples = () => {
                 sampleStore.samples.set(id, { ...record, sample });
 
                 // @ts-ignore
-                store.lookers.get(id)?.updateSample(sample);
+                sampleStore.lookers.get(id)?.updateSample(sample);
               }
             });
           const record = store.get(id);

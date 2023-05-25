@@ -9519,10 +9519,10 @@ class SampleCollection(object):
         media_fields = {}
 
         if frames:
-            schema = self.get_frame_field_schema()
+            schema = self.get_frame_field_schema(flat=True)
             app_media_fields = set()
         else:
-            schema = self.get_field_schema()
+            schema = self.get_field_schema(flat=True)
             app_media_fields = set(self._dataset.app_config.media_fields)
 
         if not include_filepath:
@@ -9559,7 +9559,8 @@ class SampleCollection(object):
     def _get_sample_label_fields(self):
         return list(
             self.get_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+                ftype=fof.EmbeddedDocumentField,
+                embedded_doc_type=fol.Label,
             ).keys()
         )
 
@@ -9570,7 +9571,8 @@ class SampleCollection(object):
         return [
             self._FRAMES_PREFIX + field
             for field in self.get_frame_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+                ftype=fof.EmbeddedDocumentField,
+                embedded_doc_type=fol.Label,
             ).keys()
         ]
 
@@ -9631,9 +9633,9 @@ class SampleCollection(object):
             field_name = field_name[2:]
 
         if is_frame_field:
-            schema = self.get_frame_field_schema()
+            schema = self.get_frame_field_schema(flat=True)
         else:
-            schema = self.get_field_schema()
+            schema = self.get_field_schema(flat=True)
 
         if field_name not in schema:
             ftype = "frame field" if is_frame_field else "field"

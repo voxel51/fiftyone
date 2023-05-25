@@ -119,7 +119,9 @@ export abstract class CoordinateOverlay<
         // check if this label has a assigned color, use it if it is a valid color
         const valueColor = field?.valueColors?.find((l) => {
           if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-            return !this.label[key];
+            return typeof this.label[key] === "string"
+              ? l.value?.toLowerCase === this.label[key]
+              : !this.label[key];
           }
           if (["True", "False"].includes(l.value?.toString())) {
             return (
