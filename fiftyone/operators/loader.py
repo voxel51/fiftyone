@@ -5,6 +5,7 @@ FiftyOne operator loader.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import cachetools.func
 import importlib
 import logging
 import os
@@ -136,6 +137,7 @@ def build_plugin_contexts(enabled=True):
     return plugin_contexts
 
 
+@cachetools.func.ttl_cache(ttl=60)
 def register_all():
     """Registers all operators associated with all enabled plugins.
 

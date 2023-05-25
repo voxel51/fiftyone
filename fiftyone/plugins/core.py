@@ -5,6 +5,7 @@ Core plugin methods.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import cachetools.func
 from collections import Counter
 from dataclasses import dataclass
 import json
@@ -508,6 +509,7 @@ def _parse_plugin_metadata(metadata_path):
     return PluginPackage(plugin_name, plugin_path)
 
 
+@cachetools.func.ttl_cache(ttl=60)
 def _list_plugins(enabled=None):
     plugins = []
     for metadata_path in _iter_plugin_metadata_files():
