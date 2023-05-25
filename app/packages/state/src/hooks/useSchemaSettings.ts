@@ -822,6 +822,19 @@ export default function useSchemaSettings() {
     [finalSchema, allPaths, vPaths, datasetName]
   );
 
+  const bareFinalSchema = useMemo(
+    () =>
+      mergedSchema
+        ? finalSchema.filter((field) => {
+            return (
+              !disabledField(field.path, mergedSchema, dataset?.groupField) &&
+              !skipField(field.path, mergedSchema?.[field.path], mergedSchema)
+            );
+          })
+        : finalSchema,
+    [mergedSchema, finalSchema]
+  );
+
   // updates the affected fields count
   useEffect(() => {
     if (finalSchema?.length && excludedPaths?.[datasetName]) {
@@ -830,7 +843,7 @@ export default function useSchemaSettings() {
         searchResults?.length
       ) {
         setAffectedPathCount(
-          Object.keys(schema)?.length - searchResults.length
+          Object.keys(bareFinalSchema)?.length - searchResults.length
         );
       } else {
         setAffectedPathCount(excludedPaths[datasetName].size);
