@@ -21,13 +21,13 @@ class Plugins(HTTPEndpoint):
 
         requires_authentication = route_requires_auth(self.__class__)
         if requires_authentication:
-            plugin_dicts = filter_disabled_plugins(request, plugin_dicts)
+            plugin_dicts = await filter_disabled_plugins(request, plugin_dicts)
 
         return {"plugins": plugin_dicts}
 
 
-def filter_disabled_plugins(request, plugin_dicts):
-    managed_plugins = ManagedPlugins.for_request(request)
+async def filter_disabled_plugins(request, plugin_dicts):
+    managed_plugins = await ManagedPlugins.for_request(request)
     return [
         d
         for d in plugin_dicts
