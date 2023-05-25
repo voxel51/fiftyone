@@ -212,10 +212,10 @@ class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
         return self._predict_all(imgs)
 
 
-def generate_sam_points(points, w, h):
+def generate_sam_points(points, w, h, negative=False):
     # Written by Jacob Marks, modified by me
     scaled_points = np.array(points) * np.array([w, h])
-    labels = np.ones(len(points))
+    labels = np.zeros(len(points)) if negative else np.ones(len(points))
     return scaled_points, labels
 
 
