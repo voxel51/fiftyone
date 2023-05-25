@@ -14,6 +14,7 @@ import HeatmapOverlay, { getHeatmapPoints } from "./heatmap";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
+import { convertId } from "./util";
 
 const fromLabel = (overlayType) => (field, label) =>
   [new overlayType(field, label)];
@@ -52,22 +53,37 @@ export const loadOverlays = <State extends BaseState>(
   video = false
 ): Overlay<State>[] => {
   const classifications = [];
-  let overlays = [];
+  const overlays = [];
+
   for (const field in sample) {
     const label = sample[field];
+
     if (!label) {
       continue;
     }
 
-    if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](field, label, this);
-      overlays = [...overlays, ...labelOverlays];
-    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
+    const dynamicLabel =
+      label._cls === "DynamicEmbeddedDocument"
+        ? convertId(Object.entries(label)[1][1])
+        : label;
+    const dynamicField =
+      label._cls === "DynamicEmbeddedDocument"
+        ? [field, Object.entries(label)[1][0]].join(".")
+        : field;
+
+    if (dynamicLabel._cls in FROM_FO) {
+      const labelOverlays = FROM_FO[dynamicLabel._cls](
+        dynamicField,
+        dynamicLabel,
+        this
+      );
+      overlays.push(...labelOverlays);
+    } else if (LABEL_TAGS_CLASSES.includes(dynamicLabel._cls)) {
       classifications.push([
-        field,
-        label._cls in LABEL_LISTS_MAP
-          ? label[LABEL_LISTS_MAP[label._cls]]
-          : [label],
+        dynamicField,
+        dynamicLabel._cls in LABEL_LISTS_MAP
+          ? dynamicLabel[LABEL_LISTS_MAP[dynamicLabel._cls]]
+          : [dynamicLabel],
       ]);
     }
   }

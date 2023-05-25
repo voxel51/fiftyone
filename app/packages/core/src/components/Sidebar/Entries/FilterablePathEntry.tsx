@@ -305,6 +305,7 @@ const FilterableEntry = ({
   const hidden = modal ? useHidden(path) : null;
 
   const onClick = useOnClick({ disabled, modal, path });
+  const isLabelTag = path === "_label_tags";
 
   return (
     <RegularEntry
@@ -317,7 +318,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!disabled && (
+          {!disabled && !(modal && isLabelTag) && (
             <Checkbox
               checked={active}
               title={`Show ${path}`}

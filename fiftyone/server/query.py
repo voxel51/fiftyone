@@ -363,6 +363,12 @@ class AppConfig:
 
 
 @gql.type
+class SchemaResult:
+    field_schema: t.List[SampleField]
+    frame_field_schema: t.List[SampleField]
+
+
+@gql.type
 class Query(fosa.AggregateQuery):
     aggregations = gql.field(resolver=aggregate_resolver)
 
@@ -460,27 +466,53 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def schema_for_view_stages(
-        self, dataset_name: str, view_stages: BSONArray
-    ) -> t.List[SampleField]:
+        self,
+        dataset_name: str,
+        view_stages: BSONArray,
+    ) -> SchemaResult:
         try:
             ds = fod.load_dataset(dataset_name)
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
 
                 if ds.media_type == fom.VIDEO:
-                    return serialize_fields(
+                    frame_schema = serialize_fields(
                         view.get_frame_field_schema(flat=True)
                     )
+                    field_schema = serialize_fields(
+                        view.get_field_schema(flat=True)
+                    )
+                    return SchemaResult(
+                        field_schema=field_schema,
+                        frame_field_schema=frame_schema,
+                    )
 
-                return serialize_fields(view.get_field_schema(flat=True))
-
+                return SchemaResult(
+                    field_schema=serialize_fields(
+                        view.get_field_schema(flat=True)
+                    ),
+                    frame_field_schema=[],
+                )
             if ds.media_type == fom.VIDEO:
-                return serialize_fields(ds.get_frame_field_schema(flat=True))
+                frames_field_schema = serialize_fields(
+                    ds.get_frame_field_schema(flat=True)
+                )
+                field_schema = serialize_fields(ds.get_field_schema(flat=True))
+                return SchemaResult(
+                    field_schema=field_schema,
+                    frame_field_schema=frames_field_schema,
+                )
 
-            return serialize_fields(ds.get_field_schema(flat=True))
+            return SchemaResult(
+                field_schema=serialize_fields(ds.get_field_schema(flat=True)),
+                frame_field_schema=[],
+            )
         except Exception as e:
             print("failed to get schema for view stages", str(e))
-            return []
+            return SchemaResult(
+                field_schema=[],
+                frame_field_schema=[],
+            )
 
 
 def _flatten_fields(

@@ -28,9 +28,3 @@ dist/
 coverage.xml
 .coverage.*
 pyvenv.cfg
-
-.chroma
-.python-version
-
-*.whl
-/deployment/docker/__models__

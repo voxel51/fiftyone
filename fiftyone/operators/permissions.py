@@ -6,7 +6,18 @@ FiftyOne operator permissions.
 |
 """
 from .registry import OperatorRegistry
-from fiftyone.plugins.permissions import ManagedOperators
+
+
+class ManagedOperators(object):
+    def __init__(self, managed_operators=None):
+        self.managed_operators = managed_operators
+
+    def has_operator(self, operator_uri):
+        return True
+
+    @classmethod
+    def for_request(cls, request, dataset_ids=None):
+        return cls()
 
 
 class PermissionedOperatorRegistry(OperatorRegistry):

@@ -11,8 +11,12 @@ import {
 import { Overlay } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
 import { isValidColor } from "../../overlays/util";
-import { BaseState, Coloring, CustomizeColor } from "../../state";
-import { DispatchEvent } from "../../state";
+import {
+  BaseState,
+  Coloring,
+  CustomizeColor,
+  DispatchEvent,
+} from "../../state";
 
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
@@ -31,7 +35,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
       return;
     }
 
-    let detail =
+    const detail =
       overlays.length && overlays[0].containsPoint(state) && !nullify
         ? overlays[0].getPointInfo(state)
         : null;
@@ -118,11 +122,23 @@ export const getColorFromOptions = ({
     if (setting) {
       key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.valueColors?.find(
-        (l) => l.value?.toString() == param[key]?.toString()
-      )?.color;
-      if (isValidColor(labelColor)) {
-        return labelColor;
+      const valueColor = setting?.valueColors?.find((l) => {
+        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+          return typeof param[key] === "string"
+            ? l.value?.toLowerCase === param[key]
+            : !param[key];
+        }
+        if (["True", "False"].includes(l.value?.toString())) {
+          return (
+            l.value?.toString().toLowerCase() ==
+            param[key]?.toString().toLowerCase()
+          );
+        }
+        return l.value?.toString() == param[key]?.toString();
+      })?.color;
+
+      if (isValidColor(valueColor)) {
+        return valueColor;
       }
     } else {
       key = labelDefault ? "label" : "value";
@@ -155,11 +171,21 @@ export const getColorFromOptionsPrimitives = ({
   if (coloring.by === "value") {
     if (setting) {
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.valueColors?.find(
-        (l) => l.value?.toString() == value?.toString()
-      )?.color;
-      if (isValidColor(labelColor)) {
-        return labelColor;
+      const valueColor = setting.valueColors?.find((l) => {
+        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+          return typeof value === "string"
+            ? l.value?.toLowerCase === value
+            : !value;
+        }
+        if (["True", "False"].includes(l.value?.toString())) {
+          return (
+            l.value?.toString().toLowerCase() == value.toString().toLowerCase()
+          );
+        }
+        return l.value?.toString() == value.toString();
+      })?.color;
+      if (isValidColor(valueColor)) {
+        return valueColor;
       }
     }
     return getColor(coloring.pool, coloring.seed, path);

@@ -62,19 +62,19 @@ private PyPI server as shown below:
 After installing the Teams Python SDK in your virtual environment, you'll need
 to configure two things:
 
-*   The :ref:`connection <configuring-mongodb-connection>` to your team's
-    centralized database
+*   Your team's :ref:`MongoDB connection<configuring-mongodb-connection>` OR
+    :ref:`API connection<configuring-api-connection>`
 
 *   The :ref:`cloud credentials <teams-cloud-credentials>` to access your
     cloud-backed media
 
-That's it! Any operations you perform will be stored on thecentralized database
+That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
 Teams App or their Python workflows.
 
 .. note::
 
-   Ask your FiftyOne Teams admin for the necessary MongoDB connection URI and
+   Ask your FiftyOne Teams admin for the necessary connection information and
    relevant cloud credentials.
 
 .. _teams-cloud-credentials:

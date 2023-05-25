@@ -115,13 +115,24 @@ export abstract class CoordinateOverlay<
             ? "id"
             : field.colorByAttribute
           : "label";
-        // check if this label has a assigned color, use it if it is a valid color
-        const labelColor = field.valueColors?.find(
-          (l) => l.value?.toString() == this.label[key]?.toString()
-        )?.color;
 
-        return isValidColor(labelColor)
-          ? labelColor
+        // check if this label has a assigned color, use it if it is a valid color
+        const valueColor = field?.valueColors?.find((l) => {
+          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+            return typeof this.label[key] === "string"
+              ? l.value?.toLowerCase === this.label[key]
+              : !this.label[key];
+          }
+          if (["True", "False"].includes(l.value?.toString())) {
+            return (
+              l.value?.toString().toLowerCase() ==
+              this.label[key]?.toString().toLowerCase()
+            );
+          }
+          return l.value?.toString() == this.label[key]?.toString();
+        })?.color;
+        return isValidColor(valueColor)
+          ? valueColor
           : getColor(coloring.pool, coloring.seed, this.label[key]);
       } else {
         return getColor(coloring.pool, coloring.seed, this.label["label"]);
