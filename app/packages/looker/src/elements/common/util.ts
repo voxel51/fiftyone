@@ -174,7 +174,8 @@ export const getColorFromOptionsPrimitives = ({
       const valueColor = setting.valueColors?.find((l) => {
         if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
           return typeof value === "string"
-            ? l.value?.toLowerCase === value
+            ? l.value?.toString().toLowerCase() ===
+                value.toString().toLowerCase()
             : !value;
         }
         if (["True", "False"].includes(l.value?.toString())) {
