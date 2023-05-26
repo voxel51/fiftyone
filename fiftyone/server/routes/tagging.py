@@ -15,6 +15,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm.embedded_document as fooe
 
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
@@ -96,7 +97,9 @@ def _add_to_label_tags_aggregations(path: str, field: fof.Field, counts, tags):
     if not isinstance(field, fof.EmbeddedDocumentField):
         return
 
-    if not issubclass(field.document_type, fol.Label):
+    if not issubclass(field.document_type, fol.Label) and not issubclass(
+        field.document_type, fooe.DynamicEmbeddedDocument
+    ):
         return
 
     path = _expand_labels_path(path, field)
