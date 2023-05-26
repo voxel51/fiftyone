@@ -12,6 +12,7 @@ import { labelTagsCount } from "../Sidebar/Entries/EntryCounts";
 const LabelTagFieldFilter = ({
   path,
   modal,
+  color,
   ...rest
 }: {
   path: string;
@@ -20,6 +21,7 @@ const LabelTagFieldFilter = ({
   onFocus?: () => void;
   onBlur?: () => void;
   title: string;
+  color: string;
 }) => {
   return (
     <CategoricalFilter<{ value: string | null; count: number }>
@@ -30,6 +32,7 @@ const LabelTagFieldFilter = ({
       countsAtom={labelTagsCount({ modal, extended: false })}
       path={path}
       modal={modal}
+      color={color}
       {...rest}
     />
   );

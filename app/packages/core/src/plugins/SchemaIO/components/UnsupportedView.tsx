@@ -17,6 +17,7 @@ export default function UnsupportedView(props) {
           </Button>
         }
         sx={{ justifyContent: "left" }}
+        nested
       />
 
       {show && (

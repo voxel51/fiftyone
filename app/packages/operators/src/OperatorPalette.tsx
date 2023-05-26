@@ -28,7 +28,6 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     onClose,
     submitButtonText = "Execute",
     cancelButtonText = "Cancel",
-    maxWidth = "lg",
     onOutsideClick,
     allowPropagation,
     submitOnControlEnter,
@@ -76,45 +75,47 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
   }, [paletteElem, keyDownHandler]);
 
   return (
-    <BaseStylesProvider>
-      <Dialog
-        open
-        onClose={onClose || onOutsideClick}
-        scroll={scroll}
-        maxWidth={false}
-        aria-labelledby=""
-        aria-describedby="scroll-dialog-description"
-        PaperProps={{ sx: { backgroundImage: "none" } }}
+    <Dialog
+      open
+      onClose={onClose || onOutsideClick}
+      scroll={scroll}
+      maxWidth={false}
+      aria-labelledby=""
+      aria-describedby="scroll-dialog-description"
+      PaperProps={{ sx: { backgroundImage: "none" } }}
+      sx={{
+        "& .MuiDialog-container": {
+          alignItems: "flex-start",
+        },
+      }}
+    >
+      {title && (
+        <DialogTitle component="div" sx={{ p: 1 }}>
+          <BaseStylesProvider>{title}</BaseStylesProvider>
+        </DialogTitle>
+      )}
+      <DialogContent
+        dividers={scroll === "paper"}
+        className={scrollable}
         sx={{
-          "& .MuiDialog-container": {
-            alignItems: "flex-start",
-          },
+          p: 1,
+          ...(hideActions ? { borderBottom: "none" } : {}),
+          ...(title ? {} : { borderTop: "none" }),
         }}
       >
-        {title && (
-          <DialogTitle component="div" sx={{ p: 1 }}>
-            {title}
-          </DialogTitle>
-        )}
-        <DialogContent
-          dividers={scroll === "paper"}
-          className={scrollable}
-          sx={{
-            p: 1,
-            ...(hideActions ? { borderBottom: "none" } : {}),
-            ...(title ? {} : { borderTop: "none" }),
-          }}
-        >
-          {children}
-        </DialogContent>
-        {!hideActions && (
-          <DialogActions sx={{ p: 1 }}>
-            {onCancel && (
+        <BaseStylesProvider>{children}</BaseStylesProvider>
+      </DialogContent>
+      {!hideActions && (
+        <DialogActions sx={{ p: 1 }}>
+          {onCancel && (
+            <BaseStylesProvider>
               <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
                 {cancelButtonText}
               </Button>
-            )}
-            {onSubmit && (
+            </BaseStylesProvider>
+          )}
+          {onSubmit && (
+            <BaseStylesProvider>
               <Button
                 onClick={handleSubmit}
                 onKeyDown={onEnter(handleSubmit)}
@@ -122,11 +123,11 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
               >
                 {submitButtonText}
               </Button>
-            )}
-          </DialogActions>
-        )}
-      </Dialog>
-    </BaseStylesProvider>
+            </BaseStylesProvider>
+          )}
+        </DialogActions>
+      )}
+    </Dialog>
   );
 }
 

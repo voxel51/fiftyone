@@ -455,7 +455,7 @@
                 },
                 "json": {
                     "type": { "name": "String" },
-                    "defaultValue": "{\"name\": \"Full Name\"}",
+                    "defaultValue": { "name": "Full Name" },
                     "required": false,
                     "choices": null,
                     "view": {
@@ -659,7 +659,13 @@
                                 "description": null,
                                 "caption": null,
                                 "space": null,
-                                "placeholder": null
+                                "placeholder": null,
+                                "componentsProps": {
+                                    "field": {
+                                        "multiline": true,
+                                        "rows": 4
+                                    }
+                                }
                             },
                             {
                                 "name": "View",

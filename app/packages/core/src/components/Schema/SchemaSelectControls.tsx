@@ -20,8 +20,8 @@ interface Props {}
 export const SchemaSelectionControls = (props: Props) => {
   const theme = useTheme();
   const {
-    fieldsOnly,
-    setFieldsOnly,
+    showNestedFields,
+    setShowNestedFields,
     allFieldsChecked,
     setAllFieldsChecked,
     selectedTab,
@@ -40,29 +40,28 @@ export const SchemaSelectionControls = (props: Props) => {
       sx={{ position: "relative !important" }}
     >
       <Box display="flex" width="100%" flexDirection="row" marginTop="1rem">
-        <ContainerBox>
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Switch
-                  defaultChecked={false}
-                  value={showMetadata}
-                  checked={showMetadata}
-                  onChange={() => setShowMetadata(!showMetadata)}
-                  disabled={isFilterRuleMode && !searchResults.length}
-                />
-              }
-              label="Show metadata"
-            />
-          </FormGroup>
-        </ContainerBox>
-        {isFilterRuleMode && (
+        {!!!(isFilterRuleMode && !searchResults.length) && (
           <ContainerBox>
             <FormGroup>
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked={true}
+                    value={showMetadata}
+                    checked={showMetadata}
+                    onChange={() => setShowMetadata(!showMetadata)}
+                  />
+                }
+                label="Show metadata"
+              />
+            </FormGroup>
+          </ContainerBox>
+        )}
+        {!!(isFilterRuleMode && searchResults.length) && (
+          <ContainerBox>
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
                     value={includeNestedFields}
                     checked={includeNestedFields}
                     onChange={() =>
@@ -82,10 +81,9 @@ export const SchemaSelectionControls = (props: Props) => {
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked={false}
-                    value={!fieldsOnly}
-                    checked={!fieldsOnly}
-                    onChange={() => setFieldsOnly(!fieldsOnly)}
+                    value={showNestedFields}
+                    checked={showNestedFields}
+                    onChange={() => setShowNestedFields(!showNestedFields)}
                   />
                 }
                 label="Show nested fields"
@@ -99,7 +97,6 @@ export const SchemaSelectionControls = (props: Props) => {
               <FormControlLabel
                 control={
                   <Switch
-                    defaultChecked
                     value={allFieldsChecked}
                     checked={allFieldsChecked}
                     onChange={() => setAllFieldsChecked(!allFieldsChecked)}

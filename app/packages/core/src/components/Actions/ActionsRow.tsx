@@ -1,3 +1,4 @@
+import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   Bookmark,
   Check,
@@ -44,7 +45,6 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -452,16 +452,14 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
-
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
   const isUsingSessionColorScheme = useRecoilValue(
     fos.isUsingSessionColorScheme
   );
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
 
-  // if the session color scheme is not applied to the dataset,
+  // In teams environment if the session color scheme is not applied to the dataset,
   // check to see if dataset.appConfig has applicable settings
   useEffect(() => {
     if (!isUsingSessionColorScheme && datasetColorScheme) {
@@ -469,15 +467,14 @@ export const GridActionsRow = () => {
         datasetColorScheme.colorPool?.length > 0
           ? datasetColorScheme.colorPool
           : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const customizedColorSettings =
-        JSON.parse(datasetColorScheme.customizedColorSettings) ??
-        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
+      const fields =
+        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
       setSessionColor({
         colorPool,
-        customizedColorSettings,
+        fields,
       });
     }
-  }, [isUsingSessionColorScheme, datasetColorScheme]);
+  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
   return (
     <ActionsRowDiv>
@@ -503,7 +500,6 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
   isGroup?: boolean;
 }) => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
   return (

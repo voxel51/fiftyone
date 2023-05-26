@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a2b0c1c2b5846ce7fadf782a5ec5a879>>
+ * @generated SignedSource<<df98c751611c995dbe42ded64d84fb20>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,7 +14,7 @@ export type searchSelectFieldsMutation$variables = {
   metaFilter?: object | null;
 };
 export type searchSelectFieldsMutation$data = {
-  readonly searchSelectFields: ReadonlyArray<string | null>;
+  readonly searchSelectFields: ReadonlyArray<string>;
 };
 export type searchSelectFieldsMutation = {
   response: searchSelectFieldsMutation$data;

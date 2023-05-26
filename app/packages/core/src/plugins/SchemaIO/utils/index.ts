@@ -1,5 +1,6 @@
 import * as components from "../components";
 import { UnsupportedView } from "../components";
+import { get } from "lodash";
 
 export function log(...args) {
   console.groupCollapsed(">>>", ...args);
@@ -19,6 +20,10 @@ export function getComponent(schema, customComponents?: object) {
   return (
     customComponents?.[component] || components[component] || UnsupportedView
   );
+}
+
+export function getComponentProps(props, id) {
+  return get(props, `schema.view.componentsProps.${id}`, {});
 }
 
 // add map,tuple,oneof support

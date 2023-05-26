@@ -1,7 +1,7 @@
 import { Box, Grid } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
-import { getPath } from "../utils";
+import { getComponentProps, getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function TuplesView(props) {
@@ -9,9 +9,14 @@ export default function TuplesView(props) {
   const { view = {}, items } = schema;
 
   return (
-    <Box>
-      <HeaderView {...props} divider />
-      <Grid container spacing={1} xs={12}>
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} divider nested />
+      <Grid
+        container
+        spacing={1}
+        xs={12}
+        {...getComponentProps(props, "itemsContainer")}
+      >
         {items.map((item, i) => {
           const itemSchema = item;
           const schemaView = item?.view || {};
@@ -20,7 +25,12 @@ export default function TuplesView(props) {
           itemSchema.view = computedView;
 
           return (
-            <Grid key={`${path}-${i}`} item xs={computedView.space || 12}>
+            <Grid
+              key={`${path}-${i}`}
+              item
+              xs={computedView.space || 12}
+              {...getComponentProps(props, "itemContainer")}
+            >
               <DynamicIO
                 {...props}
                 schema={itemSchema}

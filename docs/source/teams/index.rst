@@ -34,7 +34,7 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Overview
-    :description: What's FiftyOne Teams? We think you'll be glad you asksed!
+    :description: What's FiftyOne Teams? We think you'll be glad you asked!
     :button_text: Learn the basics
     :button_link: overview.html
 
@@ -87,3 +87,4 @@ pages on this site apply to Teams deployments as well.
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
     Migrations <migrations>
+    API Connection <api_connection>

@@ -2034,9 +2034,8 @@ FiftyOne 0.11.1
 
 App
 
-- Updated the expired
-  `Slack community link <https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ>`_
-  in the App menu bar
+- Updated the expired `Slack community link <https://slack.voxel51.com>`_ in
+  the App menu bar
 
 .. _release-notes-v0.11.0:
 

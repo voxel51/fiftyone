@@ -112,6 +112,7 @@ type Props = {
   modal: boolean;
   path: string;
   named?: boolean;
+  color: string;
   onFocus?: () => void;
   onBlur?: () => void;
 };
@@ -121,8 +122,8 @@ const NumericFieldFilter = ({
   modal,
   path,
   named = true,
+  color,
 }: Props) => {
-  const color = useRecoilValue(fos.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
   const excludeAtom = fos.numericExcludeAtom({
     path,

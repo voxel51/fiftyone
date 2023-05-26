@@ -11,9 +11,5 @@ export default function OperatorIO(props) {
   const schemaWithoutTitle = schemaView
     ? { ...schema, view: { ...schemaView, label: undefined } }
     : schema;
-  return (
-    <Box sx={{ p: 2 }}>
-      <OperatorIOComponent {...props} schema={schemaWithoutTitle} />
-    </Box>
-  );
+  return <OperatorIOComponent {...props} schema={schemaWithoutTitle} />;
 }

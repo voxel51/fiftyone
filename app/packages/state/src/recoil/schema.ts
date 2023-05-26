@@ -1,33 +1,28 @@
-import {
-  atomFamily,
-  RecoilState,
-  RecoilValueReadOnly,
-  selector,
-  selectorFamily,
-} from "recoil";
+import _ from "lodash";
+
+import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 
 import {
   DETECTION,
   DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
-  LABELS,
-  LABELS_PATH,
   LABEL_LIST,
   LABEL_LISTS,
+  LABELS,
+  LABELS_PATH,
   LIST_FIELD,
   meetsFieldType,
   Schema,
   StrictField,
   VALID_PRIMITIVE_TYPES,
   withPath,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
 } from "@fiftyone/utilities";
 
+import { Sample } from "@fiftyone/looker/src/state";
 import * as atoms from "./atoms";
 import { State } from "./types";
-import _ from "lodash";
-import { Sample } from "@fiftyone/looker/src/state";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name || field.path] = {
@@ -85,11 +80,8 @@ export const buildFlatExtendedSchema = (schema: Schema): Schema => {
   return flatSchema;
 };
 
-export const buildSchema = (
-  dataset: State.Dataset,
-  flat: boolean = false
-): Schema => {
-  let schema = dataset.sampleFields.reduce(schemaReduce, {});
+export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
+  const schema = dataset.sampleFields.reduce(schemaReduce, {});
 
   // TODO: mixed datasets - test video
   if (dataset.frameFields && dataset.frameFields.length) {
@@ -220,14 +212,18 @@ export const fieldPaths = selectorFamily<
         throw new Error("path and space provided");
       }
 
-      const sampleLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE, flat: true }))
-      )
+      // use { flat: true } to get schema's dynamic fields included
+      const sampleFields = get(
+        fieldSchema({ space: State.SPACE.SAMPLE, flat: true })
+      );
+      const frameFields = get(
+        fieldSchema({ space: State.SPACE.FRAME, flat: true })
+      );
+
+      const sampleLabels = Object.keys(sampleFields)
         .filter((l) => !l.startsWith("_"))
         .sort();
-      const frameLabels = Object.keys(
-        get(fieldSchema({ space: State.SPACE.FRAME, flat: true }))
-      )
+      const frameLabels = Object.keys(frameFields)
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
         .sort();
@@ -340,9 +336,23 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const paths = get(fieldPaths(params));
 
-      const flatLabelFields = paths.filter((path) =>
+      const flatLabelFieldsBase = paths.filter((path) =>
         LABELS.includes(get(field(path)).embeddedDocType)
       );
+
+      /* Remove any paths from the label paths if a parent path exists.
+      ex: parent path: custom_document.detections | type Detections
+          child path: custom_document.detections.detections | type Detection (singular)
+          having both in labelPaths can cause some issues like,
+          - duplicate count of labels
+          - unwanted filtering causing some operations that depend on labelPaths
+            (such as tagging) to fail. */
+      const allSet = new Set(flatLabelFieldsBase);
+      const flatLabelFields = flatLabelFieldsBase.filter((pp) => {
+        const parentPath = pp.substring(0, pp.lastIndexOf("."));
+        return !(parentPath && parentPath !== pp && allSet.has(parentPath));
+      });
+
       const dynamicLabelFields = paths
         .filter(
           (path) =>
@@ -402,7 +412,7 @@ export const labelValues = selectorFamily<
 
       for (const path of paths) {
         const convert = convertToLabelValue(sample._id, path);
-        const value = _.get(sample, path, null);
+        const value = get(sample, path, null);
         if (value !== null) {
           if (Array.isArray(value)) {
             results = [...results, ...value.map(convert)];
@@ -465,12 +475,11 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
   get:
     ({ modal }) =>
-    ({ get }) => {
-      return filterPaths(
+    ({ get }) =>
+      filterPaths(
         get(_activeFields({ modal })) || get(labelFields({})),
         buildSchema(get(atoms.dataset))
-      );
-    },
+      ),
   set:
     ({ modal }) =>
     ({ set }, value) => {

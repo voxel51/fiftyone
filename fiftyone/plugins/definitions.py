@@ -29,21 +29,6 @@ class PluginDefinition(object):
         self._metadata = metadata
         self._validate()
 
-    def _validate(self):
-        missing = [
-            k for k in self._REQUIRED_METADATA_KEYS if k not in self._metadata
-        ]
-        if missing:
-            raise ValueError(
-                f"Plugin metadata is missing required fields: {missing}"
-            )
-
-    def _get_abs_path(self, filename):
-        if not filename:
-            return None
-
-        return os.path.join(self.directory, filename)
-
     @property
     def name(self):
         """The name of the plugin."""
@@ -76,8 +61,22 @@ class PluginDefinition(object):
 
     @property
     def fiftyone_compatibility(self):
-        """The FiftyOne compatible version as a semver string."""
+        """The FiftyOne compatibilty version."""
         return self._metadata.get("fiftyone", {}).get("version", None)
+
+    @property
+    def fiftyone_requirement(self):
+        """The FiftyOne requirement as a string like ``fiftyone>=0.21``."""
+        req_str = self.fiftyone_compatibility or ""
+        req_str = req_str.strip()
+
+        if not req_str or req_str == "*":
+            return None
+
+        if not req_str.startswith("fiftyone"):
+            req_str = "fiftyone" + req_str
+
+        return req_str
 
     @property
     def operators(self):
@@ -92,21 +91,25 @@ class PluginDefinition(object):
     @property
     def has_package_json(self):
         """Whether the plugin has a package.json file."""
-        return os.path.exists(self.package_json_path)
+        return os.path.isfile(self.package_json_path)
 
     @property
     def js_bundle(self):
         """The relative path to the JS bundle file."""
         js_bundle = self._metadata.get("js_bundle", None)
+
         if not js_bundle and self.has_package_json:
             pkg = etas.read_json(self.package_json_path)
             js_bundle = pkg.get("fiftyone", {}).get("script", None)
-        return js_bundle or "dist/index.umd.js"
+
+        if not js_bundle:
+            js_bundle = "dist/index.umd.js"
+
+        return js_bundle
 
     @property
     def js_bundle_path(self):
-        js_bundle = self.js_bundle
-        return self._get_abs_path(js_bundle)
+        return self._get_abs_path(self.js_bundle)
 
     @property
     def py_entry(self):
@@ -129,21 +132,26 @@ class PluginDefinition(object):
         if self.has_js:
             return os.path.join(self.server_path, self.js_bundle)
 
-    def can_register_operator(self, operator_name):
-        """Whether the plugin can register the given operator."""
-        if self.has_py and (operator_name in self.operators):
-            return True
-        return False
+    def can_register_operator(self, name):
+        """Whether the plugin can register the given operator.
+
+        Args:
+            name: the operator name
+
+        Returns:
+            True/False
+        """
+        return self.has_py and name in self.operators
 
     @property
     def has_py(self):
         """Whether the plugin has a Python entry file."""
-        return os.path.exists(self.py_entry_path)
+        return os.path.isfile(self.py_entry_path)
 
     @property
     def has_js(self):
         """Whether the plugin has a JS bundle file."""
-        return os.path.exists(self.js_bundle_path)
+        return os.path.isfile(self.js_bundle_path)
 
     def to_dict(self):
         """Returns a JSON dict representation of the plugin metadata.
@@ -176,10 +184,25 @@ class PluginDefinition(object):
             metadata_path: the path to a plugin ``.yaml`` file
 
         Returns:
-            a :clss:`PluginDefinition`
+            a :class:`PluginDefinition`
         """
         dirpath = os.path.dirname(metadata_path)
         with open(metadata_path, "r") as f:
             metadata = yaml.safe_load(f)
 
         return cls(dirpath, metadata)
+
+    def _validate(self):
+        missing = [
+            k for k in self._REQUIRED_METADATA_KEYS if k not in self._metadata
+        ]
+        if missing:
+            raise ValueError(
+                f"Plugin metadata is missing required fields: {missing}"
+            )
+
+    def _get_abs_path(self, filename):
+        if not filename:
+            return None
+
+        return os.path.join(self.directory, filename)
