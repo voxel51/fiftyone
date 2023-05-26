@@ -1057,7 +1057,6 @@ def _parse_objects(anno_dict, frame_size):
         attributes = anno.get("attributes", {})
 
         if type_ == "box":
-            # Detection
             bounding_box = _parse_bbox(anno, frame_size)
             detections.append(
                 fol.Detection(
@@ -1065,7 +1064,6 @@ def _parse_objects(anno_dict, frame_size):
                 )
             )
         elif type_ == "polygon":
-            # Polyline
             points = _parse_points(anno["vertices"], frame_size)
             polylines.append(
                 fol.Polyline(
@@ -1077,19 +1075,17 @@ def _parse_objects(anno_dict, frame_size):
                 )
             )
         elif type_ == "line":
-            # Polyline
             points = _parse_points(anno["vertices"], frame_size)
             polylines.append(
                 fol.Polyline(
                     label=label,
                     points=[points],
-                    closed=True,
+                    closed=False,
                     filled=False,
                     **attributes,
                 )
             )
         elif type_ == "point":
-            # Polyline
             point = _parse_point(anno, frame_size)
             keypoints.append(
                 fol.Keypoint(label=label, points=[point], **attributes)
