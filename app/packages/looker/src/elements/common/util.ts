@@ -172,10 +172,13 @@ export const getColorFromOptionsPrimitives = ({
     if (setting) {
       // check if this label has a assigned color, use it if it is a valid color
       const valueColor = setting.valueColors?.find((l) => {
-        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+        if (
+          ["none", "null", "undefined"].includes(
+            l.value?.toString().toLowerCase()
+          )
+        ) {
           return typeof value === "string"
-            ? l.value?.toString().toLowerCase() ===
-                value.toString().toLowerCase()
+            ? l.value?.toString().toLowerCase() === value.toLowerCase()
             : !value;
         }
         if (["True", "False"].includes(l.value?.toString())) {
