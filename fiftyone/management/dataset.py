@@ -51,13 +51,6 @@ _DELETE_DATASET_USER_PERM_QUERY = """
     }
 """
 
-_GET_DATASET_CREATION_TIME_QUERY = """
-    query ($dataset: String!) {
-        dataset (identifier: $dataset) {
-            createdAt
-        }
-    }
-"""
 
 _GET_DATASET_CREATOR_QUERY = """
     query ($dataset: String!) {
@@ -174,44 +167,6 @@ def delete_dataset_user_permission(
             "userId": user_id,
         },
     )
-
-
-def get_dataset_creation_time(
-    dataset_name: str,
-) -> Optional[datetime.datetime]:
-    """Gets creation time of a dataset, if known.
-
-    Examples::
-
-        import fiftyone.management as fom
-
-        created_at = fom.get_dataset_creation_time("dataset")
-
-    Args:
-        dataset_name: the dataset name.
-
-    Raises:
-        ValueError: if `dataset_name` does not exist or calling user
-            does not have access to it.
-
-    Returns:
-        :class:`datetime.datetime`, or ``None`` if dataset has
-        no recorded creation time.
-
-    """
-
-    client = connection.APIClientConnection().client
-    dataset = client.post_graphql_request(
-        query=_GET_DATASET_CREATION_TIME_QUERY,
-        variables={"dataset": dataset_name},
-    )["dataset"]
-
-    if dataset is None:
-        raise ValueError("Unknown dataset or no permission to access.")
-
-    created_at = dataset["createdAt"]
-
-    return datetime.datetime.fromisoformat(created_at) if created_at else None
 
 
 def get_dataset_creator(dataset_name: str) -> Optional[users.User]:
