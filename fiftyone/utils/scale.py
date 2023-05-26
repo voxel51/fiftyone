@@ -1031,7 +1031,14 @@ def _parse_image_labels(anno_dict, frame_size):
 
 
 def _parse_classifications(attrs):
-    return {k: fol.Classification(label=v) for k, v in attrs.items()}
+    classifications = {}
+    for k, v in attrs.items():
+        if isinstance(v, list):
+            classes = [fol.Classification(label=label) for label in v]
+            classifications[k] = fol.Classifications(classifications=classes)
+        else:
+            classifications[k] = fol.Classification(label=v)
+    return classifications
 
 
 def _parse_objects(anno_dict, frame_size):
