@@ -258,7 +258,7 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
                 if process_run.returncode == 0:
                     return zip_name
             except FileNotFoundError:
-                ...
+                pass
 
         # Second, we'll give best attempt at optimizing it ourselves
         prune_dirs = {
@@ -270,7 +270,7 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
             ".idea",
             ".yarn",
         }
-        prune_suffixes = {".log", ".DS_Store"}
+        prune_suffixes = {".DS_Store"}
 
         with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_BZIP2) as zf:
             for dir_name, sub_dirs, files in os.walk(plugin_path):
@@ -287,8 +287,6 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
                             os.path.join(dir_name, file),
                             os.path.join(rel_path, file),
                         )
-            size = sum(zi.file_size for zi in zf.infolist())
-
     else:
         zip_name = shutil.make_archive(
             base_name=zip_base, format="zip", root_dir=plugin_path
