@@ -13,7 +13,8 @@ import vs2015 from "react-syntax-highlighter/dist/esm/styles/hljs/vs2015";
 import CopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/DoneOutlined";
 import copyToClipboard from "copy-to-clipboard";
-import { useTheme } from "@fiftyone/components";
+import { Copy, useTheme } from "@fiftyone/components";
+import { useHover } from "react-laag";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("typescript", ts);
@@ -50,7 +51,7 @@ type CopyButtonProps = {
   content: string;
   children: React.ReactNode;
 };
-const CopyButton = ({ content, children }: CopyButtonProps) => {
+const CopyButton = ({ visible, content, children }: CopyButtonProps) => {
   const [copied, setCopied] = useState(false);
   const handleClick = useCallback(() => {
     copyToClipboard(content);
@@ -62,7 +63,11 @@ const CopyButton = ({ content, children }: CopyButtonProps) => {
   }
 
   return (
-    <Button startIcon={<CopyIcon />} onClick={handleClick}>
+    <Button
+      style={{ visibility: visible ? "visible" : "hidden" }}
+      startIcon={<CopyIcon />}
+      onClick={handleClick}
+    >
       {children}
     </Button>
   );
@@ -85,6 +90,7 @@ const componenntMap = {
   },
   code({ node, inline, className, children, ...props }) {
     const theme = useTheme();
+    const [hovered, hoverProps] = useHover();
     const isDarkMode = theme.mode === "dark";
     const highlightTheme = isDarkMode ? vs2015 : tomorrow;
     const match = /language-(\w+)/.exec(className || "");
@@ -99,10 +105,12 @@ const componenntMap = {
       language = "python";
     }
     return !inline && match ? (
-      <CodeContainer>
+      <CodeContainer {...hoverProps}>
         <CodeHeader>
-          <Typography variant="caption">{language}</Typography>
-          <CopyButton content={children}>Copy Code</CopyButton>
+          <Typography>{language}</Typography>
+          <CopyButton visible={hovered} content={children}>
+            Copy
+          </CopyButton>
         </CodeHeader>
 
         <SyntaxHighlighter language={language} style={highlightTheme}>
