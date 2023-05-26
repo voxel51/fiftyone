@@ -6,8 +6,8 @@
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Iterable,
+    Mapping,
     MutableMapping,
     Sequence,
     Union,
@@ -17,23 +17,17 @@ import bson
 import bson.raw_bson
 import pymongo
 
-from fiftyone.api import client
-from fiftyone.api.pymongo import proxy
-from fiftyone.api.pymongo import change_stream
-from fiftyone.api.pymongo import command_cursor
-from fiftyone.api.pymongo import cursor
+from fiftyone.api.pymongo import proxy, change_stream, command_cursor, cursor
 
 
 if TYPE_CHECKING:
     from fiftyone.api.pymongo.database import Database
 
 
-class Collection(
-    proxy.PymongoRestProxy, pymongo_cls=pymongo.collection.Collection
-):
-    """Proxy class for pymongo.collection.Collection"""
+class Collection(proxy.PymongoRestProxy):
+    """Proxy for pymongo.collection.Collection"""
 
-    # pylint: disable=missing-function-docstring
+    __proxy_class__ = pymongo.database.Collection
 
     def __init__(
         self,
@@ -43,57 +37,60 @@ class Collection(
         **kwargs: Any,
     ):
         self.__database = database
-        self.__name = name
-        self.__create = create
-        self.__kwargs = kwargs
 
-        # Initialize proxy class
-        proxy.PymongoRestProxy.__init__(self)
+        super().__init__(name=name, create=create, **kwargs)
+
+    @property
+    def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
+        return self.database.__proxy_api_client__
+
+    @property
+    def __proxy_api_context__(self) -> proxy.ProxyAPIContext:
+        return [
+            *self.database.__proxy_api_context__,
+            ("get_collection", [self.name], None),
+        ]
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Collection):
+        if isinstance(other, self.__class__):
             return self.database == other.database and self.name == other.name
         return NotImplemented
 
-    def __getattr__(self, name: str) -> "Collection":
-        if name.startswith("_"):
+    def __getattr__(self, __name: str) -> Any:
+        if __name.startswith("_"):
             raise AttributeError(
-                f"Collection has no attribute {name!r}. To access the {name} "
-                f"sub-collection, use col[{name!r}]."
+                f"Collection has no attribute {__name!r}. To access the "
+                f"{__name} sub-collection, use col[{__name!r}]."
             )
-        return self.__getitem__(name)
+        return self.__getitem__(__name)
 
     def __getitem__(self, name: str) -> "Collection":
-        return Collection(self.database, f"{self.__name}.{name}")
+        return Collection(self.database, f"{self.name}.{name}")
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def database(self) -> "Database":
         return self.__database
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def full_name(self) -> str:
         return f"{self.database.name}.{self.name}"
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def name(self) -> str:
-        return self.__name
+        return self._proxy_init_kwargs["name"]
 
-    @property
-    def teams_api_client(self) -> client.Client:
-        return self.__database.teams_api_client
-
-    @property
-    def teams_api_ctx(self) -> proxy.TeamsContext:
-        return [
-            *self.__database.teams_api_ctx,
-            ("get_collection", (self.__name, self.__create), self.__kwargs),
-        ]
-
+    # pylint: disable-next=missing-function-docstring
     def aggregate(
-        self, *args: Any, **kwargs: Any
+        self, pipeline: Sequence[Mapping[str, Any]], *args: Any, **kwargs: Any
     ) -> command_cursor.CommandCursor:
-        return command_cursor.CommandCursor(self, "aggregate", *args, **kwargs)
+        return command_cursor.CommandCursor(
+            self, "aggregate", pipeline, *args, **kwargs
+        )
 
+    # pylint: disable-next=missing-function-docstring
     def aggregate_raw_batches(
         self, *args: Any, **kwargs: Any
     ) -> command_cursor.RawBatchCommandCursor:
@@ -101,6 +98,7 @@ class Collection(
             self, "aggregate_raw_batches", *args, **kwargs
         )
 
+    # pylint: disable-next=missing-function-docstring
     def bulk_write(
         self,
         requests: Sequence[
@@ -130,9 +128,7 @@ class Collection(
                     manually_set.add(idx)
 
         try:
-            res = self.teams_api_execute_proxy(
-                "bulk_write", (requests, *args), kwargs
-            )
+            res = self.__proxy_it__("bulk_write", (requests, *args), kwargs)
         except pymongo.errors.BulkWriteError as bwe:
             # Remove any manually set _ids before re-raising.
             for err in bwe.details["writeErrors"]:
@@ -146,14 +142,17 @@ class Collection(
 
         return res
 
+    # pylint: disable-next=missing-function-docstring
     def find(self, *args: Any, **kwargs: Any) -> cursor.Cursor:
-        return cursor.Cursor(self, *args, **kwargs)
+        return cursor.Cursor(self, "find", *args, **kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def find_raw_batches(
         self, *args: Any, **kwargs: Any
     ) -> cursor.RawBatchCursor:
         return cursor.RawBatchCursor(self, *args, **kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def insert_one(
         self,
         document: Union[
@@ -162,9 +161,7 @@ class Collection(
         *args: Any,
         **kwargs: Any,
     ) -> pymongo.results.InsertOneResult:
-        res = self.teams_api_execute_proxy(
-            "insert_one", (document, *args), kwargs
-        )
+        res = self.__proxy_it__("insert_one", (document, *args), kwargs)
 
         # Need to mutate document passed in
         if "_id" not in document:
@@ -172,6 +169,7 @@ class Collection(
 
         return res
 
+    # pylint: disable-next=missing-function-docstring
     def insert_many(
         self,
         documents: Iterable[
@@ -180,9 +178,7 @@ class Collection(
         *args: Any,
         **kwargs: Any,
     ) -> pymongo.results.InsertManyResult:
-        res = self.teams_api_execute_proxy(
-            "insert_many", (documents, *args), kwargs
-        )
+        res = self.__proxy_it__("insert_many", (documents, *args), kwargs)
 
         # Need to mutate documents passed in.
         idx = 0
@@ -192,27 +188,28 @@ class Collection(
                 idx += 1
         return res
 
+    # pylint: disable-next=missing-function-docstring
     def list_indexes(
-        self,
-        *args: Any,
-        **kwargs: Any,
-    ) -> command_cursor.CommandCursor[MutableMapping[str, Any]]:
+        self, *args: Any, **kwargs: Any
+    ) -> command_cursor.CommandCursor:
         return command_cursor.CommandCursor(
             self, "list_indexes", *args, **kwargs
         )
 
+    # pylint: disable-next=missing-function-docstring
     def rename(
         self,
         new_name: str,
         *args: Any,
         **kwargs: Any,
     ) -> MutableMapping[str, Any]:
-        return_value = self.teams_api_execute_proxy(
-            "rename", (new_name, *args), kwargs
-        )
-        self.__name = new_name
+        return_value = self.__proxy_it__("rename", (new_name, *args), kwargs)
+
+        self._proxy_init_kwargs["name"] = new_name
+
         return return_value
 
+    # pylint: disable-next=missing-function-docstring
     def watch(
         self, *args: Any, **kwargs: Any
     ) -> change_stream.CollectionChangeStream:

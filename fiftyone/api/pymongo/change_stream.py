@@ -3,63 +3,86 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from typing import TYPE_CHECKING, Any, Dict, Union
+import abc
+from typing import TYPE_CHECKING, Any, Union
 
 import pymongo
 
-from fiftyone.api import client
-from fiftyone.api.pymongo import proxy
+from fiftyone.api.pymongo import mixin, proxy
 
 if TYPE_CHECKING:
-    from fiftyone.api.pymongo.client import MongoClient
-    from fiftyone.api.pymongo.database import Database
-    from fiftyone.api.pymongo.collection import Collection
+    from fiftyone.api import pymongo as fomongo
 
 
-_Target = Union["MongoClient", "Database", "Collection"]
+class AbstractChangeStream(proxy.PymongoWebsocketProxy, abc.ABC):
+    """Abstract proxy for change streams"""
+
+    def __init__(
+        self,
+        target: Union[
+            "fomongo.MongoClient",
+            "fomongo.database.Database",
+            "fomongo.collection.Collection",
+        ],
+        *args: Any,
+        **kwargs: Any
+    ):
+        self.__target = target
+        self.__attr = "watch"
+
+        super().__init__(*args, **kwargs)
+
+    @property
+    def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
+        return self.__target.__proxy_api_client__
+
+    @property
+    def __proxy_api_context__(self) -> proxy.ProxyAPIContext:
+        return [
+            *self.__target.__proxy_api_context__,
+            (self.__attr, self._proxy_init_args, self._proxy_init_kwargs),
+        ]
 
 
 class ChangeStream(
-    proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.change_stream.ChangeStream
+    mixin.PymongoWebsocketProxyDunderMixin, AbstractChangeStream
 ):
-    """Proxy class for pymongo.change_stream.ChangeStream"""
+    """Proxy for pymongo.change_stream.ChangeStream"""
 
-    def __init__(self, target: _Target, *args, **kwargs):
-        self._target = target
-        proxy.PymongoWebsocketProxy.__init__(self, "watch", *args, **kwargs)
-
-    @property
-    def teams_api_client(self) -> client.Client:
-        return self._target.teams_api_client
-
-    @property
-    def teams_api_ctx(self) -> Dict[str, Any]:
-        return self._target.teams_api_ctx
+    __proxy_class__ = pymongo.change_stream.ChangeStream
 
 
-class ClusterChangeStream(
-    ChangeStream, pymongo_cls=pymongo.change_stream.ClusterChangeStream
-):
+class ClusterChangeStream(ChangeStream):
     """Proxy class for pymongo.change_stream.ClusterChangeStream"""
 
-    def __init__(self, target: "MongoClient", *args, **kwargs):
-        super().__init__(target, *args, **kwargs)
+    __proxy_class__ = pymongo.change_stream.ClusterChangeStream
+
+    def __init__(
+        self, client: "fomongo.MongoClient", *args: Any, **kwargs: Any
+    ):
+        super().__init__(client, *args, **kwargs)
 
 
-class CollectionChangeStream(
-    ChangeStream, pymongo_cls=pymongo.change_stream.CollectionChangeStream
-):
+class CollectionChangeStream(ChangeStream):
     """Proxy class for pymongo.change_stream.CollectionChangeStream"""
 
-    def __init__(self, target: "Collection", *args, **kwargs):
-        super().__init__(target, *args, **kwargs)
+    __proxy_class__ = pymongo.change_stream.CollectionChangeStream
+
+    def __init__(
+        self,
+        collection: "fomongo.collection.Collection",
+        *args: Any,
+        **kwargs: Any
+    ):
+        super().__init__(collection, *args, **kwargs)
 
 
-class DatabaseChangeStream(
-    ChangeStream, pymongo_cls=pymongo.change_stream.DatabaseChangeStream
-):
+class DatabaseChangeStream(ChangeStream):
     """Proxy class for pymongo.change_stream.DatabaseChangeStream"""
 
-    def __init__(self, target: "Database", *args, **kwargs):
-        super().__init__(target, *args, **kwargs)
+    __proxy_class__ = pymongo.change_stream.DatabaseChangeStream
+
+    def __init__(
+        self, database: "fomongo.database.Database", *args: Any, **kwargs: Any
+    ):
+        super().__init__(database, *args, **kwargs)

@@ -3,62 +3,68 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Union
+import abc
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 import pymongo
 
-from fiftyone.api import client
-from fiftyone.api.pymongo import proxy
+from fiftyone.api.pymongo import mixin, proxy
 
 if TYPE_CHECKING:
     from fiftyone.api.pymongo.collection import Collection
 
-CursorType = pymongo.cursor.CursorType
-_Sort = pymongo.cursor._Sort  # pylint: disable=protected-access
-_CollationIn = pymongo.cursor._CollationIn  # pylint: disable=protected-access
-_Hint = pymongo.cursor._Hint  # pylint: disable=protected-access
-_Sort = pymongo.cursor._Sort  # pylint: disable=protected-access
-_Sort = pymongo.cursor._Sort  # pylint: disable=protected-access
 
-
-class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
-    """Proxy class for pymongo.cursor.Cursor"""
-
-    # pylint: disable=missing-function-docstring
+class AbstractCursor(proxy.PymongoWebsocketProxy, abc.ABC):
+    """Abstract proxy for cursors"""
 
     def __init__(
         self,
         collection: "Collection",
+        attr,
         # pylint: disable-next=redefined-builtin
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
         limit: int = 0,
-        *args,
         **kwargs,
     ):
-        self._collection = collection
+        self.__collection = collection
+        self.__attr = attr  # "find"
 
-        # Initialize proxy class
-        proxy.PymongoWebsocketProxy.__init__(
-            self, "find", [filter, projection, skip, limit, *args], kwargs
+        super().__init__(
+            filter=filter,
+            projection=projection,
+            skip=skip,
+            limit=limit,
+            **kwargs,
         )
 
     @property
-    def _limit(self):
-        return self._args[3]
-
-    @_limit.setter
-    def _limit(self, value):
-        self._args[3] = value
+    def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
+        return self.collection.__proxy_api_client__
 
     @property
-    def _skip(self):
-        return self._args[2]
+    def __proxy_api_context__(self) -> proxy.ProxyAPIContext:
+        return [
+            *self.collection.__proxy_api_context__,
+            (self.__attr, self._proxy_init_args, self._proxy_init_kwargs),
+        ]
 
-    @_skip.setter
-    def _skip(self, value):
-        self._args[2] = value
+    @property
+    def __limit(self) -> int:
+        return self._proxy_init_kwargs["limit"]
+
+    @__limit.setter
+    def __limit(self, value) -> None:
+        self._proxy_init_kwargs["limit"] = value
+
+    @property
+    def __skip(self) -> int:
+        return self._proxy_init_kwargs["skip"]
+
+    @__skip.setter
+    def _skip(self, value) -> None:
+        self._proxy_init_kwargs["skip"] = value
 
     def __getitem__(self, index):
         if isinstance(index, slice):
@@ -79,7 +85,7 @@ class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
                     "Cursor instances do not support negative indices"
                 )
 
-            clone = self.clone().skip(index + self._skip)
+            clone = self.clone().skip(index + self.__skip)
             clone.limit(-1)
             return next(clone)
 
@@ -90,34 +96,43 @@ class Cursor(proxy.PymongoWebsocketProxy, pymongo_cls=pymongo.cursor.Cursor):
         return self.clone()
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def collection(self) -> "Collection":
-        return self._collection
+        return self.__collection
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def session(self) -> None:
         return None
 
-    @property
-    def teams_api_client(self) -> client.Client:
-        return self._collection.teams_api_client
-
-    @property
-    def teams_api_ctx(self) -> Dict[str, Any]:
-        return self._collection.teams_api_ctx
-
+    # pylint: disable-next=missing-function-docstring
     def clone(self):
-        return self.__class__(self._collection, **self._kwargs)
+        return self.collection.find(**self._proxy_init_kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def limit(self, limit: int) -> "Cursor":
-        self._limit = limit
-        self.teams_api_execute_proxy("limit", (limit,))
+        self.__limit = limit
+        self.__proxy_it__("limit", (self.__limit,))
         return self
 
+    # pylint: disable-next=missing-function-docstring
     def skip(self, skip: int) -> "Cursor":
-        self._skip = skip
-        self.teams_api_execute_proxy("skip", (skip,))
+        self.__skip = skip
+        self.__proxy_it__("skip", (self.__skip,))
         return self
 
 
-class RawBatchCursor(Cursor, pymongo_cls=pymongo.cursor.RawBatchCursor):
-    """Proxy class for pymongo.cursor.RawBatchCursor"""
+class Cursor(mixin.PymongoWebsocketProxyDunderMixin, AbstractCursor):
+    """Proxy for pymongo.cursor.Cursor"""
+
+    __proxy_class__ = pymongo.cursor.Cursor
+
+
+class RawBatchCursor(Cursor):
+    """Proxy for pymongo.cursor.RawBatchCursor"""
+
+    __proxy_class__ = pymongo.cursor.RawBatchCursor
+
+    # pylint: disable-next=missing-function-docstring
+    def clone(self):
+        return RawBatchCursor(self.__collection, **self._proxy_init_kwargs)

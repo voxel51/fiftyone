@@ -4,4 +4,5 @@
 |
 """
 
+CHUNK_SIZE: int = 4096
 DEFAULT_TIMEOUT: int = 10

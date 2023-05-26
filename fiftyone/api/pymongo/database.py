@@ -8,24 +8,25 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 import bson
 import pymongo
 
-from fiftyone.api import client as fiftyone_api_client
-from fiftyone.api.pymongo import proxy
-from fiftyone.api.pymongo import change_stream
-from fiftyone.api.pymongo import collection
-from fiftyone.api.pymongo import command_cursor
+from fiftyone.api.pymongo import (
+    change_stream,
+    collection,
+    command_cursor,
+    proxy,
+)
 
 if TYPE_CHECKING:
-    from fiftyone.api.pymongo.client import MongoClient
+    from fiftyone.api import pymongo as fomongo
 
 
-class Database(proxy.PymongoRestProxy, pymongo_cls=pymongo.database.Database):
-    """Proxy class for pymongo.MongoClient"""
+class Database(proxy.PymongoRestProxy):
+    """Proxy for pymongo.MongoClient"""
 
-    # pylint: disable=missing-function-docstring
+    __proxy_class__ = pymongo.database.Database
 
     def __init__(
         self,
-        client: "MongoClient",
+        client: "fomongo.MongoClient",
         name: str,
         codec_options: Optional[bson.codec_options.CodecOptions] = None,
         read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
@@ -33,67 +34,72 @@ class Database(proxy.PymongoRestProxy, pymongo_cls=pymongo.database.Database):
         read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
     ):
         self.__client = client
-        self.__name = name
-        self.__codec_options = codec_options
-        self.__read_preference = read_preference
-        self.__write_concern = write_concern
-        self.__read_concern = read_concern
 
-        # Initialize proxy class
-        proxy.PymongoRestProxy.__init__(self)
+        super().__init__(
+            name=name,
+            codec_options=codec_options,
+            read_preference=read_preference,
+            write_concern=write_concern,
+            read_concern=read_concern,
+        )
+
+    @property
+    def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
+        return self.client.__proxy_api_client__
+
+    @property
+    def __proxy_api_context__(self) -> proxy.ProxyAPIContext:
+        return [
+            ("get_database", self._proxy_init_args, self._proxy_init_kwargs)
+        ]
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Database):
-            return self.client == other.client and self.name == other.name
+        if isinstance(other, self.__proxy_class__):
+            return self.client == other.client and self.name == other.nam
         return NotImplemented
 
-    def __getattr__(self, name: str) -> collection.Collection:
-        if name.startswith("_"):
+    def __getattr__(self, __name: str) -> Any:
+        # Try to get attribute using proxy first.
+        try:
+            return super().__getattr__(__name)
+        except AttributeError:
+            ...
+
+        # Try to get new collection.
+        if __name.startswith("_"):
             raise AttributeError(
-                f"Database has no attribute {name!r}. To access the {name} "
-                f"collection, use db[{name!r}]."
+                f"Database has no attribute {__name!r}. To access the "
+                f"{__name} collection, use db[{__name!r}]."
             )
-        return self.get_collection(name)
+        return self.get_collection(__name)
 
     def __getitem__(self, name: str) -> collection.Collection:
         return self.get_collection(name)
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def client(self) -> "MongoClient":
         return self.__client
 
     @property
+    # pylint: disable-next=missing-function-docstring
     def name(self) -> str:
-        return self.__name
+        return self._proxy_init_kwargs["name"]
 
-    @property
-    def teams_api_client(self) -> fiftyone_api_client.Client:
-        return self.client.teams_api_client
-
-    @property
-    def teams_api_ctx(self) -> proxy.TeamsContext:
-        args = (
-            self.__name,
-            self.__codec_options,
-            self.__read_preference,
-            self.__write_concern,
-            self.__read_concern,
-        )
-        return [("get_database", args, {})]
-
+    # pylint: disable-next=missing-function-docstring
     def aggregate(
         self, *args: Any, **kwargs: Any
     ) -> command_cursor.CommandCursor:
         return command_cursor.CommandCursor(self, *args, **kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def create_collection(
         self, name: str, *args: Any, **kwargs: Any
     ) -> collection.Collection:
-        self.teams_api_execute_proxy(
-            "create_collection", (name, *args), kwargs
-        )
+        self.__proxy_it__("create_collection", (name, *args), kwargs)
         return self.get_collection(name, *args, **kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def drop_collection(
         self,
         name_or_collection: Union[str, collection.Collection],
@@ -105,41 +111,48 @@ class Database(proxy.PymongoRestProxy, pymongo_cls=pymongo.database.Database):
         except AttributeError:
             name = name_or_collection
 
-        return self.teams_api_execute_proxy(
-            "drop_collection", (name, *args), kwargs
-        )
+        return self.__proxy_it__("drop_collection", (name, *args), kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def get_collection(
         self, name: str, *args: Any, **kwargs: Any
     ) -> collection.Collection:
         return collection.Collection(self, name, *args, **kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def list_collections(
         self, *args: Any, **kwargs: Any
-    ) -> command_cursor.CommandCursor[Dict[str, Any]]:
+    ) -> command_cursor.CommandCursor:
         return command_cursor.CommandCursor(
             self, "list_collections", *args, **kwargs
         )
 
+    # pylint: disable-next=missing-function-docstring
     def watch(
         self, *args: Any, **kwargs: Any
     ) -> change_stream.CollectionChangeStream:
         return change_stream.DatabaseChangeStream(self, *args, **kwargs)
 
+    # pylint: disable-next=missing-function-docstring
     def with_options(
         self,
         codec_options: Optional[bson.codec_options.CodecOptions] = None,
         read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
         write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
         read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
-    ) -> "Database[pymongo.typings._DocumentType]":
-        return self.__class__(
-            self.__client,
-            self.__name,
-            self.__codec_options if codec_options is None else codec_options,
-            self.__read_preference
-            if read_preference is None
-            else read_preference,
-            self.__write_concern if write_concern is None else write_concern,
-            self.__read_concern if read_concern is None else read_concern,
+    ) -> "Database":
+        return self.client.get_database(
+            self.name,
+            self._proxy_init_kwargs.update(
+                {
+                    k: v
+                    for k, v in dict(
+                        codec_options=codec_options,
+                        read_preference=read_preference,
+                        write_concern=write_concern,
+                        read_concern=read_concern,
+                    ).items()
+                    if v is not None
+                }
+            ),
         )

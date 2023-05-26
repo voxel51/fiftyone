@@ -3,20 +3,30 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import functools
 import os
-from typing import Any, BinaryIO, Dict, Mapping, Optional
+from typing import Any, BinaryIO, Dict, Iterator, Mapping, Optional
 from typing_extensions import Literal
 
 import backoff
 import requests
 
-from fiftyone.api import constants
-from fiftyone.api import errors
-from fiftyone.api import socket
+from fiftyone.api import constants, errors, socket
 
 
 class Client:
     """Class for communicating with Teams API"""
+
+    @staticmethod
+    def _chunk_generator(
+        s: str, chunk_size=constants.CHUNK_SIZE
+    ) -> Iterator[bytes]:
+        bytes_ = s.encode()
+        for byte_chunk in [
+            bytes_[i : i + chunk_size]
+            for i in range(0, len(bytes_), chunk_size)
+        ]:
+            yield byte_chunk
 
     def __init__(
         self,
@@ -52,9 +62,24 @@ class Client:
     def get(self, url_path: str) -> requests.Response:
         return self.__request("GET", url_path)
 
-    def post(self, url_path: str, payload: Dict[str, Any]) -> Any:
+    def post(self, url_path: str, payload: str, stream: bool = False) -> Any:
         """Make post request"""
-        response = self.__request("POST", url_path, data=payload)
+
+        data = payload
+        headers = {}
+
+        if stream:
+            data = self._chunk_generator(payload)
+            headers["Transfer-Encoding"] = "chunked"
+
+        response = self.__request(
+            "POST", url_path, data=data, headers=headers, stream=stream
+        )
+
+        if stream:
+            return functools.reduce(
+                lambda res, line: res + line, response.iter_lines(), b""
+            )
 
         return response.content
 
