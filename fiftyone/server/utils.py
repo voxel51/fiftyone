@@ -125,7 +125,7 @@ def iter_label_fields(view: foc.SampleCollection):
     for path, field in _iter_label_fields(
         view.get_frame_field_schema(flat=True)
     ):
-        yield path, field
+        yield f"frames.{path}", field
 
 
 def meets_type(field: fof.Field, type_or_types):
