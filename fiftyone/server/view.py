@@ -260,13 +260,8 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
     for path, field in fosu.iter_label_fields(view):
-        if not issubclass(
-            field.document_type, (fol._HasID, fol._HasLabelList)
-        ):
-            continue
-
         path = _get_filtered_path(view, path, filtered_fields, label_tags)
-        if issubclass(field.document_type, fol._HasLabelList):
+        if isinstance(field, fof.ListField):
             if path.startswith(view._FRAMES_PREFIX):
                 add_tags = _add_frame_labels_tags
             else:
@@ -277,7 +272,7 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
             else:
                 add_tags = _add_label_tags
 
-        view = add_tags(path, field, view)
+        view = add_tags(path, view)
 
     view = _count_list_items(_LABEL_TAGS, view)
 
@@ -706,14 +701,13 @@ def _get_filtered_path(view, path, filtered_fields, label_tags):
     return "___%s" % path
 
 
-def _add_frame_labels_tags(path, field, view):
-    frames, path = path.split(".")
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+def _add_frame_labels_tags(path, view):
+    path = path[len("frames.") :]
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(
-            F(frames).reduce(
-                VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
+            F("frames").reduce(
+                VALUE.extend(F(path).reduce(VALUE.extend(F("tags")), [])), []
             )
         ),
         _allow_missing=True,
@@ -721,13 +715,13 @@ def _add_frame_labels_tags(path, field, view):
     return view
 
 
-def _add_frame_label_tags(path, field, view):
-    frames, path = path.split(".")
+def _add_frame_label_tags(path, view):
+    path = path[len("frames.") :]
     tags = "%s.tags" % path
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(
-            F(frames).reduce(
+            F("frames").reduce(
                 VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
             )
         ),
@@ -736,17 +730,16 @@ def _add_frame_label_tags(path, field, view):
     return view
 
 
-def _add_labels_tags(path, field, view):
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+def _add_labels_tags(path, view):
     view = view.set_field(
         _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
+        F(_LABEL_TAGS).extend(F(path).reduce(VALUE.extend(F("tags")), [])),
         _allow_missing=True,
     )
     return view
 
 
-def _add_label_tags(path, field, view):
+def _add_label_tags(path, view):
     tags = "%s.tags" % path
     return view.set_field(
         _LABEL_TAGS,
