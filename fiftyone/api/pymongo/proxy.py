@@ -6,7 +6,7 @@
 import abc
 from typing import Any, Iterable, Mapping, Optional, Tuple, Union
 
-from fiftyone.api import client, utils
+from fiftyone.api import client, socket, utils
 
 ProxyAPIClient = client.Client
 ProxyAPIContext = Iterable[
@@ -88,14 +88,8 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         super().__init__(*args, **kwargs)
 
         # Initialize FityOne Teams API client websocket
-        self.__proxy_api_socket = self.__proxy_api_client__.socket(
-            "_pymongo/stream"
-        )
-
-        # Initialize remote PyMongo target with current context
-        marshalled_ctx = utils.marshall(self.__proxy_api_context__)
-
-        self.__proxy_api_socket.send(marshalled_ctx)
+        self.__proxy_api_socket: socket.Socket = None
+        self.__proxy_socket_connect__()
 
     def __proxy_it__(
         self,
@@ -107,28 +101,34 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
 
         # Build and marshall the payload so any python objects can be
         # transported over the socket. They will be unmarshalled on server.
-        marshalled_payload = utils.marshall((name, args, kwargs))
+        while True:
+            try:
+                # Send marshalled request message
+                marshalled_payload = utils.marshall((name, args, kwargs))
+                self.__proxy_api_socket.send(marshalled_payload)
 
-        # Send marshalled request message
-        self.__proxy_api_socket.send(marshalled_payload)
-
-        # Get marshalled response message from the server.
-        try:
-            marshalled_response = next(self.__proxy_api_socket)
-            return self.__proxy_api_handle_reponse__(marshalled_response)
-        except StopIteration as err:
-            # Explicity re-raising here so that it's known this happens
-            raise err
+                # Get marshalled response message from the server.
+                marshalled_response = next(self.__proxy_api_socket)
+                return self.__proxy_api_handle_reponse__(marshalled_response)
+            except socket.SocketDisconnectException:
+                self.__proxy_socket_connect__()
 
     # pylint: disable-next=missing-function-docstring
     def close(self) -> None:
         if self.__proxy_api_socket is not None:
             self.__proxy_api_socket.close()
 
+    def __proxy_socket_connect__(self):
+        # Initialize FityOne Teams API client websocket
+        self.__proxy_api_socket = self.__proxy_api_client__.socket(
+            "_pymongo/stream"
+        )
+
+        # Initialize remote PyMongo target with current context
+        marshalled_ctx = utils.marshall(self.__proxy_api_context__)
+
+        self.__proxy_api_socket.send(marshalled_ctx)
+
     # pylint: disable-next=missing-function-docstring
     def next(self) -> Any:
-        try:
-            return self.__proxy_it__("next")
-        except StopIteration as err:
-            # Explicity re-raising here so that it's known this happens
-            raise err
+        return self.__proxy_it__("next")

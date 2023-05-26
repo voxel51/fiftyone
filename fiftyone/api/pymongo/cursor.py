@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 import pymongo
 
+from fiftyone.api import socket
 from fiftyone.api.pymongo import mixin, proxy
 
 if TYPE_CHECKING:
@@ -30,6 +31,7 @@ class AbstractCursor(proxy.PymongoWebsocketProxy, abc.ABC):
     ):
         self.__collection = collection
         self.__attr = attr  # "find"
+        self.__current_pos = 0
 
         super().__init__(
             filter=filter,
@@ -45,24 +47,26 @@ class AbstractCursor(proxy.PymongoWebsocketProxy, abc.ABC):
 
     @property
     def __proxy_api_context__(self) -> proxy.ProxyAPIContext:
+        kwargs = dict(self._proxy_init_kwargs)
+        kwargs["skip"] = kwargs["skip"] + self.__current_pos
         return [
             *self.collection.__proxy_api_context__,
-            (self.__attr, self._proxy_init_args, self._proxy_init_kwargs),
+            (self.__attr, [], kwargs),
         ]
 
     @property
-    def __limit(self) -> int:
+    def _limit(self) -> int:
         return self._proxy_init_kwargs["limit"]
 
-    @__limit.setter
-    def __limit(self, value) -> None:
+    @_limit.setter
+    def _limit(self, value) -> None:
         self._proxy_init_kwargs["limit"] = value
 
     @property
-    def __skip(self) -> int:
+    def _skip(self) -> int:
         return self._proxy_init_kwargs["skip"]
 
-    @__skip.setter
+    @_skip.setter
     def _skip(self, value) -> None:
         self._proxy_init_kwargs["skip"] = value
 
@@ -85,7 +89,7 @@ class AbstractCursor(proxy.PymongoWebsocketProxy, abc.ABC):
                     "Cursor instances do not support negative indices"
                 )
 
-            clone = self.clone().skip(index + self.__skip)
+            clone = self.clone().skip(index + self._skip)
             clone.limit(-1)
             return next(clone)
 
@@ -111,15 +115,21 @@ class AbstractCursor(proxy.PymongoWebsocketProxy, abc.ABC):
 
     # pylint: disable-next=missing-function-docstring
     def limit(self, limit: int) -> "Cursor":
-        self.__limit = limit
-        self.__proxy_it__("limit", (self.__limit,))
+        self._limit = limit
+        self.__proxy_it__("limit", (self._limit,))
         return self
 
     # pylint: disable-next=missing-function-docstring
     def skip(self, skip: int) -> "Cursor":
-        self.__skip = skip
-        self.__proxy_it__("skip", (self.__skip,))
+        self._skip = skip
+        self.__proxy_it__("skip", (self._skip,))
         return self
+
+    # pylint: disable-next=missing-function-docstring
+    def next(self) -> Any:
+        value = super().next()
+        self.__current_pos += 1
+        return value
 
 
 class Cursor(mixin.PymongoWebsocketProxyDunderMixin, AbstractCursor):

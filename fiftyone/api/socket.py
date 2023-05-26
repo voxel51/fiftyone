@@ -7,11 +7,15 @@ import os
 import queue
 import threading
 import time
-from typing import Dict, Optional
+from typing import Any, Mapping, Optional
 
 import websocket
 
 from fiftyone.api import constants
+
+
+class SocketDisconnectException(Exception):
+    """Wrapper for abnormal socket disconnects"""
 
 
 class Socket:
@@ -21,7 +25,7 @@ class Socket:
         self,
         base_url: str,
         url_path: str,
-        headers: Dict[str, str],
+        headers: Mapping[str, str],
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
     ):
         self._timeout = timeout
@@ -34,26 +38,24 @@ class Socket:
         self._ws = websocket.WebSocketApp(
             os.path.join(base_url.replace("http", "ws"), url_path),
             header=headers,
-            on_open=lambda ws: self.__on_open(ws),
-            on_message=lambda ws, msg: self.__on_message(ws, msg),
-            on_close=lambda ws, status_code, reason: self.__on_close(
-                ws, status_code, reason
-            ),
+            on_open=self.__on_open,
+            on_message=self.__on_message,
+            on_close=self.__on_close,
         )
 
         self._wst = threading.Thread(target=self._ws.run_forever)
         self._wst.daemon = True
         self._wst.start()
 
-    def __on_open(self, ws):
+    def __on_open(self, _):
         self._ready.set()
 
-    def __on_message(self, ws, msg):
+    def __on_message(self, _, msg):
         self._queue.put(msg)
 
-    def __on_close(self, ws, status_code, reason):
-        if status_code == 1011 and reason:
-            self._err = Exception(reason)
+    def __on_close(self, _, status_code, reason):
+        if status_code != 1000:
+            self._err = SocketDisconnectException(reason)
 
         self._closed = True
 
@@ -70,7 +72,7 @@ class Socket:
 
                 break
             except queue.Empty:
-                time.sleep(0.05)
+                time.sleep(0.01)
 
         if self._err:
             raise self._err
@@ -89,6 +91,9 @@ class Socket:
 
     def send(self, msg: str) -> None:
         """Sends a message to the server"""
+        if self.closed and self._err:
+            raise self._err
+
         self._ready.wait()
 
         self._ws.send(msg)
