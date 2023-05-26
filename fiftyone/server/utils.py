@@ -116,18 +116,24 @@ def iter_label_fields(view: foc.SampleCollection):
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
     """
-    for field_name, field in view.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    ).items():
-        yield field_name, field
+    for path, field in view.get_field_schema(flat=True).items():
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol.Label)
+            and not issubclass(field.document_type, fol._HasLabelList)
+        ):
+            yield path, field
 
     if view.media_type != fom.VIDEO:
         return
 
-    for field_name, field in view.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    ).items():
-        yield "frames.%s" % field_name, field
+    for path, field in view.get_frame_field_schema(flat=True).items():
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol.Label)
+            and not issubclass(field.document_type, fol._HasLabelList)
+        ):
+            yield "frames.%s" % path, field
 
 
 def meets_type(field: fof.Field, type_or_types):

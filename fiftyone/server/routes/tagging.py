@@ -60,12 +60,15 @@ class Tagging(HTTPEndpoint):
 
             for result in results[len(count_aggs) :]:
                 for tag, num in result.items():
+                    if tag is None:
+                        continue
+
                     tags[tag] += num
         else:
             tags, items = await view._async_aggregate(
                 [foa.CountValues("tags"), foa.Count()]
             )
-            count = sum(tags.values())
+            count = sum([v for k, v in tags.items() if k is not None])
 
         return {"count": count, "tags": tags, "items": items}
 
@@ -81,8 +84,8 @@ def build_label_tag_aggregations(view: foc.SampleCollection):
     """
     counts = []
     tags = []
-    for field_name, field in view.get_field_schema().items():
-        _add_to_label_tags_aggregations(field_name, field, counts, tags)
+    for path, field in view.get_field_schema(flat=True).items():
+        _add_to_label_tags_aggregations(path, field, counts, tags)
 
     if view.media_type != fom.IMAGE and view.get_frame_field_schema():
         for field_name, field in view.get_frame_field_schema().items():
@@ -94,6 +97,9 @@ def build_label_tag_aggregations(view: foc.SampleCollection):
 
 
 def _add_to_label_tags_aggregations(path: str, field: fof.Field, counts, tags):
+    if isinstance(field, fof.ListField):
+        field = field.field
+
     if not isinstance(field, fof.EmbeddedDocumentField):
         return
 
@@ -102,16 +108,8 @@ def _add_to_label_tags_aggregations(path: str, field: fof.Field, counts, tags):
     ):
         return
 
-    path = _expand_labels_path(path, field)
+    if issubclass(field.document_type, fol._HasLabelList):
+        return
+
     counts.append(foa.Count(path))
     tags.append(foa.CountValues("%s.tags" % path))
-
-
-def _expand_labels_path(root, label_field):
-    if issubclass(label_field.document_type, fol._HasLabelList):
-        return "%s.%s" % (
-            root,
-            label_field.document_type._LABEL_LIST_FIELD,
-        )
-
-    return root
