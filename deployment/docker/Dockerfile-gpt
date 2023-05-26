@@ -6,14 +6,14 @@ ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION} as wheelhouse
 
-RUN pip wheel --wheel-dir=/tmp/wheels chromadb langchain openai pandas
+RUN pip wheel --wheel-dir=/tmp/wheels langchain>=0.0.179 openai pandas scipy
 
 
 FROM ${TEAMS_IMAGE_NAME} as gptrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install --no-index \
-    --find-links=/wheelhouse/tmp/wheels chromadb langchain openai pandas
+    --find-links=/wheelhouse/tmp/wheels langchain>=0.0.179 openai pandas scipy
 
 # run as the voxel51 user
 USER voxel51

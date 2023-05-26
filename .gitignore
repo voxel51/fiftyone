@@ -11,6 +11,7 @@ __pycache__
 **/*.ipynb_checkpoints
 .idea
 *.swp
+*.whl
 
 *~
 
@@ -28,3 +29,5 @@ dist/
 coverage.xml
 .coverage.*
 pyvenv.cfg
+
+__models__
