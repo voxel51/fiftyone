@@ -119,17 +119,17 @@ class FiftyOneConfig(EnvConfig):
         self.plugins_dir = self.parse_string(
             d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
         )
-        self.operator_timeout = self.parse_int(
-            d,
-            "operator_timeout",
-            env_var="FIFTYONE_OPERATOR_TIMEOUT",
-            default=600,  # 600 seconds (10 minutes)
-        )
         self.plugins_cache_enabled = self.parse_bool(
             d,
             "plugins_cache_enabled",
             env_var="FIFTYONE_PLUGINS_CACHE_ENABLED",
             default=False,
+        )
+        self.operator_timeout = self.parse_int(
+            d,
+            "operator_timeout",
+            env_var="FIFTYONE_OPERATOR_TIMEOUT",
+            default=600,  # 600 seconds (10 minutes)
         )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,

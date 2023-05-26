@@ -10,7 +10,6 @@ from contextlib import contextmanager
 from functools import wraps
 import signal
 import os
-from typing import Callable
 
 import fiftyone as fo
 
@@ -53,14 +52,18 @@ def raise_timeout_error(seconds):
     raise TimeoutError(f"Timeout occurred after {seconds} seconds") from None
 
 
-def dir_state(dir_path: str) -> float:
+def dir_state(dir_path):
     return max(
         os.path.getmtime(os.path.join(dir_path, f))
         for f in os.listdir(dir_path)
     )
 
 
-def plugins_cache(func: Callable):
+def plugins_cache(func):
+    """Decorator that returns the cached function result as long as no
+    subdirectories of ``fo.config.plugins_dir`` have been modified since last
+    time.
+    """
     cache = {}
     dir_state_cache = {"state": None}
     dir_path = fo.config.plugins_dir
@@ -68,10 +71,8 @@ def plugins_cache(func: Callable):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if fo.config.plugins_cache_enabled:
-            # Get the modification time of the directory.
             current_dir_state = dir_state(dir_path)
             if current_dir_state != dir_state_cache["state"]:
-                # If directory state has changed (or it's the first run), call the function and store the result in cache.
                 cache.clear()
                 cache[current_dir_state] = func(*args, **kwargs)
                 dir_state_cache["state"] = current_dir_state
