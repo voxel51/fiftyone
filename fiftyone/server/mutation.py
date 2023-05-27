@@ -453,7 +453,6 @@ class Mutation:
 
         state = get_state()
         dataset = state.dataset
-        isVideo = dataset.media_type == "video"
         if dataset is None:
             dataset = fod.load_dataset(dataset_name)
 
@@ -469,6 +468,7 @@ class Mutation:
 
         res = []
         try:
+            isVideo = dataset.media_type == "video"
             for stage in view._stages:
                 res += [
                     st
