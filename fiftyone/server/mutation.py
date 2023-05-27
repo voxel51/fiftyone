@@ -453,7 +453,6 @@ class Mutation:
 
         state = get_state()
         dataset = state.dataset
-        isVideo = dataset.media_type == "video"
         if dataset is None:
             dataset = fod.load_dataset(dataset_name)
 
@@ -469,10 +468,11 @@ class Mutation:
 
         res = []
         try:
+            is_video = dataset.media_type == "video"
             for stage in view._stages:
                 res += [
                     st
-                    for st in stage.get_selected_fields(view, frames=isVideo)
+                    for st in stage.get_selected_fields(view, frames=is_video)
                 ]
         except Exception as e:
             print("failed to get_selected_fields", e)
