@@ -57,6 +57,7 @@ class _SampleMixin(object):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             return self.frames[field_name]
 
+        self._check_reserved_keywords([field_name])
         return super().__getitem__(field_name)
 
     def __setitem__(self, field_name, value):
@@ -64,6 +65,7 @@ class _SampleMixin(object):
             self.frames[field_name] = value
             return
 
+        self._check_reserved_keywords([field_name])
         self._secure_media(field_name, value)
         super().__setitem__(field_name, value)
 
@@ -474,6 +476,24 @@ class _SampleMixin(object):
 
         return fields, frame_fields, omit_fields, omit_frame_fields
 
+    def _check_reserved_keywords(self, fields):
+        """Validates the provided fields.
+
+        Raises a :class:`ValueError` if any of the fields are considered
+        reserved keywords.
+
+        Currently only checks for 'pk', which is reserved for the
+        primary key as an alias for '_id'
+        """
+        reserved_fields = {"pk"}.intersection(fields)
+        if reserved_fields:
+            reserved = ", ".join([f"'{x}'" for x in reserved_fields])
+            raise ValueError(
+                f"{reserved} is a reserved keyword"
+                if len(reserved_fields) == 1
+                else f"{reserved} are reserved keywords"
+            )
+
 
 class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
@@ -505,6 +525,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
+        self._check_reserved_keywords(kwargs.keys())
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames(self)
         else:
