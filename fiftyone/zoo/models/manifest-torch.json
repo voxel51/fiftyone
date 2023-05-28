@@ -1739,6 +1739,44 @@
                 "zero-shot"
             ],
             "date_added": "2022-04-12 17:49:51"
+        },
+        {
+            "base_name": "complex-yolo-v3-torch",
+            "base_filename": "yolov3_ckpt_epoch-298.pth",
+            "version": null,
+            "description": "Complex extension of YOLO object detection model <https://arxiv.org/abs/1803.06199>`_ ",
+            "source": "https://github.com/ghimiredhikura/Complex-YOLOv3",
+            "size_bytes": 353976522,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1e7PCqeV3tS68KtBIUbX34Uhy81XnsYZV"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.complex_yolo.TorchComplexYOLOv3Model",
+                "config": {
+                    "config_url": "https://raw.githubusercontent.com/ghimiredhikura/Complex-YOLOv3/master/config/complex_yolov3.cfg",
+                    "config_base_filename": "complex_yolov3.cfg",
+                    "entrypoint_fcn": "",
+                    "output_processor_cls": "fiftyone.utils.torch.NullOutputProcessor",
+                    "labels_string": "Car,Pedestrian,Cyclist",
+                    "image_size": [608, 608],
+                    "confidence_thresh": 0.9,
+                    "nms_thresh": 0.3
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "torch"],
+            "date_added": "2022-11-17 12:49:51"
         }
     ]
 }
