@@ -11,11 +11,11 @@ import re
 import typing as t
 
 import asyncio
+from bson import json_util
 from dacite import from_dict
 
 import eta.core.utils as etau
 
-import fiftyone.core.json as foj
 import fiftyone.core.state as fos
 from fiftyone.core.utils import run_sync_task
 
@@ -45,7 +45,7 @@ class Event:
             return Ping()
 
         if isinstance(data, str):
-            data = foj.FiftyOneJSONEncoder.loads(data)
+            data = json_util.loads(data)
 
         event_cls = etau.get_class(
             "".join(word.title() for word in event_name.split("_")),
