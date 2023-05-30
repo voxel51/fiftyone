@@ -22,6 +22,10 @@ class APIKey(object):
     name: str
     created_at: datetime.datetime
 
+    def __post_init__(self):
+        if isinstance(self.created_at, str):
+            self.created_at = datetime.datetime.fromisoformat(self.created_at)
+
 
 _LIST_API_KEYS_QUERY = """
     query ($userId: String!) {
