@@ -997,7 +997,7 @@ by selecting `group` mode under the App's settings menu:
 .. _groups-app-dynamic:
 
 Dynamic Groups in the App
-________________
+_________________________
 
 You can create :ref:`dynamic groups <view-groups>` either using the SDK or
 using the dynamic groups shortcut shown below:

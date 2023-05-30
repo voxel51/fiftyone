@@ -5,6 +5,7 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -34,6 +35,8 @@ import types
 from xml.parsers.expat import ExpatError
 import zlib
 from matplotlib import colors as mcolors
+
+import asyncio
 
 try:
     import pprintpp as _pprint
@@ -1894,6 +1897,21 @@ def to_slug(name):
         )
 
     return slug
+
+
+_T = t.TypeVar("_T")
+
+
+async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
+    """
+    Run a synchronous function as an async background task
+
+    Args:
+        run: a synchronous callable
+    """
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, func, *args)
 
 
 def validate_color(value):

@@ -1101,6 +1101,8 @@ Creates or initializes a plugin.
 
 **Examples**
 
+.. code-block:: text
+
     # Initialize a new plugin
     fiftyone plugins create <name>
 

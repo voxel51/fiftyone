@@ -72,6 +72,7 @@ def add_yolo_labels(
         txt_map = {
             os.path.splitext(p)[0]: os.path.join(labels_path, p)
             for p in etau.list_files(labels_path, recursive=True)
+            if p.endswith(".txt")
         }
         match_type = "uuid"
     elif isinstance(labels_path, dict):
