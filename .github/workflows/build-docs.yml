@@ -44,6 +44,8 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Checkout fiftyone-teams
         uses: actions/checkout@v3
         with:
@@ -51,6 +53,7 @@ jobs:
           path: fiftyone-teams
           token: ${{ secrets.TEAMS_GITHUB_PAT }}
           ref: main
+          persist-credentials: false
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
