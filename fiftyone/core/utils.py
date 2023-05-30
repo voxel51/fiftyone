@@ -1902,9 +1902,7 @@ def to_slug(name):
 _T = t.TypeVar("_T")
 
 
-async def run_sync_task(
-    func: t.Callable[..., _T], *args: t.Any
-) -> asyncio.Future[_T]:
+async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
     """
     Run a synchronous function as an async background task
 
