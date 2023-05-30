@@ -45,6 +45,7 @@ jobs:
       - name: Clone fiftyone
         uses: actions/checkout@v3
         with:
+          repository: ${{ github.repository }}
           persist-credentials: false
       - name: Checkout fiftyone-teams
         uses: actions/checkout@v3
