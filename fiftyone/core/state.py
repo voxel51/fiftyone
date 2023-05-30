@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
-
     Args:
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
@@ -129,13 +128,11 @@ class StateDescription(etas.Serializable):
     @classmethod
     def from_dict(cls, d, with_config=None):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
-
         Args:
             d: a JSON dictionary
             with_config (None): an existing
                 :class:`fiftyone.core.config.AppConfig` to attach and apply
                 settings to
-
         Returns:
             :class:`StateDescription`
         """

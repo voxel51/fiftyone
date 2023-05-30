@@ -435,7 +435,10 @@ class Query(fosa.AggregateQuery):
         return None
 
     @gql.field
-    def teams_submission(self) -> bool:
+    def teams_submission(
+        self,
+    ) -> bool:  # TODO: check what this method should be
+        return True
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
             submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
