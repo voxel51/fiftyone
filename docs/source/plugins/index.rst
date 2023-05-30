@@ -49,6 +49,7 @@ Python and JS plugins can read their settings at the dataset scope or app scope,
 
     Settings are readable by users in the browser. Use environment variables and Python Operators for sensitive/secret values.
 
+.. _fiftyone-operators:
 
 Operators
 ---------

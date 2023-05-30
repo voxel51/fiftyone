@@ -272,7 +272,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements.push({
             color: getColor(coloring.pool, coloring.seed, v),
             title: value,
-            value: tag,
+            value: value,
           });
         });
       } else {
