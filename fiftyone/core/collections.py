@@ -8947,7 +8947,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, debug=False):
         if not aggregations:
             return []
 
@@ -8978,6 +8978,10 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
+            if debug:
+                from fiftyone import pprint
+
+                pprint(pipeline)
             _results = await foo.aggregate(collection, pipelines)
 
             # Parse facet-able results
@@ -9645,6 +9649,9 @@ class SampleCollection(object):
             )
 
         field = schema[field_name]
+
+        if isinstance(field, fof.ListField):
+            field = field.field
 
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
