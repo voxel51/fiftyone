@@ -722,11 +722,13 @@ def _add_frame_labels_tags(path, field, view):
     if issubclass(field.document_type, fol._HasLabelList):
         items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
 
+    reduce = F(items).reduce(VALUE.extend(F("tags")), [])
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(
             F("frames").reduce(
-                VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
+                VALUE.extend(F(items).exists().if_else(reduce, [])),
+                [],
             )
         ),
         _allow_missing=True,
@@ -759,7 +761,14 @@ def _add_labels_tags(path, field, view):
 
     view = view.set_field(
         _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
+        F(path)
+        .exists()
+        .if_else(
+            F(_LABEL_TAGS).extend(
+                F(items).reduce(VALUE.extend(F("tags")), [])
+            ),
+            F(_LABEL_TAGS),
+        ),
         _allow_missing=True,
     )
     return view
