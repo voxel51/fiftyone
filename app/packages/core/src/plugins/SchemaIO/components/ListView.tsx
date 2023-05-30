@@ -2,7 +2,7 @@ import { Add, Delete } from "@mui/icons-material";
 import { Avatar, Box, Grid, IconButton } from "@mui/material";
 import { set } from "lodash";
 import React, { useEffect, useState } from "react";
-import { getEmptyValue } from "../utils";
+import { getComponentProps, getEmptyValue } from "../utils";
 import Accordion from "./Accordion";
 import Button from "./Button";
 import DynamicIO from "./DynamicIO";
@@ -28,7 +28,7 @@ export default function ListView(props) {
   const lowerCaseLabel = label?.toLowerCase();
 
   return (
-    <Box>
+    <Box {...getComponentProps(props, "container")}>
       <HeaderView
         {...props}
         divider
@@ -43,6 +43,7 @@ export default function ListView(props) {
             </Button>
           )
         }
+        nested
       />
       <Grid container rowSpacing={1} sx={{ ml: 1 }}>
         {size === 0 && (
@@ -89,6 +90,7 @@ function CollapsibleListItem(props) {
         if (readOnly) return null;
         return <DeleteButton {...props} />;
       }}
+      {...getComponentProps(props, "accordion")}
     >
       <DynamicIO {...props} />
     </Accordion>
@@ -115,7 +117,10 @@ function NonCollapsibleListItem(props) {
     >
       {!hideIndexLabel && (
         <Grid item>
-          <Avatar sx={{ width: 24, height: 24, mr: 1, fontSize: "1rem" }}>
+          <Avatar
+            sx={{ width: 24, height: 24, mr: 1, fontSize: "1rem" }}
+            {...getComponentProps(props, "index")}
+          >
             {index}
           </Avatar>
         </Grid>
@@ -125,7 +130,7 @@ function NonCollapsibleListItem(props) {
       </Grid>
       {!readOnly && (
         <Grid item>
-          <DeleteButton {...props} />
+          <DeleteButton {...props} {...getComponentProps(props, "delete")} />
         </Grid>
       )}
     </Grid>

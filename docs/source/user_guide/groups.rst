@@ -862,7 +862,7 @@ Grouped aggregations
 ____________________
 
 You can use the entire :ref:`aggregations framework <using-aggregations>` to
-efficiently compute statistics on grouoped datasets.
+efficiently compute statistics on grouped datasets.
 
 Remember that, just as when :ref:`iterating over <groups-iteration>` or
 :ref:`writing views <groups-views>` into grouped datasets, aggregations will
@@ -993,6 +993,31 @@ by selecting `group` mode under the App's settings menu:
 .. image:: /images/groups/groups-stats.gif
    :alt: groups-stats
    :align: center
+
+.. _groups-app-dynamic:
+
+Dynamic Groups in the App
+_________________________
+
+You can create :ref:`dynamic groups <view-groups>` either using the SDK or
+using the dynamic groups shortcut shown below:
+
+.. image:: /images/groups/dynamic-groups-intro.gif
+   :alt: dynamic-groups-intro
+   :align: center
+
+A carousel at the top of the modal allows you navigate between different
+samples within a dynamic group.
+
+Fiftyone also allows you to dynamically group :ref:`grouped datasets <groups>`.
+
+.. image:: /images/groups/dynamic-groups-groups.gif
+   :alt: dynamic-groups-groups
+   :align: center
+
+A pagination bar at the bottom of the modal allows you to navigate between
+different samples within a dynamic group of groups. The pagination bar
+supports both sequential as well as random access.
 
 .. _groups-importing:
 

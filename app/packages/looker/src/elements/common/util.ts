@@ -11,8 +11,12 @@ import {
 import { Overlay } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
 import { isValidColor } from "../../overlays/util";
-import { BaseState, Coloring, CustomizeColor } from "../../state";
-import { DispatchEvent } from "../../state";
+import {
+  BaseState,
+  Coloring,
+  CustomizeColor,
+  DispatchEvent,
+} from "../../state";
 
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
@@ -31,7 +35,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
       return;
     }
 
-    let detail =
+    const detail =
       overlays.length && overlays[0].containsPoint(state) && !nullify
         ? overlays[0].getPointInfo(state)
         : null;
@@ -107,24 +111,34 @@ export const getColorFromOptions = ({
   labelDefault,
 }: Param) => {
   let key;
-  const setting = customizeColorSetting.find((s) => s.field === path);
+  const setting = customizeColorSetting.find((s) => s.path === path);
   if (coloring.by === "field") {
-    const fieldColor = setting?.fieldColor;
-    const useFieldColor = setting?.useFieldColor;
-    if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
-      return fieldColor;
+    if (isValidColor(setting?.fieldColor ?? "")) {
+      return setting.fieldColor;
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
   if (coloring.by === "value") {
     if (setting) {
-      key = setting.attributeForColor ?? labelDefault ? "label" : "value";
+      key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.labelColors?.find(
-        (l) => l.name == param[key]?.toString()
-      )?.color;
-      if (isValidColor(labelColor)) {
-        return labelColor;
+      const valueColor = setting?.valueColors?.find((l) => {
+        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+          return typeof param[key] === "string"
+            ? l.value?.toLowerCase === param[key]
+            : !param[key];
+        }
+        if (["True", "False"].includes(l.value?.toString())) {
+          return (
+            l.value?.toString().toLowerCase() ==
+            param[key]?.toString().toLowerCase()
+          );
+        }
+        return l.value?.toString() == param[key]?.toString();
+      })?.color;
+
+      if (isValidColor(valueColor)) {
+        return valueColor;
       }
     } else {
       key = labelDefault ? "label" : "value";
@@ -147,23 +161,30 @@ export const getColorFromOptionsPrimitives = ({
   value,
   customizeColorSetting,
 }: PrimitiveParam) => {
-  const setting = customizeColorSetting.find((s) => s.field === path);
+  const setting = customizeColorSetting.find((s) => s.path === path);
   if (coloring.by === "field") {
-    const fieldColor = setting?.fieldColor;
-    const useFieldColor = setting?.useFieldColor;
-    if (fieldColor && useFieldColor && isValidColor(fieldColor)) {
-      return fieldColor;
+    if (isValidColor(setting?.fieldColor ?? "")) {
+      return setting?.fieldColor;
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
   if (coloring.by === "value") {
     if (setting) {
       // check if this label has a assigned color, use it if it is a valid color
-      const labelColor = setting.labelColors?.find(
-        (l) => l.name == value
-      )?.color;
-      if (isValidColor(labelColor)) {
-        return labelColor;
+      const valueColor = setting.valueColors?.find((l) => {
+        const normalized = l.value?.toString().toLowerCase();
+        if (["none", "null", "undefined"].includes(normalized)) {
+          return typeof value === "string"
+            ? normalized === value.toLowerCase()
+            : !value;
+        }
+        if (["True", "False"].includes(l.value?.toString())) {
+          return normalized === value.toString().toLowerCase();
+        }
+        return l.value?.toString() === value.toString();
+      })?.color;
+      if (isValidColor(valueColor)) {
+        return valueColor;
       }
     }
     return getColor(coloring.pool, coloring.seed, path);

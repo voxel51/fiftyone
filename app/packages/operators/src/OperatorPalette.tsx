@@ -107,13 +107,15 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
       </DialogContent>
       {!hideActions && (
         <DialogActions sx={{ p: 1 }}>
-          <BaseStylesProvider>
-            {onCancel && (
+          {onCancel && (
+            <BaseStylesProvider>
               <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
                 {cancelButtonText}
               </Button>
-            )}
-            {onSubmit && (
+            </BaseStylesProvider>
+          )}
+          {onSubmit && (
+            <BaseStylesProvider>
               <Button
                 onClick={handleSubmit}
                 onKeyDown={onEnter(handleSubmit)}
@@ -121,8 +123,8 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
               >
                 {submitButtonText}
               </Button>
-            )}
-          </BaseStylesProvider>
+            </BaseStylesProvider>
+          )}
         </DialogActions>
       )}
     </Dialog>

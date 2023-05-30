@@ -449,17 +449,20 @@ export const cumulativeCounts = selectorFamily<
   get:
     ({ extended, path: key, modal, ftype, embeddedDocType }) =>
     ({ get }) => {
-      return gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
-        const data = get(counts({ extended, modal, path: `${path}.${key}` }));
-        for (const value in data) {
-          if (!result[value]) {
-            result[value] = 0;
-          }
+      return [...new Set(gatherPaths(get, ftype, embeddedDocType))].reduce(
+        (result, path) => {
+          const data = get(counts({ extended, modal, path: `${path}.${key}` }));
+          for (const value in data) {
+            if (!result[value]) {
+              result[value] = 0;
+            }
 
-          result[value] += data[value];
-        }
-        return result;
-      }, {});
+            result[value] += data[value];
+          }
+          return result;
+        },
+        {}
+      );
     },
 });
 

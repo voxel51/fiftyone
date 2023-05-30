@@ -132,7 +132,7 @@ const SampleModal = () => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
-                    disabled={isOther || isLabelTag || isTag}
+                    disabled={isOther}
                     key={key}
                     trigger={trigger}
                   />
@@ -147,7 +147,7 @@ const SampleModal = () => {
                 )}
               </>
             ),
-            disabled: isTag || isLabelTag || isOther,
+            disabled: isTag || isOther,
           };
 
         case fos.EntryKind.GROUP: {

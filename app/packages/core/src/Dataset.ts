@@ -60,7 +60,15 @@ export const DatasetNodeQuery = graphql`
         sidebarMode
         colorScheme {
           colorPool
-          customizedColorSettings
+          fields {
+            path
+            fieldColor
+            colorByAttribute
+            valueColors {
+              value
+              color
+            }
+          }
         }
       }
       sampleFields {

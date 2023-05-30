@@ -86,14 +86,14 @@ function Prompting({ operatorPrompt }) {
   }, []);
 
   return (
-    <form onSubmit={operatorPrompt.onSubmit}>
+    <Box component={"form"} p={2} onSubmit={operatorPrompt.onSubmit}>
       <OperatorIO
         schema={operatorPrompt.inputFields}
         onChange={setFormState}
         data={operatorPrompt.promptingOperator.params}
         errors={operatorPrompt?.validationErrors || []}
       />
-    </form>
+    </Box>
   );
 }
 
@@ -102,7 +102,11 @@ export function OperatorViewModal() {
   if (!io.visible) return null;
 
   return createPortal(
-    <OperatorPalette onSubmit={io.hide} submitButtonText="Done">
+    <OperatorPalette
+      onSubmit={io.hide}
+      onClose={io.hide}
+      submitButtonText="Done"
+    >
       <PaletteContentContainer>
         <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
       </PaletteContentContainer>
@@ -119,7 +123,7 @@ function ResultsOrError({ operatorPrompt, outputFields }) {
   const { result } = operatorPrompt.executor;
 
   return (
-    <Box>
+    <Box p={2}>
       {outputFields && (
         <OperatorIO
           type="output"

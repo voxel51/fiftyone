@@ -34,6 +34,9 @@ import timeit
 import types
 from xml.parsers.expat import ExpatError
 import zlib
+from matplotlib import colors as mcolors
+
+import asyncio
 
 import asyncio
 
@@ -383,6 +386,35 @@ def normalize_path(path):
     return os.path.abspath(os.path.expanduser(path))
 
 
+def install_package(requirement_str, error_level=None, error_msg=None):
+    """Installs the given package via ``pip``.
+
+    Installation is performed via::
+
+        python -m pip install <requirement_str>
+
+    Args:
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
+            "tensorflow>=1.13,<1.15"
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+        error_msg (None): an optional custom error message to use
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    return etau.install_package(
+        requirement_str,
+        error_level=error_level,
+        error_msg=error_msg,
+    )
+
+
 def ensure_package(
     requirement_str, error_level=None, error_msg=None, log_success=False
 ):
@@ -426,6 +458,80 @@ def ensure_package(
         error_suffix=_REQUIREMENT_ERROR_SUFFIX,
         log_success=log_success,
     )
+
+
+def load_requirements(requirements_path):
+    """Loads the package requirements from a ``requirements.txt`` file on disk.
+
+    Comments and extra whitespace are automatically stripped.
+
+    Args:
+        requirements_path: the path to a requirements file
+
+    Returns:
+        a list of requirement strings
+    """
+    requirements = []
+    with open(requirements_path, "rt") as f:
+        for line in f:
+            line = _strip_comments(line)
+            if line:
+                requirements.append(line)
+
+    return requirements
+
+
+def _strip_comments(requirement_str):
+    chunks = []
+    for chunk in requirement_str.strip().split():
+        if chunk.startswith("#"):
+            break
+
+        chunks.append(chunk)
+
+    return " ".join(chunks)
+
+
+def install_requirements(requirements_path, error_level=None):
+    """Installs the package requirements from a ``requirements.txt`` file on
+    disk.
+
+    Args:
+        requirements_path: the path to a requirements file
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    for req_str in load_requirements(requirements_path):
+        install_package(req_str, error_level=error_level)
+
+
+def ensure_requirements(
+    requirements_path, error_level=None, log_success=False
+):
+    """Verifies that the package requirements from a ``requirements.txt`` file
+    on disk are installed.
+
+    Args:
+        requirements_path: the path to a requirements file
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+    for req_str in load_requirements(requirements_path):
+        ensure_package(
+            req_str, error_level=error_level, log_success=log_success
+        )
 
 
 def ensure_import(
@@ -1796,11 +1902,10 @@ def to_slug(name):
 
 
 _T = t.TypeVar("_T")
-_P = t.ParamSpec("_P")
 
 
 async def run_sync_task(
-    func: t.Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs
+    func: t.Callable[..., _T], *args: t.Any
 ) -> asyncio.Future[_T]:
     """
     Run a synchronous function as an async background task
@@ -1808,16 +1913,33 @@ async def run_sync_task(
     Args:
         run: a synchronous callable
     """
-    if kwargs:
-        raise ValueError("kwargs are not allowed in a sync task")
-
     loop = asyncio.get_running_loop()
 
     return await loop.run_in_executor(None, func, *args)
 
 
+def validate_color(value):
+    """Validates that the given value is a valid css color name.
+
+    Args:
+        value: a value
+
+    Raises:
+        ValueError: if ``value`` is not a valid css color name.
+    """
+
+    if not etau.is_str(value) or not (
+        value in mcolors.CSS4_COLORS
+        or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
+    ):
+        raise ValueError(
+            """%s is neither a valid CSS color name in all lowercase \n"""
+            """(eg: 'yellowgreen') nor a hex color(eg. '#00ff00')""" % value
+        )
+
+
 def validate_hex_color(value):
-    """Validates that the given value is a hex color string.
+    """Validates that the given value is a hex color string or css name.
 
     Args:
         value: a value
@@ -1829,5 +1951,5 @@ def validate_hex_color(value):
         r"^#(?:[0-9a-fA-F]{3}){1,2}$", value
     ):
         raise ValueError(
-            "%s is not a valid hex color string (ex: '#FF6D04')" % value
+            "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )

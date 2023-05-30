@@ -4,6 +4,7 @@ import * as ColorPickers from "react-color";
 import { colorPicker } from "./ColorView.module.css";
 import HeaderView from "./HeaderView";
 import autoFocus from "../utils/auto-focus";
+import { getComponentProps } from "../utils";
 
 export default function ColorView(props) {
   const { onChange, path, schema, data } = props;
@@ -21,9 +22,14 @@ export default function ColorView(props) {
   }, [color]);
 
   return (
-    <Box>
-      <HeaderView {...props} />
-      <Stack direction="row" alignItems="center" spacing={1}>
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} nested />
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1}
+        {...getComponentProps(props, "stack")}
+      >
         <Box
           onClick={(e) => {
             setAnchor(e.currentTarget);
@@ -36,6 +42,7 @@ export default function ColorView(props) {
             borderRadius: 0.5,
             cursor: "pointer",
           }}
+          {...getComponentProps(props, "preview")}
         />
         {!compact && (
           <TextField
@@ -45,16 +52,23 @@ export default function ColorView(props) {
             onChange={(e) => {
               setColor({ hex: e.target.value });
             }}
+            {...getComponentProps(props, "field")}
           />
         )}
       </Stack>
-      <Popper open={open} anchorEl={anchor} placement="bottom-start">
+      <Popper
+        open={open}
+        anchorEl={anchor}
+        placement="bottom-start"
+        {...getComponentProps(props, "popper")}
+      >
         <Component
           color={color.hsl || color.hex}
           onChange={(color) => {
             setColor(color);
           }}
           className={colorPicker}
+          {...getComponentProps(props, "picker")}
         />
       </Popper>
     </Box>

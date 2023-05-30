@@ -5,30 +5,47 @@ GitHub utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 import re
 import requests
 
+import eta.core.utils as etau
 import eta.core.web as etaw
 
 
+logger = logging.getLogger(__name__)
+
+
 class GitHubRepository(object):
-    """Utility class for interacting with a GitHub repository.
+    """Class for interacting with a GitHub repository.
+
+    .. note::
+
+        To interact with private GitHub repositories that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
 
     Args:
-        repo: a URL like ``https://github.com/<user>/<repo>`` or an identifier
-            like ``<user>/<repo>[/<ref>]``
+        repo: the GitHub repository or identifier, which can be:
+
+            -   a GitHub URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
     """
 
     def __init__(self, repo):
-        if not etaw.is_url(repo):
-            params = self.from_str(repo)
+        if etaw.is_url(repo):
+            params = self._parse_url(repo)
         else:
-            params = self.from_url(repo)
+            params = self._parse_identifier(repo)
 
         self._user = params.get("user")
-        self._name = params.get("repo")
-        self._ref = params.get("ref")
+        self._repo = params.get("repo")
+        self._ref = params.get("ref", None)
+        self._session = None
 
     @property
     def user(self):
@@ -36,13 +53,13 @@ class GitHubRepository(object):
         return self._user
 
     @property
-    def name(self):
+    def repo(self):
         """The name of the repo."""
-        return self._name
+        return self._repo
 
     @property
     def ref(self):
-        """The ref of the repo (e.g. branch, tag, commit hash)."""
+        """The ref (e.g. branch, tag, commit hash), if any."""
         return self._ref
 
     @ref.setter
@@ -50,64 +67,117 @@ class GitHubRepository(object):
         self._ref = ref
 
     @property
-    def download_url(self):
-        """The URL to download the repo as a zip archive."""
+    def identifier(self):
+        """The repository identifier string."""
+        repo = f"{self.user}/{self.repo}"
+        if self.ref:
+            repo += "/" + self.ref
+
+        return repo
+
+    def get_repo_info(self):
+        """Returns a dict of info about the repository.
+
+        Returns:
+            an info dict
+        """
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}"
+        return self._get(url)
+
+    def list_path_contents(self, path=None):
+        """Returns the contents of the repo rooted at the given path.
+
+        Args:
+            path (None): an optional root path to start the search from
+
+        Returns:
+            a list of file info dicts
+        """
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}/contents"
+        if path:
+            url += "/" + path
+
+        if self.ref:
+            url += "?ref=" + self.ref
+
+        return self._get(url)
+
+    def list_repo_contents(self, recursive=True):
+        """Returns a flat list of the repository's contents.
+
+        Args:
+            recursive (True): whether to recursively traverse subdirectories
+
+        Returns:
+            a list of file info dicts
+        """
+        if self.ref:
+            ref = self.ref
+        else:
+            ref = self.get_repo_info()["default_branch"]
+
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}/git/trees/{ref}?recursive={int(recursive)}"
+        return self._get(url)["tree"]
+
+    def download(self, outdir):
+        """Downloads the repository to the specified root directory.
+
+        Args:
+            outdir: the output directory
+        """
+        zip_path = os.path.join(outdir, "download.zip")
         zip_url = (
-            f"https://api.github.com/repos/{self.user}/{self.name}/zipball"
+            f"https://api.github.com/repos/{self.user}/{self.repo}/zipball"
         )
         if self.ref:
-            zip_url = os.path.join(zip_url, self.ref)
+            zip_url += "/" + self.ref
 
-        return zip_url
+        web_session = etaw.WebSession()
+        web_session.sess = self._get_session()
+        web_session.write(zip_path, zip_url)
 
-    @classmethod
-    def from_url(cls, url):
-        """Parses a GitHub URL into its components."""
-        params = re.search(
+        etau.extract_zip(zip_path, delete_zip=True)
+
+    def _get_session(self):
+        if self._session is None:
+            self._session = self._make_session()
+
+        return self._session
+
+    def _make_session(self):
+        session = requests.Session()
+        token = os.environ.get("GITHUB_TOKEN", None)
+        if token:
+            logger.debug("Using GitHub token as authorization")
+            session.headers.update({"Authorization": "token " + token})
+
+        return session
+
+    def _get(self, url):
+        session = self._get_session()
+        resp = session.get(url).json()
+        if isinstance(resp, dict) and "message" in resp:
+            error = resp["message"]
+            raise ValueError(f"{error}: {self.identifier}")
+
+        return resp
+
+    def _parse_url(self, url):
+        return re.search(
             "github.com/(?P<user>[A-Za-z0-9_-]+)/((?P<repo>["
             "A-Za-z0-9_-]+)((/.+?)?/(?P<ref>[A-Za-z0-9_-]+)?(?P<path>.*)?)?)",
-            str(url),
+            url,
         ).groupdict()
-        params["is_gist"] = False
-        params["ref"] = params["ref"] or "main"
-        params["path"] = params["path"] or ""
-        return params
 
-    @classmethod
-    def from_str(cls, repo):
-        """Parses a GitHub repo string into its components."""
+    def _parse_identifier(self, repo):
         params = repo.split("/")
         if len(params) < 2:
             raise ValueError(
-                "Invalid repo format. Must be in the form of user/repo/<ref>"
+                f"Invalid identifier '{repo}'. Expected <user>/<repo>[/<ref>]"
             )
 
-        return {
-            "user": params[0],
-            "repo": params[1],
-            "ref": params[2] if len(params) > 2 else "main",
-            "is_gist": False,
-            "path": "",
-        }
-
-    def list_path_contents(self, path=None):
-        """Returns the contents of the repo at the given path."""
-        content_url = (
-            f"https://api.github.com/repos/{self.user}/{self.name}/contents"
+        return dict(
+            user=params[0],
+            repo=params[1],
+            ref=params[2] if len(params) > 2 else None,
         )
-        if path:
-            content_url = os.path.join(content_url, path)
-
-        if self.ref:
-            content_url = f"{content_url}?ref={self.ref}"
-
-        return requests.get(content_url).json()
-
-    def list_repo_contents(self, recursive=True):
-        """Returns a flat list of the contents of the repo."""
-        content_url = f"https://api.github.com/repos/{self.user}/{self.name}/git/trees/{self.ref}?recursive={int(recursive)}"
-        resp = requests.get(content_url).json()
-        if "message" in resp:
-            raise ValueError(resp["message"])
-
-        return requests.get(content_url).json().get("tree", None)

@@ -17,8 +17,8 @@ import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import StateUpdate
+from fiftyone.core.session.session import build_color_scheme
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.colorscheme import ColorScheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -30,7 +30,6 @@ from fiftyone.server.query import (
     Dataset,
     SidebarGroup,
     SavedView,
-    ColorSchemeStr,
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
@@ -67,12 +66,7 @@ class SavedViewInfo:
 @gql.input
 class ColorSchemeInput:
     color_pool: t.Optional[t.List[str]] = None
-    customized_color_settings: t.Optional[JSONArray] = None
-
-
-@gql.input
-class ColorSchemeSaveFormat(ColorSchemeStr):
-    pass
+    fields: t.Optional[JSONArray] = None
 
 
 @gql.type
@@ -93,6 +87,9 @@ class Mutation:
         state.view = None
         state.view_name = view_name if view_name is not None else None
         state.spaces = default_spaces
+        state.color_scheme = build_color_scheme(
+            None, state.dataset, state.config
+        )
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -419,19 +416,18 @@ class Mutation:
         stages: BSONArray,
         color_scheme: ColorSchemeInput,
         save_to_app: bool,
-        color_scheme_save_format: ColorSchemeSaveFormat,
     ) -> bool:
         state = get_state()
         view = get_view(dataset, stages=stages)
-        state.color_scheme = ColorScheme(
+        state.color_scheme = foo.ColorScheme(
             color_pool=color_scheme.color_pool,
-            customized_color_settings=color_scheme.customized_color_settings,
+            fields=color_scheme.fields,
         )
 
         if save_to_app:
-            view._dataset.app_config.color_scheme = foo.ColorSchemeDocument(
-                color_pool=color_scheme_save_format.color_pool,
-                customized_color_settings=color_scheme_save_format.customized_color_settings,
+            view._dataset.app_config.color_scheme = foo.ColorScheme(
+                color_pool=color_scheme.color_pool,
+                fields=color_scheme.fields,
             )
             view._dataset.save()
             state.view = view
@@ -453,6 +449,7 @@ class Mutation:
 
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
+            print("\nmeta_filter\n", meta_filter)
         except Exception as e:
             try:
                 view = dataset.select_fields(meta_filter)
@@ -462,12 +459,11 @@ class Mutation:
 
         res = []
         try:
+            is_video = dataset.media_type == "video"
             for stage in view._stages:
                 res += [
                     st
-                    for st in stage.get_selected_fields(
-                        view, frames=dataset.media_type == "video"
-                    )
+                    for st in stage.get_selected_fields(view, frames=is_video)
                 ]
         except Exception as e:
             print("failed to get_selected_fields", e)

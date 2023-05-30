@@ -277,9 +277,9 @@ const FilterableEntry = ({
     pathIsExpanded({ modal, path: expandedPath })
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-  const color = disabled
-    ? theme.background.level2
-    : useRecoilValue(fos.pathColor({ path, modal }));
+  const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
+
+  const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(
     fos.fields({
       path: expandedPath,
@@ -299,6 +299,7 @@ const FilterableEntry = ({
   const active = useRecoilValue(fos.activeField({ modal, path }));
 
   const onClick = useOnClick({ disabled, modal, path });
+  const isLabelTag = path === "_label_tags";
 
   return (
     <RegularEntry
@@ -311,7 +312,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!disabled && (
+          {!disabled && !(modal && isLabelTag) && (
             <Checkbox
               checked={active}
               title={`Show ${path}`}
@@ -381,6 +382,7 @@ const FilterableEntry = ({
             onFocus,
             onBlur,
             title: title || (listField ? `${LIST_FIELD}(${ftype})` : ftype),
+            color: activeColor,
             ...props,
           });
         })}

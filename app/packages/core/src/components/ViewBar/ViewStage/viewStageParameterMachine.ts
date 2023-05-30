@@ -162,10 +162,11 @@ export const PARSER = {
       try {
         array = JSON.parse(stripped);
       } catch {
+        // ex: exclude_fields('a, b'). 'a,b' => ['a', 'b']
         array = stripped.split(",");
       }
       return (
-        typeof value !== "string" &&
+        typeof array !== "string" &&
         Array.isArray(array) &&
         array.every((e) => PARSER.str.validate(e))
       );

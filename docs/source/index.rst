@@ -14,7 +14,7 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">
+        <a target="_blank" href="https://slack.voxel51.com">
           <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
           &nbsp Join us on Slack
         </a>
@@ -328,9 +328,8 @@ Need Support?
 _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
-free to
-`connect with us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ>`_
-or reach out to us at support@voxel51.com.
+free to `connect with us on Slack <https://slack.voxel51.com>`_ or reach out to
+us at support@voxel51.com.
 
 .. toctree::
    :maxdepth: 1

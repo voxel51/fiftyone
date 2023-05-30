@@ -14,6 +14,7 @@ except ImportError:
     import importlib_metadata as metadata
 
 import logging
+import os
 from packaging.requirements import Requirement
 import time
 import typing as t
@@ -26,7 +27,10 @@ try:
 except:
     pass
 
+import eta.core.serial as etas
+
 import fiftyone as fo
+import fiftyone.core.odm.dataset as food
 import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 from fiftyone.core.config import AppConfig
@@ -34,7 +38,6 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.colorscheme import default_color_scheme, ColorScheme
 from fiftyone.core.state import StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -104,12 +107,33 @@ intended to start an App instance or a remote session from a script, you should
 call `session.wait()` to keep the session (and the script) alive.
 """
 
+_WELCOME_MESSAGE = """
+Welcome to
+
+███████╗██╗███████╗████████╗██╗   ██╗ ██████╗ ███╗   ██╗███████╗
+██╔════╝██║██╔════╝╚══██╔══╝╚██╗ ██╔╝██╔═══██╗████╗  ██║██╔════╝
+█████╗  ██║█████╗     ██║    ╚████╔╝ ██║   ██║██╔██╗ ██║█████╗
+██╔══╝  ██║██╔══╝     ██║     ╚██╔╝  ██║   ██║██║╚██╗██║██╔══╝
+██║     ██║██║        ██║      ██║   ╚██████╔╝██║ ╚████║███████╗
+╚═╝     ╚═╝╚═╝        ╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝ v{0}
+
+If you're finding FiftyOne helpful, here's how you can get involved:
+
+|
+|  ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
+|  https://github.com/voxel51/fiftyone
+|
+|  🚀🚀🚀 Join the FiftyOne Slack community 🚀🚀🚀
+|  https://slack.voxel51.com
+|
+"""
+
 
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
     spaces: Space = None,
-    color_scheme: ColorScheme = None,
+    color_scheme: food.ColorScheme = None,
     plots: fop.PlotManager = None,
     port: int = None,
     address: str = None,
@@ -131,7 +155,9 @@ def launch_app(
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
+        color_scheme (None): an optional
+            :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
+            color scheme to use
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -193,6 +219,8 @@ def launch_app(
             logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
         logger.info(_APP_WEB_MESSAGE.strip().format(_session.server_port))
+
+    _log_welcome_message_if_allowed()
 
     return _session
 
@@ -283,7 +311,8 @@ class Session(object):
             load
         spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
             defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.ColorScheme` instance defining the color pool and customized color settings
+        color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme`
+            defining a custom color scheme to use
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -311,7 +340,7 @@ class Session(object):
         view: fov.DatasetView = None,
         view_name: str = None,
         spaces: Space = None,
-        color_scheme: ColorScheme = None,
+        color_scheme: food.ColorScheme = None,
         plots: fop.PlotManager = None,
         port: int = None,
         address: str = None,
@@ -378,17 +407,13 @@ class Session(object):
         if spaces is None:
             spaces = default_spaces.copy()
 
-        if color_scheme is None:
-            # color_scheme = json_util.dumps(focn.DEFAULT_COLOR_SCHEME)
-            color_scheme = default_color_scheme.copy()
-
         self._state = StateDescription(
             config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
             spaces=spaces,
-            color_scheme=color_scheme,
+            color_scheme=build_color_scheme(color_scheme, dataset, config),
         )
         self._client = fosc.Client(
             address=address,
@@ -437,7 +462,7 @@ class Session(object):
         dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
         spaces: t.Optional[Space],
-        color_scheme: t.Optional[ColorScheme],
+        color_scheme: t.Optional[food.ColorScheme],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
     ) -> None:
@@ -460,11 +485,11 @@ class Session(object):
             )
 
         if color_scheme is not None and not isinstance(
-            color_scheme, ColorScheme
+            color_scheme, food.ColorScheme
         ):
             raise ValueError(
                 "`color_scheme` must be a %s or None; found %s"
-                % (ColorScheme, type(color_scheme))
+                % (food.ColorScheme, type(color_scheme))
             )
 
         if plots is not None and not isinstance(plots, fop.PlotManager):
@@ -584,20 +609,22 @@ class Session(object):
         self._state.spaces = spaces
 
     @property
-    def color_scheme(self) -> ColorScheme:
+    def color_scheme(self) -> food.ColorScheme:
         """The color scheme for the session."""
         return self._state.color_scheme
 
     @color_scheme.setter  # type: ignore
     @update_state()
-    def color_scheme(self, color_scheme: t.Optional[ColorScheme]) -> None:
+    def color_scheme(self, color_scheme: t.Optional[food.ColorScheme]) -> None:
         if color_scheme is None:
-            color_scheme = default_color_scheme.copy()
-        if not isinstance(color_scheme, ColorScheme):
+            color_scheme = build_color_scheme(None, self.dataset, self.config)
+
+        if not isinstance(color_scheme, food.ColorScheme):
             raise ValueError(
                 "`Session.color_scheme` must be a %s or None; found %s"
-                % (ColorScheme, type(color_scheme))
+                % (food.ColorScheme, type(color_scheme))
             )
+
         self._state.color_scheme = color_scheme
 
     @property
@@ -621,22 +648,27 @@ class Session(object):
                 % (fod.Dataset, type(dataset))
             )
 
-        if dataset is not None:
-            dataset._reload()
-
-        self._state.dataset = dataset
-        self._state.view = None
-        self._state.selected = []
-        self._state.selected_labels = []
-        self._state.spaces = default_spaces
-        self._state.color_scheme = None
+        self._set_dataset(dataset)
 
     @update_state()
     def clear_dataset(self) -> None:
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
         """
-        self._state.dataset = None
+        self._set_dataset(None)
+
+    def _set_dataset(self, dataset):
+        if dataset is not None:
+            dataset._reload()
+
+        self._state.dataset = dataset
+        self._state.view = None
+        self._state.spaces = default_spaces.copy()
+        self._state.color_scheme = build_color_scheme(
+            None, dataset, self.config
+        )
+        self._state.selected = []
+        self._state.selected_labels = []
 
     @property
     def view(self) -> t.Union[fov.DatasetView, None]:
@@ -654,22 +686,28 @@ class Session(object):
                 % (fov.DatasetView, type(view))
             )
 
-        self._state.view = view
-
-        if view is not None:
-            view._root_dataset._reload()
-            self._state.dataset = view._root_dataset
-            self._state.view_name = view.name
-
-        self._state.selected = []
-        self._state.selected_labels = []
+        self._set_view(view)
 
     @update_state()
     def clear_view(self) -> None:
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
-        self._state.view = None
+        self._set_view(None)
+
+    def _set_view(self, view):
+        if view is None:
+            self._state.view = None
+            self._state.view_name = None
+        else:
+            if view._root_dataset != self.dataset:
+                self._set_dataset(view._root_dataset)
+
+            self._state.view = view
+            self._state.view_name = view.name
+
+        self._state.selected = []
+        self._state.selected_labels = []
 
     @property
     def has_plots(self) -> bool:
@@ -1177,3 +1215,41 @@ def _unregister_session(session: Session) -> None:
         if session.server_port in _server_services:
             service = _server_services.pop(session.server_port)
             service.stop()
+
+
+def build_color_scheme(
+    color_scheme: food.ColorScheme, dataset: fod.Dataset, app_config: AppConfig
+) -> food.ColorScheme:
+    if color_scheme is None:
+        if dataset is not None and dataset.app_config.color_scheme is not None:
+            color_scheme = dataset.app_config.color_scheme.copy()
+        else:
+            color_scheme = food.ColorScheme()
+
+    if not color_scheme.color_pool:
+        color_scheme.color_pool = app_config.color_pool
+
+    return color_scheme
+
+
+def _log_welcome_message_if_allowed():
+    """Logs a welcome message the first time this function is called on a
+    machine with a new FiftyOne version installed, if allowed.
+    """
+    if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
+    try:
+        last_version = etas.load_json(focn.WELCOME_PATH)["version"]
+    except:
+        last_version = None
+
+    if focn.VERSION == last_version:
+        return
+
+    logger.info(_WELCOME_MESSAGE.format(focn.VERSION))
+
+    try:
+        etas.write_json({"version": focn.VERSION}, focn.WELCOME_PATH)
+    except:
+        pass

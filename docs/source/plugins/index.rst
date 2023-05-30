@@ -68,9 +68,11 @@ An operator consists of a Definition and a method that executes the operation. T
 
 1. Render a prompt to collect information from the user needed to execute the operation
 2. As the user inputs information, and based on the user input aka “params”
+
    a. Resolve the definition of the input, allowing the form to change based on the user input
    b. Validate the user input
 3. Execute the operation
+
    a. Return a “result”
 4. Resolve the output definition based on the params and result of the operation
 5. Render the output
@@ -146,10 +148,53 @@ Regardless of operator type, all operators can be executed from code. For exampl
 Placements (Menus and Options)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following images and titles correspond to the available menu ids. MenuItem operators are appended to the specified menu id.
+Operator placement provides a mechanism to add a visual element in the FiftyOne
+associated to an operator. As of right now, operator only supports button
+placement that can invoke the associated operator on click. Below are list of
+places you can display your operator placement in the app:
 
- - SampleActions
- - SampleModalActions
+  - SAMPLES_GRID_ACTIONS
+  - SAMPLES_GRID_SECONDARY_ACTIONS
+  - SAMPLES_VIEWER_ACTIONS
+  - EMBEDDINGS_ACTIONS
+  - HISTOGRAM_ACTIONS
+  - MAP_ACTIONS
+  - MAP_SECONDARY_ACTIONS
+  - DISPLAY_OPTIONS
+
+
+To add a placement for an operator to one of these places in the app, your
+operator class should implement method `resolve_placement` as demonstrated below:
+
+.. tabs::
+    .. code-tab:: python
+        def resolve_placement(self, ctx):
+        return types.Placement(
+            # Display placement in the actions row of samples grid
+            types.Places.SAMPLES_GRID_ACTIONS,
+            # Display a button as the placement
+            types.Button(
+                # label for placement button visible on hover
+                label="Open My Panel",
+                # icon for placement button. If not provided, button with label
+                # will be displayed
+                icon="/assets/placement-icon.svg",
+                # skip operator prompt when we do not require an input from the user
+                prompt=False
+            )
+        )
+    
+    .. code-tab:: javascript
+        async resolvePlacement(ctx: ExecutionContext): Promise<types.Placement> {
+            return new types.Placement(
+                types.Places.SAMPLES_GRID_ACTIONS,
+                new types.Button({
+                    label: "Open My Panel",
+                    icon: "/assets/placement-icon.svg",
+                })
+            );
+        }
+
 
 Plugin Runtime
 --------------

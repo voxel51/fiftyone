@@ -125,12 +125,12 @@ const Grid: React.FC<{}> = () => {
 
   useLayoutEffect(
     deferred(() => {
-      flashlight.updateItems((sampleId) =>
+      flashlight.updateItems((sampleId) => {
         store.lookers.get(sampleId)?.updateOptions({
           ...lookerOptions,
           selected: selected.has(sampleId),
-        })
-      );
+        });
+      });
     }),
     [lookerOptions, selected]
   );

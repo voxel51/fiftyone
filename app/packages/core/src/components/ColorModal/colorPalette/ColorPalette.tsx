@@ -1,13 +1,14 @@
 import * as fos from "@fiftyone/state";
 import AddIcon from "@material-ui/icons/Add";
 import DeleteIcon from "@material-ui/icons/Delete";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import styled from "styled-components";
 
 import Checkbox from "../../Common/Checkbox";
 import { colorPicker } from "./Colorpicker.module.css";
 
+import { useRecoilValue } from "recoil";
 import {
   colorBlindFriendlyPalette,
   fiftyoneDefaultColorPalette,
@@ -23,9 +24,10 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const { computedSessionColorScheme, setColorScheme } =
-    fos.useSessionColorScheme();
+  const computedSessionColorScheme = useRecoilValue(fos.sessionColorScheme);
+  const setColorScheme = fos.useSetSessionColorScheme();
   const colors = computedSessionColorScheme.colorPool;
+  const [pickerColor, setPickerColor] = useState<string | null>(null);
 
   const isUsingColorBlindOption = isSameArray(
     colors,
@@ -41,45 +43,50 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const pickerRef = useRef<ChromePicker>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const handleColorChange = (color: any) => {
     if (activeIndex !== null && color) {
       const newColors = colors ? [...colors] : [];
       newColors[activeIndex] = color.hex;
-      setActiveIndex(null);
-      setShowPicker(false);
-      setColorScheme(
-        newColors,
-        computedSessionColorScheme.customizedColorSettings,
-        false
-      );
+      setColorScheme(false, {
+        colorPool: newColors,
+        fields: computedSessionColorScheme.fields,
+      });
     }
   };
 
   const handleColorDelete = (index: number) => {
     const newColors = colors ? [...colors] : [];
     newColors.splice(index, 1);
-    setColorScheme(
-      newColors,
-      computedSessionColorScheme.customizedColorSettings,
-      false
-    );
+    setColorScheme(false, {
+      colorPool: newColors,
+      fields: computedSessionColorScheme.fields,
+    });
   };
 
   const handleColorAdd = () => {
     if (colors?.length < maxColors) {
-      setColorScheme(
-        [...colors, "#ffffff"],
-        computedSessionColorScheme.customizedColorSettings,
-        false
-      );
+      setColorScheme(false, {
+        colorPool: [...colors, "#ffffff"],
+        fields: computedSessionColorScheme.fields,
+      });
     }
   };
+
+  fos.useOutsideClick(wrapperRef, () => {
+    setShowPicker(false);
+    setActiveIndex(null);
+  });
+
+  useEffect(() => {
+    if (!showPicker) setPickerColor(null);
+  }, [showPicker]);
 
   if (!colors) return null;
 
   return (
-    <div style={style}>
+    <div style={style} id="color-palette">
       <ColorPaletteContainer>
         {colors.map((color, index) => (
           <ColorSquare
@@ -96,7 +103,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             {color && deleteIndex === index && (
               <div
                 style={{
-                  color: "#fff",
+                  color: "#ffffff",
                   position: "absolute",
                   right: "-2px",
                   top: "-2px",
@@ -110,11 +117,11 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
               </div>
             )}
             {showPicker && activeIndex === index && (
-              <ChromePickerWrapper>
+              <ChromePickerWrapper ref={wrapperRef}>
                 <ChromePicker
-                  color={color}
+                  color={pickerColor || color}
+                  onChange={(color) => setPickerColor(color.hex)}
                   onChangeComplete={handleColorChange}
-                  popperProps={{ positionFixed: true }}
                   ref={pickerRef}
                   disableAlpha={true}
                   className={colorPicker}
@@ -129,35 +136,34 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           </AddSquare>
         )}
       </ColorPaletteContainer>
-
-      {!isUsingFiftyoneClassic && (
-        <Checkbox
-          name={"Use fiftyone classic option"}
-          value={isUsingFiftyoneClassic}
-          setValue={(v) =>
-            v &&
-            setColorScheme(
-              fiftyoneDefaultColorPalette,
-              computedSessionColorScheme.customizedColorSettings,
-              false
-            )
-          }
-        />
-      )}
-      {!isUsingColorBlindOption && (
-        <Checkbox
-          name={"Use color blind friendly option"}
-          value={isUsingColorBlindOption}
-          setValue={(v) =>
-            v &&
-            setColorScheme(
-              colorBlindFriendlyPalette,
-              computedSessionColorScheme.customizedColorSettings,
-              false
-            )
-          }
-        />
-      )}
+      <div style={{ width: "50%" }}>
+        {!isUsingFiftyoneClassic && (
+          <Checkbox
+            name={"Use fiftyone classic option"}
+            value={isUsingFiftyoneClassic}
+            setValue={(v) =>
+              v &&
+              setColorScheme(false, {
+                colorPool: fiftyoneDefaultColorPalette,
+                fields: computedSessionColorScheme.fields,
+              })
+            }
+          />
+        )}
+        {!isUsingColorBlindOption && (
+          <Checkbox
+            name={"Use color blind friendly option"}
+            value={isUsingColorBlindOption}
+            setValue={(v) =>
+              v &&
+              setColorScheme(false, {
+                colorPool: colorBlindFriendlyPalette,
+                fields: computedSessionColorScheme.fields,
+              })
+            }
+          />
+        )}
+      </div>
     </div>
   );
 };

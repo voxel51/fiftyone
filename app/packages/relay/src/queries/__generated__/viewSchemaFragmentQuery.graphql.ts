@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<53e1f2a36751db81d104e98860cb0ca7>>
+ * @generated SignedSource<<f83a98aea83bea88b16c38877616891c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,50 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "viewStages"
+  }
+],
+v1 = [
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "path",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "ftype",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "subfield",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "embeddedDocType",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "info",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "description",
+    "storageKey": null
   }
 ];
 return {
@@ -71,51 +115,29 @@ return {
             "variableName": "viewStages"
           }
         ],
-        "concreteType": "SampleField",
+        "concreteType": "SchemaResult",
         "kind": "LinkedField",
         "name": "schemaForViewStages",
-        "plural": true,
+        "plural": false,
         "selections": [
           {
             "alias": null,
             "args": null,
-            "kind": "ScalarField",
-            "name": "path",
+            "concreteType": "SampleField",
+            "kind": "LinkedField",
+            "name": "fieldSchema",
+            "plural": true,
+            "selections": (v1/*: any*/),
             "storageKey": null
           },
           {
             "alias": null,
             "args": null,
-            "kind": "ScalarField",
-            "name": "ftype",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "subfield",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "embeddedDocType",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "info",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "description",
+            "concreteType": "SampleField",
+            "kind": "LinkedField",
+            "name": "frameFieldSchema",
+            "plural": true,
+            "selections": (v1/*: any*/),
             "storageKey": null
           }
         ],
@@ -124,16 +146,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e977c7f98e83df0f47b63b26a056de21",
+    "cacheID": "7118f2ee6bf3a2a13e29bd0bc61b4bf0",
     "id": null,
     "metadata": {},
     "name": "viewSchemaFragmentQuery",
     "operationKind": "query",
-    "text": "query viewSchemaFragmentQuery(\n  $name: String!\n  $viewStages: BSONArray!\n) {\n  ...viewSchemaFragment\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $viewStages) {\n    path\n    ftype\n    subfield\n    embeddedDocType\n    info\n    description\n  }\n}\n"
+    "text": "query viewSchemaFragmentQuery(\n  $name: String!\n  $viewStages: BSONArray!\n) {\n  ...viewSchemaFragment\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $viewStages) {\n    fieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n    frameFieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f0d986e992cfda1ea89e036a79e55e81";
+(node as any).hash = "b744bc5d77c4fb64ec357da7669d4f0f";
 
 export default node;
