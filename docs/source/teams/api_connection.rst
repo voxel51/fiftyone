@@ -41,8 +41,8 @@ For example, you can set environment variables:
    export FIFTYONE_API_KEY==YYYYYYYY
 
 See
-:ref:`this page <configuring-fiftyone>` for more information about
-settings configuration parameters.
+:ref:`this page <configuring-fiftyone>` for more information about using your
+FiftyOne config.
 
 .. _teams-generate-api-key:
 
@@ -75,11 +75,11 @@ This will generate and display a new key.
 
 .. warning::
 
-    Keys are only shown once! Copy the key immediately, as it will not be
-    accessible again.
+   Keys are only shown once! Copy the key immediately, as it will not be
+   accessible again.
 
-    API keys provide full programmatic access to perform actions as a user, so
-    Secure them as you would a password!
+   API keys provide full programmatic access to perform actions as a user, so
+   secure them as you would a password!
 
 .. image:: /images/teams/api_key_generated.png
    :alt: api-key-generated
