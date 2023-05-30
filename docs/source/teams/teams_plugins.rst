@@ -5,25 +5,20 @@ FiftyOne Teams Plugins
 
 .. default-role:: code
 
-.. note::
-    See :ref:`FiftyOne Plugins documentation <fiftyone-plugins>` for
-    more on how to use and create your own plugins and operators!
-
-Using Fiftyone Teams, administrators can upload a zip file containing their
-JS or Python plugins. After a plugin is created within Fiftyone Teams, an
-administrator can enable or disable the plugin. They can also define
-permissions required to execute python operators.
+Admins can upload, manage, and configure permissions for plugins when users
+log into your central Teams UI.
 
 .. note::
-    Only Admin users will be able to see the plugin page or execute any
-    plugin management operations.
+
+    See :ref:`this page <fiftyone-plugins>` for more information about creating
+    and downloading existing plugins.
 
 Plugin Page
 ___________
 
-The plugin page can be found under Settings > Plugins.
-It displays a listing of all installed plugins and their operators, as well as status
-and permissions of each.
+Admins can access the plugin page can be found under Settings > Plugins.
+It displays a listing of all installed plugins and their operators, as well as
+status and permissions of each.
 
 .. image:: /images/teams/plugins_page.png
    :alt: teams-plugins-page
@@ -34,33 +29,38 @@ and permissions of each.
 Installing a Plugin
 ___________________
 
-Admins can install a plugin through the Teams UI or Management SDK.
+Admins can install plugins via the Teams UI or Python SDK.
 
 Teams UI
----------
-To install a plugin, first click the "Install plugin" button
-on the plugins page.
+--------
+
+To install a plugin, first click the "Install plugin" button on the plugins
+page.
 
 .. image:: /images/teams/plugins_install_btn.png
    :alt: teams-plugins-page-install-button
    :align: center
 
-Then upload or drag and drop the plugin contents as a ZIP file and click install.
+Then upload or drag and drop the plugin contents as a ZIP file and click
+install.
 
 .. image:: /images/teams/plugins_install.png
    :alt: teams-plugins-page-install-page
    :align: center
 
-You should then see a success message and the newly installed plugin listed on the plugins page.
+You should then see a success message and the newly installed plugin listed on
+the plugins page.
 
 .. image:: /images/teams/plugins_install_success.png
    :alt: teams-plugins-page-install-success-page
    :align: center
 
 SDK
-----
-Alternatively, use the management SDK function
-:meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>`.
+---
+
+Alternatively, you can use the
+:meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>` method from
+the Management SDK:
 
 .. code-block:: python
 
@@ -68,16 +68,15 @@ Alternatively, use the management SDK function
 
     fom.upload_plugin("/path/to/plugin_dir")
 
-    #2.a Upload a plugin dir as ZIP file
-    fom.upload_plugin("/path/to/plugin.zip")
+.. _teams-plugins-upgrade:
 
 Upgrading a Plugin
-___________________
+__________________
 
-Admins can upgrade a plugin through the Teams UI or Management SDK.
+Admins can upgrade plugins through the Teams UI or Python SDK.
 
 Teams UI
----------
+--------
 
 To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
 
@@ -85,17 +84,18 @@ To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
    :alt: teams-plugins-page-upgrade-btn
    :align: center
 
-Then upload or drag and drop the plugin contents as a ZIP file and click upgrade.
-This is a similar process to :ref:`installing a plugin <teams-plugins-install>`.
+Then upload or drag and drop the plugin contents as a ZIP file and click
+upgrade.
 
 .. image:: /images/teams/plugins_upgrade_page.png
    :alt: teams-plugins-page-upgrade-page
    :align: center
 
 .. note::
+
     If the `name` attribute within the uploaded plugin's `fiftyone.yaml` config
-    doesn't match the existing plugin, a new plugin will be created. Simply delete
-    the old one.
+    doesn't match the existing plugin, a new plugin will be created. Simply
+    delete the old one.
 
 You should then see a success message and the updated information about the
 plugin on the plugins page.
@@ -105,9 +105,11 @@ plugin on the plugins page.
    :align: center
 
 SDK
-----
-Alternatively, use the management SDK function
-:meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>`.
+---
+
+Alternatively, you can use the
+:meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>` method from
+the Management SDK with the `overwrite=True` option:
 
 .. code-block:: python
 
@@ -115,42 +117,45 @@ Alternatively, use the management SDK function
 
     fom.upload_plugin("/path/to/plugin_dir", overwrite=True)
 
-    #2.a Upload a plugin dir as ZIP file
-    fom.upload_plugin("/path/to/plugin.zip", overwrite=True)
+.. _teams-plugins-uninstall:
 
 Uninstalling a Plugin
-______________________
+_____________________
 
-Admins can uninstall a plugin through the Teams UI or Management SDK.
+Admins can uninstall plugins through the Teams UI or Management SDK.
 
 .. note::
-    If you want to disable a plugin instead of uninstalling, see
-    :ref:`Enabling / Disabling <teams-plugins-enable-disable>`.
+
+    Did you know? You can
+    :ref:`enable/disable plugins <teams-plugins-enable-disable>` rather than
+    permanently uninstalling them.
 
 .. warning::
+
     Uninstalling a plugin is permanent! However, you can always
-    :ref:`install <teams-plugins-install-ui>`
-    the plugin again with the source directory / ZIP file.
+    :ref:`install <teams-plugins-install-ui>` the plugin again later.
 
 Teams UI
----------
+--------
 
-To uninstall a plugin, click the plugin's dropdown and select "Uninstall plugin".
+To uninstall a plugin, click the plugin's dropdown and select
+"Uninstall plugin".
 
 .. image:: /images/teams/plugins_uninstall_btn.png
    :alt: teams-plugins-page-uninstall-btn
    :align: center
 
 SDK
-----
-Alternatively, use the management SDK function
-:meth:`delete_plugin() <fiftyone.management.plugin.delete_plugin>`.
+---
+
+Alternatively, you can use the
+:meth:`delete_plugin() <fiftyone.management.plugin.delete_plugin>` method from
+the Management SDK:
 
 .. code-block:: python
 
     import fiftyone.management as fom
 
-    plugin_name = "special-plugin"
     fom.delete_plugin(plugin_name)
 
 .. _teams-plugins-enable-disable:
@@ -169,9 +174,9 @@ toggle the enabled / disabled switch.
    :alt: teams-plugins-page-disable
    :align: center
 
-To disable or re-enable a particular operator within a plugin, first click on the
-plugin's operators section to open the operator settings window. All operators
-will be listed.
+To disable or re-enable a particular operator within a plugin, first click on
+the plugin's operators section to open the operator settings window. All
+operators will be listed.
 
 .. image:: /images/teams/plugins_operators_btn.png
    :alt: teams-plugins-page-operators-btn
@@ -184,55 +189,55 @@ Then toggle the enabled / disabled switch for the operator you wish to change.
    :align: center
 
 SDK
-----
-Alternatively, use the management SDK function
-:meth:`set_plugin_enabled() <fiftyone.management.plugin.set_plugin_enabled>`.
+---
+
+Alternatively, you can use the
+:meth:`set_plugin_enabled() <fiftyone.management.plugin.set_plugin_enabled>`
+and
+:meth:`set_plugin_operator_enabled() <fiftyone.management.plugin.set_plugin_operator_enabled>`
+methods from the management SDK:
 
 .. code-block:: python
 
     import fiftyone.management as fom
 
-    # Disable whole plugin
-    fom.set_plugin_enabled("special-plugin", False)
-
-And management SDK function
-:meth:`set_plugin_operator_enabled() <fiftyone.management.plugin.set_plugin_operator_enabled>`.
-
-.. code-block:: python
-
-    import fiftyone.management as fom
+    # Disable a plugin
+    fom.set_plugin_enabled(plugin_name, False)
 
     # Disable a particular operator
-    fom.set_plugin_operator_enabled("special-plugin", "special-operator", False)
+    fom.set_plugin_operator_enabled(plugin_name, operator_name, False)
+
+.. _teams-plugins-permissions:
 
 Permissions
 ___________
 
-Enabled plugin operators can be run by FiftyOne Teams users if they have the
-permissions to do so. There are two configurable components to the operator
-permission model, which can be updated separately for each operator.
+Admins can optionally configure access to plugins and individual operators
+within them via any combination of the permissions described below:
 
-+-------------------------------+----------------------------------------------------------------------------+
-| Minimum Role                  | The minimum role a user must have to perform the operation.                |
-+-------------------------------+----------------------------------------------------------------------------+
-| Minimum Dataset Permission    | The minimum dataset permission a user must have to perform the operation   |
-|                               | in the context of a particular dataset.                                    |
-+-------------------------------+----------------------------------------------------------------------------+
+.. table::
 
-.. note::
-    Only operators can have usage permissions attached to them; plugins themselves
-    are open to all users if enabled.
+    +-------------------------------+----------------------------------------------------------------------------+
+    | Permission                    | Description                                                                |
+    +===============================+============================================================================+
+    | Minimum Role                  | The minimum role a user must have to perform the operation.                |
+    +-------------------------------+----------------------------------------------------------------------------+
+    | Minimum Dataset Permission    | The minimum dataset permission a user must have to perform the operation   |
+    |                               | in the context of a particular dataset.                                    |
+    +-------------------------------+----------------------------------------------------------------------------+
 
 Teams UI
----------
-To change the setting of minimum role or minimum dataset permission for an operator,
-first click on the plugin's operators section to open the operators window.
+--------
+
+To configure the permissions for an operator, first click on the plugin's
+operators section.
 
 .. image:: /images/teams/plugins_operators_btn.png
    :alt: teams-plugins-page-operators-btn
    :align: center
 
-Then change the dropdown for the operator to reflect the desired permission level.
+Then change the dropdown for the operator to reflect the desired permission
+level.
 
 .. image:: /images/teams/plugins_operators_perms.png
    :alt: teams-plugins-page-operators-perms
@@ -245,16 +250,15 @@ Then change the dropdown for the operator to reflect the desired permission leve
    :width: 49%
 
 SDK
-----
-Alternatively, use the management SDK function
-:meth:`set_plugin_operator_permissions() <fiftyone.management.plugin.set_plugin_operator_permissions>`.
+---
+
+You can also use the
+:meth:`set_plugin_operator_permissions() <fiftyone.management.plugin.set_plugin_operator_permissions>`
+method from the Management SDK:
 
 .. code-block:: python
 
     import fiftyone.management as fom
-
-    plugin_name = "special-plugin"
-    operator_name = "special-operator"
 
     # Set minimum role permission only
     fom.set_plugin_operator_enabled(
@@ -279,39 +283,40 @@ Alternatively, use the management SDK function
     )
 
 Default Operator Permissions
------------------------------
-When a new plugin is installed, any operators it contains will be initialized
-with values for minimum role and minimum dataset permissions. By default,
-these values are set to:
+----------------------------
 
-+-------------------------------+--------+
-| Minimum Role                  | Member |
-+-------------------------------+--------+
-| Minimum Dataset Permission    | Edit   |
-+-------------------------------+--------+
+When new plugins are installed, any operators they contain are initialized with
+the default permissions for your deployment.
 
-These settings can be changed for any newly installed plugins by changing the
-organization-wide setting.
+By default, the initial permissions are:
 
-First navigate to the page at Settings > Security and look under the Plugins
-header. Then click the dropdown for the permission you want to change and select
-the new value.
+.. table::
+
+    +-------------------------------+---------------+
+    | Permission                    | Default       |
+    +===============================+===============+
+    | Minimum Role                  | Member        |
+    +-------------------------------+---------------+
+    | Minimum Dataset Permission    | Edit          |
+    +-------------------------------+---------------+
+
+but these defaults can be configured by navigating to the page at
+Settings > Security and looking under the Plugins header. Click the dropdown
+for the permission you want to change and select the new value.
 
 .. image:: /images/teams/plugins_org_settings.png
    :alt: teams-plugins-page-org-settings
    :align: center
 
-Alternatively, use the management SDK function
-:meth:`set_organization_settings() <fiftyone.management.organization.set_organization_settings>`.
+Alternatively, you can use the
+:meth:`set_organization_settings() <fiftyone.management.organization.set_organization_settings>`
+method from the Management SDK:
 
 .. code-block:: python
 
     import fiftyone.management as fom
 
-    user_role = fom.MEMBER
-    dataset_perm = fom.EDIT
-
     fom.set_organization_settings(
-        default_operator_minimum_role=user_role,
-        default_operator_minimum_dataset_permission=dataset_perm,
+        default_operator_minimum_role=fom.MEMBER,
+        default_operator_minimum_dataset_permission=fom.EDIT,
     )

@@ -1,39 +1,35 @@
 .. _teams-management-sdk:
 
 Teams Management SDK
-===========================
+====================
 
 .. default-role:: code
 
-Being able to do the same things in the UI as in Python code is
-one of the big reasons we love FiftyOne!
+One of FiftyOne's core design principles is that you should be able to do
+everything *programmatically* if you want.
 
-There are specific operations that only exist for FiftyOne Teams,
-such as management functions for: users, organization invitations,
-dataset permissions, plugins, and API keys.
+To this end, the :mod:`fiftyone.management` module provides Teams-specific
+methods for managing users, invitations, dataset permissions, plugins, API
+keys, and more.
 
-Setup
-___________________
-In order to use the FiftyOne Teams management SDK, you'll have to
-configure your Python environment to connect to the API endpoint of
-your Teams deployment. See :ref:`Configuring an API Connection
-<configuring-api-connection>` for information and instructions.
+.. note::
 
+   You must be :ref:`connecting via API <teams-api-connection>` (not directly
+   to MongoDB) in order to use Management SDK methods.
 
 .. _teams-sdk-api-reference:
 
 API Reference
-______________
+_____________
 
 Connection Methods
--------------------
+------------------
 
 .. automodule:: fiftyone.management.connection
    :members: test_api_connection, reload_connection
 
-
 API Key Management Methods
----------------------------
+--------------------------
 
 .. automodule:: fiftyone.management.api_key
    :members:
@@ -47,14 +43,15 @@ Dataset Permission Management Methods
    :undoc-members:
 
 Organization Settings Methods
-------------------------------
+-----------------------------
 
 .. automodule:: fiftyone.management.organization
    :members:
    :undoc-members:
 
 Plugin Management Methods
--------------------------------------
+-------------------------
+
 .. automodule:: fiftyone.management.plugin
    :members:
    :undoc-members:

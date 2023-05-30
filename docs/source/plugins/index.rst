@@ -539,7 +539,7 @@ With this `OperatorConfig` we cannot dynamically specify the input. We'll cover 
         p.register(SimpleInputExample)
 
 Hello world Operator - JS
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Similarly to the example above, this JS example shows how to define a simple operator that accepts a string input.
 

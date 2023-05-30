@@ -8,14 +8,14 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-c] [-s]
+    echo "Usage:  bash $0 [-h] [-f] [-c] [-s] [-t]
 
 Options:
 -h      Display this help message.
 -f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
 -s      Copy static files only (CSS, JS).
--t      Link additional FiftyOne Teams code (path to fiftyone-teams as argument)
+-t      Path to fiftyone-teams clone to use for Teams docs
 "
 }
 
@@ -79,11 +79,11 @@ cd "${THIS_DIR}/.."
 # Symlink to fiftyone-brain
 ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
 
-# Symlink to fiftyone-management
+# Symlink to fiftyone-teams
 if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
   ln -sf "${PATH_TO_TEAMS}/fiftyone/management" fiftyone/management
   ln -sf "${PATH_TO_TEAMS}/fiftyone/api" fiftyone/api
-  echo "${PATH_TO_TEAMS}"
+  echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
 fi
 
 echo "Generating API docs"
@@ -116,7 +116,7 @@ echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS
 
-# Remove symlink to fiftyone-management
+# Remove symlink to fiftyone-teams
 if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
   unlink ../fiftyone/management
   unlink ../fiftyone/api
