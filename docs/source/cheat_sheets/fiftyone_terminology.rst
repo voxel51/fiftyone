@@ -41,8 +41,12 @@ ________________
      - :ref:`Collection of pre-trained models <model-zoo>` available for
        download and inference.
    * - Plugin
-     - A module you can use to :ref:`customize and extend <app-plugins>` the
-       behavior of FiftyOne.
+     - A module you can use to :ref:`customize and extend <fiftyone-plugins>`
+       the behavior of FiftyOne.
+   * - Operator
+     - A :ref:`plugin subcompotent <fiftyone-operators>` that defines an
+       operation that can be executed either directly by users in the App
+       and/or internally invoked by other plugin components
    * - Integration
      - A dataset, ML framework, annotation service, or other tool FiftyOne is
        :ref:`directly compatible with <integrations>`.
