@@ -5,6 +5,7 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -112,7 +113,14 @@ class ExecuteOperator(HTTPEndpoint):
         return result.to_json()
 
 
-async def create_response_generator(generator):
+def create_response_generator(generator):
+    for generated_message in generator:
+        if isinstance(generated_message, GeneratedMessage):
+            line = generated_message.to_json_line()
+            yield line
+
+
+async def create_response_async_generator(generator):
     async for generated_message in generator:
         if isinstance(generated_message, GeneratedMessage):
             line = generated_message.to_json_line()
@@ -151,7 +159,12 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 
         execution_result = await execute_operator(operator_uri, data)
         if execution_result.is_generator:
-            generator = create_response_generator(execution_result.result)
+            result = execution_result.result
+            generator = (
+                create_response_async_generator(result)
+                if isinstance(result, types.AsyncGeneratorType)
+                else create_response_generator(result)
+            )
             return StreamingResponse(
                 generator,
                 media_type="application/json",

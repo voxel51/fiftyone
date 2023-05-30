@@ -64,7 +64,7 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Management SDK
-    :description: Learn how to prgrammatically manage your deployment with the Management SDK.
+    :description: Learn how to programmatically manage your deployment with the Management SDK.
     :button_text: Manage your Teams deployment
     :button_link: management_sdk.html
 
