@@ -215,7 +215,7 @@ const SampleModal = () => {
         jsonPanel.close();
         helpPanel.close();
 
-        set(fos.modalSampleIndex, (cur) => cur--);
+        set(fos.modalSampleIndex, (cur) => cur - 1);
       },
     [jsonPanel, helpPanel]
   );

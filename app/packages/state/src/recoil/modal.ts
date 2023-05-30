@@ -4,7 +4,7 @@ import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { ResponseFrom } from "../utils";
 import { modalSampleIndex, pinned3DSample } from "./atoms";
-import { modalFilters } from "./filters";
+import { filters } from "./filters";
 import { groupSample } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -58,7 +58,7 @@ export const modalSample = graphQLSelector<
       view: get(view),
       index,
       filter: {},
-      filters: get(modalFilters),
+      filters: get(filters),
     };
   },
 });
