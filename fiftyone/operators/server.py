@@ -26,7 +26,9 @@ from .permissions import PermissionedOperatorRegistry
 class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
-        registry = PermissionedOperatorRegistry.from_list_request(request)
+        registry = await PermissionedOperatorRegistry.from_list_request(
+            request
+        )
         ctx = ExecutionContext()
         operators_as_json = [
             operator.to_json(ctx) for operator in registry.list_operators()
@@ -46,7 +48,7 @@ class ResolvePlacements(HTTPEndpoint):
     async def post(self, request: Request, data: dict):
         dataset_name = data.get("dataset_name", None)
         dataset_ids = [dataset_name]
-        registry = PermissionedOperatorRegistry.from_exec_request(
+        registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
         placements = []
@@ -71,11 +73,13 @@ class ExecuteOperator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
-        registry = PermissionedOperatorRegistry.from_exec_request(
+
+        registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
+
         if registry.operator_exists(operator_uri) is False:
             error_detail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -119,7 +123,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = PermissionedOperatorRegistry.from_exec_request(
+        registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
@@ -162,7 +166,7 @@ class ResolveType(HTTPEndpoint):
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = PermissionedOperatorRegistry.from_exec_request(
+        registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:

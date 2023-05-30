@@ -13,6 +13,12 @@ visualize, browse, and interact directly with your
    :alt: app-filters
    :align: center
 
+.. note::
+
+    Did you know? You can use FiftyOne's
+    :ref:`plugin framework <fiftyone-plugins>` to customize and extend the
+    behavior of the App!
+
 App environments
 ________________
 
@@ -1828,14 +1834,3 @@ you can use to customize the behavior of the App for that particular dataset:
     :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
     the corresponding settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
-
-.. _app-plugins:
-
-Custom App plugins
-__________________
-
-FiftyOne provides a plugin system that you can use to customize and extend its
-behavior!
-
-Check out :ref:`this page <fiftyone-plugins>` for documentation on developing
-and installing custom plugins.

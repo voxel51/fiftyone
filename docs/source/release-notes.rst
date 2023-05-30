@@ -775,7 +775,7 @@ App
 - Added support for visualizing and interacting with |GeoLocation| data in a
   new :ref:`Map panel <app-map-panel>`
   `#1976 <https://github.com/voxel51/fiftyone/pull/1976>`_
-- Added initial support for :ref:`custom App plugins <app-plugins>`
+- Added initial support for :ref:`custom App plugins <fiftyone-plugins>`
   `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added support for configuring
   :ref:`multiple media fields <app-multiple-media-fields>`
