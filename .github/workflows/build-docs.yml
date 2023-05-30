@@ -50,7 +50,6 @@ jobs:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
           token: ${{ secrets.TEAMS_GITHUB_PAT }}
-          username: ${{ secrets.TEAMS_GITHUB_USER }}
           ref: main
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
