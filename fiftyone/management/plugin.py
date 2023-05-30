@@ -9,8 +9,10 @@ import dataclasses
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from typing import Dict, List, Optional
+import zipfile
 
 from fiftyone.management import connection
 from fiftyone.management import dataset
@@ -234,7 +236,67 @@ def get_plugin_info(plugin_name: str) -> Plugin:
     return _dict_to_plugin(util.camel_to_snake_container(plugin))
 
 
-def upload_plugin(plugin_path: str, overwrite: bool = False) -> Plugin:
+def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
+    if optimize:
+        zip_name = f"{zip_base}.zip"
+
+        # First try using git archive if .gitignore exists
+        if os.path.exists(os.path.join(plugin_path, ".gitignore")):
+            os.chdir(plugin_path)
+            git_archive_args = [
+                "git",
+                "archives",
+                "--format=zip",
+                "-o",
+                zip_name,
+                "HEAD",
+            ]
+            # Run 'git archive' as subprocess so we don't need to have any python
+            #   git dependencies
+            try:
+                process_run = subprocess.run(git_archive_args)
+                if process_run.returncode == 0:
+                    return zip_name
+            except FileNotFoundError:
+                pass
+
+        # Second, we'll give best attempt at optimizing it ourselves
+        prune_dirs = {
+            ".git",
+            "__MACOSX",
+            "venv",
+            "node_modules",
+            "__pycache__",
+            ".idea",
+            ".yarn",
+        }
+        prune_suffixes = {".DS_Store"}
+
+        with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_BZIP2) as zf:
+            for dir_name, sub_dirs, files in os.walk(plugin_path):
+                # Prune dirs from os.walk
+                to_remove = set(sub_dirs).intersection(prune_dirs)
+                for d in to_remove:
+                    sub_dirs.remove(d)
+
+                # Prune files with unwanted suffix then write to the zip
+                for file in files:
+                    if not any(file.endswith(suff) for suff in prune_suffixes):
+                        rel_path = os.path.relpath(dir_name, plugin_path)
+                        zf.write(
+                            os.path.join(dir_name, file),
+                            os.path.join(rel_path, file),
+                        )
+    else:
+        zip_name = shutil.make_archive(
+            base_name=zip_base, format="zip", root_dir=plugin_path
+        )
+    return zip_name
+
+
+def upload_plugin(
+    plugin_path: str, overwrite: bool = False, optimize=False
+) -> Plugin:
     """Uploads a plugin to central FiftyOne Teams.
 
     The local plugin must be a zip file that contains a single directory with
@@ -253,31 +315,41 @@ def upload_plugin(plugin_path: str, overwrite: bool = False) -> Plugin:
 
         import fiftyone.management as fom
 
-        # 1.a Upload plugin by dir
+        # Upload a raw plugin directory
         fom.upload_plugin("/path/to/plugin_dir", overwrite=True)
 
-        # 2.a Upload a plugin dir as ZIP file
+        # Upload a plugin, optimizing the directory before the upload
+        fom.upload_plugin("/path/to/plugin_dir", overwrite=True, optimize=True)
+
+        # Upload a plugin as ZIP file
         fom.upload_plugin("/path/to/plugin.zip", overwrite=True)
 
     Args:
         plugin_path: the path to a plugin zip or directory
         overwrite (False): whether to overwrite an existing plugin with same
             name
+        optimize (False): whether to optimize the created zip file before
+            uploading. If a ``.gitignore`` file exists, an attempt will first
+            be made to use ``git archive`` to create the zip. If not or this
+            doesn't work, a zip will be created by pruning various known
+            system-generated files and directories such as ``.git/`` and
+            ``__pycache__/``. This argument has no effect if ``plugin_path``
+            does not point to a directory
     """
     client = connection.APIClientConnection().client
 
     if os.path.isdir(plugin_path):
+        # Found a dir; make an archive from it then upload
         with tempfile.TemporaryDirectory() as temp_dir:
-            zip_name = os.path.join(temp_dir, "plugin")
-            zip_name = shutil.make_archive(
-                base_name=zip_name, format="zip", root_dir=plugin_path
-            )
+            zip_base = os.path.join(temp_dir, "plugin")
+            zip_name = _make_archive(plugin_path, zip_base, optimize)
 
             with open(zip_name, "rb") as f:
                 upload_token = json.loads(client.post_file("file", f))[
                     "file_token"
                 ]
     else:
+        # Assume its a zip and try to upload as such
         with open(plugin_path, "rb") as f:
             upload_token = json.loads(client.post_file("file", f))[
                 "file_token"
