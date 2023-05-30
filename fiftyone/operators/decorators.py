@@ -69,7 +69,6 @@ def plugins_cache(func):
             return func(*args, **kwargs)
 
         curr_dir_state = dir_state(fo.config.plugins_dir)
-        print(curr_dir_state)
         if curr_dir_state != dir_cache["state"]:
             cache.clear()
             dir_cache["state"] = curr_dir_state
