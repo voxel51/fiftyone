@@ -864,17 +864,17 @@ class SampleFieldTests(unittest.TestCase):
         sample = fo.Sample(
             filepath="img.png",
             custom_field=fo.DynamicEmbeddedDocument(
-                label=fo.Classification(label="label"),
-                labels=[fo.Classification(label="labels")],
+                single=fo.Classification(label="single"),
+                list=[fo.Classification(label="list")],
             ),
         )
         dataset.add_sample(sample)
         dataset.add_dynamic_sample_fields()
 
         sample = dataset.first()
-        self.assertEqual(sample.custom_field.label, "label")
-        self.assertEqual(len(sample.custom_field.labels), 1)
-        self.assertEqual(len(sample.custom_field.labels[0].label), "labels")
+        self.assertEqual(sample.custom_field.single.label, "single")
+        self.assertEqual(len(sample.custom_field.list), 1)
+        self.assertEqual(len(sample.custom_field.list[0].label), "list")
 
 
 if __name__ == "__main__":
