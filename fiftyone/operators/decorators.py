@@ -6,6 +6,7 @@ FiftyOne operator decorators.
 |
 """
 import asyncio
+from cachetools.keys import hashkey
 from contextlib import contextmanager
 from functools import wraps
 import signal
@@ -52,32 +53,37 @@ def raise_timeout_error(seconds):
     raise TimeoutError(f"Timeout occurred after {seconds} seconds") from None
 
 
-def dir_state(dir_path):
-    return max(
-        os.path.getmtime(os.path.join(dir_path, f))
-        for f in os.listdir(dir_path)
-    )
+cache = {}
+dir_cache = {"state": None}
 
 
 def plugins_cache(func):
-    """Decorator that returns the cached function result as long as no
+    """Decorator that returns cached function results as long as no
     subdirectories of ``fo.config.plugins_dir`` have been modified since last
     time.
     """
-    cache = {}
-    dir_state_cache = {"state": None}
-    dir_path = fo.config.plugins_dir
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if fo.config.plugins_cache_enabled:
-            current_dir_state = dir_state(dir_path)
-            if current_dir_state != dir_state_cache["state"]:
-                cache.clear()
-                cache[current_dir_state] = func(*args, **kwargs)
-                dir_state_cache["state"] = current_dir_state
-            return cache[current_dir_state]
-        else:
+        if not fo.config.plugins_cache_enabled:
             return func(*args, **kwargs)
 
+        curr_dir_state = dir_state(fo.config.plugins_dir)
+        print(curr_dir_state)
+        if curr_dir_state != dir_cache["state"]:
+            cache.clear()
+            dir_cache["state"] = curr_dir_state
+
+        key = hashkey(func, *args, **kwargs)
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+
+        return cache[key]
+
     return wrapper
+
+
+def dir_state(dirpath):
+    return max(
+        os.path.getmtime(os.path.join(dirpath, f)) for f in os.listdir(dirpath)
+    )
