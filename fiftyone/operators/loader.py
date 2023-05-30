@@ -14,8 +14,8 @@ import traceback
 import fiftyone as fo
 import fiftyone.plugins as fop
 
-from .operator import Operator
 from .decorators import plugins_cache
+from .operator import Operator
 
 logger = logging.getLogger(__name__)
 
