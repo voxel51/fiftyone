@@ -72,11 +72,13 @@ class ExecuteOperator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
+
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
+
         if registry.operator_exists(operator_uri) is False:
             error_detail = {
                 "message": "Operator '%s' does not exist" % operator_uri
