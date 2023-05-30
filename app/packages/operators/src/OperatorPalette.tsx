@@ -33,6 +33,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     submitOnControlEnter,
     title,
     disableSubmit,
+    disabledReason,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
@@ -120,6 +121,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
                 onClick={handleSubmit}
                 onKeyDown={onEnter(handleSubmit)}
                 disabled={disableSubmit}
+                title={disableSubmit && disabledReason}
               >
                 {submitButtonText}
               </Button>
@@ -143,4 +145,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   submitOnControlEnter?: boolean;
   title?: ReactElement;
   disableSubmit?: boolean;
+  disabledReason?: string;
 };

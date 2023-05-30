@@ -13,9 +13,11 @@ export class ValidationContext {
   params;
   errors = [];
   invalid;
+  disableSchemaValidation;
 
-  constructor(public ctx, public property) {
+  constructor(public ctx, public property, operator) {
     this.params = ctx.params;
+    this.disableSchemaValidation = operator.config.disableSchemaValidation;
     this.errors = this.validate();
     this.invalid = this.errors.length > 0;
   }
@@ -27,7 +29,8 @@ export class ValidationContext {
     };
   }
 
-  addError(error) {
+  addError(error, custom?: boolean) {
+    if (this.disableSchemaValidation && !custom) return;
     this.errors.push(error);
   }
 
@@ -50,7 +53,8 @@ export class ValidationContext {
           property.errorMessage || "Invalid property",
           property,
           path
-        )
+        ),
+        true
       );
     } else if (property.required && valueIsNullish) {
       this.addError(new ValidationError("Required property", property, path));

@@ -96,8 +96,7 @@ async def execute_operator(operator_name, request_params):
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)
-
-    validation_ctx = ValidationContext(ctx, inputs)
+    validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
             error="Validation Error", validation_ctx=validation_ctx
@@ -293,10 +292,11 @@ class ValidationError(object):
         path: the path
     """
 
-    def __init__(self, reason, property, path):
+    def __init__(self, reason, property, path, custom=False):
         self.reason = reason
         self.error_message = property.error_message
         self.path = path
+        self.custom = custom
 
     def to_json(self):
         """Returns a JSON dict representation of the error.
@@ -308,6 +308,7 @@ class ValidationError(object):
             "reason": self.reason,
             "error_message": self.error_message,
             "path": self.path,
+            "custom": self.custom,
         }
 
 
@@ -320,11 +321,14 @@ class ValidationContext(object):
             operator inputs
     """
 
-    def __init__(self, ctx, inputs_property):
+    def __init__(self, ctx, inputs_property, operator):
         self.ctx = ctx
         self.params = ctx.params
         self.inputs_property = inputs_property
         self._errors = []
+        self.disable_schema_validation = (
+            operator.config.disable_schema_validation
+        )
         if self.inputs_property is None:
             self.invalid = False
             self.errors = []
@@ -349,6 +353,8 @@ class ValidationContext(object):
         Args:
             error: a :class:`ValidationError`
         """
+        if self.disable_schema_validation and error.custom != True:
+            return
         self._errors.append(error)
 
     def _validate(self):
@@ -414,7 +420,9 @@ class ValidationContext(object):
             a :class:`ValidationError`, if the value is invalid
         """
         if property.invalid:
-            return ValidationError("Invalid property", property, path)
+            return ValidationError(
+                property.error_message, property, path, True
+            )
 
         if property.required and value is None:
             return ValidationError("Required property", property, path)
