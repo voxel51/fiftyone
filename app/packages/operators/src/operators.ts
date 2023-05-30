@@ -409,6 +409,11 @@ async function executeOperatorAsGenerator(
     },
     "json-stream"
   );
+
+  // Add the parser to the abortable operation queue
+  const abortQueue = getAbortableOperationQueue();
+  abortQueue.add(operator.uri, ctx.params, parser);
+
   let result = null;
   let triggerPromises = [];
   const onChunk = (chunk) => {
@@ -420,6 +425,7 @@ async function executeOperatorAsGenerator(
     }
   };
   await parser.parse(onChunk);
+  abortQueue.remove(operator.uri);
   // Should we wait for all triggered operators finish execution?
   // e.g. await Promise.all(triggerPromises)
   return result || {};
@@ -454,9 +460,13 @@ export async function executeOperatorWithContext(
       try {
         result = await executeOperatorAsGenerator(operator, ctx);
       } catch (e) {
-        error = e;
-        console.error(`Error executing operator ${operatorURI}:`);
-        console.error(error);
+        const isAbortError =
+          e.name === "AbortError" || e instanceof DOMException;
+        if (!isAbortError) {
+          error = e;
+          console.error(`Error executing operator ${operatorURI}:`);
+          console.error(error);
+        }
       }
     } else {
       const serverResult = await getFetchFunction()(
@@ -686,4 +696,62 @@ export function getInvocationRequestQueue() {
     invocationRequestQueue = new InvocationRequestQueue();
   }
   return invocationRequestQueue;
+}
+
+class AbortableOperation {
+  constructor(public id: string, public params: any, public parser: any) {}
+  abort() {
+    return this.parser.abort();
+  }
+}
+
+class AbortableOperationQueue {
+  constructor(private items = []) {}
+  add(uri, params, parser) {
+    this.items.push(new AbortableOperation(uri, params, parser));
+  }
+  remove(uri) {
+    this.items = this.items.filter((d) => d.id !== uri);
+  }
+  findByURI(uri) {
+    return this.items.filter((d) => d.id === uri);
+  }
+  findByExrpession(expression: (d: AbortableOperation) => boolean) {
+    return this.items.filter(expression);
+  }
+  abortByURI(uri) {
+    const items = this.findByURI(uri);
+    for (const item of items) {
+      item.abort();
+    }
+  }
+  abortByExpression(expression: (d: AbortableOperation) => boolean) {
+    const items = this.findByExrpession(expression);
+    for (const item of items) {
+      item.abort();
+    }
+  }
+}
+let abortableOperationQueue: AbortableOperationQueue;
+export function getAbortableOperationQueue() {
+  if (!abortableOperationQueue) {
+    abortableOperationQueue = new AbortableOperationQueue();
+  }
+  return abortableOperationQueue;
+}
+
+/**
+ * Cancels all abortable operations started by the operator with the given uri.
+ *
+ * @param uri The uri of the operator to abort
+ */
+export function abortOperationsByURI(uri) {
+  getAbortableOperationQueue().abortByURI(uri);
+}
+/**
+ * Cancels all abortable operations that match the given expression.
+ * @param expression A function that takes an AbortableOperation and returns a boolean
+ */
+export function abortOperationsByExpression(expression) {
+  getAbortableOperationQueue().abortByExpression(expression);
 }
