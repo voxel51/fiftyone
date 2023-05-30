@@ -114,9 +114,6 @@ async def paginate_samples(
         and (sample_filter.group.id and not sample_filter.group.slices),
         support=support,
     )
-    from fiftyone import pprint
-
-    not pagination_data and pprint(pipeline)
 
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
