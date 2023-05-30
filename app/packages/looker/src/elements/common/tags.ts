@@ -431,8 +431,8 @@ const getFieldAndValue = (
       field &&
       field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)
     ) {
-      value = value["classifications"] || [];
-      field = field.fields["classifications"];
+      value = value?.["classifications"] || [];
+      field = field.fields?.["classifications"];
       break;
     }
 
