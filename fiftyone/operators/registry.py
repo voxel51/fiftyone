@@ -96,6 +96,17 @@ class OperatorRegistry(object):
 
         return False
 
+    def can_execute(self, operator_uri):
+        """Whether the operator can be executed.
+
+        Args:
+            operator_uri: the URI of the operator
+
+        Returns:
+            True/False
+        """
+        return self.operator_exists(operator_uri)
+
     def get_operator(self, operator_uri):
         """Retrieves an operator by its URI.
 
