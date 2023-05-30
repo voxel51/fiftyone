@@ -715,7 +715,13 @@ def _get_filtered_path(view, path, filtered_fields, label_tags):
 
 def _add_frame_labels_tags(path, field, view):
     path = path[len("frames.") :]
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+    items = path
+    if isinstance(field, fof.ListField):
+        field = field.field
+
+    if issubclass(field.document_type, fol._HasLabelList):
+        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(
@@ -744,7 +750,13 @@ def _add_frame_label_tags(path, field, view):
 
 
 def _add_labels_tags(path, field, view):
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+    items = path
+    if isinstance(field, fof.ListField):
+        field = field.field
+
+    if issubclass(field.document_type, fol._HasLabelList):
+        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
