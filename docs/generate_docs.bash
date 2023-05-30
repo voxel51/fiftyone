@@ -80,42 +80,44 @@ if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
     ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${THIS_DIR}/../fiftyone/management"
     ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${THIS_DIR}/../fiftyone/api"
     echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
+    readlink "${THIS_DIR}/../fiftyone/management"
+    ls "${THIS_DIR}/../fiftyone/management/"
 fi
 
 cd "${THIS_DIR}/.."
 
-# Symlink to fiftyone-brain
-ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
+## Symlink to fiftyone-brain
+#ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
+#
+#echo "Generating API docs"
+## sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
+#sphinx-apidoc --force --no-toc --separate --follow-links \
+#    --templatedir=docs/templates/apidoc \
+#    -o docs/source/api fiftyone \
+#        fiftyone/brain/internal \
+#        fiftyone/server \
+#        fiftyone/service \
+#        fiftyone/management \
+#        fiftyone/api
+#
+## Remove symlink
+#rm fiftyone/brain
 
-echo "Generating API docs"
-# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
-sphinx-apidoc --force --no-toc --separate --follow-links \
-    --templatedir=docs/templates/apidoc \
-    -o docs/source/api fiftyone \
-        fiftyone/brain/internal \
-        fiftyone/server \
-        fiftyone/service \
-        fiftyone/management \
-        fiftyone/api
-
-# Remove symlink
-rm fiftyone/brain
-
-cd docs
-
-if [[ ${FAST_BUILD} = false ]]; then
-    echo "Generating model zoo listing page"
-    python scripts/make_model_zoo_docs.py
-
-    echo "Generating TypeScript API docs"
-    cd ../app
-    yarn doc
-    cd ../docs
-fi
-
-echo "Building docs"
-# sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-sphinx-build -M html source build $SPHINXOPTS
+#cd docs
+#
+#if [[ ${FAST_BUILD} = false ]]; then
+#    echo "Generating model zoo listing page"
+#    python scripts/make_model_zoo_docs.py
+#
+#    echo "Generating TypeScript API docs"
+#    cd ../app
+#    yarn doc
+#    cd ../docs
+#fi
+#
+#echo "Building docs"
+## sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
+#sphinx-build -M html source build $SPHINXOPTS
 
 # Remove symlink to fiftyone-teams
 if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
