@@ -170,8 +170,9 @@ def get_extended_view(
             if tags and exclude:
                 view = view.match_tags(tags, bool=False)
 
-        if "_label_tags" in filters:
-            label_tags = filters.get("_label_tags")
+        if _LABEL_TAGS in filters:
+            label_tags = filters.get(_LABEL_TAGS)
+            label_fields = [path for path, _ in fosu.iter_label_fields(view)]
 
             if (
                 not count_label_tags
@@ -179,7 +180,10 @@ def get_extended_view(
                 and not label_tags["exclude"]
                 and not label_tags["isMatching"]
             ):
-                view = view.select_labels(tags=label_tags["values"])
+                view = view.select_labels(
+                    tags=label_tags["values"],
+                    fields=label_fields,
+                )
 
             if (
                 not count_label_tags
@@ -188,7 +192,9 @@ def get_extended_view(
                 and not label_tags["isMatching"]
             ):
                 view = view.exclude_labels(
-                    tags=label_tags["values"], omit_empty=False
+                    tags=label_tags["values"],
+                    omit_empty=False,
+                    label_fields=label_fields,
                 )
 
             if (
@@ -197,7 +203,9 @@ def get_extended_view(
                 and not label_tags["exclude"]
                 and label_tags["isMatching"]
             ):
-                view = view.match_labels(tags=label_tags["values"])
+                view = view.match_labels(
+                    tags=label_tags["values"], label_fields=label_fields
+                )
 
             if (
                 not count_label_tags
@@ -205,7 +213,11 @@ def get_extended_view(
                 and label_tags["exclude"]
                 and label_tags["isMatching"]
             ):
-                view = view.match_labels(tags=label_tags["values"], bool=False)
+                view = view.match_labels(
+                    tags=label_tags["values"],
+                    bool=False,
+                    label_fields=label_fields,
+                )
 
         stages, cleanup_fields, filtered_labels = _make_filter_stages(
             view,
