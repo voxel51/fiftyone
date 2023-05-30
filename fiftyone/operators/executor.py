@@ -16,6 +16,7 @@ import fiftyone.operators.types as types
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
+from fiftyone.core.utils import run_sync_task
 
 
 class InvocationRequest(object):
@@ -104,10 +105,11 @@ async def execute_operator(operator_name, request_params):
         )
 
     try:
-        if asyncio.iscoroutinefunction(operator.execute):
-            raw_result = await operator.execute(ctx)
-        else:
-            raw_result = operator.execute(ctx)
+        raw_result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else run_sync_task(operator.execute, ctx)
+        )
     except Exception as e:
         return ExecutionResult(executor=executor, error=traceback.format_exc())
 
