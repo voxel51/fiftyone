@@ -25,6 +25,8 @@ class OperatorConfig(object):
         unlisted (False): whether the operator should be hidden from the
             Operator Browser
         on_startup (False): whether the operator should be executed on startup
+        disable_schema_validation (False): whether the operator built-in schema
+            validation should be disabled
     """
 
     def __init__(
@@ -36,6 +38,7 @@ class OperatorConfig(object):
         execute_as_generator=False,
         unlisted=False,
         on_startup=False,
+        disable_schema_validation=False,
     ):
         self.name = name
         self.label = label or name
@@ -44,6 +47,7 @@ class OperatorConfig(object):
         self.execute_as_generator = execute_as_generator
         self.unlisted = unlisted
         self.on_startup = on_startup
+        self.disable_schema_validation = disable_schema_validation
 
     def to_json(self):
         return {
@@ -54,6 +58,7 @@ class OperatorConfig(object):
             "unlisted": self.unlisted,
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
+            "disable_schema_validation": self.disable_schema_validation,
         }
 
 
