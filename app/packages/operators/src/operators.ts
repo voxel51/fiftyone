@@ -411,7 +411,8 @@ async function executeOperatorAsGenerator(
   );
 
   // Add the parser to the abortable operation queue
-  getAbortableOperationQueue().add(operator.uri, ctx.params, parser);
+  const abortQueue = getAbortableOperationQueue();
+  abortQueue.add(operator.uri, ctx.params, parser);
 
   let result = null;
   let triggerPromises = [];
@@ -424,6 +425,7 @@ async function executeOperatorAsGenerator(
     }
   };
   await parser.parse(onChunk);
+  abortQueue.remove(operator.uri);
   // Should we wait for all triggered operators finish execution?
   // e.g. await Promise.all(triggerPromises)
   return result || {};
@@ -707,6 +709,9 @@ class AbortableOperationQueue {
   constructor(private items = []) {}
   add(uri, params, parser) {
     this.items.push(new AbortableOperation(uri, params, parser));
+  }
+  remove(uri) {
+    this.items = this.items.filter((d) => d.id !== uri);
   }
   findByURI(uri) {
     return this.items.filter((d) => d.id === uri);
