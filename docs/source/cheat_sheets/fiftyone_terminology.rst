@@ -44,7 +44,7 @@ ________________
      - A module you can use to :ref:`customize and extend <fiftyone-plugins>`
        the behavior of FiftyOne.
    * - Operator
-     - A :ref:`plugin subcompotent <fiftyone-operators>` that defines an
+     - A :ref:`plugin subcomponent <fiftyone-operators>` that defines an
        operation that can be executed either directly by users in the App
        and/or internally invoked by other plugin components
    * - Integration
