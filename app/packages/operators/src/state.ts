@@ -176,7 +176,6 @@ export const useOperatorPrompt = () => {
       setTimeout(() => {
         const validationContext = new ValidationContext(ctx, resolved);
         const validationErrors = validationContext.toProps().errors;
-        console.log({ ctx, resolved, validationContext });
         setValidationErrors(validationErrors);
         resolve({
           invalid: validationContext.invalid,
@@ -235,8 +234,7 @@ export const useOperatorPrompt = () => {
     const resolved = await operator.resolveInput(ctx);
     const { invalid, errors } = await validate(ctx, resolved);
     if (invalid) {
-      console.log("Execution halted due to invalid input");
-      return console.log(errors);
+      return;
     }
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
@@ -274,12 +272,7 @@ export const useOperatorPrompt = () => {
   const resolveError = resolveTypeError.current;
 
   useEffect(() => {
-    console.log({
-      "executor.hasExecuted": executor.hasExecuted,
-      "executor.needsOutput": executor.needsOutput,
-    });
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
-      console.log("AUTO CLOSING");
       close();
     }
   }, [executor.hasExecuted, executor.needsOutput]);
