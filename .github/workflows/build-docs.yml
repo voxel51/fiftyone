@@ -49,7 +49,7 @@ jobs:
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
-          ssh-key: ${{ secrets.TEAMS_SSH_PRIVATE_KEY }}
+          token: ${{ secrets.TEAMS_GITHUB_PAT }}
           ref: main
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
