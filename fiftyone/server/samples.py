@@ -13,8 +13,9 @@ import typing as t
 from fiftyone.core.collections import SampleCollection
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.server.filters import SampleFilter
+from fiftyone.core.utils import run_sync_task
 
+from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
@@ -72,7 +73,7 @@ async def paginate_samples(
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    view = fosv.get_view(
+    run = lambda reload: fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
@@ -80,9 +81,23 @@ async def paginate_samples(
         count_label_tags=True,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
+        reload=reload,
     )
 
     root_view = fosv.get_view(dataset, stages=stages)
+    try:
+        view = await run_sync_task(run, False)
+    except:
+        view = await run_sync_task(run, True)
+
+    try:
+        root_view = await run_sync_task(
+            lambda: fosv.get_view(dataset, stages=stages, reload=False)
+        )
+    except:
+        root_view = await run_sync_task(
+            lambda: fosv.get_view(dataset, stages=stages, reload=True)
+        )
 
     media = view.media_type
     if media == fom.MIXED:

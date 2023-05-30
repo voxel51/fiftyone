@@ -44,7 +44,6 @@ async def load_view(
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
         dataset = fod.load_dataset(dataset_name)
-        dataset.reload()
         if view_name:
             view = dataset.load_saved_view(view_name)
             if serialized_view:
@@ -82,6 +81,7 @@ def get_view(
     count_label_tags=False,
     extended_stages=None,
     sample_filter=None,
+    reload=True,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -101,12 +101,15 @@ def get_view(
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
+        reload (None): whether to reload the dataset
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
     dataset = fod.load_dataset(dataset_name)
-    dataset.reload()
+
+    if reload:
+        dataset.reload()
 
     if view_name is not None:
         return dataset.load_saved_view(view_name)
