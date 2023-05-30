@@ -6,6 +6,7 @@ on:
       # - develop
       - rel-*
       - release-*
+      - release/*
       - docs-*
       - github-actions-*
     tags:
@@ -24,6 +25,7 @@ on:
       - develop
       - rel-*
       - release-*
+      - release/*
     paths:
       - .github/workflows/build-docs.yml
       - docs/**
