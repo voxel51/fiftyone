@@ -21,7 +21,7 @@ const Container = styled.div`
   height: 100%;
 `;
 
-const DEFAULT_FRAME_RATE = 3;
+const DEFAULT_FRAME_RATE = 30;
 
 const VideoLookerImpl: React.FC<{
   queryRef: PreloadedQuery<any>;
@@ -29,11 +29,11 @@ const VideoLookerImpl: React.FC<{
 }> = React.memo(({ queryRef, loadDynamicGroupSamples }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previousTimeRef = useRef<number>(0);
-  const animationFrameIdRef = useRef<number>();
+  const animationFrameIdRef = useRef<number>(-1);
+  const frameIndexRef = useRef<number>(0);
 
-  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [frameRate, setFrameRate] = useState(DEFAULT_FRAME_RATE);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
   const { groupByFieldValue } = useGroupContext();
@@ -70,94 +70,127 @@ const VideoLookerImpl: React.FC<{
 
   const frameDuration = useMemo(() => 1000 / frameRate, [frameRate]);
 
+  const preloadImages = async (sampleMap) => {
+    const imagePromises = Array.from(sampleMap.values()).map(async (sample) => {
+      const img = new Image();
+      img.src = fos.getSampleSrc(sample?.urls[0].url);
+      await img.decode();
+      return img;
+    });
+
+    const images = await Promise.all(imagePromises);
+    return images;
+  };
+
   const drawFrameWrapper = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
+    (ctx: CanvasRenderingContext2D, images: HTMLImageElement[]) => {
       const draw = (timestamp: number) => {
         const elapsedTime = timestamp - previousTimeRef.current;
 
         if (elapsedTime > frameDuration) {
           previousTimeRef.current = timestamp;
 
-          const sample = dynamicGroupSamplesStoreMap.get(currentFrameIndex);
-          const img = new Image();
-          // todo: transform to url immediately after fetching, not here
-          img.src = fos.getSampleSrc(sample?.urls[0].url);
-          img.onload = () => {
+          const img = images[frameIndexRef.current];
+
+          if (img) {
             const canvasAspectRatio = ctx.canvas.width / ctx.canvas.height;
             const imageAspectRatio = img.width / img.height;
             let scaleFactor = 1;
 
             if (imageAspectRatio < canvasAspectRatio) {
-              // fit image width to canvas width
               scaleFactor = ctx.canvas.width / img.width;
             } else {
-              // fit image height to canvas height
               scaleFactor = ctx.canvas.height / img.height;
             }
 
             const scaledWidth = img.width * scaleFactor;
             const scaledHeight = img.height * scaleFactor;
-            const x = (ctx.canvas.width - scaledWidth) / 2; // center the image horizontally
-            const y = (ctx.canvas.height - scaledHeight) / 2; // center the image vertically
+            const x = (ctx.canvas.width - scaledWidth) / 2;
+            const y = (ctx.canvas.height - scaledHeight) / 2;
 
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-          };
+          }
 
-          // todo: if loop is on, modulo, or else stop animation
-          if (currentFrameIndex === dynamicGroupSamplesStoreMap.size - 1) {
+          if (frameIndexRef.current === dynamicGroupSamplesStoreMap.size - 1) {
             setIsPlaying(false);
-            setCurrentFrameIndex(0);
             previousTimeRef.current = 0;
           } else {
-            setCurrentFrameIndex((prevFrameIndex) => prevFrameIndex + 1);
+            frameIndexRef.current = frameIndexRef.current + 1;
           }
         }
 
-        if (isPlaying) {
-          animationFrameIdRef.current = requestAnimationFrame(draw);
-        }
+        animationFrameIdRef.current = requestAnimationFrame(draw);
       };
 
       animationFrameIdRef.current = requestAnimationFrame(draw);
     },
-    [dynamicGroupSamplesStoreMap, currentFrameIndex, isPlaying, frameDuration]
+    [dynamicGroupSamplesStoreMap, frameDuration]
   );
 
-  useLayoutEffect(() => {
+  const startPlayback = useCallback(
+    async (ctx: CanvasRenderingContext2D) => {
+      setIsPlaying(true);
+
+      ctx.canvas.width = canvasRef.current?.parentElement?.clientWidth!;
+      ctx.canvas.height =
+        canvasRef.current?.parentElement?.clientWidth! /
+        dynamicGroupSamplesStoreMap.get(0)?.aspectRatio!;
+
+      const images = await preloadImages(dynamicGroupSamplesStoreMap);
+
+      drawFrameWrapper(ctx, images);
+    },
+    [drawFrameWrapper, dynamicGroupSamplesStoreMap]
+  );
+
+  const stopPlayback = useCallback(() => {
+    setIsPlaying(false);
+
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
     const ctx = canvasRef.current?.getContext("2d");
 
     if (!ctx || dynamicGroupSamplesStoreMap.size === 0) {
       return;
     }
 
-    ctx.canvas.width = canvasRef.current?.parentElement?.clientWidth;
-    ctx.canvas.height =
-      canvasRef.current?.parentElement?.clientWidth /
-      dynamicGroupSamplesStoreMap.get(currentFrameIndex)?.aspectRatio;
-
-    if (isPlaying) {
-      drawFrameWrapper(ctx);
+    if (animationFrameIdRef.current === -1) {
+      startPlayback(ctx);
     }
 
     return () => {
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-      }
+      stopPlayback();
     };
-  }, [drawFrameWrapper, isPlaying]);
+  }, [
+    drawFrameWrapper,
+    startPlayback,
+    stopPlayback,
+    dynamicGroupSamplesStoreMap,
+    isPlaying,
+  ]);
 
   const handlePlayPause = useCallback(() => {
-    if (currentFrameIndex === dynamicGroupSamplesStoreMap.size - 1) {
-      setCurrentFrameIndex(0);
+    if (frameIndexRef.current === dynamicGroupSamplesStoreMap.size - 1) {
+      frameIndexRef.current = 0;
+      previousTimeRef.current = 0;
     }
-    setIsPlaying((prev) => !prev);
-  }, [currentFrameIndex, dynamicGroupSamplesStoreMap]);
+
+    if (isPlaying) {
+      stopPlayback();
+    } else {
+      startPlayback(canvasRef.current?.getContext("2d")!);
+    }
+  }, [startPlayback, stopPlayback, isPlaying, dynamicGroupSamplesStoreMap]);
 
   return (
     <Container>
       <div>
-        Current Frame: {currentFrameIndex} out of{" "}
+        Current Frame: {frameIndexRef.current + 1} out of{" "}
         {dynamicGroupSamplesStoreMap.size}
       </div>
       <div>
