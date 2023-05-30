@@ -1,8 +1,13 @@
-import { useRecoilCallback } from "recoil";
-import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
-import { loadQuery, useQueryLoader } from "react-relay";
+import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { useGroupContext } from "./GroupContextProvider";
 
 /**
@@ -42,4 +47,41 @@ export const useDynamicGroupPaginatedSamples = (batchSize = 20) => {
   }, [queryRef, loadPaginatedSamples]);
 
   return [queryRef, loadPaginatedSamples] as const;
+};
+
+export const useDynamicGroupSamplesStoreMap = (queryRef) => {
+  const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
+  const { groupByFieldValue } = useGroupContext();
+
+  const atomFamilyKey = `${groupBy}-${orderBy}-${groupByFieldValue!}`;
+
+  const [dynamicGroupSamplesStoreMap, setDynamicGroupSamplesStoreMap] =
+    useRecoilState(fos.dynamicGroupSamplesStoreMap(atomFamilyKey));
+
+  // fetch a bunch of frames
+  const data = usePreloadedQuery<foq.paginateDynamicGroupSamplesQuery>(
+    foq.paginateDynamicGroupSamples,
+    queryRef
+  );
+
+  /**
+   * This effect is responsible for parsing gql response into a sample map
+   */
+  useEffect(() => {
+    if (!data?.samples?.edges?.length) {
+      return;
+    }
+
+    setDynamicGroupSamplesStoreMap((prev) => {
+      const newMap = new Map(prev);
+
+      for (const { cursor, node } of data.samples.edges) {
+        newMap.set(Number(cursor), node as unknown as fos.SampleData);
+      }
+
+      return newMap;
+    });
+  }, [data, setDynamicGroupSamplesStoreMap]);
+
+  return dynamicGroupSamplesStoreMap;
 };

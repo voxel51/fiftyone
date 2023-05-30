@@ -1,20 +1,19 @@
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { PreloadedQuery, usePreloadedQuery } from "react-relay";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { PreloadedQuery } from "react-relay";
 import styled from "styled-components";
-import { useGroupContext } from "../../../../GroupContextProvider";
 import { GroupSuspense } from "../../../../GroupSuspense";
-import { useDynamicGroupPaginatedSamples } from "../../../../useDynamicGroupPaginatedSamples";
+import {
+  useDynamicGroupPaginatedSamples,
+  useDynamicGroupSamplesStoreMap,
+} from "../../../../useDynamicGroupPaginatedSamples";
 
 const Container = styled.div`
   width: 100%;
@@ -35,38 +34,7 @@ const VideoLookerImpl: React.FC<{
   const [frameRate, setFrameRate] = useState(DEFAULT_FRAME_RATE);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
-  const { groupByFieldValue } = useGroupContext();
-
-  const atomFamilyKey = `${groupBy}-${orderBy}-${groupByFieldValue!}`;
-
-  const [dynamicGroupSamplesStoreMap, setDynamicGroupSamplesStoreMap] =
-    useRecoilState(fos.dynamicGroupSamplesStoreMap(atomFamilyKey));
-
-  // fetch a bunch of frames
-  const data = usePreloadedQuery<foq.paginateDynamicGroupSamplesQuery>(
-    foq.paginateDynamicGroupSamples,
-    queryRef
-  );
-
-  /**
-   * This effect is responsible for parsing gql response into a sample map
-   */
-  useEffect(() => {
-    if (!data?.samples?.edges?.length) {
-      return;
-    }
-
-    setDynamicGroupSamplesStoreMap((prev) => {
-      const newMap = new Map(prev);
-
-      for (const { cursor, node } of data.samples.edges) {
-        newMap.set(Number(cursor), node as unknown as fos.SampleData);
-      }
-
-      return newMap;
-    });
-  }, [data, setDynamicGroupSamplesStoreMap]);
+  const dynamicGroupSamplesStoreMap = useDynamicGroupSamplesStoreMap(queryRef);
 
   const frameDuration = useMemo(() => 1000 / frameRate, [frameRate]);
 
