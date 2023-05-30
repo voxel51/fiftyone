@@ -16,6 +16,7 @@ import { useGroupContext } from "../../GroupContextProvider";
 import { GroupSuspense } from "../../GroupSuspense";
 import style from "./GroupElementsLinkBar.module.css";
 import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
+import { useDynamicGroupPaginatedSamples } from "../../useDynamicGroupPaginatedSamples";
 
 const BarContainer = styled.div`
   width: 100%;
@@ -30,41 +31,13 @@ const BarContainer = styled.div`
 `;
 
 export const GroupElementsLinkBar = () => {
-  const { groupByFieldValue } = useGroupContext();
-
-  const [queryRef, loadQuery] =
-    useQueryLoader<foq.paginateDynamicGroupSamplesQuery>(
-      foq.paginateDynamicGroupSamples
-    );
-
-  const loadDynamicGroupSamples = useRecoilCallback(
-    ({ snapshot }) =>
-      async (cursor?: number) => {
-        const variables = {
-          dataset: await snapshot.getPromise(fos.datasetName),
-          filter: {},
-          view: await snapshot.getPromise(
-            fos.dynamicGroupViewQuery(groupByFieldValue!)
-          ),
-          cursor: cursor ? String(cursor) : null,
-        };
-
-        loadQuery(variables);
-      },
-    [loadQuery, groupByFieldValue]
-  );
-
-  useEffect(() => {
-    if (!queryRef) {
-      loadDynamicGroupSamples();
-    }
-  }, [queryRef, loadDynamicGroupSamples]);
+  const [queryRef, loadPaginatedSamples] = useDynamicGroupPaginatedSamples();
 
   if (queryRef) {
     return (
       <GroupSuspense>
         <GroupElementsLinkBarImpl
-          loadDynamicGroupSamples={loadDynamicGroupSamples}
+          loadDynamicGroupSamples={loadPaginatedSamples}
           queryRef={queryRef}
         />
       </GroupSuspense>
