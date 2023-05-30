@@ -627,11 +627,16 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setError(result.error);
         handlers.onSuccess?.(result);
       } catch (e) {
-        setError(e);
-        setResult(null);
-        handlers.onError?.(e);
-        console.error("Error executing operator", operator, ctx);
-        console.error(e);
+        console.log(e.name, e instanceof DOMException);
+        const isAbortError =
+          e.name === "AbortError" || e instanceof DOMException;
+        if (!isAbortError) {
+          setError(e);
+          setResult(null);
+          handlers.onError?.(e);
+          console.error("Error executing operator", operator, ctx);
+          console.error(e);
+        }
       }
       setHasExecuted(true);
       setIsExecuting(false);
