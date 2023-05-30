@@ -68,6 +68,7 @@ jobs:
         run: |
           sudo apt-get install pandoc
           pip install -r requirements/dev.txt
+          pip install -r fiftyone-teams/requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install .
