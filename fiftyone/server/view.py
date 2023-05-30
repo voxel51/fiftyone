@@ -258,7 +258,10 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
 
     for path, field in fosu.iter_label_fields(view):
         path = _get_filtered_path(view, path, filtered_fields, label_tags)
-        if isinstance(field, fof.ListField):
+        if isinstance(field, fof.ListField) or (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._HasLabelList)
+        ):
             if path.startswith(view._FRAMES_PREFIX):
                 add_tags = _add_frame_labels_tags
             else:

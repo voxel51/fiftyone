@@ -2369,7 +2369,12 @@ class FilterLabels(ViewStage):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _get_new_field(self, sample_collection):
+        field, _ = sample_collection._handle_frame_field(self._labels_field)
         new_field, _ = sample_collection._handle_frame_field(self._new_field)
+
+        if len(field.split(".")) - len(new_field.split(".")) == 1:
+            return ".".join([new_field, field.split(".")[-1]])
+
         return new_field
 
     def _needs_frames(self, sample_collection):
