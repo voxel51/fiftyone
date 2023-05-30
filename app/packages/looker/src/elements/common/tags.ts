@@ -224,6 +224,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         path,
         param: Classification
       ) => {
+        if (!param.label) {
+          return null;
+        }
         return {
           value: param.label,
           title: `${path}: ${param.label}`,
@@ -346,16 +349,18 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.customizedColors = customizeColorSetting;
     this.colorPool = coloring.pool as string[];
 
-    elements.forEach(({ value, color, title }) => {
-      const div = document.createElement("div");
-      const child = prettify(value);
-      child instanceof HTMLElement
-        ? div.appendChild(child)
-        : (div.innerHTML = child);
-      div.title = title;
-      div.style.backgroundColor = color;
-      this.element.appendChild(div);
-    });
+    elements
+      .filter((e) => Boolean(e))
+      .forEach(({ value, color, title }) => {
+        const div = document.createElement("div");
+        const child = prettify(value);
+        child instanceof HTMLElement
+          ? div.appendChild(child)
+          : (div.innerHTML = child);
+        div.title = title;
+        div.style.backgroundColor = color;
+        this.element.appendChild(div);
+      });
 
     return this.element;
   }
