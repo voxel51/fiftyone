@@ -858,6 +858,24 @@ class SampleFieldTests(unittest.TestCase):
             self.assertIsInstance(fields["vector_field"], fo.VectorField)
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 
+    @drop_datasets
+    def test_dynamic_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="img.png",
+            custom_field=fo.DynamicEmbeddedDocument(
+                label=fo.Classification(label="label"),
+                labels=[fo.Classification(label="labels")],
+            ),
+        )
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+
+        sample = dataset.first()
+        self.assertEqual(sample.custom_field.label, "label")
+        self.assertEqual(len(sample.custom_field.labels), 1)
+        self.assertEqual(len(sample.custom_field.labels[0].label), "labels")
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
