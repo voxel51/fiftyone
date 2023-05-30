@@ -13,12 +13,31 @@ import traceback
 
 import fiftyone.plugins as fop
 
+from .decorators import plugins_cache
 from .operator import Operator
 
 
-KNOWN_PLUGIN_CONTEXTS = {}
-
 logger = logging.getLogger(__name__)
+
+
+@plugins_cache
+def build_plugin_contexts(enabled=True):
+    """Returns contexts for all available plugins.
+
+    Args:
+        enabled (True): whether to include only enabled plugins (True) or only
+            disabled plugins (False) or all plugins ("all")
+
+    Returns:
+        a list of :class:`PluginContext` instances
+    """
+    plugin_contexts = []
+    for pd in fop.list_plugins(enabled=enabled):
+        pctx = PluginContext(pd)
+        pctx.register_all()
+        plugin_contexts.append(pctx)
+
+    return plugin_contexts
 
 
 class PluginContext(object):
@@ -115,56 +134,3 @@ class PluginContext(object):
         """Disposes all operators from this context."""
         self.instances.clear()
         self.errors.clear()
-
-
-def build_plugin_contexts(enabled=True):
-    """Returns contexts for all available plugins.
-
-    Args:
-        enabled (True): whether to include only enabled plugins (True) or only
-            disabled plugins (False) or all plugins ("all")
-
-    Returns:
-        a list of :class:`PluginContext` instances
-    """
-    plugin_contexts = []
-    for pd in fop.list_plugins(enabled=enabled):
-        pctx = PluginContext(pd)
-        pctx.register_all()
-        plugin_contexts.append(pctx)
-
-    return plugin_contexts
-
-
-def register_all():
-    """Registers all operators associated with all enabled plugins.
-
-    Returns:
-        a list of :class:`PluginContext` instances
-    """
-    dispose_all()
-
-    plugin_contexts = build_plugin_contexts()
-    for pctx in plugin_contexts:
-        KNOWN_PLUGIN_CONTEXTS[pctx.name] = pctx
-
-    return plugin_contexts
-
-
-def dispose_plugin(plugin_name):
-    """Unegisters the given plugin and all associated operators.
-
-    Args:
-        plugin_name: the name of a plugin
-    """
-    pctx = KNOWN_PLUGIN_CONTEXTS.pop(plugin_name, None)
-    if pctx is not None:
-        pctx.dispose_all()
-
-
-def dispose_all():
-    """Disposes all known plugin contexts."""
-    for pctx in KNOWN_PLUGIN_CONTEXTS.values():
-        pctx.dispose_all()
-
-    KNOWN_PLUGIN_CONTEXTS.clear()
