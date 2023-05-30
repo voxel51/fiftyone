@@ -194,7 +194,7 @@ def get_extended_view(
                 view = view.exclude_labels(
                     tags=label_tags["values"],
                     omit_empty=False,
-                    label_fields=label_fields,
+                    fields=label_fields,
                 )
 
             if (
@@ -204,7 +204,7 @@ def get_extended_view(
                 and label_tags["isMatching"]
             ):
                 view = view.match_labels(
-                    tags=label_tags["values"], label_fields=label_fields
+                    tags=label_tags["values"], fields=label_fields
                 )
 
             if (
@@ -216,7 +216,7 @@ def get_extended_view(
                 view = view.match_labels(
                     tags=label_tags["values"],
                     bool=False,
-                    label_fields=label_fields,
+                    fields=label_fields,
                 )
 
         stages, cleanup_fields, filtered_labels = _make_filter_stages(
