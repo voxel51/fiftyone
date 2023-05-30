@@ -45,8 +45,6 @@ export default function PlotlyView(props) {
             showgrid: false,
             zeroline: false,
             visible: false,
-            scaleanchor: "x",
-            scaleratio: 1,
           },
           autosize: true,
           margin: { t: 0, l: 0, b: 0, r: 0, pad: 0 },
