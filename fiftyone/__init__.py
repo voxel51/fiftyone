@@ -20,15 +20,17 @@ __path__ = _extend_path(__path__, __name__)
 
 import fiftyone.constants as _foc
 
-__version__ = _foc.VERSION
+__version__ = _foc.TEAMS_VERSION
 
 from fiftyone.__public__ import *
 
-import fiftyone.core.uid as _fou
 import fiftyone.core.logging as _fol
+import fiftyone.core.storage as _fos
+import fiftyone.core.uid as _fou
 import fiftyone.migrations as _fom
 
 _fol.init_logging()
+_fos.init_storage()
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
     _fom.migrate_database_if_necessary()

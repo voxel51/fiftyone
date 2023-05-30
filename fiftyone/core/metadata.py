@@ -9,16 +9,22 @@ import itertools
 import logging
 import multiprocessing
 import os
+import re
 import requests
 
+import backoff
 from PIL import Image
 
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone as fo
+import fiftyone.core.cache as foc
+from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 
@@ -37,21 +43,22 @@ class Metadata(DynamicEmbeddedDocument):
     mime_type = fof.StringField()
 
     @classmethod
-    def build_for(cls, path_or_url, mime_type=None):
+    def build_for(cls, path, mime_type=None):
         """Builds a :class:`Metadata` object for the given file.
 
         Args:
-            path_or_url: the path to the data on disk or a URL
+            path: the path to the data
             mime_type (None): the MIME type of the file. If not provided, it
                 will be guessed
 
         Returns:
             a :class:`Metadata`
         """
-        if path_or_url.startswith("http"):
-            return cls._build_for_url(path_or_url, mime_type=mime_type)
+        if fos.is_local(path):
+            return cls._build_for_local(path, mime_type=mime_type)
 
-        return cls._build_for_local(path_or_url, mime_type=mime_type)
+        url = fos.get_url(path)
+        return cls._build_for_url(url, mime_type=mime_type)
 
     @classmethod
     def _build_for_local(cls, filepath, mime_type=None):
@@ -63,11 +70,21 @@ class Metadata(DynamicEmbeddedDocument):
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
         with requests.get(url, stream=True) as r:
+            r.raise_for_status()
             size_bytes = int(r.headers["Content-Length"])
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
@@ -89,24 +106,25 @@ class ImageMetadata(Metadata):
     num_channels = fof.IntField()
 
     @classmethod
-    def build_for(cls, img_or_path_or_url, mime_type=None):
+    def build_for(cls, img_or_path, mime_type=None):
         """Builds an :class:`ImageMetadata` object for the given image.
 
         Args:
-            img_or_path_or_url: an image, an image path on disk, or a URL
+            img_or_path: an image or the path to an image
             mime_type (None): the MIME type of the image. If not provided, it
                 will be guessed
 
         Returns:
             an :class:`ImageMetadata`
         """
-        if not etau.is_str(img_or_path_or_url):
-            return cls._build_for_img(img_or_path_or_url, mime_type=mime_type)
+        if not etau.is_str(img_or_path):
+            return cls._build_for_img(img_or_path, mime_type=mime_type)
 
-        if img_or_path_or_url.startswith("http"):
-            return cls._build_for_url(img_or_path_or_url, mime_type=mime_type)
+        if fos.is_local(img_or_path):
+            return cls._build_for_local(img_or_path, mime_type=mime_type)
 
-        return cls._build_for_local(img_or_path_or_url, mime_type=mime_type)
+        url = fos.get_url(img_or_path)
+        return cls._build_for_url(url, mime_type=mime_type)
 
     @classmethod
     def _build_for_local(cls, path, mime_type=None):
@@ -127,11 +145,21 @@ class ImageMetadata(Metadata):
         )
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
         with requests.get(url, stream=True) as r:
+            r.raise_for_status()
             size_bytes = int(r.headers["Content-Length"])
             width, height, num_channels = get_image_info(fou.ResponseStream(r))
 
@@ -183,20 +211,63 @@ class VideoMetadata(Metadata):
     encoding_str = fof.StringField()
 
     @classmethod
-    def build_for(cls, video_path_or_url, mime_type=None):
+    def build_for(cls, video_path, mime_type=None):
         """Builds an :class:`VideoMetadata` object for the given video.
 
         Args:
-            video_path_or_url: the path to a video on disk or a URL
+            video_path: the path to a video
             mime_type (None): the MIME type of the image. If not provided, it
                 will be guessed
 
         Returns:
             a :class:`VideoMetadata`
         """
+        if fos.is_local(video_path):
+            return cls._build_for_local(video_path, mime_type=mime_type)
+
+        url = fos.get_url(video_path)
+        return cls._build_for_url(url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, video_path, mime_type=None):
         stream_info = etav.VideoStreamInfo.build_for(
-            video_path_or_url, mime_type=mime_type
+            video_path, mime_type=mime_type
         )
+
+        return cls(
+            size_bytes=stream_info.size_bytes,
+            mime_type=stream_info.mime_type,
+            frame_width=stream_info.frame_size[0],
+            frame_height=stream_info.frame_size[1],
+            frame_rate=stream_info.frame_rate,
+            total_frame_count=stream_info.total_frame_count,
+            duration=stream_info.duration,
+            encoding_str=stream_info.encoding_str,
+        )
+
+    @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
+    def _build_for_url(cls, url, mime_type=None):
+        try:
+            stream_info = etav.VideoStreamInfo.build_for(
+                url, mime_type=mime_type
+            )
+        except Exception as e:
+            # Something went wrong; if we get a retryable code when pinging the
+            # URL, trigger a retry
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+
+            raise e
+
         return cls(
             size_bytes=stream_info.size_bytes,
             mime_type=stream_info.mime_type,
@@ -275,6 +346,43 @@ def compute_metadata(
             raise ValueError(msg)
 
 
+def get_metadata(filepaths, num_workers=None, skip_failures=True):
+    """Gets :class:`Metadata` instances for the given filepaths.
+
+    Args:
+        filepaths: an iterable of filepaths
+        num_workers (None): the number of worker threads to use
+        skip_failures (True): whether to gracefully continue without raising an
+            error if metadata cannot be computed for a file
+
+    Returns:
+        a dict mapping filepaths to :class:`Metadata` instances
+    """
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
+    tasks = [(p, skip_failures) for p in filepaths]
+
+    metadata = {}
+
+    if not tasks:
+        return metadata
+
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar(total=len(tasks), iters_str="files") as pb:
+            for task in pb(tasks):
+                filepath, _metadata = _do_get_metadata(task)
+                metadata[filepath] = _metadata
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks), iters_str="files") as pb:
+                results = pool.imap_unordered(_do_get_metadata, tasks)
+                for filepath, _metadata in pb(results):
+                    metadata[filepath] = _metadata
+
+    return metadata
+
+
 def get_image_info(f):
     """Retrieves the dimensions and number of channels of the given image from
     a file-like object that is streaming its contents.
@@ -342,6 +450,11 @@ def _do_compute_metadata(args):
 
 
 def _compute_sample_metadata(filepath, media_type, skip_failures=False):
+    if foc.media_cache.is_local_or_cached(filepath):
+        filepath = foc.media_cache.get_local_path(
+            filepath, skip_failures=False
+        )
+
     if not skip_failures:
         return _get_metadata(filepath, media_type)
 
@@ -351,12 +464,27 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
         return None
 
 
+def _do_get_metadata(args):
+    filepath, skip_failures = args
+    media_type = fom.get_media_type(filepath)
+
+    try:
+        metadata = _get_metadata(filepath, media_type)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        metadata = None
+        logger.warning(e)
+
+    return filepath, metadata
+
+
 def _get_metadata(filepath, media_type):
     if media_type == fom.IMAGE:
-        metadata = ImageMetadata.build_for(filepath)
-    elif media_type == fom.VIDEO:
-        metadata = VideoMetadata.build_for(filepath)
-    else:
-        metadata = Metadata.build_for(filepath)
+        return ImageMetadata.build_for(filepath)
 
-    return metadata
+    if media_type == fom.VIDEO:
+        return VideoMetadata.build_for(filepath)
+
+    return Metadata.build_for(filepath)

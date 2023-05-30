@@ -73,7 +73,7 @@ def apply_flash_model(
             image. This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         transform_kwargs (None): an optional dict of transform kwargs to pass
             into the created data module used by some models
         trainer_kwargs (None): an optional dict of kwargs used to initialize the
@@ -95,6 +95,9 @@ def apply_flash_model(
 
     datamodule_cls = _MODEL_TO_DATAMODULE_MAP[type(model)]
 
+    # @todo add support for cloud-backed datasets
+    # One possibility is to manually pass local paths here
+    # Another is to just natively suppoort Teams installs in the Flash repo
     datamodule = datamodule_cls.from_fiftyone(
         predict_dataset=samples, **data_kwargs
     )
@@ -191,6 +194,7 @@ def compute_flash_embeddings(
     if transform_kwargs:
         data_kwargs["transform_kwargs"] = transform_kwargs
 
+    # @todo add support for cloud-backed datasets
     datamodule = fi.ImageClassificationData.from_fiftyone(
         predict_dataset=samples, **data_kwargs
     )
