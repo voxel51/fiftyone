@@ -270,7 +270,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           });
         }
       } else if (path === "_label_tags") {
-        Object.entries(sample._label_tags).forEach(([tag, count]) => {
+        Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           const v = coloring.by === "value" ? tag : path;
           elements.push({

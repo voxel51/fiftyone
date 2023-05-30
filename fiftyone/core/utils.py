@@ -5,6 +5,7 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -32,6 +33,8 @@ import types
 from xml.parsers.expat import ExpatError
 import zlib
 from matplotlib import colors as mcolors
+
+import asyncio
 
 try:
     import pprintpp as _pprint
@@ -347,38 +350,6 @@ def find_files(root_dir, patt, max_depth=1):
             paths += glob.glob(os.path.join(root, p))
 
     return paths
-
-
-def normpath(path):
-    """Normalizes the given path by converting all slashes to forward slashes
-    on Unix and backslashes on Windows and removing duplicate slashes.
-
-    Use this function when you need a version of ``os.path.normpath`` that
-    converts ``\\`` to ``/`` on Unix.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    if os.name == "nt":
-        return ntpath.normpath(path)
-
-    return posixpath.normpath(path.replace("\\", "/"))
-
-
-def normalize_path(path):
-    """Normalizes the given path by converting it to an absolute path and
-    expanding the user directory, if necessary.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    return os.path.abspath(os.path.expanduser(path))
 
 
 def install_package(requirement_str, error_level=None, error_msg=None):
@@ -1904,6 +1875,23 @@ def to_slug(name):
         )
 
     return slug
+
+
+_T = t.TypeVar("_T")
+
+
+async def run_sync_task(
+    func: t.Callable[..., _T], *args: t.Any
+) -> asyncio.Future[_T]:
+    """
+    Run a synchronous function as an async background task
+
+    Args:
+        run: a synchronous callable
+    """
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(None, func, *args)
 
 
 def validate_color(value):

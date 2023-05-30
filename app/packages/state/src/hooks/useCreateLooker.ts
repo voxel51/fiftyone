@@ -70,7 +70,8 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       }
 
       // checking for pcd extension instead of media_type because this also applies for group slices
-      if (urls.filepath?.endsWith(".pcd")) {
+      // split("?")[0] is to remove query params, if any, from signed urls
+      if (urls.filepath?.split("?")[0].endsWith(".pcd")) {
         constructor = PcdLooker;
       } else if (mimeType !== null) {
         const isVideo = mimeType.startsWith("video/");
