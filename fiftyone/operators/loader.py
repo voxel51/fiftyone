@@ -13,12 +13,14 @@ import traceback
 
 import fiftyone.plugins as fop
 
+from .decorators import plugins_cache
 from .operator import Operator
 
 
 logger = logging.getLogger(__name__)
 
 
+@plugins_cache
 def build_plugin_contexts(enabled=True):
     """Returns contexts for all available plugins.
 
