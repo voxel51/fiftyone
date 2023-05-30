@@ -627,7 +627,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setError(result.error);
         handlers.onSuccess?.(result);
       } catch (e) {
-        console.log(e.name, e instanceof DOMException);
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         if (!isAbortError) {
