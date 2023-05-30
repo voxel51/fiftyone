@@ -74,17 +74,18 @@ fi
 
 echo "**** Generating documentation ****"
 
+# Symlink to fiftyone-teams
+if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+    PATH_TO_TEAMS="$(realpath $PATH_TO_TEAMS)"
+    ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${THIS_DIR}/../fiftyone/management"
+    ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${THIS_DIR}/../fiftyone/api"
+    echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
+fi
+
 cd "${THIS_DIR}/.."
 
 # Symlink to fiftyone-brain
 ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
-
-# Symlink to fiftyone-teams
-if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
-  ln -sf "${PATH_TO_TEAMS}/fiftyone/management" fiftyone/management
-  ln -sf "${PATH_TO_TEAMS}/fiftyone/api" fiftyone/api
-  echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
-fi
 
 echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
@@ -118,8 +119,8 @@ sphinx-build -M html source build $SPHINXOPTS
 
 # Remove symlink to fiftyone-teams
 if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
-  unlink ../fiftyone/management
-  unlink ../fiftyone/api
+    unlink ../fiftyone/management
+    unlink ../fiftyone/api
 fi
 
 echo "**** Documentation complete ****"
