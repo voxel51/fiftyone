@@ -315,30 +315,31 @@ def upload_plugin(
 
         import fiftyone.management as fom
 
-        # 1.a Upload plugin by dir
+        # Upload a raw plugin directory
         fom.upload_plugin("/path/to/plugin_dir", overwrite=True)
 
-        # 2.a Upload plugin by dir, first optimize uploaded plugin size
+        # Upload a plugin, optimizing the directory before the upload
         fom.upload_plugin("/path/to/plugin_dir", overwrite=True, optimize=True)
 
-        # 2 Upload a plugin dir as ZIP file
+        # Upload a plugin as ZIP file
         fom.upload_plugin("/path/to/plugin.zip", overwrite=True)
 
     Args:
         plugin_path: the path to a plugin zip or directory
         overwrite (False): whether to overwrite an existing plugin with same
             name
-        optimize (False): whether to optimize the created zip file before uploading.
-            If a .gitignore file exists, an attempt will first be made to use
-            `git archive` to create the zip. If not or this doesn't work, a zip
-            will be created by pruning various known system-generated files and
-            directories such as `.git/` and `__pycache__/`.
-            This arg has no effect if `plugin_path` does not point to a directory.
+        optimize (False): whether to optimize the created zip file before
+            uploading. If a ``.gitignore`` file exists, an attempt will first
+            be made to use ``git archive`` to create the zip. If not or this
+            doesn't work, a zip will be created by pruning various known
+            system-generated files and directories such as ``.git/`` and
+            ``__pycache__/``. This argument has no effect if ``plugin_path``
+            does not point to a directory
     """
     client = connection.APIClientConnection().client
 
-    # If it's a dir, make an archive from it then upload
     if os.path.isdir(plugin_path):
+        # Found a dir; make an archive from it then upload
         with tempfile.TemporaryDirectory() as temp_dir:
             zip_base = os.path.join(temp_dir, "plugin")
             zip_name = _make_archive(plugin_path, zip_base, optimize)
@@ -347,8 +348,8 @@ def upload_plugin(
                 upload_token = json.loads(client.post_file("file", f))[
                     "file_token"
                 ]
-    # Assume its a zip and try to upload as such
     else:
+        # Assume its a zip and try to upload as such
         with open(plugin_path, "rb") as f:
             upload_token = json.loads(client.post_file("file", f))[
                 "file_token"
