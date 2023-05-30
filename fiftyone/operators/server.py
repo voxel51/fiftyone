@@ -95,11 +95,13 @@ class ExecuteOperator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
+
         registry = await _get_operator_registry_for_route(
             self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
+
         if registry.operator_exists(operator_uri) is False:
             error_detail = {
                 "message": "Operator '%s' does not exist" % operator_uri
@@ -135,6 +137,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
+
         registry = await _get_operator_registry_for_route(
             self.__class__, request, dataset_ids=dataset_ids
         )
@@ -172,6 +175,7 @@ class ResolveType(HTTPEndpoint):
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
+
         registry = await _get_operator_registry_for_route(
             self.__class__, request, dataset_ids=dataset_ids
         )

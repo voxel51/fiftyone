@@ -8,9 +8,12 @@ FiftyOne operator permissions.
 from .registry import OperatorRegistry
 from fiftyone.plugins.permissions import ManagedOperators
 
+
 # NOTE: if you are resolving a merge conflict
 # fiftyone-teams: ManagedOperators class is defined in fiftyone.plugins.permissions
 # fiftyone: ManagedOperators polyfilled here
+
+
 class PermissionedOperatorRegistry(OperatorRegistry):
     def __init__(self, managed_operators):
         self.managed_operators = managed_operators

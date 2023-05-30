@@ -6,7 +6,7 @@ FiftyOne operator registry.
 |
 """
 from .builtin import BUILTIN_OPERATORS
-from .loader import build_plugin_contexts, register_all
+from .loader import build_plugin_contexts
 from .operator import Operator
 
 
@@ -19,8 +19,7 @@ def get_operator(operator_uri):
     Returns:
         an :class:`fiftyone.operators.Operator`
     """
-    plugin_contexts = build_plugin_contexts(enabled="all")
-    registry = OperatorRegistry(plugin_contexts=plugin_contexts)
+    registry = OperatorRegistry(enabled="all")
     operator = registry.get_operator(operator_uri)
     if operator is None:
         raise ValueError(f"Operator '{operator_uri}' not found")
@@ -38,19 +37,19 @@ def list_operators(enabled=True):
     Returns:
         a list of :class:`fiftyone.operators.Operator` instances
     """
-    plugin_contexts = build_plugin_contexts(enabled=enabled)
-    registry = OperatorRegistry(plugin_contexts=plugin_contexts)
+    registry = OperatorRegistry(enabled=enabled)
     return registry.list_operators(include_builtin=enabled != False)
 
 
 class OperatorRegistry(object):
-    """Operator registry."""
+    """Operator registry.
 
-    def __init__(self, plugin_contexts=None):
-        if plugin_contexts is None:
-            plugin_contexts = register_all()
+    enabled (True): whether to include only enabled operators (True) or
+        only disabled operators (False) or all operators ("all")
+    """
 
-        self.plugin_contexts = plugin_contexts
+    def __init__(self, enabled=True):
+        self.plugin_contexts = build_plugin_contexts(enabled=enabled)
 
     def list_operators(self, include_builtin=True):
         """Lists the available FiftyOne operators.
