@@ -51,9 +51,6 @@ class OperatorRegistry(object):
     def __init__(self, enabled=True):
         self.plugin_contexts = build_plugin_contexts(enabled=enabled)
 
-    def can_execute(self, operator_uri):
-        return True
-
     def list_operators(self, include_builtin=True):
         """Lists the available FiftyOne operators.
 
