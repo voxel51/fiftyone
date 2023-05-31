@@ -475,7 +475,7 @@ ________________
 You can use the group action in the App's menu to
 :ref:`dynamically group <view-groups>` your samples by a field of your choice:
 
-.. image:: /images/app/dynamic-groups.gif
+.. image:: /images/app/app-dynamic-groups.gif
    :alt: dynamic-groups
    :align: center
 
@@ -543,7 +543,7 @@ the sidebar indicating how many fields are currently excluded. You can reset
 your selection by clicking this icon or reopening the modal and pressing the
 `Reset` button at the bottom.
 
-.. image:: /images/app/field-visibility-selection.gif
+.. image:: /images/app/app-field-visibility-selection.gif
    :alt: field-visibility-selection
    :align: center
 
@@ -567,10 +567,6 @@ Alternatively, you can use the `Filter rule` tab to define a rule that is
 dynamically applied to the dataset or view each time the App loads to determine
 which fields to include in the sidebar.
 
-.. image:: /images/app/field-visibility-filter-rule.gif
-   :alt: field-visibility-filter-rule
-   :align: center
-
 .. note::
 
     Fitler rules are dynamic. If you :ref:`save a view <app-saving-views>` that
@@ -581,7 +577,7 @@ Filter rules provide a simple syntax with different options for specifying what
 :ref:`field metadata <storing-field-metadata>` to consider when matching
 fields:
 
-.. image:: /images/app/field-visibility-filter-syntax.jpg
+.. image:: /images/app/app-field-visibility-filter-syntax.jpg
    :alt: field-visibility-filter-syntax
    :align: center
 
@@ -620,15 +616,14 @@ Color schemes in the App
 
 The GIF below demonstrates how to:
 
+-   Configure a custom color pool from which to draw colors for otherwise
+    unspecified fields/values
 -   Configure the colors assigned to specific fields in `color by field` mode
 -   Configure the colors used to render specific annotations based on their
     attributes in `color by value` mode
--   Configure a custom color pool from which to draw colors for otherwise
-    unspecified fields/values
--   View/copy the JSON representation of the customized color scheme
 -   Save the customized color scheme as the default for the dataset
 
-.. image:: /images/app/color-schemes.gif
+.. image:: /images/app/app-color-schemes.gif
    :alt: color-schemes
    :align: center
 
