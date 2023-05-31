@@ -1,7 +1,7 @@
 .. _teams-api-connection:
 
-API Connection and Keys
-=======================
+API Connection
+==============
 
 .. default-role:: code
 
@@ -25,13 +25,13 @@ Configuring an API connection
 You can configure an API connection by adding an API URI and API key to your
 FiftyOne config as described below:
 
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| Config field                  | Environment variable                | Default value                 | Description                                                                            |
-+===============================+=====================================+===============================+========================================================================================+
-| `api_uri`                     | `FIFTYONE_API_URI`                  | `None`                        | The URI of your FiftyOne Teams API. Ask your deployment admin for this value.          |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `api_key`                     | `FIFTYONE_API_KEY`                  | `None`                        | Your FiftyOne Teams API key. :ref:`See here <teams-generate-api-key>` to generate one. |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
++-------------------------------+-------------------------------------+----------------------------------------------------------------------------------------+
+| Config field                  | Environment variable                | Description                                                                            |
++===============================+=====================================+========================================================================================+
+| `api_uri`                     | `FIFTYONE_API_URI`                  | The URI of your FiftyOne Teams API. Ask your deployment admin for this value.          |
++-------------------------------+-------------------------------------+----------------------------------------------------------------------------------------+
+| `api_key`                     | `FIFTYONE_API_KEY`                  | Your FiftyOne Teams API key. :ref:`See here <teams-generate-api-key>` to generate one. |
++-------------------------------+-------------------------------------+----------------------------------------------------------------------------------------+
 
 For example, you can set environment variables:
 
@@ -71,22 +71,18 @@ providing a nickname for the key to identify what it is used for. Click
    :alt: api-key-generate
    :align: center
 
-This will generate and display a new key.
-
-.. warning::
-
-   Keys are only shown once! Copy the key immediately, as it will not be
-   accessible again.
-
-   API keys provide full programmatic access to perform actions as a user, so
-   secure them as you would a password!
+Finally, copy the key and configure it locally using one of the options
+:ref:`described here <teams-api-connection>`.
 
 .. image:: /images/teams/api_key_generated.png
    :alt: api-key-generated
    :align: center
 
-Copy the key and configure it locally using one of the options
-:ref:`described here <teams-api-connection>`.
+.. warning::
+
+   Keys are only shown once. Copy the key immediately, as it will not be
+   accessible again. API keys provide full programmatic access to perform
+   actions as a user, so secure them as you would a password!
 
 Generating keys programmatically
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
