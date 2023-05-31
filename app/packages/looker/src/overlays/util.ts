@@ -5,6 +5,7 @@
 import { INFO_COLOR } from "../constants";
 import { BaseState, Coordinates, MaskTargets, RgbMaskTargets } from "../state";
 import { BaseLabel } from "./base";
+import colorString from "color-string";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
@@ -89,6 +90,16 @@ export function isRgbMaskTargets(
 // Return true is string is a valid color
 export function isValidColor(color: string): boolean {
   return CSS.supports("color", color);
+}
+
+// Convert any valid css color to the hex color
+export function convertToHex(color: string) {
+  if (!isValidColor(color)) return null;
+  const formatted = colorString.get(color);
+  if (formatted) {
+    return colorString.to.hex(formatted?.value);
+  }
+  return null;
 }
 
 export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
