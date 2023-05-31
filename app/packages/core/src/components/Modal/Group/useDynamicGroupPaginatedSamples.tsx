@@ -22,6 +22,7 @@ export const useDynamicGroupPaginatedSamples = (batchSize = 20) => {
     ({ snapshot }) =>
       async (cursor?: number) => {
         const variables = {
+          count: batchSize,
           dataset: await snapshot.getPromise(fos.datasetName),
           filter: {},
           view: await snapshot.getPromise(
