@@ -1,7 +1,7 @@
 # If you are using the `Building and Deploying FiftyOne Teams (internal use)` doc
 # https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
 # Then `TEAMS_IMAGE_NAME` should already be set, just reuse it here...
-ARG TEAMS_IMAGE_NAME
+ARG TORCH_IMAGE_NAME
 ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION} as wheelhouse
@@ -9,7 +9,7 @@ FROM python:${PYTHON_VERSION} as wheelhouse
 RUN pip wheel --wheel-dir=/tmp/wheels langchain>=0.0.179 openai pandas scipy
 
 
-FROM ${TEAMS_IMAGE_NAME} as gptrelease
+FROM ${TORCH_IMAGE_NAME} as gptrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install --no-index \
