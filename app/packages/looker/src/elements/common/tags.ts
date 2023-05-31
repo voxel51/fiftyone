@@ -39,8 +39,6 @@ interface TagData {
   value: string;
 }
 
-const LABEL_LISTS = [withPath(LABELS_PATH, CLASSIFICATIONS)];
-
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
