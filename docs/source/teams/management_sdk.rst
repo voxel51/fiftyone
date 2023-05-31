@@ -14,8 +14,8 @@ more.
 
 .. note::
 
-   You must be :ref:`connecting via API <teams-api-connection>` (not directly
-   to MongoDB) in order to use Management SDK methods.
+   You must use an :ref:`API connection <teams-api-connection>` (not a direct
+   MongoDB connection) in order to use Management SDK methods.
 
 .. _teams-sdk-api-reference:
 

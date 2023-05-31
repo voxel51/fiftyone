@@ -344,8 +344,8 @@ us at support@voxel51.com.
    User Guide <user_guide/index>
    FiftyOne Teams <teams/index>
    Integrations <integrations/index>
-   Release Notes <release-notes>
+   Plugins <plugins/index>
+   CLI <cli/index>
    API Reference <api/fiftyone>
-   CLI Documentation <cli/index>
-   Plugin Documentation <plugins/index>
+   Release Notes <release-notes>
    FAQ <faq/index>

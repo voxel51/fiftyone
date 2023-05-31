@@ -537,6 +537,11 @@ fine-grained control you can opt to include nested fields
 (eg :ref:`dynamic attributes <dynamic-attributes>` of your label fields) in the
 selection list as well.
 
+.. note::
+
+    You cannot exclude default fields/attributes from your dataset's
+    schema, so these rows are always disabled in the Field visibility UI.
+
 Click `Apply` to reload the App with only the specified fields in the sidebar.
 When you do so, a filter icon will appear to the left of the settings icon in
 the sidebar indicating how many fields are currently excluded. You can reset
@@ -546,11 +551,6 @@ your selection by clicking this icon or reopening the modal and pressing the
 .. image:: /images/app/app-field-visibility-selection.gif
    :alt: field-visibility-selection
    :align: center
-
-.. note::
-
-    You cannot exclude default fields/attributes from your dataset's
-    schema, so these rows are always disabled in the Field visibility UI.
 
 .. note::
 
@@ -564,8 +564,9 @@ Filter rules
 ------------
 
 Alternatively, you can use the `Filter rule` tab to define a rule that is
-dynamically applied to the dataset or view each time the App loads to determine
-which fields to include in the sidebar.
+dynamically applied to the dataset's
+:ref:`field metadata <storing-field-metadata>` each time the App loads to
+determine which fields to include in the sidebar.
 
 .. note::
 
@@ -573,8 +574,7 @@ which fields to include in the sidebar.
     contains a filter rule, the matching fields may increase or decrease over
     time as you modify the dataset's schema.
 
-Filter rules provide a simple syntax with different options for specifying what
-:ref:`field metadata <storing-field-metadata>` to consider when matching
+Filter rules provide a simple syntax with different options for matching
 fields:
 
 .. image:: /images/app/app-field-visibility-filter-syntax.jpg
@@ -618,9 +618,9 @@ The GIF below demonstrates how to:
 
 -   Configure a custom color pool from which to draw colors for otherwise
     unspecified fields/values
--   Configure the colors assigned to specific fields in `color by field` mode
+-   Configure the colors assigned to specific fields in color by `field` mode
 -   Configure the colors used to render specific annotations based on their
-    attributes in `color by value` mode
+    attributes in color by `value` mode
 -   Save the customized color scheme as the default for the dataset
 
 .. image:: /images/app/app-color-schemes.gif
@@ -631,7 +631,7 @@ The GIF below demonstrates how to:
 
     Any customizations you make only apply to the current dataset. Each time
     you load a new dataset, the color scheme will revert to that dataset's
-    default color scheme (if any), or else the global default color scheme.
+    default color scheme (if any) or else the global default color scheme.
 
     To persist a color scheme, you can press `Save as default` to save the
     color scheme as the dataset's default scheme, copy it via the modal's JSON
