@@ -790,7 +790,7 @@ Core
 - Added support for :ref:`point cloud samples <groups-point-clouds>` in grouped
   datasets `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added an :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>`
-  property to datasets for :ref:`configuring App behavior <custom-app-config>`
+  property to datasets for :ref:`configuring App behavior <dataset-app-config>`
   on a per-dataset basis
   `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added an optional `rel_dir` parameter to

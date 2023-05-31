@@ -339,7 +339,7 @@ App's settings menu:
 You can permanently configure the default sidebar mode of a dataset by
 modifying the
 :class:`sidebar_mode <fiftyone.core.odm.dataset.DatasetAppConfig>` property of
-the :ref:`dataset's App config <custom-app-config>`:
+the :ref:`dataset's App config <dataset-app-config>`:
 
 .. code-block:: python
     :linenos:
@@ -378,7 +378,7 @@ groups and dragging fields between groups directly in the App:
 
 You can also programmatically modify a dataset's sidebar groups by editing the
 :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` property
-of the :ref:`dataset's App config <custom-app-config>`:
+of the :ref:`dataset's App config <dataset-app-config>`:
 
 .. code-block:: python
     :linenos:
@@ -492,6 +492,285 @@ the elements of the group.
 .. image:: /images/groups/dynamic-groups.gif
    :alt: dynamic-groups
    :align: center
+
+.. _app-field-visibility:
+
+Field visibility
+________________
+
+You can configure which fields of your dataset appear in the App's sidebar by
+clicking the settings icon in the upper right of the sidebar to open the Field
+visiblity modal.
+
+Consider the following example:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from datetime import datetime
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.add_dynamic_sample_fields()
+
+    field = dataset.get_field("ground_truth")
+    field.description = "Ground truth annotations"
+    field.info = {"creator": "alice", "created_at": datetime.utcnow()}
+    field.save()
+
+    field = dataset.get_field("predictions")
+    field.description = "YOLOv8 predictions"
+    field.info = {"owner": "bob", "created_at": datetime.utcnow()}
+    field.save()
+
+    session = fo.launch_app(dataset)
+
+.. _app-field-visibility-selection:
+
+Manual selection
+----------------
+
+You can use the `Selection` tab to manually select which fields to display.
+By default, only top-level fields are available for selection, but if you want
+fine-grained control you can opt to include nested fields
+(eg :ref:`dynamic attributes <dynamic-attributes>` of your label fields) in the
+selection list as well.
+
+Click `Apply` to reload the App with only the specified fields in the sidebar.
+When you do so, a filter icon will appear to the left of the settings icon in
+the sidebar indicating how many fields are currently excluded. You can reset
+your selection by clicking this icon or reopening the modal and pressing the
+`Reset` button at the bottom.
+
+.. image:: /images/app/field-visibility-selection.gif
+   :alt: field-visibility-selection
+   :align: center
+
+.. note::
+
+    You cannot exclude default fields/attributes from your dataset's
+    schema, so these rows are always disabled in the Field visibility UI.
+
+.. note::
+
+    If your dataset has many fields and you frequently work with different
+    subsets of them, you can persist/reload field selections by
+    :ref:`saving views <app-saving-views>`.
+
+.. _app-field-visibility-filter-rules:
+
+Filter rules
+------------
+
+Alternatively, you can use the `Filter rule` tab to define a rule that is
+dynamically applied to the dataset or view each time the App loads to determine
+which fields to include in the sidebar.
+
+.. image:: /images/app/field-visibility-filter-rule.gif
+   :alt: field-visibility-filter-rule
+   :align: center
+
+.. note::
+
+    Fitler rules are dynamic. If you :ref:`save a view <app-saving-views>` that
+    contains a filter rule, the matching fields may increase or decrease over
+    time as you modify the dataset's schema.
+
+Filter rules provide a simple syntax with different options for specifying what
+:ref:`field metadata <storing-field-metadata>` to consider when matching
+fields:
+
+.. image:: /images/app/field-visibility-filter-syntax.jpg
+   :alt: field-visibility-filter-syntax
+   :align: center
+
+.. note::
+
+    All filter rules are implemented as substring matches against the
+    stringified contents of the relevant field metadata.
+
+.. _app-color-schemes:
+
+Color schemes
+_____________
+
+You can configure the color scheme used by the App to render content by
+clicking on the color palette icon above the sample grid.
+
+Consider the following example:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    session = fo.launch_app(dataset)
+
+.. _app-color-schemes-app:
+
+Color schemes in the App
+------------------------
+
+The GIF below demonstrates how to:
+
+-   Configure the colors assigned to specific fields in `color by field` mode
+-   Configure the colors used to render specific annotations based on their
+    attributes in `color by value` mode
+-   Configure a custom color pool from which to draw colors for otherwise
+    unspecified fields/values
+-   View/copy the JSON representation of the customized color scheme
+-   Save the customized color scheme as the default for the dataset
+
+.. image:: /images/app/color-schemes.gif
+   :alt: color-schemes
+   :align: center
+
+.. note::
+
+    Any customizations you make only apply to the current dataset. Each time
+    you load a new dataset, the color scheme will revert to that dataset's
+    default color scheme (if any), or else the global default color scheme.
+
+    To persist a color scheme, you can press `Save as default` to save the
+    color scheme as the dataset's default scheme, copy it via the modal's JSON
+    viewer, or access it programmatically via
+    :meth:`session.color_scheme <fiftyone.core.session.Session.color_scheme>`
+    as described below.
+
+The following table describes the available color scheme customization options
+in detail:
+
+.. table::
+    :widths: 20 20 60
+
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Tab             | Element                       | Description                                                   |
+    +=================+===============================+===============================================================+
+    | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
+    |                 |                               | the `field` that they are in or the `value` that each         |
+    |                 |                               | annotation takes                                              |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
+    |                 |                               | for otherwise unspecified fields/values                       |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | JSON editor     |                               | A JSON representation of the current color scheme that you    |
+    |                 |                               | can directly edit or copy + paste                             |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | All             | `Reset` button                | Reset the current color scheme to the dataset's default       |
+    |                 |                               | (if any) or else the global default scheme                    |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | All             | `Save as default` button      | Save the current color scheme as the default for the          |
+    |                 |                               | current dataset. Note that this scheme can be viewed and/or   |
+    |                 |                               | modified :ref:`in Python <dataset-app-config-color-scheme>`   |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | All             | `Clear default` button        | Deletes the current dataset's default color scheme            |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | `FIELD`         | Use custom colors for `FIELD` | Allows you to specify a custom color to use whenever          |
+    |                 |                               | rendering any content from that field in the grid/modal       |
+    |                 |                               | when the App is in color by `field` mode                      |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | `FIELD`         | Use custom colors for         | Allows you to specify custom colors to use to render          |
+    |                 | specific field values         | annotations in this field based on the individual values      |
+    |                 |                               | that it takes. In the case of embedded document fields,you    |
+    |                 |                               | must also specify an attribute of each object. For example,   |
+    |                 |                               | color all                                                     |
+    |                 |                               | :class:`Classification <fiftyone.core.labels.Classification>` |
+    |                 |                               | instances whose `label` is `"car"` in `#FF0000`               |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+
+.. _app-color-schemes-python:
+
+Color schemes in Python
+-----------------------
+
+You can also programmatically configure a session's color scheme by creating
+|ColorScheme| instances in Python:
+
+.. code-block:: python
+    :linenos:
+
+    # Create a custom color scheme
+    fo.ColorScheme(
+        color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
+        fields=[
+            {
+                "path": "ground_truth",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fn", "color": "#0000ff"},  # false negatives: blue
+                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                ]
+            },
+            {
+                "path": "predictions",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fp", "color": "#ff0000"},  # false positives: red
+                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                ]
+            }
+        ]
+    )
+
+.. note::
+
+    Refer to the |ColorScheme| class for documentation of the available
+    customization options.
+
+You can launch the App with a custom color scheme by passing the optional
+`color_scheme` parameter to
+:func:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Launch App with a custom color scheme
+    session = fo.launch_app(dataset, color_scheme=color_scheme)
+
+Once the App is launched, you can retrieve your current color scheme at any
+time via the
+:meth:`session.color_scheme <fiftyone.core.session.Session.color_scheme>`
+property:
+
+.. code-block:: python
+    :linenos:
+
+    print(session.color_scheme)
+
+You can also dynamically edit your current color scheme by modifying it:
+
+.. code-block:: python
+    :linenos:
+
+    # Change the session's current color scheme
+    session.color_scheme = fo.ColorScheme(...)
+
+    # Edit the existing color scheme in-place
+    session.color_scheme.color_pool = [...]
+    session.refresh()
+
+You can reset the color scheme to its default value (the dataset's default
+color scheme, if any, else the global default) by setting
+:meth:`session.color_scheme <fiftyone.core.session.Session.color_scheme>` to
+None:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset color scheme
+    session.color_scheme = None
+
+.. note::
+
+    Did you know? You can also configure default color schemes for
+    :ref:`individual datasets <dataset-app-config-color-scheme>` via Python!
 
 .. _app-saving-views:
 
@@ -765,7 +1044,7 @@ shown below under the `plugins.3d` key of your
     }
 
 You can also store dataset-specific plugin settings by storing any subset of
-the above values on a :ref:`dataset's App config <custom-app-config>`:
+the above values on a :ref:`dataset's App config <dataset-app-config>`:
 
 .. code-block:: python
     :linenos:
@@ -1209,7 +1488,7 @@ environment variable:
     export MAPBOX_TOKEN=XXXXXXXX
 
 You can also store dataset-specific plugin settings by storing any subset of
-the above values on a :ref:`dataset's App config <custom-app-config>`:
+the above values on a :ref:`dataset's App config <dataset-app-config>`:
 
 .. code-block:: python
     :linenos:
@@ -1736,7 +2015,7 @@ store their paths in a `thumbnail_path` field:
         thumbnail_path: fiftyone.core.fields.StringField
 
 We can expose the thumbnail images to the App by modifying the
-:ref:`dataset's App config <custom-app-config>`:
+:ref:`dataset's App config <dataset-app-config>`:
 
 .. code-block:: python
     :linenos:
@@ -1772,8 +2051,20 @@ the grid view:
 Configuring the App
 ___________________
 
-The behavior of the App can be configured globally, on a per-session basis, and
-on a per-dataset basis.
+The App's behavior can be configured on a per-session, per-dataset, or global
+basis.
+
+The order of precedence is:
+
+1.  Any changes that you make to the
+    :meth:`session.config <fiftyone.core.session.Session.config>` of a live
+    session
+2.  Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>`
+3.  Settings from your :ref:`global App config <configuring-fiftyone-app>`
+
+Any settings or changes made at higher levels of precedence will override any
+lower priority settings the next time you load/refresh the App.
 
 Global App config
 -----------------
@@ -1805,7 +2096,10 @@ You can also customize the global App config on a per-session basis:
     session = fo.launch_app(dataset, config=app_config)
     print(session.config)
 
-You can also reconfigure a live |Session| by editing its
+Modifying your session
+----------------------
+
+You can configure a live |Session| by editing its
 :meth:`session.config <fiftyone.core.session.Session.config>` property and
 calling :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` to
 apply the changes:
@@ -1813,18 +2107,17 @@ apply the changes:
 .. code-block:: python
     :linenos:
 
+    print(session.config)
+
     # Customize the config of a live session
     session.config.show_confidence = True
     session.config.show_label = True
     session.refresh()  # must refresh after edits
 
-See :ref:`this page <configuring-fiftyone-app>` for information about the
-available App configuration options.
-
 Dataset App config
 ------------------
 
-Datasets also provide an :ref:`app_config property <custom-app-config>` that
+Datasets also provide an :ref:`app_config property <dataset-app-config>` that
 you can use to customize the behavior of the App for that particular dataset:
 
 .. code-block:: python
