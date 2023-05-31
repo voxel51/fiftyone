@@ -174,7 +174,11 @@ export const useOperatorPrompt = () => {
       validationContext: any;
     }>((resolve) => {
       setTimeout(() => {
-        const validationContext = new ValidationContext(ctx, resolved);
+        const validationContext = new ValidationContext(
+          ctx,
+          resolved,
+          operator
+        );
         const validationErrors = validationContext.toProps().errors;
         setValidationErrors(validationErrors);
         resolve({

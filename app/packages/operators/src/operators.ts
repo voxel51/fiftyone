@@ -108,6 +108,7 @@ export type OperatorConfigOptions = {
   unlisted?: boolean;
   onStartup?: boolean;
   canExecute?: boolean;
+  disableSchemaValidation?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -117,7 +118,8 @@ export class OperatorConfig {
   public dynamic: boolean;
   public unlisted: boolean;
   public onStartup: boolean;
-  public canExecute: boolean = true;
+  public canExecute = true;
+  public disableSchemaValidation = false;
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -127,6 +129,8 @@ export class OperatorConfig {
     this.unlisted = options.unlisted || false;
     this.onStartup = options.onStartup || false;
     this.canExecute = options.canExecute === false ? false : true;
+    this.disableSchemaValidation =
+      options.disableSchemaValidation === true ? true : false;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -138,6 +142,7 @@ export class OperatorConfig {
       unlisted: json.unlisted,
       onStartup: json.on_startup,
       canExecute: json.can_execute,
+      disableSchemaValidation: json.disable_schema_validation,
     });
   }
 }

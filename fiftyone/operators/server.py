@@ -9,9 +9,9 @@ import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import StreamingResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
-from fiftyone.server.decorators import route, FiftyOneResponse
+from fiftyone.server.decorators import route
 
 from .executor import (
     execute_operator,
@@ -131,7 +131,7 @@ async def create_response_async_generator(generator):
 
 def create_permission_error(uri):
     message = "User does not have permission to execute operator '%s'" % uri
-    return FiftyOneResponse(
+    return JSONResponse(
         {"error": {"message": message}},
         status_code=403,
     )
