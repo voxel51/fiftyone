@@ -18,7 +18,7 @@ export const OrderedDynamicGroup = () => {
   return (
     <>
       {shouldRenderVideoLooker ? (
-        <VideoLooker />
+        <VideoLooker key={groupByFieldValue} />
       ) : (
         <>
           <DynamicGroupCarousel key={groupByFieldValue} />
