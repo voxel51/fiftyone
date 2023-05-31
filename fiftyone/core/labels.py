@@ -327,6 +327,10 @@ class _HasID(Label):
     def _id(self):
         return ObjectId(self.id)
 
+    @_id.setter
+    def _id(self, value):
+        self.id = str(value)
+
 
 class _HasLabelList(object):
     """Mixin for :class:`Label` classes that contain a list of :class:`Label`

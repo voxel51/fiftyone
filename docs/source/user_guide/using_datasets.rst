@@ -360,10 +360,10 @@ retrieve a field and update it's metadata at any time:
     Did you know? You can view field metadata directly in the App by hovering
     over fields or attributes :ref:`in the sidebar <app-fields-sidebar>`!
 
-.. _custom-app-config:
+.. _dataset-app-config:
 
-Custom App config
------------------
+Dataset App config
+------------------
 
 All |Dataset| instances have an
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
@@ -371,21 +371,31 @@ contains a |DatasetAppConfig| that you can use to store dataset-specific
 settings that customize how the dataset is visualized in the
 :ref:`FiftyOne App <fiftyone-app>`.
 
-For example, you can declare
-:ref:`multiple media fields <app-multiple-media-fields>` on a dataset and
-configure which field is used by various components of the App by default:
-
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.image as foui
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
 
     # View the dataset's current App config
     print(dataset.app_config)
+
+.. _dataset-app-config-media-fields:
+
+Multiple media fields
+~~~~~~~~~~~~~~~~~~~~~
+
+You can declare :ref:`multiple media fields <app-multiple-media-fields>` on a
+dataset and configure which field is used by various components of the App by
+default:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.image as foui
 
     # Generate some thumbnail images
     foui.transform_images(
@@ -395,14 +405,75 @@ configure which field is used by various components of the App by default:
         output_dir="/tmp/thumbnails",
     )
 
-    # Modify the dataset's App config
+    # Configure when to use each field
     dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
     dataset.app_config.grid_media_field = "thumbnail_path"
     dataset.save()  # must save after edits
 
-    session = fo.launch_app(dataset)
+    session.refresh()
 
-You can also configure the default loading behavior of the
+.. _dataset-app-config-color-scheme:
+
+Custom color scheme
+~~~~~~~~~~~~~~~~~~~
+
+You can store a :ref:`custom color scheme <app-color-schemes>` on a dataset
+that should be used by default whenever the dataset is loaded in the App:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    # Store a custom color scheme
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
+        fields=[
+            {
+                "path": "ground_truth",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fn", "color": "#0000ff"},  # false negatives: blue
+                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                ]
+            },
+            {
+                "path": "predictions",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fp", "color": "#ff0000"},  # false positives: red
+                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                ]
+            }
+        ]
+    )
+    dataset.save()  # must save after edits
+
+    # Setting `color_scheme` to None forces the dataset's default color scheme
+    # to be loaded
+    session.color_scheme = None
+
+In the above example, you can see TP/FP/FN colors in the App by clicking on the
+`Color palette` icon and switching `Color annotations by` to `value`.
+
+.. note::
+
+    Refer to the |ColorScheme| class for documentation of the available
+    customization options.
+
+.. note::
+
+    Did you know? You can also configure color schemes
+    :ref:`directly in the App <app-color-schemes>`!
+
+.. _dataset-app-config-sidebar-mode:
+
+Sidebar mode
+~~~~~~~~~~~~
+
+You can configure the default loading behavior of the
 :ref:`filters sidebar <app-sidebar-mode>`:
 
 .. code-block:: python
@@ -412,9 +483,14 @@ You can also configure the default loading behavior of the
     dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
-    session = fo.launch_app(dataset)
+    session.refresh()
 
-or even configure the organization and default expansion state of the
+.. _dataset-app-config-sidebar-groups:
+
+Sidebar groups
+~~~~~~~~~~~~~~
+
+You can configure the organization and default expansion state of the
 :ref:`sidebar's field groups <app-sidebar-groups>`:
 
 .. code-block:: python
@@ -431,9 +507,28 @@ or even configure the organization and default expansion state of the
     dataset.app_config.sidebar_groups = sidebar_groups
     dataset.save()  # must save after edits
 
-    session = fo.launch_app(dataset)
+    session.refresh()
 
-You can conveniently reset a dataset's App config by setting the
+.. _dataset-app-config-reset:
+
+Resetting a dataset's App config
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can conveniently reset any property of a dataset's App config by setting it
+to `None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset the dataset's color scheme
+    dataset.app_config.color_scheme = None
+    dataset.save()  # must save after edits
+
+    print(dataset.app_config)
+
+    session.refresh()
+
+or you can reset the entire App config by setting the
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property to
 `None`:
 

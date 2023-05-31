@@ -34,7 +34,7 @@ const GlobalSetting: React.FC = ({}) => {
           />
         </SectionWrapper>
         <ShuffleColor />
-        <LabelTitle>Color Pool</LabelTitle>
+        <LabelTitle>Color pool</LabelTitle>
         <SectionWrapper>
           <ColorPalette />
         </SectionWrapper>

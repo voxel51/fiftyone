@@ -276,7 +276,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements.push({
             color: getColor(coloring.pool, coloring.seed, v),
             title: value,
-            value: tag,
+            value: value,
           });
         });
       } else {
@@ -322,16 +322,16 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
           if (classifications) {
-            !value?.classifications?.length &&
-              pushList(
-                LABEL_RENDERERS[field.embeddedDocType],
-                value?.classifications
-              );
+            pushList(
+              LABEL_RENDERERS[field.embeddedDocType],
+              value?.classifications
+            );
           } else {
             // remove undefined classifications - can show up as None
+            const objVal = value as Object;
             if (
-              "_cls" in (value as Object) &&
-              typeof value._cls === "undefined"
+              ("_cls" in objVal && typeof objVal._cls === "undefined") ||
+              (objVal._cls === CLASSIFICATION && !objVal?.label)
             ) {
               continue;
             }

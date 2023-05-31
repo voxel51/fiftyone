@@ -5,16 +5,13 @@ FiftyOne JSON handling
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId, json_util
+import dataclasses
 from datetime import date, datetime
-from json import JSONEncoder
 import math
+
+from bson import ObjectId
 import numpy as np
 
-import eta.core.serial as etas
-
-from fiftyone.core.sample import Sample, SampleView
-from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
 
 
@@ -66,11 +63,22 @@ def stringify(d, _cls=None):
     Returns:
         a stringified version of the data
     """
-    if isinstance(d, dict):
-        return {k: stringify(v, d.get("_cls", None)) for k, v in d.items()}
+    if dataclasses.is_dataclass(d):
+        d = dataclasses.asdict(d)
 
-    if isinstance(d, (list, tuple)):
-        return [stringify(v) for v in d]
+    if isinstance(d, dict):
+        for k in d:
+            d[k] = stringify(d[k], d.get("_cls", None))
+        return d
+
+    if isinstance(d, tuple):
+        return (stringify(v) for v in d)
+
+    if isinstance(d, list):
+        for i, v in enumerate(d):
+            d[i] = stringify(v)
+
+        return d
 
     if isinstance(d, bytes):
         return _handle_numpy_array(d, _cls)
@@ -82,58 +90,3 @@ def stringify(d, _cls=None):
         return str(d)
 
     return d
-
-
-class FiftyOneJSONEncoder(JSONEncoder):
-    """JSON encoder for FiftyOne network comms.
-
-    Any classes with non-standard serialization methods should
-    be accounted for in the `default()` method.
-    """
-
-    def default(self, o):  # pylint: disable=E0202
-        """Returns the serialized representation of the objects
-
-        Args:
-            o: the object
-
-        Returns:
-            str
-        """
-        if isinstance(o, (Sample, SampleView)):
-            return _handle_bytes(o.to_mongo_dict(include_id=True))
-        if issubclass(type(o), ViewStage):
-            return o._serialize()
-        if isinstance(o, ObjectId):
-            return str(o)
-        if isinstance(o, float):
-            return json_util.dumps(o)
-        if isinstance(o, etas.Serializable):
-            return o.serialize()
-
-        try:
-            return super().default(o)
-        except:
-            return None
-
-    @staticmethod
-    def dumps(data, *args, **kwargs) -> str:
-        kwargs["cls"] = FiftyOneJSONEncoder
-        return json_util.dumps(
-            json_util.loads(
-                json_util.dumps(data, *args, **kwargs),
-                parse_constant=lambda c: c,
-            ),
-            **kwargs
-        )
-
-    @staticmethod
-    def loads(*args, **kwargs) -> dict:
-        return json_util.loads(*args, **kwargs)
-
-    @staticmethod
-    def process(data, *args, **kwargs):
-        kwargs["cls"] = FiftyOneJSONEncoder
-        return json_util.loads(
-            json_util.dumps(data, *args, **kwargs), parse_constant=lambda c: c
-        )

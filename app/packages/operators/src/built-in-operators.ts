@@ -155,6 +155,7 @@ class OpenPanel extends Operator {
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
     const panel = availablePanels.find((panel) => name === panel.name);
+    if (!panel) return console.warn(`Panel with name ${name} does not exist`);
     const allowDuplicate = panel?.panelOptions?.allowDuplicates;
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
