@@ -142,7 +142,7 @@ _UPDATE_PLUGIN_OPERATOR_QUERY = """
                 minimumRole: $minRole
                 minimumDatasetPermission: $minDatasetPerm
             }
-        }) {}
+        }) {name}
     }
 """
 
