@@ -2,12 +2,7 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { usePreloadedQuery, useQueryLoader } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { useGroupContext } from "./GroupContextProvider";
 
 /**

@@ -20,7 +20,7 @@ const Container = styled.div`
   height: 100%;
 `;
 
-const DEFAULT_FRAME_RATE = 30;
+const DEFAULT_FRAME_RATE = 10;
 
 const VideoLookerImpl: React.FC<{
   queryRef: PreloadedQuery<any>;
@@ -49,6 +49,14 @@ const VideoLookerImpl: React.FC<{
     const images = await Promise.all(imagePromises);
     return images;
   };
+
+  const stopPlayback = useCallback(() => {
+    setIsPlaying(false);
+
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+    }
+  }, [setIsPlaying]);
 
   const drawFrameWrapper = useCallback(
     (ctx: CanvasRenderingContext2D, images: HTMLImageElement[]) => {
@@ -81,8 +89,8 @@ const VideoLookerImpl: React.FC<{
           }
 
           if (frameIndexRef.current === dynamicGroupSamplesStoreMap.size - 1) {
-            setIsPlaying(false);
-            previousTimeRef.current = 0;
+            stopPlayback();
+            return;
           } else {
             frameIndexRef.current = frameIndexRef.current + 1;
           }
@@ -93,54 +101,41 @@ const VideoLookerImpl: React.FC<{
 
       animationFrameIdRef.current = requestAnimationFrame(draw);
     },
-    [dynamicGroupSamplesStoreMap, frameDuration]
+    [dynamicGroupSamplesStoreMap, stopPlayback, frameDuration]
   );
 
-  const startPlayback = useCallback(
-    async (ctx: CanvasRenderingContext2D) => {
-      setIsPlaying(true);
-
-      ctx.canvas.width = canvasRef.current?.parentElement?.clientWidth!;
-      ctx.canvas.height =
-        canvasRef.current?.parentElement?.clientWidth! /
-        dynamicGroupSamplesStoreMap.get(0)?.aspectRatio!;
-
-      const images = await preloadImages(dynamicGroupSamplesStoreMap);
-
-      drawFrameWrapper(ctx, images);
-    },
-    [drawFrameWrapper, dynamicGroupSamplesStoreMap]
-  );
-
-  const stopPlayback = useCallback(() => {
-    setIsPlaying(false);
-
-    if (animationFrameIdRef.current) {
-      cancelAnimationFrame(animationFrameIdRef.current);
-    }
-  }, []);
-
-  useEffect(() => {
+  const startPlayback = useCallback(async () => {
     const ctx = canvasRef.current?.getContext("2d");
 
-    if (!ctx || dynamicGroupSamplesStoreMap.size === 0) {
+    if (!ctx) {
+      return;
+    }
+
+    setIsPlaying(true);
+
+    ctx.canvas.width = canvasRef.current?.parentElement?.clientWidth!;
+    ctx.canvas.height =
+      canvasRef.current?.parentElement?.clientWidth! /
+      dynamicGroupSamplesStoreMap.get(0)?.aspectRatio!;
+
+    const images = await preloadImages(dynamicGroupSamplesStoreMap);
+
+    drawFrameWrapper(ctx, images);
+  }, [setIsPlaying, drawFrameWrapper, dynamicGroupSamplesStoreMap]);
+
+  useEffect(() => {
+    if (dynamicGroupSamplesStoreMap.size === 0) {
       return;
     }
 
     if (animationFrameIdRef.current === -1) {
-      startPlayback(ctx);
+      startPlayback();
     }
 
     return () => {
       stopPlayback();
     };
-  }, [
-    drawFrameWrapper,
-    startPlayback,
-    stopPlayback,
-    dynamicGroupSamplesStoreMap,
-    isPlaying,
-  ]);
+  }, [startPlayback, stopPlayback, dynamicGroupSamplesStoreMap]);
 
   const handlePlayPause = useCallback(() => {
     if (frameIndexRef.current === dynamicGroupSamplesStoreMap.size - 1) {
@@ -149,11 +144,17 @@ const VideoLookerImpl: React.FC<{
     }
 
     if (isPlaying) {
+      console.log("stopping playback");
       stopPlayback();
     } else {
-      startPlayback(canvasRef.current?.getContext("2d")!);
+      console.log("starting playback");
+      startPlayback();
     }
   }, [startPlayback, stopPlayback, isPlaying, dynamicGroupSamplesStoreMap]);
+
+  useEffect(() => {
+    console.log("playback isplaying is ", isPlaying);
+  }, [isPlaying]);
 
   return (
     <Container>
@@ -162,7 +163,7 @@ const VideoLookerImpl: React.FC<{
         {dynamicGroupSamplesStoreMap.size}
       </div>
       <div>
-        <button onClick={handlePlayPause}>
+        <button style={{ backgroundColor: "red" }} onClick={handlePlayPause}>
           {isPlaying ? "Pause" : "Play"}
         </button>
       </div>
