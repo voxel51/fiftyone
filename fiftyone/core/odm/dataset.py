@@ -186,7 +186,18 @@ class ColorScheme(EmbeddedDocument):
     Args:
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
-        fields (None): optional per-field custom colors
+        fields (None): an optional list of per-field custom colors. Each
+            element should be a dict with the following keys:
+
+            -   `path` (required): the fully-qualified path to the field you're
+                customizing
+            -   `fieldColor` (optional): a color to assign to the field in the
+                App sidebar
+            -   `colorByAttribute` (optional): the attribute to use to assign
+                per-value colors. Only applicable when the field is an embedded
+                document
+            -   `valueColors` (optional): a list of dicts specifying colors to
+                use for individual values of this field
     """
 
     # strict=False lets this class ignore unknown fields from other versions

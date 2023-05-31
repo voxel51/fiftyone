@@ -859,9 +859,9 @@ unravel the samples in a dynamic grouped view back into a flat view:
 .. note::
 
     Did you know? When you load dynamic group views
-    :ref:`in the App <groups-app-dynamic>`, the grid view shows the first example
-    from each group, and you can click on any sample to open the modal and view
-    all samples in the group.
+    :ref:`in the App <app-dynamic-groups>`, the grid view shows the first
+    example from each group, and you can click on any sample to open the modal
+    and view all samples in the group.
 
 You can use
 :meth:`get_dynamic_group() <fiftyone.core.view.DatasetView.get_dynamic_group>`

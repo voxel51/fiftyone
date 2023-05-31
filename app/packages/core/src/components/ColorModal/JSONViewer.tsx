@@ -10,6 +10,7 @@ import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
 import colorString from "color-string";
+import { Link } from "@mui/material";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
@@ -65,24 +66,14 @@ const JSONViewer: React.FC = () => {
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
-        <p style={{ margin: 0, lineHeight: "1.2rem" }}>
+        <p style={{ margin: 0, lineHeight: "1.3rem" }}>
           You can use the JSON editor below to copy/edit your current color
-          scheme, or you can paste in a pre-built color scheme to apply.
+          scheme, or you can paste in a pre-built color scheme to apply.{" "}
+          <Link style={{ color: theme.text.primary }} href={COLOR_SCHEME}>
+            Learn more
+          </Link>{" "}
+          about custom color schemes.
         </p>
-        <ActionOption
-          href={COLOR_SCHEME}
-          text={"Read more"}
-          title={"How to set customized color schema?"}
-          style={{
-            background: "unset",
-            color: theme.text.primary,
-            paddingTop: 0,
-            paddingBottom: 0,
-            display: "inline-block",
-          }}
-          svgStyles={{ height: "1rem", marginTop: 2 }}
-        />{" "}
-        about custom color schemes.
       </SectionWrapper>
       <Editor
         defaultLanguage="json"

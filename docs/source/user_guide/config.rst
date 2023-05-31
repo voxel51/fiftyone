@@ -793,7 +793,7 @@ describe these options in detail.
 
     Did you know? You can also configure the behavior of the App on a
     per-dataset basis by customizing your
-    :ref:`dataset's App config <custom-app-config>`.
+    :ref:`dataset's App config <dataset-app-config>`.
 
 Order of precedence
 ~~~~~~~~~~~~~~~~~~~
@@ -933,4 +933,4 @@ system:
 .. note::
 
     You can also store dataset-specific plugin settings by storing any subset
-    of the above values on a :ref:`dataset's App config <custom-app-config>`.
+    of the above values on a :ref:`dataset's App config <dataset-app-config>`.
