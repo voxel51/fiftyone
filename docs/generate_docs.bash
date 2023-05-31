@@ -76,7 +76,9 @@ echo "**** Generating documentation ****"
 
 # Symlink to fiftyone-teams
 if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+    # macOS users may need to run `brew install coreutils` to get `realpath``
     PATH_TO_TEAMS="$(realpath $PATH_TO_TEAMS)"
+
     ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${THIS_DIR}/../fiftyone/management"
     ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${THIS_DIR}/../fiftyone/api"
     echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
