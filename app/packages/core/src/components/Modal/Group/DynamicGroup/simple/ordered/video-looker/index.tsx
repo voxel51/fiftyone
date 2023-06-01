@@ -1,4 +1,5 @@
 import React, {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -111,6 +112,14 @@ const VideoLookerImpl: React.FC<{
     ]
   );
 
+  const updateSample = useCallback(() => {
+    const maybeSample = dynamicGroupSamplesStoreMap.get(frameIndexRef.current);
+
+    if (maybeSample?.sample) {
+      setSample(maybeSample);
+    }
+  }, [setSample, dynamicGroupSamplesStoreMap]);
+
   const stopPlayback = useCallback(() => {
     setIsPlaying(false);
 
@@ -154,6 +163,9 @@ const VideoLookerImpl: React.FC<{
             return;
           } else {
             frameIndexRef.current = frameIndexRef.current + 1;
+            startTransition(() => {
+              updateSample();
+            });
           }
         }
 
@@ -171,6 +183,7 @@ const VideoLookerImpl: React.FC<{
       animationFrameIdRef.current = requestAnimationFrame(draw);
     },
     [
+      updateSample,
       stopPlayback,
       isLoadingSamples,
       prefetchImages,
@@ -222,25 +235,11 @@ const VideoLookerImpl: React.FC<{
     }
 
     if (isPlaying) {
-      const maybeSample = dynamicGroupSamplesStoreMap.get(
-        frameIndexRef.current
-      );
-
-      if (maybeSample) {
-        setSample(maybeSample);
-      }
-
       stopPlayback();
     } else {
       startPlayback();
     }
-  }, [
-    startPlayback,
-    stopPlayback,
-    setSample,
-    isPlaying,
-    dynamicGroupSamplesStoreMap,
-  ]);
+  }, [startPlayback, stopPlayback, isPlaying, dynamicGroupSamplesStoreMap]);
 
   /**
    * this effect is used to sync refs with state, where relevant
