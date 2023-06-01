@@ -489,6 +489,7 @@ export const GridActionsRow = () => {
       <BrowseOperations />
       <Options modal={false} />
       <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS} />
     </ActionsRowDiv>
   );
 };

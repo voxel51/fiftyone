@@ -155,9 +155,9 @@ def _iter_label_fields(schema):
         ):
             parent_path = ".".join(path.split(".")[:-1])
             parent_field = schema.get(parent_path, None)
-            if parent_field and issubclass(
-                parent_field.document_type, fol._HasLabelList
-            ):
+            if isinstance(
+                parent_field, fof.EmbeddedDocumentField
+            ) and issubclass(parent_field.document_type, fol._HasLabelList):
                 yield parent_path, parent_field
                 continue
 

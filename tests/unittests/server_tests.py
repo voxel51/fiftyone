@@ -62,20 +62,15 @@ class ServerViewTests(unittest.TestCase):
                                                     0.5,
                                                 ]
                                             },
-                                            {
-                                                "$lte": [
-                                                    "$$this.confidence",
-                                                    1,
-                                                ]
-                                            },
-                                        ]
+                                            {"$lte": ["$$this.confidence", 1]},
+                                        ],
                                     },
                                     {"$in": ["$$this.confidence", []]},
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
                 "$match": {
@@ -90,9 +85,9 @@ class ServerViewTests(unittest.TestCase):
                                 }
                             },
                             0,
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {
                 "$set": {
@@ -100,9 +95,9 @@ class ServerViewTests(unittest.TestCase):
                         "$filter": {
                             "input": "$___predictions.detections",
                             "cond": {"$in": ["$$this.label", ["carrot"]]},
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
                 "$match": {
@@ -117,31 +112,37 @@ class ServerViewTests(unittest.TestCase):
                                 }
                             },
                             0,
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {"$set": {"_label_tags": []}},
             {
                 "$set": {
                     "_label_tags": {
-                        "$concatArrays": [
-                            "$_label_tags",
-                            {
-                                "$reduce": {
-                                    "input": "$predictions.detections",
-                                    "initialValue": [],
-                                    "in": {
-                                        "$concatArrays": [
-                                            "$$value",
-                                            "$$this.tags",
-                                        ]
+                        "$cond": {
+                            "if": {"$gt": ["$predictions", None]},
+                            "then": {
+                                "$concatArrays": [
+                                    "$_label_tags",
+                                    {
+                                        "$reduce": {
+                                            "input": "$predictions.detections",
+                                            "initialValue": [],
+                                            "in": {
+                                                "$concatArrays": [
+                                                    "$$value",
+                                                    "$$this.tags",
+                                                ],
+                                            },
+                                        },
                                     },
-                                }
+                                ],
                             },
-                        ]
-                    }
-                }
+                            "else": "$_label_tags",
+                        },
+                    },
+                },
             },
             {
                 "$set": {
@@ -150,9 +151,9 @@ class ServerViewTests(unittest.TestCase):
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
                             "args": ["$_label_tags"],
                             "lang": "js",
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {"$unset": "___predictions"},
         ]
@@ -317,35 +318,35 @@ class ServerViewTests(unittest.TestCase):
                                                                                 "$gte": [
                                                                                     "$$this.index",
                                                                                     27,
-                                                                                ]
+                                                                                ],
                                                                             },
                                                                             {
                                                                                 "$lte": [
                                                                                     "$$this.index",
                                                                                     54,
-                                                                                ]
+                                                                                ],
                                                                             },
-                                                                        ]
+                                                                        ],
                                                                     },
                                                                     {
                                                                         "$in": [
                                                                             "$$this.index",
                                                                             [],
-                                                                        ]
+                                                                        ],
                                                                     },
-                                                                ]
+                                                                ],
                                                             },
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
-                                            ]
-                                        }
+                                            ],
+                                        },
                                     },
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
                 "$match": {
@@ -363,17 +364,17 @@ class ServerViewTests(unittest.TestCase):
                                                     "$ifNull": [
                                                         "$$this.___detections.detections",
                                                         [],
-                                                    ]
-                                                }
+                                                    ],
+                                                },
                                             },
-                                        ]
+                                        ],
                                     },
-                                }
+                                },
                             },
                             0,
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {
                 "$set": {
@@ -398,19 +399,19 @@ class ServerViewTests(unittest.TestCase):
                                                                     [
                                                                         "vehicle"
                                                                     ],
-                                                                ]
+                                                                ],
                                                             },
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
-                                            ]
-                                        }
+                                            ],
+                                        },
                                     },
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
                 "$match": {
@@ -428,17 +429,17 @@ class ServerViewTests(unittest.TestCase):
                                                     "$ifNull": [
                                                         "$$this.___detections.detections",
                                                         [],
-                                                    ]
-                                                }
+                                                    ],
+                                                },
                                             },
-                                        ]
+                                        ],
                                     },
-                                }
+                                },
                             },
                             0,
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {"$set": {"_label_tags": []}},
             {
@@ -454,24 +455,35 @@ class ServerViewTests(unittest.TestCase):
                                         "$concatArrays": [
                                             "$$value",
                                             {
-                                                "$reduce": {
-                                                    "input": "$$this.detections.detections",
-                                                    "initialValue": [],
-                                                    "in": {
-                                                        "$concatArrays": [
-                                                            "$$value",
-                                                            "$$this.tags",
-                                                        ]
+                                                "$cond": {
+                                                    "if": {
+                                                        "$gt": [
+                                                            "$$this.detections.detections",
+                                                            None,
+                                                        ],
                                                     },
-                                                }
+                                                    "then": {
+                                                        "$reduce": {
+                                                            "input": "$$this.detections.detections",
+                                                            "initialValue": [],
+                                                            "in": {
+                                                                "$concatArrays": [
+                                                                    "$$value",
+                                                                    "$$this.tags",
+                                                                ],
+                                                            },
+                                                        },
+                                                    },
+                                                    "else": [],
+                                                },
                                             },
-                                        ]
+                                        ],
                                     },
-                                }
+                                },
                             },
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {
                 "$set": {
@@ -480,9 +492,9 @@ class ServerViewTests(unittest.TestCase):
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
                             "args": ["$_label_tags"],
                             "lang": "js",
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {"$unset": "frames.___detections"},
         ]
@@ -715,28 +727,28 @@ class ServerViewTests(unittest.TestCase):
                                                                         "$gt": [
                                                                             "$$this.tags",
                                                                             None,
-                                                                        ]
+                                                                        ],
                                                                     },
                                                                     "then": {
                                                                         "$in": [
                                                                             "one",
                                                                             "$$this.tags",
-                                                                        ]
+                                                                        ],
                                                                     },
                                                                     "else": None,
-                                                                }
+                                                                },
                                                             },
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
-                                            ]
-                                        }
+                                            ],
+                                        },
                                     },
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
                 "$match": {
@@ -754,17 +766,17 @@ class ServerViewTests(unittest.TestCase):
                                                     "$ifNull": [
                                                         "$$this.___detections.detections",
                                                         [],
-                                                    ]
-                                                }
+                                                    ],
+                                                },
                                             },
-                                        ]
+                                        ],
                                     },
-                                }
+                                },
                             },
                             0,
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {"$set": {"_label_tags": []}},
             {
@@ -780,24 +792,35 @@ class ServerViewTests(unittest.TestCase):
                                         "$concatArrays": [
                                             "$$value",
                                             {
-                                                "$reduce": {
-                                                    "input": "$$this.___detections.detections",
-                                                    "initialValue": [],
-                                                    "in": {
-                                                        "$concatArrays": [
-                                                            "$$value",
-                                                            "$$this.tags",
-                                                        ]
+                                                "$cond": {
+                                                    "if": {
+                                                        "$gt": [
+                                                            "$$this.___detections.detections",
+                                                            None,
+                                                        ],
                                                     },
-                                                }
+                                                    "then": {
+                                                        "$reduce": {
+                                                            "input": "$$this.___detections.detections",
+                                                            "initialValue": [],
+                                                            "in": {
+                                                                "$concatArrays": [
+                                                                    "$$value",
+                                                                    "$$this.tags",
+                                                                ],
+                                                            },
+                                                        },
+                                                    },
+                                                    "else": [],
+                                                },
                                             },
-                                        ]
+                                        ],
                                     },
-                                }
+                                },
                             },
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             },
             {
                 "$set": {
@@ -806,9 +829,9 @@ class ServerViewTests(unittest.TestCase):
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
                             "args": ["$_label_tags"],
                             "lang": "js",
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {"$unset": "frames.___detections"},
         ]

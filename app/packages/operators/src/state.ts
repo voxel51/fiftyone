@@ -174,9 +174,12 @@ export const useOperatorPrompt = () => {
       validationContext: any;
     }>((resolve) => {
       setTimeout(() => {
-        const validationContext = new ValidationContext(ctx, resolved);
+        const validationContext = new ValidationContext(
+          ctx,
+          resolved,
+          operator
+        );
         const validationErrors = validationContext.toProps().errors;
-        console.log({ ctx, resolved, validationContext });
         setValidationErrors(validationErrors);
         resolve({
           invalid: validationContext.invalid,
@@ -235,8 +238,7 @@ export const useOperatorPrompt = () => {
     const resolved = await operator.resolveInput(ctx);
     const { invalid, errors } = await validate(ctx, resolved);
     if (invalid) {
-      console.log("Execution halted due to invalid input");
-      return console.log(errors);
+      return;
     }
     executor.execute(promptingOperator.params);
   }, [operator, promptingOperator]);
@@ -274,12 +276,7 @@ export const useOperatorPrompt = () => {
   const resolveError = resolveTypeError.current;
 
   useEffect(() => {
-    console.log({
-      "executor.hasExecuted": executor.hasExecuted,
-      "executor.needsOutput": executor.needsOutput,
-    });
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
-      console.log("AUTO CLOSING");
       close();
     }
   }, [executor.hasExecuted, executor.needsOutput]);
@@ -627,11 +624,15 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setError(result.error);
         handlers.onSuccess?.(result);
       } catch (e) {
-        setError(e);
-        setResult(null);
-        handlers.onError?.(e);
-        console.error("Error executing operator", operator, ctx);
-        console.error(e);
+        const isAbortError =
+          e.name === "AbortError" || e instanceof DOMException;
+        if (!isAbortError) {
+          setError(e);
+          setResult(null);
+          handlers.onError?.(e);
+          console.error("Error executing operator", operator, ctx);
+          console.error(e);
+        }
       }
       setHasExecuted(true);
       setIsExecuting(false);

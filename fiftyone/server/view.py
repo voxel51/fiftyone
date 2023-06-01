@@ -195,8 +195,9 @@ def get_extended_view(
             if tags and exclude:
                 view = view.match_tags(tags, bool=False)
 
-        if "_label_tags" in filters:
-            label_tags = filters.get("_label_tags")
+        if _LABEL_TAGS in filters:
+            label_tags = filters.get(_LABEL_TAGS)
+            label_fields = [path for path, _ in fosu.iter_label_fields(view)]
 
             if (
                 not count_label_tags
@@ -204,7 +205,10 @@ def get_extended_view(
                 and not label_tags["exclude"]
                 and not label_tags["isMatching"]
             ):
-                view = view.select_labels(tags=label_tags["values"])
+                view = view.select_labels(
+                    tags=label_tags["values"],
+                    fields=label_fields,
+                )
 
             if (
                 not count_label_tags
@@ -213,7 +217,9 @@ def get_extended_view(
                 and not label_tags["isMatching"]
             ):
                 view = view.exclude_labels(
-                    tags=label_tags["values"], omit_empty=False
+                    tags=label_tags["values"],
+                    omit_empty=False,
+                    fields=label_fields,
                 )
 
             if (
@@ -222,7 +228,9 @@ def get_extended_view(
                 and not label_tags["exclude"]
                 and label_tags["isMatching"]
             ):
-                view = view.match_labels(tags=label_tags["values"])
+                view = view.match_labels(
+                    tags=label_tags["values"], fields=label_fields
+                )
 
             if (
                 not count_label_tags
@@ -230,7 +238,11 @@ def get_extended_view(
                 and label_tags["exclude"]
                 and label_tags["isMatching"]
             ):
-                view = view.match_labels(tags=label_tags["values"], bool=False)
+                view = view.match_labels(
+                    tags=label_tags["values"],
+                    bool=False,
+                    fields=label_fields,
+                )
 
         stages = _make_filter_stages(
             view,
@@ -665,14 +677,38 @@ def _apply_none(expr, f, none):
     return expr
 
 
+def _get_filtered_path(view, path, filtered_fields, label_tags):
+    if label_tags is not None:
+        excludes = label_tags.get("exclude", None)
+        label_tags = label_tags.get("values", None)
+    else:
+        excludes = None
+
+    if path not in filtered_fields and not label_tags and not excludes:
+        return path
+
+    if path.startswith(view._FRAMES_PREFIX):
+        return "%s___%s" % (view._FRAMES_PREFIX, path.split(".")[1])
+
+    return "___%s" % path
+
+
 def _add_frame_labels_tags(path, field, view):
     path = path[len("frames.") :]
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+    items = path
+    if isinstance(field, fof.ListField):
+        field = field.field
+
+    if issubclass(field.document_type, fol._HasLabelList):
+        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+
+    reduce = F(items).reduce(VALUE.extend(F("tags")), [])
     view = view.set_field(
         _LABEL_TAGS,
         F(_LABEL_TAGS).extend(
             F("frames").reduce(
-                VALUE.extend(F(items).reduce(VALUE.extend(F("tags")), [])), []
+                VALUE.extend(F(items).exists().if_else(reduce, [])),
+                [],
             )
         ),
         _allow_missing=True,
@@ -696,10 +732,23 @@ def _add_frame_label_tags(path, field, view):
 
 
 def _add_labels_tags(path, field, view):
-    items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+    items = path
+    if isinstance(field, fof.ListField):
+        field = field.field
+
+    if issubclass(field.document_type, fol._HasLabelList):
+        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
+
     view = view.set_field(
         _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(F(items).reduce(VALUE.extend(F("tags")), [])),
+        F(path)
+        .exists()
+        .if_else(
+            F(_LABEL_TAGS).extend(
+                F(items).reduce(VALUE.extend(F("tags")), [])
+            ),
+            F(_LABEL_TAGS),
+        ),
         _allow_missing=True,
     )
     return view

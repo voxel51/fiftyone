@@ -9,7 +9,11 @@ user. No mocks or stubs are to be used.
 
 -   Make sure `python` is available in path. If you have a virtual environment
     you use, make sure to activate that.
--   Run `yarn start`.
+-   e2e tests run against the built app. In the [App monorepo](../app/), run
+    `yarn build`
+-   Run `yarn start-test-server` to start the background server in a separate
+    shell
+-   Run `yarn start` to execute the tests
 -   To run in watch mode, run `yarn start:watch`.
 -   You might find it useful that all command line options are forwarded to
     Cypress. For example, to run a single spec run

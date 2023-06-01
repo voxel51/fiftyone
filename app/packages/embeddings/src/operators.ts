@@ -26,7 +26,6 @@ export class OpenEmbeddingsPanel extends Operator {
   }
   async execute(ctx) {
     const { brainKey } = ctx.params;
-    console.log(ctx);
     ctx.hooks.setBrainKey(brainKey);
     ctx.trigger("open_panel", { panel: "Embeddings", isActive: true });
   }

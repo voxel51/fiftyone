@@ -1,20 +1,16 @@
-import { useCallback, useState } from "react";
-import { Typography, Box, Link, Button } from "@mui/material";
+import { CopyButton, useTheme } from "@fiftyone/components";
+import { Box, Link, Typography } from "@mui/material";
+import { useHover } from "react-laag";
 import ReactMarkdown from "react-markdown";
-import { HeaderView } from ".";
-import styled from "styled-components";
-import { getComponentProps } from "../utils";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
-import ts from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
 import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
+import ts from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
 import tomorrow from "react-syntax-highlighter/dist/esm/styles/hljs/tomorrow";
 import vs2015 from "react-syntax-highlighter/dist/esm/styles/hljs/vs2015";
-import CopyIcon from "@mui/icons-material/ContentCopy";
-import CheckIcon from "@mui/icons-material/DoneOutlined";
-import copyToClipboard from "copy-to-clipboard";
-import { Copy, useTheme } from "@fiftyone/components";
-import { useHover } from "react-laag";
+import styled from "styled-components";
+import { HeaderView } from ".";
+import { getComponentProps } from "../utils";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("typescript", ts);
@@ -46,32 +42,6 @@ const CodeHeader = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.level1};
   background: ${({ theme }) => theme.background.level2};
 `;
-
-type CopyButtonProps = {
-  content: string;
-  children: React.ReactNode;
-};
-const CopyButton = ({ visible, content, children }: CopyButtonProps) => {
-  const [copied, setCopied] = useState(false);
-  const handleClick = useCallback(() => {
-    copyToClipboard(content);
-    setCopied(true);
-  }, [children, copyToClipboard]);
-
-  if (copied) {
-    return <Button startIcon={<CheckIcon />}>Copied!</Button>;
-  }
-
-  return (
-    <Button
-      style={{ visibility: visible ? "visible" : "hidden" }}
-      startIcon={<CopyIcon />}
-      onClick={handleClick}
-    >
-      {children}
-    </Button>
-  );
-};
 
 const componenntMap = {
   a({ children, ...props }) {
@@ -107,10 +77,11 @@ const componenntMap = {
     return !inline && match ? (
       <CodeContainer {...hoverProps}>
         <CodeHeader>
-          <Typography>{language}</Typography>
-          <CopyButton visible={hovered} content={children}>
-            Copy
-          </CopyButton>
+          <Typography component="span">{language}</Typography>
+          <CopyButton
+            text={children}
+            sx={{ visibility: hovered ? "visible" : "hidden" }}
+          />
         </CodeHeader>
 
         <SyntaxHighlighter language={language} style={highlightTheme}>

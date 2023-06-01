@@ -61,8 +61,9 @@
 .. |CategoricalAttribute| replace:: :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>`
 .. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
-.. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
 .. |DatasetAppConfig| replace:: :class:`DatasetAppConfig <fiftyone.core.odm.dataset.DatasetAppConfig>`
+.. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
+.. |ColorScheme| replace:: :class:`ColorScheme <fiftyone.core.odm.dataset.ColorScheme>`
 
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`

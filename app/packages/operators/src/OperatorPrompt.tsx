@@ -51,6 +51,7 @@ function ActualOperatorPrompt() {
   }
 
   const title = getPromptTitle(operatorPrompt);
+  const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
 
   return createPortal(
     <OperatorPalette
@@ -58,7 +59,8 @@ function ActualOperatorPrompt() {
       {...paletteProps}
       onClose={paletteProps.onCancel || operatorPrompt.close}
       submitOnControlEnter
-      disableSubmit={operatorPrompt.validationErrors?.length > 0}
+      disableSubmit={hasValidationErrors}
+      disabledReason="Cannot execute operator with validation errors"
     >
       <PaletteContentContainer>
         {operatorPrompt.showPrompt && (
