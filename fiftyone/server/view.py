@@ -172,7 +172,7 @@ def get_extended_view(
 
         if _LABEL_TAGS in filters:
             label_tags = filters.get(_LABEL_TAGS)
-            label_fields = [path for path in view.get_label_fields()]
+            label_fields = [path for path in view._get_label_fields()]
 
             if (
                 not count_label_tags
@@ -496,7 +496,7 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        for path in view.get_label_fields():
+        for path in view._get_label_fields():
             expr = fosg._get_label_field_only_matches_expr(
                 view,
                 cache.get(path, path),
