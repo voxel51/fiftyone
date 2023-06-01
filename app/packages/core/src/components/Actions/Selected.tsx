@@ -160,16 +160,13 @@ const toIds = (labels: State.SelectedLabel[]) =>
 
 const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const isGroup = useRecoilValue(fos.isGroup);
-  const activeSlice = useRecoilValue(fos.currentSlice(true));
-  const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
-  const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
-
+  const activeLabels = useRecoilValue(fos.activeLabels({}));
   const currentSampleLabels = lookerRef.current
     ? lookerRef.current.getCurrentSampleLabels()
     : [];
 
   if (isGroup) {
-    return labelValues;
+    return activeLabels;
   }
 
   return currentSampleLabels;

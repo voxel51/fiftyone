@@ -296,7 +296,7 @@ export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
 export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.DynamicEmbeddedDocumentField";
-export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2 =
+export const DYNAMIC_EMBEDDED_DOCUMENT_PATH =
   "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";

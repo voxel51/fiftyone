@@ -70,7 +70,7 @@ export const tagStatistics = selectorFamily<
 >({
   key: "tagStatistics",
   get:
-    ({ modal, labels: count_labels }) =>
+    ({ modal, labels: countLabels }) =>
     async ({ get }) => {
       return await getFetchFunction()(
         "POST",
@@ -98,7 +98,7 @@ export const tagStatistics = selectorFamily<
               ...data,
             })
           ),
-          targetLabels: count_labels,
+          targetLabels: countLabels,
           view: get(fos.view),
         })
       );

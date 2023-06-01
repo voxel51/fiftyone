@@ -7,16 +7,18 @@ import {
   DETECTIONS_FIELD,
   DETECTION_FIELD,
   DETECTION_FILED,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
+  FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
   GEO_LOCATIONS_FIELD,
   GEO_LOCATION_FIELD,
   HEATMAP_FIELD,
+  JUST_FIELD,
   KEYPOINT_FILED,
   LIST_FIELD,
+  OBJECT_ID_FIELD,
   POLYLINES_FIELD,
   POLYLINE_FIELD,
   REGRESSION_FILED,
@@ -26,11 +28,6 @@ import {
   TEMPORAL_DETECTION_FIELD,
   UNSUPPORTED_FILTER_TYPES,
   VECTOR_FIELD,
-} from "@fiftyone/utilities";
-import {
-  FRAME_NUMBER_FIELD,
-  JUST_FIELD,
-  OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
 import { isEmpty, keyBy } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
@@ -274,10 +271,8 @@ export const excludedPathsState = atomFamily({
                     [EMBEDDED_DOCUMENT_FIELD, LIST_FIELD].includes(
                       combinedSchema[path]?.ftype
                     ) &&
-                    [
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
-                    ].includes(combinedSchema[path]?.embeddedDocType) &&
+                    DYNAMIC_EMBEDDED_DOCUMENT_PATH ===
+                      combinedSchema[path]?.embeddedDocType &&
                     (isVideo
                       ? !(
                           path.split(".").length === 2 &&
@@ -489,7 +484,7 @@ export default function useSchemaSettings() {
 
   const setShowNestedFields = useCallback(
     (val: boolean) => {
-      let newExcludePaths = new Set();
+      const newExcludePaths = new Set();
       if (val) {
         excludedPaths?.[datasetName]?.forEach((path) => {
           const subPaths = [...getSubPaths(path)];
