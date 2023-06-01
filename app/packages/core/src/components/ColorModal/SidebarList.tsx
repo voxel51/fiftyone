@@ -1,6 +1,5 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
@@ -39,7 +38,7 @@ const SidebarList: React.FC = () => {
           set(fos.activeColorField, path);
         } else {
           const field = await snapshot.getPromise(fos.field(path));
-          set(fos.activeColorField, field);
+          set(fos.activeColorField, { field, expandedPath: path });
         }
       },
     []
@@ -48,7 +47,7 @@ const SidebarList: React.FC = () => {
   const getCurrentField = (activeField) => {
     if (activeField === ACTIVE_FIELD.global) return ACTIVE_FIELD.global;
     if (activeField === ACTIVE_FIELD.json) return ACTIVE_FIELD.json;
-    return activeField?.path;
+    return activeField?.expandedPath;
   };
   return (
     <Resizable
@@ -105,7 +104,16 @@ const SidebarList: React.FC = () => {
                 <List component="div" disablePadding>
                   {group.paths.map((path, pathIdx) => (
                     <ListItemButton
-                      sx={{ pl: 4, margin: "-0.25rem" }}
+                      sx={{
+                        pl: 4,
+                        margin: "-0.25rem",
+                        "&.Mui-selected": {
+                          backgroundColor: theme.primary.main,
+                        },
+                        "&.Mui-selected:hover": {
+                          backgroundColor: theme.primary.main,
+                        },
+                      }}
                       key={`menu-${pathIdx}`}
                       selected={path === getCurrentField(activeField)}
                       disableRipple

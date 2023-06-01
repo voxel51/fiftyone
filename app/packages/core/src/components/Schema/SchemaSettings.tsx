@@ -1,5 +1,7 @@
-import React, { Fragment, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
 import styled from "styled-components";
+
+import * as fos from "@fiftyone/state";
 
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
@@ -53,10 +55,6 @@ const SchemaSettings = () => {
   const schemaModalWrapperRef = useRef<HTMLDivElement>(null);
   const schemaModalRef = useRef<HTMLDivElement>(null);
 
-  useOutsideClick(schemaModalRef, (_) => {
-    close();
-  });
-
   const {
     settingModal,
     setSettingsModal,
@@ -64,13 +62,37 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    selectedPaths,
     setSearchResults,
-    searchResults,
-    setFieldsOnly,
     setSelectedFieldsStage,
-    mediatType,
+    datasetName,
+    excludedPaths,
+    selectedPaths,
+    resetExcludedPaths,
+    setSelectedPaths,
+    setLastAppliedPaths,
+    lastAppliedPaths,
+    setExcludedPaths,
   } = useSchemaSettings();
+
+  useOutsideClick(schemaModalRef, (_) => {
+    close();
+  });
+
+  const keyboardHandler = useCallback(
+    (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
+          return;
+        }
+      }
+      if (e.key === "Escape") {
+        setSettingsModal({ open: false });
+      }
+    },
+    [setSettingsModal]
+  );
+  fos.useEventHandler(document, "keydown", keyboardHandler);
 
   const { open: isSettingsModalOpen } = settingModal || {};
   if (!isSettingsModalOpen) {
@@ -80,7 +102,9 @@ const SchemaSettings = () => {
   const close = () => {
     setSearchTerm("");
     setSearchResults([]);
-    setSettingsModal({ ...settingModal, open: false });
+    setSettingsModal({ open: false });
+    setSelectedPaths({ [datasetName]: new Set(lastAppliedPaths.selected) });
+    setExcludedPaths({ [datasetName]: new Set(lastAppliedPaths.excluded) });
   };
 
   return (
@@ -140,13 +164,6 @@ const SchemaSettings = () => {
                   title: `Fiele ${value}`,
                   onClick: () => {
                     setSelectedTab(value);
-                    if (value === TAB_OPTIONS_MAP.SELECTION) {
-                      setSearchTerm("");
-                      setSearchResults([]);
-                    }
-                    if (value === TAB_OPTIONS_MAP.FILTER_RULE) {
-                      setFieldsOnly(false);
-                    }
                   },
                 };
               })}
@@ -161,10 +178,10 @@ const SchemaSettings = () => {
           {selectedTab === TAB_OPTIONS_MAP.SELECTION && <SchemaSelection />}
           <Box
             style={{
-              position: "absolute",
+              position: "sticky",
               display: "flex",
-              padding: "1rem 1.5rem",
-              bottom: 0,
+              padding: "1rem 0",
+              bottom: "-20px",
               background: theme.background.level2,
               left: 0,
             }}
@@ -178,15 +195,14 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
-                let initialFieldNames = searchResults.length
-                  ? searchResults.filter((pp) => selectedPaths.has(pp))
-                  : [...selectedPaths];
+                const initialFieldNames = [...excludedPaths[datasetName]];
 
                 const stageKwargs = {
-                  field_names: initialFieldNames.filter((pp) => !!pp),
+                  field_names: initialFieldNames,
                   _allow_missing: true,
                 };
-                const stageCls = "fiftyone.core.stages.SelectFields";
+
+                const stageCls = "fiftyone.core.stages.ExcludeFields";
                 const stage = {
                   _cls: stageCls,
                   kwargs: stageKwargs,
@@ -194,10 +210,14 @@ const SchemaSettings = () => {
                 try {
                   setSelectedFieldsStage(stage);
                 } catch (e) {
-                  console.log("error setting selected field stages", e);
+                  console.error("error setting field visibility", e);
                 } finally {
                   setSettingsModal({ open: false });
                 }
+                setLastAppliedPaths({
+                  selected: selectedPaths[datasetName],
+                  excluded: excludedPaths[datasetName],
+                });
               }}
             >
               Apply
@@ -213,6 +233,8 @@ const SchemaSettings = () => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
+                resetExcludedPaths();
+                setSearchResults([]);
               }}
             >
               Reset

@@ -120,7 +120,7 @@ export namespace State {
     plugins?: PluginConfig;
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
-    colorScheme?: ColorSchemeSaved;
+    colorScheme?: ColorScheme;
   }
 
   /**
@@ -215,29 +215,23 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
-    colorScheme?: ColorScheme | string;
+    colorScheme?: ColorScheme;
   }
 }
 
-export interface ColorSchemeSaved {
-  colorPool: string[];
-  customizedColorSettings: string;
-}
-
 export interface CustomizeColor {
-  field: string;
-  useFieldColor: boolean;
+  path: string;
   fieldColor?: string;
-  attributeForColor?: string; // must be string field, int field, or boolean field
-  labelColors?: {
-    name: string;
+  colorByAttribute?: string; // must be string field, int field, or boolean field
+  valueColors?: {
+    value: string;
     color: string;
   }[];
 }
 
 export interface ColorScheme {
   colorPool: string[];
-  customizedColorSettings: CustomizeColor[];
+  fields: CustomizeColor[];
 }
 
 export interface ColorSchemeSetting extends ColorScheme {

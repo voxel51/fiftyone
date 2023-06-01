@@ -1,23 +1,20 @@
-import { DefaultValue, selector, selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 
 import { Coloring } from "@fiftyone/looker";
 import {
   createColorGenerator,
-  EMBEDDED_DOCUMENT_FIELD,
-  Field,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   getColor,
   hexToRgb,
   RGB,
-  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import * as atoms from "./atoms";
 import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
-import { State } from "./types";
 import { PathEntry, sidebarEntries } from "./sidebar";
 
 export const coloring = selectorFamily<Coloring, boolean>({
@@ -52,9 +49,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      get(selectors.appConfigOption({ key: "colorBy", modal }));
-      let pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
-      pool = pool.length ? pool : ["#000000"];
+      const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
       const seed = get(atoms.colorSeed(modal));
       return createColorGenerator(pool, seed);
     },
@@ -82,24 +77,36 @@ export const pathColor = selectorFamily<
     ({ modal, path }) =>
     ({ get }) => {
       // video path tweak
-      const adjustedPath = path.startsWith("frames.")
-        ? path.slice("frames.".length)
-        : path;
-      const setting = get(
-        atoms.sessionColorScheme
-      )?.customizedColorSettings?.find((x) => x.field === adjustedPath);
-
-      if (setting?.useFieldColor && isValidColor(setting?.fieldColor)) {
-        return setting.fieldColor;
-      }
-
-      const map = get(colorMap(modal));
+      const field = get(schemaAtoms.field(path));
       const video = get(selectors.mediaTypeSelector) !== "image";
 
       const parentPath =
         video && path.startsWith("frames.")
           ? path.split(".").slice(0, 2).join(".")
           : path.split(".")[0];
+
+      let adjustedPath = field?.embeddedDocType
+        ? parentPath.startsWith("frames.")
+          ? parentPath.slice("frames.".length)
+          : parentPath
+        : path;
+
+      if (
+        get(schemaAtoms.field(adjustedPath))?.embeddedDocType ===
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2
+      ) {
+        adjustedPath = path;
+      }
+
+      const setting = get(atoms.sessionColorScheme)?.fields?.find(
+        (x) => x.path === adjustedPath
+      );
+
+      if (isValidColor(setting?.fieldColor ?? "")) {
+        return setting!.fieldColor;
+      }
+
+      const map = get(colorMap(modal));
 
       if (get(schemaAtoms.labelFields({})).includes(parentPath)) {
         return map(parentPath);

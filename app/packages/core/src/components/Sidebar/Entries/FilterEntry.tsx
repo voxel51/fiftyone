@@ -14,7 +14,6 @@ import { Box, Typography } from "@mui/material";
 import {
   affectedPathCountState,
   selectedFieldsStageState,
-  selectedPathsState,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import { Tooltip, useTheme } from "@fiftyone/components";
 
@@ -27,12 +26,10 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const resetSelectedFieldStages = useResetRecoilState(
     selectedFieldsStageState
   );
-  const resetSelectedPaths = useResetRecoilState(
-    selectedPathsState({ allPaths: [] })
-  );
   const affectedPathCount = useRecoilValue(affectedPathCountState);
 
-  const { setSelectedFieldsStage } = fos.useSchemaSettings();
+  const { setSelectedFieldsStage, resetTextFilter, resetExcludedPaths } =
+    fos.useSchemaSettings();
 
   useDebounce(
     () => {
@@ -41,6 +38,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
     200,
     [value]
   );
+
   return (
     <InputDiv>
       <input
@@ -70,7 +68,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 onClick={() => {
                   resetSelectedFieldStages();
                   setSelectedFieldsStage(undefined);
-                  resetSelectedPaths();
+                  resetExcludedPaths();
                 }}
               >
                 {affectedPathCount > 0 && (
@@ -96,11 +94,12 @@ const Filter = ({ modal }: { modal: boolean }) => {
           )}
           <Tooltip text="Change field visibility" placement="bottom-center">
             <Settings
-              onClick={() =>
+              onClick={() => {
                 setSchemaModal({
                   open: true,
-                })
-              }
+                });
+                resetTextFilter();
+              }}
               sx={{
                 color: theme.text.tertiary,
                 "&:hover": { color: theme.text.primary },

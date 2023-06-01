@@ -972,6 +972,17 @@ class DocCommentTag extends DocFragment {
   }
 }
 
+class DocCommentLink extends DocFragment {
+  link() {
+    const text = this.get("text");
+    const [ref, label] = text.split("|");
+    return `:js:class:\`${label || ref} <${ref}>\``;
+  }
+  static isInlineLink(raw) {
+    return raw.kind === "inline-tag" && raw.tag === "@link";
+  }
+}
+
 class DocComment extends DocFragment {
   static kind = () => "Comment";
   summary() {
@@ -982,7 +993,13 @@ class DocComment extends DocFragment {
         new DocCommentBlock(
           {
             kind: "text",
-            text: raw.map((r) => r.text).join(""),
+            text: raw
+              .map((r) => {
+                if (DocCommentLink.isInlineLink(r))
+                  return new DocCommentLink(r, this).link();
+                return r.text;
+              })
+              .join(""),
           },
           this
         ),

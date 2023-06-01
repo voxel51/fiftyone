@@ -4,6 +4,8 @@
    Typescript API <self>
       @fiftyone/state <api/fiftyone.state>
       @fiftyone/plugins <api/fiftyone.plugins>
+      @fiftyone/operators <api/fiftyone.operators>
+      @fiftyone/spaces <api/fiftyone.spaces>
       @fiftyone/aggregations <api/fiftyone.aggregations>
       @fiftyone/relay <api/fiftyone.relay>
-      @fiftyone/utils <api/fiftyone.utils>
+      @fiftyone/utilities <api/fiftyone.utilities>

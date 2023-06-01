@@ -8,13 +8,14 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-c] [-s]
+    echo "Usage:  bash $0 [-h] [-f] [-c] [-s] [-t]
 
 Options:
 -h      Display this help message.
 -f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
 -s      Copy static files only (CSS, JS).
+-t      Path to fiftyone-teams clone to use for Teams docs
 "
 }
 
@@ -24,17 +25,18 @@ SHOW_HELP=false
 FAST_BUILD=false
 CLEAN_BUILD=false
 STATIC_ONLY=false
-while getopts "hfcs" FLAG; do
+PATH_TO_TEAMS=""
+while getopts "hfcst:" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         f) FAST_BUILD=true ;;
         c) CLEAN_BUILD=true ;;
         s) STATIC_ONLY=true ;;
+        t) PATH_TO_TEAMS=$OPTARG;;
         *) usage; exit 2 ;;
     esac
 done
 [ ${SHOW_HELP} = true ] && usage && exit 0
-
 
 set -e
 
@@ -72,6 +74,24 @@ fi
 
 echo "**** Generating documentation ****"
 
+# Symlink to fiftyone-teams
+if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+    # macOS users may need to run `brew install coreutils` to get `realpath``
+    PATH_TO_TEAMS="$(realpath $PATH_TO_TEAMS)"
+
+    cd "${THIS_DIR}"
+    PATH_TO_FIFTYONE_DIR=$(
+        python -c "import os, fiftyone as fo; print(os.path.dirname(fo.__file__))" ||
+        true
+    )
+    cd -
+
+    ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
+    ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
+    echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
+    echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
+fi
+
 cd "${THIS_DIR}/.."
 
 # Symlink to fiftyone-brain
@@ -84,7 +104,9 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
     -o docs/source/api fiftyone \
         fiftyone/brain/internal \
         fiftyone/server \
-        fiftyone/service
+        fiftyone/service \
+        fiftyone/management \
+        fiftyone/api
 
 # Remove symlink
 rm fiftyone/brain
@@ -104,6 +126,12 @@ fi
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS
+
+# Remove symlink to fiftyone-teams
+if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+    unlink "$PATH_TO_FIFTYONE_DIR/management"
+    unlink "$PATH_TO_FIFTYONE_DIR/api"
+fi
 
 echo "**** Documentation complete ****"
 printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

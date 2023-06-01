@@ -1,200 +1,164 @@
 """
-FiftyOne Plugin Definitions.
+Plugin definitions.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import glob
+import os
+
+import yaml
+
 import eta.core.serial as etas
 
 import fiftyone as fo
-import os
-import yaml  # BEFORE PR: add to requirements.txt
-import traceback
-
-import fiftyone.plugins.core as fopc
-import fiftyone.constants as foc
 
 
-# BEFORE PR: where should this go?
-def find_files(root_dir, filename, extensions, max_depth):
-    """Returns all files matching the given pattern, up to the given depth.
+class PluginDefinition(object):
+    """A plugin definition.
 
     Args:
-        pattern: a glob pattern
-        max_depth: the maximum depth to search
-
-    Returns:
-        a list of paths
+        directory: the directory containing the plugin
+        metadata: a plugin metadata dict
     """
-    if max_depth == 0:
-        return []
 
-    paths = []
-    for i in range(1, max_depth):
-        pattern_parts = [root_dir]
-        pattern_parts += list("*" * i)
-        pattern_parts += [filename]
-        pattern = os.path.join(*pattern_parts)
-        for extension in extensions:
-            paths += glob.glob(pattern + "." + extension)
+    _REQUIRED_METADATA_KEYS = ["name"]
 
-    return paths
-
-
-MAX_PLUGIN_SEARCH_DEPTH = 3
-PLUGIN_METADATA_FILENAME = "fiftyone"
-PLUGIN_METADATA_EXTENSIONS = ["yml", "yaml"]
-REQUIRED_PLUGIN_METADATA_KEYS = ["name"]
-
-
-def find_plugin_metadata_files():
-    plugins_dir = fo.config.plugins_dir
-
-    if not plugins_dir:
-        return []
-
-    normal_locations = find_files(
-        plugins_dir,
-        PLUGIN_METADATA_FILENAME,
-        PLUGIN_METADATA_EXTENSIONS,
-        MAX_PLUGIN_SEARCH_DEPTH,
-    )
-    node_modules_locations = find_files(
-        os.path.join(plugins_dir, "node_modules", "*"),
-        PLUGIN_METADATA_FILENAME,
-        PLUGIN_METADATA_EXTENSIONS,
-        1,
-    )
-    yarn_packages_locations = find_files(
-        os.path.join(plugins_dir, "packages", "*"),
-        PLUGIN_METADATA_FILENAME,
-        PLUGIN_METADATA_EXTENSIONS,
-        1,
-    )
-    return normal_locations + node_modules_locations + yarn_packages_locations
-
-
-class PluginDefinition:
     def __init__(self, directory, metadata):
-        missing = []
-        if not directory:
-            missing.append("directory")
-        if not metadata:
-            missing.append("metadata")
-        if len(missing) > 0:
-            raise ValueError("Missing required fields: %s" % missing)
-
-        self.directory = directory
+        self._directory = directory
         self._metadata = metadata
-        self.js_bundle = None
-        self.js_bundle_path = None
-        self.py_entry = None
-        self.py_entry_path = None
-        self._load_and_validate()
-
-    def _get_fullpath(self, filename):
-        if not filename:
-            return None
-        if filename in os.listdir(self.directory):
-            return os.path.join(self.directory, filename)
-        return None
+        self._validate()
 
     @property
     def name(self):
+        """The name of the plugin."""
         return self._metadata.get("name", None)
 
     @property
+    def directory(self):
+        """The directory containing the plugin."""
+        return self._directory
+
+    @property
     def author(self):
+        """The author of the plugin."""
         return self._metadata.get("author", None)
 
     @property
     def version(self):
+        """The version of the plugin."""
         return self._metadata.get("version", None)
 
     @property
     def license(self):
+        """The license of the plugin."""
         return self._metadata.get("license", None)
 
     @property
     def description(self):
+        """The description of the plugin."""
         return self._metadata.get("description", None)
 
     @property
     def fiftyone_compatibility(self):
-        return self._metadata.get("fiftyone", {}).get("version", foc.Version)
+        """The FiftyOne compatibilty version."""
+        return self._metadata.get("fiftyone", {}).get("version", None)
+
+    @property
+    def fiftyone_requirement(self):
+        """The FiftyOne requirement as a string like ``fiftyone>=0.21``."""
+        req_str = self.fiftyone_compatibility or ""
+        req_str = req_str.strip()
+
+        if not req_str or req_str == "*":
+            return None
+
+        if not req_str.startswith("fiftyone"):
+            req_str = "fiftyone" + req_str
+
+        return req_str
 
     @property
     def operators(self):
+        """The operators of the plugin."""
         return self._metadata.get("operators", [])
 
     @property
     def package_json_path(self):
-        return self._get_fullpath("package.json")
+        """The absolute path to the package.json file."""
+        return self._get_abs_path("package.json")
 
-    def _set_js_bundle_path(self):
+    @property
+    def has_package_json(self):
+        """Whether the plugin has a package.json file."""
+        return os.path.isfile(self.package_json_path)
+
+    @property
+    def js_bundle(self):
+        """The relative path to the JS bundle file."""
         js_bundle = self._metadata.get("js_bundle", None)
-        path = self._get_fullpath(js_bundle)
-        if not path:
-            if self.package_json_path:
-                pkg = etas.read_json(self.package_json_path)
-                js_bundle = pkg.get("fiftyone", {}).get("script", None)
-                path = self._get_fullpath(js_bundle)
-        if path:
-            self.js_bundle_path = path
-            self.js_bundle = js_bundle
 
-    def _set_py_entry_path(self):
-        py_entry = self._metadata.get("py_entry", None)
-        path = self._get_fullpath(py_entry)
-        if not path:
-            # check for __init__.py if none specified
-            py_entry = "__init__.py"
-            path = self._get_fullpath(py_entry)
-        if path:
-            self.py_entry = py_entry
-            self.py_entry_path = path
-        return None
+        if not js_bundle and self.has_package_json:
+            pkg = etas.read_json(self.package_json_path)
+            js_bundle = pkg.get("fiftyone", {}).get("script", None)
 
-    def _load_and_validate(self):
-        missing_metadata_keys = [
-            k
-            for k in REQUIRED_PLUGIN_METADATA_KEYS
-            if not self._metadata.get(k, None)
-        ]
-        if len(missing_metadata_keys) > 0:
-            raise ValueError(
-                f"Plugin definition missing required fields: {missing_metadata_keys}"
-            )
-        self._set_js_bundle_path()
-        self._set_py_entry_path()
+        if not js_bundle:
+            js_bundle = "dist/index.umd.js"
+
+        return js_bundle
+
+    @property
+    def js_bundle_path(self):
+        return self._get_abs_path(self.js_bundle)
+
+    @property
+    def py_entry(self):
+        return self._metadata.get("py_entry", "__init__.py")
+
+    @property
+    def py_entry_path(self):
+        """The absolute path to the Python entry file."""
+        return self._get_abs_path(self.py_entry)
 
     @property
     def server_path(self):
-        return "/" + os.path.join(
-            "plugins", os.path.relpath(self.directory, fo.config.plugins_dir)
-        )
+        """The default server path to the plugin."""
+        relpath = os.path.relpath(self.directory, fo.config.plugins_dir)
+        return "/" + os.path.join("plugins", relpath)
 
     @property
     def js_bundle_server_path(self):
+        """The default server path to the JS bundle."""
         if self.has_js:
             return os.path.join(self.server_path, self.js_bundle)
 
-    def can_register_operator(self, operator_name):
-        if self.has_py and (operator_name in self.operators):
-            return True
-        return False
+    def can_register_operator(self, name):
+        """Whether the plugin can register the given operator.
+
+        Args:
+            name: the operator name
+
+        Returns:
+            True/False
+        """
+        return self.has_py and name in self.operators
 
     @property
     def has_py(self):
-        return bool(self.py_entry_path)
+        """Whether the plugin has a Python entry file."""
+        return os.path.isfile(self.py_entry_path)
 
     @property
     def has_js(self):
-        return bool(self.js_bundle_path)
+        """Whether the plugin has a JS bundle file."""
+        return os.path.isfile(self.js_bundle_path)
 
-    def to_json(self):
+    def to_dict(self):
+        """Returns a JSON dict representation of the plugin metadata.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "name": self.name,
             "author": self.author,
@@ -202,72 +166,43 @@ class PluginDefinition:
             "license": self.license,
             "description": self.description,
             "fiftyone_compatibility": self.fiftyone_compatibility,
-            "operators": self.operators or [],
+            "operators": self.operators,
             "js_bundle": self.js_bundle,
             "py_entry": self.py_entry,
             "js_bundle_exists": self.has_js,
             "js_bundle_server_path": self.js_bundle_server_path,
             "has_py": self.has_py,
             "has_js": self.has_js,
+            "server_path": self.server_path,
         }
 
+    @classmethod
+    def from_disk(cls, metadata_path):
+        """Creates a :class:`PluginDefinition` for the given metadata file.
 
-def load_plugin_definition(metadata_file):
-    """Loads the plugin definition from the given metadata_file."""
-    try:
-        with open(metadata_file, "r") as f:
-            metadata_dict = yaml.safe_load(f)
-            module_dir = os.path.dirname(metadata_file)
-            definition = PluginDefinition(module_dir, metadata_dict)
-            return definition
-    except:
-        traceback.print_exc()
-        return None
+        Args:
+            metadata_path: the path to a plugin ``.yaml`` file
 
+        Returns:
+            a :class:`PluginDefinition`
+        """
+        dirpath = os.path.dirname(metadata_path)
+        with open(metadata_path, "r") as f:
+            metadata = yaml.safe_load(f)
 
-def list_plugins():
-    """
-    List all PluginDefinitions for enabled plugins.
-    """
-    plugins = [
-        pd
-        for pd in [
-            load_plugin_definition(
-                os.path.join(p.path, PLUGIN_METADATA_FILENAME + ".yml")
-            )
-            for p in fopc._list_plugins(enabled_only=True)
+        return cls(dirpath, metadata)
+
+    def _validate(self):
+        missing = [
+            k for k in self._REQUIRED_METADATA_KEYS if k not in self._metadata
         ]
-        if pd
-    ]
-
-    return validate_plugins(plugins)
-
-
-class DuplicatePluginNameError(ValueError):
-    pass
-
-
-class InvalidPluginDefinition(ValueError):
-    pass
-
-
-def validate_plugins(plugins):
-    """
-    Validates the given list of PluginDefinitions.
-    Returns a list of valid PluginDefinitions.
-    """
-    results = []
-    names = set()
-    for plugin in plugins:
-        if not plugin.name:
-            raise InvalidPluginDefinition(
-                "Plugin definition in %s is missing a name" % plugin.directory
+        if missing:
+            raise ValueError(
+                f"Plugin metadata is missing required fields: {missing}"
             )
-        if plugin.name in names:
-            raise DuplicatePluginNameError(
-                "Plugin name %s is not unique" % plugin.name
-            )
-        else:
-            results.append(plugin)
-        names.add(plugin.name)
-    return results
+
+    def _get_abs_path(self, filename):
+        if not filename:
+            return None
+
+        return os.path.join(self.directory, filename)

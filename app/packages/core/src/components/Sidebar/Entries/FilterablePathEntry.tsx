@@ -48,11 +48,11 @@ import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField, pathIsExpanded } from "./utils";
-import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -281,9 +281,9 @@ const FilterableEntry = ({
     pathIsExpanded({ modal, path: expandedPath })
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-  const color = disabled
-    ? theme.background.level2
-    : useRecoilValue(fos.pathColor({ path, modal }));
+  const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
+
+  const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(
     fos.fields({
       path: expandedPath,
@@ -305,6 +305,7 @@ const FilterableEntry = ({
   const hidden = modal ? useHidden(path) : null;
 
   const onClick = useOnClick({ disabled, modal, path });
+  const isLabelTag = path === "_label_tags";
 
   return (
     <RegularEntry
@@ -317,7 +318,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!disabled && (
+          {!disabled && !(modal && isLabelTag) && (
             <Checkbox
               checked={active}
               title={`Show ${path}`}
@@ -383,6 +384,7 @@ const FilterableEntry = ({
             onFocus,
             onBlur,
             title: title || (listField ? `${LIST_FIELD}(${ftype})` : ftype),
+            color: activeColor,
             ...props,
           });
         })}

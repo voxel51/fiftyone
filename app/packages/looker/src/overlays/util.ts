@@ -5,6 +5,7 @@
 import { INFO_COLOR } from "../constants";
 import { BaseState, Coordinates, MaskTargets, RgbMaskTargets } from "../state";
 import { BaseLabel } from "./base";
+import colorString from "color-string";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
@@ -91,6 +92,16 @@ export function isValidColor(color: string): boolean {
   return CSS.supports("color", color);
 }
 
+// Convert any valid css color to the hex color
+export function convertToHex(color: string) {
+  if (!isValidColor(color)) return null;
+  const formatted = colorString.get(color);
+  if (formatted) {
+    return colorString.to.hex(formatted?.value);
+  }
+  return null;
+}
+
 export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
   if (!maskTargets || !isRgbMaskTargets(maskTargets)) {
     return maskTargets;
@@ -102,3 +113,14 @@ export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
   });
   return normalizedMaskTargets;
 }
+
+export const convertId = (obj: Record<string, any>): Record<string, any> => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => {
+      if (Array.isArray(value)) {
+        return [key, value.map((item) => ({ ...item, id: item["_id"] }))];
+      }
+      return [key, value];
+    })
+  );
+};

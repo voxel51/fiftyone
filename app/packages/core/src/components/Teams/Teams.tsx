@@ -20,7 +20,7 @@ const Teams = () => {
   const [teams, setTeams] = useRecoilState(fos.teams);
   const setOpen = useSetRecoilState(fos.appTeamsIsOpen);
   const portalId = 4972700;
-  const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
+  const formId = "bca87445-10be-424c-9c07-e2b16770caf6";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
   const [commit] = useMutation(graphql`
     mutation TeamsStoreTeamsSubmissionMutation {
@@ -99,14 +99,14 @@ const Teams = () => {
       </div>
       <div className={text}>
         FiftyOne is and will always be open source software that is freely
-        available to individual users, all 35,000 and counting. However, if
+        available to our tens of thousands of individual users. However, if
         you’re part of a team, you may need more. That’s why we’ve begun
-        deploying team-based versions of FiftyOne with multi-user collaboration
-        features to early adopters.
+        deploying team-based versions of FiftyOne with multiuser collaboration
+        features.
         <br />
         <br />
         Are you interested in a team-based deployment of FiftyOne? Let us know
-        how to contact you and our founders will reach out to make it happen!
+        how to contact you and we will reach out.
       </div>
       <input
         key="firstname"

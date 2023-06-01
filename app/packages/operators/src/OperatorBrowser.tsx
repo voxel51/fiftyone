@@ -1,41 +1,16 @@
+import { useTheme } from "@fiftyone/components";
+import { Close, Extension, Help, Lock } from "@mui/icons-material";
+import { Link } from "@mui/material";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
-import { useOperatorBrowser } from "./state";
-import { scrollbarStyles } from "@fiftyone/utilities";
-import { Link } from "@mui/material";
-import { Close, Help, Lock, Extension } from "@mui/icons-material";
-import { useTheme } from "@fiftyone/components";
 import { initializationErrors } from "./operators";
+import { useOperatorBrowser } from "./state";
 
 // todo: use plugin component
+import { useEffect, useRef } from "react";
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
-import BaseStylesProvider from "./BaseStylesProvider";
-
-const BrowserContainer = styled.form`
-  position: absolute;
-  top: 5rem;
-  left: 0;
-  max-height: 80vh;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  z-index: 99999;
-`;
-
-const BrowserModal = styled.div`
-  align-self: stretch;
-  background: ${({ theme }) => theme.background.level2};
-  width: 50%;
-  padding: 1rem;
-`;
-
-const ResultsContainer = styled.div`
-  margin-top: 1rem;
-  max-height: calc(100% - 64px);
-  overflow: auto;
-  ${scrollbarStyles}
-`;
+import OperatorPalette from "./OperatorPalette";
+import { PaletteContentContainer } from "./styled-components";
 
 const QueryInput = styled.input`
   width: 100%;
@@ -44,7 +19,7 @@ const QueryInput = styled.input`
   border: none;
   padding: 0.5rem 1rem;
 `;
-const ChoiceContainer = styled.div`
+const ChoiceContainer = styled.div<{ disabled: boolean; selected?: boolean }>`
   display: flex;
   height: 2.5rem;
   line-height: 2.5rem;
@@ -53,7 +28,7 @@ const ChoiceContainer = styled.div`
     background: ${({ theme }) => theme.background.level1};
     cursor: pointer;
   }
-  opacity: ${({ disabled, theme }) => (disabled ? 0.5 : 1)};
+  opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
   background: ${({ selected, theme }) => selected && theme.primary.plainColor};
 `;
 
@@ -129,63 +104,75 @@ const TopBarDiv = styled.div`
 export default function OperatorBrowser() {
   const theme = useTheme();
   const browser = useOperatorBrowser();
+  const queryInputRef = useRef();
+
+  useEffect(() => {
+    const { current } = queryInputRef;
+    if (current) current.value = browser.query;
+  }, [queryInputRef, browser.query]);
 
   if (!browser.isVisible) {
     return null;
   }
   return createPortal(
-    <BaseStylesProvider>
-      <BrowserContainer
-        onSubmit={browser.onSubmit}
-        onKeyDown={browser.onKeyDown}
-      >
-        <BrowserModal>
-          <TopBarDiv>
-            <QueryDiv>
-              <QueryInput
-                autoFocus
-                placeholder="Search operations by name..."
-                onChange={(e) => browser.onChangeQuery(e.target.value)}
-              />
-            </QueryDiv>
-            <IconsContainer>
-              {browser.hasQuery && (
-                <Close
-                  onClick={() => browser.clear()}
-                  style={{
-                    cursor: "pointer",
-                    color: theme.text.secondary,
-                  }}
-                />
-              )}
-              <ErrorView
-                schema={{
-                  view: { detailed: true, popout: true, left: true },
+    <OperatorPalette
+      onOutsideClick={browser.close}
+      title={
+        <TopBarDiv>
+          <QueryDiv>
+            <QueryInput
+              ref={queryInputRef}
+              autoFocus
+              placeholder="Search operations by name..."
+              onChange={(e) => browser.onChangeQuery(e.target.value)}
+            />
+          </QueryDiv>
+          <IconsContainer>
+            {browser.hasQuery && (
+              <Close
+                onClick={() => browser.clear()}
+                style={{
+                  cursor: "pointer",
+                  color: theme.text.secondary,
                 }}
-                data={initializationErrors}
               />
-              <Link
-                href="https://docs.voxel51.com/user_guide/app.html#operations"
-                style={{ display: "flex" }}
-                target="_blank"
-              >
-                <Help style={{ color: theme.text.secondary }} />
-              </Link>
-            </IconsContainer>
-          </TopBarDiv>
-          <ResultsContainer>
-            {browser.choices.map((choice) => (
-              <Choice
-                onClick={() => browser.setSelectedAndSubmit(choice)}
-                key={choice.value}
-                choice={choice}
-                selected={choice.value === browser.selectedValue}
-              />
-            ))}
-          </ResultsContainer>
-        </BrowserModal>
-      </BrowserContainer>
-    </BaseStylesProvider>,
+            )}
+            <ErrorView
+              schema={{
+                view: { detailed: true, popout: true, left: true },
+              }}
+              data={initializationErrors}
+            />
+            <Link
+              href="https://docs.voxel51.com/user_guide/app.html#operations"
+              style={{ display: "flex" }}
+              target="_blank"
+            >
+              <Help style={{ color: theme.text.secondary }} />
+            </Link>
+          </IconsContainer>
+        </TopBarDiv>
+      }
+    >
+      <PaletteContentContainer>
+        {browser.choices.map((choice) => (
+          <Choice
+            onClick={() => browser.setSelectedAndSubmit(choice)}
+            key={choice.value}
+            choice={choice}
+            selected={choice.value === browser.selectedValue}
+          />
+        ))}
+        {browser.choices.length === 0 && (
+          <Choice
+            onClick={() => {}}
+            key={"no-operator"}
+            choice={{ label: "No matching operators" }}
+            selected={false}
+          />
+        )}
+      </PaletteContentContainer>
+    </OperatorPalette>,
     document.body
   );
 }

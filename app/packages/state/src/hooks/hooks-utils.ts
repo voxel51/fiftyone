@@ -56,7 +56,10 @@ export const useHashChangeHandler = (handler) =>
 export const useKeydownHandler = (handler) =>
   useEventHandler(document.body, "keydown", handler);
 
-export const useOutsideClick = (ref, handler) => {
+export const useOutsideClick = (
+  ref: React.MutableRefObject<HTMLElement | null>,
+  handler: React.MouseEventHandler
+) => {
   const handleOutsideClick = useCallback(
     (event) => {
       if (ref.current && !ref.current.contains(event.target)) {
