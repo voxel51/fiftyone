@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 class Collection(proxy.PymongoRestProxy):
     """Proxy for pymongo.collection.Collection"""
 
-    __proxy_class__ = pymongo.database.Collection
+    __proxy_class__ = pymongo.collection.Collection
 
     def __init__(
         self,
@@ -103,12 +103,12 @@ class Collection(proxy.PymongoRestProxy):
         self,
         requests: Sequence[
             Union[
-                pymongo.operations.InsertOne,
-                pymongo.operations.DeleteOne,
-                pymongo.operations.DeleteMany,
-                pymongo.operations.ReplaceOne,
-                pymongo.operations.UpdateOne,
-                pymongo.operations.UpdateMany,
+                pymongo.InsertOne,
+                pymongo.DeleteOne,
+                pymongo.DeleteMany,
+                pymongo.ReplaceOne,
+                pymongo.UpdateOne,
+                pymongo.UpdateMany,
             ]
         ],
         *args: Any,
@@ -155,9 +155,7 @@ class Collection(proxy.PymongoRestProxy):
     # pylint: disable-next=missing-function-docstring
     def insert_one(
         self,
-        document: Union[
-            pymongo.typings._DocumentType, bson.raw_bson.RawBSONDocument
-        ],
+        document: bson.raw_bson.RawBSONDocument,
         *args: Any,
         **kwargs: Any,
     ) -> pymongo.results.InsertOneResult:
@@ -172,9 +170,7 @@ class Collection(proxy.PymongoRestProxy):
     # pylint: disable-next=missing-function-docstring
     def insert_many(
         self,
-        documents: Iterable[
-            Union[pymongo.typings._DocumentType, bson.raw_bson.RawBSONDocument]
-        ],
+        documents: Iterable[bson.raw_bson.RawBSONDocument],
         *args: Any,
         **kwargs: Any,
     ) -> pymongo.results.InsertManyResult:
