@@ -846,7 +846,14 @@ export default function useSchemaSettings() {
         setAffectedPathCount(excludedPaths[datasetName].size);
       }
     }
-  }, [filterRuleTab, searchResults, excludedPaths, datasetName]);
+  }, [
+    finalSchema,
+    filterRuleTab,
+    searchResults,
+    excludedPaths,
+    datasetName,
+    selectedPaths,
+  ]);
 
   return {
     searchMetaFilter,
