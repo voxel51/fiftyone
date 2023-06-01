@@ -5,6 +5,7 @@ API key management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import dataclasses
 import datetime
 from typing import Optional, TypedDict, Union
 
@@ -13,12 +14,17 @@ from fiftyone.management import users
 from fiftyone.management import util as fom_util
 
 
-class APIKey(TypedDict):
-    """API key dict."""
+@dataclasses.dataclass
+class APIKey(object):
+    """API key dataclass."""
 
     id: str
     name: str
     created_at: datetime.datetime
+
+    def __post_init__(self):
+        if isinstance(self.created_at, str):
+            self.created_at = datetime.datetime.fromisoformat(self.created_at)
 
 
 _LIST_API_KEYS_QUERY = """
@@ -52,36 +58,40 @@ _DELETE_API_KEY_QUERY = """
 """
 
 
-def list_api_keys(user: Optional[Union[str, users.User]] = None):
-    """Lists all API keys for the given user (default: current user).
+def delete_api_key(
+    key: str, user: Optional[Union[str, users.User]] = None
+) -> None:
+    """Deletes the API key for the given user (default: current user).
 
-    The returned key objects only have their name and IDs populated; the raw
-    key is only available at time of generation.
+    .. note::
 
-    .. note:
+        Only admins can delete keys for other users.
 
-        Only admins can request keys for other users.
+    Examples::
+
+        import fiftyone.management as fom
+
+        # Delete all keys from a user
+        email = "user@company.com"
+        for key in fom.list_api_keys(email):
+            fom.delete_api_key(key.id, email)
 
     Args:
+        key: the ID of the key to delete
         user (None): an optional user ID, email string, or
-            :class:`fiftyone.management.User` instance. Defaults to the current
-            user
-
-    Returns:
-        a list of :class:`APIKey` instances
+            :class:`~fiftyone.management.users.User` instance. Defaults to
+            the current user.
     """
-    if user is None:
-        user = users.whoami()
-    user_id = users._resolve_user_id(user)
+    user_id = users._resolve_user_id(user, nullable=True)
 
     client = connection.APIClientConnection().client
-    data = client.post_graphql_request(
-        query=_LIST_API_KEYS_QUERY, variables={"userId": user_id}
+    client.post_graphql_request(
+        query=_DELETE_API_KEY_QUERY,
+        variables={
+            "key": key,
+            "userId": user_id,
+        },
     )
-    return [
-        {fom_util.camel_to_snake(var): val for var, val in api_key.items()}
-        for api_key in data["user"]["apiKeys"]
-    ]
 
 
 def generate_api_key(
@@ -89,15 +99,34 @@ def generate_api_key(
 ) -> str:
     """Generates an API key for the given user (default: current user).
 
-    .. note:
+    .. note::
 
         Only admins can generate keys for other users.
+
+    .. warning::
+
+        Once generated, this key cannot be recovered! If it's lost,
+        you must generate a new key.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        # 1. Generate key for myself
+        fom.generate_api_key("my-key")
+
+        # 2.a Generate key for user@example.com
+        fom.generate_api_key("your-key", "user@example.com")
+
+        # 2.b Generate key for user@example.com
+        user = fom.get_user("user@example.com")
+        fom.generate_api_key("your-key", user)
 
     Args:
         key_name: a descriptive name for the key
         user (None): an optional user ID, email string, or
-            :class:`fiftyone.management.User` instance. Defaults to the current
-            user
+            :class:`~fiftyone.management.users.User` instance. Defaults
+            to the current user.
 
     Returns:
         the API key string
@@ -115,28 +144,47 @@ def generate_api_key(
     return data["generateApiKey"]["key"]
 
 
-def delete_api_key(
-    key: str, user: Optional[Union[str, users.User]] = None
-) -> None:
-    """Deletes the API key for the given user (default: current user).
+def list_api_keys(user: Optional[Union[str, users.User]] = None):
+    """Lists all API keys for the given user (default: current user).
 
-    .. note:
+    The returned key objects only have their name and IDs populated; the raw
+    key is only available at time of generation.
 
-        Only admins can delete keys for other users.
+    .. note::
+
+        Only admins can request keys for other users.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        # 1. List my keys
+        fom.list_api_keys() # list my keys
+
+        # 2.a List keys for user@example.com
+        fom.list_api_keys("user@example.com")
+
+        # 2.b List keys for user@example.com
+        user = fom.get_user("user@example.com")
+        fom.list_api_keys(user)
 
     Args:
-        key: the key to delete
         user (None): an optional user ID, email string, or
-            :class:`fiftyone.management.User` instance. Defaults to the current
-            user
+            :class:`~fiftyone.management.users.User` instance. Defaults
+            to the current user.
+
+    Returns:
+        a list of :class:`APIKey` instances
     """
-    user_id = users._resolve_user_id(user, nullable=True)
+    if user is None:
+        user = users.whoami()
+    user_id = users._resolve_user_id(user)
 
     client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_DELETE_API_KEY_QUERY,
-        variables={
-            "key": key,
-            "userId": user_id,
-        },
+    data = client.post_graphql_request(
+        query=_LIST_API_KEYS_QUERY, variables={"userId": user_id}
     )
+    return [
+        APIKey(**fom_util.camel_to_snake_container(api_key))
+        for api_key in data["user"]["apiKeys"]
+    ]

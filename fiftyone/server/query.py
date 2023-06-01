@@ -10,7 +10,6 @@ from datetime import date, datetime
 from enum import Enum
 import os
 
-import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
@@ -26,6 +25,7 @@ from fiftyone.core.odm import SavedViewDocument
 import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
+from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
@@ -191,9 +191,23 @@ class SidebarGroup:
 
 
 @gql.type
-class ColorSchemeStr:
+class LabelSetting:
+    value: str
+    color: str
+
+
+@gql.type
+class CustomizeColor:
+    path: str
+    field_color: t.Optional[str]
+    color_by_attribute: t.Optional[str]
+    value_colors: t.Optional[t.List[LabelSetting]]
+
+
+@gql.type
+class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
-    customized_color_settings: t.Optional[str] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
 
 
 @gql.type
@@ -223,7 +237,7 @@ class DatasetAppConfig:
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
-    color_scheme: t.Optional[ColorSchemeStr]
+    color_scheme: t.Optional[ColorScheme]
 
 
 @gql.type
@@ -328,24 +342,6 @@ class Theme(Enum):
 
 
 @gql.type
-class LabelSetting:
-    name: str
-    color: str
-
-
-@gql.type
-class CustomizeColor:
-    field: str
-    use_field_color: t.Optional[bool]
-    field_color: t.Optional[str]
-    attribute_for_color: t.Optional[str]
-    use_opacity: t.Optional[bool]
-    attribute_for_Opacity: t.Optional[str]
-    use_label_colors: t.Optional[bool]
-    label_colors: t.Optional[t.List[LabelSetting]]
-
-
-@gql.type
 class AppConfig:
     color_by: ColorBy
     color_pool: t.List[str]
@@ -364,6 +360,12 @@ class AppConfig:
     timezone: t.Optional[str]
     use_frame_number: bool
     spaces: t.Optional[JSON]
+
+
+@gql.type
+class SchemaResult:
+    field_schema: t.List[SampleField]
+    frame_field_schema: t.List[SampleField]
 
 
 @gql.type
@@ -464,32 +466,53 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def schema_for_view_stages(
-        self, dataset_name: str, view_stages: BSONArray
-    ) -> t.List[SampleField]:
-        ds = fod.load_dataset(dataset_name)
+        self,
+        dataset_name: str,
+        view_stages: BSONArray,
+    ) -> SchemaResult:
         try:
+            ds = fod.load_dataset(dataset_name)
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
 
-                base_schema = serialize_fields(
-                    view.get_field_schema(flat=True)
-                )
                 if ds.media_type == fom.VIDEO:
-                    # return base_schema + serialize_fields(view.get_frame_field_schema(flat=True))
-                    return serialize_fields(
+                    frame_schema = serialize_fields(
                         view.get_frame_field_schema(flat=True)
                     )
+                    field_schema = serialize_fields(
+                        view.get_field_schema(flat=True)
+                    )
+                    return SchemaResult(
+                        field_schema=field_schema,
+                        frame_field_schema=frame_schema,
+                    )
 
-                return base_schema
-
+                return SchemaResult(
+                    field_schema=serialize_fields(
+                        view.get_field_schema(flat=True)
+                    ),
+                    frame_field_schema=[],
+                )
             if ds.media_type == fom.VIDEO:
-                # return base_schema + serialize_fields(ds.get_frame_field_schema(flat=True))
-                return serialize_fields(ds.get_frame_field_schema(flat=True))
+                frames_field_schema = serialize_fields(
+                    ds.get_frame_field_schema(flat=True)
+                )
+                field_schema = serialize_fields(ds.get_field_schema(flat=True))
+                return SchemaResult(
+                    field_schema=field_schema,
+                    frame_field_schema=frames_field_schema,
+                )
 
-            return serialize_fields(ds.get_field_schema(flat=True))
+            return SchemaResult(
+                field_schema=serialize_fields(ds.get_field_schema(flat=True)),
+                frame_field_schema=[],
+            )
         except Exception as e:
             print("failed to get schema for view stages", str(e))
-            return []
+            return SchemaResult(
+                field_schema=[],
+                frame_field_schema=[],
+            )
 
 
 def _flatten_fields(
@@ -590,6 +613,4 @@ async def serialize_dataset(
 
         return data
 
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
+    return await run_sync_task(run)

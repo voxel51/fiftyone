@@ -1,6 +1,8 @@
 import React from "react";
 import { Box, Typography, Select, MenuItem, ListItemText } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
+import autoFocus from "../utils/auto-focus";
+import { getComponentProps } from "../utils";
 
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
@@ -17,6 +19,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
+        autoFocus={autoFocus(props)}
         defaultValue={data ?? schema.default ?? (multiple ? [] : "")}
         size="small"
         fullWidth
@@ -32,19 +35,38 @@ export default function DropdownView(props) {
         }}
         onChange={(e) => onChange(path, e.target.value)}
         multiple={multiple}
+        {...getComponentProps(props, "select")}
       >
         {choices.map(({ value, label, description, caption }) => (
-          <MenuItem key="value" value={value}>
+          <MenuItem
+            key="value"
+            value={value}
+            {...getComponentProps(props, "optionContainer")}
+          >
             <ListItemText
-              primary={<Typography>{label}</Typography>}
+              primary={
+                <Typography {...getComponentProps(props, "optionLabel")}>
+                  {label}
+                </Typography>
+              }
               secondary={
                 <Box>
-                  <Typography variant="body2">{description}</Typography>
-                  <Typography variant="body2" color="text.tertiary">
+                  <Typography
+                    variant="body2"
+                    {...getComponentProps(props, "optionDescription")}
+                  >
+                    {description}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.tertiary"
+                    {...getComponentProps(props, "optionCaption")}
+                  >
                     {caption}
                   </Typography>
                 </Box>
               }
+              {...getComponentProps(props, "option")}
             />
           </MenuItem>
         ))}

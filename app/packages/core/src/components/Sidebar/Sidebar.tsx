@@ -21,7 +21,6 @@ import { Box } from "@mui/material";
 import ViewSelection from "./ViewSelection";
 import { resizeHandle } from "./Sidebar.module.css";
 import SchemaSettings from "../Schema/SchemaSettings";
-import { graphql, useFragment } from "react-relay";
 
 const MARGIN = 3;
 

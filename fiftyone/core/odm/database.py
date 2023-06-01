@@ -33,12 +33,15 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.internal as foi
 
-import fiftyone_teams_api.pymongo as fomongo
-import fiftyone_teams_api.motor as fomotor
+from fiftyone.api import pymongo as fomongo, motor as fomotor
 
 from .document import Document
 
+foa = fou.lazy_import("fiftyone.core.annotation")
+fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
+foe = fou.lazy_import("fiftyone.core.evaluation")
+
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +196,7 @@ def establish_db_conn(config):
     global _database_name
 
     _connection_kwargs["appname"] = foc.DATABASE_APPNAME
-    if config.api_uri is not None:
+    if config.database_uri is None and config.api_uri is not None:
         if not config.api_key:
             raise ConnectionError(
                 "No API key found. Refer to "
@@ -936,6 +939,7 @@ def patch_annotation_runs(dataset_name, dry_run=False):
     _patch_runs(
         dataset_name,
         "annotation_runs",
+        foa.AnnotationMethod,
         "annotation run",
         dry_run=dry_run,
     )
@@ -953,6 +957,7 @@ def patch_brain_runs(dataset_name, dry_run=False):
     _patch_runs(
         dataset_name,
         "brain_methods",
+        fob.BrainMethod,
         "brain method run",
         dry_run=dry_run,
     )
@@ -967,10 +972,16 @@ def patch_evaluations(dataset_name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    _patch_runs(dataset_name, "evaluations", "evaluation", dry_run=dry_run)
+    _patch_runs(
+        dataset_name,
+        "evaluations",
+        foe.EvaluationMethod,
+        "evaluation",
+        dry_run=dry_run,
+    )
 
 
-def _patch_runs(dataset_name, runs_field, run_str, dry_run=False):
+def _patch_runs(dataset_name, runs_field, run_cls, run_str, dry_run=False):
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
 
@@ -988,7 +999,9 @@ def _patch_runs(dataset_name, runs_field, run_str, dry_run=False):
     rd = {}
     for run_dict in conn.runs.find({"_dataset_id": dataset_id}):
         try:
-            rd[run_dict["key"]] = run_dict["_id"]
+            cls = etau.get_class(run_dict["config"]["cls"][: -len("Config")])
+            if issubclass(cls, run_cls):
+                rd[run_dict["key"]] = run_dict["_id"]
         except:
             pass
 

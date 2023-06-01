@@ -88,11 +88,14 @@ FiftyOne supports the configuration options described below:
 | `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
 |                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`         | `600`                         | The timeout for execution of an operator. See :ref:`this page <app-plugins>` for more  |
-|                               |                                     |                               | information.                                                                           |
+| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`         | `600`                         | The timeout for execution of an operator. See :ref:`this page <fiftyone-plugins>` for  |
+|                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <app-plugins>` for more |
-|                               |                                     |                               | information.                                                                           |
+| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <fiftyone-plugins>` for |
+|                               |                                     |                               | more information.                                                                      |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `plugins_cache_enabled`       | `FIFTYONE_PLUGINS_CACHE_ENABLED`    | `False`                       | When set to ``True`` plugins will be cached until their directory's ``mtime`` changes. |
+|                               |                                     |                               | This is intended to be used in production.                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
@@ -153,6 +156,7 @@ and the CLI:
             "module_path": null,
             "operator_timeout": 600,
             "plugins_dir": null,
+            "plugins_cache_enabled": false,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -197,6 +201,7 @@ and the CLI:
             "module_path": null,
             "operator_timeout": 600,
             "plugins_dir": null,
+            "plugins_cache_enabled": false,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -788,7 +793,7 @@ describe these options in detail.
 
     Did you know? You can also configure the behavior of the App on a
     per-dataset basis by customizing your
-    :ref:`dataset's App config <custom-app-config>`.
+    :ref:`dataset's App config <dataset-app-config>`.
 
 Order of precedence
 ~~~~~~~~~~~~~~~~~~~
@@ -909,7 +914,7 @@ Plugins that you can configure include:
 
 -   The builtin :ref:`Map panel <app-map-panel>`
 -   The builtin :ref:`3D visualizer <app-3d-visualizer-config>`
--   Any :ref:`custom plugins <app-plugins>` that you've registered
+-   Any :ref:`custom plugins <fiftyone-plugins>` that you've registered
 
 For example, you may add the following to your JSON App config
 (`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
@@ -928,4 +933,4 @@ system:
 .. note::
 
     You can also store dataset-specific plugin settings by storing any subset
-    of the above values on a :ref:`dataset's App config <custom-app-config>`.
+    of the above values on a :ref:`dataset's App config <dataset-app-config>`.

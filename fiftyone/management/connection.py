@@ -8,7 +8,7 @@ API connection.
 import requests.exceptions
 
 import fiftyone.core.config as foc
-import fiftyone_teams_api
+import fiftyone.api
 
 
 class APIClientConnection(object):
@@ -43,9 +43,7 @@ class APIClientConnection(object):
                 raise ConnectionError(
                     "Cannot connect to API without an API key."
                 )
-            self.__client = fiftyone_teams_api.Client(
-                config.api_uri, config.api_key
-            )
+            self.__client = fiftyone.api.Client(config.api_uri, config.api_key)
         return self.__client
 
 
@@ -55,9 +53,11 @@ def reload_api_connection() -> None:
     This is necessary if the API URI or API key are changed after the first
     usage of this module.
 
-    This should rarely be needed unless a script is working across deployments.
+    .. note::
 
-    Example usage::
+        This should rarely be needed unless a script is working across deployments.
+
+    Examples::
 
         import fiftyone.management as fom
         import fiftyone as fo
@@ -80,6 +80,12 @@ def test_api_connection():
 
     If the connection succeeds, a message will be printed. If the connection
     failes, an exception will be raised.
+
+    Examples::
+
+        import fiftyone.management as fom
+        fom.test_api_connection() # API connection succeeded
+
     """
     client = APIClientConnection().client
     try:

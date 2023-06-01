@@ -1,5 +1,6 @@
 import React from "react";
 import ListView from "./ListView";
+import { getComponentProps } from "../utils";
 
 export default function MapView(props) {
   const { id, schema, onChange, path, data, errors } = props;
@@ -8,6 +9,7 @@ export default function MapView(props) {
 
   return (
     <ListView
+      {...props}
       id={id}
       schema={{
         type: "array",
@@ -16,12 +18,17 @@ export default function MapView(props) {
           items: [
             {
               type: "string",
-              view: { component: "FieldView", label: keyLabel },
+              view: {
+                component: "FieldView",
+                label: keyLabel,
+                ...getComponentProps(props, "key"),
+              },
             },
             additionalProperties,
           ],
           view: {
             component: "TupleView",
+            ...getComponentProps(props, "entryContainer"),
           },
         },
         view: { ...view, hideIndexLabel: true },
@@ -30,8 +37,6 @@ export default function MapView(props) {
       onChange={(path, value) => {
         onChange(path, getActualValue(value));
       }}
-      path={path}
-      errors={errors}
     />
   );
 }

@@ -47,11 +47,11 @@ from .database import (
 )
 from .dataset import (
     SampleFieldDocument,
+    ColorScheme,
     KeypointSkeleton,
     DatasetAppConfig,
     DatasetDocument,
     SidebarGroupDocument,
-    ColorSchemeDocument,
 )
 from .document import (
     Document,

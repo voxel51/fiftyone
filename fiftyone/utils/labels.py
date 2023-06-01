@@ -317,7 +317,7 @@ def transform_segmentations(
             argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         update (True): whether to update the mask paths on the instances
         update_mask_targets (False): whether to update the mask targets on the
             dataset to reflect the transformed targets

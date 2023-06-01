@@ -10,7 +10,7 @@ import { AppError, Schema, Stage } from "@fiftyone/utilities";
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
-  by: "field" | "instance" | "value";
+  by: "field" | "value";
   pool: readonly string[];
   scale: RGB[];
   seed: number;
@@ -22,14 +22,12 @@ export interface Coloring {
   targets: string[];
 }
 export interface CustomizeColor {
-  field: string;
+  path: string;
   fieldColor?: string;
-  useFieldColor: boolean;
-  attributeForColor?: string;
+  colorByAttribute?: string;
   // attributeForOpacity?: string;
-  colors?: string[];
-  labelColors?: {
-    name: string;
+  valueColors?: {
+    value: string;
     color: string;
   }[];
 }

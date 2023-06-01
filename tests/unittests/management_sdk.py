@@ -31,7 +31,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
         os.environ.pop("FIFTYONE_API_KEY", None)
         os.environ.pop("FIFTYONE_API_URI", None)
 
-    @mock.patch("fiftyone.management.connection.fiftyone_teams_api")
+    @mock.patch("fiftyone.management.connection.fiftyone.api")
     def test_singleton(self, api_mock):
         instance1 = fom.connection.APIClientConnection()
 
@@ -47,7 +47,7 @@ class ManagementSdkConnectionTests(unittest.TestCase):
 
         self.assertEqual(instance1, instance2)
 
-    @mock.patch("fiftyone.management.connection.fiftyone_teams_api")
+    @mock.patch("fiftyone.management.connection.fiftyone.api")
     def test_reload(self, api_mock):
         conn = fom.connection.APIClientConnection()
         conn.client.get()
@@ -228,19 +228,40 @@ class ManagementSdkTests(unittest.TestCase):
     ############# Dataset
 
     def test_get_permissions_for_dataset(self):
+        users = [
+            {
+                "user": {
+                    "name": "A. User",
+                    "email": "a@company.com",
+                    "id": "12345",
+                },
+                "activePermission": "MANAGE",
+            },
+            {
+                "user": {
+                    "name": "B. User",
+                    "email": "b@company.com",
+                    "id": "67890",
+                },
+                "activePermission": "EDIT",
+            },
+        ]
+        expected = [
+            {
+                "name": "A. User",
+                "email": "a@company.com",
+                "id": "12345",
+                "permission": "MANAGE",
+            },
+            {
+                "name": "B. User",
+                "email": "b@company.com",
+                "id": "67890",
+                "permission": "EDIT",
+            },
+        ]
         self.client.post_graphql_request.return_value = {
-            "dataset": {
-                "users": [
-                    {
-                        "activePermission": "MANAGE",
-                        "user": {"name": "A. User", "id": "12345"},
-                    },
-                    {
-                        "activePermission": "EDIT",
-                        "user": {"name": "B. User", "id": "67890"},
-                    },
-                ]
-            }
+            "dataset": {"users": users}
         }
 
         results = fom.get_permissions_for_dataset(self.DATASET_NAME)
@@ -251,10 +272,7 @@ class ManagementSdkTests(unittest.TestCase):
                 "dataset": self.DATASET_NAME,
             },
         )
-        assert results == [
-            {"name": "A. User", "id": "12345", "permission": "MANAGE"},
-            {"name": "B. User", "id": "67890", "permission": "EDIT"},
-        ]
+        assert results == expected
 
     def test_get_permissions_for_dataset_user(self):
         self.client.post_graphql_request.return_value = {
@@ -427,7 +445,23 @@ class ManagementSdkTests(unittest.TestCase):
                 }
             ],
         }
-        expected = fom_util.camel_to_snake_container(plugin)
+        expected = fom.plugin.Plugin(
+            name=plugin["name"],
+            description=plugin["description"],
+            version=plugin["version"],
+            fiftyone_version=plugin["fiftyoneVersion"],
+            enabled=True,
+            operators=[
+                fom.plugin.PluginOperator(
+                    name=plugin["operators"][0]["name"],
+                    enabled=True,
+                    permission=fom.plugin.OperatorPermission(
+                        minimum_role=fom.UserRole.MEMBER,
+                        minimum_dataset_permission=fom.DatasetPermission.EDIT,
+                    ),
+                )
+            ],
+        )
 
         self.client.post_graphql_request.return_value = {"plugin": plugin}
 
@@ -462,10 +496,39 @@ class ManagementSdkTests(unittest.TestCase):
                 "description": "another plugin",
                 "version": "blah",
                 "fiftyoneVersion": "5.1.2",
-                "operators": None,
+                "enabled": True,
+                "operators": [],
             },
         ]
-        expected = fom_util.camel_to_snake_container(plugins)
+        plugin = plugins[0]
+        plugin2 = plugins[1]
+        expected = [
+            fom.plugin.Plugin(
+                name=plugin["name"],
+                description=plugin["description"],
+                version=plugin["version"],
+                fiftyone_version=plugin["fiftyoneVersion"],
+                enabled=True,
+                operators=[
+                    fom.plugin.PluginOperator(
+                        name=plugin["operators"][0]["name"],
+                        enabled=True,
+                        permission=fom.plugin.OperatorPermission(
+                            minimum_role=fom.UserRole.MEMBER,
+                            minimum_dataset_permission=fom.DatasetPermission.EDIT,
+                        ),
+                    )
+                ],
+            ),
+            fom.plugin.Plugin(
+                name=plugin2["name"],
+                description=plugin2["description"],
+                version=plugin2["version"],
+                fiftyone_version=plugin2["fiftyoneVersion"],
+                enabled=True,
+                operators=[],
+            ),
+        ]
         self.client.post_graphql_request.return_value = {"plugins": plugins}
 
         include_builtin = mock.Mock()
@@ -570,7 +633,7 @@ class ManagementSdkTests(unittest.TestCase):
         self.client.post_graphql_request.assert_called_with(
             query=fom.users._GET_USER_QUERY, variables={"userId": user}
         )
-        assert result == expected
+        assert result == fom.users.User(**expected)
 
     def test_list_pending_invitations(self):
         invitations = [
@@ -598,7 +661,7 @@ class ManagementSdkTests(unittest.TestCase):
                 created_at=inv["createdAt"],
                 expires_at=inv["expiresAt"],
                 invitee_email=inv["inviteeEmail"],
-                invitee_role=inv["inviteeRole"],
+                invitee_role=fom.UserRole[inv["inviteeRole"]],
                 url=inv["url"],
             )
             for inv in invitations
@@ -617,11 +680,13 @@ class ManagementSdkTests(unittest.TestCase):
         users = [
             {
                 "id": "user1id",
+                "name": "user 1 admin",
                 "email": "user1@company.com",
                 "role": "ADMIN",
             },
             {
                 "id": "user2id",
+                "name": "user 2 member",
                 "email": "user2@company.com",
                 "role": "MEMBER",
             },
@@ -632,7 +697,9 @@ class ManagementSdkTests(unittest.TestCase):
         self.client.post_graphql_connectioned_request.assert_called_with(
             fom.users._LIST_USERS_QUERY, "usersConnection"
         )
-        self.assertEqual(return_users, users)
+        self.assertEqual(
+            return_users, [fom.users.User(**user) for user in users]
+        )
 
     def test_delete_user(self):
         fom.delete_user(self.USER)
@@ -701,7 +768,7 @@ class ManagementSdkTests(unittest.TestCase):
         self.client.post_graphql_request.assert_called_with(
             query=fom.users._VIEWER_QUERY,
         )
-        assert result == expected
+        assert result == fom.users.User(**expected)
 
     @mock.patch("fiftyone.management.users.get_user")
     def test__resolve_user_id(self, get_user_mock):
@@ -709,7 +776,7 @@ class ManagementSdkTests(unittest.TestCase):
             id="1234567890",
             name="user",
             email="user@company.com",
-            role="ADMIN",
+            role=fom.UserRole.ADMIN,
         )
         resolve_user_id = ManagementSdkTests._original_resolve_user
 
@@ -718,19 +785,19 @@ class ManagementSdkTests(unittest.TestCase):
         self.assertEqual(resolve_user_id(None, nullable=True), None)
 
         # str not email
-        self.assertEqual(resolve_user_id(user["id"]), user["id"])
+        self.assertEqual(resolve_user_id(user.id), user.id)
 
         # str email
         get_user_mock.return_value = user
-        self.assertEqual(resolve_user_id(user["email"]), user["id"])
-        get_user_mock.assert_called_with(user["email"])
+        self.assertEqual(resolve_user_id(user.email), user.id)
+        get_user_mock.assert_called_with(user.email)
 
         get_user_mock.reset_mock()
         get_user_mock.return_value = None
-        self.assertRaises(ValueError, resolve_user_id, user["email"])
+        self.assertRaises(ValueError, resolve_user_id, user.email)
 
         # user dict - just has to have 'id' key actually
-        self.assertEqual(resolve_user_id(user), user["id"])
+        self.assertEqual(resolve_user_id(user), user.id)
         self.assertEqual(resolve_user_id({"id": "theid"}), "theid")
 
         # Bad types
@@ -754,9 +821,7 @@ class ManagementSdkTests(unittest.TestCase):
                 get_user_mock.reset_mock()
                 if is_email:
                     return_val = resolve_user_id(email, nullable=False)
-                    self.assertEqual(
-                        return_val, get_user_mock.return_value["id"]
-                    )
+                    self.assertEqual(return_val, get_user_mock.return_value.id)
                     get_user_mock.assert_called_with(email)
                 else:
                     self.assertEqual(

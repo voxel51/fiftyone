@@ -30,6 +30,7 @@ FIFTYONE_MEDIA_CACHE_CONFIG_PATH = os.path.join(
 )
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
+WELCOME_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "welcome.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
 #
@@ -43,12 +44,12 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # This setting may be ``None`` if this client has no compatibility with other
 # versions
 #
-COMPATIBLE_VERSIONS = ">=0.19,<0.21"
+COMPATIBLE_VERSIONS = ">=0.19,<0.22"
 
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.20.1"  # open source compatibility version
+VERSION = "0.21.0"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
@@ -84,7 +85,7 @@ DEFAULT_APP_COLOR_POOL = [
 
 DEFAULT_COLOR_SCHEME = {
     "color_pool": DEFAULT_APP_COLOR_POOL,
-    "customized_color_settings": [],
+    "fields": [],
 }
 
 # MongoDB setup

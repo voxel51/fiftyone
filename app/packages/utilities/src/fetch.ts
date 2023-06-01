@@ -78,6 +78,7 @@ export const setFetchFunction = (
     retryCodes = [502, 503, 504]
   ) => {
     let url: string;
+    const controller = new AbortController();
 
     if (fetchPathPrefix) {
       path = `${fetchPathPrefix}${path}`;
@@ -118,6 +119,7 @@ export const setFetchFunction = (
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
+      signal: controller.signal,
     });
 
     if (response.status >= 400) {
@@ -155,7 +157,7 @@ export const setFetchFunction = (
     }
 
     if (result === "json-stream") {
-      return new JSONStreamParser(response);
+      return new JSONStreamParser(response, controller);
     }
 
     return await response[result]();
@@ -165,7 +167,7 @@ export const setFetchFunction = (
 };
 
 class JSONStreamParser {
-  constructor(response) {
+  constructor(response, private controller: AbortController) {
     this.reader = response.body.getReader();
     this.decoder = new TextDecoder();
     this.partialLine = "";
@@ -174,6 +176,10 @@ class JSONStreamParser {
   private reader;
   private decoder: TextDecoder;
   private partialLine: string;
+
+  abort() {
+    return this.controller.abort();
+  }
 
   async parse(callback) {
     while (true) {

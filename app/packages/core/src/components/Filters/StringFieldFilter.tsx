@@ -12,11 +12,13 @@ import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 const StringFieldFilter = ({
   path,
   modal,
+  color,
   ...rest
 }: {
   path: string;
   modal: boolean;
   name?: boolean;
+  color: string;
   onFocus?: () => void;
   onBlur?: () => void;
   title: string;
@@ -34,6 +36,7 @@ const StringFieldFilter = ({
       })}
       path={path}
       modal={modal}
+      color={color}
       {...rest}
     />
   );

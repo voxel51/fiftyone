@@ -7,6 +7,12 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
+function dynamicTheme(accessor: string) {
+  const parts = accessor.split(".");
+  parts.unshift("--fo");
+  return `var(${parts.join("-")})`;
+}
+
 let theme = extendMuiTheme({
   cssVarPrefix: "fo",
   typography: {
@@ -37,6 +43,7 @@ let theme = extendMuiTheme({
           inactiveTab: "hsl(200, 0%, 90%)",
         },
         divider: "hsl(200, 0%, 80%)",
+        dividerDisabled: "hsl(200, 0%, 85%)",
         danger: {
           plainColor: "hsl(0, 87%, 47%)",
         },
@@ -55,6 +62,9 @@ let theme = extendMuiTheme({
           plainColor: "hsl(25, 100%, 51%)",
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
+        },
+        secondary: {
+          main: "hsl(200, 0%, 30%)",
         },
         focusVisible: "hsl(212, 97%, 57%, 0.3)",
         text: {
@@ -75,6 +85,9 @@ let theme = extendMuiTheme({
         },
         error: {
           main: "hsl(0, 87%, 53%)",
+        },
+        Avatar: {
+          defaultBg: "hsl(200, 0%, 85%)",
         },
       },
     },
@@ -102,6 +115,7 @@ let theme = extendMuiTheme({
           paper: "hsl(200, 0%, 10%)",
         },
         divider: "hsl(200, 0%, 20%)",
+        dividerDisabled: "hsl(200, 0%, 15%)",
         danger: {
           plainColor: "hsl(0, 87%, 53%)",
         },
@@ -152,6 +166,25 @@ let theme = extendMuiTheme({
     MuiButtonBase: {
       defaultProps: {
         disableRipple: true,
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.text.secondary"),
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.text.tertiary"),
+          },
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          color: dynamicTheme("palette.text.primary"),
+        },
       },
     },
   },

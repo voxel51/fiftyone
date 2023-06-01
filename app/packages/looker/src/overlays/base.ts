@@ -97,49 +97,46 @@ export abstract class CoordinateOverlay<
     options: { coloring, customizeColorSetting },
   }: Readonly<State>): string {
     let key;
-    let pool;
     // video fields path needs to be converted
     const path = this.field.startsWith("frames.")
       ? this.field.slice("frames.".length)
       : this.field;
-    switch (coloring.by) {
-      case "field":
-        // check if the field has a customized color, use it if it is a valid color
-        const field = customizeColorSetting.find((s) => s.field === path);
-        const useFieldColor = field?.useFieldColor;
-        const fieldColor = field?.fieldColor;
-        if (useFieldColor && fieldColor && isValidColor(fieldColor)) {
-          return fieldColor;
-        }
+    const field = customizeColorSetting.find((s) => s.path === path);
+    if (coloring.by === "field") {
+      if (isValidColor(field?.fieldColor)) {
+        return field.fieldColor;
+      }
+      return getColor(coloring.pool, coloring.seed, this.field);
+    }
+    if (coloring.by === "value") {
+      if (field) {
+        key = field.colorByAttribute
+          ? field.colorByAttribute === "index"
+            ? "id"
+            : field.colorByAttribute
+          : "label";
 
-        // use default settings
-        return getColor(coloring.pool, coloring.seed, this.field);
-
-      default:
-        // check if the field has customized setting
-        const setting = customizeColorSetting.find((s) => s.field === path);
-        if (setting) {
-          key = setting.attributeForColor ?? "label";
-          pool = setting.colors?.every((c) => isValidColor(c))
-            ? setting.colors
-            : coloring.pool;
-          // check if this label has a assigned color, use it if it is a valid color
-
-          const labelColor = setting.labelColors?.find(
-            (l) => l.name == this.label[key]?.toString()
-          )?.color;
-
-          if (isValidColor(labelColor)) {
-            return labelColor;
-          } else {
-            // fallback to use label as default attribute
-            key = "label";
+        // check if this label has a assigned color, use it if it is a valid color
+        const valueColor = field?.valueColors?.find((l) => {
+          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+            return typeof this.label[key] === "string"
+              ? l.value?.toLowerCase === this.label[key]
+              : !this.label[key];
           }
-        } else {
-          key = "label";
-          pool = coloring.pool;
-        }
-        return getColor(pool, coloring.seed, this.label[key]);
+          if (["True", "False"].includes(l.value?.toString())) {
+            return (
+              l.value?.toString().toLowerCase() ==
+              this.label[key]?.toString().toLowerCase()
+            );
+          }
+          return l.value?.toString() == this.label[key]?.toString();
+        })?.color;
+        return isValidColor(valueColor)
+          ? valueColor
+          : getColor(coloring.pool, coloring.seed, this.label[key]);
+      } else {
+        return getColor(coloring.pool, coloring.seed, this.label["label"]);
+      }
     }
   }
 

@@ -16,14 +16,14 @@ import {
 import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting: React.FC = ({}) => {
-  const { props } = fos.useSessionColorScheme();
+  const { props } = fos.useGlobalColorSetting();
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     props.setOpacity(newValue as number);
   };
 
   return (
     <div>
-      <Divider>Color Setting</Divider>
+      <Divider>General</Divider>
       <ControlGroupWrapper>
         <LabelTitle>Color annotations by</LabelTitle>
         <SectionWrapper>
@@ -33,8 +33,8 @@ const GlobalSetting: React.FC = ({}) => {
             setValue={(mode) => props.setColorBy(mode)}
           />
         </SectionWrapper>
-        {props.colorBy === "field" && <ShuffleColor />}
-        <LabelTitle>Color Pool</LabelTitle>
+        <ShuffleColor />
+        <LabelTitle>Color pool</LabelTitle>
         <SectionWrapper>
           <ColorPalette />
         </SectionWrapper>
@@ -58,12 +58,13 @@ const GlobalSetting: React.FC = ({}) => {
           min={0}
           max={1}
           step={0.01}
+          style={{ width: "50%" }}
         />
       </ControlGroupWrapper>
-      <Divider>Keypoints Setting</Divider>
+      <Divider>Keypoints</Divider>
       <ControlGroupWrapper>
         <Checkbox
-          name={"Show keypoints in multicolor"}
+          name={"Multicolor keypoints"}
           value={Boolean(props.useMulticolorKeypoints)}
           setValue={(v) => props.setUseMultiplecolorKeypoints(v)}
         />

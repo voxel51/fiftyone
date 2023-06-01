@@ -5,8 +5,9 @@ Dataset management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 import enum
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from fiftyone.management import connection
 from fiftyone.management import users
@@ -50,12 +51,26 @@ _DELETE_DATASET_USER_PERM_QUERY = """
     }
 """
 
+
+_GET_DATASET_CREATOR_QUERY = """
+    query ($dataset: String!) {
+        dataset (identifier: $dataset) {
+            createdBy {
+                id
+                name
+                email
+                role
+            }
+        }
+    }
+"""
+
 _GET_PERMISSIONS_FOR_DATASET_QUERY = """
     query ($dataset: String!){
         dataset(identifier: $dataset) {
             users(first: 10000) {
                 activePermission
-                user {name, id}
+                user {name, email, id}
             }
         }
     }
@@ -124,10 +139,23 @@ def delete_dataset_user_permission(
 
         The caller must have ``Can Manage`` permissions on the dataset.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        user = "guest@company.com"
+
+        fom.set_dataset_user_permission(dataset_name, user, fom.VIEW)
+
+        fom.delete_dataset_user_permission(dataset_name, user)
+
+        assert fom.get_permissions(dataset_name=dataset_name, user=user) == fom.NO_ACCESS
+
     Args:
         dataset_name: the dataset name
-        user: a user ID, email string, or :class:`fiftyone.management.User`
-            instance
+        user: a user ID, email string, or
+            :class:`~fiftyone.management.users.User` instance.
     """
     user_id = users._resolve_user_id(user)
 
@@ -139,6 +167,40 @@ def delete_dataset_user_permission(
             "userId": user_id,
         },
     )
+
+
+def get_dataset_creator(dataset_name: str) -> Optional[users.User]:
+    """Gets creator of a dataset, if known.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        user = fom.get_dataset_creator("dataset")
+
+    Args:
+        dataset_name: the dataset name
+
+    Raises:
+        ValueError: if `dataset_name` does not exist or calling user
+            does not have access to it.
+
+    Returns:
+        :class:`~fiftyone.management.users.User` instance, or
+        ``None`` if dataset has no recorded creator.
+    """
+    client = connection.APIClientConnection().client
+    dataset = client.post_graphql_request(
+        query=_GET_DATASET_CREATOR_QUERY,
+        variables={"dataset": dataset_name},
+    )["dataset"]
+
+    if dataset is None:
+        raise ValueError("Unknown dataset or no permission to access.")
+
+    user = dataset["createdBy"]
+
+    return users.User(**user) if user is not None else None
 
 
 def get_permissions(*, dataset_name: str = None, user: str = None):
@@ -155,10 +217,35 @@ def get_permissions(*, dataset_name: str = None, user: str = None):
 
         Only admins can retrieve this information.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        user = "guest@company.com"
+
+        # Get permissions for user
+        assert (
+            fom.get_permissions(user=user) ==
+            fom.get_permissions_for_user(user)
+        )
+
+        # Get permissions for dataset
+        assert (
+            fom.get_permissions(dataset_name=dataset_name) ==
+            fom.get_permissions_for_dataset(dataset_name)
+        )
+
+        # Get permissions for user-dataset combination
+        assert (
+            fom.get_permissions(dataset_name=dataset_name, user=user) ==
+            fom.get_permissions_for_dataset_user(dataset_name, user)
+        )
+
     Args:
         dataset_name (None): a dataset name
         user (None): a user ID, email string, or
-            :class:`fiftyone.management.User` instance
+            :class:`~fiftyone.management.users.User` instance
 
     Returns:
         the requested user/dataset permissions
@@ -180,11 +267,19 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
 
         Only admins can retrieve this information.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+
+        fom.get_permissions_for_dataset(dataset_name)
+
     Example output::
 
         [
-            {'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
-            {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'},
+            {'name': 'A. User', 'email': 'a@company.com', 'id': '12345', 'permission': 'MANAGE'},
+            {'name': 'B. User', 'email': 'b@company.com', 'id': '67890', 'permission': 'EDIT'},
         ]
 
     Args:
@@ -204,9 +299,10 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
 
     return [
         {
-            "name": user["user"]["name"],
-            "id": user["user"]["id"],
-            "permission": user["activePermission"],
+            "name": user["user"].get("name"),
+            "email": user["user"].get("email"),
+            "id": user["user"].get("id"),
+            "permission": user.get("activePermission"),
         }
         for user in result["dataset"]["users"]
     ]
@@ -222,13 +318,22 @@ def get_permissions_for_dataset_user(
 
         Only admins can retrieve this information.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        user = "guest@company.com"
+
+        fom.get_permissions_for_dataset_user(dataset_name, user)
+
     Args:
         dataset_name: the dataset name
-        user: a user ID, email string, or :class:`fiftyone.management.User`
+        user: a user ID, email string, or :class:`~fiftyone.management.users.User`
             instance
 
     Returns:
-        :class:`DatasetPermission`
+        :class:`~fiftyone.management.dataset.DatasetPermission`
     """
     user_id = users._resolve_user_id(user)
     client = connection.APIClientConnection().client
@@ -253,15 +358,23 @@ def get_permissions_for_user(user: str):
 
         Only admins can retrieve this information.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        user = "guest@company.com"
+
+        fom.get_permissions_for_user(user)
+
     Example output::
 
         [
-            {'name': 'A. User', 'id': '12345', 'permission': 'MANAGE},
-            {'name': 'B. User', 'id': '67890', 'permission': 'EDIT'},
+            {'name': 'datasetA', 'permission': 'EDIT'},
+            {'name': 'datasetB', 'permission': 'VIEW'},
         ]
 
     Args:
-        user: a user ID, email string, or :class:`fiftyone.management.User`
+        user: a user ID, email string, or :class:`~fiftyone.management.users.User`
             instance
 
     Returns:
@@ -294,9 +407,18 @@ def set_dataset_default_permission(
 
         The caller must have ``Can Manage`` permissions on the dataset.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+
+        # Give every Member Edit access by default
+        fom.set_dataset_default_permission(dataset_name, fom.EDIT)
+
     Args:
         dataset_name: the dataset name
-        permission: the :class:`fiftyone.management.DatasetPermission` to set
+        permission: the :class:`~fiftyone.management.dataset.DatasetPermission` to set
     """
     perm_str = _validate_dataset_permission(permission)
     client = connection.APIClientConnection().client
@@ -318,11 +440,22 @@ def set_dataset_user_permission(
 
         The caller must have ``Can Manage`` permissions on the dataset.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        user = "guest@company.com"
+
+        fom.set_dataset_user_permission(dataset_name, user, fom.VIEW)
+
+        assert fom.get_permissions(dataset_name=dataset_name, user=user) == fom.VIEW
+
     Args:
         dataset_name: the dataset name
-        user: a user ID, email string, or :class:`fiftyone.management.User`
+        user: a user ID, email string, or :class:`~fiftyone.management.users.User`
             instance
-        permission: the :class:`fiftyone.management.DatasetPermission` to grant
+        permission: the :class:`~fiftyone.management.dataset.DatasetPermission` to grant
     """
     perm_str = _validate_dataset_permission(permission)
     user_id = users._resolve_user_id(user)

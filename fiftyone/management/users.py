@@ -5,34 +5,14 @@ User management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import dataclasses
 import datetime
 import enum
 import re
 from typing import List, Optional, Union
-from typing_extensions import Literal, TypedDict
 
 from fiftyone.management import connection
 from fiftyone.management import util as fom_util
-
-
-class User(TypedDict):
-    """User information dict."""
-
-    id: str
-    name: str
-    email: str
-    role: Literal["ADMIN", "MEMBER", "COLLABORATOR", "GUEST"]
-
-
-class Invitation(TypedDict):
-    """Invitation dict."""
-
-    id: str
-    created_at: datetime.datetime
-    expires_at: datetime.datetime
-    invitee_email: str
-    invitee_role: Literal["ADMIN", "MEMBER", "COLLABORATOR", "GUEST"]
-    url: str
 
 
 class UserRole(enum.Enum):
@@ -42,6 +22,36 @@ class UserRole(enum.Enum):
     MEMBER = "MEMBER"
     COLLABORATOR = "COLLABORATOR"
     GUEST = "GUEST"
+
+
+@dataclasses.dataclass
+class User(object):
+    """User information dataclass."""
+
+    id: str
+    name: str
+    email: str
+    role: UserRole
+
+    def __post_init__(self):
+        if isinstance(self.role, str):
+            self.role = UserRole[self.role]
+
+
+@dataclasses.dataclass
+class Invitation(object):
+    """Invitation dataclass."""
+
+    id: str
+    created_at: datetime.datetime
+    expires_at: datetime.datetime
+    invitee_email: str
+    invitee_role: UserRole
+    url: str
+
+    def __post_init__(self):
+        if isinstance(self.invitee_role, str):
+            self.invitee_role = UserRole[self.invitee_role]
 
 
 def _validate_user_role(
@@ -146,6 +156,21 @@ def delete_user(user: Union[str, User]) -> None:
 
         Only admins can perform this action.
 
+    .. warning::
+
+        This action is irreversible! Once deleted, the user will have to be
+        re-invited to the organization to have access again.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        delete_user = "guest@company.com"
+
+        fom.delete_user(delete_user)
+
+        assert fom.get_user(delete_user) is None
+
     Args:
         user: a user ID, email string, or :class:`User` instance
     """
@@ -163,6 +188,20 @@ def delete_user_invitation(invitation_id: str) -> None:
     .. note::
 
         Only admins can perform this action.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        new_guest = "guest@company.com"
+
+        invite_id = fom.send_user_invitation(new_guest, fom.GUEST)
+
+        fom.delete_user_invitation(invite_id)
+
+        pending = fom.list_pending_invitations()
+        assert not any(p.id == invite_id for p in pending)
+
 
     Args:
         invitation_id: an invitation ID as returned by
@@ -183,6 +222,17 @@ def get_user(user: str) -> Union[User, None]:
 
         Only admins can retrieve information about other users.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        known_user = "member@company.com"
+        user = fom.get_user(known_user)
+        assert user.email == known_user
+
+        unknown_user = "unknown@company.com"
+        assert fom.get_user(unknown_user) is None
+
     Args:
         user: a user ID or email string
 
@@ -195,7 +245,7 @@ def get_user(user: str) -> Union[User, None]:
         query=_GET_USER_QUERY,
         variables={"userId": user},
     )
-    return data["user"]
+    return User(**data["user"])
 
 
 def list_pending_invitations() -> List[Invitation]:
@@ -205,6 +255,12 @@ def list_pending_invitations() -> List[Invitation]:
 
         Only admins can retrieve this information.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        fom.list_pending_invitations()
+
     Returns:
         a list of :class:`Invitation` instances
     """
@@ -213,7 +269,7 @@ def list_pending_invitations() -> List[Invitation]:
     data = client.post_graphql_request(query=_LIST_PENDING_INVITATIONS_QUERY)
     invitations = data["invitations"]
     return [
-        {fom_util.camel_to_snake(var): val for var, val in invitation.items()}
+        Invitation(**fom_util.camel_to_snake_container(invitation))
         for invitation in invitations
     ]
 
@@ -225,13 +281,20 @@ def list_users() -> List[User]:
 
         Only admins can retrieve this information.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        fom.list_users()
+
     Returns:
         a list of :class:`User` instances
     """
     client = connection.APIClientConnection().client
-    return client.post_graphql_connectioned_request(
+    users = client.post_graphql_connectioned_request(
         _LIST_USERS_QUERY, "usersConnection"
     )
+    return [User(**user) for user in users]
 
 
 def send_user_invitation(email: str, role: UserRole) -> str:
@@ -240,6 +303,17 @@ def send_user_invitation(email: str, role: UserRole) -> str:
     .. note::
 
         Only admins can perform this action.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        new_guest = "guest@company.com"
+
+        invite_id = fom.send_user_invitation(new_guest, fom.GUEST)
+
+        pending = fom.list_pending_invitations()
+        assert any(p.invitee_email == new_guest for p in pending)
 
     Args:
         email: the email address
@@ -265,6 +339,21 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
 
         Only admins can perform this action.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        user = "user@company.com"
+
+        #1.a set role from email
+        fom.set_user_role(user, fom.MEMBER)
+
+        #1.b set role from user instance
+        user_obj = fom.get_user(user_obj)
+        fom.set_user_role(user_obj, fom.MEMBER)
+
+        assert fom.get_user(user).role == fom.MEMBER
+
     Args:
         user: a user ID, email string, or :class:`User` instance
         role: the :class:`UserRole` to set
@@ -282,13 +371,21 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
 def whoami() -> User:
     """Returns information about the calling user.
 
+    Examples::
+
+        import fiftyone.management as fom
+
+        me = fom.whoami()
+
+        assert fom.get_user(me.id) == me
+
     Returns:
         :class:`User`
     """
     client = connection.APIClientConnection().client
 
     data = client.post_graphql_request(query=_VIEWER_QUERY)
-    return data["viewer"]
+    return User(**data["viewer"])
 
 
 _ROUGH_EMAIL_REGEX = re.compile(
@@ -305,6 +402,8 @@ def _resolve_user_id(
             return None
         else:
             raise ValueError("User ID must not be None")
+    if isinstance(user_or_id_or_email, User):
+        return user_or_id_or_email.id
     if isinstance(user_or_id_or_email, dict) and "id" in user_or_id_or_email:
         return user_or_id_or_email["id"]
     if isinstance(user_or_id_or_email, str):
@@ -314,7 +413,7 @@ def _resolve_user_id(
                 raise ValueError(
                     f"User email not found: {user_or_id_or_email}"
                 )
-            return user["id"]
+            return user.id
         else:
             return user_or_id_or_email
     else:
