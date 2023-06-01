@@ -6,7 +6,7 @@ import * as fos from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
 
-import { Button, useTheme } from "@fiftyone/components";
+import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
 import useSchemaSettings, {
@@ -48,6 +48,9 @@ const Container = styled.div`
   min-height: auto;
   background: white;
 `;
+
+const FIELD_VISIBILITY_DOCUMENTATION_LINK =
+  "https://docs.voxel51.com/user_guide/app.html#app-field-visibility";
 
 const SchemaSettings = () => {
   const theme = useTheme();
@@ -137,10 +140,24 @@ const SchemaSettings = () => {
               fontSize="1.5rem"
               style={{
                 width: "100%",
+                letterSpacing: "0.05rem",
               }}
             >
               Field visibility
             </Typography>
+            <ExternalLink
+              style={{
+                color: theme.text.secondary,
+                height: "20px",
+                display: "flex",
+                alignItems: "center",
+                marginRight: "0.5rem",
+              }}
+              title="Documentation"
+              href={FIELD_VISIBILITY_DOCUMENTATION_LINK}
+            >
+              <InfoIcon />
+            </ExternalLink>
             <CloseIcon
               sx={{
                 color: theme.text.primary,
@@ -155,6 +172,7 @@ const SchemaSettings = () => {
               overflow: "hidden",
               width: "100%",
               paddingTop: "0.5rem",
+              letterSpacing: "0.05rem",
             }}
           >
             <TabOption

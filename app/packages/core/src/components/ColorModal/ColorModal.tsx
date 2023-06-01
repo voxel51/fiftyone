@@ -17,12 +17,15 @@ import {
   ModalWrapper,
 } from "./ShareStyledDiv";
 
-import { useTheme } from "@fiftyone/components";
+import { ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import Typography from "@mui/material/Typography";
 import { Resizable } from "re-resizable";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 import SidebarList from "./SidebarList";
 import { ACTIVE_FIELD } from "./utils";
+
+const CUSTOM_COLOR_DOCUMENTATION_LINK =
+  "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
 
 const ColorModal = () => {
   const theme = useTheme();
@@ -112,6 +115,18 @@ const ColorModal = () => {
                   >
                     Color scheme
                   </Typography>
+                  <ExternalLink
+                    style={{
+                      color: theme.text.secondary,
+                      height: "30px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    title="Documentation"
+                    href={CUSTOM_COLOR_DOCUMENTATION_LINK}
+                  >
+                    <InfoIcon />
+                  </ExternalLink>
                   <CloseIcon
                     onClick={() => setActiveColorModalField(null)}
                     onMouseDown={(e) => e.stopPropagation()}
