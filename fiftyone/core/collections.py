@@ -9787,20 +9787,28 @@ def _iter_schema_label_fields(schema):
         field_to_check = field
         if isinstance(field, fof.ListField):
             field_to_check = field.field
-        if (
-            isinstance(field_to_check, fof.EmbeddedDocumentField)
-            and issubclass(field_to_check.document_type, fol.Label)
-            and not issubclass(field_to_check.document_type, fol._HasLabelList)
-        ):
-            parent_path = ".".join(path.split(".")[:-1])
+
+        if not isinstance(field_to_check, fof.EmbeddedDocumentField):
+            continue
+
+        if not issubclass(field_to_check.document_type, fol.Label):
+            continue
+
+        if not issubclass(field_to_check.document_type, fol._HasLabelList):
+            keys = path.split(".")
+            parent_path = ".".join(keys[:-1])
+            leaf = keys[-1]
             parent_field = schema.get(parent_path, None)
-            if isinstance(
-                parent_field, fof.EmbeddedDocumentField
-            ) and issubclass(parent_field.document_type, fol._HasLabelList):
-                yield parent_path, parent_field
+
+            # we skip _HasLabelList label list fields
+            if (
+                isinstance(parent_field, fof.EmbeddedDocumentField)
+                and issubclass(parent_field.document_type, fol._HasLabelList)
+                and parent_field.document_type._LABEL_LIST_FIELD == leaf
+            ):
                 continue
 
-            yield path, field
+        yield path, field
 
 
 def _serialize_value(field_name, field, value, validate=True):
