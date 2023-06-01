@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
@@ -32,6 +32,48 @@ export const SchemaSelectionControls = (props: Props) => {
     setIncludeNestedFields,
   } = useSchemaSettings();
   const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
+  const showMetadataVisibile = !!!(isFilterRuleMode && !searchResults.length);
+  const includeNestedVisible = !!(isFilterRuleMode && searchResults.length);
+
+  const controlList = useMemo(() => {
+    return [
+      {
+        label: "Show metadata",
+        isVisible: showMetadataVisibile,
+        value: showMetadata,
+        checked: showMetadata,
+        onChange: () => setShowMetadata(!showMetadata),
+      },
+      {
+        label: "Include nested fields",
+        isVisible: includeNestedVisible,
+        value: includeNestedFields,
+        checked: includeNestedFields,
+        onChange: () => setIncludeNestedFields(!includeNestedFields),
+        disabled: !searchResults.length,
+      },
+      {
+        label: "Show nested fields",
+        isVisible: !isFilterRuleMode,
+        value: showNestedFields,
+        checked: showNestedFields,
+        onChange: () => setShowNestedFields(!showNestedFields),
+      },
+      {
+        label: "Select all",
+        isVisible: !isFilterRuleMode,
+        value: allFieldsChecked,
+        checked: allFieldsChecked,
+        onChange: () => setAllFieldsChecked(!allFieldsChecked),
+      },
+    ];
+  }, [
+    showMetadata,
+    showMetadataVisibile,
+    includeNestedFields,
+    showNestedFields,
+    allFieldsChecked,
+  ]);
 
   return (
     <Box
@@ -40,73 +82,26 @@ export const SchemaSelectionControls = (props: Props) => {
       sx={{ position: "relative !important" }}
     >
       <Box display="flex" width="100%" flexDirection="row" marginTop="1rem">
-        {!!!(isFilterRuleMode && !searchResults.length) && (
-          <ContainerBox>
-            <FormGroup>
-              <FormControlLabel
-                control={
-                  <Switch
-                    value={showMetadata}
-                    checked={showMetadata}
-                    onChange={() => setShowMetadata(!showMetadata)}
-                  />
-                }
-                label="Show metadata"
-              />
-            </FormGroup>
-          </ContainerBox>
-        )}
-        {!!(isFilterRuleMode && searchResults.length) && (
-          <ContainerBox>
-            <FormGroup>
-              <FormControlLabel
-                control={
-                  <Switch
-                    value={includeNestedFields}
-                    checked={includeNestedFields}
-                    onChange={() =>
-                      setIncludeNestedFields(!includeNestedFields)
-                    }
-                    disabled={!searchResults.length}
-                  />
-                }
-                label="Include nested fields"
-              />
-            </FormGroup>
-          </ContainerBox>
-        )}
-        {!isFilterRuleMode && (
-          <ContainerBox>
-            <FormGroup>
-              <FormControlLabel
-                control={
-                  <Switch
-                    value={showNestedFields}
-                    checked={showNestedFields}
-                    onChange={() => setShowNestedFields(!showNestedFields)}
-                  />
-                }
-                label="Show nested fields"
-              />
-            </FormGroup>
-          </ContainerBox>
-        )}
-        {!isFilterRuleMode && (
-          <ContainerBox>
-            <FormGroup>
-              <FormControlLabel
-                control={
-                  <Switch
-                    value={allFieldsChecked}
-                    checked={allFieldsChecked}
-                    onChange={() => setAllFieldsChecked(!allFieldsChecked)}
-                  />
-                }
-                label="Select all"
-              />
-            </FormGroup>
-          </ContainerBox>
-        )}
+        {controlList
+          .filter(({ isVisible }) => isVisible)
+          .map(({ label, value, checked, onChange, disabled = false }) => (
+            <ContainerBox key={label}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      value={value}
+                      checked={checked}
+                      onChange={onChange}
+                      disabled={disabled}
+                    />
+                  }
+                  label={label}
+                  sx={{ letterSpacing: "0.05rem" }}
+                />
+              </FormGroup>
+            </ContainerBox>
+          ))}
       </Box>
     </Box>
   );

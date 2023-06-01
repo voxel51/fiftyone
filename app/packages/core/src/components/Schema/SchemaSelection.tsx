@@ -142,7 +142,6 @@ export const SchemaSelection = () => {
           marginTop: "1rem",
           overflow: "auto",
           color: "#232323",
-          border: `1px solid ${theme.primary.plainBorder}`,
         }}
       >
         {showSearchHelp && <SchemaSearchHelp />}

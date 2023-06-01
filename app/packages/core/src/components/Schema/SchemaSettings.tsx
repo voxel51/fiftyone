@@ -72,6 +72,8 @@ const SchemaSettings = () => {
     setLastAppliedPaths,
     lastAppliedPaths,
     setExcludedPaths,
+    isFilterRuleActive,
+    searchMetaFilter,
   } = useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -197,16 +199,25 @@ const SchemaSettings = () => {
               onClick={() => {
                 const initialFieldNames = [...excludedPaths[datasetName]];
 
-                const stageKwargs = {
-                  field_names: initialFieldNames,
-                  _allow_missing: true,
-                };
+                let stage;
+                if (isFilterRuleActive) {
+                  stage = {
+                    _cls: "fiftyone.core.stages.SelectFields",
+                    kwargs: {
+                      meta_filter: searchMetaFilter,
+                      _allow_missing: true,
+                    },
+                  };
+                } else {
+                  stage = {
+                    _cls: "fiftyone.core.stages.ExcludeFields",
+                    kwargs: {
+                      field_names: initialFieldNames,
+                      _allow_missing: true,
+                    },
+                  };
+                }
 
-                const stageCls = "fiftyone.core.stages.ExcludeFields";
-                const stage = {
-                  _cls: stageCls,
-                  kwargs: stageKwargs,
-                };
                 try {
                   setSelectedFieldsStage(stage);
                 } catch (e) {

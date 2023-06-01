@@ -113,7 +113,7 @@ export const showNestedFieldsState = atom<boolean>({
 });
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: TAB_OPTIONS_MAP.FILTER_RULE,
+  default: TAB_OPTIONS_MAP.SELECTION,
 });
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
@@ -404,7 +404,7 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
-  const [schema, setSchema] = useRecoilState(schemaState);
+  const setSchema = useSetRecoilState(schemaState);
   useEffect(() => {
     if (datasetName) {
       setSchema(dataset ? buildSchema(dataset, true) : null);
@@ -476,6 +476,7 @@ export default function useSchemaSettings() {
   const [selectedTab, setSelectedTab] = useRecoilState(
     schemaSelectedSettingsTab
   );
+  const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
 
   const selectedPathState = selectedPathsState({});
   const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
@@ -531,7 +532,6 @@ export default function useSchemaSettings() {
       finalSchemaKeyByPath = !isEmpty(viewSchema) ? viewSchema : fieldSchema;
     }
 
-    const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
     const resSchema = Object.keys(finalSchemaKeyByPath)
       .sort()
       .filter((path) => {
@@ -838,10 +838,7 @@ export default function useSchemaSettings() {
   // updates the affected fields count
   useEffect(() => {
     if (finalSchema?.length && excludedPaths?.[datasetName]) {
-      if (
-        selectedTab === TAB_OPTIONS_MAP.FILTER_RULE &&
-        searchResults?.length
-      ) {
+      if (filterRuleTab && searchResults?.length) {
         setAffectedPathCount(
           Object.keys(bareFinalSchema)?.length - searchResults.length
         );
@@ -849,9 +846,11 @@ export default function useSchemaSettings() {
         setAffectedPathCount(excludedPaths[datasetName].size);
       }
     }
-  }, [selectedTab, searchResults, excludedPaths, datasetName]);
+  }, [filterRuleTab, searchResults, excludedPaths, datasetName]);
 
   return {
+    searchMetaFilter,
+    filterRuleTab,
     settingModal,
     setSettingsModal,
     searchTerm,
@@ -887,5 +886,6 @@ export default function useSchemaSettings() {
     searchSchemaFields,
     setLastAppliedPaths,
     lastAppliedPaths,
+    isFilterRuleActive: filterRuleTab,
   };
 }
