@@ -6,7 +6,8 @@
     "dependencies": {},
     "scripts": {
         "start:watch": "nodemon -r source-map-support/register index.ts --watch lib --watch cypress --watch cypress.config.ts --watch index.ts -e js,jsx,ts,tsx,py,json",
-        "start": "ts-node -r source-map-support/register index.ts"
+        "start": "ts-node -r source-map-support/register index.ts",
+        "start-test-server": "FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787"
     },
     "devDependencies": {
         "@types/cors": "^2.8.13",

@@ -41,7 +41,7 @@ import {
 } from "../utils";
 
 import { selectedFieldsStageState } from "./useSchemaSettings";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { convertToHex, isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -120,7 +120,9 @@ const useStateUpdate = (ignoreSpaces = false) => {
             : DEFAULT_APP_COLOR_SCHEME.colorPool;
         colorPool =
           colorPool.filter((c) => isValidColor(c)).length > 0
-            ? colorPool.filter((c) => isValidColor(c))
+            ? colorPool
+                .filter((c) => isValidColor(c))
+                .map((c) => convertToHex(c))
             : DEFAULT_APP_COLOR_SCHEME.colorPool;
         colorSetting = {
           colorPool,

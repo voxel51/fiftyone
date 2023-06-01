@@ -44,7 +44,11 @@ export const Result = <T extends unknown>({
   const classes = active ? [style.active, style.result] : [style.result];
 
   return (
-    <div onClick={onClick} className={classNames(...classes)}>
+    <div
+      data-cy="selector-result"
+      onClick={onClick}
+      className={classNames(...classes)}
+    >
       <Component value={result} />
     </div>
   );

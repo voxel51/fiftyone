@@ -17,6 +17,7 @@ export default defineConfig({
   e2e: {
     baseUrl: DEFAULT_APP_ADDRESS,
     videoUploadOnPasses: false,
+    experimentalInteractiveRunEvents: true,
     // retry once on test failure to account for random errors
     // note: this is a global config, this can be configured per-test as well
     retries: 1,

@@ -63,6 +63,7 @@ Alternatively, you can use the
 the Management SDK:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.management as fom
 
@@ -112,6 +113,7 @@ Alternatively, you can use the
 the Management SDK with the `overwrite=True` option:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.management as fom
 
@@ -153,6 +155,7 @@ Alternatively, you can use the
 the Management SDK:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.management as fom
 
@@ -160,8 +163,8 @@ the Management SDK:
 
 .. _teams-plugins-enable-disable:
 
-Enabling / Disabling
-____________________
+Enabling/Disabling
+__________________
 
 Teams UI
 ---------
@@ -198,6 +201,7 @@ and
 methods from the management SDK:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.management as fom
 
@@ -257,6 +261,7 @@ You can also use the
 method from the Management SDK:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.management as fom
 
@@ -313,6 +318,7 @@ Alternatively, you can use the
 method from the Management SDK:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.management as fom
 
