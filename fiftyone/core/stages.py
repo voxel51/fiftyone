@@ -30,7 +30,7 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
-from fiftyone.core.fields import EmbeddedDocumentField
+from fiftyone.core.fields import EmbeddedDocumentField, ListField
 
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
@@ -8061,7 +8061,11 @@ def _parse_labels_field(sample_collection, field_path):
     else:
         path = field_path
 
-    return path, is_list_field, is_frame_field
+    return (
+        path,
+        isinstance(sample_collection.get_field(path), ListField),
+        is_frame_field,
+    )
 
 
 def _parse_labels_list_field(sample_collection, field_path):
