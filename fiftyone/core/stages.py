@@ -8074,9 +8074,21 @@ def _parse_labels_field(sample_collection, field_path):
     else:
         path = field_path
 
+    real_path = path
+    prefix = ""
+    if is_frame_field:
+        real_path = real_path[len(sample_collection._FRAMES_PREFIX) :]
+        prefix = sample_collection._FRAMES_PREFIX
+
+    if real_path.startswith("___"):  # for fiftyone.server.view hidden results
+        real_path = real_path[3:]
+
+    if real_path.startswith("__"):  # for fiftyone.core.stages hidden results
+        real_path = real_path[2:]
+
     return (
         path,
-        isinstance(sample_collection.get_field(path), ListField),
+        isinstance(sample_collection.get_field(prefix + real_path), ListField),
         is_frame_field,
     )
 
