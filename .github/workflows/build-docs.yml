@@ -6,6 +6,7 @@ on:
       # - develop
       - rel-*
       - release-*
+      - release/*
       - docs-*
       - github-actions-*
     tags:
@@ -24,6 +25,7 @@ on:
       - develop
       - rel-*
       - release-*
+      - release/*
     paths:
       - .github/workflows/build-docs.yml
       - docs/**
@@ -42,6 +44,13 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v3
+      - name: Checkout fiftyone-teams
+        uses: actions/checkout@v3
+        with:
+          repository: voxel51/fiftyone-teams
+          path: fiftyone-teams
+          token: ${{ secrets.TEAMS_GITHUB_PAT }}
+          ref: main
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
@@ -59,6 +68,7 @@ jobs:
         run: |
           sudo apt-get install pandoc
           pip install -r requirements/dev.txt
+          pip install -r fiftyone-teams/requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install .
@@ -75,7 +85,7 @@ jobs:
         run: cd app && yarn install
       - name: Build docs
         run: |
-          ./docs/generate_docs.bash
+          ./docs/generate_docs.bash -t fiftyone-teams
       - name: Upload docs
         uses: actions/upload-artifact@v2
         with:
