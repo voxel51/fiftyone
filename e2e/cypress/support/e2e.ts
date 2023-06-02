@@ -9,10 +9,13 @@ compareSnapshotCommand({
   errorThreshold: 0,
 });
 
-// todo: check if app port is available in beforeAll() and fail fast if not
-
-// before each test, reset to the root route and wait for the grid to be visible
-beforeEach(() => {
-  cy.visit("/");
-  cy.get("[data-cy=fo-grid]").should("be.visible");
+// delete all datasets before each spec runs
+// todo: investigate, this is flaky, sometimes singleton state doesn't reflect dataset deletion
+before(() => {
+  cy.executePythonCode(
+    `
+    import fiftyone as fo
+    fo.delete_datasets("*")
+    `
+  );
 });
