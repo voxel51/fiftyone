@@ -4470,7 +4470,7 @@ class SelectGroupSlices(ViewStage):
             return [{"$match": {group_path: {"$in": slices}}}]
 
         if slices is not None:
-            return [{"$match": {group_path: slices}}]
+            return [{"$match": {group_path: {"$eq": slices}}}]
 
         return []
 
