@@ -25,6 +25,7 @@ import {
   Schema,
   TEMPORAL_DETECTION_FIELD,
   UNSUPPORTED_FILTER_TYPES,
+  VALID_LABEL_TYPES,
   VECTOR_FIELD,
 } from "@fiftyone/utilities";
 import {
@@ -70,11 +71,14 @@ const disabledField = (
   groupField?: string
 ) => {
   const currField = combinedSchema?.[path] || ({} as Field);
-  const { ftype } = currField;
+  const { ftype, embeddedDocType } = currField;
 
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema?.[parentPath];
   const parentEmbeddedDocType = parentField?.embeddedDocType;
+
+  const embedSplit = embeddedDocType?.split(".");
+  const pathSplit = path.split(".");
 
   return (
     [
@@ -86,6 +90,45 @@ const disabledField = (
     [path, parentPath].includes(groupField) ||
     RESERVED_FIELD_KEYS.includes(path) ||
     path.startsWith("metadata") ||
+    ([
+      TEMPORAL_DETECTION_FIELD,
+      DETECTION_FIELD,
+      DETECTIONS_FIELD,
+      CLASSIFICATION_FIELD,
+      CLASSIFICATIONS_FIELD,
+      KEYPOINT_FILED,
+      REGRESSION_FILED,
+      HEATMAP_FIELD,
+      SEGMENTATION_FIELD,
+      GEO_LOCATIONS_FIELD,
+      GEO_LOCATION_FIELD,
+      POLYLINE_FIELD,
+      POLYLINES_FIELD,
+    ].includes(parentEmbeddedDocType) &&
+      [
+        "id",
+        "tags",
+        "label",
+        "bounding_box",
+        "mask",
+        "confidence",
+        "index",
+        "points",
+        "closed",
+        "filled",
+        "logits",
+        "mask_path",
+        "map",
+        "map_path",
+        "Range",
+        "Confidence",
+        "support",
+        "point",
+        "line",
+        "Polygon",
+        "points",
+        "polygons",
+      ].includes(pathSplit[pathSplit.length - 1])) ||
     [
       TEMPORAL_DETECTION_FIELD,
       DETECTION_FIELD,
@@ -100,7 +143,10 @@ const disabledField = (
       GEO_LOCATION_FIELD,
       POLYLINE_FIELD,
       POLYLINES_FIELD,
-    ].includes(parentEmbeddedDocType)
+    ].includes(ftype) ||
+    (parentPath && parentPath !== path && ftype === LIST_FIELD) ||
+    (ftype === EMBEDDED_DOCUMENT_FIELD &&
+      VALID_LABEL_TYPES.includes(embedSplit?.[embedSplit?.length - 1]))
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -457,7 +503,6 @@ export default function useSchemaSettings() {
     data?.schemaForViewStages || {};
   const viewSchema = keyBy(frameFieldSchema, "path");
   const fieldSchema = keyBy(fieldSchemaRaw, "path");
-  const vPaths = Object.keys(viewSchema);
 
   const allPaths =
     viewSchema && fieldSchema
@@ -794,32 +839,26 @@ export default function useSchemaSettings() {
   // select/unselect all
   const setAllFieldsCheckedWrapper = useCallback(
     (val) => {
-      if (allPaths?.length) {
-        setAllFieldsChecked(val);
-        const allThePaths = finalSchema.map((ff) => ff.path);
-        const newSelectedPaths = new Set(val ? allThePaths : []);
-        setSelectedPaths({ [datasetName]: newSelectedPaths });
-      }
+      if (!allPaths?.length) return;
+
+      setAllFieldsChecked(val);
 
       if (val) {
         setExcludedPaths({ [datasetName]: new Set() });
+        setSelectedPaths({ [datasetName]: allPaths });
       } else {
         if (includeNestedFields && allPaths?.length) {
           setExcludedPaths({ [datasetName]: new Set(allPaths) });
         } else {
-          const topLevelPaths = finalSchema
-            .map((ff) => ff.path)
-            .filter((path) => {
-              const rawPath = path?.startsWith("frames.")
-                ? path.replace("frames.", "")
-                : path;
-              return !rawPath.includes(".");
-            });
+          const topLevelPaths = (allPaths || []).filter(
+            (path) => !path.replace("frames.", "").includes(".")
+          );
           setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
         }
+        setSelectedPaths({ [datasetName]: new Set() });
       }
     },
-    [finalSchema, allPaths, vPaths, datasetName]
+    [allPaths, datasetName]
   );
 
   const bareFinalSchema = useMemo(
