@@ -4467,10 +4467,10 @@ class SelectGroupSlices(ViewStage):
         slices = self._get_slices(sample_collection)
 
         if etau.is_container(slices):
-            return [{"$match": {"$expr": {"$in": ["$" + group_path, slices]}}}]
+            return [{"$match": {group_path: {"$in": slices}}}]
 
         if slices is not None:
-            return [{"$match": {"$expr": {"$eq": ["$" + group_path, slices]}}}]
+            return [{"$match": {group_path: slices}}]
 
         return []
 
@@ -4501,7 +4501,6 @@ class SelectGroupSlices(ViewStage):
         ]
 
     def get_media_type(self, sample_collection):
-        group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
         slices = self._get_slices(sample_collection)

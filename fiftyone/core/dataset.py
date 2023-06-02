@@ -2374,13 +2374,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_field = self.group_field
         id_field = group_field + "._id"
 
-        pipeline = [
-            {
-                "$match": {
-                    "$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}
-                }
-            }
-        ]
+        pipeline = [{"$match": {id_field: ObjectId(group_id)}}]
 
         try:
             return next(
@@ -5942,7 +5936,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return []
 
         name_field = self.group_field + ".name"
-        return [{"$match": {"$expr": {"$eq": ["$" + name_field, slice_name]}}}]
+        return [{"$match": {name_field: slice_name}}]
 
     def _attach_groups_pipeline(self, group_slices=None):
         """A pipeline that attaches the requested group slice(s) for each
