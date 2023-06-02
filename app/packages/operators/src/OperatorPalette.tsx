@@ -33,6 +33,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     submitOnControlEnter,
     title,
     disableSubmit,
+    disabledReason,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
@@ -107,22 +108,25 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
       </DialogContent>
       {!hideActions && (
         <DialogActions sx={{ p: 1 }}>
-          <BaseStylesProvider>
-            {onCancel && (
+          {onCancel && (
+            <BaseStylesProvider>
               <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
                 {cancelButtonText}
               </Button>
-            )}
-            {onSubmit && (
+            </BaseStylesProvider>
+          )}
+          {onSubmit && (
+            <BaseStylesProvider>
               <Button
                 onClick={handleSubmit}
                 onKeyDown={onEnter(handleSubmit)}
                 disabled={disableSubmit}
+                title={disableSubmit && disabledReason}
               >
                 {submitButtonText}
               </Button>
-            )}
-          </BaseStylesProvider>
+            </BaseStylesProvider>
+          )}
         </DialogActions>
       )}
     </Dialog>
@@ -141,4 +145,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   submitOnControlEnter?: boolean;
   title?: ReactElement;
   disableSubmit?: boolean;
+  disabledReason?: string;
 };

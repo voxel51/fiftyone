@@ -12,6 +12,7 @@ from starlette.requests import Request
 
 import fiftyone.core.fields as fof
 import fiftyone.core.stages as fos
+from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.decorators import route
 import fiftyone.server.utils as fosu
@@ -31,11 +32,13 @@ class OnPlotLoad(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Loads an embeddings plot based on the current view."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
         stages = data["view"]
         label_field = data["labelField"]
-
         dataset = fosu.load_and_cache_dataset(dataset_name)
 
         try:
@@ -131,6 +134,9 @@ class EmbeddingsSelection(HTTPEndpoint):
         """Determines which points in the embeddings plot to select based on
         the current extended view.
         """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
         stages = data["view"]
@@ -194,6 +200,9 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         """Generates an extended stage that encodes the current selection in
         the embeddings plot.
         """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         stages = data["view"]
         patches_field = data["patchesField"]  # patches field of plot, or None
@@ -227,6 +236,9 @@ class ColorByChoices(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Generates a list of color-by field choices for an embeddings plot."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
@@ -257,10 +269,6 @@ class ColorByChoices(HTTPEndpoint):
                 )
             )
         ]
-
-        # Remove fields with no values
-        counts = dataset.count(fields)
-        fields = [f for f, c in zip(fields, counts) if c > 0]
 
         return {"fields": fields}
 

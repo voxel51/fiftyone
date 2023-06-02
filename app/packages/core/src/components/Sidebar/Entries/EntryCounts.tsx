@@ -56,14 +56,12 @@ export const PathEntryCounts = ({
 
   return shown.state === "loading" ? (
     <LoadingDots text="" />
-  ) : (
-    shown.contents && (
-      <SuspenseEntryCounts
-        countAtom={getAtom(false)}
-        subcountAtom={getAtom(true)}
-      />
-    )
-  );
+  ) : shown.contents ? (
+    <SuspenseEntryCounts
+      countAtom={getAtom(false)}
+      subcountAtom={getAtom(true)}
+    />
+  ) : null;
 };
 
 const labelTagCount = selectorFamily<

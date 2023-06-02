@@ -2,20 +2,29 @@ import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
+import colorString from "color-string";
+import { Link } from "@mui/material";
 
-const JSONViewer: React.FC = ({}) => {
+const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const setting = useRecoilValue(fos.sessionColorScheme);
-  const { setColorScheme } = fos.useSessionColorScheme();
+  const sessionColor = useRecoilValue(fos.sessionColorScheme);
+
+  const setting = useMemo(() => {
+    return {
+      colorPool: sessionColor?.colorPool ?? [],
+      fields: validateJSONSetting(sessionColor?.fields ?? []),
+    };
+  }, [sessionColor]);
+  const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
@@ -28,19 +37,24 @@ const JSONViewer: React.FC = ({}) => {
       typeof data !== "object" ||
       !data?.colorPool ||
       !Array.isArray(data?.colorPool) ||
-      !data?.customizedColorSettings ||
-      !Array.isArray(data?.customizedColorSettings) ||
-      !data?.customizedColorSettings
+      !data?.fields ||
+      !Array.isArray(data?.fields) ||
+      !data?.fields
     )
       return;
-    const { colorPool, customizedColorSettings } = data;
-    const validColors = colorPool?.filter((c) => isValidColor(c));
-    const validatedSetting = validateJSONSetting(customizedColorSettings);
+    const { colorPool, fields } = data;
+    const validColors = colorPool
+      ?.filter((c) => isValidColor(c))
+      .map((c) => colorString.to.hex(colorString.get(c).value));
+    const validatedSetting = validateJSONSetting(fields);
     setData({
       colorPool: validColors,
-      customizedColorSettings: validatedSetting,
+      fields: validatedSetting,
     });
-    setColorScheme(validColors, validatedSetting, false);
+    setColorScheme(false, {
+      colorPool: validColors,
+      fields: validatedSetting,
+    });
   };
 
   useEffect(() => {
@@ -52,23 +66,14 @@ const JSONViewer: React.FC = ({}) => {
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <SectionWrapper>
-        You can use the JSON editor below to copy/edit your current color
-        scheme, or you can paste in a pre-built color scheme to apply.
-        <ActionOption
-          href={COLOR_SCHEME}
-          text={"Read more"}
-          title={"How to set customized color schema?"}
-          style={{
-            background: "unset",
-            color: theme.text.primary,
-            paddingTop: 0,
-            paddingBottom: 0,
-            marginLeft: 5,
-            display: "inline-block",
-          }}
-          svgStyles={{ height: "1rem", marginTop: 7.5 }}
-        />{" "}
-        about custom color schemes.
+        <p style={{ margin: 0, lineHeight: "1.3rem" }}>
+          You can use the JSON editor below to copy/edit your current color
+          scheme, or you can paste in a pre-built color scheme to apply.{" "}
+          <Link style={{ color: theme.text.primary }} href={COLOR_SCHEME}>
+            Learn more
+          </Link>{" "}
+          about custom color schemes.
+        </p>
       </SectionWrapper>
       <Editor
         defaultLanguage="json"

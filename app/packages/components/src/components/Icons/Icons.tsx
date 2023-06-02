@@ -11,9 +11,7 @@ export { iconContainer } from "./Icons.module.css";
 export const SlackLink = () => (
   <ExternalLink
     className={iconLink}
-    href={
-      "https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ"
-    }
+    href={"https://slack.voxel51.com"}
     title={"Slack"}
   >
     <SvgIcon

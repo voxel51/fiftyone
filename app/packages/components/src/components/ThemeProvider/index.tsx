@@ -7,6 +7,12 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
+function dynamicTheme(accessor: string) {
+  const parts = accessor.split(".");
+  parts.unshift("--fo");
+  return `var(${parts.join("-")})`;
+}
+
 let theme = extendMuiTheme({
   cssVarPrefix: "fo",
   typography: {
@@ -160,6 +166,25 @@ let theme = extendMuiTheme({
     MuiButtonBase: {
       defaultProps: {
         disableRipple: true,
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.text.secondary"),
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.text.tertiary"),
+          },
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          color: dynamicTheme("palette.text.primary"),
+        },
       },
     },
   },

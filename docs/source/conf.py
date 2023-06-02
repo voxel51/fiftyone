@@ -205,7 +205,7 @@ html_context = {
     "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
     "link_voxel51_github": "https://github.com/voxel51/",
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
-    "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ",
+    "link_voxel51_slack": "https://slack.voxel51.com",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_blog": "https://voxel51.com/blog/",
     "banner_link": "https://docs.voxel51.com/integrations/coco.html",

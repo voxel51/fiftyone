@@ -157,5 +157,5 @@ export const DEFAULT_APP_COLOR_SCHEME = {
     "#cc33cc",
     "#777799",
   ],
-  customizedColorSettings: [],
+  fields: [],
 };

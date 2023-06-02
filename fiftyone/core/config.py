@@ -112,6 +112,12 @@ class FiftyOneConfig(EnvConfig):
         self.plugins_dir = self.parse_string(
             d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
         )
+        self.plugins_cache_enabled = self.parse_bool(
+            d,
+            "plugins_cache_enabled",
+            env_var="FIFTYONE_PLUGINS_CACHE_ENABLED",
+            default=False,
+        )
         self.operator_timeout = self.parse_int(
             d,
             "operator_timeout",

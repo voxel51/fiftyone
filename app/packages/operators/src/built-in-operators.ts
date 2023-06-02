@@ -3,22 +3,21 @@ import {
   usePanels,
   useSpaceNodes,
   useSpaces,
+  Layout,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
 import * as types from "./types";
 
 import copyToClipboard from "copy-to-clipboard";
 import { useOperatorExecutor } from ".";
 import {
+  ExecutionContext,
   Operator,
   OperatorConfig,
-  ExecutionContext,
-  registerOperator,
-  loadOperatorsFromServer,
-  OperatorResult,
-  listLocalAndRemoteOperators,
   executeOperator,
+  listLocalAndRemoteOperators,
+  loadOperatorsFromServer,
+  registerOperator,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 
@@ -111,7 +110,7 @@ class OpenPanel extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.defineProperty("name", new types.String(), {
+    inputs.str("name", {
       view: new types.AutocompleteView({
         choices: [
           new types.Choice("Embeddings"),
@@ -123,11 +122,12 @@ class OpenPanel extends Operator {
         required: true,
       }),
     });
-    inputs.defineProperty("isActive", new types.Boolean(), {
+    inputs.bool("isActive", {
       label: "Auto-select on open",
       required: true,
       default: true,
     });
+    inputs.enum("layout", ["horizontal", "vertical"]);
     return new types.Property(inputs);
   }
   useHooks() {
@@ -148,13 +148,14 @@ class OpenPanel extends Operator {
   }
   async execute({ hooks, params }: ExecutionContext) {
     const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive } = params;
+    const { name, isActive, layout } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
     const panel = availablePanels.find((panel) => name === panel.name);
+    if (!panel) return console.warn(`Panel with name ${name} does not exist`);
     const allowDuplicate = panel?.panelOptions?.allowDuplicates;
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
@@ -164,6 +165,9 @@ class OpenPanel extends Operator {
     newNode.type = name;
     // add panel to the default space as an inactive panels
     spaces.addNodeAfter(targetSpace, newNode, isActive);
+    if (layout) {
+      spaces.splitLayout(targetSpace, getLayout(layout), newNode);
+    }
   }
 }
 
@@ -192,26 +196,6 @@ class OpenAllPanels extends Operator {
   }
 }
 
-// class FindSpace extends Operator {
-//   findFirstPanelContainer(node: SpaceNode): SpaceNode {
-//     if (node.isPanelContainer()) {
-//       return node;
-//     }
-//     if (node.hasChildren()) {
-//       return this.findFirstPanelContainer(node.firstChild());
-//     }
-//   }
-//   useHooks(): object {
-//     const { FIFTYONE_SPACE_ID } = fos.constants;
-//     const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
-//     return { spaces };
-//   }
-//   async execute({ hooks }: ExecutionContext) {
-//     const { spaces } = hooks;
-//     return this.findFirstPanelContainer(spaces.root);
-//   }
-// }
-
 class ClosePanel extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -222,7 +206,7 @@ class ClosePanel extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.defineProperty("name", new types.String(), {
+    inputs.str("name", {
       view: new types.AutocompleteView({
         choices: [
           new types.Choice("Embeddings"),
@@ -277,6 +261,37 @@ class CloseAllPanels extends Operator {
       // do not close pinned, root or space panel
       if (panel.pinned || panel.isRoot() || panel.isSpace()) continue;
       closePanel.execute(panel);
+    }
+  }
+}
+
+class SplitPanel extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "split_panel",
+      label: "Split Panel",
+      unlisted: true,
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("name", { required: true });
+    inputs.enum("layout", ["horizontal", "vertical"], { required: true });
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    return { spaces, openedPanels };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    const { openedPanels, spaces } = hooks;
+    const { name, layout } = params;
+    const panel = openedPanels.find(({ type }) => type === name);
+    const parentNode = panel?.parent;
+    if (parentNode && spaces.canSplitLayout(parentNode) && panel) {
+      spaces.splitLayout(parentNode, getLayout(layout), panel);
     }
   }
 }
@@ -661,7 +676,7 @@ export function registerBuiltInOperators() {
     registerOperator(ConsoleLog);
     registerOperator(ShowOutput);
     registerOperator(TestOperator);
-    // registerOperator(new FindSpace());
+    registerOperator(SplitPanel);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
@@ -671,4 +686,8 @@ export function registerBuiltInOperators() {
 export async function loadOperators() {
   registerBuiltInOperators();
   await loadOperatorsFromServer();
+}
+
+function getLayout(layout) {
+  return layout === "vertical" ? Layout.Vertical : Layout.Horizontal;
 }

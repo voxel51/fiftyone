@@ -5,6 +5,7 @@ const packages = [
   "utilities",
   "relay",
   "operators",
+  "spaces",
 ];
 
 /**
