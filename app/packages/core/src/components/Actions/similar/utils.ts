@@ -111,7 +111,7 @@ export const useSortBySimilarity = (close) => {
 
           update(({ reset, set }) => {
             set(fos.similarityParameters, combinedParameters);
-            reset(fos.modalSampleIndex);
+            reset(fos.currentModalSample);
             set(fos.similaritySorting, false);
             set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
             set(fos.hiddenLabels, {});

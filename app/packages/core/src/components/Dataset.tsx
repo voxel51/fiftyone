@@ -1,4 +1,4 @@
-import { activeColorField, modalSampleIndex } from "@fiftyone/state";
+import { activeColorField, isModalActive } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -23,12 +23,12 @@ const Body = styled.div`
 `;
 
 function Dataset() {
-  const isModalActive = useRecoilValue(modalSampleIndex) !== null;
+  const isModalOpen = useRecoilValue(isModalActive);
   const isCustomizeColorModalActive = useRecoilValue(activeColorField);
 
   return (
     <>
-      {isModalActive && <Modal />}
+      {isModalOpen && <Modal />}
       {isCustomizeColorModalActive && <ColorModal />}
       <Container>
         <Body key={"body"}>

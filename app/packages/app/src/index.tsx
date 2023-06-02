@@ -8,7 +8,7 @@ import {
   activeColorField,
   getDatasetName,
   getSavedViewName,
-  modalSampleIndex,
+  isModalActive,
   screenshotCallbacks,
   stateSubscription,
   useClearModal,
@@ -58,15 +58,13 @@ const App: React.FC = ({}) => {
     new URLSearchParams(window.location.search).get("context")
   );
 
-  const isModalActive = useRecoilValue(modalSampleIndex) !== null;
+  const isModalOpen = useRecoilValue(isModalActive);
   const isCustomizeColorModalActive = Boolean(useRecoilValue(activeColorField));
   const handleError = useErrorHandler();
 
   useEffect(() => {
-    document
-      .getElementById("modal")
-      ?.classList.toggle("modalon", isModalActive);
-  }, [isModalActive]);
+    document.getElementById("modal")?.classList.toggle("modalon", isModalOpen);
+  }, [isModalOpen]);
   useEffect(() => {
     document
       .getElementById("colorModal")

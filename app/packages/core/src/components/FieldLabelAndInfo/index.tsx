@@ -259,7 +259,7 @@ function FieldInfoExpanded({
   };
   const colorSettings = useRecoilValue(coloring(false));
 
-  const isModal = useRecoilValue(fos.modalSampleIndex) !== null;
+  const isModal = useRecoilValue(fos.currentModalSample) !== null;
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status

@@ -18,7 +18,7 @@ import React, {
   useState,
 } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
@@ -194,31 +194,24 @@ const SampleModal = () => {
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
+  const setModal = fos.useSetExpandedSample();
 
   const [isNavigationHidden, setIsNavigationHidden] = useState(false);
 
-  const navigateNext = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        jsonPanel.close();
-        helpPanel.close();
-        set(fos.modalSampleIndex, (i) => {
-          return i + 1;
-        });
-      },
-    [jsonPanel, helpPanel]
-  );
+  const navigateNext = useCallback(() => {
+    jsonPanel.close();
+    helpPanel.close();
+    setModal((i) => {
+      return i + 1;
+    });
+  }, [jsonPanel, helpPanel, setModal]);
 
-  const navigatePrevious = useRecoilCallback(
-    ({ set }) =>
-      () => {
-        jsonPanel.close();
-        helpPanel.close();
+  const navigatePrevious = useCallback(() => {
+    jsonPanel.close();
+    helpPanel.close();
 
-        set(fos.modalSampleIndex, (cur) => cur - 1);
-      },
-    [jsonPanel, helpPanel]
-  );
+    setModal((cur) => cur - 1);
+  }, [jsonPanel, helpPanel, setModal]);
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
@@ -273,7 +266,7 @@ const SampleModal = () => {
   const count = useRecoilValue(
     fos.count({ path: "", extended: true, modal: false })
   );
-  const index = useRecoilValue(fos.modalSampleIndex);
+  const { index } = useRecoilValue(fos.currentModalSample);
 
   return ReactDOM.createPortal(
     <Fragment>

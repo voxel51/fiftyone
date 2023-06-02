@@ -1,9 +1,9 @@
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { selector } from "recoil";
+import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { ResponseFrom } from "../utils";
-import { modalSampleIndex, pinned3DSample } from "./atoms";
+import { pinned3DSample } from "./atoms";
 import { filters } from "./filters";
 import { groupSample } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
@@ -28,6 +28,39 @@ export type ModalSample = NonNullable<
   >
 >;
 
+export const currentModalSample = atom<{ id: string; index: number } | null>({
+  key: "currentModalSample",
+  default: null,
+});
+
+export const currentModalNavigation = atom<
+  ((index: number) => Promise<string>) | null
+>({
+  key: "currentModalNavigation",
+  default: null,
+});
+
+export const modalSampleIndex = selector<number | null>({
+  key: "modalSampleIndex",
+  get: ({ get }) => {
+    const current = get(currentModalSample);
+    return current ? current.index : null;
+  },
+});
+
+export const modalSampleId = selector<string | null>({
+  key: "modalSampleId",
+  get: ({ get }) => {
+    const current = get(currentModalSample);
+    return current ? current.id : null;
+  },
+});
+
+export const isModalActive = selector<boolean>({
+  key: "isModalActive",
+  get: ({ get }) => get(currentModalSample) !== null,
+});
+
 export const modalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
@@ -36,9 +69,9 @@ export const modalSample = graphQLSelector<
   key: "modalSample",
   query: mainSample,
   mapResponse: (data: ResponseFrom<mainSampleQuery>, { get }) => {
-    const index = get(modalSampleIndex);
+    const current = get(currentModalSample);
     if (!data.sample) {
-      throw new Error(`sample with index ${index} not found`);
+      throw new Error(`sample with index ${current.index} not found`);
     }
 
     if (
@@ -51,24 +84,15 @@ export const modalSample = graphQLSelector<
     throw new Error(`unexpected sample item ${data.sample.__typename}`);
   },
   variables: ({ get }) => {
-    const index = get(modalSampleIndex);
-    if (index === null) return null;
+    const current = get(currentModalSample);
+    if (current === null) return null;
     return {
       dataset: get(datasetName),
       view: get(view),
-      index,
-      filter: {},
+      filter: {
+        id: current.id,
+      },
       filters: get(filters),
     };
-  },
-});
-
-export const modalSampleId = selector<string>({
-  key: "modalSampleId",
-  get: ({ get }) => {
-    const id = get(modalSample).id;
-    if (!id) throw new Error("no sample id found");
-
-    return id;
   },
 });

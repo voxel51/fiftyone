@@ -432,7 +432,6 @@ class Query(fosa.AggregateQuery):
             view,
             filters,
             1,
-            after=index - 1,
             sample_filter=filter,
             pagination_data=False,
         )

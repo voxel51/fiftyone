@@ -1,6 +1,15 @@
 import { useRelayEnvironment } from "react-relay";
-import { RecoilState, useRecoilCallback } from "recoil";
-import { groupSlice, groupStatistics } from "../recoil";
+import {
+  RecoilState,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+} from "recoil";
+import {
+  currentModalNavigation,
+  currentModalSample,
+  groupSlice,
+  groupStatistics,
+} from "../recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
@@ -9,10 +18,26 @@ import * as sidebarAtoms from "../recoil/sidebar";
 
 export default () => {
   const environment = useRelayEnvironment();
+  const setModal = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      (
+        id: string,
+        index: number,
+        getIndex: (index: number) => Promise<string>
+      ) => {
+        set(currentModalSample, { id, index });
+        set(currentModalNavigation, () => getIndex);
+      },
+    []
+  );
 
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (index: number) => {
+      async (
+        id: string,
+        index: number,
+        getIndex: (index: number) => Promise<string>
+      ) => {
         const data = [
           [filterAtoms.modalFilters, filterAtoms.filters],
           ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
@@ -53,8 +78,8 @@ export default () => {
           set(data[i][0], results[i]);
         }
 
-        set(atoms.modalSampleIndex, index);
+        setModal(id, index, getIndex);
       },
-    [environment]
+    [environment, setModal]
   );
 };

@@ -13,8 +13,24 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
   >(
     (next, sampleId, itemIndexMap) => {
       const clickedIndex = itemIndexMap[sampleId];
-      expandSample(clickedIndex);
+
+      const getIndex = (index: number) => {
+        const id = store.indices.get(index);
+
+        const promise = id ? Promise.resolve(id) : next();
+
+        return promise.then(() => {
+          const id = store.indices.get(index);
+
+          if (!id) {
+            throw new Error("unable to paginate to next sample");
+          }
+          return id;
+        });
+      };
+
+      expandSample(sampleId, clickedIndex, getIndex);
     },
-    [store]
+    [expandSample, store]
   );
 };

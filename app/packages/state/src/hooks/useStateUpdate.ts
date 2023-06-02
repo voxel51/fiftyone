@@ -1,4 +1,5 @@
 import { RGB } from "@fiftyone/looker";
+import { convertToHex, isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { useColorScheme } from "@mui/material";
 import {
   TransactionInterface_UNSTABLE,
@@ -10,13 +11,13 @@ import {
   _activeFields,
   activeColorField,
   activePcdSlices,
+  currentModalSample,
   dataset as datasetAtom,
   extendedSelection,
   filters,
   groupSlice,
   groupStatistics,
   isUsingSessionColorScheme,
-  modalSampleIndex,
   patching,
   resolveGroups,
   savingFilters,
@@ -39,7 +40,6 @@ import {
   viewsAreEqual,
 } from "../utils";
 import { selectedFieldsStageState } from "./useSchemaSettings";
-import { convertToHex, isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -200,7 +200,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
         set(datasetAtom, dataset);
       }
 
-      set(modalSampleIndex, null);
+      set(currentModalSample, null);
 
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>

@@ -19,11 +19,6 @@ export const useRefresh = () => {
   );
 };
 
-export const modalSampleIndex = atom<number>({
-  key: "modalSampleIndex",
-  default: null,
-});
-
 export interface SortResults {
   count: boolean;
   asc: boolean;
