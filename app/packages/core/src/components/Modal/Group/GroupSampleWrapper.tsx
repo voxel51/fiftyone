@@ -40,6 +40,7 @@ export const GroupSampleWrapper: React.FC<
 
   return (
     <div
+      data-cy="group-sample-wrapper"
       className={
         pinned ? classNames(groupSample, groupSampleActive) : groupSample
       }
