@@ -45,7 +45,7 @@ export const Result = <T extends unknown>({
 
   return (
     <div
-      data-cy="selector-result"
+      data-cy={`selector-result-${result}`}
       onClick={onClick}
       className={classNames(...classes)}
     >
@@ -76,6 +76,7 @@ const Results = <T extends unknown>({
       <div
         className={style.scrollContainer}
         style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
+        data-cy="selector-results-container"
       >
         {results.map((result, i) => (
           <Result

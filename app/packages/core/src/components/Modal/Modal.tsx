@@ -133,7 +133,7 @@ const SampleModal = () => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
-                    disabled={isOther || isLabelTag || isTag}
+                    disabled={isOther}
                     key={key}
                     trigger={trigger}
                   />
@@ -148,7 +148,7 @@ const SampleModal = () => {
                 )}
               </>
             ),
-            disabled: isTag || isLabelTag || isOther,
+            disabled: isTag || isOther,
           };
 
         case fos.EntryKind.GROUP: {
@@ -270,7 +270,7 @@ const SampleModal = () => {
         ref={wrapperRef}
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
-        <Container style={{ ...screen, zIndex: 10001 }}>
+        <Container style={{ ...screen, zIndex: 10001 }} data-cy="modal">
           <TooltipInfo coordinates={tooltip.coordinates} />
           <ContentColumn>
             {!isNavigationHidden && navigation.index > 0 && (

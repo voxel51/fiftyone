@@ -2,7 +2,7 @@
   scrollbar-color: var(--fo-palette-text-tertiary)
     var(--fo-palette-background-body);
 
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 
   scrollbar-width: auto;
 }

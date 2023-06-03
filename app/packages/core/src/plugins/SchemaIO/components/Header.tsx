@@ -15,6 +15,7 @@ export default function Header(props: HeaderProps) {
     omitCaption = false,
     omitErrors = false,
     errors,
+    componentsProps = {},
   } = props;
 
   const labelVariantMap = {
@@ -24,6 +25,16 @@ export default function Header(props: HeaderProps) {
   };
 
   if (!label && !description && (!caption || omitCaption)) return null;
+
+  const {
+    container = {},
+    headingsContainer = {},
+    actionsContainer = {},
+    labelContainer = {},
+    label: labelProps = {},
+    description: descriptionProps = {},
+    caption: captionProps = {},
+  } = componentsProps;
 
   return (
     <Stack
@@ -42,33 +53,43 @@ export default function Header(props: HeaderProps) {
             }
           : {}),
       }}
+      {...container}
     >
-      <Box>
-        <Stack>
+      <Box {...headingsContainer}>
+        <Stack {...labelContainer}>
           <Typography
             variant={labelVariantMap[variant]}
             color="text.primary"
             sx={{ display: "flex", alignItems: "center" }}
+            {...labelProps}
           >
             {label}
             {descriptionView === "tooltip" && (
-              <HelpTooltip title={description} sx={{ ml: 1 }} />
+              <HelpTooltip
+                title={description}
+                sx={{ ml: 1 }}
+                {...descriptionProps}
+              />
             )}
           </Typography>
         </Stack>
         {description && descriptionView === "inline" && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            {...descriptionProps}
+          >
             {description}
           </Typography>
         )}
         {caption && !omitCaption && (
-          <Typography variant="body2" color="text.tertiary">
+          <Typography variant="body2" color="text.tertiary" {...captionProps}>
             {caption}
           </Typography>
         )}
         {!omitErrors && <ErrorView schema={{}} data={errors} />}
       </Box>
-      {Actions && <Box>{Actions}</Box>}
+      {Actions && <Box {...actionsContainer}>{Actions}</Box>}
     </Stack>
   );
 }
@@ -85,4 +106,5 @@ export type HeaderProps = {
   omitErrors?: boolean;
   descriptionView?: "inline" | "tooltip";
   errors: object;
+  componentsProps?: any;
 };

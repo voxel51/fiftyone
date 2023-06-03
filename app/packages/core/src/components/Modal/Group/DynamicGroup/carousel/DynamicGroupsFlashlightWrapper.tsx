@@ -71,7 +71,9 @@ const process = (
     return acc;
   }, []);
 
-export const DynamicGroupsFlashlightWrapper = () => {
+export const DynamicGroupsFlashlightWrapper: React.FC<{
+  setIsGroupEmpty: (isGroupEmpty: boolean) => void;
+}> = ({ setIsGroupEmpty }) => {
   const id = useId();
   const pageCount = useRef(0);
 
@@ -96,6 +98,10 @@ export const DynamicGroupsFlashlightWrapper = () => {
     }),
     [data]
   );
+
+  useEffect(() => {
+    setIsGroupEmpty(samples.edges.length === 0);
+  }, [samples, setIsGroupEmpty]);
 
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);

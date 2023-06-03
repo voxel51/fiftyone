@@ -181,16 +181,6 @@ const useClearActive = (modal: boolean, group: string) => {
         );
         const active = await snapshot.getPromise(fos.activeFields({ modal }));
 
-        if (group === "tags") {
-          set(fos.activeTags(modal), []);
-          return;
-        }
-
-        if (group === "label tags") {
-          set(fos.activeLabelTags(modal), []);
-          return;
-        }
-
         set(
           fos.activeFields({ modal }),
           active.filter((p) => !paths.includes(p))
