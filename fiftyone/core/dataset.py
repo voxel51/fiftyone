@@ -7694,8 +7694,8 @@ def _merge_samples_pipeline(
         )
 
         if contains_videos:
-            _index_frames(dst_videos, key_field, frame_key_field)
-            _index_frames(src_videos, key_field, frame_key_field)
+            _index_frames(dst_dataset, key_field, frame_key_field)
+            _index_frames(src_dataset, key_field, frame_key_field)
 
             # Create unique index on frame merge key
             frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
