@@ -11,7 +11,6 @@ import { TabOption } from "../utils";
 
 import useSchemaSettings, {
   TAB_OPTIONS,
-  TAB_OPTIONS_MAP,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
 
 import { SchemaSearch } from "./SchemaSearch";
@@ -69,7 +68,6 @@ const SchemaSettings = () => {
     setSelectedFieldsStage,
     datasetName,
     excludedPaths,
-    selectedPaths,
     resetExcludedPaths,
     setSelectedPaths,
     setLastAppliedPaths,
@@ -77,6 +75,7 @@ const SchemaSettings = () => {
     setExcludedPaths,
     isFilterRuleActive,
     searchMetaFilter,
+    enabledSelectedPaths,
   } = useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -189,13 +188,13 @@ const SchemaSettings = () => {
               })}
             />
           </Box>
-          {selectedTab === TAB_OPTIONS_MAP.FILTER_RULE && (
+          {isFilterRuleActive && (
             <SchemaSearch
               setSearchTerm={setSearchTerm}
               searchTerm={searchTerm}
             />
           )}
-          {selectedTab === TAB_OPTIONS_MAP.SELECTION && <SchemaSelection />}
+          {!isFilterRuleActive && <SchemaSelection />}
           <Box
             style={{
               position: "sticky",
@@ -244,7 +243,7 @@ const SchemaSettings = () => {
                   setSettingsModal({ open: false });
                 }
                 setLastAppliedPaths({
-                  selected: selectedPaths[datasetName],
+                  selected: enabledSelectedPaths[datasetName],
                   excluded: excludedPaths[datasetName],
                 });
               }}

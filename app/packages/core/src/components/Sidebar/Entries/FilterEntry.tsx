@@ -11,10 +11,7 @@ import { InputDiv } from "./utils";
 import * as fos from "@fiftyone/state";
 import { Settings, VisibilityOff } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
-import {
-  affectedPathCountState,
-  selectedFieldsStageState,
-} from "@fiftyone/state/src/hooks/useSchemaSettings";
+import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import { Tooltip, useTheme } from "@fiftyone/components";
 
 const Filter = ({ modal }: { modal: boolean }) => {
@@ -26,10 +23,13 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const resetSelectedFieldStages = useResetRecoilState(
     selectedFieldsStageState
   );
-  const affectedPathCount = useRecoilValue(affectedPathCountState);
 
-  const { setSelectedFieldsStage, resetTextFilter, resetExcludedPaths } =
-    fos.useSchemaSettings();
+  const {
+    setSelectedFieldsStage,
+    resetTextFilter,
+    resetExcludedPaths,
+    affectedPathCount,
+  } = fos.useSchemaSettings();
 
   useDebounce(
     () => {

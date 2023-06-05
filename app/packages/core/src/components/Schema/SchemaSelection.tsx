@@ -7,7 +7,6 @@ import { useSchemaSettings } from "@fiftyone/state";
 import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
 import { ExpandMore } from "@mui/icons-material";
-import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import styled from "styled-components";
 
 interface Props {}
@@ -23,13 +22,12 @@ export const SchemaSelection = () => {
     toggleSelection,
     finalSchema,
     searchResults,
-    selectedTab,
+    isFilterRuleActive,
     showMetadata,
     finalSchemaKeyByPath,
   } = useSchemaSettings();
-  const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
   const [expandedPaths, setExpandedPaths] = useState({});
-  const showSearchHelp = isFilterRuleMode && !searchResults?.length;
+  const showSearchHelp = isFilterRuleActive && !searchResults?.length;
   const showSelection = !showSearchHelp;
   const expandedPathsKeys = new Set(Object.keys(expandedPaths));
   const [JSONifiedPaths, setJSONifiedPaths] = useState(new Set());
@@ -191,7 +189,7 @@ export const SchemaSelection = () => {
                     <Box
                       style={{
                         paddingLeft: `${
-                          isFilterRuleMode
+                          isFilterRuleActive
                             ? "0.5rem"
                             : `${(count - 1) * 15 + 5}px`
                         }`,

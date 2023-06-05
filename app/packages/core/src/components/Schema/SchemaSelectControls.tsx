@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
 import { useSchemaSettings } from "@fiftyone/state";
-import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import styled from "styled-components";
 
 const ContainerBox = styled(Box)`
@@ -19,22 +18,21 @@ export const SchemaSelectionControls = () => {
     setShowNestedFields,
     allFieldsChecked,
     setAllFieldsChecked,
-    selectedTab,
+    isFilterRuleActive,
     showMetadata,
     setShowMetadata,
     searchResults,
     includeNestedFields,
     setIncludeNestedFields,
   } = useSchemaSettings();
-  const isFilterRuleMode = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
-  const showMetadataVisibile = !!!(isFilterRuleMode && !searchResults.length);
-  const includeNestedVisible = !!(isFilterRuleMode && searchResults.length);
+  const showMetadataVisible = !!!(isFilterRuleActive && !searchResults.length);
+  const includeNestedVisible = !!(isFilterRuleActive && searchResults.length);
 
   const controlList = useMemo(() => {
     return [
       {
         label: "Show metadata",
-        isVisible: showMetadataVisibile,
+        isVisible: showMetadataVisible,
         value: showMetadata,
         checked: showMetadata,
         onChange: () => setShowMetadata(!showMetadata),
@@ -49,14 +47,14 @@ export const SchemaSelectionControls = () => {
       },
       {
         label: "Show nested fields",
-        isVisible: !isFilterRuleMode,
+        isVisible: !isFilterRuleActive,
         value: showNestedFields,
         checked: showNestedFields,
         onChange: () => setShowNestedFields(!showNestedFields),
       },
       {
         label: "Select all",
-        isVisible: !isFilterRuleMode,
+        isVisible: !isFilterRuleActive,
         value: allFieldsChecked,
         checked: allFieldsChecked,
         onChange: () => setAllFieldsChecked(!allFieldsChecked),
@@ -64,7 +62,7 @@ export const SchemaSelectionControls = () => {
     ];
   }, [
     showMetadata,
-    showMetadataVisibile,
+    showMetadataVisible,
     includeNestedFields,
     showNestedFields,
     allFieldsChecked,
