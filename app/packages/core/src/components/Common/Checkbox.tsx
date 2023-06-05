@@ -63,6 +63,7 @@ const Checkbox = <T extends unknown>({
     <StyledCheckboxContainer title={text}>
       <StyledCheckbox
         {...props}
+        data-cy={`checkbox-${text}`}
         style={{ ...props.style, cursor: muted ? "not-allowed" : "pointer" }}
         onClick={(e) => {
           e.preventDefault();

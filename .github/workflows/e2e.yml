@@ -1,0 +1,74 @@
+name: Test e2e
+
+on: workflow_call
+
+jobs:
+  test-e2e:
+    runs-on: ubuntu-latest
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+
+      - name: Cache Node Modules
+        id: node-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            app/node_modules
+            app/.yarn/cache
+          key: node-modules-${{ hashFiles('app/yarn.lock') }}
+
+      - name: Install app
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: cd app && yarn install
+
+      - name: Build app
+        run: make app
+
+      - name: Install fiftyone
+        run: pip install .
+
+      - name: Configure
+        id: test_config
+        run: |
+          python tests/utils/setup_config.py
+          python tests/utils/github_actions_flags.py
+
+      - name: FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v2
+
+      - name: Run e2e tests
+        run: |
+          FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
+          yarn install
+          yarn start
+
+        working-directory: ./e2e
+      - name: Upload videos
+        uses: actions/upload-artifact@v2
+        with:
+          name: videos
+          path: e2e/cypress/videos
+
+      - name: Upload snapshots
+        uses: actions/upload-artifact@v2
+        with:
+          name: snapshots
+          path: e2e/cypress/snapshots/actual
