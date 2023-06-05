@@ -1,0 +1,12 @@
+.sidebarList::-webkit-scrollbar {
+  width: 12px;
+}
+
+.sidebarList::-webkit-scrollbar-track {
+  background: var(--fo-palette-background-level2);
+}
+
+.sidebarList::-webkit-scrollbar-thumb {
+  background-color: var(--fo-palette-background-button);
+  border: var(--fo-palette-background-level2);
+}
