@@ -7979,8 +7979,13 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
     }
 
 
-def _index_frames(sample_collection, key_field, frame_key_field):
-    ids, keys, all_sample_ids = sample_collection.values(
+def _index_frames(dataset, key_field, frame_key_field):
+    if dataset.media_type == fom.GROUP:
+        dst_videos = dataset.select_group_slices(media_type=fom.VIDEO)
+    else:
+        dst_videos = dataset
+
+    ids, keys, all_sample_ids = dst_videos.values(
         ["_id", key_field, "frames._sample_id"]
     )
     keys_map = {k: v for k, v in zip(ids, keys)}
@@ -7994,7 +7999,7 @@ def _index_frames(sample_collection, key_field, frame_key_field):
 
         frame_keys.append(sample_keys)
 
-    sample_collection.set_values(
+    dst_videos.set_values(
         "frames." + frame_key_field,
         frame_keys,
         expand_schema=False,
