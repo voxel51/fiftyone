@@ -10,6 +10,7 @@ import { Resizable } from "re-resizable";
 import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
+import styles from "./SidebarList.module.css";
 import { ACTIVE_FIELD } from "./utils";
 
 const SidebarList: React.FC = () => {
@@ -52,7 +53,7 @@ const SidebarList: React.FC = () => {
   return (
     <Resizable
       size={{ height: "100%", width }}
-      minWidth={200}
+      minWidth={230}
       maxWidth={600}
       enable={{
         top: false,
@@ -67,7 +68,7 @@ const SidebarList: React.FC = () => {
       onResizeStop={(e, direction, ref, { width: d }) => {
         setWidth(width + d);
         // reset sidebar width on double click
-        if (e.detail === 2) setWidth(200);
+        if (e.detail === 2) setWidth(230);
       }}
       handleStyles={{
         ["right"]: { right: 0, width: 4 },
@@ -75,7 +76,8 @@ const SidebarList: React.FC = () => {
       handleClasses={{
         ["right"]: resizeHandle,
       }}
-      style={{ overflow: "auto" }}
+      style={{ overflowY: "auto", overflowX: "hidden" }}
+      className={styles.sidebarList}
     >
       <List
         sx={{
