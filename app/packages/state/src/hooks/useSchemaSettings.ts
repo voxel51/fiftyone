@@ -52,6 +52,7 @@ export const TAB_OPTIONS_MAP = {
 };
 
 export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
+const SELECT_ALL = "SELECT_ALL";
 
 const skipField = (path: string, ftype: string, schema: {}) => {
   const parentPath = path.substring(0, path.lastIndexOf("."));
@@ -76,9 +77,12 @@ const disabledField = (
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema?.[parentPath];
   const parentEmbeddedDocType = parentField?.embeddedDocType;
-
-  const embedSplit = embeddedDocType?.split(".");
   const pathSplit = path.split(".");
+  const embeddedDocTypeSplit = embeddedDocType?.split(".");
+  const hasDynamicEmbeddedDocument = [
+    DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+    DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  ].includes(embeddedDocType);
 
   return (
     [
@@ -144,9 +148,15 @@ const disabledField = (
       POLYLINE_FIELD,
       POLYLINES_FIELD,
     ].includes(ftype) ||
-    (parentPath && parentPath !== path && ftype === LIST_FIELD) ||
-    (ftype === EMBEDDED_DOCUMENT_FIELD &&
-      VALID_LABEL_TYPES.includes(embedSplit?.[embedSplit?.length - 1]))
+    (parentPath &&
+      parentPath !== path &&
+      ftype === LIST_FIELD &&
+      (hasDynamicEmbeddedDocument ||
+        VALID_LABEL_TYPES.includes(
+          embeddedDocType?.includes(".")
+            ? embeddedDocTypeSplit[embeddedDocTypeSplit.length - 1]
+            : embeddedDocType
+        )))
   );
 };
 export const schemaSearchTerm = atom<string>({
@@ -200,17 +210,27 @@ export const schemaSearchRestuls = atom<string[]>({
     },
   ],
 });
+
+// tracks action and value - currently used for (un)select all action
+export const lastActionToggleSelectionState = atom<Record<
+  string,
+  boolean
+> | null>({
+  key: "lastActionToggleSelectionState",
+  default: null,
+});
+
 export const selectedPathsState = atomFamily({
   key: "selectedPathsState",
   default: (param: {}) => param,
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPathsMap) => {
-        const viewSchema = await getPromise(viewSchemaState);
         const dataset = await getPromise(fos.dataset);
+        const viewSchema = await getPromise(viewSchemaState);
         const fieldSchema = await getPromise(fieldSchemaState);
-
         const combinedSchema = { ...fieldSchema, ...viewSchema };
+
         const mapping = {};
         Object.keys(combinedSchema).forEach((path) => {
           if (dataset.mediaType === "image") {
@@ -310,30 +330,48 @@ export const excludedPathsState = atomFamily({
         }
 
         const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
-        // embedded document could break an exclude_field() call
         finalGreenPaths = shouldFilterTopLevelFields
-          ? finalGreenPaths.filter(
-              (path) =>
-                !(
-                  // a top-level embedded document with dynamic embed type
-                  (
-                    [EMBEDDED_DOCUMENT_FIELD, LIST_FIELD].includes(
-                      combinedSchema[path]?.ftype
-                    ) &&
-                    [
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
-                    ].includes(combinedSchema[path]?.embeddedDocType) &&
-                    (isVideo
-                      ? !(
-                          path.split(".").length === 2 &&
-                          path.startsWith("frames.")
-                        ) || !path.includes(".")
-                      : !path.includes("."))
-                  )
-                )
-            )
+          ? finalGreenPaths.filter((path) => {
+              const isEmbeddedOrListType = [
+                EMBEDDED_DOCUMENT_FIELD,
+                LIST_FIELD,
+              ].includes(combinedSchema[path]?.ftype);
+
+              // embedded document could break an exclude_field() call causing mongo query issue.
+              const hasDynamicEmbeddedDocument = [
+                DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+                DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+              ].includes(combinedSchema[path]?.embeddedDocType);
+
+              const isTopLevelPath = isVideo
+                ? !(
+                    path.split(".").length === 2 && path.startsWith("frames.")
+                  ) || !path.includes(".")
+                : !path.includes(".");
+
+              return !(
+                isEmbeddedOrListType &&
+                hasDynamicEmbeddedDocument &&
+                isTopLevelPath
+              );
+            })
           : finalGreenPaths;
+
+        // filter out subpaths if a parent (or higher) path is also in the list
+        const finalGreenPathsSet = new Set(finalGreenPaths);
+        if (showNestedField) {
+          finalGreenPaths = finalGreenPaths.filter((path) => {
+            let tmp = path;
+            while (tmp.indexOf(".") > 0) {
+              const parentPath = tmp.substring(0, tmp.lastIndexOf("."));
+              if (finalGreenPathsSet.has(parentPath) || path === parentPath) {
+                return false;
+              }
+              tmp = parentPath;
+            }
+            return true;
+          });
+        }
 
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
@@ -477,6 +515,8 @@ export default function useSchemaSettings() {
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
     searchMetaFilterState
   );
+  const [lastActionToggleSelection, setLastActionToggleSelection] =
+    useRecoilState(lastActionToggleSelectionState);
 
   const vStages = useRecoilValue(fos.view);
   const [data, refetch] = useRefetchableFragment<
@@ -611,7 +651,9 @@ export default function useSchemaSettings() {
         const isInSearchResult = searchResults.includes(path);
         const isSelected =
           (filterRuleTab && isInSearchResult) ||
-          (!filterRuleTab && selectedPaths?.[datasetName]?.has(fullPath));
+          (!filterRuleTab &&
+            selectedPaths?.[datasetName] &&
+            selectedPaths[datasetName]?.has(fullPath));
 
         return {
           path,
@@ -836,18 +878,16 @@ export default function useSchemaSettings() {
     [selectedPaths, viewPaths, datasetName, excludedPaths]
   );
 
-  // select/unselect all
-  const setAllFieldsCheckedWrapper = useCallback(
-    (val) => {
-      if (!allPaths?.length) return;
-
-      setAllFieldsChecked(val);
+  useEffect(() => {
+    if (!allPaths?.length) return;
+    if (lastActionToggleSelection) {
+      const val = lastActionToggleSelection[SELECT_ALL];
 
       if (val) {
         setExcludedPaths({ [datasetName]: new Set() });
-        setSelectedPaths({ [datasetName]: allPaths });
+        setSelectedPaths({ [datasetName]: new Set([...allPaths]) });
       } else {
-        if (includeNestedFields && allPaths?.length) {
+        if (includeNestedFields && filterRuleTab) {
           setExcludedPaths({ [datasetName]: new Set(allPaths) });
         } else {
           const topLevelPaths = (allPaths || []).filter(
@@ -857,8 +897,17 @@ export default function useSchemaSettings() {
         }
         setSelectedPaths({ [datasetName]: new Set() });
       }
+
+      setLastActionToggleSelection(null);
+    }
+  }, [lastActionToggleSelection, allPaths]);
+
+  const setAllFieldsCheckedWrapper = useCallback(
+    (val: boolean) => {
+      setAllFieldsChecked(val);
+      setLastActionToggleSelection({ SELECT_ALL: val });
     },
-    [allPaths, datasetName]
+    [finalSchema]
   );
 
   const bareFinalSchema = useMemo(

@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
-import Checkbox from "@mui/material/Checkbox";
-import { useTheme } from "@fiftyone/components";
 import { useSchemaSettings } from "@fiftyone/state";
 import { TAB_OPTIONS_MAP } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import styled from "styled-components";
@@ -15,10 +13,7 @@ const ContainerBox = styled(Box)`
   padding: 0.35rem 1rem;
 `;
 
-interface Props {}
-
-export const SchemaSelectionControls = (props: Props) => {
-  const theme = useTheme();
+export const SchemaSelectionControls = () => {
   const {
     showNestedFields,
     setShowNestedFields,
@@ -85,7 +80,7 @@ export const SchemaSelectionControls = (props: Props) => {
         {controlList
           .filter(({ isVisible }) => isVisible)
           .map(({ label, value, checked, onChange, disabled = false }) => (
-            <ContainerBox key={label}>
+            <ContainerBox key={label} flex="1">
               <FormGroup>
                 <FormControlLabel
                   control={
