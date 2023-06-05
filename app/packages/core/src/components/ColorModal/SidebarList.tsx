@@ -10,14 +10,16 @@ import { Resizable } from "re-resizable";
 import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
-import styles from "./SidebarList.module.css";
+import styles from "../../../../../packages/components/src/scrollable.module.css";
 import { ACTIVE_FIELD } from "./utils";
+
+const WIDTH = 230;
 
 const SidebarList: React.FC = () => {
   const theme = useTheme();
   const activeField = useRecoilValue(fos.activeColorField);
 
-  const [width, setWidth] = useState(200);
+  const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.global, ACTIVE_FIELD.json], name: "general" },
   ];
@@ -53,7 +55,7 @@ const SidebarList: React.FC = () => {
   return (
     <Resizable
       size={{ height: "100%", width }}
-      minWidth={230}
+      minWidth={WIDTH}
       maxWidth={600}
       enable={{
         top: false,
@@ -68,7 +70,7 @@ const SidebarList: React.FC = () => {
       onResizeStop={(e, direction, ref, { width: d }) => {
         setWidth(width + d);
         // reset sidebar width on double click
-        if (e.detail === 2) setWidth(230);
+        if (e.detail === 2) setWidth(WIDTH);
       }}
       handleStyles={{
         ["right"]: { right: 0, width: 4 },
@@ -77,7 +79,7 @@ const SidebarList: React.FC = () => {
         ["right"]: resizeHandle,
       }}
       style={{ overflowY: "auto", overflowX: "hidden" }}
-      className={styles.sidebarList}
+      className={styles.scrollable}
     >
       <List
         sx={{
