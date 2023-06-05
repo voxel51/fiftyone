@@ -8,23 +8,18 @@ import {
   iconContainer,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
-import {
-  OperatorBrowser,
-  OperatorInvocationRequestExecutor,
-  OperatorPrompt,
-  OperatorViewModal,
-} from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { Suspense, useEffect, useMemo } from "react";
+import { default as React, Suspense, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
-import { graphql, useFragment, usePaginationFragment } from "react-relay";
+import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { graphql } from "relay-runtime";
 import ga from "../ga";
 import useRefresh from "../useRefresh";
 import DatasetSelector from "./DatasetSelector";
@@ -177,10 +172,6 @@ const Nav: React.FC<{
           <GitHubLink />
           <DocsLink />
         </div>
-        <OperatorBrowser />
-        <OperatorPrompt />
-        <OperatorViewModal />
-        <OperatorInvocationRequestExecutor />
       </Header>
       {ReactDOM.createPortal(
         <AnimatePresence>

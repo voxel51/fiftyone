@@ -17,11 +17,7 @@ import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
 import { InfoIcon, useTheme } from "@fiftyone/components";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import {
-  coloring,
-  activeColorField,
-  canEditCustomColors,
-} from "@fiftyone/state";
+import { coloring, activeColorField } from "@fiftyone/state";
 import ReactDOM from "react-dom";
 
 const selectedFieldInfo = atom<string | null>({
@@ -211,15 +207,10 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => {
-      if (theme.mode === "light") {
-        return theme.background.level1;
-      }
-      return theme.background.level1;
-    }};
+    background: ${({ theme }) => theme.background.level1};
   }
   tr {
-    border-top: solid 2px ${getBorderColor};
+    border-top: solid 2px ${({ theme }) => theme.background.header};
   }
   a,
   a:visited {
@@ -242,13 +233,6 @@ const ShowMoreLink = styled.a`
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
-
-function getBorderColor({ theme }) {
-  if (theme.mode === "light") {
-    return theme.background.header;
-  }
-  return "red";
-}
 
 function FieldInfoExpanded({
   field,
@@ -279,7 +263,7 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor(field);
+    setIsCustomizingColor({ field, expandedPath });
   };
 
   const isNotTag = field.path !== "tags";
@@ -317,6 +301,7 @@ function FieldInfoExpanded({
           type={field.embeddedDocType || field.ftype}
           expandedPath={expandedPath}
           timeZone={timeZone}
+          color={color}
         />
         {isCollapsed && (
           <ShowMoreLink
@@ -344,7 +329,7 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
   ...props
 }) => {
   return (
-    <FieldInfoTableContainer onClick={props.onClick}>
+    <FieldInfoTableContainer onClick={props.onClick} color={props.color}>
       <tbody>
         <tr style={{ cursor: "pointer" }}>
           <td>
@@ -516,6 +501,7 @@ function FieldInfoTable({
   subfield,
   description,
   timeZone,
+  color,
 }) {
   info = info || {};
   const tableData = info;
@@ -528,7 +514,7 @@ function FieldInfoTable({
   }
 
   return (
-    <FieldInfoTableContainer>
+    <FieldInfoTableContainer color={color}>
       <tbody>
         {type && (
           <tr>

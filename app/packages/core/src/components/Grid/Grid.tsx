@@ -2,7 +2,7 @@ import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { deferrer, stringifyObj, useEventHandler } from "@fiftyone/state";
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import { default as React, useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { flashlightLooker } from "./Grid.module.css";
@@ -121,12 +121,12 @@ const Grid: React.FC<{}> = () => {
 
   useLayoutEffect(
     deferred(() => {
-      flashlight.updateItems((sampleId) =>
+      flashlight.updateItems((sampleId) => {
         store.lookers.get(sampleId)?.updateOptions({
           ...lookerOptions,
           selected: selected.has(sampleId),
-        })
-      );
+        });
+      });
     }),
     [lookerOptions, selected]
   );

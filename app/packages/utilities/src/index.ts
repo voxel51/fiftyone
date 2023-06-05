@@ -3,11 +3,11 @@ import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
 
+export * from "./Resource";
 export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
-export * from "./Resource";
 export * from "./styles";
 
 interface O {
@@ -176,6 +176,14 @@ export const LABEL_LISTS_MAP = {
   [TEMPORAL_DETECTIONS]: "detections",
 };
 
+const RESERVED_FIELD_KEYS_MAP = {
+  tags: "tags",
+  filepath: "filepath",
+  sampleID: "sample_id",
+};
+
+export const RESERVED_FIELD_KEYS = Object.values(RESERVED_FIELD_KEYS_MAP);
+
 export const LABELS_MAP = {
   [CLASSIFICATION]: CLASSIFICATION,
   [CLASSIFICATIONS]: CLASSIFICATIONS,
@@ -248,7 +256,12 @@ export const LABEL_LIST = {
   TemporalDetections: "detections",
 };
 
-export const NOT_VISIBLE_LIST = ["DictField", "ArrayField", "VectorField"];
+export const NOT_VISIBLE_LIST = [
+  "DictField",
+  "ArrayField",
+  "VectorField",
+  "FrameNumberField",
+];
 
 export const LABEL_DOC_TYPES = VALID_LABEL_TYPES.filter(
   (label) => !LABEL_LISTS.includes(label)
@@ -261,6 +274,19 @@ export const AGGS = {
   DISTINCT: "Distinct",
 };
 
+export const POLYLINE_FIELD = "fiftyone.core.labels.Polyline";
+export const POLYLINES_FIELD = "fiftyone.core.labels.Polylines";
+export const GEO_LOCATIONS_FIELD = "fiftyone.core.labels.GeoLocations";
+export const GEO_LOCATION_FIELD = "fiftyone.core.labels.GeoLocation";
+export const SEGMENTATION_FIELD = "fiftyone.core.labels.Segmentation";
+export const HEATMAP_FIELD = "fiftyone.core.labels.Heatmap";
+export const CLASSIFICATION_FIELD = "fiftyone.core.labels.Classification";
+export const CLASSIFICATIONS_FIELD = "fiftyone.core.labels.Classifications";
+export const DETECTION_FIELD = "fiftyone.core.labels.Detection";
+export const DETECTIONS_FIELD = "fiftyone.core.labels.Detections";
+export const TEMPORAL_DETECTION_FIELD =
+  "fiftyone.core.labels.TemporalDetection";
+export const ARRAY_FIELD = "fiftyone.core.fields.ArrayField";
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const DATE_FIELD = "fiftyone.core.fields.DateField";
 export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
@@ -269,6 +295,8 @@ export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
 export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.DynamicEmbeddedDocumentField";
+export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2 =
+  "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
@@ -277,6 +305,11 @@ export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
+export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
+export const DETECTION_FILED = "fiftyone.core.labels.Detection";
+export const KEYPOINT_FILED = "fiftyone.core.labels.Keypoint";
+export const REGRESSION_FILED = "fiftyone.core.labels.Regression";
+export const GROUP = "fiftyone.core.groups.Group";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
@@ -310,6 +343,24 @@ export const VALID_NUMERIC_TYPES = [
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+];
+
+// list fields may not have a subfield type, so null, undefined is included
+export const UNSUPPORTED_FILTER_TYPES = [
+  ARRAY_FIELD,
+  DICT_FIELD,
+  VECTOR_FIELD,
+  null,
+  undefined,
+];
+
+export const DYNAMIC_GROUP_FIELDS = [
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
 ];
 
 export const LABELS_PATH = "fiftyone.core.labels";
@@ -537,3 +588,11 @@ export const toSlug = (name: string) => {
   }
   return "";
 };
+
+export function pluralize(
+  number: number,
+  singular: string | JSX.Element,
+  plural: string | JSX.Element
+) {
+  return number === 1 ? singular : plural;
+}

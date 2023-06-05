@@ -1,7 +1,7 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import { useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
 import { DynamicGroupsFlashlightWrapper } from "./DynamicGroupsFlashlightWrapper";
 
 const MAX_CAROUSEL_HEIGHT = 500;
@@ -13,6 +13,12 @@ export const DynamicGroupCarousel = () => {
   );
 
   const theme = useTheme();
+
+  const [isGroupEmpty, setIsGroupEmpty] = useState(false);
+
+  if (isGroupEmpty) {
+    return null;
+  }
 
   return (
     <Resizable
@@ -38,7 +44,7 @@ export const DynamicGroupCarousel = () => {
       }}
     >
       <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <DynamicGroupsFlashlightWrapper />
+        <DynamicGroupsFlashlightWrapper setIsGroupEmpty={setIsGroupEmpty} />
       </Suspense>
     </Resizable>
   );

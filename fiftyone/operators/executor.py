@@ -5,28 +5,31 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from .registry import OperatorRegistry
-import fiftyone.server.view as fosv
-import fiftyone as fo
-import fiftyone.operators.types as types
-from .message import GeneratedMessage, MessageType
+import asyncio
 import types as python_types
 import traceback
+
+import fiftyone as fo
+import fiftyone.server.view as fosv
+import fiftyone.operators.types as types
+
 from .decorators import coroutine_timeout
-import asyncio
+from .registry import OperatorRegistry
+from .message import GeneratedMessage, MessageType
+from fiftyone.core.utils import run_sync_task
 
 
-class InvocationRequest:
+class InvocationRequest(object):
     """Represents a request to invoke an operator.
+
     Args:
         operator_uri: the URI of the operator to invoke
-        params: a dictionary of parameters
+        params (None): an optional dictionary of parameters
     """
 
-    def __init__(self, operator_uri, params={}):
+    def __init__(self, operator_uri, params=None):
         self.operator_uri = operator_uri
-        self.params = params
+        self.params = params or {}
 
     def to_json(self):
         return {
@@ -35,28 +38,30 @@ class InvocationRequest:
         }
 
 
-class Executor:
+class Executor(object):
     """Handles the execution phase of the operator lifecycle.
+
     Args:
-        requests: an optional list of InvocationRequest objects
-        logs: an optional list of log messages
+        requests (None): an optional list of InvocationRequest objects
+        logs (None): an optional list of log messages
     """
 
     def __init__(self, requests=None, logs=None):
         self._requests = requests or []
         self._logs = logs or []
 
-    def trigger(self, operator_name, params={}):
+    def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.
 
         Args:
             operator_name: the name of the operator
-            params: a dictionary of parameters for the operator
+            params (None): a dictionary of parameters for the operator
 
         Returns:
-            a :class:`GeneratedMessage` containing the result of the invocation
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            the result of the invocation
         """
-        inv_req = InvocationRequest(operator_name, params)
+        inv_req = InvocationRequest(operator_name, params=params)
         self._requests.append(inv_req)
         return GeneratedMessage(
             MessageType.SUCCESS, cls=InvocationRequest, body=inv_req
@@ -76,9 +81,11 @@ class Executor:
 @coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_operator(operator_name, request_params):
     """Executes the operator with the given name.
+
     Args:
         operator_name: the name of the operator
-        params: a dictionary of parameters for the operator
+        request_params: a dictionary of parameters for the operator
+
     Returns:
         the result of the operator as a dictionary or ``None``
     """
@@ -90,25 +97,25 @@ async def execute_operator(operator_name, request_params):
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)
-
-    validation_ctx = ValidationContext(ctx, inputs)
+    validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
-        return ExecutionResult(None, None, "Validation Error", validation_ctx)
-    try:
-        if asyncio.iscoroutinefunction(operator.execute):
-            raw_result = await operator.execute(ctx)
-        else:
-            raw_result = operator.execute(ctx)
-    except Exception as e:
-        return ExecutionResult(None, executor, str(e))
+        return ExecutionResult(
+            error="Validation Error", validation_ctx=validation_ctx
+        )
 
-    return ExecutionResult(raw_result, executor, None)
+    try:
+        raw_result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else run_sync_task(operator.execute, ctx)
+        )
+    except Exception as e:
+        return ExecutionResult(executor=executor, error=traceback.format_exc())
+
+    return ExecutionResult(result=raw_result, executor=executor)
 
 
 def _is_generator(value):
-    """
-    Returns True if the given value is a generator or an async generator, False otherwise.
-    """
     return isinstance(value, python_types.GeneratorType) or isinstance(
         value, python_types.AsyncGeneratorType
     )
@@ -118,10 +125,13 @@ def resolve_type(registry, operator_uri, request_params):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
+        registry: an :class:`fiftyone.operators.registry.OperatorRegistry`
         operator_uri: the URI of the operator
         request_params: a dictionary of request parameters
+
     Returns:
-        the type of the inputs :class:`Property` of the operator or ``None``
+        the type of the inputs :class:`fiftyone.operators.types.Property` of
+        the operator, or None
     """
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -133,15 +143,16 @@ def resolve_type(registry, operator_uri, request_params):
             ctx, request_params.get("target", "inputs")
         )
     except Exception as e:
-        return ExecutionResult(None, None, traceback.format_exc())
+        return ExecutionResult(error=traceback.format_exc())
 
 
 def resolve_placement(operator, request_params):
     """Resolves the placement of the operator with the given name.
 
     Args:
-        operator_uri: the URI of the operator
+        operator: the :class:`fiftyone.operators.operator.Operator`
         request_params: a dictionary of request parameters
+
     Returns:
         the placement of the operator or ``None``
     """
@@ -149,31 +160,31 @@ def resolve_placement(operator, request_params):
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
-        return ExecutionResult(None, None, str(e))
+        return ExecutionResult(error=str(e))
 
 
-class ExecutionContext:
+class ExecutionContext(object):
     """Represents the execution context of an operator.
 
     Operators can use the execution context to access the view, dataset, and
     selected samples, as well as to trigger other operators.
 
     Args:
-        request_params: a dictionary of request parameters
-        executor: an optional :class:`Executor` instance
+        request_params (None): a optional dictionary of request parameters
+        executor (None): an optional :class:`Executor` instance
     """
 
-    def __init__(self, execution_request_params={}, executor=None):
-        self.request_params = execution_request_params
-        self.params = execution_request_params.get("params", {})
+    def __init__(self, request_params=None, executor=None):
+        self.request_params = request_params or {}
+        self.params = self.request_params.get("params", {})
         self.executor = executor
 
     @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` to operate on.
 
-        This property is only available when the operator is invoked via the FiftyOne App
-        and the user has defined a view.
+        This property is only available when the operator is invoked via the
+        FiftyOne App and the user has defined a view.
         """
         stages = self.request_params.get("view", None)
         extended = self.request_params.get("extended", None)
@@ -200,47 +211,54 @@ class ExecutionContext:
 
     @property
     def dataset_name(self):
-        """The name of the :class:`fiftyone.core.dataset.Dataset` to operate on."""
+        """The name of the :class:`fiftyone.core.dataset.Dataset` to operate
+        on.
+        """
         return self.request_params.get("dataset_name", None)
 
-    def trigger(self, operator_name, params={}):
+    def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.
 
-        Note:
+        . note::
 
-            This method is only available when the operator is invoked via the FiftyOne App.
-            You can check this via: ``if ctx.executor:``.
+            This method is only available when the operator is invoked via the
+            FiftyOne App. You can check this via ``ctx.executor``.
 
         Args:
             operator_name: the name of the operator
-            params: a dictionary of parameters for the operator
+            params (None): a dictionary of parameters for the operator
         """
         if self.executor is None:
             raise ValueError("No executor available")
+
         return self.executor.trigger(operator_name, params)
 
     def log(self, message):
-        """Logs a message to the browser console."""
+        """Logs a message to the browser console.
+
+        Args:
+            message: a message to log
+        """
         self.trigger("console_log", {"message": message})
 
 
-class ExecutionResult:
+class ExecutionResult(object):
     """Represents the result of an operator execution.
 
     Args:
-        result: the result of the operator
-        executor: an optional :class:`Executor` instance
-        error: an optional error message
-        validation_ctx: an optional :class:`ValidationContext` instance
-
-    Attributes:
-        result: the result of the operator
-        executor: an optional :class:`Executor` instance
-        error: an optional error message
-        validation_ctx: an optional :class:`ValidationContext` instance
+        result (None): the execution result
+        executor (None): an :class:`Executor`
+        error (None): an error message
+        validation_ctx (None): a :class:`ValidationContext`
     """
 
-    def __init__(self, result, executor, error, validation_ctx=None):
+    def __init__(
+        self,
+        result=None,
+        executor=None,
+        error=None,
+        validation_ctx=None,
+    ):
         self.result = result
         self.executor = executor
         self.error = error
@@ -252,6 +270,11 @@ class ExecutionResult:
         return _is_generator(self.result)
 
     def to_json(self):
+        """Returns a JSON dict representation of the result.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
@@ -262,33 +285,52 @@ class ExecutionResult:
         }
 
 
-class ValidationError:
-    def __init__(self, reason, property, path):
+class ValidationError(object):
+    """A validation error.
+
+    Args:
+        reason: the reason
+        property: the property
+        path: the path
+    """
+
+    def __init__(self, reason, property, path, custom=False):
         self.reason = reason
         self.error_message = property.error_message
         self.path = path
+        self.custom = custom
 
     def to_json(self):
+        """Returns a JSON dict representation of the error.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "reason": self.reason,
             "error_message": self.error_message,
             "path": self.path,
+            "custom": self.custom,
         }
 
 
-class ValidationContext:
+class ValidationContext(object):
     """Represents the validation context of an operator.
 
     Args:
-        ctx: the :class:`ExecutionContext` instance
-        inputs_property: the :class:`Property` of the operator inputs
+        ctx: the :class:`ExecutionContext`
+        inputs_property: the :class:`fiftyone.operators.types.Property` of the
+            operator inputs
     """
 
-    def __init__(self, ctx, inputs_property):
+    def __init__(self, ctx, inputs_property, operator):
         self.ctx = ctx
         self.params = ctx.params
         self.inputs_property = inputs_property
         self._errors = []
+        self.disable_schema_validation = (
+            operator.config.disable_schema_validation
+        )
         if self.inputs_property is None:
             self.invalid = False
             self.errors = []
@@ -297,6 +339,11 @@ class ValidationContext:
             self.invalid = len(self.errors) > 0
 
     def to_json(self):
+        """Returns a JSON dict representation of the context.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "invalid": self.invalid,
             "errors": [e.to_json() for e in self.errors],
@@ -306,18 +353,20 @@ class ValidationContext:
         """Adds a validation error.
 
         Args:
-            error: a :class:`ValidationError` instance
+            error: a :class:`ValidationError`
         """
+        if self.disable_schema_validation and error.custom != True:
+            return
         self._errors.append(error)
 
     def _validate(self):
-        """Validates the operator inputs."""
         params = self.params
         validation_error = self.validate_property(
             "", self.inputs_property, params
         )
         if validation_error:
             self.add_error(validation_error)
+
         return self._errors
 
     def validate_enum(self, path, property, value):
@@ -325,11 +374,11 @@ class ValidationContext:
 
         Args:
             path: the path to the property
-            property: the :class:`Property` instance
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
-            a :class:`ValidationError` instance, if the value is invalid
+            a :class:`ValidationError`, if the value is invalid
         """
         enum = property.type
         if value not in enum.values:
@@ -340,14 +389,15 @@ class ValidationContext:
 
         Args:
             path: the path to the property
-            property: the :class:`Property` instance
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
-            a :class:`ValidationError` instance, if the value is invalid
+            a :class:`ValidationError`, if the value is invalid
         """
         if not isinstance(value, list):
             return ValidationError("Invalid list", property, path)
+
         element_type = property.type.element_type
 
         for i in range(len(value)):
@@ -365,40 +415,47 @@ class ValidationContext:
 
         Args:
             path: the path to the property
-            property: the :class:`Property` instance
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
-            a :class:`ValidationError` instance, if the value is invalid
+            a :class:`ValidationError`, if the value is invalid
         """
         if property.invalid:
-            return ValidationError("Invalid property", property, path)
-        elif property.required and value is None:
+            return ValidationError(
+                property.error_message, property, path, True
+            )
+
+        if property.required and value is None:
             return ValidationError("Required property", property, path)
-        elif value is not None:
+
+        if value is not None:
             if isinstance(property.type, types.Enum):
                 return self.validate_enum(path, property, value)
-            elif isinstance(property.type, types.Object):
+
+            if isinstance(property.type, types.Object):
                 return self.validate_object(path, property, value)
-            elif isinstance(property.type, types.List):
+
+            if isinstance(property.type, types.List):
                 return self.validate_list(path, property, value)
-            else:
-                return self.validate_primitive(path, property, value)
+
+            return self.validate_primitive(path, property, value)
 
     def validate_object(self, path, property, value):
         """Validates an object value.
 
         Args:
             path: the path to the property
-            property: the :class:`Property` instance
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
-            a :class:`ValidationError` instance, if the value is invalid
+            a :class:`ValidationError`, if the value is invalid
         """
         propertyType = property.type
         if value is None:
             return ValidationError("Invalid object", property, path)
+
         for name, property in propertyType.properties.items():
             propertyValue = value.get(name, None)
             validation_error = self.validate_property(
@@ -412,19 +469,21 @@ class ValidationContext:
 
         Args:
             path: the path to the property
-            property: the :class:`Property` instance
+            property: the :class:`fiftyone.operators.types.Property`
             value: the value to validate
 
         Returns:
-            a :class:`ValidationError` instance, if the value is invalid
+            a :class:`ValidationError`, if the value is invalid
         """
         type_name = property.type.__class__.__name__
         value_type = type(value)
         if type_name == "String" and value_type != str:
             return ValidationError("Invalid value type", property, path)
+
         if type_name == "Number" and (
             value_type != int and value_type != float
         ):
             return ValidationError("Invalid value type", property, path)
+
         if type_name == "Boolean" and value_type != bool:
             return ValidationError("Invalid value type", property, path)

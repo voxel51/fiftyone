@@ -3,6 +3,7 @@ import { Box, Chip, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";
 import { CloudUpload } from "@mui/icons-material";
+import autoFocus from "../utils/auto-focus";
 
 type FileDropProps = {
   label?: string;
@@ -19,6 +20,7 @@ export default function FileDrop({
   onChange,
   types,
   allowMultiple,
+  autoFocused,
 }: FileDropProps) {
   const [error, setError] = useState("");
   const [active, setActive] = useState(false);
@@ -112,6 +114,7 @@ export default function FileDrop({
         </Box>
       </ReactFileDrop>
       <input
+        autoFocus={autoFocus({ autoFocused })}
         onChange={(e) => {
           addUniqueFiles(e.target.files);
           e.target.value = null;

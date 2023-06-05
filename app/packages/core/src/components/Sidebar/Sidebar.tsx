@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
-import { animated, config, Controller } from "@react-spring/web";
+import { Controller, animated, config } from "@react-spring/web";
 import { Resizable } from "re-resizable";
 import {
   default as React,

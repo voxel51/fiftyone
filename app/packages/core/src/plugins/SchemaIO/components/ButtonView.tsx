@@ -2,6 +2,7 @@ import React from "react";
 import { Box } from "@mui/material";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import Button from "./Button";
+import { getComponentProps } from "../utils";
 
 export default function ButtonView(props) {
   return props?.schema?.view?.operator ? (
@@ -16,8 +17,13 @@ function BaseButtonView(props) {
   const { view = {} } = schema;
   const { label, href } = view;
   return (
-    <Box>
-      <Button variant="contained" href={href} onClick={onClick}>
+    <Box {...getComponentProps(props, "container")}>
+      <Button
+        variant="contained"
+        href={href}
+        onClick={onClick}
+        {...getComponentProps(props, "button")}
+      >
         {label}
       </Button>
     </Box>

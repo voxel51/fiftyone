@@ -10,6 +10,7 @@ export { default as useClearSessionColorScheme } from "./useClearSessionColorSch
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useDimensions } from "./useDimensions";
 export { default as useExpandSample } from "./useExpandSample";
+export { default as useGlobalColorSetting } from "./useGlobalColorSetting";
 export { default as useHelpPanel } from "./useHelpPanel";
 export { default as useHover } from "./useHover";
 export { default as useHoveredSample } from "./useHoveredSample";
@@ -27,12 +28,14 @@ export {
 export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";
+export { default as useSendEvent } from "./useSendEvent";
 export { default as useSessionColorScheme } from "./useSessionColorScheme";
 export { default as useSessionSpaces } from "./useSessionSpaces";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
 export { default as useSetSelected } from "./useSetSelected";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
+export { default as useSetSessionColorScheme } from "./useSetSessionColorScheme";
 export { default as useSetSpaces } from "./useSetSpaces";
 export { default as useSetView } from "./useSetView";
 export { default as useToClips } from "./useToClips";

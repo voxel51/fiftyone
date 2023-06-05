@@ -2,12 +2,37 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
-  DICT_FIELD,
+  CLASSIFICATIONS_FIELD,
+  CLASSIFICATION_FIELD,
+  DETECTIONS_FIELD,
+  DETECTION_FIELD,
+  DETECTION_FILED,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  EMBEDDED_DOCUMENT_FIELD,
+  FRAME_SUPPORT_FIELD,
+  Field,
+  GEO_LOCATIONS_FIELD,
+  GEO_LOCATION_FIELD,
+  HEATMAP_FIELD,
+  KEYPOINT_FILED,
+  LIST_FIELD,
+  POLYLINES_FIELD,
+  POLYLINE_FIELD,
+  REGRESSION_FILED,
+  RESERVED_FIELD_KEYS,
+  SEGMENTATION_FIELD,
+  Schema,
+  TEMPORAL_DETECTION_FIELD,
+  UNSUPPORTED_FILTER_TYPES,
+  VECTOR_FIELD,
+} from "@fiftyone/utilities";
+import {
   FRAME_NUMBER_FIELD,
   JUST_FIELD,
   OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
-import { keyBy } from "lodash";
+import { isEmpty, keyBy } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
@@ -16,6 +41,7 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
 
@@ -26,32 +52,64 @@ export const TAB_OPTIONS_MAP = {
 
 export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 
-const skipFiled = (path: string, ftype: string) => {
+const skipField = (path: string, ftype: string, schema: {}) => {
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+
   return (
-    ftype === DICT_FIELD ||
+    UNSUPPORTED_FILTER_TYPES.includes(ftype) ||
     ftype === JUST_FIELD ||
-    path.includes(".logits") ||
-    path.endsWith(".index") ||
-    path.endsWith(".bounding_box")
+    (parentPath &&
+      schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
+      path.endsWith(".bounding_box")) ||
+    path.endsWith(".index")
   );
 };
-const disabledField = (path: string, ftype: string, subfield: string) => {
+const disabledField = (
+  path: string,
+  combinedSchema: Schema,
+  groupField?: string
+) => {
+  const currField = combinedSchema?.[path] || ({} as Field);
+  const { ftype } = currField;
+
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+  const parentField = combinedSchema?.[parentPath];
+  const parentEmbeddedDocType = parentField?.embeddedDocType;
+
   return (
-    path === "tags" ||
-    path === "filepath" ||
-    (ftype === OBJECT_ID_FIELD && path === "id") ||
+    [
+      OBJECT_ID_FIELD,
+      FRAME_NUMBER_FIELD,
+      FRAME_SUPPORT_FIELD,
+      VECTOR_FIELD,
+    ].includes(ftype) ||
+    [path, parentPath].includes(groupField) ||
+    RESERVED_FIELD_KEYS.includes(path) ||
     path.startsWith("metadata") ||
-    path.endsWith("frames.frame_number") ||
-    ftype === FRAME_NUMBER_FIELD
+    [
+      TEMPORAL_DETECTION_FIELD,
+      DETECTION_FIELD,
+      DETECTIONS_FIELD,
+      CLASSIFICATION_FIELD,
+      CLASSIFICATIONS_FIELD,
+      KEYPOINT_FILED,
+      REGRESSION_FILED,
+      HEATMAP_FIELD,
+      SEGMENTATION_FIELD,
+      GEO_LOCATIONS_FIELD,
+      GEO_LOCATION_FIELD,
+      POLYLINE_FIELD,
+      POLYLINES_FIELD,
+    ].includes(parentEmbeddedDocType)
   );
 };
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
   default: "",
 });
-export const schemaFiledsOnly = atom<boolean>({
-  key: "schemaFiledsOnly",
-  default: true,
+export const showNestedFieldsState = atom<boolean>({
+  key: "showNestedFieldsState",
+  default: false,
 });
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
@@ -67,21 +125,30 @@ export const allFieldsCheckedState = atom<boolean>({
   key: "allFieldsCheckedState",
   default: true,
 });
+
 export const schemaSearchRestuls = atom<string[]>({
   key: "schemaSearchRestuls",
   default: [],
   effects: [
     ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPaths) => {
+      onSet(async (newPaths = []) => {
         const viewSchema = await getPromise(viewSchemaState);
-        const schema = await getPromise(schemaState);
+        const fieldSchema = await getPromise(fieldSchemaState);
+        const combinedSchema = { ...fieldSchema, ...viewSchema };
 
-        const greenPaths = [...newPaths].filter(
-          (path) =>
-            path &&
-            (viewSchema?.[path]?.ftype || schema?.[path]?.ftype) &&
-            !skipFiled(path, viewSchema[path].ftype)
-        );
+        const greenPaths = [...newPaths]
+          .filter(
+            (path) =>
+              path &&
+              combinedSchema?.[
+                path.startsWith("frames.") ? path.replace("frames.", "") : path
+              ]?.ftype &&
+              !skipField(path, combinedSchema?.[path]?.ftype, combinedSchema)
+          )
+          .map((path) =>
+            path.startsWith("frames.") ? path.replace("frames.", "") : path
+          );
+
         setSelf(greenPaths);
       });
     },
@@ -89,15 +156,15 @@ export const schemaSearchRestuls = atom<string[]>({
 });
 export const selectedPathsState = atomFamily({
   key: "selectedPathsState",
-  default: (param: { allPaths: string[] }) => new Set([...param.allPaths]),
+  default: (param: {}) => param,
   effects: [
     ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPaths) => {
+      onSet(async (newPathsMap) => {
         const viewSchema = await getPromise(viewSchemaState);
-        const schema = await getPromise(schemaState);
         const dataset = await getPromise(fos.dataset);
+        const fieldSchema = await getPromise(fieldSchemaState);
 
-        const combinedSchema = { ...schema, ...viewSchema };
+        const combinedSchema = { ...fieldSchema, ...viewSchema };
         const mapping = {};
         Object.keys(combinedSchema).forEach((path) => {
           if (dataset.mediaType === "image") {
@@ -110,43 +177,160 @@ export const selectedPathsState = atomFamily({
           }
         });
 
+        const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
-          .filter(
-            (path) =>
-              !!path &&
-              !skipFiled(
-                path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype
-              ) &&
-              !disabledField(
-                path,
-                viewSchema?.[path]?.ftype || schema?.[path]?.ftype,
-                viewSchema?.[path]?.subfield || schema?.[path]?.subfield
-              )
-          )
+          .filter((path) => {
+            const skip = skipField(
+              path,
+              viewSchema?.[path]?.ftype ||
+                viewSchema?.[path.replace("frames.", "")]?.ftype ||
+                fieldSchema?.[path]?.ftype,
+              combinedSchema
+            );
+            const disable = disabledField(
+              path,
+              combinedSchema,
+              dataset?.groupField
+            );
+            return !!path && !skip && !disable;
+          })
           .map((path) => mapping?.[path] || path);
 
-        setSelf(new Set(greenPaths));
+        setSelf({
+          [dataset?.name]: new Set(greenPaths),
+        });
       });
     },
   ],
 });
-export const schemaState = atom({
+export const excludedPathsState = atomFamily({
+  key: "excludedPathsState",
+  default: (param: {}) => param,
+  effects: [
+    ({ onSet, getPromise, setSelf }) => {
+      onSet(async (newPathsMap) => {
+        const viewSchema = await getPromise(viewSchemaState);
+        const fieldSchema = await getPromise(fieldSchemaState);
+        const dataset = await getPromise(fos.dataset);
+        const showNestedField = await getPromise(showNestedFieldsState);
+        const searchResults = await getPromise(schemaSearchRestuls);
+        const isVideo = dataset.mediaType === "video";
+        const isImage = dataset.mediaType === "image";
+        const isInSearchMode = !!searchResults?.length;
+
+        if (!dataset) {
+          return;
+        }
+
+        const combinedSchema = { ...fieldSchema, ...viewSchema };
+        const mapping = {};
+        Object.keys(combinedSchema).forEach((path) => {
+          if (isImage) {
+            mapping[path] = path;
+          }
+          if (isVideo && viewSchema) {
+            Object.keys(viewSchema).forEach((path) => {
+              mapping[path] = `frames.${path}`;
+            });
+          }
+        });
+
+        const newPaths = newPathsMap?.[dataset?.name] || [];
+        const greenPaths = [...newPaths]
+          .filter((path) => {
+            const rawPath = path.replace("frames.", "");
+            return (
+              !!rawPath &&
+              !skipField(
+                rawPath,
+                combinedSchema?.[rawPath]?.ftype,
+                combinedSchema
+              ) &&
+              !disabledField(path, combinedSchema, dataset?.groupField)
+            );
+          })
+          .map((path) => mapping?.[path] || path);
+
+        // if top level only, count should be top-level too
+        // if nested fields are shown, exclude more granular
+        let finalGreenPaths = greenPaths;
+        if (!showNestedField && !isInSearchMode) {
+          finalGreenPaths = greenPaths.filter((path) =>
+            isVideo
+              ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
+                !path.includes(".")
+              : !path.includes(".")
+          );
+        }
+
+        const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
+        // embedded document could break an exclude_field() call
+        finalGreenPaths = shouldFilterTopLevelFields
+          ? finalGreenPaths.filter(
+              (path) =>
+                !(
+                  // a top-level embedded document with dynamic embed type
+                  (
+                    [EMBEDDED_DOCUMENT_FIELD, LIST_FIELD].includes(
+                      combinedSchema[path]?.ftype
+                    ) &&
+                    [
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+                      DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+                    ].includes(combinedSchema[path]?.embeddedDocType) &&
+                    (isVideo
+                      ? !(
+                          path.split(".").length === 2 &&
+                          path.startsWith("frames.")
+                        ) || !path.includes(".")
+                      : !path.includes("."))
+                  )
+                )
+            )
+          : finalGreenPaths;
+
+        setSelf({
+          [dataset.name]: new Set(finalGreenPaths),
+        });
+      });
+    },
+  ],
+});
+export const schemaState = atom<Schema>({
   key: "schemaState",
-  default: [],
+  default: null,
 });
 
 export const viewSchemaState = atom({
   key: "viewSchemaState",
   default: null,
 });
+export const fieldSchemaState = atom({
+  key: "fieldSchemaState",
+  default: null,
+});
 export const showMetadataState = atom({
   key: "showMetadataState",
   default: false,
 });
+export const includeNestedFieldsState = atom({
+  key: "includeNestedFieldsState",
+  default: true,
+});
 export const affectedPathCountState = atom({
   key: "affectedPathCountState",
   default: 0,
+});
+export const searchMetaFilterState = atom({
+  key: "searchMetaFilterState",
+  default: {},
+});
+export const lastAppliedPathsState = atom({
+  key: "lastAppliedExcludedPathsState",
+  default: {
+    excluded: [],
+    selected: [],
+  },
 });
 
 export const selectedFieldsStageState = atom<any>({
@@ -175,20 +359,30 @@ export default function useSchemaSettings() {
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
   const router = useContext(fos.RouterContext);
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
+  const dataset = useRecoilValue(fos.dataset);
+
+  const resetTextFilter = useResetRecoilState(fos.textFilter(false));
+  const datasetName = useRecoilValue(fos.datasetName);
+
+  const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
+
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
       async (value) => {
+        if (!dataset) {
+          return;
+        }
+
         set(selectedFieldsStageState, value);
 
         // router is loaded only in OSS
         if (router.loaded) return;
         const view = await snapshot.getPromise(fos.view);
-        const datasetName = await snapshot.getPromise(fos.datasetName);
         const subscription = await snapshot.getPromise(fos.stateSubscription);
         setView({
           variables: {
             view: value ? [...view, value] : view,
-            datasetName,
+            datasetName: dataset.name,
             form: {},
             subscription,
           },
@@ -202,32 +396,42 @@ export default function useSchemaSettings() {
           },
         });
       },
-    [setView, router]
+    [setView, router, dataset]
   );
 
   const setViewSchema = useSetRecoilState(viewSchemaState);
+  const setFieldSchema = useSetRecoilState(fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
 
-  const dataset = useRecoilValue(fos.dataset);
   const [schema, setSchema] = useRecoilState(schemaState);
   useEffect(() => {
-    if (dataset) {
-      setSchema(dataset ? buildSchema(dataset, true) : []);
+    if (datasetName) {
+      setSchema(dataset ? buildSchema(dataset, true) : null);
     }
-  }, [dataset]);
+  }, [datasetName]);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
+  );
+  const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
+    includeNestedFieldsState
   );
 
   const [affectedPathCount, setAffectedPathCount] = useRecoilState(
     affectedPathCountState
   );
+  const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
+    lastAppliedPathsState
+  );
 
-  const [fieldsOnly, setFieldsOnly] = useRecoilState<boolean>(schemaFiledsOnly);
+  const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
+    showNestedFieldsState
+  );
+  const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
+    searchMetaFilterState
+  );
 
-  const allPaths = schema ? Object.keys(schema) : [];
   const vStages = useRecoilValue(fos.view);
   const [data, refetch] = useRefetchableFragment<
     foq.viewSchemaFragmentQuery,
@@ -235,9 +439,9 @@ export default function useSchemaSettings() {
   >(foq.viewSchema, null);
 
   useEffect(() => {
-    if (dataset?.name) {
+    if (datasetName && vStages) {
       refetch(
-        { name: dataset?.name, viewStages: vStages || [] },
+        { name: datasetName, viewStages: vStages || [] },
         {
           fetchPolicy: "store-and-network",
           onComplete: (err) => {
@@ -248,101 +452,174 @@ export default function useSchemaSettings() {
         }
       );
     }
-  }, [vStages]);
-  const viewSchema = keyBy(data?.schemaForViewStages, "path");
+  }, [vStages, datasetName]);
+  const { fieldSchema: fieldSchemaRaw, frameFieldSchema } =
+    data?.schemaForViewStages || {};
+  const viewSchema = keyBy(frameFieldSchema, "path");
+  const fieldSchema = keyBy(fieldSchemaRaw, "path");
   const vPaths = Object.keys(viewSchema);
 
+  const allPaths =
+    viewSchema && fieldSchema
+      ? Object.keys({ ...viewSchema, ...fieldSchema })
+      : [];
+
   useEffect(() => {
-    if (viewSchema) {
+    if (!isEmpty(viewSchema)) {
       setViewSchema(viewSchema);
     }
-  }, [viewSchema]);
+    if (!isEmpty(fieldSchema)) {
+      setFieldSchema(fieldSchema);
+    }
+  }, [viewSchema, fieldSchema]);
 
   const [selectedTab, setSelectedTab] = useRecoilState(
     schemaSelectedSettingsTab
   );
 
-  const [selectedPaths, setSelectedPaths] = useRecoilState<Set<string>>(
-    selectedPathsState({ allPaths: [] })
+  const selectedPathState = selectedPathsState({});
+  const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
+    selectedPathState
   );
 
-  useEffect(() => {
-    if (selectedTab === TAB_OPTIONS_MAP.SELECTION) {
-      setFieldsOnly(true);
-    }
-  }, [selectedTab]);
+  const excludePathsState = excludedPathsState({});
+  const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
+    excludePathsState
+  );
 
-  const [finalSchema] = useMemo(() => {
-    let tmpSchema = {};
+  const setShowNestedFields = useCallback(
+    (val: boolean) => {
+      let newExcludePaths = new Set();
+      if (val) {
+        excludedPaths?.[datasetName]?.forEach((path) => {
+          const subPaths = [...getSubPaths(path)];
+          subPaths.forEach((path) => {
+            newExcludePaths.add(path);
+          });
+        });
+      } else {
+        excludedPaths?.[datasetName]?.forEach((path) => {
+          if (
+            dataset.mediaType === "video"
+              ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
+                !path.includes(".")
+              : !path.includes(".")
+          ) {
+            newExcludePaths.add(path);
+          }
+        });
+      }
+
+      setExcludedPaths({ [datasetName]: newExcludePaths });
+      setShowNestedFieldsRaw(val);
+    },
+    [showNestedFields, excludedPaths]
+  );
+
+  const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
+    if (!datasetName || !selectedPaths?.[datasetName] || isEmpty(fieldSchema))
+      return [[], {}];
+    let finalSchemaKeyByPath = {};
     if (dataset.mediaType === "video") {
       Object.keys(viewSchema).forEach((fieldPath) => {
-        tmpSchema[`frames.${fieldPath}`] = viewSchema[fieldPath];
+        finalSchemaKeyByPath[fieldPath] = viewSchema[fieldPath];
       });
-      Object.keys(schema).forEach((fieldPath) => {
-        tmpSchema[fieldPath] = schema[fieldPath];
+      Object.keys(fieldSchema).forEach((fieldPath) => {
+        finalSchemaKeyByPath[fieldPath] = fieldSchema[fieldPath];
       });
     } else {
-      tmpSchema = viewSchema;
+      finalSchemaKeyByPath = !isEmpty(viewSchema) ? viewSchema : fieldSchema;
     }
 
-    tmpSchema = keyBy(tmpSchema, "path");
-    const resSchema = Object.keys(tmpSchema)
+    const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
+    const resSchema = Object.keys(finalSchemaKeyByPath)
       .sort()
       .filter((path) => {
         if (path === "undefined") return false;
-        if (selectedTab === TAB_OPTIONS_MAP.FILTER_RULE) {
-          return searchResults.includes(path);
-        }
         return true;
       })
       .map((path: string) => {
         const pathLabel = path.split(".");
-        const count = pathLabel?.length;
-        const pathLabelFinal =
-          dataset.mediaType === "video" && viewSchema?.[path]
-            ? `frames.${pathLabel[pathLabel.length - 1]}`
-            : pathLabel[pathLabel.length - 1];
+        const hasFrames = path?.startsWith("frames.");
+        const count = pathLabel?.length - (hasFrames ? 1 : 0);
+        const rawPath = hasFrames ? path.replace("frames.", "") : path;
+        const pathLabelFinal = searchResults.length
+          ? dataset.mediaType === "video" && viewSchema?.[rawPath]
+            ? `frames.${path}`
+            : path
+          : dataset.mediaType === "video" && viewSchema?.[rawPath]
+          ? `frames.${pathLabel[pathLabel.length - 1]}`
+          : pathLabel[pathLabel.length - 1];
 
-        const ftype = tmpSchema[path].ftype;
-        const skip = skipFiled(path, ftype);
-        const disabled = disabledField(path, ftype, tmpSchema[path].subfield);
+        const ftype = finalSchemaKeyByPath[path].ftype;
+        const skip = skipField(path, ftype, finalSchemaKeyByPath);
+        const isGroupField = dataset?.groupField;
+        const disabled =
+          disabledField(path, finalSchemaKeyByPath, isGroupField) ||
+          filterRuleTab;
 
         const fullPath =
           dataset.mediaType === "video" && viewSchema?.[path]
             ? `frames.${path}`
             : path;
 
-        const isSelected = selectedPaths.has(fullPath);
+        const isInSearchResult = searchResults.includes(path);
+        const isSelected =
+          (filterRuleTab && isInSearchResult) ||
+          (!filterRuleTab && selectedPaths?.[datasetName]?.has(fullPath));
 
         return {
           path,
           count,
-          isSelected: isSelected || disabled,
+          isSelected: filterRuleTab ? isSelected : isSelected || disabled,
           pathLabelFinal,
           skip,
           disabled,
-          info: tmpSchema[path].info,
-          description: tmpSchema[path].description,
-          name: tmpSchema[path].name,
+          info: finalSchemaKeyByPath[path].info,
+          description: finalSchemaKeyByPath[path].description,
+          name: finalSchemaKeyByPath[path].name,
         };
       })
       .filter((val) => {
-        return fieldsOnly ? !val.path.includes(".") : true;
+        const rawPath = val.path?.startsWith("frames.")
+          ? val.path.replace("frames.", "")
+          : val.path;
+        return showNestedFields || (filterRuleTab && searchResults.length)
+          ? true
+          : !rawPath.includes(".");
       })
       .sort((item, item2) =>
-        fieldsOnly ? (item.disabled ? 1 : -1) : item.path > item2.path ? 1 : -1
+        filterRuleTab && searchResults.length
+          ? searchResults.includes(item.path)
+            ? -1
+            : 1
+          : !showNestedFields
+          ? item.disabled
+            ? 1
+            : -1
+          : item.path > item2.path
+          ? 1
+          : item.disabled
+          ? 1
+          : -1
       );
 
-    return [resSchema];
+    return [resSchema, finalSchemaKeyByPath];
   }, [
-    schema,
     searchTerm,
     selectedPaths,
-    fieldsOnly,
+    excludedPaths,
+    showNestedFields,
     viewSchema,
     selectedTab,
     searchResults,
+    datasetName,
+    fieldSchema,
   ]);
+
+  const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
+    foq.searchSelectFields
+  );
 
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
   const getPath = useCallback(
@@ -358,105 +635,229 @@ export default function useSchemaSettings() {
   );
 
   const mergedSchema = useMemo(
-    () => ({ ...viewSchema, ...schema }),
-    [viewSchema, schema]
+    () => ({ ...viewSchema, ...fieldSchema }),
+    [viewSchema, fieldSchema]
   );
+
+  const searchSchemaFields = useCallback(
+    (object) => {
+      if (!mergedSchema) {
+        return;
+      }
+      searchSchemaFieldsRaw({
+        variables: { datasetName, metaFilter: object },
+        onCompleted: (data) => {
+          if (data) {
+            const { searchSelectFields = [] } = data;
+            const res = (searchSelectFields as string[])
+              .map((p) => p.replace("._cls", ""))
+              .filter((pp) => !pp.startsWith("_"));
+            setSearchResults(res);
+            setSearchMetaFilter(object);
+
+            const shouldExcludePaths = Object.keys(mergedSchema)
+              .filter((path) => !searchSelectFields?.includes(path))
+              .filter((path) => {
+                const childPathsInSearchResults = searchSelectFields.filter(
+                  (pp) => pp.startsWith(`${path}.`)
+                );
+                return !childPathsInSearchResults.length;
+              });
+            setExcludedPaths({ [datasetName]: shouldExcludePaths });
+
+            const shouldSelectPaths = Object.keys(mergedSchema)
+              .filter((path) => searchSelectFields?.includes(path))
+              .filter((path) => {
+                const childPathsInSearchResults = searchSelectFields.filter(
+                  (pp) => pp.startsWith(`${path}.`)
+                );
+                return !childPathsInSearchResults.length;
+              });
+            setSelectedPaths({ [datasetName]: new Set(shouldSelectPaths) });
+          }
+        },
+        onError: (e) => {
+          console.error("failed to search schema fields", e);
+        },
+      });
+    },
+    [datasetName, mergedSchema]
+  );
+
+  const setIncludeNestedFields = useCallback(
+    (val: boolean) => {
+      if (searchMetaFilter) {
+        const currentMetaFilter = { ...searchMetaFilter };
+        currentMetaFilter["include_nested_fields"] = val;
+        searchSchemaFields(currentMetaFilter);
+        setIncludeNestedFieldsRaw(val);
+      }
+    },
+    [searchMetaFilter]
+  );
+
+  const resetExcludedPaths = useCallback(() => {
+    setSelectedPaths({
+      [datasetName]: new Set([...viewPaths, ...Object.keys(fieldSchema)]),
+    });
+    setExcludedPaths({ [datasetName]: new Set() });
+    setSearchResults([]);
+    setSearchTerm("");
+  }, [datasetName, viewPaths, fieldSchema]);
+
   const getSubPaths = useCallback(
     (path: string) => {
+      if (!datasetName) {
+        return new Set();
+      }
       const subPaths = new Set<string>();
       subPaths.add(getPath(path));
       Object.keys(mergedSchema).forEach((currPath: string) => {
         if (
           currPath.startsWith(path + ".") &&
-          !skipFiled(currPath, mergedSchema?.[currPath]?.ftype) &&
-          !disabledField(
-            currPath,
-            mergedSchema?.[currPath]?.ftype,
-            mergedSchema?.[currPath]?.subfield
-          )
+          !skipField(currPath, mergedSchema?.[currPath]?.ftype, mergedSchema) &&
+          !disabledField(currPath, mergedSchema, dataset?.groupField)
         ) {
           subPaths.add(getPath(currPath));
         }
       });
       return subPaths;
     },
-    [mergedSchema]
-  );
-
-  const parentPathList = useCallback(
-    (currPathSplit: string[], path: string) => {
-      let ppaths = [];
-      if (currPathSplit.length > 1) {
-        ppaths = [
-          path.replace(`.${currPathSplit[currPathSplit.length - 1]}`, ""),
-        ];
-      }
-      return ppaths;
-    },
-    []
+    [mergedSchema, datasetName]
   );
 
   useEffect(() => {
-    if (viewPaths.length && !selectedPaths.size) {
-      setSelectedPaths(new Set([...viewPaths, ...Object.keys(schema)]));
+    if (!isEmpty(fieldSchema) && datasetName && !selectedPaths?.[datasetName]) {
+      const combinedSchema = new Set([
+        ...Object.keys(viewSchema),
+        ...Object.keys(fieldSchema),
+      ]);
+      setSelectedPaths(() => ({
+        [datasetName]: combinedSchema,
+      }));
+      if (
+        !lastAppliedPaths.selected.length &&
+        !lastAppliedPaths.excluded.length
+      ) {
+        setLastAppliedPaths({
+          selected: [...combinedSchema],
+          excluded: [],
+        });
+      }
     }
-  }, [schema]);
+  }, [viewSchema, fieldSchema]);
 
   // toggle field selection
   const toggleSelection = useCallback(
-    (path: string, checked: boolean) => {
-      const pathAndSubPaths = getSubPaths(path);
-      const currPathSplit = path.split(".");
+    (rawPath: string, checked: boolean) => {
+      if (!selectedPaths || !rawPath || !datasetName) return;
+      // improve this by unifying with similar patterns
+      // const path = dataset.mediaType === 'video' ? `frames.${rawPath}` : rawPath;
+      const pathAndSubPaths = getSubPaths(rawPath);
+      if (!pathAndSubPaths.size) {
+        return;
+      }
 
       if (checked) {
         const newSelectedPaths = new Set(
-          [...selectedPaths].filter((x) => !pathAndSubPaths.has(x))
+          [...selectedPaths[datasetName]].filter(
+            (path) => !pathAndSubPaths.has(path)
+          )
         );
-
-        const parentPaths = parentPathList(currPathSplit, path);
-        newSelectedPaths.delete(parentPaths[0]);
-        setSelectedPaths(newSelectedPaths);
+        const newExcludePaths = new Set([
+          ...(excludedPaths[datasetName] || []),
+          ...pathAndSubPaths,
+        ]);
+        setExcludedPaths({ [datasetName]: newExcludePaths });
+        setSelectedPaths({ [datasetName]: newSelectedPaths });
       } else {
-        const union = new Set<string>([...selectedPaths, ...pathAndSubPaths]);
-        const parentPaths = parentPathList(currPathSplit, path);
-        union.add(parentPaths[0]);
-        setSelectedPaths(union);
+        const union = new Set<string>([
+          ...selectedPaths[datasetName],
+          ...pathAndSubPaths,
+        ]);
+        const datasetExcludedPathsMap = new Set([
+          ...(excludedPaths[datasetName] || []),
+        ]);
+        pathAndSubPaths.forEach((excludePath) => {
+          datasetExcludedPathsMap.delete(excludePath);
+        });
+        setExcludedPaths({
+          [datasetName]: datasetExcludedPathsMap,
+        });
+        setSelectedPaths({ [datasetName]: union });
       }
       setAllFieldsChecked(false);
     },
-    [selectedPaths, viewPaths]
+    [selectedPaths, viewPaths, datasetName, excludedPaths]
   );
 
-  // select and unselect all
+  // select/unselect all
   const setAllFieldsCheckedWrapper = useCallback(
     (val) => {
       if (allPaths?.length) {
         setAllFieldsChecked(val);
         const allThePaths = finalSchema.map((ff) => ff.path);
         const newSelectedPaths = new Set(val ? allThePaths : []);
-        setSelectedPaths(newSelectedPaths);
+        setSelectedPaths({ [datasetName]: newSelectedPaths });
+      }
+
+      if (val) {
+        setExcludedPaths({ [datasetName]: new Set() });
+      } else {
+        if (includeNestedFields && allPaths?.length) {
+          setExcludedPaths({ [datasetName]: new Set(allPaths) });
+        } else {
+          const topLevelPaths = finalSchema
+            .map((ff) => ff.path)
+            .filter((path) => {
+              const rawPath = path?.startsWith("frames.")
+                ? path.replace("frames.", "")
+                : path;
+              return !rawPath.includes(".");
+            });
+          setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
+        }
       }
     },
-    [finalSchema, allPaths, vPaths]
+    [finalSchema, allPaths, vPaths, datasetName]
+  );
+
+  const bareFinalSchema = useMemo(
+    () =>
+      mergedSchema
+        ? finalSchema.filter((field) => {
+            return (
+              !disabledField(field.path, mergedSchema, dataset?.groupField) &&
+              !skipField(field.path, mergedSchema?.[field.path], mergedSchema)
+            );
+          })
+        : finalSchema,
+    [mergedSchema, finalSchema]
   );
 
   // updates the affected fields count
   useEffect(() => {
-    if (viewSchema && schema) {
-      const diff = Object.keys(viewSchema).length - Object.keys(schema).length;
-      if (diff !== affectedPathCount && diff >= 0) {
-        setAffectedPathCount(diff);
+    if (finalSchema?.length && excludedPaths?.[datasetName]) {
+      if (
+        selectedTab === TAB_OPTIONS_MAP.FILTER_RULE &&
+        searchResults?.length
+      ) {
+        setAffectedPathCount(
+          Object.keys(bareFinalSchema)?.length - searchResults.length
+        );
+      } else {
+        setAffectedPathCount(excludedPaths[datasetName].size);
       }
     }
-  }, [viewSchema, schema]);
+  }, [selectedTab, searchResults, excludedPaths, datasetName]);
 
   return {
     settingModal,
     setSettingsModal,
     searchTerm,
     setSearchTerm,
-    fieldsOnly,
-    setFieldsOnly,
+    showNestedFields,
+    setShowNestedFields,
     selectedTab,
     setSelectedTab,
     toggleSelection,
@@ -473,5 +874,18 @@ export default function useSchemaSettings() {
     affectedPathCount,
     mediatType: dataset.mediaType,
     dataset,
+    resetTextFilter,
+    datasetName,
+    includeNestedFields,
+    setIncludeNestedFields,
+    finalSchemaKeyByPath,
+    excludedPaths,
+    resetSelectedPaths,
+    resetExcludedPaths,
+    isVideo: dataset?.mediaType === "video",
+    setExcludedPaths,
+    searchSchemaFields,
+    setLastAppliedPaths,
+    lastAppliedPaths,
   };
 }

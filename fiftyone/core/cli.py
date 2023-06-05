@@ -29,6 +29,8 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
+import fiftyone.operators as foo
+import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
@@ -89,6 +91,8 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
+        _register_command(subparsers, "operators", OperatorsCommand)
+        _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
@@ -2561,6 +2565,582 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class OperatorsCommand(Command):
+    """Tools for working with FiftyOne operators."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", OperatorsListCommand)
+        _register_command(subparsers, "info", OperatorsInfoCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class OperatorsListCommand(Command):
+    """List operators that you've downloaded or created locally.
+
+    Examples::
+
+        # List all locally available operators
+        fiftyone operators list
+
+        # List enabled operators
+        fiftyone operators list --enabled
+
+        # List disabled operators
+        fiftyone operators list --disabled
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-e",
+            "--enabled",
+            action="store_true",
+            default=None,
+            help="only show enabled operators",
+        )
+        parser.add_argument(
+            "-d",
+            "--disabled",
+            action="store_true",
+            default=None,
+            help="only show disabled operators",
+        )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.enabled:
+            enabled = True
+        elif args.disabled:
+            enabled = False
+        else:
+            enabled = "all"
+
+        _print_operators_list(enabled, args.names_only)
+
+
+def _print_operators_list(enabled, names_only):
+    operators = foo.list_operators(enabled=enabled)
+
+    if names_only:
+        operators_map = defaultdict(list)
+        for operator in operators:
+            operators_map[operator.plugin_name].append(operator)
+
+        for pname, ops in operators_map.items():
+            print(pname)
+            for op in ops:
+                print("    " + op.name)
+
+        return
+
+    headers = [
+        "uri",
+        "enabled",
+        "builtin",
+        "on_startup",
+        "unlisted",
+        "dynamic",
+    ]
+
+    enabled_plugins = set(fop.list_enabled_plugins())
+
+    rows = []
+    for op in operators:
+        rows.append(
+            {
+                "uri": op.uri,
+                "enabled": op.builtin or op.plugin_name in enabled_plugins,
+                "builtin": op.builtin,
+                "on_startup": op.config.on_startup,
+                "unlisted": op.config.unlisted,
+                "dynamic": op.config.dynamic,
+            }
+        )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class OperatorsInfoCommand(Command):
+    """Prints information about operators that you've downloaded or created
+    locally.
+
+    Examples::
+
+        # Prints information about an operator
+        fiftyone operators info <uri>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("uri", metavar="URI", help="the operator URI")
+
+    @staticmethod
+    def execute(parser, args):
+        _print_operator_info(args.uri)
+
+
+def _print_operator_info(operator_uri):
+    operator = foo.get_operator(operator_uri)
+
+    d = operator.config.to_json()
+    _print_dict_as_table(d)
+
+
+class PluginsCommand(Command):
+    """Tools for working with FiftyOne plugins."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", PluginsListCommand)
+        _register_command(subparsers, "info", PluginsInfoCommand)
+        _register_command(subparsers, "download", PluginsDownloadCommand)
+        _register_command(
+            subparsers, "requirements", PluginsRequirementsCommand
+        )
+        _register_command(subparsers, "create", PluginsCreateCommand)
+        _register_command(subparsers, "enable", PluginsEnableCommand)
+        _register_command(subparsers, "disable", PluginsDisableCommand)
+        _register_command(subparsers, "delete", PluginsDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class PluginsListCommand(Command):
+    """List plugins that you've downloaded or created locally.
+
+    Examples::
+
+        # List all locally available plugins
+        fiftyone plugins list
+
+        # List enabled plugins
+        fiftyone plugins list --enabled
+
+        # List disabled plugins
+        fiftyone plugins list --disabled
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-e",
+            "--enabled",
+            action="store_true",
+            default=None,
+            help="only show enabled plugins",
+        )
+        parser.add_argument(
+            "-d",
+            "--disabled",
+            action="store_true",
+            default=None,
+            help="only show disabled plugins",
+        )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.enabled:
+            enabled = True
+        elif args.disabled:
+            enabled = False
+        else:
+            enabled = "all"
+
+        _print_plugins_list(enabled, args.names_only)
+
+
+def _print_plugins_list(enabled, names_only):
+    plugin_defintions = fop.list_plugins(enabled=enabled)
+
+    if names_only:
+        for pd in plugin_defintions:
+            print(pd.name)
+
+        return
+
+    enabled_plugins = set(fop.list_enabled_plugins())
+
+    headers = ["plugin", "version", "enabled", "directory"]
+    rows = []
+    for pd in plugin_defintions:
+        rows.append(
+            {
+                "plugin": pd.name,
+                "version": pd.version or "",
+                "enabled": pd.name in enabled_plugins,
+                "directory": pd.directory,
+            }
+        )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class PluginsInfoCommand(Command):
+    """Prints information about plugins that you've downloaded or created
+    locally.
+
+    Examples::
+
+        # Prints information about a plugin
+        fiftyone plugins info <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+
+    @staticmethod
+    def execute(parser, args):
+        _print_plugin_info(args.name)
+
+
+def _print_plugin_info(name):
+    plugin_defintion = fop.get_plugin(name)
+
+    d = plugin_defintion.to_dict()
+    d["directory"] = plugin_defintion.directory
+    _print_dict_as_table(d)
+
+
+class PluginsDownloadCommand(Command):
+    """Download plugins from the web.
+
+    When downloading plugins from GitHub, you can provide any of the following
+    formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
+    Examples::
+
+        # Download plugins from a GitHub repository URL
+        fiftyone plugins download <github-repo-url>
+
+        # Download plugins by specifying the GitHub repository details
+        fiftyone plugins download <user>/<repo>[/<ref>]
+
+        # Download specific plugins from a URL with a custom search depth
+        fiftyone plugins download \\
+            <url> \\
+            --plugin-names <name1> <name2> <name3> \\
+            --max-depth 2  # search nested directories for plugins
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url_or_gh_repo",
+            metavar="URL_OR_GH_REPO",
+            help="A URL or <user>/<repo>[/<ref>] of a GitHub repository",
+        )
+        parser.add_argument(
+            "-n",
+            "--plugin-names",
+            nargs="*",
+            default=None,
+            metavar="PLUGIN_NAMES",
+            help="a plugin name or list of plugin names to download",
+        )
+        parser.add_argument(
+            "-d",
+            "--max-depth",
+            type=int,
+            default=3,
+            metavar="MAX_DEPTH",
+            help="a maximum depth to search for plugins",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite existing plugins",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fop.download_plugin(
+            args.url_or_gh_repo,
+            plugin_names=args.plugin_names,
+            max_depth=args.max_depth,
+            overwrite=args.overwrite,
+        )
+
+
+class PluginsRequirementsCommand(Command):
+    """Handles package requirements for plugins.
+
+    Examples::
+
+        # Print requirements for a plugin
+        fiftyone plugins requirements <name> --print
+
+        # Install any requirements for the plugin
+        fiftyone plugins requirements <name> --install
+
+        # Ensures that the requirements for the plugin are satisfied
+        fiftyone plugins requirements <name> --ensure
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+        parser.add_argument(
+            "-p",
+            "--print",
+            action="store_true",
+            help="print the requirements for the plugin",
+        )
+        parser.add_argument(
+            "-i",
+            "--install",
+            action="store_true",
+            help="install any requirements for the plugin",
+        )
+        parser.add_argument(
+            "-e",
+            "--ensure",
+            action="store_true",
+            help="ensure the requirements for the plugin are satisfied",
+        )
+        parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            type=int,
+            help=(
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring plugin requirements"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        error_level = args.error_level
+
+        if args.print or (not args.install and not args.ensure):
+            _print_plugin_requirements(name)
+
+        if args.install:
+            fop.ensure_plugin_compatibility(
+                name, error_level=error_level, log_success=True
+            )
+            fop.install_plugin_requirements(name, error_level=error_level)
+
+        if args.ensure:
+            fop.ensure_plugin_compatibility(
+                name, error_level=error_level, log_success=True
+            )
+            fop.ensure_plugin_requirements(
+                name, error_level=error_level, log_success=True
+            )
+
+
+def _print_plugin_requirements(name):
+    pd = fop.get_plugin(name)
+    req_str = pd.fiftyone_requirement
+    if req_str is not None:
+        print(req_str)
+
+    requirements = fop.load_plugin_requirements(name)
+    if requirements is not None:
+        for req_str in requirements:
+            print(req_str)
+
+
+class PluginsCreateCommand(Command):
+    """Creates or initializes a plugin.
+
+    Examples::
+
+        # Initialize a new plugin
+        fiftyone plugins create <name>
+
+        # Create a plugin from existing files
+        fiftyone plugins create \\
+            <name> \\
+            --from-files /path/to/dir \\
+            --description <description>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            help="the plugin name",
+        )
+        parser.add_argument(
+            "-f",
+            "--from-files",
+            nargs="*",
+            default=None,
+            metavar="FILES",
+            help=(
+                "a directory or list of explicit filepaths to include in the "
+                "plugin"
+            ),
+        )
+        parser.add_argument(
+            "-d",
+            "--outdir",
+            metavar="OUTDIR",
+            help="a directory in which to create the plugin",
+        )
+        parser.add_argument(
+            "--description",
+            metavar="DESCRIPTION",
+            help="a description for the plugin",
+        )
+        parser.add_argument(
+            "--version",
+            metavar="VERSION",
+            help="an optional FiftyOne version requirement for the plugin",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite existing plugins",
+        )
+        parser.add_argument(
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional keyword arguments to include in the plugin "
+                "definition"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fop.create_plugin(
+            args.name,
+            from_files=args.from_files,
+            outdir=args.outdir,
+            description=args.description,
+            version=args.version,
+            overwrite=args.overwrite,
+            **args.kwargs or {},
+        )
+
+
+class PluginsEnableCommand(Command):
+    """Enables the given plugin(s).
+
+    Examples::
+
+        # Enable a plugin
+        fiftyone plugins enable <name>
+
+        # Enable multiple plugins
+        fiftyone plugins enable <name1> <name2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the plugin name(s)",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        for name in args.name:
+            fop.enable_plugin(name)
+
+
+class PluginsDisableCommand(Command):
+    """Disables the given plugin(s).
+
+    Examples::
+
+        # Disable a plugin
+        fiftyone plugins disable <name>
+
+        # Disable multiple plugins
+        fiftyone plugins disable <name1> <name2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the plugin name(s)",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        for name in args.name:
+            fop.disable_plugin(name)
+
+
+class PluginsDeleteCommand(Command):
+    """Delete plugins from your local machine.
+
+    Examples::
+
+        # Delete a plugin from local disk
+        fiftyone plugins delete <name>
+
+        # Delete multiple plugins from local disk
+        fiftyone plugins delete <name1> <name2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the plugin name(s)",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        for name in args.name:
+            fop.delete_plugin(name)
 
 
 class MigrateCommand(Command):

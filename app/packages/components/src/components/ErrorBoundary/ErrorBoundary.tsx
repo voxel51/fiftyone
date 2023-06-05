@@ -7,7 +7,11 @@ import {
 } from "@fiftyone/utilities";
 import { Clear } from "@mui/icons-material";
 import classnames from "classnames";
-import React, { PropsWithChildren, useLayoutEffect } from "react";
+import React, {
+  ComponentType,
+  PropsWithChildren,
+  useLayoutEffect,
+} from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
 import { scrollable } from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
@@ -102,11 +106,15 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
 };
 
 const ErrorBoundary: React.FC<
-  PropsWithChildren<{ onReset?: () => void; disableReset?: boolean }>
-> = ({ children, onReset, disableReset }) => {
+  PropsWithChildren<{
+    onReset?: () => void;
+    disableReset?: boolean;
+    Fallback?: ComponentType;
+  }>
+> = ({ children, onReset, disableReset, Fallback }) => {
   // @ts-ignore
   return (
-    <Boundary FallbackComponent={Errors(onReset, disableReset)}>
+    <Boundary FallbackComponent={Fallback || Errors(onReset, disableReset)}>
       {children}
     </Boundary>
   );

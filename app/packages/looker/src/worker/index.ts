@@ -17,7 +17,13 @@ import { decode as decodePng } from "fast-png";
 import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
-import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
+import {
+  Coloring,
+  CustomizeColor,
+  FrameChunk,
+  FrameSample,
+  Sample,
+} from "../state";
 import { DeserializerFactory } from "./deserializer";
 import { indexedPngBufferToRgb } from "./indexed-png-decoder";
 import { PainterFactory } from "./painter";
@@ -92,13 +98,21 @@ const imputeOverlayFromPath = async (
   field: string,
   label: Record<string, any>,
   coloring: Coloring,
+  customizeColorSetting: CustomizeColor[],
   buffers: ArrayBuffer[],
   sources: { [path: string]: string }
 ) => {
   // handle all list types here
   if (label._cls === DETECTIONS) {
     label.detections.forEach((detection) =>
-      imputeOverlayFromPath(field, detection, coloring, buffers, {})
+      imputeOverlayFromPath(
+        field,
+        detection,
+        coloring,
+        customizeColorSetting,
+        buffers,
+        {}
+      )
     );
     return;
   }
@@ -172,7 +186,8 @@ const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
   prefix = "",
-  sources: { [key: string]: string }
+  sources: { [key: string]: string },
+  customizeColorSetting: ProcessSample["customizeColorSetting"]
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
   const promises = [];
@@ -184,7 +199,14 @@ const processLabels = async (
     }
 
     if (DENSE_LABELS.has(label._cls)) {
-      await imputeOverlayFromPath(field, label, coloring, buffers, sources);
+      await imputeOverlayFromPath(
+        field,
+        label,
+        coloring,
+        customizeColorSetting,
+        buffers,
+        sources
+      );
     }
 
     if (label._cls in DeserializerFactory) {
@@ -207,7 +229,8 @@ const processLabels = async (
         painterFactory[label._cls](
           prefix ? prefix + field : field,
           label,
-          coloring
+          coloring,
+          customizeColorSetting
         )
       );
     }
@@ -233,12 +256,19 @@ export interface ProcessSample {
   uuid: string;
   sample: Sample & FrameSample;
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   sources: { [path: string]: string };
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
+const processSample = ({
+  sample,
+  uuid,
+  coloring,
+  sources,
+  customizeColorSetting,
+}: ProcessSample) => {
   mapId(sample);
 
   let bufferPromises = [];
@@ -246,14 +276,24 @@ const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
   if (sample._media_type === "point-cloud") {
     process3DLabels(sample);
   } else {
-    bufferPromises = [processLabels(sample, coloring, null, sources)];
+    bufferPromises = [
+      processLabels(sample, coloring, null, sources, customizeColorSetting),
+    ];
   }
 
   if (sample.frames && sample.frames.length) {
     bufferPromises = [
       ...bufferPromises,
       ...sample.frames
-        .map((frame) => processLabels(frame, coloring, "frames.", sources))
+        .map((frame) =>
+          processLabels(
+            frame,
+            coloring,
+            "frames.",
+            sources,
+            customizeColorSetting
+          )
+        )
         .flat(),
     ];
   }
@@ -265,6 +305,7 @@ const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
         sample,
         coloring,
         uuid,
+        customizeColorSetting,
       },
       // @ts-ignore
       buffers.flat()
@@ -282,11 +323,13 @@ interface FrameStream {
 
 interface FrameChunkResponse extends FrameChunk {
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
 }
 
 const createReader = ({
   chunkSize,
   coloring,
+  customizeColorSetting,
   frameCount,
   frameNumber,
   sampleId,
@@ -295,6 +338,7 @@ const createReader = ({
 }: {
   chunkSize: number;
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -331,7 +375,12 @@ const createReader = ({
           try {
             const { frames, range } = await call();
 
-            controller.enqueue({ frames, range, coloring });
+            controller.enqueue({
+              frames,
+              range,
+              coloring,
+              customizeColorSetting,
+            });
             frameNumber = range[1] + 1;
           } catch (error) {
             postMessage({
@@ -365,7 +414,13 @@ const getSendChunk =
     if (value) {
       Promise.all(
         value.frames.map((frame) =>
-          processLabels(frame, value.coloring, "frames.", {})
+          processLabels(
+            frame,
+            value.coloring,
+            "frames.",
+            {},
+            value.customizeColorSetting
+          )
         )
       ).then((buffers) => {
         postMessage(
@@ -396,6 +451,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 
 interface SetStream {
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -408,6 +464,7 @@ type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
   coloring,
+  customizeColorSetting,
   frameCount,
   frameNumber,
   sampleId,
@@ -417,8 +474,10 @@ const setStream = ({
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
+
   stream = createReader({
     coloring,
+    customizeColorSetting,
     chunkSize: CHUNK_SIZE,
     frameCount: frameCount,
     frameNumber: frameNumber,

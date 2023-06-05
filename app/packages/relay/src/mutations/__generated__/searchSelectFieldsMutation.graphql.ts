@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ce66a186bc81ad6e60fb7e27afd5e6f3>>
+ * @generated SignedSource<<df98c751611c995dbe42ded64d84fb20>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,9 +14,7 @@ export type searchSelectFieldsMutation$variables = {
   metaFilter?: object | null;
 };
 export type searchSelectFieldsMutation$data = {
-  readonly searchSelectFields: ReadonlyArray<{
-    readonly path: string;
-  }>;
+  readonly searchSelectFields: ReadonlyArray<string>;
 };
 export type searchSelectFieldsMutation = {
   response: searchSelectFieldsMutation$data;
@@ -51,19 +49,8 @@ v1 = [
         "variableName": "metaFilter"
       }
     ],
-    "concreteType": "SampleField",
-    "kind": "LinkedField",
+    "kind": "ScalarField",
     "name": "searchSelectFields",
-    "plural": true,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "path",
-        "storageKey": null
-      }
-    ],
     "storageKey": null
   }
 ];
@@ -85,16 +72,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1eaeda342a4af68822fa0cf50597efbe",
+    "cacheID": "563c5fb8729433da04289cddf9fd098d",
     "id": null,
     "metadata": {},
     "name": "searchSelectFieldsMutation",
     "operationKind": "mutation",
-    "text": "mutation searchSelectFieldsMutation(\n  $datasetName: String!\n  $metaFilter: JSON = null\n) {\n  searchSelectFields(datasetName: $datasetName, metaFilter: $metaFilter) {\n    path\n  }\n}\n"
+    "text": "mutation searchSelectFieldsMutation(\n  $datasetName: String!\n  $metaFilter: JSON = null\n) {\n  searchSelectFields(datasetName: $datasetName, metaFilter: $metaFilter)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7509f7695fcde68a5b04b389f16164a6";
+(node as any).hash = "ef3d8ce2a3313c0632a8b88efaa71b1a";
 
 export default node;

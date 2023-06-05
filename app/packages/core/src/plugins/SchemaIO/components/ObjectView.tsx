@@ -1,12 +1,12 @@
 import { Box, Grid } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
-import { getPath } from "../utils";
+import { getComponentProps, getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function ObjectView(props) {
-  const { schema, onChange, path, data, errors } = props;
-  const { properties, view = {} } = schema;
+  const { schema, path, data } = props;
+  const { properties } = schema;
 
   const propertiesAsArray = [];
 
@@ -15,19 +15,28 @@ export default function ObjectView(props) {
   }
 
   return (
-    <Box>
-      <HeaderView {...props} divider />
-      <Grid spacing={2} container sx={{ pl: 1 }}>
+    <Box {...getComponentProps(props, "container")}>
+      <HeaderView {...props} divider nested />
+      <Grid
+        spacing={2}
+        container
+        sx={{ pl: 1 }}
+        {...getComponentProps(props, "gridContainer")}
+      >
         {propertiesAsArray.map((property, i) => {
           const space = property?.view?.space || 12;
           return (
-            <Grid key={property.id} item xs={space}>
+            <Grid
+              key={property.id}
+              item
+              xs={space}
+              {...getComponentProps(props, "gridItem")}
+            >
               <DynamicIO
+                {...props}
                 schema={property}
-                onChange={onChange}
                 path={getPath(path, property.id)}
                 data={data?.[property.id]}
-                errors={errors}
               />
             </Grid>
           );

@@ -1,6 +1,8 @@
 import React from "react";
 import { Autocomplete, TextField } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
+import autoFocus from "../utils/auto-focus";
+import { getComponentProps } from "../utils";
 
 export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;
@@ -25,8 +27,13 @@ export default function AutocompleteView(props) {
         }))}
         renderInput={(params) => (
           <TextField
+            autoFocus={autoFocus(props)}
             {...params}
-            placeholder="Type and press enter to add an item"
+            placeholder={
+              multiple
+                ? "Type and press enter to add a value"
+                : "Type or select a value"
+            }
           />
         )}
         onInputChange={(e) => {
@@ -36,6 +43,7 @@ export default function AutocompleteView(props) {
         }}
         isOptionEqualToValue={() => false} // allow duplicates
         multiple={multiple}
+        {...getComponentProps(props, "autocomplete")}
       />
     </FieldWrapper>
   );

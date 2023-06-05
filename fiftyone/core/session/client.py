@@ -13,6 +13,7 @@ from threading import Thread
 import time
 import typing as t
 
+from bson import json_util
 import requests
 import sseclient
 from uuid import uuid4
@@ -20,14 +21,12 @@ from uuid import uuid4
 import fiftyone.constants as foc
 import fiftyone.core.state as fos
 
-from fiftyone.core.json import FiftyOneJSONEncoder, stringify
 from fiftyone.core.session.events import (
     Event,
     EventType,
     ListenPayload,
     dict_factory,
 )
-from fiftyone.core.utils import pprint
 
 
 logger = logging.getLogger(__name__)
@@ -70,27 +69,25 @@ class Client:
                         "Accept": "text/event-stream",
                         "Content-type": "application/json",
                     },
-                    data=FiftyOneJSONEncoder.dumps(
-                        stringify(
-                            asdict(
-                                ListenPayload(
-                                    events=[
-                                        "capture_notebook_cell",
-                                        "close_session",
-                                        "reactivate_notebook_cell",
-                                        "refresh",
-                                        "reload_session",
-                                        "select_labels",
-                                        "select_samples",
-                                        "set_group_slice",
-                                        "set_spaces",
-                                        "state_update",
-                                    ],
-                                    initializer=state,
-                                    subscription=self._subscription,
-                                ),
-                                dict_factory=dict_factory,
-                            )
+                    data=json_util.dumps(
+                        asdict(
+                            ListenPayload(
+                                events=[
+                                    "capture_notebook_cell",
+                                    "close_session",
+                                    "reactivate_notebook_cell",
+                                    "refresh",
+                                    "reload_session",
+                                    "select_labels",
+                                    "select_samples",
+                                    "set_group_slice",
+                                    "set_spaces",
+                                    "state_update",
+                                ],
+                                initializer=state,
+                                subscription=self._subscription,
+                            ),
+                            dict_factory=dict_factory,
                         )
                     ),
                 )
@@ -167,12 +164,10 @@ class Client:
         response = requests.post(
             f"{self.origin}/event",
             headers={"Content-type": "application/json"},
-            data=FiftyOneJSONEncoder.dumps(
+            data=json_util.dumps(
                 {
                     "event": event.get_event_name(),
-                    "data": stringify(
-                        asdict(event, dict_factory=dict_factory)
-                    ),
+                    "data": asdict(event, dict_factory=dict_factory),
                     "subscription": self._subscription,
                 }
             ),

@@ -2,6 +2,7 @@ import { Dataset } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
+import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import { datasetQueryContext, modal } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
@@ -50,6 +51,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
 
   return (
     <>
+      <OperatorCore />
       <Nav fragment={data} hasDataset={true} />
       <div className={style.page}>
         <datasetQueryContext.Provider value={data}>

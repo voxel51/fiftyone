@@ -2372,7 +2372,7 @@ class FilterLabels(ViewStage):
         field, _ = sample_collection._handle_frame_field(self._labels_field)
         new_field, _ = sample_collection._handle_frame_field(self._new_field)
 
-        if "." in field:
+        if len(field.split(".")) - len(new_field.split(".")) == 1:
             return ".".join([new_field, field.split(".")[-1]])
 
         return new_field
@@ -2813,7 +2813,7 @@ class FilterKeypoints(ViewStage):
         field, _ = sample_collection._handle_frame_field(self._field)
         new_field, _ = sample_collection._handle_frame_field(self._new_field)
 
-        if "." in field:
+        if len(field.split(".")) - len(new_field.split(".")) == 1:
             return ".".join([new_field, field.split(".")[-1]])
 
         return new_field

@@ -5,6 +5,7 @@ import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick } from "@fiftyone/state";
+import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   Bookmark,
   Check,
@@ -53,11 +54,17 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
+    const affectedPathCount = get(affectedPathCountState);
+    const isFieldVisibilityOn = affectedPathCount > 0;
+
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
 
     return Boolean(
-      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet?.size > 0
+      isExtendedSelectionOn ||
+        hasFiltersValue ||
+        selectedSampleSet.size > 0 ||
+        isFieldVisibilityOn
     );
   },
 });
@@ -445,32 +452,27 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
-
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
   const isUsingSessionColorScheme = useRecoilValue(
     fos.isUsingSessionColorScheme
   );
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
 
-  // if the session color scheme is not applied to the dataset,
-  // check to see if dataset.appConfig has applicable settings
   useEffect(() => {
     if (!isUsingSessionColorScheme && datasetColorScheme) {
       const colorPool =
         datasetColorScheme.colorPool?.length > 0
           ? datasetColorScheme.colorPool
           : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const customizedColorSettings =
-        JSON.parse(datasetColorScheme.customizedColorSettings) ??
-        fos.DEFAULT_APP_COLOR_SCHEME.customizedColorSettings;
+      const fields =
+        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
       setSessionColor({
         colorPool,
-        customizedColorSettings,
+        fields,
       });
     }
-  }, [isUsingSessionColorScheme, datasetColorScheme]);
+  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
   return (
     <ActionsRowDiv>
@@ -478,13 +480,14 @@ export const GridActionsRow = () => {
       <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
-      {!isVideo && <Similarity modal={false} />}
+      <Similarity modal={false} />
       <SaveFilters />
       <Selected modal={false} />
       <DynamicGroupAction />
       <BrowseOperations />
       <Options modal={false} />
       <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS} />
     </ActionsRowDiv>
   );
 };
@@ -496,7 +499,6 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker | undefined>;
   isGroup?: boolean;
 }) => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
@@ -508,7 +510,7 @@ export const ModalActionsRow = ({
     >
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
-      {!isVideo && <Similarity modal={true} />}
+      <Similarity modal={true} />
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}

@@ -816,7 +816,7 @@ You can also group by an arbitrary :ref:`expressions <querying-samples>`:
     print(len(view3))  # 26
     print(len(dataset3.distinct(expr)))  # 26
 
-When you iterate over a dynamic grouoped view, you get one example from each
+When you iterate over a dynamic grouped view, you get one example from each
 group. Like any other view, you can chain additional view stages to further
 refine the view's contents:
 
@@ -859,9 +859,9 @@ unravel the samples in a dynamic grouped view back into a flat view:
 .. note::
 
     Did you know? When you load dynamic group views
-    :ref:`in the App <fiftyone-app>`, the grid view shows the first example
-    from each group, and you can click on any sample to open the modal and view
-    all samples in the group.
+    :ref:`in the App <app-dynamic-groups>`, the grid view shows the first
+    example from each group, and you can click on any sample to open the modal
+    and view all samples in the group.
 
 You can use
 :meth:`get_dynamic_group() <fiftyone.core.view.DatasetView.get_dynamic_group>`

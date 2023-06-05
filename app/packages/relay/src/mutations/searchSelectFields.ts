@@ -5,8 +5,6 @@ export default graphql`
     $datasetName: String!
     $metaFilter: JSON = null
   ) {
-    searchSelectFields(datasetName: $datasetName, metaFilter: $metaFilter) {
-      path
-    }
+    searchSelectFields(datasetName: $datasetName, metaFilter: $metaFilter)
   }
 `;

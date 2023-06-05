@@ -1,3 +1,4 @@
+export * from "./__generated__/aggregateQuery.graphql";
 export * from "./__generated__/aggregationsQuery.graphql";
 export * from "./__generated__/configQuery.graphql";
 export * from "./__generated__/countValuesQuery.graphql";
@@ -11,6 +12,7 @@ export * from "./__generated__/paginateGroup_query.graphql";
 export * from "./__generated__/pcdSampleQuery.graphql";
 export * from "./__generated__/viewSchemaFragment.graphql";
 export * from "./__generated__/viewSchemaFragmentQuery.graphql";
+export { default as aggregate } from "./aggregate";
 export { default as aggregation } from "./aggregations";
 export { default as countValues } from "./countValues";
 export { default as dataset } from "./dataset";

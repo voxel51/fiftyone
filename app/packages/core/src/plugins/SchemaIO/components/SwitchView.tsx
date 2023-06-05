@@ -1,6 +1,7 @@
 import { FormControlLabel, Switch } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
+import { autoFocus, getComponentProps } from "../utils";
 
 export default function SwitchView(props) {
   const { schema, data } = props;
@@ -8,9 +9,14 @@ export default function SwitchView(props) {
   return (
     <FormControlLabel
       control={
-        <Switch defaultChecked={data === true || schema.default === true} />
+        <Switch
+          autoFocus={autoFocus(props)}
+          defaultChecked={data === true || schema.default === true}
+          {...getComponentProps(props, "switch")}
+        />
       }
-      label={<HeaderView {...props} />}
+      label={<HeaderView {...props} nested />}
+      {...getComponentProps(props, "container")}
     />
   );
 }

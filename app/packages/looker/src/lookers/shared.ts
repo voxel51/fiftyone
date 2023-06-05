@@ -11,6 +11,8 @@ import {
 import { zoomToContent } from "../zoom";
 
 import { getColor } from "@fiftyone/utilities";
+import _ from "lodash";
+import { hasColorChanged } from "../util";
 
 /**
  * Shared util functions used by all lookers
@@ -21,9 +23,16 @@ export const LookerUtils = {
     next: Readonly<Optional<BaseState["options"]>>
   ): boolean => {
     let reloadSample = false;
+
     if (next.coloring && current.coloring.seed !== next.coloring.seed) {
       reloadSample = true;
     } else if (next.coloring && next.coloring.by !== current.coloring.by) {
+      reloadSample = true;
+    } else if (!_.isEmpty(_.xor(next.coloring.pool, current.coloring.pool))) {
+      reloadSample = true;
+    } else if (
+      hasColorChanged(next.customizeColorSetting, current.customizeColorSetting)
+    ) {
       reloadSample = true;
     }
 

@@ -11,12 +11,12 @@ import typing as t
 from datetime import datetime
 
 import asyncio
+from bson import json_util
 from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
-from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
     add_screenshot,
     CaptureNotebookCell,
@@ -33,8 +33,6 @@ from fiftyone.core.session.events import (
 )
 import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
-
-from fiftyone.server.query import serialize_dataset
 
 
 @dataclass(frozen=True)
@@ -103,24 +101,14 @@ async def add_event_listener(
     data = await _initialize_listener(payload)
     try:
         if data.is_app:
-            d = asdict(
-                StateUpdate(state=data.state),
-                dict_factory=dict_factory,
-            )
-            if data.state.dataset is not None:
-                d["dataset"] = await serialize_dataset(
-                    dataset_name=data.state.dataset.name,
-                    serialized_view=data.state.view._serialize()
-                    if data.state.view is not None
-                    else [],
-                    saved_view_slug=fou.to_slug(data.state.view.name)
-                    if data.state.view is not None and data.state.view.name
-                    else None,
-                )
-
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
-                data=FiftyOneJSONEncoder.dumps(d),
+                data=json_util.dumps(
+                    asdict(
+                        StateUpdate(state=data.state.serialize()),
+                        dict_factory=dict_factory,
+                    )
+                ),
             )
 
         while True:
@@ -140,27 +128,14 @@ async def add_event_listener(
             events = sorted(events, key=lambda event: event[0])
 
             for _, event in events:
-                d = asdict(event, dict_factory=dict_factory)
-
-                if (
-                    data.is_app
-                    and isinstance(event, StateUpdate)
-                    and event.state.dataset is not None
-                ):
-                    d["dataset"] = await serialize_dataset(
-                        dataset_name=event.state.dataset.name,
-                        serialized_view=event.state.view._serialize()
-                        if event.state.view is not None
-                        else [],
-                        saved_view_slug=fou.to_slug(event.state.view.name)
-                        if event.state.view is not None
-                        and event.state.view.name
-                        else None,
-                    )
+                if isinstance(event, StateUpdate):
+                    event.state = event.state.serialize()
 
                 yield ServerSentEvent(
                     event=event.get_event_name(),
-                    data=FiftyOneJSONEncoder.dumps(d),
+                    data=json_util.dumps(
+                        asdict(event, dict_factory=dict_factory)
+                    ),
                 )
 
             await asyncio.sleep(0.2)

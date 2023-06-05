@@ -20,6 +20,7 @@ import {
   LIST_FIELD,
   Schema,
   StrictField,
+  UNSUPPORTED_FILTER_TYPES,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
@@ -262,10 +263,7 @@ const resolveGroups = (
     sampleFields.map(({ name, ...rest }) => [name, rest])
   );
 
-  let other = sampleFields.reduce(
-    fieldsReducer([DICT_FIELD, null, undefined]),
-    []
-  );
+  let other = sampleFields.reduce(fieldsReducer(UNSUPPORTED_FILTER_TYPES), []);
 
   sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
@@ -286,7 +284,7 @@ const resolveGroups = (
       other = [
         ...other,
         ...(fields[name].fields || [])
-          .reduce(fieldsReducer([DICT_FIELD, null, undefined]), [])
+          .reduce(fieldsReducer(UNSUPPORTED_FILTER_TYPES), [])
           .map((subfield) => `${name}.${subfield}`),
       ];
 
@@ -296,7 +294,14 @@ const resolveGroups = (
   other = [
     ...other,
     ...frameFields
-      .reduce(fieldsReducer([...VALID_PRIMITIVE_TYPES, DICT_FIELD]), [])
+      .reduce(
+        fieldsReducer([
+          ...UNSUPPORTED_FILTER_TYPES,
+          ...VALID_PRIMITIVE_TYPES,
+          DICT_FIELD,
+        ]),
+        []
+      )
       .map((path) => `frames.${path}`),
   ];
 
@@ -633,7 +638,9 @@ export const disabledPaths = selector<Set<string>>({
       ds?.sampleFields?.reduce(schemaReduce, {})
     );
     const paths = Object.keys(schema)
-      ?.filter((fieldPath) => schema[fieldPath]?.ftype === DICT_FIELD)
+      ?.filter((fieldPath) =>
+        UNSUPPORTED_FILTER_TYPES.includes(schema[fieldPath]?.ftype)
+      )
       .map((fieldPath) => fieldPath);
 
     get(fields({ space: State.SPACE.FRAME })).forEach(

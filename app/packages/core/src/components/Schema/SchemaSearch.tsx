@@ -1,11 +1,9 @@
 import React, { useState } from "react";
-import * as foq from "@fiftyone/relay";
 import { Box, Typography } from "@mui/material";
 import { Tooltip, useTheme } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
-import { useMutation } from "react-relay";
-import { noneAtom, useSchemaSettings } from "@fiftyone/state";
-import { Clear, ClearAll } from "@mui/icons-material";
+import { useSchemaSettings } from "@fiftyone/state";
+import { Clear } from "@mui/icons-material";
 
 interface Props {
   searchTerm?: string;
@@ -15,11 +13,14 @@ interface Props {
 export const SchemaSearch = (props: Props) => {
   const { searchTerm, setSearchTerm } = props;
   const theme = useTheme();
-  const [searchSchemaFields, isSearchingSchemaFields] =
-    useMutation<foq.searchSelectFieldsMutation>(foq.searchSelectFields);
   const [error, setError] = useState<string>("");
 
-  const { setSearchResults, dataset } = useSchemaSettings();
+  const {
+    searchSchemaFields,
+    setSearchResults,
+    datasetName,
+    includeNestedFields,
+  } = useSchemaSettings();
 
   return (
     <Box
@@ -44,7 +45,7 @@ export const SchemaSearch = (props: Props) => {
           }}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && dataset) {
+            if (e.key === "Enter" && datasetName) {
               if (searchTerm) {
                 // convert dot notation to object
                 const split = searchTerm.split(":");
@@ -57,7 +58,7 @@ export const SchemaSearch = (props: Props) => {
 
                 let props = finalSearchTerm.split(".");
                 const last = props[props.length - 1];
-                let object = {};
+                let object: {} = { include_nested_fields: includeNestedFields };
                 let ref = object;
                 if (checkValue && props.length > 0) {
                   props.forEach((prop, index) => {
@@ -70,24 +71,13 @@ export const SchemaSearch = (props: Props) => {
                   });
                   props[last] = checkValue;
                 } else {
-                  // string
-                  object = finalSearchTerm;
+                  object = {
+                    ...object,
+                    ["any"]: finalSearchTerm,
+                  };
                 }
 
-                searchSchemaFields({
-                  variables: { datasetName: dataset.name, metaFilter: object },
-                  onCompleted: (data, err) => {
-                    if (data) {
-                      const { searchSelectFields = [] } = data;
-                      setSearchResults(
-                        searchSelectFields.map((ss) => ss?.path) as string[]
-                      );
-                    }
-                  },
-                  onError: (e) => {
-                    setError("Failed to find fields matching your search");
-                  },
-                });
+                searchSchemaFields(object);
               } else {
                 setSearchResults([]);
               }

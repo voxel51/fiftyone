@@ -1,4 +1,5 @@
 input Aggregate {
+  count: Count = null
   countValues: CountValues = null
   histogramValues: HistogramValues = null
 }
@@ -33,7 +34,8 @@ input AggregationForm {
 }
 
 union AggregationResponses =
-    BoolCountValuesResponse
+    CountResponse
+  | BoolCountValuesResponse
   | IntCountValuesResponse
   | StrCountValuesResponse
   | DatetimeHistogramValuesResponse
@@ -111,23 +113,33 @@ enum ColorBy {
   value
 }
 
+type ColorScheme {
+  colorPool: [String!]
+  fields: [CustomizeColor!]
+}
+
 input ColorSchemeInput {
   colorPool: [String!] = null
-  customizedColorSettings: JSONArray = null
+  fields: JSONArray = null
 }
 
-input ColorSchemeSaveFormat {
-  colorPool: [String!] = null
-  customizedColorSettings: String = null
+input Count {
+  field: String!
 }
 
-type ColorSchemeStr {
-  colorPool: [String!]
-  customizedColorSettings: String
+type CountResponse {
+  count: Int!
 }
 
 input CountValues {
   field: String!
+}
+
+type CustomizeColor {
+  path: String!
+  fieldColor: String
+  colorByAttribute: String
+  valueColors: [LabelSetting!]
 }
 
 type DataAggregation implements Aggregation {
@@ -173,7 +185,7 @@ type DatasetAppConfig {
   modalMediaField: String
   gridMediaField: String
   spaces: JSON
-  colorScheme: ColorSchemeStr
+  colorScheme: ColorScheme
 }
 
 type DatasetStrConnection {
@@ -292,6 +304,11 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
+type LabelSetting {
+  value: String!
+  color: String!
+}
+
 enum MediaType {
   image
   group
@@ -373,9 +390,8 @@ type Mutation {
     stages: BSONArray!
     colorScheme: ColorSchemeInput!
     saveToApp: Boolean!
-    colorSchemeSaveFormat: ColorSchemeSaveFormat!
   ): Boolean!
-  searchSelectFields(datasetName: String!, metaFilter: JSON): [SampleField!]!
+  searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
 type NamedKeypointSkeleton {
@@ -437,7 +453,7 @@ type Query {
   schemaForViewStages(
     datasetName: String!
     viewStages: BSONArray!
-  ): [SampleField!]!
+  ): SchemaResult!
 }
 
 type RootAggregation implements Aggregation {
@@ -522,6 +538,11 @@ input SavedViewInfo {
   name: String = null
   description: String = null
   color: String = null
+}
+
+type SchemaResult {
+  fieldSchema: [SampleField!]!
+  frameFieldSchema: [SampleField!]!
 }
 
 input SelectedLabel {

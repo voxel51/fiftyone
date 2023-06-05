@@ -77,7 +77,7 @@ const Looker = ({
   onClose,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-
+  const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
   const modalSampleData = useRecoilValue(fos.modal);
 
   if (!modalSampleData && !propsSampleData) {
@@ -85,27 +85,15 @@ const Looker = ({
   }
 
   const sampleData = useMemo(() => {
-    if (!propsSampleData) {
-      return modalSampleData;
+    if (propsSampleData) {
+      return {
+        ...modalSampleData,
+        sample: propsSampleData,
+      };
     }
 
-    let transformedUrls = {};
-    if (urls) {
-      if (Array.isArray(urls)) {
-        for (const { field, url } of urls) {
-          transformedUrls[field] = url;
-        }
-      } else {
-        transformedUrls = urls;
-      }
-    }
-
-    return {
-      ...modalSampleData,
-      sample: propsSampleData,
-      urls: transformedUrls,
-    };
-  }, [propsSampleData, modalSampleData, urls]);
+    return modalSampleData;
+  }, [propsSampleData, modalSampleData]);
 
   const { sample } = sampleData;
 
@@ -133,7 +121,7 @@ const Looker = ({
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sample]);
+  }, [sample, sessionColorScheme]);
 
   useEffect(() => {
     return () => looker && looker.destroy();

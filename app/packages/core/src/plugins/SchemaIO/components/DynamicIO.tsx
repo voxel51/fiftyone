@@ -1,6 +1,6 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import React, { useEffect } from "react";
-import { getComponent } from "../utils";
+import { getComponent, getErrorsForView } from "../utils";
 
 export default function DynamicIO(props) {
   const { schema, onChange, path } = props;
@@ -13,7 +13,7 @@ export default function DynamicIO(props) {
     else if (schema.type === "boolean") onChange(path, false);
   }, []);
 
-  return <Component {...props} />;
+  return <Component {...props} validationErrors={getErrorsForView(props)} />;
 }
 
 function useCustomComponents() {

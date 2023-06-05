@@ -6,7 +6,7 @@ export const scrollbarStyles = ({ theme }) => `
 scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
   theme.background.body};
 
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 
   scrollbar-width: auto;
 
