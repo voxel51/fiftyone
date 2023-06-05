@@ -320,12 +320,105 @@ def _make_filter_stages(
     count_label_tags=False,
     pagination_data=False,
 ):
+    stages = []
+    queries = []
+    for path, field, prefix, args in _iter_paths(view, filters):
+        is_matching = args.get("isMatching", True)
+        only_matches = args.get("onlyMatch", True)
+
+        is_label_field = _is_label(field)
+        if is_label_field and issubclass(
+            field.document_type, (fol.Keypoint, fol.Keypoints)
+        ):
+            continue
+
+        if not is_label_field or (is_matching or only_matches):
+            queries.append(_make_query(path, view.get_field(path), args))
+
+    if queries:
+        stages.append(fosg.Match({"$and": queries}))
+
+    stages += _match_label_tags(view, label_tags, count_label_tags)
+    for path, field, prefix, args in _iter_paths(view, filters):
+        is_matching = args.get("isMatching", True)
+        only_matches = args.get("onlyMatch", True)
+
+        if _is_label(field):
+            parent = field
+            field = view.get_field(path)
+            is_keypoints = issubclass(
+                parent.document_type, (fol.Keypoint, fol.Keypoints)
+            )
+            is_list_field = isinstance(field, fof.ListField)
+
+            if is_keypoints and is_list_field:
+                expr = _make_keypoint_list_filter(args, view, path, field)
+            else:
+                key = field.db_field if field.db_field else field.name
+                expr = _make_scalar_expression(
+                    F(key), args, field, is_label=True
+                )
+
+            if expr is None:
+                continue
+
+            if is_keypoints:
+                if is_list_field:
+                    stages.append(
+                        fosg.FilterKeypoints(
+                            prefix + parent.name,
+                            only_matches=only_matches,
+                            **expr,
+                        )
+                    )
+                else:
+                    stages.append(
+                        fosg.FilterLabels(
+                            prefix + parent.name,
+                            expr,
+                            only_matches=only_matches,
+                        )
+                    )
+
+            if not is_matching and (pagination_data or not count_label_tags):
+                stages.append(
+                    fosg.FilterLabels(
+                        prefix + parent.name,
+                        expr,
+                        only_matches=False,
+                    )
+                )
+
+    return stages
+
+
+def _iter_paths(view, filters):
     field_schema = view.get_field_schema()
     if view.media_type != fom.IMAGE:
         frame_field_schema = view.get_frame_field_schema()
     else:
         frame_field_schema = None
 
+    for path in sorted(filters):
+        if path == "tags" or path.startswith("_"):
+            continue
+
+        args = filters[path]
+        frames = path.startswith(view._FRAMES_PREFIX)
+        keys = path.split(".")
+        if frames:
+            field = frame_field_schema[keys[1]]
+            keys = keys[2:]
+            prefix = "frames."
+        else:
+            field = field_schema[keys[0]]
+            keys = keys[1:]
+            prefix = ""
+
+        yield path, field, prefix, args
+
+
+def _match_label_tags(view, label_tags, count_label_tags):
     label_tags_values = (
         label_tags["values"] if label_tags is not None else None
     )
@@ -345,82 +438,13 @@ def _make_filter_stages(
         if label_tags_exclude and not label_tags_is_matching
         else tag_expr
     )
+
     stages = []
-    for path in sorted(filters):
-        if path == "tags" or path.startswith("_"):
-            continue
-
-        args = filters[path]
-        is_matching = args.get("isMatching", True)
-        only_matches = args.get("onlyMatch", True)
-
-        frames = path.startswith(view._FRAMES_PREFIX)
-        keys = path.split(".")
-        if frames:
-            field = frame_field_schema[keys[1]]
-            keys = keys[2:]
-            prefix = "frames."
-        else:
-            field = field_schema[keys[0]]
-            keys = keys[1:]
-            prefix = ""
-
-        if _is_label(field):
-            parent = field
-            field = view.get_field(path)
-            is_keypoints = issubclass(
-                parent.document_type, (fol.Keypoint, fol.Keypoints)
-            )
-            is_list_field = isinstance(field, fof.ListField)
-
-            if is_keypoints and is_list_field:
-                expr = _make_keypoint_list_filter(args, view, path, field)
-            else:
-                key = field.db_field if field.db_field else field.name
-                expr = _make_scalar_expression(
-                    F(key), args, field, is_label=True
-                )
-
-            if expr is not None:
-                if is_keypoints:
-                    if is_list_field:
-                        stages.append(
-                            fosg.FilterKeypoints(
-                                prefix + parent.name,
-                                only_matches=only_matches,
-                                **expr,
-                            )
-                        )
-                    else:
-                        stages.append(
-                            fosg.FilterLabels(
-                                prefix + parent.name,
-                                expr,
-                                only_matches=only_matches,
-                            )
-                        )
-
-                if is_matching or only_matches:
-                    stages.append(fosg.Match(_make_query(path, field, args)))
-
-                if not is_matching and (
-                    pagination_data or not count_label_tags
-                ):
-                    stages.append(
-                        fosg.FilterLabels(
-                            prefix + parent.name,
-                            expr,
-                            only_matches=only_matches,
-                        )
-                    )
-        else:
-            stages.append(fosg.Match(_make_query(path, field, args)))
-
     if label_tags is not None and count_label_tags:
         is_matching = label_tags.get("isMatching", False)
         exclude = label_tags.get("exclude", False)
 
-        for path, _ in fosu.iter_label_fields(view):
+        for path, _ in view._iter_label_fields():
             stages.append(
                 fosg.FilterLabels(
                     path,
@@ -473,6 +497,9 @@ def _is_label(field):
 
 
 def _make_query(path, field, args):
+    if isinstance(field, fof.ListField):
+        field = field.field
+
     if isinstance(
         field, (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField)
     ):
@@ -494,9 +521,6 @@ def _make_query(path, field, args):
                 {path: {"$lte": mx}},
             ]
         }
-
-    if isinstance(field, fof.ListField):
-        field = field.field
 
     values = args["values"]
     if isinstance(field, fof.ObjectIdField):
