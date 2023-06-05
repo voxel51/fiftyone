@@ -28,6 +28,9 @@ class PermissionedOperatorRegistry(OperatorRegistry):
     def can_execute(self, operator_uri):
         return self.managed_operators.has_operator(operator_uri)
 
+    def should_delegate(self, operator_uri):
+        return self.get_operator(operator_uri).should_delegate
+
     @classmethod
     async def from_list_request(cls, request):
         return PermissionedOperatorRegistry(

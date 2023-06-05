@@ -15,6 +15,7 @@ from fiftyone.server.decorators import route
 
 from .executor import (
     execute_operator,
+    delegate_operator,
     resolve_type,
     resolve_placement,
     ExecutionContext,
@@ -88,7 +89,11 @@ class ExecuteOperator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await execute_operator(operator_uri, data)
+        if registry.should_delegate(operator_uri):
+            result = await delegate_operator(operator_uri, data)
+        else:
+            result = await execute_operator(operator_uri, data)
+
         return result.to_json()
 
 

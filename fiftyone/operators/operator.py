@@ -6,6 +6,8 @@ FiftyOne operators.
 |
 """
 from .types import Object, Form, Property
+from fiftyone.core.delegated_operation import DelegatedOperationService as fodo
+import time
 
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
@@ -39,6 +41,7 @@ class OperatorConfig(object):
         unlisted=False,
         on_startup=False,
         disable_schema_validation=False,
+        should_delegate=False,
     ):
         self.name = name
         self.label = label or name
@@ -48,6 +51,7 @@ class OperatorConfig(object):
         self.unlisted = unlisted
         self.on_startup = on_startup
         self.disable_schema_validation = disable_schema_validation
+        self.should_delegate = should_delegate
 
     def to_json(self):
         return {
@@ -59,6 +63,7 @@ class OperatorConfig(object):
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
             "disable_schema_validation": self.disable_schema_validation,
+            "should_delegate": self.should_delegate,
         }
 
 
@@ -101,6 +106,10 @@ class Operator(object):
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
+
+    @property
+    def should_delegate(self):
+        return self.config.should_delegate
 
     def resolve_definition(self, resolve_dynamic, ctx):
         """Returns a resolved definition of the operator.
@@ -146,6 +155,18 @@ class Operator(object):
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
         """
         raise NotImplementedError("subclass must implement execute()")
+
+    def delegate(self, ctx):
+        """delegates the operator execution.
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+        """
+        now = time.time() * 1000
+        run_key = f"delegated_operation_{now}".replace(".", "_")
+        fodo.queue_operation(
+            operator=self.uri, context=ctx.serialize(), run_key=run_key
+        )
 
     def resolve_type(self, ctx, type):
         """Returns the resolved input or output property.

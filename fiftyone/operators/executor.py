@@ -89,6 +89,50 @@ async def execute_operator(operator_name, request_params):
     Returns:
         the result of the operator as a dictionary or ``None``
     """
+
+    (operator, executor, ctx) = prepare_operator_executor(
+        operator_name, request_params
+    )
+
+    try:
+        raw_result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else run_sync_task(operator.execute, ctx)
+        )
+    except Exception as e:
+        return ExecutionResult(executor=executor, error=traceback.format_exc())
+
+    return ExecutionResult(result=raw_result, executor=executor)
+
+
+@coroutine_timeout(seconds=fo.config.operator_timeout)
+async def delegate_operator(operator_name, request_params):
+    """Executes the operator with the given name.
+
+    Args:
+        operator_name: the name of the operator
+        request_params: a dictionary of parameters for the operator
+
+    Returns:
+        the result of the operator as a dictionary or ``None``
+    """
+    (operator, executor, ctx) = prepare_operator_executor(
+        operator_name, request_params
+    )
+
+    try:
+        if asyncio.iscoroutinefunction(operator.delegate):
+            raw_result = await operator.delegate(ctx)
+        else:
+            raw_result = operator.delegate(ctx)
+    except Exception as e:
+        return ExecutionResult(None, executor, str(e))
+
+    return ExecutionResult(raw_result, executor, None)
+
+
+def prepare_operator_executor(operator_name, request_params):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_name) is False:
         raise ValueError("Operator '%s' does not exist" % operator_name)
@@ -103,16 +147,7 @@ async def execute_operator(operator_name, request_params):
             error="Validation Error", validation_ctx=validation_ctx
         )
 
-    try:
-        raw_result = await (
-            operator.execute(ctx)
-            if asyncio.iscoroutinefunction(operator.execute)
-            else run_sync_task(operator.execute, ctx)
-        )
-    except Exception as e:
-        return ExecutionResult(executor=executor, error=traceback.format_exc())
-
-    return ExecutionResult(result=raw_result, executor=executor)
+    return (operator, executor, ctx)
 
 
 def _is_generator(value):
@@ -240,6 +275,18 @@ class ExecutionContext(object):
             message: a message to log
         """
         self.trigger("console_log", {"message": message})
+
+    def serialize(self):
+        """Serializes the execution context.
+
+        Returns:
+            a JSON dict
+        """
+        return {
+            "request_params": self.request_params,
+            # "executor": self.executor.to_json(),
+            "params": self.params,
+        }
 
 
 class ExecutionResult(object):
