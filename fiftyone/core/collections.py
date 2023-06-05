@@ -9549,31 +9549,25 @@ class SampleCollection(object):
         return media_fields
 
     def _get_label_fields(self):
-        fields = self._get_sample_label_fields()
-
-        if self._has_frame_fields():
-            fields.extend(self._get_frame_label_fields())
-
-        return fields
+        return [path for path, _ in _iter_label_fields(self)]
 
     def _get_sample_label_fields(self):
-        return list(
-            self.get_field_schema(
-                ftype=fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Label,
-            ).keys()
-        )
+        return [
+            path
+            for path, _ in _iter_schema_label_fields(
+                self.get_field_schema(flat=True)
+            )
+        ]
 
     def _get_frame_label_fields(self):
         if not self._has_frame_fields():
             return None
 
         return [
-            self._FRAMES_PREFIX + field
-            for field in self.get_frame_field_schema(
-                ftype=fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Label,
-            ).keys()
+            self._FRAMES_PREFIX + path
+            for path, _ in _iter_schema_label_fields(
+                self.get_frame_field_schema(flat=True)
+            )
         ]
 
     def _get_root_fields(self, fields):
@@ -9771,6 +9765,50 @@ class SampleCollection(object):
             for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
         }
         return [values_map.get(i, None) for i in ids]
+
+
+def _iter_label_fields(view: SampleCollection):
+    for path, field in _iter_schema_label_fields(
+        view.get_field_schema(flat=True)
+    ):
+        yield path, field
+
+    if not view._has_frame_fields():
+        return
+
+    for path, field in _iter_schema_label_fields(
+        view.get_frame_field_schema(flat=True)
+    ):
+        yield f"frames.{path}", field
+
+
+def _iter_schema_label_fields(schema):
+    for path, field in schema.items():
+        field_to_check = field
+        if isinstance(field, fof.ListField):
+            field_to_check = field.field
+
+        if not isinstance(field_to_check, fof.EmbeddedDocumentField):
+            continue
+
+        if not issubclass(field_to_check.document_type, fol.Label):
+            continue
+
+        if not issubclass(field_to_check.document_type, fol._HasLabelList):
+            keys = path.split(".")
+            parent_path = ".".join(keys[:-1])
+            leaf = keys[-1]
+            parent_field = schema.get(parent_path, None)
+
+            # we skip _HasLabelList label list fields
+            if (
+                isinstance(parent_field, fof.EmbeddedDocumentField)
+                and issubclass(parent_field.document_type, fol._HasLabelList)
+                and parent_field.document_type._LABEL_LIST_FIELD == leaf
+            ):
+                continue
+
+        yield path, field
 
 
 def _serialize_value(field_name, field, value, validate=True):

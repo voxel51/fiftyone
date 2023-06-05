@@ -87,6 +87,69 @@ class LabelTests(unittest.TestCase):
         self.assertIsInstance(detection2.embedding, np.ndarray)
         self.assertEqual(detection2["custom_id"], detection["custom_id"])
 
+    @drop_datasets
+    def test_dynamic_label_fields(self):
+        dynamic_data = fo.DynamicEmbeddedDocument(
+            classification=fo.Classification(label="label"),
+            classifications=[fo.Classification(label="label")],
+            more_classifications=fo.Classifications(
+                classifications=[fo.Classification(label="label")]
+            ),
+        )
+        sample = fo.Sample(filepath="image.jpg", dynamic=dynamic_data)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+
+        label_id = dynamic_data["classification"].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "field": "dynamic.classification",
+                }
+            ]
+        )
+        dynamic = view.first().dynamic
+        self.assertTrue(label_id == dynamic.classification.id)
+        self.assertFalse("classifications" in dynamic)
+        self.assertFalse("more_classifications" in dynamic)
+
+        label_id = dynamic_data["classifications"][0].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "field": "dynamic.classifications",
+                }
+            ]
+        )
+        dynamic = view.first().dynamic
+
+        self.assertTrue(label_id == dynamic.classifications[0].id)
+        self.assertFalse("classification" in dynamic)
+        self.assertFalse("more_classifications" in dynamic)
+
+        label_id = dynamic_data["more_classifications"].classifications[0].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "field": "dynamic.more_classifications",
+                }
+            ]
+        )
+        dynamic = view.first().dynamic
+        self.assertTrue(
+            label_id == dynamic.more_classifications.classifications[0].id
+        )
+        self.assertFalse("classification" in dynamic)
+        self.assertFalse("classifications" in dynamic)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

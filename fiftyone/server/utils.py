@@ -108,26 +108,6 @@ def from_dict(data_class: t.Type[T], data: Data) -> T:
     return _from_dict(data_class, data, config=_dacite_config)
 
 
-def iter_label_fields(view: foc.SampleCollection):
-    """
-    Yields the labels of the
-    :class:`fiftyone.core.collections.SampleCollection`
-
-    Args:
-        view: a :class:`fiftyone.core.collections.SampleCollection`
-    """
-    for path, field in _iter_label_fields(view.get_field_schema(flat=True)):
-        yield path, field
-
-    if view.media_type != fom.VIDEO:
-        return
-
-    for path, field in _iter_label_fields(
-        view.get_frame_field_schema(flat=True)
-    ):
-        yield f"frames.{path}", field
-
-
 def meets_type(field: fof.Field, type_or_types):
     """
     Determines whether the field meets type or types, or the field
@@ -141,27 +121,6 @@ def meets_type(field: fof.Field, type_or_types):
         isinstance(field, fof.ListField)
         and isinstance(field.field, type_or_types)
     )
-
-
-def _iter_label_fields(schema):
-    for path, field in schema.items():
-        field_to_check = field
-        if isinstance(field, fof.ListField):
-            field_to_check = field.field
-        if (
-            isinstance(field_to_check, fof.EmbeddedDocumentField)
-            and issubclass(field_to_check.document_type, fol.Label)
-            and not issubclass(field_to_check.document_type, fol._HasLabelList)
-        ):
-            parent_path = ".".join(path.split(".")[:-1])
-            parent_field = schema.get(parent_path, None)
-            if isinstance(
-                parent_field, fof.EmbeddedDocumentField
-            ) and issubclass(parent_field.document_type, fol._HasLabelList):
-                yield parent_path, parent_field
-                continue
-
-            yield path, field
 
 
 def _parse_changes(changes):

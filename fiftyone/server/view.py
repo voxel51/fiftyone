@@ -197,7 +197,7 @@ def get_extended_view(
 
         if _LABEL_TAGS in filters:
             label_tags = filters.get(_LABEL_TAGS)
-            label_fields = [path for path, _ in fosu.iter_label_fields(view)]
+            label_fields = [path for path in view._get_label_fields()]
 
             if (
                 not count_label_tags
@@ -291,7 +291,7 @@ def _add_labels_tags_counts(view, label_tags):
     """
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
-    for path, field in fosu.iter_label_fields(view):
+    for path, field in foc._iter_label_fields(view):
         if isinstance(field, fof.ListField) or (
             isinstance(field, fof.EmbeddedDocumentField)
             and issubclass(field.document_type, fol._HasLabelList)
@@ -444,7 +444,7 @@ def _match_label_tags(view, label_tags, count_label_tags):
         is_matching = label_tags.get("isMatching", False)
         exclude = label_tags.get("exclude", False)
 
-        for path, _ in view._iter_label_fields():
+        for path in view._get_label_fields():
             stages.append(
                 fosg.FilterLabels(
                     path,
@@ -454,7 +454,7 @@ def _match_label_tags(view, label_tags, count_label_tags):
             )
 
         match_exprs = []
-        for path, _ in fosu.iter_label_fields(view):
+        for path in view._get_label_fields():
             expr = fosg._get_label_field_only_matches_expr(
                 view,
                 path,
