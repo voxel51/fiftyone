@@ -9767,19 +9767,20 @@ class SampleCollection(object):
         return [values_map.get(i, None) for i in ids]
 
 
-def _iter_label_fields(view: SampleCollection):
+def _iter_label_fields(sample_collection):
     for path, field in _iter_schema_label_fields(
-        view.get_field_schema(flat=True)
+        sample_collection.get_field_schema(flat=True)
     ):
         yield path, field
 
-    if not view._has_frame_fields():
+    if not sample_collection._has_frame_fields():
         return
 
+    prefix = sample_collection._FRAMES_PREFIX
     for path, field in _iter_schema_label_fields(
-        view.get_frame_field_schema(flat=True)
+        sample_collection.get_frame_field_schema(flat=True)
     ):
-        yield f"frames.{path}", field
+        yield prefix + path, field
 
 
 def _iter_schema_label_fields(schema):
@@ -9800,7 +9801,7 @@ def _iter_schema_label_fields(schema):
             leaf = keys[-1]
             parent_field = schema.get(parent_path, None)
 
-            # we skip _HasLabelList label list fields
+            # Don't report leaf for `_HasLabelList` fields
             if (
                 isinstance(parent_field, fof.EmbeddedDocumentField)
                 and issubclass(parent_field.document_type, fol._HasLabelList)
