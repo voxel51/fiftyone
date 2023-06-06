@@ -49,7 +49,7 @@ class ServerViewTests(unittest.TestCase):
         expected = [
             {
                 "$set": {
-                    "___predictions.detections": {
+                    "predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",
                             "cond": {
@@ -79,7 +79,7 @@ class ServerViewTests(unittest.TestCase):
                             {
                                 "$size": {
                                     "$ifNull": [
-                                        "$___predictions.detections",
+                                        "$predictions.detections",
                                         [],
                                     ]
                                 }
@@ -91,9 +91,9 @@ class ServerViewTests(unittest.TestCase):
             },
             {
                 "$set": {
-                    "___predictions.detections": {
+                    "predictions.detections": {
                         "$filter": {
-                            "input": "$___predictions.detections",
+                            "input": "$predictions.detections",
                             "cond": {"$in": ["$$this.label", ["carrot"]]},
                         },
                     },
@@ -106,7 +106,7 @@ class ServerViewTests(unittest.TestCase):
                             {
                                 "$size": {
                                     "$ifNull": [
-                                        "$___predictions.detections",
+                                        "$predictions.detections",
                                         [],
                                     ]
                                 }
@@ -155,7 +155,6 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "___predictions"},
         ]
 
         self.assertEqual(expected, returned)
@@ -303,7 +302,7 @@ class ServerViewTests(unittest.TestCase):
                                 "$mergeObjects": [
                                     "$$frame",
                                     {
-                                        "___detections": {
+                                        "detections": {
                                             "$mergeObjects": [
                                                 "$$frame.detections",
                                                 {
@@ -362,7 +361,7 @@ class ServerViewTests(unittest.TestCase):
                                             {
                                                 "$size": {
                                                     "$ifNull": [
-                                                        "$$this.___detections.detections",
+                                                        "$$this.detections.detections",
                                                         [],
                                                     ],
                                                 },
@@ -386,13 +385,13 @@ class ServerViewTests(unittest.TestCase):
                                 "$mergeObjects": [
                                     "$$frame",
                                     {
-                                        "___detections": {
+                                        "detections": {
                                             "$mergeObjects": [
-                                                "$$frame.___detections",
+                                                "$$frame.detections",
                                                 {
                                                     "detections": {
                                                         "$filter": {
-                                                            "input": "$$frame.___detections.detections",
+                                                            "input": "$$frame.detections.detections",
                                                             "cond": {
                                                                 "$in": [
                                                                     "$$this.label",
@@ -427,7 +426,7 @@ class ServerViewTests(unittest.TestCase):
                                             {
                                                 "$size": {
                                                     "$ifNull": [
-                                                        "$$this.___detections.detections",
+                                                        "$$this.detections.detections",
                                                         [],
                                                     ],
                                                 },
@@ -496,7 +495,6 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "frames.___detections"},
         ]
 
         self.assertEqual(expected, returned)
@@ -714,7 +712,7 @@ class ServerViewTests(unittest.TestCase):
                                 "$mergeObjects": [
                                     "$$frame",
                                     {
-                                        "___detections": {
+                                        "detections": {
                                             "$mergeObjects": [
                                                 "$$frame.detections",
                                                 {
@@ -764,7 +762,7 @@ class ServerViewTests(unittest.TestCase):
                                             {
                                                 "$size": {
                                                     "$ifNull": [
-                                                        "$$this.___detections.detections",
+                                                        "$$this.detections.detections",
                                                         [],
                                                     ],
                                                 },
@@ -795,13 +793,13 @@ class ServerViewTests(unittest.TestCase):
                                                 "$cond": {
                                                     "if": {
                                                         "$gt": [
-                                                            "$$this.___detections.detections",
+                                                            "$$this.detections.detections",
                                                             None,
                                                         ],
                                                     },
                                                     "then": {
                                                         "$reduce": {
-                                                            "input": "$$this.___detections.detections",
+                                                            "input": "$$this.detections.detections",
                                                             "initialValue": [],
                                                             "in": {
                                                                 "$concatArrays": [
@@ -833,7 +831,6 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "frames.___detections"},
         ]
 
         self.assertEqual(expected, returned)
