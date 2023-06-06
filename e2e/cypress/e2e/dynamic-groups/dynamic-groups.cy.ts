@@ -129,7 +129,7 @@ describe("dynamic groups", () => {
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        cifar10_dataset = foz.load_zoo_dataset("cifar10", split="test", max_samples=50, dataset_name="cifar10")
+        cifar10_dataset = foz.load_zoo_dataset("quickstart", max_samples=50, dataset_name="cifar10")
         cifar10_dataset.persistent = True
       `
       );
