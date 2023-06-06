@@ -117,7 +117,10 @@ async def add_event_listener(
 
             for _, event in events:
                 if isinstance(event, StateUpdate):
-                    event.state = event.state.serialize()
+                    # we copy here as this is a shared object
+                    event = StateUpdate(
+                        state=event.state.serialize(), refresh=event.refresh
+                    )
 
                 yield ServerSentEvent(
                     event=event.get_event_name(),
