@@ -35,6 +35,7 @@ export const UnorderedDynamicGroup = () => {
 
   return (
     <RootContainer>
+      {/* weird conditional rendering of the bar because lookerControls messes up positioning of the bar in firefox in inexplicable ways */}
       {!isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
       <ElementsContainer>
         {isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
