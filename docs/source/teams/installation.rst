@@ -94,7 +94,7 @@ In poetry v1.5, it is recommended to use an
 
 For example,
 
-.. code-block:: bash
+.. code-block:: shell
 
     poetry source add --priority=explicit fiftyone-teams https://pypi.fiftyone.ai/simple
     poetry config http-basic.fiftyone-teams ${TOKEN} ""
@@ -102,7 +102,7 @@ For example,
 
 Alternatively, you can specify the credentials in environment variables.
 
-.. code-block:: bash
+.. code-block:: shell
 
     export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_USERNAME="${TOKEN}"
     export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_PASSWORD=""
