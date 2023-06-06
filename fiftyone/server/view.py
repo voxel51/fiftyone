@@ -22,7 +22,6 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
-import fiftyone.server.utils as fosu
 
 
 _LABEL_TAGS = "_label_tags"
@@ -195,59 +194,58 @@ def get_extended_view(
             if tags and exclude:
                 view = view.match_tags(tags, bool=False)
 
-        if _LABEL_TAGS in filters:
-            label_tags = filters.get(_LABEL_TAGS)
-            label_fields = [path for path in view._get_label_fields()]
+        label_tags = filters.get(_LABEL_TAGS, None)
+        print(label_tags)
+        if label_tags:
+            labels = foc._iter_label_fields(view)
 
-            if (
-                not count_label_tags
-                and label_tags
-                and not label_tags["exclude"]
-                and not label_tags["isMatching"]
-            ):
-                view = view.select_labels(
-                    tags=label_tags["values"],
-                    fields=label_fields,
-                )
+            label_paths = [
+                f"{path}.{field._LABEL_LIST_FIELD}"
+                if isinstance(field, fol._HasLabelList)
+                else path
+                for path, field in labels
+            ]
+            list_fields = [
+                isinstance(view.get_field(path), fof.ListField)
+                for path in label_paths
+            ]
+            values = label_tags["values"]
+            exclude = label_tags["exclude"]
+            matching = label_tags["isMatching"]
+            expr = lambda exclude, values: {
+                "$nin" if exclude else "$in": values
+            }
+            querys = lambda exclude: [
+                {
+                    path
+                    if list_field
+                    else f"{path}.tags": {
+                        "$elemMatch": {"tags": expr(exclude, values)}
+                    }
+                    if list_field
+                    else expr(exclude, values)
+                }
+                for path, list_field in zip(label_paths, list_fields)
+            ]
 
-            if (
-                not count_label_tags
-                and label_tags
-                and label_tags["exclude"]
-                and not label_tags["isMatching"]
-            ):
+            if matching:
+                view = view.mongo([{"$match": {"$or": [querys(exclude)]}}])
+
+            elif exclude:
                 view = view.exclude_labels(
                     tags=label_tags["values"],
                     omit_empty=False,
-                    fields=label_fields,
+                    fields=view._get_label_fields(),
                 )
-
-            if (
-                not count_label_tags
-                and label_tags
-                and not label_tags["exclude"]
-                and label_tags["isMatching"]
-            ):
-                view = view.match_labels(
-                    tags=label_tags["values"], fields=label_fields
-                )
-
-            if (
-                not count_label_tags
-                and label_tags
-                and label_tags["exclude"]
-                and label_tags["isMatching"]
-            ):
-                view = view.match_labels(
+            else:
+                view = view.select_labels(
                     tags=label_tags["values"],
-                    bool=False,
-                    fields=label_fields,
+                    fields=view._get_label_fields(),
                 )
 
         stages = _make_filter_stages(
             view,
             filters,
-            label_tags=label_tags,
             count_label_tags=count_label_tags,
             pagination_data=pagination_data,
         )
@@ -316,7 +314,6 @@ def _add_labels_tags_counts(view, label_tags):
 def _make_filter_stages(
     view,
     filters,
-    label_tags=None,
     count_label_tags=False,
     pagination_data=False,
 ):
@@ -338,7 +335,6 @@ def _make_filter_stages(
     if queries:
         stages.append(fosg.Match({"$and": queries}))
 
-    stages += _match_label_tags(view, label_tags, count_label_tags)
     for path, field, prefix, args in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
         only_matches = args.get("onlyMatch", True)
@@ -416,60 +412,6 @@ def _iter_paths(view, filters):
             prefix = ""
 
         yield path, field, prefix, args
-
-
-def _match_label_tags(view, label_tags, count_label_tags):
-    label_tags_values = (
-        label_tags["values"] if label_tags is not None else None
-    )
-    label_tags_exclude = (
-        label_tags["exclude"] if label_tags is not None else None
-    )
-    label_tags_is_matching = (
-        label_tags["isMatching"] if label_tags is not None else None
-    )
-
-    tag_expr = (F("tags") != None).if_else(
-        F("tags").contains(label_tags_values), None
-    )
-
-    tag_expr = (
-        ~tag_expr
-        if label_tags_exclude and not label_tags_is_matching
-        else tag_expr
-    )
-
-    stages = []
-    if label_tags is not None and count_label_tags:
-        is_matching = label_tags.get("isMatching", False)
-        exclude = label_tags.get("exclude", False)
-
-        for path in view._get_label_fields():
-            stages.append(
-                fosg.FilterLabels(
-                    path,
-                    tag_expr,
-                    only_matches=False,
-                )
-            )
-
-        match_exprs = []
-        for path in view._get_label_fields():
-            expr = fosg._get_label_field_only_matches_expr(
-                view,
-                path,
-            )
-            if exclude and is_matching:
-                # pylint: disable=invalid-unary-operand-type
-                expr = ~expr
-
-            match_exprs.append(expr)
-
-        if match_exprs:
-            matcher = F.all if exclude else F.any
-            stages.append(fosg.Match(matcher(match_exprs)))
-
-    return stages
 
 
 def _is_support(field):
