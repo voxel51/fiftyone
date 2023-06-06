@@ -130,20 +130,9 @@ def get_view(
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    # omit all dict field values for performance, not needed by grid
     if pagination_data:
-        excluded = [
-            path
-            for path, field in view.get_field_schema(flat=True).items()
-            if isinstance(field, fof.DictField)
-        ]
-        view = view.select_fields(
-            [
-                path
-                for path in view.get_field_schema(flat=True)
-                if all(not path.startswith(exclude) for exclude in excluded)
-            ]
-        )
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view)
 
     if filters or extended_stages:
         view = get_extended_view(
@@ -195,7 +184,6 @@ def get_extended_view(
                 view = view.match_tags(tags, bool=False)
 
         label_tags = filters.get(_LABEL_TAGS, None)
-        print(label_tags)
         if label_tags:
             labels = foc._iter_label_fields(view)
 
@@ -215,29 +203,39 @@ def get_extended_view(
             expr = lambda exclude, values: {
                 "$nin" if exclude else "$in": values
             }
-            querys = lambda exclude: [
-                {
-                    path
-                    if list_field
-                    else f"{path}.tags": {
-                        "$elemMatch": {"tags": expr(exclude, values)}
+
+            view = view.mongo(
+                [
+                    {
+                        "$match": {
+                            "$or": [
+                                {
+                                    path
+                                    if list_field
+                                    else f"{path}.tags": {
+                                        "$elemMatch": {
+                                            "tags": expr(exclude, values)
+                                        }
+                                    }
+                                    if list_field
+                                    else expr(exclude, values)
+                                }
+                                for path, list_field in zip(
+                                    label_paths, list_fields
+                                )
+                            ]
+                        }
                     }
-                    if list_field
-                    else expr(exclude, values)
-                }
-                for path, list_field in zip(label_paths, list_fields)
-            ]
+                ]
+            )
 
-            if matching:
-                view = view.mongo([{"$match": {"$or": [querys(exclude)]}}])
-
-            elif exclude:
+            if not matching and exclude:
                 view = view.exclude_labels(
                     tags=label_tags["values"],
                     omit_empty=False,
                     fields=view._get_label_fields(),
                 )
-            else:
+            elif not matching:
                 view = view.select_labels(
                     tags=label_tags["values"],
                     fields=view._get_label_fields(),
@@ -254,7 +252,7 @@ def get_extended_view(
             view = view.add_stage(stage)
 
     if count_label_tags:
-        view = _add_labels_tags_counts(view, label_tags)
+        view = _add_labels_tags_counts(view)
 
     return view
 
@@ -277,16 +275,7 @@ def extend_view(view, extended_stages):
     return view
 
 
-def _add_labels_tags_counts(view, label_tags):
-    """Adds stages necessary to count label tags to the view.
-
-    Args:
-        view: a :class:`fiftyone.core.collections.SampleCollection`
-        label_tags: label tags
-
-    Returns:
-        a :class:`fiftyone.core.view.DatasetView`
-    """
+def _add_labels_tags_counts(view):
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
 
     for path, field in foc._iter_label_fields(view):
@@ -309,6 +298,29 @@ def _add_labels_tags_counts(view, label_tags):
     view = _count_list_items(_LABEL_TAGS, view)
 
     return view
+
+
+def _project_pagination_paths(view: foc.SampleCollection):
+    schema = view.get_field_schema(flat=True)
+    frame_schema = view.get_frame_field_schema(flat=True)
+    if frame_schema:
+        schema.update(
+            **{f"frames.{path}": field for path, field in frame_schema.items()}
+        )
+
+    excluded = [
+        path
+        for path, field in schema.items()
+        if isinstance(field, fof.DictField)
+    ]
+
+    return view.select_fields(
+        [
+            path
+            for path in schema
+            if all(not path.startswith(exclude) for exclude in excluded)
+        ]
+    )
 
 
 def _make_filter_stages(
