@@ -397,7 +397,13 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
         return sample;
       }
 
-      return get(groupSampleQuery(sliceName));
+      const modalDefaultSample = get(groupSampleQuery(sliceName));
+
+      if (modalDefaultSample?.sample) {
+        return modalDefaultSample;
+      }
+
+      return sample;
     },
 });
 
