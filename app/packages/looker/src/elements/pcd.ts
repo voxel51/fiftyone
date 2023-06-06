@@ -34,8 +34,17 @@ export class PcdElement extends BaseElement<PcdState, HTMLImageElement> {
 
   renderSelf({ config: { src } }: Readonly<PcdState>) {
     if (this.src !== src) {
-      // split("?")[0] is to remove query params, if any, from signed urls
-      if (src.split("?")[0].endsWith(".pcd")) {
+      // could be either pcd or projection
+      let isPcd = false;
+
+      if (src.startsWith("http://localhost") && src.endsWith(".pcd")) {
+        isPcd = true;
+      } else if (src.split("?")[0].endsWith(".pcd")) {
+        // split("?")[0] is to remove query params, if any, from signed urls
+        isPcd = true;
+      }
+
+      if (isPcd) {
         // this means orthographic projections have not been computed, replace with a 1x1 base64 blank image
         const base64Blank =
           "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg==";
