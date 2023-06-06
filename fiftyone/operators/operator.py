@@ -29,6 +29,8 @@ class OperatorConfig(object):
         on_startup (False): whether the operator should be executed on startup
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
+        should_delegate (False): whether the operator should be delegated to remote operation
+        delegation_target (None): the target to delegate the operation to
     """
 
     def __init__(
@@ -42,6 +44,7 @@ class OperatorConfig(object):
         on_startup=False,
         disable_schema_validation=False,
         should_delegate=False,
+        delegation_target=None,
     ):
         self.name = name
         self.label = label or name
@@ -52,6 +55,7 @@ class OperatorConfig(object):
         self.on_startup = on_startup
         self.disable_schema_validation = disable_schema_validation
         self.should_delegate = should_delegate
+        self.delegation_target = delegation_target
 
     def to_json(self):
         return {
@@ -64,6 +68,7 @@ class OperatorConfig(object):
             "on_startup": self.on_startup,
             "disable_schema_validation": self.disable_schema_validation,
             "should_delegate": self.should_delegate,
+            "delegation_target": self.delegation_target,
         }
 
 
@@ -110,6 +115,10 @@ class Operator(object):
     @property
     def should_delegate(self):
         return self.config.should_delegate
+
+    @property
+    def delegation_target(self):
+        return self.config.delegation_target
 
     def resolve_definition(self, resolve_dynamic, ctx):
         """Returns a resolved definition of the operator.
@@ -162,10 +171,10 @@ class Operator(object):
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
         """
-        now = time.time() * 1000
-        run_key = f"delegated_operation_{now}".replace(".", "_")
         fodo.queue_operation(
-            operator=self.uri, context=ctx.serialize(), run_key=run_key
+            operator=self.uri,
+            context=ctx.serialize(),
+            delegation_target=self.delegation_target,
         )
 
     def resolve_type(self, ctx, type):

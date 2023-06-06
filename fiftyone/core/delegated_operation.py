@@ -1,6 +1,10 @@
 from datetime import datetime
 from bson import ObjectId
 from fiftyone.core.odm.delegated_operation import DelegatedOperationDocument
+import fiftyone.core.utils as fou
+
+foe = fou.lazy_import("fiftyone.operators.executor")
+import asyncio
 
 
 class DelegatedOperationService(object):
@@ -16,7 +20,11 @@ class DelegatedOperationService(object):
 
     @staticmethod
     def queue_operation(
-        operator, run_key, dataset_id=None, context=None, view_stages=None
+        operator: str,
+        delegation_target: str = None,
+        dataset_id: ObjectId = None,
+        context: dict = None,
+        view_stages: list = None,
     ) -> DelegatedOperationDocument:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
         for the operation.
@@ -26,7 +34,7 @@ class DelegatedOperationService(object):
         """
         op = DelegatedOperationDocument(
             operator=operator,
-            run_key=run_key,
+            delegation_target=delegation_target,
             dataset_id=dataset_id,
             context=context,
             view_stages=view_stages,
@@ -69,11 +77,15 @@ class DelegatedOperationService(object):
         queued_ops = DelegatedOperationService.list_operations(
             operator=operator, dataset_id=dataset_id, run_state="queued"
         )
-        print(f"Found {len(queued_ops)} queued operations")
         return queued_ops
 
     @staticmethod
-    def list_operations(operator=None, dataset_id=None, run_state=None):
+    def list_operations(
+        operator: str = None,
+        dataset_id: ObjectId = None,
+        run_state: str = None,
+        delegation_target: str = None,
+    ):
         query = {}
         if operator:
             query["operator"] = operator
@@ -81,22 +93,17 @@ class DelegatedOperationService(object):
             query["dataset_id"] = dataset_id
         if run_state:
             query["run_state"] = run_state
+        if delegation_target:
+            query["delegation_target"] = delegation_target
         # pylint: disable=no-member
         return DelegatedOperationDocument.objects(**query)
 
     @staticmethod
     def get(
-        doc_id: str = None, run_key: str = None
+        doc_id: str,
     ) -> DelegatedOperationDocument:
-        if doc_id is None and run_key is None:
-            raise ValueError("Must specify either doc_id or run_key")
-        if doc_id:
-            # pylint: disable=no-member
-            return DelegatedOperationDocument.objects.with_id(doc_id)
-
-        if run_key:
-            # pylint: disable=no-member
-            return DelegatedOperationDocument.objects(run_key=run_key).first()
+        # pylint: disable=no-member
+        return DelegatedOperationDocument.objects.with_id(doc_id)
 
     @staticmethod
     def _set_run_state(
@@ -123,3 +130,42 @@ class DelegatedOperationService(object):
             raise ValueError(f"Invalid run state: {run_state}")
 
         return doc.save()
+
+    @staticmethod
+    def execute_queued_operations(
+        operator: str = None,
+        delegation_target: str = None,
+        dataset_id: ObjectId = None,
+    ):
+        queued_ops = DelegatedOperationService.list_operations(
+            operator=operator,
+            dataset_id=dataset_id,
+            delegation_target=delegation_target,
+            run_state="queued",
+        )
+
+        for op in queued_ops:
+            print(op)
+            DelegatedOperationService.set_triggered(op.id)
+            result = asyncio.run(
+                DelegatedOperationService._execute_operator(op)
+            )
+
+    @staticmethod
+    async def _execute_operator(doc: DelegatedOperationDocument):
+        operator_uri = doc["operator"]
+        print(f"operator: {operator_uri}")
+        context = doc["context"]
+        context["request_params"]["run_doc"] = doc["id"]
+        (operator, executor, ctx) = foe.prepare_operator_executor(
+            operator_uri, context["request_params"]
+        )
+        DelegatedOperationService.set_running(doc["id"])
+        try:
+            result = operator.execute(ctx)
+            DelegatedOperationService.set_completed(doc["id"])
+            print(f"result: {result}")
+            return result
+        except Exception as e:
+            DelegatedOperationService.set_failed(doc.id, error=e)
+            # raise e

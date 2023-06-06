@@ -23,7 +23,7 @@ class DelegatedOperationDocument(Document):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"collection": "delegated_ops", "strict": True}
     dataset_id = ObjectIdField(db_field="_dataset_id", required=False)
-    run_key = StringField(required=True)
+    delegation_target = StringField(required=False)
     operator = StringField(required=True)
     version = StringField()
     queued_at = DateTimeField(required=True)
