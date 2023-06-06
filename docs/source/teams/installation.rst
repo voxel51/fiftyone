@@ -91,6 +91,8 @@ location.
 
 In poetry v1.5, it is recommended to use an
 `explicit package source. <https://python-poetry.org/docs/repositories/#explicit-package-sources>`_
+Prior to v1.5, you should use a
+`secondary package source. <https://python-poetry.org/docs/repositories/#secondary-package-sources-deprecated>`_
 
 For example,
 
