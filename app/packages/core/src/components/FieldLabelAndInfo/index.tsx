@@ -1,3 +1,8 @@
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { activeColorField, coloring } from "@fiftyone/state";
+import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
+import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
   useEffect,
@@ -5,6 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import ReactDOM from "react-dom";
 import {
   atom,
   useRecoilState,
@@ -12,13 +18,8 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import * as fos from "@fiftyone/state";
-import PaletteIcon from "@mui/icons-material/Palette";
 import { ExternalLink } from "../../utils/generic";
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import { coloring, activeColorField } from "@fiftyone/state";
-import ReactDOM from "react-dom";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -263,10 +264,12 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
+    if (field.path === "_label_tags") {
+      setIsCustomizingColor(ACTIVE_FIELD[field.path]);
+    }
     setIsCustomizingColor({ field, expandedPath });
   };
 
-  const isNotTag = field.path !== "tags";
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
 
@@ -280,7 +283,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {isNotTag && !isModal && (
+        {!isModal && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}

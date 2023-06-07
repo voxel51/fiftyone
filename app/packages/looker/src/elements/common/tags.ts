@@ -275,9 +275,16 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           sample.tags.forEach((tag) => {
             const v = coloring.by === "value" ? tag : "tags";
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, v),
+              color: getColorFromOptions({
+                coloring,
+                path,
+                param: tag,
+                customizeColorSetting,
+                labelDefault: false,
+              }),
               title: tag,
               value: tag,
+              path: v,
             });
           });
         }
@@ -289,6 +296,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             color: getColor(coloring.pool, coloring.seed, v),
             title: value,
             value: value,
+            path: v,
           });
         });
       } else {
