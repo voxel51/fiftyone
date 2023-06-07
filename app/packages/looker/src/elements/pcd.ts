@@ -36,10 +36,9 @@ export class PcdElement extends BaseElement<PcdState, HTMLImageElement> {
     if (this.src !== src) {
       // could be either pcd or projection
       let isPcd = false;
+      console.log("src is ", src);
 
-      if (src.startsWith("http://localhost") && src.endsWith(".pcd")) {
-        isPcd = true;
-      } else if (src.split("?")[0].endsWith(".pcd")) {
+      if (src.endsWith(".pcd") || src.split("?")[0].endsWith(".pcd")) {
         // split("?")[0] is to remove query params, if any, from signed urls
         isPcd = true;
       }
