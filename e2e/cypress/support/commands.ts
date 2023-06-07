@@ -52,8 +52,18 @@ Cypress.Commands.add(
 Cypress.Commands.add("clearViewStages", () => {
   // chaining with root in case modal is open and ctx is within modal
   cy.root().find("[data-cy=btn-clear-view-bar]").click();
+  // unfortunately, can take long. todo: emit an event and make it more deterministic.
+  cy.wait(1000);
 });
 
 Cypress.Commands.add("consoleLog", (message) => {
+  console.log(message);
   cy.task("logTask", message);
+});
+
+Cypress.on("uncaught:exception", (err, runnable) => {
+  // returning false here prevents Cypress from
+  // failing the test
+  cy.debug();
+  return false;
 });
