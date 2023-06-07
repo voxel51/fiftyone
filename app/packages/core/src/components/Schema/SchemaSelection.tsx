@@ -215,7 +215,7 @@ export const SchemaSelection = () => {
                             paddingLeft: "0.5rem",
                             color: disabled
                               ? theme.text.tertiary
-                              : theme.text.secondary,
+                              : theme.text.tertiary,
                             fontSize: "0.8rem",
                             alignItems: "center",
                           }}
