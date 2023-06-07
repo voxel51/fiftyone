@@ -20,16 +20,6 @@ const Header: React.FC<
   return (
     <div className={style.header}>
       <div className={style.left}>
-        <div
-          className={style.title}
-          onClick={() => {
-            setToggle(!toggle);
-            onRefresh && onRefresh();
-          }}
-        >
-          <animated.img className={style.logo} style={logoProps} src={logo} />
-          <div className={style.fiftyone}>{title}</div>
-        </div>
         {navChildren}
       </div>
       {children}

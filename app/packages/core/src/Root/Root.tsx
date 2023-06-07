@@ -169,22 +169,12 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   return (
     <>
       <Header
-        title={"FiftyOne"}
+        title="Fiftyone"
         onRefresh={refresh}
-        navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>
-          {!teamsSubmission && (
-            <Button
-              onClick={() => {
-                setTeams(true);
-              }}
-            >
-              Have a Team?
-            </Button>
-          )}
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
             onClick={() => {
@@ -199,8 +189,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
           </IconButton>
-          <SlackLink />
-          <GitHubLink />
           <DocsLink />
         </div>
         <OperatorBrowser />
@@ -208,25 +196,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         <OperatorViewModal />
         <OperatorInvocationRequestExecutor />
       </Header>
-      {ReactDOM.createPortal(
-        <AnimatePresence>
-          {teams && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{
-                opacity: 1,
-                height: "auto",
-              }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              key={"teams"}
-            >
-              <Teams />
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.getElementById("teams")
-      )}
     </>
   );
 };
