@@ -124,9 +124,7 @@ const FieldLabelAndInfo = ({
   return (
     <>
       {template({ ...fieldInfo, FieldInfoIcon })}
-      {field.path !== "_label_tags" && fieldInfo.open && (
-        <FieldInfoExpanded {...fieldInfo} />
-      )}
+      {fieldInfo.open && <FieldInfoExpanded {...fieldInfo} />}
     </>
   );
 };

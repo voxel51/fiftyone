@@ -378,6 +378,7 @@ export const sessionColorScheme = atom<ColorSchemeSetting>({
   default: {
     colorPool: [],
     fields: [],
+    labelTags: {},
   },
 });
 

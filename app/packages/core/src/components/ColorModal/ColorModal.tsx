@@ -23,6 +23,7 @@ import { Resizable } from "re-resizable";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 import SidebarList from "./SidebarList";
 import { ACTIVE_FIELD } from "./utils";
+import LabelTag from "./LabelTag";
 
 const CUSTOM_COLOR_DOCUMENTATION_LINK =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
@@ -139,6 +140,7 @@ const ColorModal = () => {
                   <Display>
                     {field === ACTIVE_FIELD.global && <GlobalSetting />}
                     {field === ACTIVE_FIELD.json && <JSONViewer />}
+                    {field === ACTIVE_FIELD._label_tags && <LabelTag />}
                     {typeof field !== "string" && field && (
                       <FieldSetting prop={activeColorModalField} />
                     )}

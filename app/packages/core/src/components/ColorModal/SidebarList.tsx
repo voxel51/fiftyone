@@ -22,7 +22,7 @@ const SidebarList: React.FC = () => {
   const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.global, ACTIVE_FIELD.json], name: "general" },
-    { paths: ["tags"], name: "tags" },
+    { paths: ["tags", ACTIVE_FIELD._label_tags], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
@@ -38,7 +38,13 @@ const SidebarList: React.FC = () => {
   const onSelectField = useRecoilCallback(
     ({ set, snapshot }) =>
       async (path: string) => {
-        if ([ACTIVE_FIELD.global, ACTIVE_FIELD.json].includes(path)) {
+        if (
+          [
+            ACTIVE_FIELD.global,
+            ACTIVE_FIELD.json,
+            ACTIVE_FIELD._label_tags,
+          ].includes(path)
+        ) {
           set(fos.activeColorField, path);
         } else {
           const field = await snapshot.getPromise(fos.field(path));
@@ -51,6 +57,8 @@ const SidebarList: React.FC = () => {
   const getCurrentField = (activeField) => {
     if (activeField === ACTIVE_FIELD.global) return ACTIVE_FIELD.global;
     if (activeField === ACTIVE_FIELD.json) return ACTIVE_FIELD.json;
+    if (activeField === ACTIVE_FIELD._label_tags)
+      return ACTIVE_FIELD._label_tags;
 
     return activeField?.expandedPath;
   };

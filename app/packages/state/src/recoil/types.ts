@@ -232,6 +232,7 @@ export interface CustomizeColor {
 export interface ColorScheme {
   colorPool: string[];
   fields: CustomizeColor[];
+  labelTags: CustomizeColor;
 }
 
 export interface ColorSchemeSetting extends ColorScheme {
