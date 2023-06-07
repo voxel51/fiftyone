@@ -397,10 +397,10 @@ export const groupSample = selectorFamily<SampleData, SliceName>({
         return sample;
       }
 
-      const modalDefaultSample = get(groupSampleQuery(sliceName));
+      const fallbackSample = get(groupSampleQuery(sliceName));
 
-      if (modalDefaultSample?.sample) {
-        return modalDefaultSample;
+      if (fallbackSample?.sample) {
+        return fallbackSample;
       }
 
       return sample;
