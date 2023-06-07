@@ -1,5 +1,16 @@
 import { CopyButton, useTheme } from "@fiftyone/components";
-import { Box, Link, Typography } from "@mui/material";
+import {
+  Box,
+  Link,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from "@mui/material";
 import { useHover } from "react-laag";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -11,6 +22,7 @@ import vs2015 from "react-syntax-highlighter/dist/esm/styles/hljs/vs2015";
 import styled from "styled-components";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
+import remarkGfm from "remark-gfm";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("typescript", ts);
@@ -58,6 +70,18 @@ const componenntMap = {
 
     return <Link {...props}>{children}</Link>;
   },
+  table({ children }) {
+    return (
+      <TableContainer component={Paper}>
+        <Table>{children}</Table>
+      </TableContainer>
+    );
+  },
+  td: TableCell,
+  th: TableCell,
+  tbody: TableBody,
+  thead: TableHead,
+  tr: TableRow,
   code({ node, inline, className, children, ...props }) {
     const theme = useTheme();
     const [hovered, hoverProps] = useHover();
@@ -106,6 +130,7 @@ export default function MarkdownView(props) {
       <HeaderView {...props} nested />
       <ReactMarkdown
         components={componenntMap}
+        remarkPlugins={[remarkGfm]}
         {...getComponentProps(props, "markdown")}
       >
         {data}
