@@ -185,61 +185,7 @@ def get_extended_view(
 
         label_tags = filters.get(_LABEL_TAGS, None)
         if label_tags:
-            labels = foc._iter_label_fields(view)
-
-            label_paths = [
-                f"{path}.{field._LABEL_LIST_FIELD}"
-                if isinstance(field, fol._HasLabelList)
-                else path
-                for path, field in labels
-            ]
-            list_fields = [
-                isinstance(view.get_field(path), fof.ListField)
-                for path in label_paths
-            ]
-            values = label_tags["values"]
-            exclude = label_tags["exclude"]
-            matching = label_tags["isMatching"]
-            expr = lambda exclude, values: {
-                "$nin" if exclude else "$in": values
-            }
-
-            view = view.mongo(
-                [
-                    {
-                        "$match": {
-                            "$or": [
-                                {
-                                    path
-                                    if list_field
-                                    else f"{path}.tags": {
-                                        "$elemMatch": {
-                                            "tags": expr(exclude, values)
-                                        }
-                                    }
-                                    if list_field
-                                    else expr(exclude, values)
-                                }
-                                for path, list_field in zip(
-                                    label_paths, list_fields
-                                )
-                            ]
-                        }
-                    }
-                ]
-            )
-
-            if not matching and exclude:
-                view = view.exclude_labels(
-                    tags=label_tags["values"],
-                    omit_empty=False,
-                    fields=view._get_label_fields(),
-                )
-            elif not matching:
-                view = view.select_labels(
-                    tags=label_tags["values"],
-                    fields=view._get_label_fields(),
-                )
+            view = _match_label_tags(view, label_tags)
 
         stages = _make_filter_stages(
             view,
@@ -655,22 +601,6 @@ def _apply_none(expr, f, none):
     return expr
 
 
-def _get_filtered_path(view, path, filtered_fields, label_tags):
-    if label_tags is not None:
-        excludes = label_tags.get("exclude", None)
-        label_tags = label_tags.get("values", None)
-    else:
-        excludes = None
-
-    if path not in filtered_fields and not label_tags and not excludes:
-        return path
-
-    if path.startswith(view._FRAMES_PREFIX):
-        return "%s___%s" % (view._FRAMES_PREFIX, path.split(".")[1])
-
-    return "___%s" % path
-
-
 def _add_frame_labels_tags(path, field, view):
     path = path[len("frames.") :]
     items = path
@@ -755,3 +685,44 @@ def _count_list_items(path, view):
     return view.set_field(
         path, F(path)._function(function), _allow_missing=True
     )
+
+
+def _match_label_tags(view: foc.SampleCollection, label_tags):
+    label_paths = [
+        f"{path}.{field.document_type._LABEL_LIST_FIELD}"
+        if isinstance(field, fof.EmbeddedDocumentField)
+        and issubclass(field.document_type, fol._HasLabelList)
+        else path
+        for path, field in foc._iter_label_fields(view)
+    ]
+    values = label_tags["values"]
+    exclude = label_tags["exclude"]
+    matching = label_tags["isMatching"]
+    expr = lambda exclude, values: {"$nin" if exclude else "$in": values}
+
+    view = view.mongo(
+        [
+            {
+                "$match": {
+                    "$or": [
+                        {f"{path}.tags": expr(exclude, values)}
+                        for path in label_paths
+                    ]
+                }
+            }
+        ]
+    )
+
+    if not matching and exclude:
+        view = view.exclude_labels(
+            tags=label_tags["values"],
+            omit_empty=False,
+            fields=view._get_label_fields(),
+        )
+    elif not matching:
+        view = view.select_labels(
+            tags=label_tags["values"],
+            fields=view._get_label_fields(),
+        )
+
+    return view

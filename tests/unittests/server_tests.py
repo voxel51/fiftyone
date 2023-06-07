@@ -490,8 +490,10 @@ class ServerViewTests(unittest.TestCase):
         expected = [
             {
                 "$match": {
-                    "$or": [{"frames.detections.tags": {"$in": ["one"]}}]
-                }
+                    "$or": [
+                        {"frames.detections.detections.tags": {"$in": ["one"]}}
+                    ],
+                },
             },
             {"$set": {"_label_tags": []}},
             {
@@ -575,8 +577,10 @@ class ServerViewTests(unittest.TestCase):
         expected = [
             {
                 "$match": {
-                    "$or": [{"frames.detections.tags": {"$in": ["one"]}}]
-                }
+                    "$or": [
+                        {"frames.detections.detections.tags": {"$in": ["one"]}}
+                    ],
+                },
             },
             {
                 "$set": {
