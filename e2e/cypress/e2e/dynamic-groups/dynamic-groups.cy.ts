@@ -63,8 +63,7 @@ const navigateDynamicGroupsModal = (ordered: boolean) => {
     const sceneIds = new Set(["0", "1", "2", "3", "4", "5", "6", "7"]);
 
     for (let i = 0; i < sceneIds.size; i++) {
-      // wait for flashlight to load, otherwise scene_id will be incorrect
-      cy.waitForLookerToRender();
+      cy.get("[data-cy=sidebar-entry-id]").should("be.visible");
       cy.get("[data-cy=sidebar-entry-scene_id]").then((sceneId) => {
         const sceneIdText = sceneId.text();
         const sceneIdNumber = Number(sceneIdText);
@@ -106,6 +105,7 @@ const navigateDynamicGroupsModal = (ordered: boolean) => {
         // check if random access works
         cy.get("[data-cy=dynamic-group-pagination-bar-input]")
           .clear()
+          .wait(10)
           .type("22");
 
         verifySceneIdTimestamp(sceneIdNumber, 21, ordered);

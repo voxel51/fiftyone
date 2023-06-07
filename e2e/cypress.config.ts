@@ -15,7 +15,7 @@ export default defineConfig({
     /** end: env for cypress-visual-regression */
   },
   e2e: {
-    video: process.env.CI === "true",
+    video: false,
     baseUrl: DEFAULT_APP_ADDRESS,
     videoUploadOnPasses: false,
     experimentalInteractiveRunEvents: true,
