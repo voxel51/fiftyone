@@ -76,88 +76,9 @@ const App: React.FC = ({}) => {
   useEffect(() => {
     const controller = new AbortController();
 
-    getEventSource(
-      "/events",
-      {
-        onopen: async () => {},
-        onmessage: (msg) => {
-          if (controller.signal.aborted) {
-            return;
-          }
-
-          switch (msg.event) {
-            case Events.DEACTIVATE_NOTEBOOK_CELL:
-              controller.abort();
-              screenshot();
-              break;
-            case Events.STATE_UPDATE: {
-              const payload = JSON.parse(msg.data);
-              const { colorscale, config, ...data } = payload.state;
-
-              payload.refresh && refresh();
-              const state = {
-                ...toCamelCase(data),
-                view: data.view,
-              } as State.Description;
-
-              if (readyStateRef.current !== AppReadyState.OPEN) {
-                setReadyState(AppReadyState.OPEN);
-              }
-
-              const searchParams = new URLSearchParams(
-                context.history.location.search
-              );
-
-              if (state.savedViewSlug) {
-                searchParams.set(
-                  "view",
-                  encodeURIComponent(state.savedViewSlug)
-                );
-              } else {
-                searchParams.delete("view");
-              }
-
-              let search = searchParams.toString();
-              if (search.length) {
-                search = `?${search}`;
-              }
-
-              const path = state.dataset
-                ? `/datasets/${encodeURIComponent(state.dataset)}${search}`
-                : `/${search}`;
-
-              contextRef.current.history.replace(path, {
-                state,
-                colorscale,
-                config,
-                refresh: payload.refresh,
-                // REQUIRED: here we define DatasetQuery GraphQL variables
-                variables: state.dataset
-                  ? { view: state.view || null }
-                  : undefined,
-              });
-
-              break;
-            }
-          }
-        },
-        onerror: (e) => handleError(e),
-        onclose: () => {
-          clearModal();
-          setReadyState(AppReadyState.CLOSED);
-        },
-      },
-      controller.signal,
-      {
-        initializer: {
-          dataset: getDatasetName(contextRef.current),
-          view: getSavedViewName(contextRef.current),
-        },
-        subscription,
-        events: [Events.DEACTIVATE_NOTEBOOK_CELL, Events.STATE_UPDATE],
-      }
-    );
-
+    if (readyStateRef.current !== AppReadyState.OPEN) {
+      setReadyState(AppReadyState.OPEN);
+    }
     return () => controller.abort();
   }, []);
 
