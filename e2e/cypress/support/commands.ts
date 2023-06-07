@@ -60,10 +60,3 @@ Cypress.Commands.add("consoleLog", (message) => {
   console.log(message);
   cy.task("logTask", message);
 });
-
-Cypress.on("uncaught:exception", (err, runnable) => {
-  // returning false here prevents Cypress from
-  // failing the test
-  cy.debug();
-  return false;
-});
