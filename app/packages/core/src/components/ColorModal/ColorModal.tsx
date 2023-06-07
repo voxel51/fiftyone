@@ -121,6 +121,7 @@ const ColorModal = () => {
                       height: "30px",
                       display: "flex",
                       alignItems: "center",
+                      margin: "auto 4px",
                     }}
                     title="Documentation"
                     href={CUSTOM_COLOR_DOCUMENTATION_LINK}
@@ -130,7 +131,7 @@ const ColorModal = () => {
                   <CloseIcon
                     onClick={() => setActiveColorModalField(null)}
                     onMouseDown={(e) => e.stopPropagation()}
-                    style={{ margin: "4px", cursor: "pointer" }}
+                    style={{ margin: "auto 4px", cursor: "pointer" }}
                   />
                 </DraggableModalTitle>
                 <DraggableContent height={height} width={width}>
