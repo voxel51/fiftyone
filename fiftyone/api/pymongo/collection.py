@@ -9,6 +9,7 @@ from typing import (
     Iterable,
     Mapping,
     MutableMapping,
+    Optional,
     Sequence,
     Union,
 )
@@ -34,11 +35,28 @@ class Collection(proxy.PymongoRestProxy):
         database: "Database",
         name: str,
         create: bool = False,
-        **kwargs: Any,
+        codec_options: Optional[bson.codec_options.CodecOptions] = None,
+        read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
+        write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
+        read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
+        **kwargs,
     ):
         self.__database = database
 
-        super().__init__(name=name, create=create, **kwargs)
+        super().__init__(
+            name=name,
+            create=create,
+            **{
+                k: v if v is not None else getattr(database, k)
+                for k, v in dict(
+                    codec_options=codec_options,
+                    read_preference=read_preference,
+                    write_concern=write_concern,
+                    read_concern=read_concern,
+                ).items()
+            },
+            **kwargs,
+        )
 
     @property
     def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
@@ -81,6 +99,26 @@ class Collection(proxy.PymongoRestProxy):
     # pylint: disable-next=missing-function-docstring
     def name(self) -> str:
         return self._proxy_init_kwargs["name"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def codec_options(self):
+        return self._proxy_init_kwargs["codec_options"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def read_preference(self):
+        return self._proxy_init_kwargs["read_preference"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def write_concern(self):
+        return self._proxy_init_kwargs["write_concern"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def read_concern(self):
+        return self._proxy_init_kwargs["read_concern"]
 
     # pylint: disable-next=missing-function-docstring
     def aggregate(
@@ -210,3 +248,27 @@ class Collection(proxy.PymongoRestProxy):
         self, *args: Any, **kwargs: Any
     ) -> change_stream.CollectionChangeStream:
         return change_stream.CollectionChangeStream(self, *args, **kwargs)
+
+    # pylint: disable-next=missing-function-docstring
+    def with_options(
+        self,
+        codec_options: Optional[bson.codec_options.CodecOptions] = None,
+        read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
+        write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
+        read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
+    ) -> "Collection":
+        kwargs = dict(self._proxy_init_kwargs)
+        kwargs.update(
+            {
+                k: v
+                for k, v in dict(
+                    codec_options=codec_options,
+                    read_preference=read_preference,
+                    write_concern=write_concern,
+                    read_concern=read_concern,
+                ).items()
+                if v is not None
+            }
+        )
+
+        return self.database.get_collection(**kwargs)
