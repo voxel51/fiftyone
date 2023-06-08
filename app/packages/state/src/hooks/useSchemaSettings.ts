@@ -73,7 +73,6 @@ const disabledField = (
 ) => {
   const currField = combinedSchema?.[path] || ({} as Field);
   const { ftype, embeddedDocType } = currField;
-
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema?.[parentPath];
   const parentEmbeddedDocType = parentField?.embeddedDocType;
@@ -583,12 +582,14 @@ export default function useSchemaSettings() {
     selectedPathState
   );
   // disabled paths are filtered
-  const datasetSelectedPaths = selectedPaths[datasetName] || [];
-  const enabledSelectedPaths = datasetSelectedPaths?.length
-    ? datasetSelectedPaths?.filter(
-        ({ path }) => !disabledField(path, combinedSchema, isGroupDataset)
-      )
-    : [];
+  const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
+  const enabledSelectedPaths =
+    datasetSelectedPaths?.size && combinedSchema
+      ? [...datasetSelectedPaths]?.filter(
+          ({ path }) =>
+            path && !disabledField(path, combinedSchema, isGroupDataset)
+        )
+      : [];
 
   const excludePathsState = excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
@@ -672,6 +673,7 @@ export default function useSchemaSettings() {
           (filterRuleTab && isInSearchResult) ||
           (!filterRuleTab &&
             selectedPaths?.[datasetName] &&
+            selectedPaths[datasetName] instanceof Set &&
             selectedPaths[datasetName]?.has(fullPath));
 
         return {
@@ -690,7 +692,7 @@ export default function useSchemaSettings() {
         const rawPath = val.path?.startsWith("frames.")
           ? val.path.replace("frames.", "")
           : val.path;
-        return showNestedFields ||
+        return (!filterRuleTab && showNestedFields) ||
           (filterRuleTab && searchResults.length && includeNestedFields)
           ? true
           : !rawPath.includes(".");
@@ -844,8 +846,8 @@ export default function useSchemaSettings() {
         [datasetName]: combinedSchema,
       }));
       if (
-        !lastAppliedPaths.selected.length &&
-        !lastAppliedPaths.excluded.length
+        !lastAppliedPaths.selected?.length &&
+        !lastAppliedPaths.excluded?.length
       ) {
         setLastAppliedPaths({
           selected: [...combinedSchema],
@@ -896,8 +898,22 @@ export default function useSchemaSettings() {
     [selectedPaths, viewPaths, datasetName, excludedPaths]
   );
 
+  const bareFinalSchema = useMemo(
+    () =>
+      mergedSchema
+        ? finalSchema.filter((field) => {
+            return !skipField(
+              field.path,
+              mergedSchema?.[field.path],
+              mergedSchema
+            );
+          })
+        : finalSchema,
+    [mergedSchema, finalSchema, isGroupDataset]
+  );
+
   useEffect(() => {
-    if (!allPaths?.length) return;
+    if (!allPaths?.length || !combinedSchema) return;
     if (lastActionToggleSelection) {
       const val = lastActionToggleSelection[SELECT_ALL];
 
@@ -915,12 +931,28 @@ export default function useSchemaSettings() {
           );
           setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
         }
-        setSelectedPaths({ [datasetName]: new Set() });
+        const res = Object.values(combinedSchema)
+          .filter((f) => disabledField(f.path, combinedSchema, isGroupDataset))
+          .map((f) => f.path);
+
+        setSelectedPaths({
+          [datasetName]: new Set(res),
+        });
       }
 
       setLastActionToggleSelection(null);
     }
-  }, [lastActionToggleSelection, allPaths]);
+  }, [
+    lastActionToggleSelection,
+    allPaths,
+    setLastActionToggleSelection,
+    setExcludedPaths,
+    datasetName,
+    setSelectedPaths,
+    includeNestedFields,
+    filterRuleTab,
+    combinedSchema,
+  ]);
 
   const setAllFieldsCheckedWrapper = useCallback(
     (val: boolean) => {
@@ -928,20 +960,6 @@ export default function useSchemaSettings() {
       setLastActionToggleSelection({ SELECT_ALL: val });
     },
     [finalSchema]
-  );
-
-  const bareFinalSchema = useMemo(
-    () =>
-      mergedSchema
-        ? finalSchema.filter((field) => {
-            return !skipField(
-              field.path,
-              mergedSchema?.[field.path],
-              mergedSchema
-            );
-          })
-        : finalSchema,
-    [mergedSchema, finalSchema, isGroupDataset]
   );
 
   // updates the affected fields count

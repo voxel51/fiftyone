@@ -77,7 +77,6 @@ const SchemaSettings = () => {
     searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
-    setIncludeNestedFields,
   } = useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -186,6 +185,12 @@ const SchemaSettings = () => {
                   onClick: () => {
                     setSelectedTab(value);
                     setShowNestedFields(false);
+                    setSelectedPaths({
+                      [datasetName]: new Set(lastAppliedPaths.selected),
+                    });
+                    setExcludedPaths({
+                      [datasetName]: new Set(lastAppliedPaths.excluded),
+                    });
                   },
                 };
               })}
