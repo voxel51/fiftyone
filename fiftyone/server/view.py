@@ -232,7 +232,9 @@ def get_extended_view(
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
-            view = view.mongo([{"$unset": field} for field in cleanup_fields])
+            view = view.mongo(
+                [{"$project": {f: False for f in cleanup_fields}}]
+            )
 
     return view
 

@@ -807,9 +807,9 @@ class CountValues(Aggregation):
 
         if self._include is not None:
             limit = max(limit, len(self._include))
-            pipeline += [
-                {"$addFields": {"included": {"$in": ["$_id", self._include]}}},
-            ]
+            pipeline.append(
+                {"$addFields": {"included": {"$in": ["$_id", self._include]}}}
+            )
             sort["included"] = -1
 
         order = 1 if self._asc else -1

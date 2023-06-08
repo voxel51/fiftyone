@@ -796,7 +796,7 @@ class DatasetMixin(object):
 
             view = view.set_field(new_path, expr, _allow_missing=True)
 
-        view = view.mongo([{"$unset": _paths}])
+        view = view.mongo([{"$project": {p: False for p in _paths}}])
 
         #
         # Ideally only the embedded field would be saved, but the `$merge`
