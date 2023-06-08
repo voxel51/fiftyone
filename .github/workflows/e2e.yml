@@ -70,15 +70,17 @@ jobs:
           FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
           yarn install
           yarn start
-
         working-directory: ./e2e
+
       - name: Upload videos
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: videos
           path: e2e/cypress/videos
 
       - name: Upload snapshots
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: snapshots
