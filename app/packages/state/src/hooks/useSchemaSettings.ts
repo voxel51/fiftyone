@@ -159,27 +159,37 @@ const disabledField = (
         )))
   );
 };
+
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
   default: "",
 });
+
 export const showNestedFieldsState = atom<boolean>({
   key: "showNestedFieldsState",
   default: false,
 });
+
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
   default: TAB_OPTIONS_MAP.SELECTION,
 });
+
 export const settingsModal = atom<{ open: boolean } | null>({
   key: "settingsModal",
   default: {
     open: false,
   },
 });
+
 export const allFieldsCheckedState = atom<boolean>({
   key: "allFieldsCheckedState",
   default: true,
+});
+
+export const expandedPathsState = atom<{} | null>({
+  key: "expandedPathsState",
+  default: null,
 });
 
 export const schemaSearchRestuls = atom<string[]>({
@@ -487,7 +497,6 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
   const isVideo = dataset.mediaType === "video";
-  const isImage = dataset.mediaType === "image";
 
   const setSchema = useSetRecoilState(schemaState);
   useEffect(() => {
@@ -499,6 +508,7 @@ export default function useSchemaSettings() {
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
   );
+
   const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
     includeNestedFieldsState
   );
@@ -506,6 +516,7 @@ export default function useSchemaSettings() {
   const [affectedPathCount, setAffectedPathCount] = useRecoilState(
     affectedPathCountState
   );
+
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
     lastAppliedPathsState
   );
@@ -513,9 +524,13 @@ export default function useSchemaSettings() {
   const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
     showNestedFieldsState
   );
+
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
     searchMetaFilterState
   );
+
+  const [expandedPaths, setExpandedPaths] = useRecoilState(expandedPathsState);
+
   const [lastActionToggleSelection, setLastActionToggleSelection] =
     useRecoilState(lastActionToggleSelectionState);
 
@@ -540,6 +555,7 @@ export default function useSchemaSettings() {
       );
     }
   }, [vStages, datasetName]);
+
   const { fieldSchema: fieldSchemaRaw, frameFieldSchema } =
     data?.schemaForViewStages || {};
 
@@ -549,10 +565,10 @@ export default function useSchemaSettings() {
   const allPaths = !isEmpty(combinedSchema) ? Object.keys(combinedSchema) : [];
 
   useEffect(() => {
-    if (!isEmpty(viewSchema)) {
+    if (viewSchema && !isEmpty(viewSchema)) {
       setViewSchema(viewSchema);
     }
-    if (!isEmpty(fieldSchema)) {
+    if (fieldSchema && !isEmpty(fieldSchema)) {
       setFieldSchema(fieldSchema);
     }
   }, [viewSchema, fieldSchema]);
@@ -568,7 +584,7 @@ export default function useSchemaSettings() {
   );
   // disabled paths are filtered
   const datasetSelectedPaths = selectedPaths[datasetName] || [];
-  const enabledSelectedPaths = datasetSelectedPaths.length
+  const enabledSelectedPaths = datasetSelectedPaths?.length
     ? datasetSelectedPaths?.filter(
         ({ path }) => !disabledField(path, combinedSchema, isGroupDataset)
       )
@@ -581,7 +597,7 @@ export default function useSchemaSettings() {
 
   const setShowNestedFields = useCallback(
     (val: boolean) => {
-      let newExcludePaths = new Set();
+      const newExcludePaths = new Set();
       if (val) {
         excludedPaths?.[datasetName]?.forEach((path) => {
           const subPaths = [...getSubPaths(path)];
@@ -593,7 +609,7 @@ export default function useSchemaSettings() {
         excludedPaths?.[datasetName]?.forEach((path) => {
           if (
             isVideo
-              ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
+              ? (path.split(".")?.length === 2 && path.startsWith("frames.")) ||
                 !path.includes(".")
               : !path.includes(".")
           ) {
@@ -674,7 +690,8 @@ export default function useSchemaSettings() {
         const rawPath = val.path?.startsWith("frames.")
           ? val.path.replace("frames.", "")
           : val.path;
-        return showNestedFields || (filterRuleTab && searchResults.length)
+        return showNestedFields ||
+          (filterRuleTab && searchResults.length && includeNestedFields)
           ? true
           : !rawPath.includes(".");
       })
@@ -705,6 +722,7 @@ export default function useSchemaSettings() {
     searchResults,
     datasetName,
     fieldSchema,
+    includeNestedFields,
   ]);
 
   const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
@@ -916,9 +934,10 @@ export default function useSchemaSettings() {
     () =>
       mergedSchema
         ? finalSchema.filter((field) => {
-            return (
-              !disabledField(field.path, mergedSchema, isGroupDataset) &&
-              !skipField(field.path, mergedSchema?.[field.path], mergedSchema)
+            return !skipField(
+              field.path,
+              mergedSchema?.[field.path],
+              mergedSchema
             );
           })
         : finalSchema,
@@ -951,6 +970,7 @@ export default function useSchemaSettings() {
     datasetName,
     enabledSelectedPaths,
     excludedPaths,
+    expandedPaths,
     filterRuleTab,
     finalSchema,
     finalSchemaKeyByPath,
@@ -969,6 +989,7 @@ export default function useSchemaSettings() {
     selectedTab,
     setAllFieldsChecked: setAllFieldsCheckedWrapper,
     setExcludedPaths,
+    setExpandedPaths,
     setIncludeNestedFields,
     setLastAppliedPaths,
     setSearchResults,

@@ -76,6 +76,8 @@ const SchemaSettings = () => {
     isFilterRuleActive,
     searchMetaFilter,
     enabledSelectedPaths,
+    setShowNestedFields,
+    setIncludeNestedFields,
   } = useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -131,6 +133,7 @@ const SchemaSettings = () => {
               position: "relative",
               display: "flex",
               justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
             <Typography
@@ -147,7 +150,6 @@ const SchemaSettings = () => {
             <ExternalLink
               style={{
                 color: theme.text.secondary,
-                height: "20px",
                 display: "flex",
                 alignItems: "center",
                 marginRight: "0.5rem",
@@ -183,6 +185,7 @@ const SchemaSettings = () => {
                   title: `Fiele ${value}`,
                   onClick: () => {
                     setSelectedTab(value);
+                    setShowNestedFields(false);
                   },
                 };
               })}

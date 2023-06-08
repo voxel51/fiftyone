@@ -25,7 +25,7 @@ export const SchemaSelectionControls = () => {
     includeNestedFields,
     setIncludeNestedFields,
   } = useSchemaSettings();
-  const showMetadataVisible = !!!(isFilterRuleActive && !searchResults.length);
+  const showMetadataVisible = !(isFilterRuleActive && !searchResults.length);
   const includeNestedVisible = !!(isFilterRuleActive && searchResults.length);
 
   const controlList = useMemo(() => {
@@ -61,11 +61,18 @@ export const SchemaSelectionControls = () => {
       },
     ];
   }, [
-    showMetadata,
     showMetadataVisible,
+    showMetadata,
+    includeNestedVisible,
     includeNestedFields,
+    searchResults.length,
+    isFilterRuleActive,
     showNestedFields,
     allFieldsChecked,
+    setShowMetadata,
+    setIncludeNestedFields,
+    setShowNestedFields,
+    setAllFieldsChecked,
   ]);
 
   return (

@@ -29,6 +29,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
     resetTextFilter,
     resetExcludedPaths,
     affectedPathCount,
+    setSearchResults,
   } = fos.useSchemaSettings();
 
   useDebounce(
@@ -69,6 +70,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                   resetSelectedFieldStages();
                   setSelectedFieldsStage(undefined);
                   resetExcludedPaths();
+                  setSearchResults([]);
                 }}
               >
                 {affectedPathCount > 0 && (
