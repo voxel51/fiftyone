@@ -11,6 +11,7 @@ import starlette.responses as strp
 import strawberry.asgi as gqla
 
 import fiftyone as fo
+from fiftyone.core.odm import get_async_db_client, get_async_db_conn
 
 from fiftyone.server.dataloader import dataloaders, get_dataloader
 from fiftyone.server.data import Context
@@ -22,8 +23,8 @@ class GraphQL(gqla.GraphQL):
         request: strq.Request,
         response: strp.Response,
     ) -> Context:
-        db_client = mtr.AsyncIOMotorClient(fo.config.database_uri)
-        db = db_client[fo.config.database_name]
+        db_client = get_async_db_client()
+        db = get_async_db_conn()
         session: mtr.AsyncIOMotorClientSession = (
             await db_client.start_session()
         )

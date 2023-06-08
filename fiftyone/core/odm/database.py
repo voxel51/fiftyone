@@ -427,6 +427,17 @@ def get_db_client():
     return _client
 
 
+def has_db():
+    """Returns a whether the database exists.
+
+    Returns:
+        a ``bool``
+    """
+    _connect()
+
+    return _database_name in _client.list_database_names()
+
+
 def get_db_conn():
     """Returns a connection to the database.
 
@@ -434,7 +445,7 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    db = _client[fo.config.database_name]
+    db = _client[_database_name]
     return _apply_options(db)
 
 
@@ -454,7 +465,7 @@ def get_async_db_conn():
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    db = get_async_db_client()[fo.config.database_name]
+    db = get_async_db_client()[_database_name]
     return _apply_options(db)
 
 
@@ -477,7 +488,7 @@ def _apply_options(db):
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(fo.config.database_name)
+    _client.drop_database(_database_name)
 
 
 def sync_database():

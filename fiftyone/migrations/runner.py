@@ -397,8 +397,7 @@ class MigrationRunner(object):
 
 
 def _database_exists():
-    client = foo.get_db_client()
-    return fo.config.database_name in client.list_database_names()
+    return foo.has_db()
 
 
 def _is_compatible_version(version):
