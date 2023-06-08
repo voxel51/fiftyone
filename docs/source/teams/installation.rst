@@ -89,18 +89,28 @@ The two key points are specifying the additional private source and declaring
 that the ``fiftyone`` module should be found there and not the default PyPI
 location.
 
+Add source
+~~~~~~~~~~
+
 In poetry v1.5, it is recommended to use an
 `explicit package source. <https://python-poetry.org/docs/repositories/#explicit-package-sources>`_
-Prior to v1.5, you should use a
-`secondary package source. <https://python-poetry.org/docs/repositories/#secondary-package-sources-deprecated>`_
-
-For example,
 
 .. code-block:: shell
 
-    poetry source add --priority=explicit fiftyone-teams https://pypi.fiftyone.ai/simple
+    poetry source add --priority=explicit fiftyone-teams https://pypi.fiftyone.ai/simple/
+
+Prior to v1.5, you should use the deprecated
+`secondary package source. <https://python-poetry.org/docs/1.4/repositories/#secondary-package-sources>`_
+
+.. code-block:: shell
+
+    poetry source add --secondary fiftyone-teams https://pypi.fiftyone.ai/simple/
+
+Configure credentials
+~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: shell
+
     poetry config http-basic.fiftyone-teams ${TOKEN} ""
-    poetry add --source fiftyone-teams fiftyone
 
 Alternatively, you can specify the credentials in environment variables.
 
@@ -110,7 +120,15 @@ Alternatively, you can specify the credentials in environment variables.
     export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_PASSWORD=""
 
 If you have trouble configuring the credentials, see
-`more in the docs here. <https://python-poetry.org/docs/repositories/#configuring-credentials>`_
+`more in the poetry docs here. <https://python-poetry.org/docs/repositories/#configuring-credentials>`_
+
+Add fiftyone dependency
+~~~~~~~~~~~~~~~~~~~~~~~
+Replace ``X.Y.Z`` with the proper version
+
+.. code-block::
+
+    poetry add --source fiftyone-teams fiftyone==X.Y.Z
 
 You should then see snippets in the ``pyproject.toml`` file like the following:
 
@@ -118,9 +136,7 @@ You should then see snippets in the ``pyproject.toml`` file like the following:
 
     [[tool.poetry.source]]
     name = "fiftyone-teams"
-    url = "https://pypi.fiftyone.ai/simple/"
-    default = false
-    explicit = true
+    url = "https://pypi.fiftyone.ai"
 
 .. code-block:: toml
 
