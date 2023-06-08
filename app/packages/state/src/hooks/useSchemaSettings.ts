@@ -66,11 +66,12 @@ const skipField = (path: string, ftype: string, schema: {}) => {
     path.endsWith(".index")
   );
 };
-const disabledField = (
+
+export const disabledField = (
   path: string,
-  combinedSchema: Schema,
+  combinedSchema: Record<string, Field>,
   groupField?: string
-) => {
+): boolean => {
   const currField = combinedSchema?.[path] || ({} as Field);
   const { ftype, embeddedDocType } = currField;
   const parentPath = path.substring(0, path.lastIndexOf("."));

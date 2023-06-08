@@ -15,7 +15,8 @@
         "postinstall": "patch-package",
         "start": "yarn workspace @fiftyone/app start",
         "start-desktop": "yarn workspace FiftyOne start-desktop",
-        "test": "yarn vitest run",
+        "test": "yarn vitest run --coverage",
+        "test-ui": "yarn vitest --ui",
         "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
     },
     "devDependencies": {
@@ -23,7 +24,8 @@
         "@testing-library/react-hooks": "latest",
         "@typescript-eslint/eslint-plugin": "^5.44.0",
         "@typescript-eslint/parser": "^5.44.0",
-        "@vitest/coverage-c8": "^0.25.2",
+        "@vitest/coverage-v8": "^0.32.0",
+        "@vitest/ui": "^0.32.0",
         "concurrently": "^7.2.1",
         "eslint": "^8.28.0",
         "eslint-config-prettier": "^8.5.0",
@@ -42,7 +44,7 @@
         "vite": "^3.0.0",
         "vite-plugin-eslint": "^1.8.1",
         "vite-plugin-relay": "^2.0.0",
-        "vitest": "^0.25.2"
+        "vitest": "^0.32.0"
     },
     "workspaces": [
         "packages/*"
