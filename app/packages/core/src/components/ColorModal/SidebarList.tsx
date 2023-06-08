@@ -22,11 +22,10 @@ const SidebarList: React.FC = () => {
   const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.global, ACTIVE_FIELD.json], name: "general" },
-    { paths: ["tags", ACTIVE_FIELD._label_tags], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
-  ).filter((g) => g.name !== "tags");
+  );
   const groups = [...stableGroup, ...fieldGroups];
   const [groupOpen, setGroupOpen] = React.useState(
     new Array(groups.length).fill(true)

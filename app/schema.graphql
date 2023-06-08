@@ -116,11 +116,13 @@ enum ColorBy {
 type ColorScheme {
   colorPool: [String!]
   fields: [CustomizeColor!]
+  labelTags: LabelTagColor
 }
 
 input ColorSchemeInput {
   colorPool: [String!] = null
   fields: JSONArray = null
+  labelTags: JSON = null
 }
 
 input Count {
@@ -309,6 +311,11 @@ type LabelSetting {
   color: String!
 }
 
+type LabelTagColor {
+  fieldColor: String
+  valueColors: [LabelSetting!]
+}
+
 enum MediaType {
   image
   group
@@ -455,7 +462,7 @@ type Query {
   schemaForViewStages(
     datasetName: String!
     viewStages: BSONArray!
-  ): SchemaResult
+  ): SchemaResult!
 }
 
 type RootAggregation implements Aggregation {
@@ -494,11 +501,6 @@ type SampleField {
   dbField: String
   description: String
   info: JSON
-}
-
-type SchemaResult {
-  fieldSchema: [SampleField]!
-  frameFieldSchema: [SampleField]!
 }
 
 input SampleFilter {
@@ -545,6 +547,11 @@ input SavedViewInfo {
   name: String = null
   description: String = null
   color: String = null
+}
+
+type SchemaResult {
+  fieldSchema: [SampleField!]!
+  frameFieldSchema: [SampleField!]!
 }
 
 input SelectedLabel {

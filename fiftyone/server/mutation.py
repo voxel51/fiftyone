@@ -67,6 +67,7 @@ class SavedViewInfo:
 class ColorSchemeInput:
     color_pool: t.Optional[t.List[str]] = None
     fields: t.Optional[JSONArray] = None
+    label_tags: t.Optional[JSON] = None
 
 
 @gql.type
@@ -422,12 +423,14 @@ class Mutation:
         state.color_scheme = foo.ColorScheme(
             color_pool=color_scheme.color_pool,
             fields=color_scheme.fields,
+            label_tags=color_scheme.label_tags,
         )
 
         if save_to_app:
             view._dataset.app_config.color_scheme = foo.ColorScheme(
                 color_pool=color_scheme.color_pool,
                 fields=color_scheme.fields,
+                label_tags=color_scheme.label_tags,
             )
             view._dataset.save()
             state.view = view

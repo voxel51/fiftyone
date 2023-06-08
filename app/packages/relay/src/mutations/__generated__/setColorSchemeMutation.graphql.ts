@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<98eab1035b9a3cd4474a2cda909c13c0>>
+ * @generated SignedSource<<db0fc00d6735058b89f2d344c9583004>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
   colorPool?: ReadonlyArray<string> | null;
   fields?: Array | null;
+  labelTags?: object | null;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;

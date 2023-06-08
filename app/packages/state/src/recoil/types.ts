@@ -18,6 +18,7 @@ export namespace State {
   export interface Config {
     colorPool: string[];
     customizedColors: CustomizeColor[];
+    // labelTags: CustomizeColor;
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
@@ -219,20 +220,23 @@ export namespace State {
   }
 }
 
-export interface CustomizeColor {
-  path: string;
+export interface ColorScheme {
+  colorPool: string[];
+  fields: CustomizeColor[];
+  labelTags: TagColor;
+}
+
+export interface TagColor {
   fieldColor?: string;
-  colorByAttribute?: string; // must be string field, int field, or boolean field
   valueColors?: {
     value: string;
     color: string;
   }[];
 }
 
-export interface ColorScheme {
-  colorPool: string[];
-  fields: CustomizeColor[];
-  labelTags: CustomizeColor;
+export interface CustomizeColor extends TagColor {
+  path: string;
+  colorByAttribute?: string; // must be string field, int field, or boolean field
 }
 
 export interface ColorSchemeSetting extends ColorScheme {

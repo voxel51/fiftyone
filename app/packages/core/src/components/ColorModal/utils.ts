@@ -96,8 +96,12 @@ export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
 };
 
 export const getDisplayName = (path: string) => {
-  if (path === "tags") {
-    return "sample tags";
+  switch (path) {
+    case "tags":
+      return "sample tags";
+    case "_label_tags":
+      return "label tags";
+    default:
+      return path;
   }
-  return path;
 };

@@ -32,6 +32,13 @@ export type DatasetQuery$data = {
             readonly value: string;
           }> | null;
         }> | null;
+        readonly labelTags: {
+          readonly fieldColor: string | null;
+          readonly valueColors: ReadonlyArray<{
+            readonly color: string;
+            readonly value: string;
+          }> | null;
+        } | null;
       } | null;
       readonly gridMediaField: string | null;
       readonly mediaFields: ReadonlyArray<string> | null;
@@ -185,7 +192,7 @@ v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "path",
+  "name": "fieldColor",
   "storageKey": null
 },
 v7 = {
@@ -205,18 +212,38 @@ v8 = {
 v9 = {
   "alias": null,
   "args": null,
-  "kind": "ScalarField",
-  "name": "description",
+  "concreteType": "LabelSetting",
+  "kind": "LinkedField",
+  "name": "valueColors",
+  "plural": true,
+  "selections": [
+    (v7/*: any*/),
+    (v8/*: any*/)
+  ],
   "storageKey": null
 },
 v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "path",
+  "storageKey": null
+},
+v11 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "info",
   "storageKey": null
 },
-v11 = [
+v13 = [
   {
     "alias": null,
     "args": null,
@@ -238,7 +265,7 @@ v11 = [
     "name": "embeddedDocType",
     "storageKey": null
   },
-  (v6/*: any*/),
+  (v10/*: any*/),
   {
     "alias": null,
     "args": null,
@@ -246,10 +273,10 @@ v11 = [
     "name": "dbField",
     "storageKey": null
   },
-  (v9/*: any*/),
-  (v10/*: any*/)
+  (v11/*: any*/),
+  (v12/*: any*/)
 ],
-v12 = [
+v14 = [
   {
     "alias": null,
     "args": null,
@@ -259,84 +286,84 @@ v12 = [
   },
   (v7/*: any*/)
 ],
-v13 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "key",
   "storageKey": null
 },
-v14 = {
+v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "version",
   "storageKey": null
 },
-v15 = {
+v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "timestamp",
   "storageKey": null
 },
-v16 = {
+v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewStages",
   "storageKey": null
 },
-v17 = {
+v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cls",
   "storageKey": null
 },
-v18 = {
+v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "datasetId",
   "storageKey": null
 },
-v19 = {
+v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "slug",
   "storageKey": null
 },
-v20 = {
+v22 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "lastLoadedAt",
   "storageKey": null
 },
-v21 = {
+v23 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "createdAt",
   "storageKey": null
 },
-v22 = {
+v24 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "labels",
   "storageKey": null
 },
-v23 = {
+v25 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "edges",
   "storageKey": null
 },
-v24 = {
+v26 = {
   "alias": null,
   "args": [
     {
@@ -497,19 +524,26 @@ v24 = {
             {
               "alias": null,
               "args": null,
+              "concreteType": "LabelTagColor",
+              "kind": "LinkedField",
+              "name": "labelTags",
+              "plural": false,
+              "selections": [
+                (v6/*: any*/),
+                (v9/*: any*/)
+              ],
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
               "concreteType": "CustomizeColor",
               "kind": "LinkedField",
               "name": "fields",
               "plural": true,
               "selections": [
+                (v10/*: any*/),
                 (v6/*: any*/),
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "fieldColor",
-                  "storageKey": null
-                },
                 {
                   "alias": null,
                   "args": null,
@@ -517,19 +551,7 @@ v24 = {
                   "name": "colorByAttribute",
                   "storageKey": null
                 },
-                {
-                  "alias": null,
-                  "args": null,
-                  "concreteType": "LabelSetting",
-                  "kind": "LinkedField",
-                  "name": "valueColors",
-                  "plural": true,
-                  "selections": [
-                    (v7/*: any*/),
-                    (v8/*: any*/)
-                  ],
-                  "storageKey": null
-                }
+                (v9/*: any*/)
               ],
               "storageKey": null
             }
@@ -546,7 +568,7 @@ v24 = {
       "kind": "LinkedField",
       "name": "sampleFields",
       "plural": true,
-      "selections": (v11/*: any*/),
+      "selections": (v13/*: any*/),
       "storageKey": null
     },
     {
@@ -556,7 +578,7 @@ v24 = {
       "kind": "LinkedField",
       "name": "frameFields",
       "plural": true,
-      "selections": (v11/*: any*/),
+      "selections": (v13/*: any*/),
       "storageKey": null
     },
     {
@@ -575,7 +597,7 @@ v24 = {
           "kind": "LinkedField",
           "name": "targets",
           "plural": true,
-          "selections": (v12/*: any*/),
+          "selections": (v14/*: any*/),
           "storageKey": null
         }
       ],
@@ -588,7 +610,7 @@ v24 = {
       "kind": "LinkedField",
       "name": "defaultMaskTargets",
       "plural": true,
-      "selections": (v12/*: any*/),
+      "selections": (v14/*: any*/),
       "storageKey": null
     },
     {
@@ -599,10 +621,10 @@ v24 = {
       "name": "evaluations",
       "plural": true,
       "selections": [
-        (v13/*: any*/),
-        (v14/*: any*/),
         (v15/*: any*/),
         (v16/*: any*/),
+        (v17/*: any*/),
+        (v18/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -611,7 +633,7 @@ v24 = {
           "name": "config",
           "plural": false,
           "selections": [
-            (v17/*: any*/),
+            (v19/*: any*/),
             {
               "alias": null,
               "args": null,
@@ -640,10 +662,10 @@ v24 = {
       "name": "brainMethods",
       "plural": true,
       "selections": [
-        (v13/*: any*/),
-        (v14/*: any*/),
         (v15/*: any*/),
         (v16/*: any*/),
+        (v17/*: any*/),
+        (v18/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -652,7 +674,7 @@ v24 = {
           "name": "config",
           "plural": false,
           "selections": [
-            (v17/*: any*/),
+            (v19/*: any*/),
             {
               "alias": null,
               "args": null,
@@ -717,17 +739,17 @@ v24 = {
       "plural": true,
       "selections": [
         (v3/*: any*/),
-        (v18/*: any*/),
+        (v20/*: any*/),
         (v4/*: any*/),
-        (v19/*: any*/),
-        (v9/*: any*/),
+        (v21/*: any*/),
+        (v11/*: any*/),
         (v8/*: any*/),
-        (v16/*: any*/)
+        (v18/*: any*/)
       ],
       "storageKey": null
     },
-    (v20/*: any*/),
-    (v21/*: any*/),
+    (v22/*: any*/),
+    (v23/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -737,8 +759,8 @@ v24 = {
       "plural": true,
       "selections": [
         (v4/*: any*/),
-        (v22/*: any*/),
-        (v23/*: any*/)
+        (v24/*: any*/),
+        (v25/*: any*/)
       ],
       "storageKey": null
     },
@@ -750,12 +772,12 @@ v24 = {
       "name": "defaultSkeleton",
       "plural": false,
       "selections": [
-        (v22/*: any*/),
-        (v23/*: any*/)
+        (v24/*: any*/),
+        (v25/*: any*/)
       ],
       "storageKey": null
     },
-    (v14/*: any*/),
+    (v16/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -777,7 +799,7 @@ v24 = {
       "name": "savedViewSlug",
       "storageKey": null
     },
-    (v10/*: any*/)
+    (v12/*: any*/)
   ],
   "storageKey": null
 };
@@ -797,7 +819,7 @@ return {
         "kind": "FragmentSpread",
         "name": "DatasetSavedViewsFragment"
       },
-      (v24/*: any*/)
+      (v26/*: any*/)
     ],
     "type": "Query",
     "abstractKey": null
@@ -827,13 +849,13 @@ return {
         "plural": true,
         "selections": [
           (v3/*: any*/),
-          (v18/*: any*/),
+          (v20/*: any*/),
           (v4/*: any*/),
-          (v19/*: any*/),
-          (v9/*: any*/),
-          (v8/*: any*/),
-          (v16/*: any*/),
           (v21/*: any*/),
+          (v11/*: any*/),
+          (v8/*: any*/),
+          (v18/*: any*/),
+          (v23/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -841,11 +863,11 @@ return {
             "name": "lastModifiedAt",
             "storageKey": null
           },
-          (v20/*: any*/)
+          (v22/*: any*/)
         ],
         "storageKey": null
       },
-      (v24/*: any*/)
+      (v26/*: any*/)
     ]
   },
   "params": {

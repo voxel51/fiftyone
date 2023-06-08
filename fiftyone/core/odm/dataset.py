@@ -179,7 +179,14 @@ class ColorScheme(EmbeddedDocument):
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                 }
-            ]
+            ],
+            label_tags={
+                "fieldColor": "#00ffff",
+                "valueColors": [
+                    {"value": "correct", "color": "#ff00ff"},
+                    {"value": "mistake", "color": "#00ff00"},
+                ]
+            }
         )
         dataset.save()
 
@@ -198,6 +205,11 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
+        label_tags (None): an optional dict specifying custom colors for label tags
+            with the following keys:
+            -    `fieldColor` (optional): a color to assign to all label tags
+            -    `valueColors` (optional): a list of dicts specifying colors to
+            specific label tags
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -205,6 +217,7 @@ class ColorScheme(EmbeddedDocument):
 
     color_pool = ListField(ColorField(), null=True)
     fields = ListField(DictField(), null=True)
+    label_tags = DictField(null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):

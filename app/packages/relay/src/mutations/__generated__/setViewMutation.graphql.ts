@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9a5243b073307efa634a4c9acfb36b4f>>
+ * @generated SignedSource<<cf7ede8b82b1b3cad559d3b091be8235>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -49,6 +49,13 @@ export type setViewMutation$data = {
               readonly value: string;
             }> | null;
           }> | null;
+          readonly labelTags: {
+            readonly fieldColor: string | null;
+            readonly valueColors: ReadonlyArray<{
+              readonly color: string;
+              readonly value: string;
+            }> | null;
+          } | null;
         } | null;
         readonly gridMediaField: string | null;
         readonly mediaFields: ReadonlyArray<string> | null;
@@ -352,7 +359,27 @@ v23 = {
   "name": "edges",
   "storageKey": null
 },
-v24 = [
+v24 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "fieldColor",
+  "storageKey": null
+},
+v25 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "LabelSetting",
+  "kind": "LinkedField",
+  "name": "valueColors",
+  "plural": true,
+  "selections": [
+    (v12/*: any*/),
+    (v14/*: any*/)
+  ],
+  "storageKey": null
+},
+v26 = [
   {
     "alias": null,
     "args": [
@@ -768,19 +795,26 @@ v24 = [
                   {
                     "alias": null,
                     "args": null,
+                    "concreteType": "LabelTagColor",
+                    "kind": "LinkedField",
+                    "name": "labelTags",
+                    "plural": false,
+                    "selections": [
+                      (v24/*: any*/),
+                      (v25/*: any*/)
+                    ],
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
                     "concreteType": "CustomizeColor",
                     "kind": "LinkedField",
                     "name": "fields",
                     "plural": true,
                     "selections": [
                       (v9/*: any*/),
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "fieldColor",
-                        "storageKey": null
-                      },
+                      (v24/*: any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -788,19 +822,7 @@ v24 = [
                         "name": "colorByAttribute",
                         "storageKey": null
                       },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "concreteType": "LabelSetting",
-                        "kind": "LinkedField",
-                        "name": "valueColors",
-                        "plural": true,
-                        "selections": [
-                          (v12/*: any*/),
-                          (v14/*: any*/)
-                        ],
-                        "storageKey": null
-                      }
+                      (v25/*: any*/)
                     ],
                     "storageKey": null
                   }
@@ -837,7 +859,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "setViewMutation",
-    "selections": (v24/*: any*/),
+    "selections": (v26/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
@@ -853,19 +875,19 @@ return {
     ],
     "kind": "Operation",
     "name": "setViewMutation",
-    "selections": (v24/*: any*/)
+    "selections": (v26/*: any*/)
   },
   "params": {
-    "cacheID": "2b8857ad8836b170cef260a3b4de211b",
+    "cacheID": "99507229e94a0296813e8addd6bd16cb",
     "id": null,
     "metadata": {},
     "name": "setViewMutation",
     "operationKind": "mutation",
-    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String!\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      stages(slug: $savedViewSlug)\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      savedViews {\n        id\n        name\n        description\n        color\n        viewStages\n        slug\n        createdAt\n        lastModifiedAt\n        lastLoadedAt\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n          supportsPrompts\n          type\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        modalMediaField\n        plugins\n        sidebarGroups {\n          expanded\n          name\n          paths\n        }\n        sidebarMode\n        colorScheme {\n          colorPool\n          fields {\n            path\n            fieldColor\n            colorByAttribute\n            valueColors {\n              value\n              color\n            }\n          }\n        }\n      }\n    }\n    view\n  }\n}\n"
+    "text": "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $savedViewSlug: String\n  $datasetName: String!\n  $form: StateForm!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, savedViewSlug: $savedViewSlug, datasetName: $datasetName, form: $form) {\n    dataset {\n      id\n      name\n      mediaType\n      groupSlice\n      defaultGroupSlice\n      groupField\n      groupMediaTypes {\n        name\n        mediaType\n      }\n      stages(slug: $savedViewSlug)\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n        description\n        info\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      savedViews {\n        id\n        name\n        description\n        color\n        viewStages\n        slug\n        createdAt\n        lastModifiedAt\n        lastLoadedAt\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n          supportsPrompts\n          type\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      viewName\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        modalMediaField\n        plugins\n        sidebarGroups {\n          expanded\n          name\n          paths\n        }\n        sidebarMode\n        colorScheme {\n          colorPool\n          labelTags {\n            fieldColor\n            valueColors {\n              value\n              color\n            }\n          }\n          fields {\n            path\n            fieldColor\n            colorByAttribute\n            valueColors {\n              value\n              color\n            }\n          }\n        }\n      }\n    }\n    view\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c7e809b8883323c8f0b80af440a0d830";
+(node as any).hash = "8857da23e7e07d6599c0ef50ba834454";
 
 export default node;
