@@ -825,14 +825,14 @@ def _make_patches_view(
     pipeline = [
         {"$project": project},
         {"$unwind": "$" + list_field},
-        {"$set": {"_rand": {"$rand": {}}}},
-        {"$set": {"_id": "$" + list_field + "._id"}},
+        {"$addFields": {"_rand": {"$rand": {}}}},
+        {"$addFields": {"_id": "$" + list_field + "._id"}},
     ]
 
     if keep_label_lists:
-        pipeline.append({"$set": {list_field: ["$" + list_field]}})
+        pipeline.append({"$addFields": {list_field: ["$" + list_field]}})
     else:
-        pipeline.append({"$set": {field: "$" + list_field}})
+        pipeline.append({"$addFields": {field: "$" + list_field}})
 
     return sample_collection.mongo(pipeline)
 
@@ -870,7 +870,7 @@ def _make_eval_view(
         )
 
     view = view.mongo(
-        [{"$set": {"type": "$" + eval_type, "iou": "$" + eval_iou}}]
+        [{"$addFields": {"type": "$" + eval_type, "iou": "$" + eval_iou}}]
     )
 
     if crowd_attr is not None:
@@ -882,7 +882,7 @@ def _make_eval_view(
         view = view.mongo(
             [
                 {
-                    "$set": {
+                    "$addFields": {
                         "crowd": {
                             "$cond": {
                                 "if": {"$gt": [crowd_path1, None]},
@@ -909,17 +909,17 @@ def _upgrade_labels(view, field):
     label_type = view._get_label_field_type(field)
     return view.mongo(
         [
-            {"$set": {tmp_field: "$" + field}},
-            {"$unset": field},
+            {"$addFields": {tmp_field: "$" + field}},
+            {"$project": {field: False}},
             {
-                "$set": {
+                "$addFields": {
                     field: {
                         "_cls": label_type.__name__,
                         label_type._LABEL_LIST_FIELD: ["$" + tmp_field],
                     }
                 }
             },
-            {"$unset": tmp_field},
+            {"$project": {tmp_field: False}},
         ]
     )
 
@@ -976,7 +976,7 @@ def _write_samples(dataset, src_collection):
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {"$out": dataset._sample_collection_name},
         ],
     )
@@ -987,7 +987,7 @@ def _add_samples(dataset, src_collection):
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,

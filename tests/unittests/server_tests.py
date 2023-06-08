@@ -48,7 +48,7 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$addFields": {
                     "___predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",
@@ -90,7 +90,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "___predictions.detections": {
                         "$filter": {
                             "input": "$___predictions.detections",
@@ -116,9 +116,9 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$set": {"_label_tags": []}},
+            {"$addFields": {"_label_tags": []}},
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$cond": {
                             "if": {"$gt": ["$predictions", None]},
@@ -145,7 +145,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$function": {
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
@@ -155,7 +155,7 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "___predictions"},
+            {"$project": {"___predictions": False}},
         ]
 
         self.assertEqual(expected, returned)
@@ -190,7 +190,7 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$addFields": {
                     "predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",
@@ -234,7 +234,7 @@ class ServerViewTests(unittest.TestCase):
                 }
             },
             {
-                "$set": {
+                "$addFields": {
                     "predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",
@@ -294,7 +294,7 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -377,7 +377,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -441,9 +441,9 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$set": {"_label_tags": []}},
+            {"$addFields": {"_label_tags": []}},
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$concatArrays": [
                             "$_label_tags",
@@ -486,7 +486,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$function": {
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
@@ -496,7 +496,7 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "frames.___detections"},
+            {"$project": {"frames.___detections": False}},
         ]
 
         self.assertEqual(expected, returned)
@@ -532,7 +532,7 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -615,7 +615,7 @@ class ServerViewTests(unittest.TestCase):
                 }
             },
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -705,7 +705,7 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -778,9 +778,9 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$set": {"_label_tags": []}},
+            {"$addFields": {"_label_tags": []}},
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$concatArrays": [
                             "$_label_tags",
@@ -823,7 +823,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$function": {
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
@@ -833,7 +833,7 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "frames.___detections"},
+            {"$project": {"frames.___detections": False}},
         ]
 
         self.assertEqual(expected, returned)
@@ -860,7 +860,7 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",

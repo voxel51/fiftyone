@@ -757,12 +757,12 @@ def _write_support_clips(
 
     if is_list:
         pipeline.extend(
-            [{"$unwind": "$support"}, {"$set": {"_rand": {"$rand": {}}}}]
+            [{"$unwind": "$support"}, {"$addFields": {"_rand": {"$rand": {}}}}]
         )
 
     pipeline.extend(
         [
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -807,14 +807,17 @@ def _write_temporal_detection_clips(
     if label_type is fol.TemporalDetections:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
         pipeline.extend(
-            [{"$unwind": "$" + list_path}, {"$set": {field: "$" + list_path}}]
+            [
+                {"$unwind": "$" + list_path},
+                {"$addFields": {field: "$" + list_path}},
+            ]
         )
 
     support_path = field + ".support"
     pipeline.extend(
         [
             {
-                "$set": {
+                "$addFields": {
                     "_id": "$" + field + "._id",
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
@@ -822,7 +825,7 @@ def _write_temporal_detection_clips(
                     "_dataset_id": dataset._doc.id,
                 }
             },
-            {"$unset": support_path},
+            {"$project": {support_path: False}},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -876,7 +879,7 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                 {"$project": project},
                 {"$unwind": "$" + _tmp_field},
                 {
-                    "$set": {
+                    "$addFields": {
                         "support": {"$slice": ["$" + _tmp_field, 2, 2]},
                         field: {
                             "_cls": "DynamicEmbeddedDocument",
@@ -887,13 +890,14 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                         "_dataset_id": dataset._doc.id,
                     },
                 },
-                {"$unset": _tmp_field},
+                {"$project": {_tmp_field: False}},
                 {"$out": dataset._sample_collection_name},
             ]
         )
     finally:
-        cleanup_op = {"$unset": {_tmp_field: ""}}
-        src_dataset._sample_collection.update_many({}, cleanup_op)
+        src_dataset._sample_collection.update_many(
+            {}, {"$unset": {_tmp_field: ""}}
+        )
 
 
 def _write_expr_clips(
@@ -955,7 +959,7 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
                 {"$project": project},
                 {"$unwind": "$support"},
                 {
-                    "$set": {
+                    "$addFields": {
                         "_rand": {"$rand": {}},
                         "_dataset_id": dataset._doc.id,
                     }
@@ -964,8 +968,9 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
             ]
         )
     finally:
-        cleanup_op = {"$unset": {_tmp_field: ""}}
-        src_dataset._sample_collection.update_many({}, cleanup_op)
+        src_dataset._sample_collection.update_many(
+            {}, {"$unset": {_tmp_field: ""}}
+        )
 
 
 def _get_trajectories(sample_collection, frame_field):
