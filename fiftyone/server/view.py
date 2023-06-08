@@ -294,54 +294,33 @@ def _make_filter_stages(
         stages.append(fosg.Match({"$and": queries}))
 
     for path, field, prefix, args in _iter_paths(view, filters):
+        if not _is_label(field):
+            continue
+
         is_matching = args.get("isMatching", True)
         only_matches = args.get("onlyMatch", True)
-
-        if _is_label(field):
-            parent = field
-            field = view.get_field(path)
-            is_keypoints = issubclass(
-                parent.document_type, (fol.Keypoint, fol.Keypoints)
+        parent = field
+        field = view.get_field(path)
+        if issubclass(parent.document_type, (fol.Keypoint, fol.Keypoints)):
+            expr = _make_keypoint_list_filter(args, view, path, field)
+            expr and stages.append(
+                fosg.FilterKeypoints(
+                    prefix + parent.name,
+                    only_matches=only_matches,
+                    **expr,
+                )
             )
-            is_list_field = isinstance(field, fof.ListField)
 
-            if is_keypoints and is_list_field:
-                expr = _make_keypoint_list_filter(args, view, path, field)
-            else:
-                key = field.db_field if field.db_field else field.name
-                expr = _make_scalar_expression(
-                    F(key), args, field, is_label=True
+        elif not is_matching and (pagination_data or not count_label_tags):
+            key = field.db_field if field.db_field else field.name
+            expr = _make_scalar_expression(F(key), args, field, is_label=True)
+            expr and stages.append(
+                fosg.FilterLabels(
+                    prefix + parent.name,
+                    expr,
+                    only_matches=False,
                 )
-
-            if expr is None:
-                continue
-
-            if is_keypoints:
-                if is_list_field:
-                    stages.append(
-                        fosg.FilterKeypoints(
-                            prefix + parent.name,
-                            only_matches=only_matches,
-                            **expr,
-                        )
-                    )
-                else:
-                    stages.append(
-                        fosg.FilterLabels(
-                            prefix + parent.name,
-                            expr,
-                            only_matches=only_matches,
-                        )
-                    )
-
-            if not is_matching and (pagination_data or not count_label_tags):
-                stages.append(
-                    fosg.FilterLabels(
-                        prefix + parent.name,
-                        expr,
-                        only_matches=False,
-                    )
-                )
+            )
 
     return stages
 
