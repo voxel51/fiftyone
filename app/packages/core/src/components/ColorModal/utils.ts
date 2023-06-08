@@ -85,6 +85,15 @@ export const validateJSONSetting = (json: unknown[]) => {
   }) as fos.CustomizeColor[];
 };
 
+export const validateLabelTags = (json: unknown) => {
+  if (!json || !isObject(json)) return {};
+  const fieldColor = json["fieldColor"] ?? null;
+  const valueColors = Array.isArray(json["valueColors"])
+    ? getValidLabelColors(json["valueColors"])
+    : null;
+  return { fieldColor, valueColors } as fos.TagColor;
+};
+
 export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
   return (
     isSameArray(

@@ -158,4 +158,5 @@ export const DEFAULT_APP_COLOR_SCHEME = {
     "#777799",
   ],
   fields: [],
+  labelTags: {},
 };

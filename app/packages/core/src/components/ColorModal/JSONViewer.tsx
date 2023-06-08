@@ -2,15 +2,14 @@ import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
+import { Link } from "@mui/material";
+import colorString from "color-string";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
-import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
-import { validateJSONSetting } from "./utils";
-import colorString from "color-string";
-import { Link } from "@mui/material";
+import { validateJSONSetting, validateLabelTags } from "./utils";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
@@ -22,6 +21,7 @@ const JSONViewer: React.FC = () => {
     return {
       colorPool: sessionColor?.colorPool ?? [],
       fields: validateJSONSetting(sessionColor?.fields ?? []),
+      labelTags: sessionColor?.labelTags ?? {},
     };
   }, [sessionColor]);
   const setColorScheme = fos.useSetSessionColorScheme();
@@ -42,18 +42,21 @@ const JSONViewer: React.FC = () => {
       !data?.fields
     )
       return;
-    const { colorPool, fields } = data;
+    const { colorPool, fields, labelTags } = data;
     const validColors = colorPool
       ?.filter((c) => isValidColor(c))
       .map((c) => colorString.to.hex(colorString.get(c).value));
     const validatedSetting = validateJSONSetting(fields);
+    const validatedLabelTags = validateLabelTags(labelTags);
     setData({
       colorPool: validColors,
       fields: validatedSetting,
+      labelTags: validatedLabelTags,
     });
     setColorScheme(false, {
       colorPool: validColors,
       fields: validatedSetting,
+      labelTags: validatedLabelTags,
     });
   };
 

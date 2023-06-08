@@ -31,6 +31,7 @@ const useSetSessionColorScheme = () => {
                 colorScheme: {
                   colorPool: setting.colorPool,
                   fields: setting.fields,
+                  labelTags: setting.labelTags,
                 },
               },
             };
@@ -57,6 +58,10 @@ const useSetSessionColorScheme = () => {
             defaultSetting?.fields && !saveToApp
               ? defaultSetting.fields
               : DEFAULT_APP_COLOR_SCHEME.fields,
+          labelTags:
+            defaultSetting?.labelTags && !saveToApp
+              ? defaultSetting.labelTags
+              : DEFAULT_APP_COLOR_SCHEME.labelTags,
         };
 
         if (colorScheme == null) {

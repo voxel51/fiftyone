@@ -128,6 +128,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
             parsedSetting["fields"] ?? parsedSetting?.fields?.length > 0
               ? parsedSetting.fields
               : [],
+          labelTags: parsedSetting["label_tags"] ?? {},
         } as ColorScheme;
         set(sessionColorScheme, colorSetting);
         set(isUsingSessionColorScheme, true);
