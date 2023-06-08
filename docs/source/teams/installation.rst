@@ -99,15 +99,11 @@ For example,
 .. code-block:: shell
 
     poetry source add --priority=explicit fiftyone-teams https://pypi.fiftyone.ai/simple
-    poetry config http-basic.fiftyone-teams ${TOKEN} ""
-    poetry add --source fiftyone-teams fiftyone
-
-Alternatively, you can specify the credentials in environment variables.
-
-.. code-block:: shell
 
     export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_USERNAME="${TOKEN}"
     export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_PASSWORD=""
+
+    poetry add --source fiftyone-teams fiftyone
 
 If you have trouble configuring the credentials, see
 `more in the docs here. <https://python-poetry.org/docs/repositories/#configuring-credentials>`_
@@ -120,7 +116,7 @@ You should then see snippets in the ``pyproject.toml`` file like the following:
     name = "fiftyone-teams"
     url = "https://pypi.fiftyone.ai/simple/"
     default = false
-    explicit = true
+    priority = explicit
 
 .. code-block:: toml
 
