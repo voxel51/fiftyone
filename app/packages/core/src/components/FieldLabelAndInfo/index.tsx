@@ -264,9 +264,6 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    if (field.path === "_label_tags") {
-      setIsCustomizingColor(ACTIVE_FIELD[field.path]);
-    }
     setIsCustomizingColor({ field, expandedPath });
   };
 
