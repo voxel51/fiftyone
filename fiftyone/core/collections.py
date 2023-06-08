@@ -9554,9 +9554,7 @@ class SampleCollection(object):
     def _get_sample_label_fields(self):
         return [
             path
-            for path, _ in _iter_schema_label_fields(
-                self.get_field_schema(flat=True)
-            )
+            for path, _ in _iter_schema_label_fields(self.get_field_schema())
         ]
 
     def _get_frame_label_fields(self):
@@ -9566,7 +9564,7 @@ class SampleCollection(object):
         return [
             self._FRAMES_PREFIX + path
             for path, _ in _iter_schema_label_fields(
-                self.get_frame_field_schema(flat=True)
+                self.get_frame_field_schema()
             )
         ]
 
@@ -9769,7 +9767,7 @@ class SampleCollection(object):
 
 def _iter_label_fields(sample_collection):
     for path, field in _iter_schema_label_fields(
-        sample_collection.get_field_schema(flat=True)
+        sample_collection.get_field_schema()
     ):
         yield path, field
 
@@ -9778,38 +9776,27 @@ def _iter_label_fields(sample_collection):
 
     prefix = sample_collection._FRAMES_PREFIX
     for path, field in _iter_schema_label_fields(
-        sample_collection.get_frame_field_schema(flat=True)
+        sample_collection.get_frame_field_schema()
     ):
         yield prefix + path, field
 
 
-def _iter_schema_label_fields(schema):
+def _iter_schema_label_fields(schema, recursive=True):
+    """Generator that emits ``(path, field)`` tuples for all label fields that
+    are not nested within other label fields.
+    """
     for path, field in schema.items():
-        field_to_check = field
-        if isinstance(field, fof.ListField):
-            field_to_check = field.field
+        while isinstance(field, fof.ListField):
+            field = field.field
 
-        if not isinstance(field_to_check, fof.EmbeddedDocumentField):
-            continue
-
-        if not issubclass(field_to_check.document_type, fol.Label):
-            continue
-
-        if not issubclass(field_to_check.document_type, fol._HasLabelList):
-            keys = path.split(".")
-            parent_path = ".".join(keys[:-1])
-            leaf = keys[-1]
-            parent_field = schema.get(parent_path, None)
-
-            # Don't report leaf for `_HasLabelList` fields
-            if (
-                isinstance(parent_field, fof.EmbeddedDocumentField)
-                and issubclass(parent_field.document_type, fol._HasLabelList)
-                and parent_field.document_type._LABEL_LIST_FIELD == leaf
-            ):
-                continue
-
-        yield path, field
+        if isinstance(field, fof.EmbeddedDocumentField):
+            if issubclass(field.document_type, fol.Label):
+                yield path, field
+            else:
+                for _path, _field in _iter_schema_label_fields(
+                    field.get_field_schema(), recursive=False
+                ):
+                    yield path + "." + _path, _field
 
 
 def _serialize_value(field_name, field, value, validate=True):
