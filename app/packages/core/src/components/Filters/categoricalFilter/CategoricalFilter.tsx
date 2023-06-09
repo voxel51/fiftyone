@@ -253,6 +253,7 @@ const CategoricalFilter = <T extends V = V>({
           (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
           !skeleton && (
             <Selector
+              id={path}
               useSearch={useSearch}
               placeholder={`+ filter by ${name}`}
               component={ResultComponent}

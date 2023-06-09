@@ -39,7 +39,7 @@ const Item = React.memo(
 
       if (!icon) {
         <StyledPanelItem>
-          <div>{value}</div>
+          <div data-cy={`filter-option-${value}`}>{value}</div>
         </StyledPanelItem>;
       }
 
@@ -66,7 +66,7 @@ const Item = React.memo(
             <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
           ) : null}
 
-          <Text>{value}</Text>
+          <Text data-cy={`filter-item-${value}`}>{value}</Text>
         </div>
       );
 

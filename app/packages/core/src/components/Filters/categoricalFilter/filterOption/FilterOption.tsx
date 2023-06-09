@@ -201,7 +201,7 @@ const FilterOption: React.FC<Props> = ({
       case "hideimageicon":
         return <HideImageIcon fontSize="small" />;
       default:
-        return <>{selectedValue}</>;
+        return <div data-cy="selected-filter-mode">{selectedValue}</div>;
     }
   };
 
