@@ -818,7 +818,7 @@ class ExcludeFields(ViewStage):
         if not excluded_paths:
             return []
 
-        return [{"$unset": excluded_paths}]
+        return [{"$project": {p: False for p in excluded_paths}}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -1135,7 +1135,7 @@ class ExcludeFrames(ViewStage):
     def to_mongo(self, _):
         frame_ids = [ObjectId(_id) for _id in self._frame_ids]
         select_expr = F("frames").filter(~F("_id").is_in(frame_ids))
-        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+        pipeline = [{"$addFields": {"frames": select_expr.to_mongo()}}]
 
         if self._omit_empty:
             non_empty_expr = F("frames").length() > 0
@@ -1884,7 +1884,7 @@ def _get_filter_field_pipeline(
 
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 new_field: {
                     "$cond": {
                         "if": cond,
@@ -1917,7 +1917,7 @@ def _get_filter_frames_field_pipeline(
 
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 "frames": {
                     "$map": {
                         "input": "$frames",
@@ -2436,7 +2436,7 @@ def _get_filter_list_field_pipeline(
     cond = _get_list_field_mongo_filter(filter_arg)
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 new_field: {
                     "$filter": {
                         "input": "$" + filter_field,
@@ -2471,7 +2471,7 @@ def _get_filter_frames_list_field_pipeline(
 
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 "frames": {
                     "$map": {
                         "input": "$frames",
@@ -2550,11 +2550,11 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
     # union() removes duplicates
     indexes_expr = F("frames").reduce(reduce_expr, []).union()
 
-    set_pipeline = [{"$set": {"_indexes": indexes_expr.to_mongo()}}]
+    set_pipeline = [{"$addFields": {"_indexes": indexes_expr.to_mongo()}}]
     label_filter = (F("$_indexes") != None) & F("$_indexes").contains(
         [F("index")]
     )
-    unset_pipeline = [{"$unset": "_indexes"}]
+    unset_pipeline = [{"$project": {"_indexes": False}}]
 
     return set_pipeline, label_filter, unset_pipeline
 
@@ -3088,7 +3088,10 @@ class GeoNear(_GeoStage):
         if self._query is not None:
             geo_near_expr["query"] = self._query
 
-        return [{"$geoNear": geo_near_expr}, {"$unset": distance_field}]
+        return [
+            {"$geoNear": geo_near_expr},
+            {"$project": {distance_field: False}},
+        ]
 
     def _kwargs(self):
         return [
@@ -3383,9 +3386,9 @@ class GroupBy(ViewStage):
             order = -1 if self._reverse else 1
             pipeline.extend(
                 [
-                    {"$set": {"_sort_field": sort_expr}},
+                    {"$addFields": {"_sort_field": sort_expr}},
                     {"$sort": {"_sort_field": order}},
-                    {"$unset": "_sort_field"},
+                    {"$project": {"_sort_field": False}},
                 ]
             )
 
@@ -4674,7 +4677,7 @@ class MatchFrames(ViewStage):
     def to_mongo(self, _):
         pipeline = [
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$filter": {
                             "input": "$frames",
@@ -5088,7 +5091,9 @@ class MatchLabels(ViewStage):
 
         # Delete temporary fields
         if fields_map:
-            pipeline.append({"$unset": list(fields_map.values())})
+            pipeline.append(
+                {"$project": {f: False for f in fields_map.values()}}
+            )
 
         return pipeline
 
@@ -5367,14 +5372,14 @@ class Mongo(ViewStage):
 
         stage = fo.Mongo([
             {
-                "$set": {
+                "$addFields": {
                     "_sort_field": {
                         "$size": {"$ifNull": ["$predictions.detections", []]}
                     }
                 }
             },
             {"$sort": {"_sort_field": -1}},
-            {"$unset": "_sort_field"}
+            {"$project": {"_sort_field": False}},
         ])
         view = dataset.add_stage(stage)
 
@@ -5510,12 +5515,12 @@ class Select(ViewStage):
             pipeline.extend(
                 [
                     {
-                        "$set": {
+                        "$addFields": {
                             "_select_order": {"$indexOfArray": [ids, "$_id"]}
                         }
                     },
                     {"$sort": {"_select_order": 1}},
-                    {"$unset": "_select_order"},
+                    {"$project": {"_select_order": False}},
                 ]
             )
 
@@ -5636,14 +5641,14 @@ class SelectBy(ViewStage):
             pipeline.extend(
                 [
                     {
-                        "$set": {
+                        "$addFields": {
                             "_select_order": {
                                 "$indexOfArray": [values, "$" + path]
                             }
                         }
                     },
                     {"$sort": {"_select_order": 1}},
-                    {"$unset": "_select_order"},
+                    {"$project": {"_select_order": False}},
                 ]
             )
 
@@ -6009,7 +6014,7 @@ class SelectFrames(ViewStage):
     def to_mongo(self, _):
         frame_ids = [ObjectId(_id) for _id in self._frame_ids]
         select_expr = F("frames").filter(F("_id").is_in(frame_ids))
-        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+        pipeline = [{"$addFields": {"frames": select_expr.to_mongo()}}]
 
         if self._omit_empty:
             non_empty_expr = F("frames").length() > 0
@@ -6115,14 +6120,14 @@ class SelectGroups(ViewStage):
             pipeline.extend(
                 [
                     {
-                        "$set": {
+                        "$addFields": {
                             "_select_order": {
                                 "$indexOfArray": [ids, "$" + id_path]
                             }
                         }
                     },
                     {"$sort": {"_select_order": 1}},
-                    {"$unset": "_select_order"},
+                    {"$project": {"_select_order": False}},
                 ]
             )
 
@@ -6563,9 +6568,13 @@ class Shuffle(ViewStage):
     def to_mongo(self, _):
         # @todo can we avoid creating a new field here?
         return [
-            {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
+            {
+                "$addFields": {
+                    "_rand_shuffle": {"$mod": [self._randint, "$_rand"]}
+                }
+            },
             {"$sort": {"_rand_shuffle": 1}},
-            {"$unset": "_rand_shuffle"},
+            {"$project": {"_rand_shuffle": False}},
         ]
 
     def _kwargs(self):
@@ -6754,12 +6763,12 @@ class SortBy(ViewStage):
         pipeline = []
 
         if set_dict:
-            pipeline.append({"$set": set_dict})
+            pipeline.append({"$addFields": set_dict})
 
         pipeline.append({"$sort": sort_dict})
 
         if set_dict:
-            pipeline.append({"$unset": list(set_dict.keys())})
+            pipeline.append({"$project": {f: False for f in set_dict.keys()}})
 
         return pipeline
 
@@ -7197,10 +7206,14 @@ class Take(ViewStage):
 
         # @todo can we avoid creating a new field here?
         return [
-            {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
+            {
+                "$addFields": {
+                    "_rand_take": {"$mod": [self._randint, "$_rand"]}
+                }
+            },
             {"$sort": {"_rand_take": 1}},
             {"$limit": self._size},
-            {"$unset": "_rand_take"},
+            {"$project": {"_rand_take": False}},
         ]
 
     def _kwargs(self):

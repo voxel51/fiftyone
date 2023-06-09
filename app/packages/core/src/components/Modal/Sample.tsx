@@ -1,4 +1,4 @@
-import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
+import { AbstractLooker } from "@fiftyone/looker";
 import {
   modalSample,
   modalSampleId,
@@ -10,12 +10,19 @@ import { useRecoilValue } from "recoil";
 import { SampleBar } from "./Bars";
 import Looker from "./Looker";
 
-const Sample: React.FC<{
+interface SampleProps {
   lookerRefCallback: (looker: AbstractLooker) => void;
-}> = ({ lookerRefCallback }) => {
-  const lookerRef = useRef<VideoLooker>();
+  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  hideSampleBar?: boolean;
+}
 
+const Sample = ({
+  lookerRefCallback,
+  lookerRef: propsLookerRef,
+  hideSampleBar,
+}: SampleProps) => {
   const clearModal = useClearModal();
+  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
 
   const [hovering, setHovering] = useState(false);
 
@@ -46,12 +53,14 @@ const Sample: React.FC<{
       style={{ width: "100%", height: "100%", position: "relative" }}
       {...hover.handlers}
     >
-      <SampleBar
-        sampleId={`bar-${id}`}
-        lookerRef={lookerRef}
-        visible={hovering}
-        hoveringRef={hoveringRef}
-      />
+      {!hideSampleBar && (
+        <SampleBar
+          sampleId={id}
+          lookerRef={propsLookerRef || lookerRef}
+          visible={hovering}
+          hoveringRef={hoveringRef}
+        />
+      )}
       <Looker
         key={`looker-${id}`}
         lookerRef={lookerRef}

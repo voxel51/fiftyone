@@ -274,7 +274,7 @@ const SampleModal = () => {
         ref={wrapperRef}
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
-        <Container style={{ ...screen, zIndex: 10001 }}>
+        <Container style={{ ...screen, zIndex: 10001 }} data-cy="modal">
           <TooltipInfo coordinates={tooltip.coordinates} />
           <ContentColumn>
             {!isNavigationHidden && index > 0 && (

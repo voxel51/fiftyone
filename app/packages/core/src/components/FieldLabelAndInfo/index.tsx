@@ -266,7 +266,6 @@ function FieldInfoExpanded({
     setIsCustomizingColor({ field, expandedPath });
   };
 
-  const isNotTag = field.path !== "tags";
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
 
@@ -280,7 +279,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {isNotTag && !isModal && (
+        {!isModal && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}

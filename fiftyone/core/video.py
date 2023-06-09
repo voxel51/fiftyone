@@ -351,7 +351,9 @@ class FramesView(fov.DatasetView):
                 sample_only_fields.discard("_sample_id")
                 sample_only_fields.discard("frame_number")
 
-                pipeline.append({"$unset": list(sample_only_fields)})
+                pipeline.append(
+                    {"$project": {f: False for f in sample_only_fields}}
+                )
             else:
                 project = {f: True for f in fields}
                 project["_id"] = True
@@ -665,11 +667,11 @@ def make_frames_dataset(
     pipeline = []
 
     if sample_frames == "dynamic":
-        pipeline.append({"$unset": "filepath"})
+        pipeline.append({"$project": {"filepath": False}})
 
     pipeline.extend(
         [
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,

@@ -322,6 +322,7 @@ const FilterableEntry = ({
                 padding: 0,
               }}
               key="checkbox"
+              data-cy={`checkbox-${path}`}
               onClick={onClick}
             />
           )}

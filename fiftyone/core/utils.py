@@ -35,6 +35,7 @@ import types
 from xml.parsers.expat import ExpatError
 import zlib
 from matplotlib import colors as mcolors
+from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
 
@@ -1903,6 +1904,16 @@ def to_slug(name):
 
 _T = t.TypeVar("_T")
 
+sync_task_executor = None
+
+
+def get_sync_task_executor():
+    global sync_task_executor
+    max_workers = fo.config.max_thread_pool_workers
+    if sync_task_executor is None and max_workers is not None:
+        sync_task_executor = ThreadPoolExecutor(max_workers=max_workers)
+    return sync_task_executor
+
 
 async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
     """
@@ -1913,7 +1924,7 @@ async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
     """
     loop = asyncio.get_running_loop()
 
-    return await loop.run_in_executor(None, func, *args)
+    return await loop.run_in_executor(get_sync_task_executor(), func, *args)
 
 
 def validate_color(value):

@@ -5971,7 +5971,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 }
             },
             {
-                "$set": {
+                "$addFields": {
                     "groups": {
                         "$arrayToObject": {
                             "$map": {
@@ -6020,7 +6020,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """A pipeline that returns (only) the unwound ``groups`` documents."""
         return [
             {
-                "$set": {
+                "$addFields": {
                     "groups": {
                         "$map": {
                             "input": {"$objectToArray": "$groups"},
@@ -6721,14 +6721,14 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
-    pipeline.append({"$set": {"_dataset_id": _id}})
+    pipeline.append({"$addFields": {"_dataset_id": _id}})
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
-        pipeline.append({"$set": {"_dataset_id": _id}})
+        pipeline.append({"$addFields": {"_dataset_id": _id}})
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -6774,9 +6774,9 @@ def _get_frames_pipeline(sample_collection):
         pipeline = sample_collection._pipeline(attach_frames=True) + [
             {"$project": {"frames": True}},
             {"$unwind": "$frames"},
-            {"$set": {"frames._sample_id": "$_id"}},
+            {"$addFields": {"frames._sample_id": "$_id"}},
             {"$replaceRoot": {"newRoot": "$frames"}},
-            {"$unset": "_id"},
+            {"$project": {"_id": False}},
         ]
     elif view is not None:
         # The view may modify the frames, so we route the frames though
@@ -7218,8 +7218,8 @@ def _add_collection_with_new_ids(
         src_samples._aggregate(
             detach_groups=True,
             post_pipeline=[
-                {"$unset": "_id"},
-                {"$set": {"_dataset_id": dataset._doc.id}},
+                {"$project": {"_id": False}},
+                {"$addFields": {"_dataset_id": dataset._doc.id}},
                 {
                     "$merge": {
                         "into": dataset._sample_collection_name,
@@ -7250,8 +7250,8 @@ def _add_collection_with_new_ids(
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
-            {"$unset": "_id"},
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$project": {"_id": False}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -7265,9 +7265,14 @@ def _add_collection_with_new_ids(
     src_videos._aggregate(
         frames_only=True,
         post_pipeline=[
-            {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
-            {"$unset": "_id"},
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_tmp": "$_sample_id",
+                    "_sample_id": {"$rand": {}},
+                }
+            },
+            {"$project": {"_id": False}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -7526,7 +7531,7 @@ def _merge_samples_pipeline(
 
     if _omit_fields:
         unset_fields = [db_fields_map.get(f, f) for f in _omit_fields]
-        sample_pipeline.append({"$unset": unset_fields})
+        sample_pipeline.append({"$project": {f: False for f in unset_fields}})
 
     if skip_existing:
         when_matched = "keepExisting"
@@ -7563,7 +7568,7 @@ def _merge_samples_pipeline(
 
     sample_pipeline.extend(
         [
-            {"$set": {"_dataset_id": dst_dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dst_dataset._doc.id}},
             {
                 "$merge": {
                     "into": dst_dataset._sample_collection_name,
@@ -7636,7 +7641,7 @@ def _merge_samples_pipeline(
         _omit_frame_fields.discard("frame_number")
 
         unset_fields = [db_fields_map.get(f, f) for f in _omit_frame_fields]
-        frame_pipeline.append({"$unset": unset_fields})
+        frame_pipeline.append({"$project": {f: False for f in unset_fields}})
 
         if skip_existing:
             when_frame_matched = "keepExisting"
@@ -7653,7 +7658,7 @@ def _merge_samples_pipeline(
         frame_pipeline.extend(
             [
                 {
-                    "$set": {
+                    "$addFields": {
                         "_dataset_id": dst_dataset._doc.id,
                         "_sample_id": "$" + frame_key_field,
                     }
@@ -7694,8 +7699,8 @@ def _merge_samples_pipeline(
         )
 
         if contains_videos:
-            _index_frames(dst_videos, key_field, frame_key_field)
-            _index_frames(src_videos, key_field, frame_key_field)
+            _index_frames(dst_dataset, key_field, frame_key_field)
+            _index_frames(src_dataset, key_field, frame_key_field)
 
             # Create unique index on frame merge key
             frame_index_spec = [(frame_key_field, 1), ("frame_number", 1)]
@@ -7979,8 +7984,13 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
     }
 
 
-def _index_frames(sample_collection, key_field, frame_key_field):
-    ids, keys, all_sample_ids = sample_collection.values(
+def _index_frames(dataset, key_field, frame_key_field):
+    if dataset.media_type == fom.GROUP:
+        dst_videos = dataset.select_group_slices(media_type=fom.VIDEO)
+    else:
+        dst_videos = dataset
+
+    ids, keys, all_sample_ids = dst_videos.values(
         ["_id", key_field, "frames._sample_id"]
     )
     keys_map = {k: v for k, v in zip(ids, keys)}
@@ -7994,7 +8004,7 @@ def _index_frames(sample_collection, key_field, frame_key_field):
 
         frame_keys.append(sample_keys)
 
-    sample_collection.set_values(
+    dst_videos.set_values(
         "frames." + frame_key_field,
         frame_keys,
         expand_schema=False,
