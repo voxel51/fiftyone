@@ -15,7 +15,7 @@
         "postinstall": "patch-package",
         "start": "yarn workspace @fiftyone/app start",
         "start-desktop": "yarn workspace FiftyOne start-desktop",
-        "test": "yarn vitest run --coverage",
+        "test": "yarn vitest run",
         "test-ui": "yarn vitest --ui",
         "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
     },
