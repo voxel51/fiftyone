@@ -4315,6 +4315,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         has_ignored_attributes = False
         save_config = False
+        frame_start = config.frame_start
+        frame_stop = config.frame_stop
+        frame_step = config.frame_step
+
+        is_video = samples.media_type == fom.VIDEO
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
@@ -4387,6 +4392,37 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_shapes = []
                 anno_tracks = []
 
+                def _parse_frame_arg(
+                    arg, arg_name, idx, is_video, samples_batch
+                ):
+                    if arg is not None and not is_video:
+                        logger.warning(
+                            "Ignoring '%s' argument as it was provided for an image dataset, but is only supported for videos. Instead for image datasets, filter the view being annotated directly."
+                            % arg_name
+                        )
+                        return None
+
+                    if isinstance(arg, list):
+                        return arg[idx % len(arg)]
+
+                    elif isinstance(arg, dict):
+                        if len(samples_batch) != 1:
+                            return None
+                        first_filepath = samples_batch.values("filepath")[0]
+                        return arg.get(first_filepath, None)
+
+                    return arg
+
+                _frame_start = _parse_frame_arg(
+                    frame_start, "frame_start", idx, is_video, samples_batch
+                )
+                _frame_stop = _parse_frame_arg(
+                    frame_stop, "frame_stop", idx, is_video, samples_batch
+                )
+                _frame_step = _parse_frame_arg(
+                    frame_step, "frame_step", idx, is_video, samples_batch
+                )
+
                 for label_field, label_info in label_schema.items():
                     _tags = []
                     _shapes = []
@@ -4414,6 +4450,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
+                            _frame_start,
+                            _frame_stop,
+                            _frame_step,
                             assign_scalar_attrs,
                             only_keyframes,
                             occluded_attrs,
@@ -4456,6 +4495,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     task_ids,
                     job_ids,
                     frame_id_map,
+                    _frame_start,
+                    _frame_stop,
+                    _frame_step,
                 )
 
                 for label_field in label_schema.keys():
@@ -4588,8 +4630,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 def _remap_annotation_frame(
                     frame_value, frame_start, frame_step
                 ):
-                    frame_step = 1 if frame_step is None else frame_step
-                    return (frame_value + frame_start) * frame_step
+                    _frame_step = 1 if frame_step is None else frame_step
+                    return (frame_value + frame_start) * _frame_step
 
                 def _remap_annotation_frames(
                     annos, frame_start, frame_stop, frame_step
@@ -5246,6 +5288,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_ids,
         job_ids,
         frame_id_map,
+        frame_start,
+        frame_stop,
+        frame_step,
     ):
         media_field = config.media_field
         segment_size = config.segment_size
@@ -5257,16 +5302,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
         issue_tracker = config.issue_tracker
-        frame_start = config.frame_start
-        frame_stop = config.frame_stop
-        frame_step = config.frame_step
-
-        is_video = samples_batch.media_type == fom.VIDEO
 
         _task_assignee = task_assignee
         _job_assignees = job_assignees
         _job_reviewers = job_reviewers
         _issue_tracker = issue_tracker
+
+        is_video = samples_batch.media_type == fom.VIDEO
 
         if is_video:
             # Videos are uploaded in multiple tasks with 1 job per task
@@ -5288,35 +5330,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 _issue_tracker = issue_tracker
             else:
                 _issue_tracker = issue_tracker[idx % len(issue_tracker)]
-
-        def _parse_frame_arg(arg, arg_name, idx, is_video, samples_batch):
-            if arg is not None and not is_video:
-                logger.warning(
-                    "Ignoring '%s' argument as it was provided for an image dataset, but is only supported for videos. Instead for image datasets, filter the view being annotated directly."
-                    % arg_name
-                )
-                return None
-
-            if isinstance(arg, list):
-                return arg[idx % len(arg)]
-
-            elif isinstance(arg, dict):
-                if len(samples_batch) != 1:
-                    return None
-                first_filepath = samples_batch.values("filepath")[0]
-                return arg.get(first_filepath, None)
-
-            return arg
-
-        _frame_start = _parse_frame_arg(
-            frame_start, "frame_start", idx, is_video, samples_batch
-        )
-        _frame_stop = _parse_frame_arg(
-            frame_stop, "frame_stop", idx, is_video, samples_batch
-        )
-        _frame_step = _parse_frame_arg(
-            frame_step, "frame_step", idx, is_video, samples_batch
-        )
 
         # Create task
         task_id, class_id_map, attr_id_map = self.create_task(
@@ -5340,9 +5353,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size=chunk_size,
             job_assignees=_job_assignees,
             job_reviewers=_job_reviewers,
-            frame_start=_frame_start,
-            frame_stop=_frame_stop,
-            frame_step=_frame_step,
+            frame_start=frame_start,
+            frame_stop=frame_stop,
+            frame_step=frame_step,
         )
         self._verify_uploaded_frames(task_id, samples_batch)
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
@@ -5449,6 +5462,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_info,
         cvat_schema,
+        frame_start,
+        frame_stop,
+        frame_step,
         assign_scalar_attrs,
         only_keyframes,
         occluded_attrs,
@@ -5467,6 +5483,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field,
                 label_info,
                 cvat_schema,
+                frame_start,
+                frame_stop,
+                frame_step,
                 assign_scalar_attrs=assign_scalar_attrs,
             )
         elif is_video and label_type != "segmentation":
@@ -5480,6 +5499,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field,
                 label_info,
                 cvat_schema,
+                frame_start,
+                frame_stop,
+                frame_step,
                 load_tracks=True,
                 only_keyframes=only_keyframes,
                 occluded_attrs=occluded_attrs,
@@ -5492,6 +5514,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field,
                 label_info,
                 cvat_schema,
+                frame_start,
+                frame_stop,
+                frame_step,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
             )
@@ -5986,6 +6011,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_info,
         cvat_schema,
+        frame_start,
+        frame_stop,
+        frame_step,
         assign_scalar_attrs=False,
         load_tracks=False,
         only_keyframes=False,
@@ -6019,6 +6047,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             field = label_field
 
+        def _get_next_frame(sampled_frame_id, frame_step):
+            _frame_step = 1 if frame_step is None else frame_step
+            return sampled_frame_id + _frame_step
+
+        sampled_frame_id = 0 if frame_start is None else frame_start
         frame_id = -1
         for sample in samples:
             metadata = sample.metadata
@@ -6030,7 +6063,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 images = [sample]
                 frame_size = (metadata.width, metadata.height)
 
-            for image in images:
+            for img_idx, image in enumerate(images):
+                if img_idx != sampled_frame_id:
+                    # This is a video being subsampled, only load annotations
+                    # for frames that are being rendered
+                    continue
+
                 frame_id += 1
 
                 label = image[field]
@@ -6110,6 +6148,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         id_map[sample.id][image.id] = ids
                     else:
                         id_map[sample.id] = ids
+
+                sampled_frame_id = _get_next_frame(
+                    sampled_frame_id, frame_step
+                )
+                if frame_stop is not None and sampled_frame_id > frame_stop:
+                    break
 
         # Record any attribute name changes due to label attributes being
         # stored in attributes dicts rather than as dynamic fields
