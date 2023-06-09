@@ -303,24 +303,26 @@ def _make_filter_stages(
         field = view.get_field(path)
         if issubclass(parent.document_type, (fol.Keypoint, fol.Keypoints)):
             expr = _make_keypoint_list_filter(args, view, path, field)
-            expr and stages.append(
-                fosg.FilterKeypoints(
-                    prefix + parent.name,
-                    only_matches=only_matches,
-                    **expr,
+            if expr is not None:
+                stages.append(
+                    fosg.FilterKeypoints(
+                        prefix + parent.name,
+                        only_matches=only_matches,
+                        **expr,
+                    )
                 )
-            )
 
         elif not is_matching and (pagination_data or not count_label_tags):
             key = field.db_field if field.db_field else field.name
             expr = _make_scalar_expression(F(key), args, field, is_label=True)
-            expr and stages.append(
-                fosg.FilterLabels(
-                    prefix + parent.name,
-                    expr,
-                    only_matches=False,
+            if expr is not None:
+                stages.append(
+                    fosg.FilterLabels(
+                        prefix + parent.name,
+                        expr,
+                        only_matches=False,
+                    )
                 )
-            )
 
     return stages
 

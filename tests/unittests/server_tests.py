@@ -372,7 +372,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -583,7 +583,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
