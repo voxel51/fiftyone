@@ -245,7 +245,7 @@ def get_user(user: str) -> Union[User, None]:
         query=_GET_USER_QUERY,
         variables={"userId": user},
     )
-    return User(**data["user"])
+    return User(**data["user"]) if data["user"] else None
 
 
 def list_pending_invitations() -> List[Invitation]:
@@ -394,7 +394,9 @@ _ROUGH_EMAIL_REGEX = re.compile(
 
 
 def _resolve_user_id(
-    user_or_id_or_email: Union[str, User, None], nullable: bool = False
+    user_or_id_or_email: Union[str, User, None],
+    nullable: bool = False,
+    pass_unknown_email: bool = False,
 ) -> Optional[str]:
     """Resolves user ID - by looking up user by email if it has to"""
     if user_or_id_or_email is None:
@@ -410,6 +412,8 @@ def _resolve_user_id(
         if _ROUGH_EMAIL_REGEX.fullmatch(user_or_id_or_email):
             user = get_user(user_or_id_or_email)
             if user is None:
+                if pass_unknown_email:
+                    return user_or_id_or_email
                 raise ValueError(
                     f"User email not found: {user_or_id_or_email}"
                 )
