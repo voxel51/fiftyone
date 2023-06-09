@@ -229,6 +229,7 @@ const CategoricalFilter = <T extends V = V>({
 
   return (
     <NamedCategoricalFilterContainer
+      data-cy={`categorical-filter-${path}`}
       onClick={(e) => {
         e.stopPropagation();
       }}

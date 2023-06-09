@@ -34,19 +34,98 @@ describe("Sidebar filter", () => {
 
       // entry count should be 199 before filtering
       cy.contains("199", { timeout: 5000 }).should("be.visible");
+      cy.get(
+        "[data-cy=categorical-filter-ground_truth\\.detections\\.label]"
+      ).should("exist");
       cy.get("[data-cy=sidebar-field-container-ground_truth").within(() => {
         cy.get("[data-cy=entry-count-all]").should("have.text", 199);
-
-        // select "cat" label, expect 7 samples out 50 samples
-        cy.get('[data-cy="selector-\\+ filter by label"]')
-          .first()
-          .should("exist");
-
-        // workaround
-        cy.get("[data-cy=selector-div-ground_truth]").within(() => {
-          cy.get("input").type("cat");
-        });
       });
+
+      // default filter mode of select "cat" label, expect 7 samples out 50 samples
+      cy.get('[data-cy="selector-\\+ filter by label"]').should("exist");
+      cy.get("[data-cy=selector-div-ground_truth\\.detections\\.label]").within(
+        () => {
+          // do not use cy.get("input").type("cat{enter}");
+          // that cause the test to be very flasky
+          cy.get("input").type("cat");
+          cy.get("input").should("have.value", "cat");
+          // TODO: need this, otherwise the test is very flaky
+          cy.wait(500);
+          cy.get("input").type("{enter}");
+        }
+      );
+      cy.get("[data-cy=checkbox-cat]").should("be.visible");
+      cy.get("[data-cy=entry-counts]")
+        .first()
+        .should("have.text", "7 of 50 samples");
+      cy.get("[data-cy=entry-count-part]")
+        .first()
+        .should("have.text", "8 of 199");
+
+      // verify four filtering options
+      cy.get("[data-cy=filter-mode-div]").click();
+      // animation effect
+      // TODO: remove wait by other ways to wait for animation to finish
+      cy.wait(500);
+      cy.get("[data-cy=filter-option-Select-detections-with-label]").should(
+        "be.visible"
+      );
+      cy.get("[data-cy=filter-option-Exclude-detections-with-label]").should(
+        "be.visible"
+      );
+      cy.get("[data-cy=filter-option-Show-samples-with-label]").should(
+        "be.visible"
+      );
+      cy.get("[data-cy=filter-option-Omit-samples-with-label]").should(
+        "be.visible"
+      );
+
+      // exclude mode
+      // cat checkbox count should be 0 of 80, ground_truth label count should be 191 of 199, sample count should be 50
+      cy.get("[data-cy=filter-option-Exclude-detections-with-label]").click();
+      cy.get("[data-cy=filter-mode-div]")
+        .find("div")
+        .should("have.text", "Exclude detections with label");
+      cy.get("[data-cy=entry-counts]")
+        .first()
+        .should("have.text", "50 samples");
+      cy.get("[data-cy=entry-count-part]")
+        .first()
+        .should("have.text", "191 of 199");
+
+      // match mode
+      // filter by cat, 15 of 199 ground_truth labels, 7 of 50 samples
+      cy.get("[data-cy=filter-mode-div]").click();
+      cy.get("[data-cy=filter-option-Show-samples-with-label]").click();
+      cy.get("[data-cy=filter-mode-div]")
+        .find("div")
+        .should("have.text", "Show samples with label");
+      cy.get("[data-cy=entry-counts]")
+        .first()
+        .should("have.text", "7 of 50 samples");
+      cy.get("[data-cy=entry-count-part]")
+        .first()
+        .should("have.text", "15 of 199");
+
+      // omit mode
+      // filter by cat, 184 of 199 ground_truth labels, 43 of 50 samples
+      cy.get("[data-cy=filter-mode-div]").click();
+      cy.get("[data-cy=filter-option-Omit-samples-with-label]").click();
+      cy.get("[data-cy=filter-mode-div]")
+        .find("div")
+        .should("have.text", "Omit samples with label");
+      cy.get("[data-cy=entry-counts]")
+        .first()
+        .should("have.text", "43 of 50 samples");
+      cy.get("[data-cy=entry-count-part]")
+        .first()
+        .should("have.text", "184 of 199");
+
+      // reset filter
+      cy.get("[data-cy=Button-Reset]").click();
+      cy.get("[data-cy=entry-counts]")
+        .first()
+        .should("have.text", "50 samples");
     });
 
     it("should be able to filter by primitive field", () => {
@@ -85,8 +164,27 @@ describe("Sidebar filter", () => {
       });
 
       // primitive fields should have match/omit two options
+      cy.get("[data-cy=sidebar-column]").scrollTo("bottom");
+      cy.get("[data-cy=filter-mode-div]").click();
+      cy.get("[data-cy=filter-option-Show-samples-with-uniqueness]").should(
+        "be.visible"
+      );
+      cy.get("[data-cy=filter-option-Omit-samples-with-uniqueness]").should(
+        "be.visible"
+      );
 
       // verify omit option results
+      cy.get("[data-cy=filter-option-Omit-samples-with-uniqueness]").click();
+      cy.get("[data-cy=entry-counts]")
+        .first()
+        .should("have.text", "48 of 50 samples");
+      cy.get("[data-cy=entry-count-part]")
+        .first()
+        .should("have.text", "48 of 50");
+      cy.get("[data-cy=tag-uniqueness]").each(($el) => {
+        const value = Number($el.text());
+        expect(value).to.be.lt(0.9);
+      });
     });
 
     it("should be able to filter by ground_truth field in modal view", () => {

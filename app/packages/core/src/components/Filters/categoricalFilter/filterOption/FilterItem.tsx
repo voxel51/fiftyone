@@ -37,14 +37,16 @@ const Item = React.memo(
         }
       `;
 
+      const id = String(value).split(" ").join("-");
+
       if (!icon) {
         <StyledPanelItem>
-          <div data-cy={`filter-option-${value}`}>{value}</div>
+          <div data-cy={`filter-option-${id}`}>{value}</div>
         </StyledPanelItem>;
       }
 
       const getIcon = (icon: string) => {
-        switch (icon.toLowerCase()) {
+        switch (String(icon).toLowerCase()) {
           case "filteralticon":
             return <FilterAltIcon fontSize="small" />;
           case "filteraltofficon":
@@ -61,12 +63,13 @@ const Item = React.memo(
           style={{ display: "flex", flexDirection: "row" }}
           ref={ref}
           onClick={onClick}
+          data-cy={`filter-option-${id}`}
         >
           {icon ? (
             <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
           ) : null}
 
-          <Text data-cy={`filter-item-${value}`}>{value}</Text>
+          <Text>{value}</Text>
         </div>
       );
 

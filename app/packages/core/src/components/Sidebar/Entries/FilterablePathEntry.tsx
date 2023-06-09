@@ -384,14 +384,17 @@ const FilterableEntry = ({
       {expanded &&
         data &&
         data.map(({ ftype, listField, title, ...props }) => {
-          return React.createElement(FILTERS[ftype], {
-            key: props.path,
-            onFocus,
-            onBlur,
-            title: title || (listField ? `${LIST_FIELD}(${ftype})` : ftype),
-            color: activeColor,
-            ...props,
-          });
+          const Component = FILTERS[ftype];
+          return (
+            <Component
+              key={props.path}
+              onFocus={onFocus}
+              onBlur={onBlur}
+              title={title || (listField ? `${LIST_FIELD}(${ftype})` : ftype)}
+              color={activeColor}
+              {...props}
+            />
+          );
         })}
     </RegularEntry>
   );

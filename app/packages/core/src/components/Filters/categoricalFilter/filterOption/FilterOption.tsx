@@ -273,7 +273,7 @@ const FilterOption: React.FC<Props> = ({
         }}
       >
         {options.length > 1 && (
-          <FilterMode onClick={() => setOpen(!open)}>
+          <FilterMode onClick={() => setOpen(!open)} data-cy="filter-mode-div">
             <IconButton sx={{ color: color, size: "small" }}>
               <Selected />
             </IconButton>

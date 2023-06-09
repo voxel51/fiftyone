@@ -754,6 +754,7 @@ const InteractiveSidebar = ({
       <Suspense>
         <SidebarColumn
           ref={container}
+          data-cy="sidebar-column"
           onScroll={({ target }) => {
             if (start.current !== null) {
               start.current += scroll.current - target.scrollTop;
