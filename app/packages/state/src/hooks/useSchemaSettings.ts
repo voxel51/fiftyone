@@ -3,7 +3,6 @@ import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
   DETECTION_FILED,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -233,7 +232,6 @@ export const excludedPathsState = atomFamily({
 
               // embedded document could break an exclude_field() call causing mongo query issue.
               const hasDynamicEmbeddedDocument = [
-                DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
                 DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
