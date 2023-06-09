@@ -59,10 +59,11 @@ export const GroupImageVideoSample: React.FC<{
   const allSlices = useRecoilValue(fos.groupSlices);
   const altSlice = useMemo(() => {
     if (
-      sample._media_type !== "point-cloud" ||
+      sample?._media_type !== "point-cloud" ||
       currentModalSlice !== sample.group.name
-    )
+    ) {
       return undefined;
+    }
 
     if (currentModalSlice === defaultSlice) {
       return allSlices.find((s) => s !== defaultSlice);

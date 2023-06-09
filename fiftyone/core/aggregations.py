@@ -807,9 +807,9 @@ class CountValues(Aggregation):
 
         if self._include is not None:
             limit = max(limit, len(self._include))
-            pipeline += [
-                {"$set": {"included": {"$in": ["$_id", self._include]}}},
-            ]
+            pipeline.append(
+                {"$addFields": {"included": {"$in": ["$_id", self._include]}}}
+            )
             sort["included"] = -1
 
         order = 1 if self._asc else -1
@@ -2920,7 +2920,9 @@ def _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields):
                 (F(leaf) != None).if_else(VALUE.extend(F(leaf)), VALUE),
                 init_val=[],
             )
-            pipeline.append({"$set": {prev_list: reduce_expr.to_mongo()}})
+            pipeline.append(
+                {"$addFields": {prev_list: reduce_expr.to_mongo()}}
+            )
             path, list_fields = _replace_list(
                 path, list_fields, list_field, prev_list
             )

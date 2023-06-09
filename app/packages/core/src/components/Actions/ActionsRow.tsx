@@ -31,7 +31,12 @@ import {
 import styled from "styled-components";
 
 import { PillButton, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  AbstractLooker,
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import * as fos from "@fiftyone/state";
@@ -498,7 +503,7 @@ export const ModalActionsRow = ({
   lookerRef,
   isGroup,
 }: {
-  lookerRef?: MutableRefObject<VideoLooker | undefined>;
+  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
   isGroup?: boolean;
 }) => {
   const hideTagging = useRecoilValue(fos.readOnly);

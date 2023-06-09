@@ -5415,7 +5415,7 @@ class SampleCollection(object):
                     }
                 },
                 {"$sort": {"_sort_field": -1}},
-                {"$unset": "_sort_field"}
+                {"$project": {"_sort_field": False}},
             ])
 
         Args:
@@ -10413,7 +10413,7 @@ def _make_set_field_pipeline(
     # Case 1: no list fields
     if not list_fields:
         expr_dict = _render_expr(expr, path, embedded_root)
-        pipeline = [{"$set": {path: expr_dict}}]
+        pipeline = [{"$addFields": {path: expr_dict}}]
         return pipeline, expr_dict
 
     # Case 2: one list field
@@ -10423,7 +10423,7 @@ def _make_set_field_pipeline(
         expr, expr_dict = _set_terminal_list_field(
             list_field, subfield, expr, embedded_root
         )
-        pipeline = [{"$set": {list_field: expr.to_mongo()}}]
+        pipeline = [{"$addFields": {list_field: expr.to_mongo()}}]
         return pipeline, expr_dict
 
     # Case 3: multiple list fields
@@ -10443,7 +10443,7 @@ def _make_set_field_pipeline(
 
     expr = expr.to_mongo(prefix="$" + list_fields[0])
 
-    pipeline = [{"$set": {list_fields[0]: expr}}]
+    pipeline = [{"$addFields": {list_fields[0]: expr}}]
 
     return pipeline, expr_dict
 
