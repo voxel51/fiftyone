@@ -5,10 +5,8 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object, Form, Property
-from fiftyone.core.delegated_operation import DelegatedOperationService as fodo
-import time
-
+from .types import Object
+from fiftyone.factory.service_factory import ServiceFactory
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
@@ -171,7 +169,7 @@ class Operator(object):
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
         """
-        fodo.queue_operation(
+        ServiceFactory.delegated_operation().queue_operation(
             operator=self.uri,
             context=ctx.serialize(),
             delegation_target=self.delegation_target,

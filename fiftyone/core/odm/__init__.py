@@ -82,7 +82,6 @@ from .utils import (
     validate_fields_match,
 )
 from .views import SavedViewDocument
-from .delegated_operation import DelegatedOperationDocument
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

@@ -8,10 +8,12 @@ FiftyOne delegated operator related unit tests.
 import unittest
 from unittest.mock import patch
 
-from fiftyone.core.delegated_operation import DelegatedOperationService as dos
+from fiftyone.factory.service_factory import ServiceFactory
 from bson import ObjectId
 
 from fiftyone.operators import Operator, OperatorConfig
+
+dos = ServiceFactory.delegated_operation()
 
 
 class MockOperator(Operator):
@@ -46,10 +48,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
     def delete_test_data(self):
         for doc in self.docs_to_delete:
-            doc.delete()
+            dos.delete_operation(doc_id=doc.id)
 
     def test_delegate_operation(self):
-        doc = dos.queue_operation(
+        doc = ServiceFactory.delegated_operation().queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target="foo",
             dataset_id=ObjectId(),
@@ -85,7 +87,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         for i in range(10):
             doc = dos.queue_operation(
                 operator=operator,
-                delegation_target=f"delegation_target{i}",
+                # delegation_target=f"delegation_target{i}",
                 dataset_id=dataset_id,
                 context={"foo": "bar"},
                 view_stages=["foo", "bar"],
@@ -97,7 +99,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         for i in range(10):
             doc = dos.queue_operation(
                 operator=operator2,
-                delegation_target=f"delegation_target_2{i}",
+                # delegation_target=f"delegation_target_2{i}",
                 dataset_id=dataset_id2,
                 context={"foo": "bar"},
                 view_stages=["foo", "bar"],
@@ -139,12 +141,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, "triggered")
 
         doc = dos.set_running(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "started")
+        self.assertEqual(doc.run_state, "running")
 
         doc = dos.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, "completed")
 
-        doc = dos.set_failed(doc_id=doc.id, error=ValueError("oops!"))
+        doc = dos.set_failed(doc_id=doc.id, error=str(ValueError("oops!")))
         self.assertEqual(doc.run_state, "failed")
         self.assertIsNotNone(doc.error_message)
 
@@ -170,7 +172,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         dos.execute_queued_operations(delegation_target="test_target")
 
-        doc = dos.get(doc_id=doc["id"])
+        doc = dos.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, "completed")
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
@@ -202,13 +204,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         dos.execute_queued_operations(delegation_target="test_target")
 
-        doc = dos.get(doc_id=doc["id"])
+        doc = dos.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, "failed")
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
         self.assertIsNotNone(doc.triggered_at)
         self.assertIsNone(doc.completed_at)
 
-        self.assertIsNotNone(doc["error_message"])
+        self.assertIsNotNone(doc.error_message)
         self.assertEqual(doc.error_message, "MockOperator failed")
         self.assertIsNotNone(doc.failed_at)
