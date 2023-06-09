@@ -42,12 +42,6 @@ export const pageParameters = selectorFamily<PageParameters, boolean>({
         extended: get(fos.extendedStages),
         zoom: get(fos.isPatchesView) && get(fos.cropToContent(modal)),
         slice: get(groupSlice(false)),
-        fields: [
-          ...get(fos.sidebarGroupsDefinition(false))
-            .map((d) => d.paths)
-            .flat(),
-          "tags",
-        ],
       };
     },
 });

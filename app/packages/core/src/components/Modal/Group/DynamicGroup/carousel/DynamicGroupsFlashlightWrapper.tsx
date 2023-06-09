@@ -308,7 +308,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     useRecoilValueLoadable(
       fos.lookerOptions({ modal: true, withFilter: true })
     ),
-    useRecoilValue(fos.modalSample),
+    useRecoilValue(fos.currentModalSample),
     useRecoilValue(fos.selectedSamples),
   ]);
 

@@ -12,6 +12,7 @@ import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
+import { Apps } from "@mui/icons-material";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 export const SamplesHeader = styled.div`
@@ -58,11 +59,9 @@ const SliderContainer = styled.div`
 
 const Count = () => {
   let element = useRecoilValue(fos.elementNames);
-
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
-
   const isGroup = useRecoilValue(isGroupAtom);
 
   if (isGroup) {
@@ -157,7 +156,9 @@ const ImageContainerHeader = () => {
               setGridZoom(Math.max(gridZoomRangeValue[0], 5));
             }}
             style={{ cursor: "pointer", display: "flex" }}
-          ></div>
+          >
+            <Apps />
+          </div>
         </SliderContainer>
       </RightContainer>
     </SamplesHeader>
