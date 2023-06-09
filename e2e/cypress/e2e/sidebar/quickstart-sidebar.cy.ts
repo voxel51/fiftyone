@@ -1,5 +1,5 @@
 /**
- * This test suite validates that sidebar filtering functionality works in the fiftyone app with quickstart dataset.
+ * This test suite validates that sidebar filtering and tagger menu functionality works in the fiftyone app with quickstart dataset.
  */
 
 describe("Sidebar filter", () => {
@@ -187,19 +187,71 @@ describe("Sidebar filter", () => {
       });
     });
 
-    it("should be able to filter by ground_truth field in modal view", () => {
+    // it("When filter exists, tagger menu aggregation should be correct", () => {
+
+    // })
+
+    // it("When filter exists, sample tag works correctly", () => {
+
+    // })
+
+    // it("When filter exists, label tag works correctly", () => {
+
+    // })
+
+    // it("Select first two samples in the grid, tagger menu should display correct aggregation info of available labels and samples", () => {
+
+    // })
+
+    // it("Select first two samples in the grid, sample tag works correctly", () => {
+
+    // })
+
+    // it("Select first two samples in the grid, label tag works correctly", () => {
+
+    // })
+
+    it("should be able to filter labels by ground_truth field in modal view", () => {
       // open the modal view
-      // cy.get("[data-cy=modal-view-button]").click();
-      // wait for the modal to open
-      // cy.get("[data-cy=modal]").should("be.visible");
+      cy.get("[data-cy=looker]")
+        .first()
+        .find("div")
+        .eq(0)
+        .click({ force: true });
+      cy.get("[data-cy=modal]").should("be.visible");
+
       // open the ground_truth field
-      // cy.get("[data-cy=sidebar-field-ground_truth]").click();
-      // select the "cat" label
-      // cy.get("[data-cy=selector-\\+ filter by label]").click();
-      // wait for the grid to refresh
-      // cy.get("[data-cy=entry-counts]").should("have.text", "7 of 50 samples");
-      // close the modal
-      // cy.get("[data-cy=modal-close-button]").click();
+      cy.get("[data-cy=sidebar-field-ground_truth]").eq(1).click();
+      cy.get("[data-cy=sidebar-field-ground_truth]").should("be.visible");
+      cy.get("[data-cy=sidebar-field-arrow-ground_truth]").should("be.visible");
+      cy.get("[data-cy=sidebar-field-arrow-ground_truth]").eq(1).click();
+
+      // check aggregation:
+      cy.get(
+        "[data-cy=categorical-filter-ground_truth\\.detections\\.label]"
+      ).should("exist");
+      cy.get("[data-cy=sidebar-field-container-ground_truth")
+        .eq(1)
+        .within(() => {
+          cy.get("[data-cy=entry-count-all]").should("have.text", 3);
+        });
+
+      // check filter options and exclude labels:
+      cy.get("[data-cy=checkbox-bird").should("be.visible").click();
+      cy.get("[data-cy=filter-mode-div]")
+        .should("have.text", "Select detections with label")
+        .click();
+      cy.get("[data-cy=filter-option-Select-detections-with-label]").should(
+        "be.visible"
+      );
+      cy.get("[data-cy=filter-option-Exclude-detections-with-label]")
+        .should("be.visible")
+        .click();
+      cy.get("[data-cy=sidebar-field-container-ground_truth")
+        .eq(1)
+        .within(() => {
+          cy.get("[data-cy=entry-count-part]").should("have.text", "0 of 3");
+        });
     });
 
     it("should be able to use tagger with no samples selected", () => {
