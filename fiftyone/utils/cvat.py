@@ -3104,6 +3104,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         group_id_attr=None,
         issue_tracker=None,
         organization=None,
+        frame_start=None,
+        frame_stop=None,
+        frame_step=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3124,6 +3127,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
         self.organization = organization
+        self.frame_start = self._validate_frame_arg(frame_start, "frame_start")
+        self.frame_stop = self._validate_frame_arg(frame_stop, "frame_stop")
+        self.frame_step = self._validate_frame_arg(frame_step, "frame_step")
 
         # store privately so these aren't serialized
         self._username = username
@@ -3160,6 +3166,18 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self._load_parameters(
             url=url, username=username, password=password, headers=headers
         )
+
+    def _validate_frame_arg(self, arg, arg_name):
+        if arg is None:
+            return None
+
+        if type(arg) not in [int, list, dict]:
+            raise ValueError(
+                "Unsupported type '%s' for argument '%s'. Expected an int, list, or dict."
+                % (type(arg), arg_name)
+            )
+
+        return arg
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -4137,6 +4155,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         chunk_size=None,
         job_assignees=None,
         job_reviewers=None,
+        frame_start=None,
+        frame_stop=None,
+        frame_step=None,
     ):
         """Uploads a list of media to the task with the given ID.
 
@@ -4155,6 +4176,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size (None): the number of frames to upload per ZIP chunk
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
+            frame_start (None): an integer indicating first frame of the
+                corresponding video to upload, by default starts at the
+                beginning of the video (None)
+            frame_stop (None): an integer indicating the last frame of the
+                corresponding video to upload, by default stops at the end
+                of the video (None)
+            frame_step (None): an integer indicating how to filter video
+                frames in a dataset. For example, frame step 25
+                would only include every 25th frame. By default,
+                loads all frames (None)
 
         Returns:
             a list of the job IDs created for the task
@@ -4167,6 +4198,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if chunk_size:
             data["chunk_size"] = chunk_size
+
+        if frame_start is not None:
+            data["start_frame"] = frame_start
+
+        if frame_stop is not None:
+            data["stop_frame"] = frame_stop
+
+        if frame_step is not None:
+            if frame_step < 1:
+                logger.warning(
+                    "Ignoring 'frame_step' as must be great than 1 but found %d."
+                    % frame_step
+                )
+            else:
+                data["frame_filter"] = "step=%d" % frame_step
 
         files, open_files = self._parse_local_files(paths)
 
@@ -4516,8 +4562,60 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 all_tags = task_resp["tags"]
                 all_tracks = task_resp["tracks"]
 
+                def _parse_frame_step(data_resp):
+                    # Parse the frame step from a frame filter like:
+                    # frame_filter="step=5"
+                    filt = data_resp.get("frame_filter", "")
+                    if not filt:
+                        return None
+
+                    steps = [
+                        int(s.split("=")[1])
+                        for s in filt.split(",")
+                        if "step" == s.split("=")[0]
+                    ]
+                    if len(steps) < 1:
+                        return None
+                    else:
+                        return steps[0]
+
                 data_resp = self.get(self.task_data_meta_url(task_id)).json()
                 frames = data_resp["frames"]
+                frame_start = data_resp["start_frame"]
+                frame_stop = data_resp["stop_frame"]
+                frame_step = _parse_frame_step(data_resp)
+
+                def _remap_annotation_frame(
+                    frame_value, frame_start, frame_step
+                ):
+                    frame_step = 1 if frame_step is None else frame_step
+                    return (frame_value + frame_start) * frame_step
+
+                def _remap_annotation_frames(
+                    annos, frame_start, frame_stop, frame_step
+                ):
+                    if frame_start == 0 and frame_step is None:
+                        return annos
+                    # If a video was subsampled
+                    if isinstance(annos, list):
+                        return [
+                            _remap_annotation_frames(
+                                a, frame_start, frame_stop, frame_step
+                            )
+                            for a in annos
+                        ]
+                    if isinstance(annos, dict):
+                        for k, v in annos.items():
+                            if k == "frame":
+                                annos[k] = _remap_annotation_frame(
+                                    v, frame_start, frame_step
+                                )
+                            elif isinstance(v, list) or isinstance(v, dict):
+                                annos[k] = _remap_annotation_frames(
+                                    v, frame_start, frame_stop, frame_step
+                                )
+
+                    return annos
 
                 label_fields = labels_task_map_rev[task_id]
                 label_types = self._get_return_label_types(
@@ -4570,6 +4668,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         attr_id_map,
                         frames,
                         ignore_types,
+                        frame_stop,
                         assigned_scalar_attrs=scalar_attrs,
                     )
                     label_field_results = self._merge_results(
@@ -4587,6 +4686,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         attr_id_map,
                         frames,
                         ignore_types,
+                        frame_stop,
                         assigned_scalar_attrs=scalar_attrs,
                         occluded_attrs=_occluded_attrs,
                         group_id_attrs=_group_id_attrs,
@@ -4615,6 +4715,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attr_id_map,
                             frames,
                             ignore_types,
+                            frame_stop,
                             assigned_scalar_attrs=scalar_attrs,
                             track_index=track_index,
                             track_group_id=track_group_id,
@@ -5156,6 +5257,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
         issue_tracker = config.issue_tracker
+        frame_start = config.frame_start
+        frame_stop = config.frame_stop
+        frame_step = config.frame_step
 
         is_video = samples_batch.media_type == fom.VIDEO
 
@@ -5185,6 +5289,35 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 _issue_tracker = issue_tracker[idx % len(issue_tracker)]
 
+        def _parse_frame_arg(arg, arg_name, idx, is_video, samples_batch):
+            if arg is not None and not is_video:
+                logger.warning(
+                    "Ignoring '%s' argument as it was provided for an image dataset, but is only supported for videos. Instead for image datasets, filter the view being annotated directly."
+                    % arg_name
+                )
+                return None
+
+            if isinstance(arg, list):
+                return arg[idx % len(arg)]
+
+            elif isinstance(arg, dict):
+                if len(samples_batch) != 1:
+                    return None
+                first_filepath = samples_batch.values("filepath")[0]
+                return arg.get(first_filepath, None)
+
+            return arg
+
+        _frame_start = _parse_frame_arg(
+            frame_start, "frame_start", idx, is_video, samples_batch
+        )
+        _frame_stop = _parse_frame_arg(
+            frame_stop, "frame_stop", idx, is_video, samples_batch
+        )
+        _frame_step = _parse_frame_arg(
+            frame_step, "frame_step", idx, is_video, samples_batch
+        )
+
         # Create task
         task_id, class_id_map, attr_id_map = self.create_task(
             task_name,
@@ -5207,6 +5340,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size=chunk_size,
             job_assignees=_job_assignees,
             job_reviewers=_job_reviewers,
+            frame_start=_frame_start,
+            frame_stop=_frame_stop,
+            frame_step=_frame_step,
         )
         self._verify_uploaded_frames(task_id, samples_batch)
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
@@ -5486,6 +5622,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         attr_id_map,
         frames,
         ignore_types,
+        frame_stop,
         assigned_scalar_attrs=False,
         track_index=None,
         track_group_id=None,
@@ -5541,7 +5678,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             and prev_frame is not None
             and not prev_outside
         ):
-            for frame in range(prev_frame + 1, max(frame_id_map) + 1):
+            for frame in range(
+                prev_frame + 1, min(max(frame_id_map), frame_stop) + 1
+            ):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
                 anno["keyframe"] = False
