@@ -1,13 +1,6 @@
-import {
-  ErrorBoundary,
-  HelpPanel,
-  JSONPanel,
-  LookerArrowLeftIcon,
-  LookerArrowRightIcon,
-} from "@fiftyone/components";
+import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { useEventHandler } from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
   Fragment,
@@ -15,7 +8,6 @@ import React, {
   useCallback,
   useEffect,
   useRef,
-  useState,
 } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
@@ -23,9 +15,11 @@ import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import { GroupContextProvider } from "./Group/GroupContextProvider";
+import ModalNavigation from "./ModalNavigation";
 import Sample from "./Sample";
 import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
+import { usePanels } from "./hooks";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -59,41 +53,45 @@ const ContentColumn = styled.div`
   flex-direction: column;
 `;
 
-const Arrow = styled.span<{ isRight?: boolean }>`
-  cursor: pointer;
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  right: ${(props) => (props.isRight ? "0.75rem" : "initial")};
-  left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
-  z-index: 99999;
-  padding: 0.75rem;
-  bottom: 40vh;
-  width: 3rem;
-  height: 3rem;
-  background-color: var(--fo-palette-background-button);
-  box-shadow: 0 1px 3px var(--fo-palette-custom-shadowDark);
-  border-radius: 3px;
-  opacity: 0.6;
-  transition: opacity 0.15s ease-in-out;
-  transition: box-shadow 0.15s ease-in-out;
-  &:hover {
-    opacity: 1;
-    box-shadow: inherit;
-    transition: box-shadow 0.15s ease-in-out;
-    transition: opacity 0.15s ease-in-out;
-  }
-`;
-
 const SampleModal = () => {
-  const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
-  const clearModal = fos.useClearModal();
-  const override = useRecoilValue(fos.pinned3DSample);
-  const disabled = useRecoilValue(fos.disabledPaths);
-  const mode = useRecoilValue(fos.groupStatistics(true));
-
   const lookerRef = useRef<AbstractLooker>();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const disabled = useRecoilValue(fos.disabledPaths);
+  const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
+
+  const mode = useRecoilValue(fos.groupStatistics(true));
+  const override = useRecoilValue(fos.pinned3DSample);
+  const screen = useRecoilValue(fos.fullscreen)
+    ? { width: "100%", height: "100%" }
+    : { width: "95%", height: "90%", borderRadius: "3px" };
+  const isGroup = useRecoilValue(fos.isGroup);
+  const isPcd = useRecoilValue(fos.isPointcloudDataset);
+
+  const clearModal = fos.useClearModal();
+  const { jsonPanel, helpPanel, onNavigate } = usePanels();
+  const tooltip = fos.useTooltip();
+
+  const eventHandler = useCallback(
+    (e) => {
+      tooltip.setDetail(e.detail ? e.detail : null);
+      e.detail && tooltip.setCoords(e.detail.coordinates);
+    },
+    [tooltip]
+  );
+
+  /**
+   * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
+   * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
+   */
+  const lookerRefCallback = useCallback(
+    (looker: AbstractLooker) => {
+      lookerRef.current = looker;
+      looker.addEventListener("tooltip", eventHandler);
+    },
+    [eventHandler]
+  );
+
   const renderEntry = useCallback(
     (
       key: string,
@@ -183,78 +181,7 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    [mode]
-  );
-
-  const screen = useRecoilValue(fos.fullscreen)
-    ? { width: "100%", height: "100%" }
-    : { width: "95%", height: "90%", borderRadius: "3px" };
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const isGroup = useRecoilValue(fos.isGroup);
-  const isPcd = useRecoilValue(fos.isPointcloudDataset);
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
-  const setModal = fos.useSetExpandedSample();
-
-  const [isNavigationHidden, setIsNavigationHidden] = useState(false);
-
-  const navigateNext = useCallback(() => {
-    jsonPanel.close();
-    helpPanel.close();
-    setModal((i) => {
-      return i + 1;
-    });
-  }, [jsonPanel, helpPanel, setModal]);
-
-  const navigatePrevious = useCallback(() => {
-    jsonPanel.close();
-    helpPanel.close();
-
-    setModal((cur) => cur - 1);
-  }, [jsonPanel, helpPanel, setModal]);
-
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
-      }
-      if (e.key === "ArrowLeft") {
-        navigatePrevious();
-      } else if (e.key === "ArrowRight") {
-        navigateNext();
-      } else if (e.key === "c") {
-        setIsNavigationHidden((prev) => !prev);
-      }
-      // note: don't stop event propagation here
-    },
-    [navigateNext, navigatePrevious]
-  );
-
-  useEventHandler(document, "keydown", keyboardHandler);
-
-  const tooltip = fos.useTooltip();
-
-  const eventHandler = useCallback(
-    (e) => {
-      tooltip.setDetail(e.detail ? e.detail : null);
-      e.detail && tooltip.setCoords(e.detail.coordinates);
-    },
-    [tooltip]
-  );
-
-  /**
-   * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
-   * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
-   */
-  const lookerRefCallback = useCallback(
-    (looker: AbstractLooker) => {
-      lookerRef.current = looker;
-      looker.addEventListener("tooltip", eventHandler);
-    },
-    [eventHandler]
+    [disabled, labelPaths, mode, override]
   );
 
   useEffect(() => {
@@ -263,10 +190,6 @@ const SampleModal = () => {
         lookerRef.current.removeEventListener("tooltip", eventHandler);
     };
   }, [eventHandler]);
-  const count = useRecoilValue(
-    fos.count({ path: "", extended: true, modal: false })
-  );
-  const { index } = useRecoilValue(fos.currentModalSample);
 
   return ReactDOM.createPortal(
     <Fragment>
@@ -275,24 +198,9 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }} data-cy="modal">
-          <TooltipInfo coordinates={tooltip.coordinates} />
+          <TooltipInfo />
           <ContentColumn>
-            {!isNavigationHidden && index > 0 && (
-              <Arrow>
-                <LookerArrowLeftIcon
-                  data-cy="nav-left-button"
-                  onClick={navigatePrevious}
-                />
-              </Arrow>
-            )}
-            {!isNavigationHidden && index < count - 1 && (
-              <Arrow isRight>
-                <LookerArrowRightIcon
-                  data-cy="nav-right-button"
-                  onClick={navigateNext}
-                />
-              </Arrow>
-            )}
+            <ModalNavigation onNavigate={onNavigate} />
             <ErrorBoundary onReset={() => {}}>
               <Suspense>
                 {isGroup ? (

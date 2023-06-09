@@ -31,7 +31,7 @@ const Grid: React.FC<{}> = () => {
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
-  const isModalOpen = useRecoilValue(fos.modalSampleIndex) !== null;
+  const isModalOpen = useRecoilValue(fos.isModalActive);
 
   // create flashlight only one time
   const [flashlight] = React.useState(() => {

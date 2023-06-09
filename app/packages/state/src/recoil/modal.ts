@@ -8,6 +8,7 @@ import { filters } from "./filters";
 import { groupSample } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
+import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
 export const sidebarSampleId = selector({
@@ -40,11 +41,16 @@ export const currentModalNavigation = atom<
   default: null,
 });
 
-export const modalSampleIndex = selector<number | null>({
+export const modalSampleIndex = selector<number>({
   key: "modalSampleIndex",
   get: ({ get }) => {
     const current = get(currentModalSample);
-    return current ? current.index : null;
+
+    if (!current) {
+      throw new Error("modal sample is not defined");
+    }
+
+    return current.index;
   },
 });
 
@@ -52,7 +58,12 @@ export const modalSampleId = selector<string | null>({
   key: "modalSampleId",
   get: ({ get }) => {
     const current = get(currentModalSample);
-    return current ? current.id : null;
+
+    if (!current) {
+      throw new Error("modal sample is not defined");
+    }
+
+    return current.id;
   },
 });
 
@@ -75,13 +86,13 @@ export const modalSample = graphQLSelector<
     }
 
     if (
-      data.sample.__typename === "ImageSample" ||
-      data.sample.__typename === "VideoSample"
+      data.sample.__typename !== "ImageSample" &&
+      data.sample.__typename !== "VideoSample"
     ) {
-      return data.sample;
+      throw new Error(`unexpected sample item ${data.sample.__typename}`);
     }
 
-    throw new Error(`unexpected sample item ${data.sample.__typename}`);
+    return mapSampleResponse(data.sample);
   },
   variables: ({ get }) => {
     const current = get(currentModalSample);

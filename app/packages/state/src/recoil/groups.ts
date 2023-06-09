@@ -24,6 +24,7 @@ import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
+import { mapSampleResponse } from "./utils";
 import { dynamicGroupViewQuery, view } from "./view";
 
 export type SliceName = string | undefined | null;
@@ -249,23 +250,6 @@ export const dynamicGroupPaginationQuery = graphQLSelectorFamily<
     },
 });
 
-const mapSampleResponse = (response: ModalSample) => {
-  const actualRawSample = response?.sample;
-
-  // This value may be a string that needs to be deserialized
-  // Only occurs after calling useUpdateSample for pcd sample
-  // - https://github.com/voxel51/fiftyone/pull/2622
-  // - https://github.com/facebook/relay/issues/91
-  if (actualRawSample && typeof actualRawSample === "string") {
-    return {
-      ...response.sample,
-      sample: JSON.parse(actualRawSample),
-    };
-  }
-
-  return response.sample;
-};
-
 export const pcdSampleQueryFamily = graphQLSelectorFamily<
   VariablesOf<pcdSampleQuery>,
   string,
@@ -291,7 +275,8 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
         },
       };
     },
-  mapResponse: mapSampleResponse,
+  mapResponse: (data: ResponseFrom<pcdSampleQuery>) =>
+    mapSampleResponse(data.sample),
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
