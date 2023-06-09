@@ -266,7 +266,6 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
       return {
         dataset: get(datasetName),
         view: get(view),
-        index: get(refresher),
         filter: {
           group: {
             id: groupIdValue,
@@ -310,7 +309,7 @@ export const dynamicGroupPaginationFragment = selectorFamily<
 });
 
 export const activeModalSample = selectorFamily<
-  ResponseFrom<pcdSampleQuery>["sample"]["sample"],
+  NonNullable<ResponseFrom<pcdSampleQuery>["sample"]>["sample"],
   SliceName
 >({
   key: "activeModalSample",
@@ -322,7 +321,7 @@ export const activeModalSample = selectorFamily<
       }
 
       if (get(pinned3DSample) || get(activePcdSlices)?.includes(sliceName)) {
-        return get(pcdSampleQueryFamily(sliceName)).sample;
+        return get(pcdSampleQueryFamily(sliceName))?.sample;
       }
 
       return get(groupSample(sliceName)).sample;
