@@ -22,6 +22,7 @@ import webbrowser
 
 from bson import ObjectId
 import jinja2
+from mongoengine.base.datastructures import BaseDict, BaseList
 import numpy as np
 import requests
 import urllib3
@@ -3077,6 +3078,49 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             or when using ``task_size`` and generating multiple tasks
         organization (None): the name of the organization to use when sending
             requests to CVAT
+        frame_start (None): nonnegative integer(s) defining the first frame of
+            videos to upload when creating video tasks.
+            Supported types are:
+
+            - `integer`: the first frame to upload for each video
+            - `list`: a list of first frame integers corresponding to
+              videos in the given samples. If fewer `frame_start` values are
+              provided than there are videos in the given samples, they will be
+              reassigned with a round-robin strategy
+            - `dict`: a dictionary mapping sample filepath to the first frame
+              integer to use for the corresponding video
+
+            Note: This argument is only supported for videos.
+        frame_stop (None): nonnegative integer(s) defining the last frame of
+            videos to upload when creating video tasks.
+            Supported types are:
+
+            - `integer`: the last frame to upload for each video
+            - `list`: a list of last frame integers corresponding to
+              videos in the given samples. If fewer `frame_stop` values are
+              provided than there are videos in the given samples, they will be
+              reassigned with a round-robin strategy
+            - `dict`: a dictionary mapping sample filepath to the last frame
+              integer to use for the corresponding video
+
+            Note: This argument is only supported for videos.
+        frame_step (None): positive integer(s) defining which frames to sample
+            when creating video tasks.
+            For example, a frame step of 25 will include frames 1, 26, 51 and
+            so on.
+            Supported types are:
+
+            - `integer`: the frame step to apply to each video task
+            - `list`: a list of frame step integers corresponding to
+              videos in the given samples. If fewer `frame_step` values are
+              provided than there are videos in the given samples, they will be
+              reassigned with a round-robin strategy
+            - `dict`: a dictionary mapping sample filepath to the frame step
+              integer to use for the corresponding video
+
+            Note: This argument is only supported for videos and does not
+            support uploading existing tracks when provided.
+
     """
 
     def __init__(
@@ -3170,6 +3214,12 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     def _validate_frame_arg(self, arg, arg_name):
         if arg is None:
             return None
+
+        if isinstance(arg, BaseDict):
+            arg = dict(arg)
+
+        if isinstance(arg, BaseList):
+            arg = list(arg)
 
         if type(arg) not in [int, list, dict]:
             raise ValueError(
@@ -4191,13 +4241,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size (None): the number of frames to upload per ZIP chunk
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
-            frame_start (None): an integer indicating first frame of the
+            frame_start (None): a nonnegative integer indicating first frame of the
                 corresponding video to upload, by default starts at the
                 beginning of the video (None)
-            frame_stop (None): an integer indicating the last frame of the
+            frame_stop (None): a nonnegative integer indicating the last frame of the
                 corresponding video to upload, by default stops at the end
                 of the video (None)
-            frame_step (None): an integer indicating how to filter video
+            frame_step (None): a positive integer indicating how to filter video
                 frames in a dataset. For example, frame step 25
                 would only include every 25th frame. By default,
                 loads all frames (None)
@@ -5435,7 +5485,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self, sample_frames, frame_start, frame_stop, frame_step
     ):
         _frame_start = 0 if frame_start is None else frame_start
-        _frame_stop = sample_frames if frame_stop is None else frame_stop
+        _frame_stop = (
+            sample_frames
+            if frame_stop is None
+            else min(frame_stop, sample_frames)
+        )
         _frame_step = 1 if frame_step is None else frame_step
 
         return int((_frame_stop - _frame_start) / _frame_step)

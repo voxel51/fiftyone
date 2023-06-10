@@ -505,6 +505,48 @@ provided:
     or when using `task_size` and generating multiple tasks
 -   **organization** (*None*): the name of the organization to use when sending
     requests to CVAT
+-   **frame_start** (*None*): nonnegative integer(s) defining the first frame of
+    videos to upload when creating video tasks.
+    Supported types are:
+
+    - `integer`: the first frame to upload for each video
+    - `list`: a list of first frame integers corresponding to
+      videos in the given samples. If fewer `frame_start` values are
+      provided than there are videos in the given samples, they will be
+      reassigned with a round-robin strategy
+    - `dict`: a dictionary mapping sample filepath to the first frame
+      integer to use for the corresponding video
+
+    Note: This argument is only supported for videos.
+-   **frame_stop** (*None*): nonnegative integer(s) defining the last frame of
+    videos to upload when creating video tasks.
+    Supported types are:
+
+    - `integer`: the last frame to upload for each video
+    - `list`: a list of last frame integers corresponding to
+      videos in the given samples. If fewer `frame_stop` values are
+      provided than there are videos in the given samples, they will be
+      reassigned with a round-robin strategy
+    - `dict`: a dictionary mapping sample filepath to the last frame
+      integer to use for the corresponding video
+
+    Note: This argument is only supported for videos.
+-   **frame_step** (*None*): positive integer(s) defining which frames to sample
+    when creating video tasks.
+    For example, a frame step of 25 will include frames 1, 26, 51 and
+    so on.
+    Supported types are:
+
+    - `integer`: the frame step to apply to each video task
+    - `list`: a list of frame step integers corresponding to
+      videos in the given samples. If fewer `frame_step` values are
+      provided than there are videos in the given samples, they will be
+      reassigned with a round-robin strategy
+    - `dict`: a dictionary mapping sample filepath to the frame step
+      integer to use for the corresponding video
+
+    Note: This argument is only supported for videos and does not
+    support uploading existing tracks when provided.
 
 .. _cvat-label-schema:
 
@@ -2125,6 +2167,67 @@ destination fields.
         dest_field=dest_field,
     )
     dataset.delete_annotation_run(anno_key)
+
+
+.. _cvat-frame-args:
+
+Using frame start, stop, step
+-----------------------------
+
+When annotating videos, you can use the arguments `frame_start`, `frame_stop`,
+and `frame_step` to annotate subsampled clips of your videos rather than
+loading every frame into CVAT. These arguments are only supported for video
+tasks and accept either integer values to use for each video task that is
+created, a list of values that will be applied to video tasks in a round-robin
+strategy, or a dictionary of values mapping the video filepath to the
+corresponding integer value.
+
+Note: Uploading existing annotation tracks while using the `frame_step`
+argument is not currently supported.
+
+.. code:: python
+   :linenos:
+
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+
+   dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2).clone()
+   sample_fps = dataset.values("filepath")
+
+   # Start video 1 at frame 10 and video 2 at frame 5
+   frame_start = {sample_fps[0]: 10, sample_fps[1]: 5}
+
+   # For video 1, load every frame after the start
+   # For video 2, load every 10th frame
+   frame_step = [1, 10]
+
+   # Stop all videos at frame 100
+   frame_stop = 100
+
+   anno_key = "frame_args"
+   label_field = "frames.new_detections"
+   label_type = "detections"
+   classes = ["person", "vehicle"]
+
+   # Annotate a new detections field
+   dataset.annotate(
+       anno_key,
+       label_field=label_field,
+       label_type=label_type,
+       classes=classes,
+       frame_start=frame_start,
+       frame_stop=frame_stop,
+       frame_step=frame_step,
+   )
+   print(dataset.get_annotation_info(anno_key))
+
+   # Annotate in CVAT
+
+   dataset.load_annotations(
+       anno_key,
+       cleanup=True,
+   )
+   dataset.delete_annotation_run(anno_key)
 
 .. _cvat-annotating-videos:
 
