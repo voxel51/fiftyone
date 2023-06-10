@@ -4459,6 +4459,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             group_id_attrs,
                         )
 
+                        if _tracks and _frame_step is not None:
+                            # FR: Fully support working with existing
+                            # annotation tracks. This will require additional
+                            # logic to handle mutations of objects outside of
+                            # the uploaded frames.
+                            # Example: A detection track is deleted with
+                            # frame_step 5, then the detections for that track
+                            # between frames 1-5 need to be deleted when the
+                            # annotations are loaded again.
+                            raise ValueError(
+                                "Cannot upload existing annotation tracks for field '%s' when a 'frame_step' is provided"
+                                % label_field
+                            )
+
                     anno_tags.extend(_tags)
                     anno_shapes.extend(_shapes)
                     anno_tracks.extend(_tracks)
@@ -4595,15 +4609,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     )
                     continue
 
-                # Download task data
-                attr_id_map, _class_map_rev = self._get_attr_class_maps(
-                    task_id
-                )
-                task_resp = self.get(self.task_annotation_url(task_id)).json()
-                all_shapes = task_resp["shapes"]
-                all_tags = task_resp["tags"]
-                all_tracks = task_resp["tracks"]
-
                 def _parse_frame_step(data_resp):
                     # Parse the frame step from a frame filter like:
                     # frame_filter="step=5"
@@ -4631,7 +4636,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_value, frame_start, frame_step
                 ):
                     _frame_step = 1 if frame_step is None else frame_step
-                    return (frame_value + frame_start) * _frame_step
+                    return (frame_value * _frame_step) + frame_start
 
                 def _remap_annotation_frames(
                     annos, frame_start, frame_stop, frame_step
@@ -4658,6 +4663,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                                 )
 
                     return annos
+
+                # Download task data
+                attr_id_map, _class_map_rev = self._get_attr_class_maps(
+                    task_id
+                )
+                task_resp = self.get(self.task_annotation_url(task_id)).json()
+                all_shapes = task_resp["shapes"]
+                all_tags = task_resp["tags"]
+                all_tracks = task_resp["tracks"]
+
+                # For videos that were subsampled, remap the frame numbers to
+                # those on the original video
+                all_shapes = _remap_annotation_frames(
+                    all_shapes, frame_start, frame_stop, frame_step
+                )
+                all_tags = _remap_annotation_frames(
+                    all_tags, frame_start, frame_stop, frame_step
+                )
+                all_tracks = _remap_annotation_frames(
+                    all_tracks, frame_start, frame_stop, frame_step
+                )
 
                 label_fields = labels_task_map_rev[task_id]
                 label_types = self._get_return_label_types(
@@ -4711,6 +4737,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frames,
                         ignore_types,
                         frame_stop,
+                        frame_step,
                         assigned_scalar_attrs=scalar_attrs,
                     )
                     label_field_results = self._merge_results(
@@ -4729,6 +4756,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frames,
                         ignore_types,
                         frame_stop,
+                        frame_step,
                         assigned_scalar_attrs=scalar_attrs,
                         occluded_attrs=_occluded_attrs,
                         group_id_attrs=_group_id_attrs,
@@ -4758,6 +4786,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             frames,
                             ignore_types,
                             frame_stop,
+                            frame_step,
                             assigned_scalar_attrs=scalar_attrs,
                             track_index=track_index,
                             track_group_id=track_group_id,
@@ -5357,16 +5386,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frame_stop=frame_stop,
             frame_step=frame_step,
         )
-        self._verify_uploaded_frames(task_id, samples_batch)
+        self._verify_uploaded_frames(
+            task_id, samples_batch, frame_start, frame_stop, frame_step
+        )
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
 
         return task_id, class_id_map, attr_id_map
 
-    def _verify_uploaded_frames(self, task_id, samples):
+    def _verify_uploaded_frames(
+        self, task_id, samples, frame_start, frame_stop, frame_step
+    ):
         task_meta = self.get(self.task_data_meta_url(task_id)).json()
         num_uploaded = task_meta.get("size", 0)
         if samples.media_type == fom.VIDEO:
-            num_frames = samples.count("frames")
+            sample_frames = samples.count("frames")
+            num_frames = self._compute_expected_frames(
+                sample_frames, frame_start, frame_stop, frame_step
+            )
             ftype = "frames"
         else:
             num_frames = len(samples)
@@ -5379,6 +5415,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 num_frames,
                 ftype,
             )
+
+    def _compute_expected_frames(
+        self, sample_frames, frame_start, frame_stop, frame_step
+    ):
+        _frame_start = 0 if frame_start is None else frame_start
+        _frame_stop = sample_frames if frame_stop is None else frame_stop
+        _frame_step = 1 if frame_step is None else frame_step
+
+        return int((_frame_stop - _frame_start) / _frame_step)
 
     def _upload_annotations(
         self,
@@ -5648,6 +5693,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frames,
         ignore_types,
         frame_stop,
+        frame_step,
         assigned_scalar_attrs=False,
         track_index=None,
         track_group_id=None,

@@ -1322,6 +1322,218 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
 
+    def test_frame_start_stop_step(self):
+        dataset = foz.load_zoo_dataset(
+            "quickstart-video", max_samples=1
+        ).clone()
+
+        prev_ids = dataset.values(
+            "frames.detections.detections.id", unwind=True
+        )
+
+        with self.assertRaises(ValueError):
+            # Attempting to upload existing tracks with a frame_step
+            anno_key = "anno_key_1"
+            results = dataset.annotate(
+                anno_key,
+                backend="cvat",
+                label_field="frames.detections",
+                frame_start=10,
+                frame_stop=100,
+                frame_step=5,
+            )
+
+        with self.assertRaises(ValueError):
+            # Frame step must be greater than 1
+            anno_key = "anno_key_2"
+            results = dataset.annotate(
+                anno_key,
+                backend="cvat",
+                label_field="frames.detections",
+                frame_start=10,
+                frame_stop=100,
+                frame_step=0,
+            )
+
+        # Test successful upload and download of annotations
+        anno_key = "anno_key_3"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="frames.detections",
+            frame_start=10,
+            frame_stop=100,
+        )
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = dataset.first().frames[11].detections.detections[0].id
+            self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+
+            sample_id = list(list(results.frame_id_map.values())[0].values())[
+                0
+            ]["sample_id"]
+            self.assertEqual(sample_id, dataset.first().id)
+
+        dataset.reload()
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("frames.detections.detections.id", unwind=True),
+        )
+
+        # Test creating new shapes, tags and tracks
+        anno_key = "anno_key_4"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_schema={
+                "frames.detections_new": {
+                    "type": "detections",
+                    "classes": ["test_track", "test_shape"],
+                },
+                "frames.tags_new": {
+                    "type": "classification",
+                    "classes": ["test_tag"],
+                },
+            },
+            frame_start=10,
+            frame_stop=100,
+            frame_step=5,
+        )
+        track_start = 5
+        track_end = 10
+        shape_frame = 1
+        tag_frame = 1
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _create_annotation(
+                api,
+                task_id,
+                track=(track_start, track_end),
+            )
+            shape = {
+                "type": "rectangle",
+                "frame": shape_frame,
+                "label_id": _get_label(api, task_id, label="test_shape"),
+                "group": 0,
+                "attributes": [],
+                "points": [10, 20, 30, 40],
+                "occluded": False,
+            }
+            _create_annotation(api, task_id, shape=shape)
+            tag = {
+                "frame": tag_frame,
+                "label_id": _get_label(api, task_id, label="test_tag"),
+                "group": 0,
+                "attributes": [],
+            }
+            _create_annotation(api, task_id, tag=tag)
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        start = 10
+        step = 5
+        remapped_track_start = start + (track_start * step) + 1
+        remapped_track_end = start + (track_end * step) + 1
+        remapped_track_ids = list(
+            range(remapped_track_start, remapped_track_end)
+        )
+
+        remapped_shape_ids = [shape_frame * step + start + 1]
+        remapped_tag_ids = [tag_frame * step + start + 1]
+
+        track_view = dataset.filter_labels(
+            "frames.detections_new", F("label") == "test_track"
+        )
+        shape_view = dataset.filter_labels(
+            "frames.detections_new", F("label") == "test_shape"
+        )
+
+        self.assertListEqual(
+            remapped_track_ids,
+            track_view.match_frames(
+                F("detections_new.detections").length() > 0
+            ).values("frames.frame_number", unwind=True),
+        )
+
+        self.assertListEqual(
+            remapped_shape_ids,
+            shape_view.match_frames(
+                F("detections_new.detections").length() > 0
+            ).values("frames.frame_number", unwind=True),
+        )
+
+        self.assertListEqual(
+            remapped_tag_ids,
+            dataset.match_frames(F("tags_new").exists()).values(
+                "frames.frame_number", unwind=True
+            ),
+        )
+
+        # Test deleting shapes with a frame step (not tracks which are not
+        # allowed)
+
+        shape_start = 10
+        shape_end = 51
+        sample = dataset.first()
+        for frame_number, frame in sample.frames.items():
+            if frame_number >= shape_start and frame_number < shape_end:
+                frame["delete_shapes"] = fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="test", bounding_box=[0.1, 0.1, 0.1, 0.1]
+                        )
+                    ]
+                )
+        sample.save()
+
+        frame_start = 5
+        frame_stop = 35
+        frame_step = 5
+        delete_shape_frame = 2
+        remapped_delete_shape_frame = (
+            (delete_shape_frame * frame_step) + frame_start + 1
+        )
+        shape_id = (
+            sample.frames[remapped_delete_shape_frame]
+            .delete_shapes.detections[0]
+            .id
+        )
+
+        all_shape_ids = dataset.values(
+            "frames.delete_shapes.detections.id", unwind=True
+        )
+
+        anno_key = "anno_key_5"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="frames.delete_shapes",
+            frame_start=frame_start,
+            frame_stop=frame_stop,
+            frame_step=frame_step,
+        )
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _delete_shape(api, task_id, shape_id)
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        remaining_shape_ids = sorted(set(all_shape_ids) - {shape_id})
+
+        self.assertListEqual(
+            remaining_shape_ids,
+            sorted(
+                dataset.values(
+                    "frames.delete_shapes.detections.id", unwind=True
+                )
+            ),
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
