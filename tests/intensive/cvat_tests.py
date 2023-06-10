@@ -1536,6 +1536,87 @@ class CVATTests(unittest.TestCase):
             ),
         )
 
+        # Test list args
+        start = 10
+        step = 5
+        anno_key = "anno_key_6"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="frames.detections_new_2",
+            label_type="detections",
+            classes=["test"],
+            frame_start=[start],
+            frame_stop=[100],
+            frame_step=[step],
+        )
+        track_start = 5
+        track_end = 10
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _create_annotation(
+                api,
+                task_id,
+                track=(track_start, track_end),
+            )
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        remapped_track_start = start + (track_start * step) + 1
+        remapped_track_end = start + (track_end * step) + 1
+        remapped_track_ids = list(
+            range(remapped_track_start, remapped_track_end)
+        )
+
+        self.assertListEqual(
+            remapped_track_ids,
+            dataset.match_frames(
+                F("detections_new_2.detections").length() > 0
+            ).values("frames.frame_number", unwind=True),
+        )
+
+        # Test dict args
+        start = 10
+        step = 5
+        fp = dataset.first().filepath
+        anno_key = "anno_key_7"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="frames.detections_new_3",
+            label_type="detections",
+            classes=["test"],
+            frame_start={fp: start},
+            frame_stop={fp: 100},
+            frame_step={fp: step},
+        )
+        track_start = 5
+        track_end = 10
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _create_annotation(
+                api,
+                task_id,
+                track=(track_start, track_end),
+            )
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        remapped_track_start = start + (track_start * step) + 1
+        remapped_track_end = start + (track_end * step) + 1
+        remapped_track_ids = list(
+            range(remapped_track_start, remapped_track_end)
+        )
+
+        self.assertListEqual(
+            remapped_track_ids,
+            dataset.match_frames(
+                F("detections_new_3.detections").length() > 0
+            ).values("frames.frame_number", unwind=True),
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
