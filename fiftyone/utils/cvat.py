@@ -3177,6 +3177,21 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
                 % (type(arg), arg_name)
             )
 
+        if arg_name == "frame_step":
+            if isinstance(arg, int):
+                arg_list = [arg]
+            elif isinstance(arg, dict):
+                arg_list = arg.values()
+            else:
+                arg_list = arg
+
+            for _arg in arg_list:
+                if _arg < 1:
+                    raise ValueError(
+                        "'frame_step' must be greater than 1 but found %d."
+                        % _arg
+                    )
+
         return arg
 
 
@@ -4208,7 +4223,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if frame_step is not None:
             if frame_step < 1:
                 logger.warning(
-                    "Ignoring 'frame_step' as must be great than 1 but found %d."
+                    "Ignoring 'frame_step' as it must be greater than 1 but found %d."
                     % frame_step
                 )
             else:

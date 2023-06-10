@@ -1349,7 +1349,9 @@ class CVATTests(unittest.TestCase):
             results = dataset.annotate(
                 anno_key,
                 backend="cvat",
-                label_field="frames.detections",
+                label_field="frames.new_detections",
+                label_type="detections",
+                classes=["test"],
                 frame_start=10,
                 frame_stop=100,
                 frame_step=0,
