@@ -6166,9 +6166,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             _frame_step = 1 if frame_step is None else frame_step
             return sampled_frame_id + _frame_step
 
-        sampled_frame_id = 0 if frame_start is None else frame_start
         frame_id = -1
         for sample in samples:
+            sampled_frame_id = 0 if frame_start is None else frame_start
             metadata = sample.metadata
 
             if is_video:
