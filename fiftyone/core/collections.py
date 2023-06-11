@@ -935,6 +935,9 @@ class SampleCollection(object):
                 path, ftype=fof.EmbeddedDocumentField, leaf=True
             )
 
+            if field is None:
+                return tuple()
+
             field_names = field._get_default_fields(
                 include_private=include_private,
                 use_db_fields=use_db_fields,
@@ -983,6 +986,9 @@ class SampleCollection(object):
                 leaf=True,
             )
 
+            if field is None:
+                return tuple()
+
             field_names = field._get_default_fields(
                 include_private=include_private,
                 use_db_fields=use_db_fields,
@@ -994,6 +1000,22 @@ class SampleCollection(object):
             include_private=include_private,
             use_db_fields=use_db_fields,
         )
+
+    def _is_default_field(self, path):
+        path, is_frame_field = self._handle_frame_field(path)
+
+        chunks = path.rsplit(".", 1)
+        if len(chunks) > 1:
+            root = chunks[0]
+        else:
+            root = None
+
+        if is_frame_field:
+            default_fields = self._get_default_frame_fields(path=root)
+        else:
+            default_fields = self._get_default_sample_fields(path=root)
+
+        return path in default_fields
 
     def get_field(
         self,
@@ -1168,9 +1190,8 @@ class SampleCollection(object):
             a dictionary mapping field paths to field types or lists of field
             types
         """
-        schema = self.get_field_schema()
         return self._get_dynamic_field_schema(
-            schema, fields=fields, recursive=recursive
+            fields=fields, recursive=recursive
         )
 
     def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
@@ -1193,17 +1214,17 @@ class SampleCollection(object):
         if not self._has_frame_fields():
             return None
 
-        schema = self.get_frame_field_schema()
-        prefix = self._FRAMES_PREFIX
         return self._get_dynamic_field_schema(
-            schema, prefix=prefix, fields=fields, recursive=recursive
+            frames=True, fields=fields, recursive=recursive
         )
 
     def _get_dynamic_field_schema(
-        self, schema, prefix=None, fields=None, recursive=True
+        self, frames=False, fields=None, recursive=True
     ):
-        if prefix is None:
-            prefix = ""
+        if frames:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
 
         if fields is not None:
             if etau.is_str(fields):
@@ -1211,19 +1232,17 @@ class SampleCollection(object):
             else:
                 fields = list(fields)
 
-            schema = {
-                k: v
-                for k, v in schema.items()
-                if any(f == k or f.startswith(k + ".") for f in fields)
-            }
-
-        dynamic_schema = self._do_get_dynamic_field_schema(schema, prefix)
+        dynamic_schema = self._do_get_dynamic_field_schema(
+            schema, frames=frames, fields=fields
+        )
 
         # Recurse into new dynamic fields
         if recursive:
             s = dynamic_schema
             while True:
-                s = self._do_get_dynamic_field_schema(s, prefix, new=True)
+                s = self._do_get_dynamic_field_schema(
+                    s, frames=frames, new=True
+                )
                 if s:
                     dynamic_schema.update(s)
                 else:
@@ -1255,19 +1274,34 @@ class SampleCollection(object):
 
         return dynamic_schema
 
-    def _do_get_dynamic_field_schema(self, schema, prefix, new=False):
+    def _do_get_dynamic_field_schema(
+        self, schema, frames=False, fields=None, new=False
+    ):
+        if frames:
+            prefix = self._FRAMES_PREFIX
+        else:
+            prefix = ""
+
         schema = fof.flatten_schema(schema)
+
+        if fields is not None:
+            schema = {
+                k: v
+                for k, v in schema.items()
+                if any(f == k or f.startswith(k + ".") for f in fields)
+            }
 
         aggs = []
         paths = []
         for path, field in schema.items():
+            _path = prefix + path
+
             is_list_field = False
             while isinstance(field, fof.ListField):
                 field = field.field
                 is_list_field = True
 
             if isinstance(field, fof.EmbeddedDocumentField):
-                _path = prefix + path
                 if is_list_field and not _path.endswith("[]"):
                     _path += "[]"
 
@@ -1280,8 +1314,12 @@ class SampleCollection(object):
                     _doc_type = None
 
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
-            elif field is None and is_list_field:
-                agg = foa.ListSchema(prefix + path)
+            elif is_list_field:
+                # Inferring subfields of default list fields is not allowed
+                if field is not None and not self._is_default_field(_path):
+                    agg = foa.ListSchema(_path)
+                else:
+                    agg = None
             else:
                 agg = None
 
