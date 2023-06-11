@@ -150,6 +150,73 @@ class LabelTests(unittest.TestCase):
         self.assertFalse("classification" in dynamic)
         self.assertFalse("classifications" in dynamic)
 
+    @drop_datasets
+    def test_dynamic_label_tags(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            dynamic=fo.DynamicEmbeddedDocument(
+                classification=fo.Classification(label="hi"),
+                classification_list=[
+                    fo.Classification(label="foo"),
+                    fo.Classification(label="bar"),
+                ],
+                classifications=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="spam"),
+                        fo.Classification(label="eggs"),
+                    ]
+                ),
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="image2.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        label_fields = set(dataset._get_label_fields())
+
+        self.assertSetEqual(
+            label_fields,
+            {
+                "dynamic.classification",
+                "dynamic.classification_list",
+                "dynamic.classifications",
+            },
+        )
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels("test")
+
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 5})
+
+        dataset.untag_labels("test")
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels("test", label_fields="dynamic.classification_list")
+
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 2})
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="dynamic.classification_list"
+            ),
+            {"test": 2},
+        )
+
+        dataset.untag_labels(
+            "test", label_fields="dynamic.classification_list"
+        )
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="dynamic.classification_list"
+            ),
+            {},
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
