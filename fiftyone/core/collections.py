@@ -1308,7 +1308,8 @@ class SampleCollection(object):
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
             elif is_list_field:
                 # Processing untyped default list fields is not allowed
-                if field is None and not self._is_default_field(_path):
+                _clean_path = _path.replace("[]", "")
+                if field is None and not self._is_default_field(_clean_path):
                     agg = foa.ListSchema(_path)
                 else:
                     agg = None
