@@ -89,20 +89,20 @@ class LabelTests(unittest.TestCase):
 
     @drop_datasets
     def test_dynamic_label_fields(self):
-        dynamic_data = fo.DynamicEmbeddedDocument(
+        dynamic_doc = fo.DynamicEmbeddedDocument(
             classification=fo.Classification(label="label"),
             classifications=[fo.Classification(label="label")],
             more_classifications=fo.Classifications(
                 classifications=[fo.Classification(label="label")]
             ),
         )
-        sample = fo.Sample(filepath="image.jpg", dynamic=dynamic_data)
+        sample = fo.Sample(filepath="image.jpg", dynamic=dynamic_doc)
 
         dataset = fo.Dataset()
         dataset.add_sample(sample)
         dataset.add_dynamic_sample_fields()
 
-        label_id = dynamic_data["classification"].id
+        label_id = dynamic_doc["classification"].id
         view = dataset.select_labels(
             [
                 {
@@ -117,7 +117,7 @@ class LabelTests(unittest.TestCase):
         self.assertFalse("classifications" in dynamic)
         self.assertFalse("more_classifications" in dynamic)
 
-        label_id = dynamic_data["classifications"][0].id
+        label_id = dynamic_doc["classifications"][0].id
         view = dataset.select_labels(
             [
                 {
@@ -133,7 +133,7 @@ class LabelTests(unittest.TestCase):
         self.assertFalse("classification" in dynamic)
         self.assertFalse("more_classifications" in dynamic)
 
-        label_id = dynamic_data["more_classifications"].classifications[0].id
+        label_id = dynamic_doc["more_classifications"].classifications[0].id
         view = dataset.select_labels(
             [
                 {
