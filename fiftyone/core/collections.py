@@ -931,11 +931,8 @@ class SampleCollection(object):
         use_db_fields=False,
     ):
         if path is not None:
-            field = self.get_field(
-                path, ftype=fof.EmbeddedDocumentField, leaf=True
-            )
-
-            if field is None:
+            field = self.get_field(path, leaf=True)
+            if not isinstance(field, fof.EmbeddedDocumentField):
                 return tuple()
 
             field_names = field._get_default_fields(
@@ -980,13 +977,8 @@ class SampleCollection(object):
         use_db_fields=False,
     ):
         if path is not None:
-            field = self.get_field(
-                self._FRAMES_PREFIX + path,
-                ftype=fof.EmbeddedDocumentField,
-                leaf=True,
-            )
-
-            if field is None:
+            field = self.get_field(self._FRAMES_PREFIX + path, leaf=True)
+            if not isinstance(field, fof.EmbeddedDocumentField):
                 return tuple()
 
             field_names = field._get_default_fields(
@@ -1315,7 +1307,7 @@ class SampleCollection(object):
 
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
             elif is_list_field:
-                # Inferring subfields of default list fields is not allowed
+                # Processing untyped default list fields is not allowed
                 if field is None and not self._is_default_field(_path):
                     agg = foa.ListSchema(_path)
                 else:
