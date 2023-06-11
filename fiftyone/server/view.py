@@ -172,7 +172,7 @@ def get_extended_view(
 
         if _LABEL_TAGS in filters:
             label_tags = filters.get(_LABEL_TAGS)
-            label_fields = [path for path in view._get_label_fields()]
+            label_fields = view._get_label_fields()
 
             if (
                 not count_label_tags

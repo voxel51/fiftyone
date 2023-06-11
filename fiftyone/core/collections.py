@@ -9626,7 +9626,7 @@ class SampleCollection(object):
 
         field = schema[field_name]
 
-        while isinstance(field, fof.ListField):
+        if isinstance(field, fof.ListField):
             field = field.field
 
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
