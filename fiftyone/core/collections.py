@@ -1316,7 +1316,7 @@ class SampleCollection(object):
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
             elif is_list_field:
                 # Inferring subfields of default list fields is not allowed
-                if field is not None and not self._is_default_field(_path):
+                if field is None and not self._is_default_field(_path):
                     agg = foa.ListSchema(_path)
                 else:
                     agg = None
