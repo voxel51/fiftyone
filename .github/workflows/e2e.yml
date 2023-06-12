@@ -6,6 +6,7 @@ jobs:
   test-e2e:
     runs-on: ubuntu-latest
     env:
+      FIFTYONE_DATABASE_ADMIN: true
       FIFTYONE_DO_NOT_TRACK: true
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
     defaults:
