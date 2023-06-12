@@ -1144,14 +1144,14 @@ class DatasetMixin(object):
     @classmethod
     def _parse_path(cls, path, reload=True, allow_missing=False):
         #
-        # @todo ideally `reload()` would not be necessary
+        # @todo ideally `reload()` would not be necessary here
         #
-        # We're currently reloading here to avoid clobbering schema updates
-        # from other concurrent usage, which can happen since `DatasetDocument`
+        # We're currently reloading to avoid clobbering schema updates from
+        # other concurrent usage, which can happen since `DatasetDocument`
         # instances can stay in-memory without `reload()` for quite awhile.
         #
         #  Ideally `save()` would gracefully update individual elements of
-        # `DatasetDocument.sample_fields`, but that is not currently supported
+        # `DatasetDocument` list fields, but that is not currently supported
         # by mongoengine...
         #
         # https://docs.mongoengine.org/guide/document-instances.html#saving-and-deleting-documents
