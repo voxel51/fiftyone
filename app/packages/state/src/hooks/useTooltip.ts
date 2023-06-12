@@ -1,5 +1,6 @@
-import { useRecoilState, atom } from "recoil";
 import { useEffect } from "react";
+import { atom, useRecoilState } from "recoil";
+
 const tooltipState = atom({
   key: "tooltipState",
   default: { hovering: false },

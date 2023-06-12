@@ -1,20 +1,19 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
-import { v4 as uuid } from "uuid";
-
-import { KeypointSkeleton, MaskTargets } from "@fiftyone/looker/src/state";
-
 import {
   isRgbMaskTargets,
   normalizeMaskTargetsCase,
 } from "@fiftyone/looker/src/overlays/util";
+import { KeypointSkeleton, MaskTargets } from "@fiftyone/looker/src/state";
 import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
-import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
+import { atomFamily, selector, selectorFamily } from "recoil";
+import { v4 as uuid } from "uuid";
+import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
 import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
+import { modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -327,7 +326,7 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
       const labels = get(atoms.hiddenLabels);
       const {
         sample: { _id },
-      } = get(atoms.modal);
+      } = get(modalSample);
 
       if (_id) {
         return Object.entries(labels)
@@ -452,11 +451,6 @@ export const mediaFields = selector<string[]>({
   },
 });
 
-export const modalNavigation = selector<atoms.ModalNavigation>({
-  key: "modalNavigation",
-  get: ({ get }) => get(atoms.modal).navigation,
-});
-
 export const viewStateForm = selectorFamily<
   StateForm,
   {
@@ -485,7 +479,7 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(atoms.modal);
+      const modal = get(atoms.modalSampleIndex) !== null;
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);

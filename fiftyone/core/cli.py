@@ -521,10 +521,10 @@ def _print_all_dataset_info(glob_patt, sort_by, reverse):
 
 
 def _format_cell(cell):
-    if cell == True:
+    if cell is True:
         return "\u2713"
 
-    if cell == False:
+    if cell is False:
         return ""
 
     if cell is None:
@@ -3072,6 +3072,9 @@ class PluginsEnableCommand(Command):
 
         # Enable multiple plugins
         fiftyone plugins enable <name1> <name2> ...
+
+        # Enable all plugins
+        fiftyone plugins enable --all
     """
 
     @staticmethod
@@ -3082,10 +3085,21 @@ class PluginsEnableCommand(Command):
             nargs="*",
             help="the plugin name(s)",
         )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to enable all plugins",
+        )
 
     @staticmethod
     def execute(parser, args):
-        for name in args.name:
+        if args.all:
+            names = fop.list_disabled_plugins()
+        else:
+            names = args.name
+
+        for name in names:
             fop.enable_plugin(name)
 
 
@@ -3099,6 +3113,9 @@ class PluginsDisableCommand(Command):
 
         # Disable multiple plugins
         fiftyone plugins disable <name1> <name2> ...
+
+        # Disable all plugins
+        fiftyone plugins disable --all
     """
 
     @staticmethod
@@ -3109,10 +3126,21 @@ class PluginsDisableCommand(Command):
             nargs="*",
             help="the plugin name(s)",
         )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to disable all plugins",
+        )
 
     @staticmethod
     def execute(parser, args):
-        for name in args.name:
+        if args.all:
+            names = fop.list_enabled_plugins()
+        else:
+            names = args.name
+
+        for name in names:
             fop.disable_plugin(name)
 
 
@@ -3126,6 +3154,9 @@ class PluginsDeleteCommand(Command):
 
         # Delete multiple plugins from local disk
         fiftyone plugins delete <name1> <name2> ...
+
+        # Delete all plugins from local disk
+        fiftyone plugins delete --all
     """
 
     @staticmethod
@@ -3136,10 +3167,21 @@ class PluginsDeleteCommand(Command):
             nargs="*",
             help="the plugin name(s)",
         )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to delete all plugins",
+        )
 
     @staticmethod
     def execute(parser, args):
-        for name in args.name:
+        if args.all:
+            names = fop.list_downloaded_plugins()
+        else:
+            names = args.name
+
+        for name in names:
             fop.delete_plugin(name)
 
 
