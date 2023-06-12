@@ -1122,7 +1122,7 @@ Enables the given plugin(s).
 
 .. code-block:: text
 
-    fiftyone plugins enable [-h] [NAME ...]
+    fiftyone plugins enable [-h] [-a] [NAME ...]
 
 **Arguments**
 
@@ -1133,6 +1133,7 @@ Enables the given plugin(s).
 
     optional arguments:
       -h, --help  show this help message and exit
+      -a, --all   whether to enable all plugins
 
 **Examples**
 
@@ -1144,6 +1145,9 @@ Enables the given plugin(s).
     # Enable multiple plugins
     fiftyone plugins enable <name1> <name2> ...
 
+    # Enable all plugins
+    fiftyone plugins enable --all
+
 .. _cli-fiftyone-plugins-disable:
 
 Disable plugins
@@ -1153,7 +1157,7 @@ Disables the given plugin(s).
 
 .. code-block:: text
 
-    fiftyone plugins disable [-h] [NAME ...]
+    fiftyone plugins disable [-h] [-a] [NAME ...]
 
 **Arguments**
 
@@ -1164,6 +1168,7 @@ Disables the given plugin(s).
 
     optional arguments:
       -h, --help  show this help message and exit
+      -a, --all   whether to disable all plugins
 
 **Examples**
 
@@ -1175,6 +1180,9 @@ Disables the given plugin(s).
     # Disable multiple plugins
     fiftyone plugins disable <name1> <name2> ...
 
+    # Disable all plugins
+    fiftyone plugins disable --all
+
 .. _cli-fiftyone-plugins-delete:
 
 Delete plugins
@@ -1184,7 +1192,7 @@ Delete plugins from your local machine.
 
 .. code-block:: text
 
-    fiftyone plugins delete [-h] [NAME ...]
+    fiftyone plugins delete [-h] [-a] [NAME ...]
 
 **Arguments**
 
@@ -1195,6 +1203,7 @@ Delete plugins from your local machine.
 
     optional arguments:
       -h, --help  show this help message and exit
+      -a, --all   whether to delete all plugins
 
 **Examples**
 
@@ -1205,6 +1214,9 @@ Delete plugins from your local machine.
 
     # Delete multiple plugins from local disk
     fiftyone plugins delete <name1> <name2> ...
+
+    # Delete all plugins from local disk
+    fiftyone plugins delete --all
 
 .. _cli-fiftyone-utils:
 

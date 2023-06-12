@@ -116,7 +116,7 @@ async def paginate_samples(
 
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
-        pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
+        pipeline.append({"$addFields": {"frames": {"$slice": ["$frames", 1]}}})
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
