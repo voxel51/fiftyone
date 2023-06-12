@@ -39,7 +39,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
 
-import asyncio
 
 try:
     import pprintpp as _pprint
