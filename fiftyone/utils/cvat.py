@@ -3092,7 +3092,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
                 -   ``integer``: the last frame to upload for each video
                 -   ``list``: a list of last frame integers corresponding to
                     videos in the given samples
-                -   ``dict``: a dictionary mapping sample filepath to last
+                -   ``dict``: a dictionary mapping sample filepaths to last
                     frame integers to use for the corresponding videos
 
         frame_step (None): positive integer(s) defining which frames to sample
@@ -3101,7 +3101,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
                 -   ``integer``: the frame step to apply to each video task
                 -   ``list``: a list of frame step integers corresponding to
                     videos in the given samples
-                -   ``dict``: a dictionary mapping sample filepath to frame
+                -   ``dict``: a dictionary mapping sample filepaths to frame
                     step integers to use for the corresponding videos
 
             Note that this argument cannot be provided when uploading existing
