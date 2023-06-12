@@ -9,7 +9,6 @@ import * as fos from "@fiftyone/state";
 import {
   configuredSidebarModeDefault,
   groupStatistics,
-  isGroup,
   sidebarMode,
 } from "@fiftyone/state";
 import RadioGroup from "../Common/RadioGroup";
@@ -130,10 +129,12 @@ type OptionsProps = {
 };
 
 const Options = ({ modal, bounds }: OptionsProps) => {
-  const group = useRecoilValue(isGroup);
+  const isGroup = useRecoilValue(fos.isGroup);
+  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+
   return (
     <Popout modal={modal} bounds={bounds}>
-      {group && <GroupStatistics modal={modal} />}
+      {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
       {!modal && <SidebarMode modal={modal} />}

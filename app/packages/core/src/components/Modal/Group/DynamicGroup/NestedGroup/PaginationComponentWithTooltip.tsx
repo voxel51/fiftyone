@@ -30,6 +30,10 @@ export const PaginationComponentWithTooltip = React.memo(
         return `${orderBy}: ${sample?.sample[orderBy] ?? "click to load"}`;
       }, [dynamicGroupSamplesStoreMap, isButton, orderBy, currentPage]);
 
+      otherProps["data-cy"] = `dynamic-group-pagination-item-${
+        isButton ? "btn" : currentPage
+      }`;
+
       if (tooltipText) {
         return (
           <Tooltip text={tooltipText} placement="top-center">

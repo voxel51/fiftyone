@@ -1,27 +1,23 @@
-import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
-import { groupField, groupSlice, isGroup } from "../recoil";
+import { useRecoilCallback } from "recoil";
+import {
+  currentModalNavigation,
+  currentModalSample,
+  modalSampleIndex,
+} from "../recoil";
 
-import * as atoms from "../recoil/atoms";
+export default () => {
+  return useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (index: number | ((current: number) => number)) => {
+        if (index instanceof Function) {
+          const current = await snapshot.getPromise(modalSampleIndex);
+          index = index(current);
+        }
+        const getIndex = await snapshot.getPromise(currentModalNavigation);
+        const id = await getIndex(index);
 
-export default (withGroup: boolean = true) => {
-  const field = useRecoilValue(groupField);
-  const group = useRecoilValue(isGroup);
-  return useRecoilTransaction_UNSTABLE(
-    ({ set }) =>
-      (sample: atoms.SampleData, navigation?: atoms.ModalNavigation) => {
-        set(atoms.modal, (current) => {
-          return {
-            ...sample,
-            navigation: navigation ? navigation : current.navigation,
-          };
-        });
-
-        group &&
-          withGroup &&
-          field &&
-          sample.sample[field]?.name &&
-          set(groupSlice(true), sample.sample[field]?.name);
+        set(currentModalSample, { id, index });
       },
-    [group, field, withGroup]
+    []
   );
 };

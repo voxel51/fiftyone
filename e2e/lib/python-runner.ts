@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import dedent from "dedent";
+import dedent from "ts-dedent";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -26,7 +26,7 @@ export class PythonRunner {
 
     console.log(`Spawning python process with source code:`);
     console.log("=====================================");
-    console.log(sourceCode);
+    console.log(dedentedSourceCode);
     console.log("=====================================");
     console.log("fiftyone related env:");
     console.log("=====================================");

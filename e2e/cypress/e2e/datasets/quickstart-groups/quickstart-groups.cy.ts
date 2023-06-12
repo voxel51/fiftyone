@@ -32,7 +32,7 @@ describe("quickstart-groups dataset", () => {
     cy.get("[data-cy=selector-slice]").should("have.value", "left");
   });
 
-  context.only("group modal", () => {
+  context("group modal", () => {
     beforeEach(() => {
       cy.get("[data-cy=looker]").first().click();
 

@@ -6,6 +6,7 @@ type ProcessId = number;
 declare global {
   namespace Cypress {
     interface Chainable<Subject> {
+      clearViewStages(): Chainable<void>;
       executePythonFixture(pythonFixture: string): Chainable<ProcessId>;
       executePythonCode(sourceCode: string): Chainable<ProcessId>;
       consoleLog(message: string): Chainable<void>;

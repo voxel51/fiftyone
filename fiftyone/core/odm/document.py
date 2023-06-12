@@ -298,28 +298,72 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def has_field(self, field_name):
         # pylint: disable=no-member
-        return field_name in self._fields_ordered
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            field = self._fields.get(chunks[0], None)
+            try:
+                return field.has_field(chunks[1])
+            except AttributeError:
+                return False
+
+        return field_name in self._fields
 
     def get_field(self, field_name):
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            value = getattr(self, chunks[0])
+            if value is not None:
+                return value.get_field(chunks[1])
+
+            if self.has_field(field_name):
+                return None
+
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
         return getattr(self, field_name)
 
-    def set_field(
-        self,
-        field_name,
-        value,
-        create=True,
-        validate=True,
-        dynamic=False,
-    ):
-        if not create and not self.has_field(field_name):
+    def _get_field(self, field_name):
+        # pylint: disable=no-member
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            field = self._fields.get(chunks[0], None)
+            if field is not None:
+                field = field.get_field(chunks[1])
+        else:
+            field = self._fields.get(field_name, None)
+
+        if field is None:
             raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+        return field
+
+    def set_field(self, field_name, value, create=True):
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            doc = self.get_field(chunks[0])
+            return doc.set_field(chunks[1], value, create=create)
+
+        if not create and not self.has_field(field_name):
+            raise ValueError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
 
         setattr(self, field_name, value)
 
     def clear_field(self, field_name):
-        if not self.has_field(field_name):
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            value = self.get_field(chunks[0])
+            if value is not None:
+                return value.clear_field(chunks[1])
+
+            if self.has_field(field_name):
+                return
+
             raise AttributeError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
@@ -333,13 +377,11 @@ class MongoEngineBaseDocument(SerializableDocument):
             )
 
     def field_to_mongo(self, field_name):
-        # pylint: disable=no-member
         value = self.get_field(field_name)
-        return self._fields[field_name].to_mongo(value)
+        return self._get_field(field_name).to_mongo(value)
 
     def field_to_python(self, field_name, value):
-        # pylint: disable=no-member
-        return self._fields[field_name].to_python(value)
+        return self._get_field(field_name).to_python(value)
 
     def _get_field_names(self, include_private=False, use_db_fields=False):
         field_names = self._fields_ordered

@@ -1,5 +1,5 @@
-import { isEmpty, xor } from "lodash";
 import * as fos from "@fiftyone/state";
+import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
 // website Color Universal Design (CUD). This palette is a “Set of colors that
@@ -35,6 +35,7 @@ export const fiftyoneDefaultColorPalette = [
 export const ACTIVE_FIELD = {
   ["json"]: "JSON editor",
   ["global"]: "Global settings",
+  ["_label_tags"]: "label tags",
 };
 
 // disregard the order
@@ -92,4 +93,11 @@ export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
     ) &&
     (savedSetting.fields?.length == 0 || !savedSetting.fields)
   );
+};
+
+export const getDisplayName = (path: string) => {
+  if (path === "tags") {
+    return "sample tags";
+  }
+  return path;
 };
