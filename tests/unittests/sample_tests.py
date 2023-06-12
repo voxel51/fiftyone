@@ -1000,7 +1000,7 @@ class SampleFieldTests(unittest.TestCase):
         sample = dataset.first()
         self.assertEqual(sample.custom_field.single.label, "single")
         self.assertEqual(len(sample.custom_field.list), 1)
-        self.assertEqual(len(sample.custom_field.list[0].label), "list")
+        self.assertEqual(sample.custom_field.list[0].label, "list")
 
 
 if __name__ == "__main__":
