@@ -309,7 +309,7 @@ def _delete_non_persistent_datasets_if_allowed(**kwargs):
                 _client.admin.aggregate(
                     [
                         {"$currentOp": {"allUsers": True}},
-                        {"$project": {"appName": 1, "command": 1}},
+                        {"$project": {"appName": True, "command": True}},
                         {
                             "$match": {
                                 "appName": foc.DATABASE_APPNAME,
