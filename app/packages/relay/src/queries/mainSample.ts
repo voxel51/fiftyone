@@ -7,9 +7,10 @@ export default r(graphql`
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!
-    $index: Int!
+    $filters: JSON
   ) {
-    sample(dataset: $dataset, view: $view, filter: $filter, index: $index) {
+    sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {
+      __typename
       ... on ImageSample {
         id
         sample

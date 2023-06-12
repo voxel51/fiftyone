@@ -8084,11 +8084,6 @@ def _parse_labels_field(sample_collection, field_path):
 
     hidden = False
 
-    # for fiftyone.server.view hidden results
-    if real_path.startswith("___"):
-        hidden = True
-        real_path = real_path[3:]
-
     # for fiftyone.core.stages hidden results
     if real_path.startswith("__"):
         hidden = True

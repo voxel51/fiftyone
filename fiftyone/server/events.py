@@ -244,7 +244,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
         global _app_count
         _app_count += 1
 
-    current = state.dataset.name if state.dataset else None
+    current = state.dataset.name if state.dataset is not None else None
     current_saved_view_slug = (
         fou.to_slug(state.view.name)
         if state.view is not None and state.view.name
