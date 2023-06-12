@@ -185,8 +185,9 @@ class _PatchesView(fov.DatasetView):
             )
 
     def _to_source_ids(self, label_field, ids, label_ids):
-        label_type = self._source_collection._get_label_field_type(label_field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        _, is_list_field = self._source_collection._get_label_field_root(
+            label_field
+        )
 
         if not is_list_field:
             return ids, label_ids
@@ -792,10 +793,10 @@ def _make_pretty_summary(dataset, is_frame_patches=False):
 def _make_patches_view(
     sample_collection, field, other_fields=None, keep_label_lists=False
 ):
+    root, is_list_field = sample_collection._get_label_field_root(field)
     label_type = sample_collection._get_label_field_type(field)
-    if issubclass(label_type, _PATCHES_TYPES):
-        list_field = field + "." + label_type._LABEL_LIST_FIELD
-    else:
+
+    if not issubclass(label_type, _PATCHES_TYPES):
         raise ValueError(
             "Invalid label field type %s. Extracting patches is only "
             "supported for the following types: %s"
@@ -809,7 +810,7 @@ def _make_patches_view(
         "metadata": True,
         "tags": True,
         field + "._cls": True,
-        list_field: True,
+        root: True,
     }
 
     if other_fields is not None:
@@ -824,15 +825,15 @@ def _make_patches_view(
 
     pipeline = [
         {"$project": project},
-        {"$unwind": "$" + list_field},
+        {"$unwind": "$" + root},
         {"$addFields": {"_rand": {"$rand": {}}}},
-        {"$addFields": {"_id": "$" + list_field + "._id"}},
+        {"$addFields": {"_id": "$" + root + "._id"}},
     ]
 
     if keep_label_lists:
-        pipeline.append({"$addFields": {list_field: ["$" + list_field]}})
-    else:
-        pipeline.append({"$addFields": {field: "$" + list_field}})
+        pipeline.append({"$addFields": {root: ["$" + root]}})
+    elif root != field:
+        pipeline.append({"$addFields": {field: "$" + root}})
 
     return sample_collection.mongo(pipeline)
 

@@ -3010,23 +3010,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             else:
                 view_ids = None
 
-            label_type = self._get_label_field_type(field)
-            field, is_frame_field = self._handle_frame_field(field)
+            root, is_list_field = self._get_label_field_root(field)
+            root, is_frame_field = self._handle_frame_field(root)
 
             ops = []
-            if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-                array_field = field + "." + label_type._LABEL_LIST_FIELD
-                query = {array_field: {"$exists": True}}
+            if is_list_field:
+                query = {root: {"$exists": True}}
 
                 if view_ids is not None:
                     ops.append(
                         UpdateMany(
                             query,
-                            {
-                                "$pull": {
-                                    array_field: {"_id": {"$in": view_ids}}
-                                }
-                            },
+                            {"$pull": {root: {"_id": {"$in": view_ids}}}},
                         )
                     )
 
@@ -3034,7 +3029,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             query,
-                            {"$pull": {array_field: {"_id": {"$in": ids}}}},
+                            {"$pull": {root: {"_id": {"$in": ids}}}},
                         )
                     )
 
@@ -3044,7 +3039,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             query,
                             {
                                 "$pull": {
-                                    array_field: {
+                                    root: {
                                         "tags": {"$elemMatch": {"$in": tags}}
                                     }
                                 }
@@ -3055,24 +3050,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if view_ids is not None:
                     ops.append(
                         UpdateMany(
-                            {field + "._id": {"$in": view_ids}},
-                            {"$set": {field: None}},
+                            {root + "._id": {"$in": view_ids}},
+                            {"$set": {root: None}},
                         )
                     )
 
                 if ids is not None:
                     ops.append(
                         UpdateMany(
-                            {field + "._id": {"$in": ids}},
-                            {"$set": {field: None}},
+                            {root + "._id": {"$in": ids}},
+                            {"$set": {root: None}},
                         )
                     )
 
                 if tags is not None:
                     ops.append(
                         UpdateMany(
-                            {field + ".tags": {"$elemMatch": {"$in": tags}}},
-                            {"$set": {field: None}},
+                            {root + ".tags": {"$elemMatch": {"$in": tags}}},
+                            {"$set": {root: None}},
                         )
                     )
 
@@ -3106,8 +3101,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if fields is not None and field not in fields:
                 continue
 
-            label_type = self._get_label_field_type(field)
-            field, is_frame_field = self._handle_frame_field(field)
+            root, is_list_field = self._get_label_field_root(field)
+            root, is_frame_field = self._handle_frame_field(root)
 
             if is_frame_field:
                 # Partition by (sample ID, frame number)
@@ -3117,9 +3112,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         ObjectId(l["label_id"])
                     )
 
-                if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-                    array_field = field + "." + label_type._LABEL_LIST_FIELD
-
+                if is_list_field:
                     for (
                         (sample_id, frame_number),
                         label_ids,
@@ -3130,13 +3123,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                     "_sample_id": ObjectId(sample_id),
                                     "frame_number": frame_number,
                                 },
-                                {
-                                    "$pull": {
-                                        array_field: {
-                                            "_id": {"$in": label_ids}
-                                        }
-                                    }
-                                },
+                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
                             )
                         )
                 else:
@@ -3155,9 +3142,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                     {
                                         "_sample_id": ObjectId(sample_id),
                                         "frame_number": frame_number,
-                                        field + "._id": label_id,
+                                        root + "._id": label_id,
                                     },
-                                    {"$set": {field: None}},
+                                    {"$set": {root: None}},
                                 )
                             )
             else:
@@ -3166,20 +3153,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 for l in field_labels:
                     _labels_map[l["sample_id"]].append(ObjectId(l["label_id"]))
 
-                if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-                    array_field = field + "." + label_type._LABEL_LIST_FIELD
-
+                if is_list_field:
                     for sample_id, label_ids in _labels_map.items():
                         sample_ops.append(
                             UpdateOne(
                                 {"_id": ObjectId(sample_id)},
-                                {
-                                    "$pull": {
-                                        array_field: {
-                                            "_id": {"$in": label_ids}
-                                        }
-                                    }
-                                },
+                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
                             )
                         )
                 else:
@@ -3194,9 +3173,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                 UpdateOne(
                                     {
                                         "_id": ObjectId(sample_id),
-                                        field + "._id": label_id,
+                                        root + "._id": label_id,
                                     },
-                                    {"$set": {field: None}},
+                                    {"$set": {root: None}},
                                 )
                             )
 

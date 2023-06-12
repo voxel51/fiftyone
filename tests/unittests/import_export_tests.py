@@ -342,6 +342,54 @@ class ImageExportCoersionTests(ImageDatasetTests):
         self.assertTrue(np.allclose(bounding_box, [0, 0, 1, 1]))
 
 
+class ImageNestedLabelsTests(ImageDatasetTests):
+    @drop_datasets
+    def test_nested_label_fields(self):
+        sample = fo.Sample(
+            filepath=self._new_image(),
+            dynamic=fo.DynamicEmbeddedDocument(
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        ),
+                        fo.Detection(
+                            label="dog",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        ),
+                    ]
+                )
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        #
+        # The nested label field should be automatically inferred
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="ground_truth",
+        )
+
+        self.assertEqual(
+            dataset.count("dynamic.ground_truth.detections"),
+            dataset2.count("ground_truth.detections"),
+        )
+
+
 class UnlabeledImageDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [fo.Sample(filepath=self._new_image()) for _ in range(5)]
