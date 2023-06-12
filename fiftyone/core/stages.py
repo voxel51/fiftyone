@@ -8084,11 +8084,6 @@ def _parse_labels_field(sample_collection, field_path):
 
     hidden = False
 
-    # for fiftyone.server.view hidden results
-    if real_path.startswith("___"):
-        hidden = True
-        real_path = real_path[3:]
-
     # for fiftyone.core.stages hidden results
     if real_path.startswith("__"):
         hidden = True
@@ -8098,23 +8093,7 @@ def _parse_labels_field(sample_collection, field_path):
         real_field = sample_collection.get_field(prefix + real_path)
         is_list_field = isinstance(real_field, ListField)
 
-    real_path = path
-    prefix = ""
-    if is_frame_field:
-        real_path = real_path[len(sample_collection._FRAMES_PREFIX) :]
-        prefix = sample_collection._FRAMES_PREFIX
-
-    if real_path.startswith("___"):  # for fiftyone.server.view hidden results
-        real_path = real_path[3:]
-
-    if real_path.startswith("__"):  # for fiftyone.core.stages hidden results
-        real_path = real_path[2:]
-
-    return (
-        path,
-        isinstance(sample_collection.get_field(prefix + real_path), ListField),
-        is_frame_field,
-    )
+    return path, is_list_field, is_frame_field
 
 
 def _remove_path_collisions(paths):

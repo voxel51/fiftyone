@@ -27,7 +27,7 @@ export const GroupContextProvider = ({
   lookerRefCallback,
   children,
 }: GroupContextProviderProps) => {
-  const modal = useRecoilValue(fos.modal);
+  const modal = useRecoilValue(fos.modalSample);
   const dynamicGroupParameters = useRecoilValue(fos.dynamicGroupParameters);
 
   const groupByFieldValue = useMemo(() => {

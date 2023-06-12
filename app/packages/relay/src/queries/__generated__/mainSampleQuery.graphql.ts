@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2f2a9564820bafc39ad053149180bf38>>
+ * @generated SignedSource<<271c5debae49c9c9aeb4420abfcf7e12>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,18 +20,31 @@ export type GroupElementFilter = {
 export type mainSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
-  index: number;
+  filters?: object | null;
   view: Array;
 };
 export type mainSampleQuery$data = {
   readonly sample: {
-    readonly frameRate?: number;
-    readonly id?: string;
-    readonly sample?: object;
-    readonly urls?: ReadonlyArray<{
+    readonly __typename: "ImageSample";
+    readonly id: string;
+    readonly sample: object;
+    readonly urls: ReadonlyArray<{
       readonly field: string;
       readonly url: string | null;
     }>;
+  } | {
+    readonly __typename: "VideoSample";
+    readonly frameRate: number;
+    readonly id: string;
+    readonly sample: object;
+    readonly urls: ReadonlyArray<{
+      readonly field: string;
+      readonly url: string | null;
+    }>;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
   } | null;
 };
 export type mainSampleQuery = {
@@ -53,7 +66,7 @@ v1 = {
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "index"
+  "name": "filters"
 },
 v3 = {
   "defaultValue": null,
@@ -73,8 +86,8 @@ v4 = [
   },
   {
     "kind": "Variable",
-    "name": "index",
-    "variableName": "index"
+    "name": "filters",
+    "variableName": "filters"
   },
   {
     "kind": "Variable",
@@ -86,17 +99,24 @@ v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "__typename",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sample",
+  "name": "id",
   "storageKey": null
 },
 v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "sample",
+  "storageKey": null
+},
+v8 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -121,21 +141,21 @@ v7 = {
   ],
   "storageKey": null
 },
-v8 = {
+v9 = {
   "kind": "InlineFragment",
   "selections": [
-    (v5/*: any*/),
     (v6/*: any*/),
-    (v7/*: any*/)
+    (v7/*: any*/),
+    (v8/*: any*/)
   ],
   "type": "ImageSample",
   "abstractKey": null
 },
-v9 = {
+v10 = {
   "kind": "InlineFragment",
   "selections": [
-    (v5/*: any*/),
     (v6/*: any*/),
+    (v7/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -143,7 +163,7 @@ v9 = {
       "name": "frameRate",
       "storageKey": null
     },
-    (v7/*: any*/)
+    (v8/*: any*/)
   ],
   "type": "VideoSample",
   "abstractKey": null
@@ -168,8 +188,9 @@ return {
         "name": "sample",
         "plural": false,
         "selections": [
-          (v8/*: any*/),
-          (v9/*: any*/)
+          (v5/*: any*/),
+          (v9/*: any*/),
+          (v10/*: any*/)
         ],
         "storageKey": null
       }
@@ -196,19 +217,13 @@ return {
         "name": "sample",
         "plural": false,
         "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "__typename",
-            "storageKey": null
-          },
-          (v8/*: any*/),
+          (v5/*: any*/),
           (v9/*: any*/),
+          (v10/*: any*/),
           {
             "kind": "InlineFragment",
             "selections": [
-              (v5/*: any*/)
+              (v6/*: any*/)
             ],
             "type": "PointCloudSample",
             "abstractKey": null
@@ -219,16 +234,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "4f0ef3ac0d02de57a4e62e6515293952",
+    "cacheID": "c52ce112f9e3ddb5b6ae79887e16da29",
     "id": null,
     "metadata": {},
     "name": "mainSampleQuery",
     "operationKind": "query",
-    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $index: Int!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter, index: $index) {\n    __typename\n    ... on ImageSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      id\n      sample\n      frameRate\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      id\n    }\n  }\n}\n"
+    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      id\n      sample\n      frameRate\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "eddbf046c706c32c00db34b4c1c9d2b0";
+(node as any).hash = "d2cf9eb7951ed6e864ab4300e114d721";
 
 export default node;

@@ -39,6 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
 
+
 try:
     import pprintpp as _pprint
     from mongoengine.base.datastructures import BaseDict, BaseList
@@ -1949,8 +1950,8 @@ def validate_color(value):
         or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
     ):
         raise ValueError(
-            "%s is neither a valid CSS color name in all lowercase (eg: 'yellowgreen') nor a hex color(eg. '#00ff00')"
-            % value
+            """%s is neither a valid CSS color name in all lowercase \n"""
+            """(eg: 'yellowgreen') nor a hex color(eg. '#00ff00')""" % value
         )
 
 
