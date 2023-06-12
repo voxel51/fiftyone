@@ -9814,9 +9814,6 @@ def _iter_label_fields(sample_collection):
 
 def _iter_schema_label_fields(schema, recursive=True):
     for path, field in schema.items():
-        if isinstance(field, fof.ListField):
-            field = field.field
-
         if isinstance(field, fof.EmbeddedDocumentField):
             if issubclass(field.document_type, fol.Label):
                 # Do not recurse into Label fields
