@@ -3079,48 +3079,34 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         organization (None): the name of the organization to use when sending
             requests to CVAT
         frame_start (None): nonnegative integer(s) defining the first frame of
-            videos to upload when creating video tasks.
-            Supported types are:
+            videos to upload when creating video tasks. Supported values are:
 
-            - `integer`: the first frame to upload for each video
-            - `list`: a list of first frame integers corresponding to
-              videos in the given samples. If fewer `frame_start` values are
-              provided than there are videos in the given samples, they will be
-              reassigned with a round-robin strategy
-            - `dict`: a dictionary mapping sample filepath to the first frame
-              integer to use for the corresponding video
+                -   ``integer``: the first frame to upload for each video
+                -   ``list``: a list of first frame integers corresponding to
+                    videos in the given samples
+                -   ``dict``: a dictionary mapping sample filepaths to first
+                    frame integers to use for the corresponding videos
 
-            Note: This argument is only supported for videos.
         frame_stop (None): nonnegative integer(s) defining the last frame of
-            videos to upload when creating video tasks.
-            Supported types are:
+            videos to upload when creating video tasks. Supported values are:
 
-            - `integer`: the last frame to upload for each video
-            - `list`: a list of last frame integers corresponding to
-              videos in the given samples. If fewer `frame_stop` values are
-              provided than there are videos in the given samples, they will be
-              reassigned with a round-robin strategy
-            - `dict`: a dictionary mapping sample filepath to the last frame
-              integer to use for the corresponding video
+                -   ``integer``: the last frame to upload for each video
+                -   ``list``: a list of last frame integers corresponding to
+                    videos in the given samples
+                -   ``dict``: a dictionary mapping sample filepath to last
+                    frame integers to use for the corresponding videos
 
-            Note: This argument is only supported for videos.
         frame_step (None): positive integer(s) defining which frames to sample
-            when creating video tasks.
-            For example, a frame step of 25 will include frames 1, 26, 51 and
-            so on.
-            Supported types are:
+            when creating video tasks. Supported values are:
 
-            - `integer`: the frame step to apply to each video task
-            - `list`: a list of frame step integers corresponding to
-              videos in the given samples. If fewer `frame_step` values are
-              provided than there are videos in the given samples, they will be
-              reassigned with a round-robin strategy
-            - `dict`: a dictionary mapping sample filepath to the frame step
-              integer to use for the corresponding video
+                -   ``integer``: the frame step to apply to each video task
+                -   ``list``: a list of frame step integers corresponding to
+                    videos in the given samples
+                -   ``dict``: a dictionary mapping sample filepath to frame
+                    step integers to use for the corresponding videos
 
-            Note: This argument is only supported for videos and does not
-            support uploading existing tracks when provided.
-
+            Note that this argument cannot be provided when uploading existing
+            tracks
     """
 
     def __init__(
@@ -4241,16 +4227,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size (None): the number of frames to upload per ZIP chunk
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
-            frame_start (None): a nonnegative integer indicating first frame of the
-                corresponding video to upload, by default starts at the
-                beginning of the video (None)
-            frame_stop (None): a nonnegative integer indicating the last frame of the
-                corresponding video to upload, by default stops at the end
-                of the video (None)
-            frame_step (None): a positive integer indicating how to filter video
-                frames in a dataset. For example, frame step 25
-                would only include every 25th frame. By default,
-                loads all frames (None)
+            frame_start (None): an optional first frame to start uploading from
+            frame_stop (None): an optional last frame to upload
+            frame_step (None): an optional positive integer specifying the
+                spacing between frames to upload
 
         Returns:
             a list of the job IDs created for the task
@@ -4525,16 +4505,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         )
 
                         if _tracks and _frame_step is not None:
-                            # FR: Fully support working with existing
+                            #
+                            # @todo fully support working with existing
                             # annotation tracks. This will require additional
                             # logic to handle mutations of objects outside of
                             # the uploaded frames.
+                            #
                             # Example: A detection track is deleted with
                             # frame_step 5, then the detections for that track
                             # between frames 1-5 need to be deleted when the
                             # annotations are loaded again.
+                            #
                             raise ValueError(
-                                "Cannot upload existing annotation tracks for field '%s' when a 'frame_step' is provided"
+                                "Cannot upload existing annotation tracks for "
+                                "field '%s' when a 'frame_step' is provided"
                                 % label_field
                             )
 
