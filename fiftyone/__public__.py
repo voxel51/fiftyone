@@ -204,6 +204,7 @@ from .core.session import (
     Session,
 )
 from .core.utils import (
+    disable_progress_bars,
     pprint,
     pformat,
     ProgressBar,

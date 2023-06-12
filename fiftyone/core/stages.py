@@ -2515,36 +2515,37 @@ def _get_frames_list_field_only_matches_expr(field):
 
 
 def _get_trajectories_filter(sample_collection, field, filter_arg):
+    root, is_list_field = sample_collection._get_label_field_root(field)
+    root, is_frame_field = sample_collection._handle_frame_field(root)
     label_type = sample_collection._get_label_field_type(field)
-    path, is_frame_field = sample_collection._handle_frame_field(field)
 
     if not is_frame_field:
         raise ValueError(
             "Filtering trajectories is only supported for frame fields"
         )
 
-    if issubclass(label_type, (fol.Detections, fol.Polylines, fol.Keypoints)):
-        path += "." + label_type._LABEL_LIST_FIELD
+    if label_type not in fol._INDEX_FIEDS:
+        raise ValueError(
+            "Cannot filter trajectories for field '%s' of type %s"
+            % (field, fol._INDEX_FIEDS)
+        )
+
+    if is_list_field:
         cond = _get_list_trajectory_mongo_filter(filter_arg)
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
-            (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")),
+            (F(root) != None).if_else(
+                F(root).filter(filter_expr).map(F("index")),
                 [],
             )
         )
-    elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
+    else:
         cond = _get_trajectory_mongo_filter(filter_arg)
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = (
-            F(path)
+            F(root)
             .apply(filter_expr)
-            .if_else(VALUE.append(F(path + ".index")), VALUE)
-        )
-    else:
-        raise ValueError(
-            "Cannot filter trajectories for field '%s' of type %s"
-            % (field, label_type)
+            .if_else(VALUE.append(F(root + ".index")), VALUE)
         )
 
     # union() removes duplicates
@@ -3867,9 +3868,15 @@ class LimitLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        list_field, is_frame_field = _parse_labels_list_field(
+        list_field, is_list_field, is_frame_field = _parse_labels_field(
             sample_collection, self._field
         )
+
+        if not is_list_field:
+            raise ValueError(
+                "Field '%s' does not contain a list of labels" % self._field
+            )
+
         self._labels_list_field = list_field
         self._is_frame_field = is_frame_field
 
@@ -8066,13 +8073,25 @@ def _get_rng(seed):
 
 
 def _parse_labels_field(sample_collection, field_path):
-    label_type = sample_collection._get_label_field_type(field_path)
+    path, is_list_field = sample_collection._get_label_field_root(field_path)
     is_frame_field = sample_collection._is_frame_field(field_path)
-    is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-    if is_list_field:
-        path = field_path + "." + label_type._LABEL_LIST_FIELD
-    else:
-        path = field_path
+
+    prefix = ""
+    real_path = path
+    if is_frame_field:
+        prefix = sample_collection._FRAMES_PREFIX
+        real_path = real_path[len(prefix) :]
+
+    hidden = False
+
+    # for fiftyone.core.stages hidden results
+    if real_path.startswith("__"):
+        hidden = True
+        real_path = real_path[2:]
+
+    if hidden:
+        real_field = sample_collection.get_field(prefix + real_path)
+        is_list_field = isinstance(real_field, ListField)
 
     real_path = path
     prefix = ""
@@ -8091,21 +8110,6 @@ def _parse_labels_field(sample_collection, field_path):
         isinstance(sample_collection.get_field(prefix + real_path), ListField),
         is_frame_field,
     )
-
-
-def _parse_labels_list_field(sample_collection, field_path):
-    label_type = sample_collection._get_label_field_type(field_path)
-    is_frame_field = sample_collection._is_frame_field(field_path)
-
-    if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
-        raise ValueError(
-            "Field '%s' must be a labels list type %s; found %s"
-            % (field_path, fol._LABEL_LIST_FIELDS, label_type)
-        )
-
-    path = field_path + "." + label_type._LABEL_LIST_FIELD
-
-    return path, is_frame_field
 
 
 def _remove_path_collisions(paths):
@@ -8146,29 +8150,25 @@ def _parse_labels(labels):
 def _get_label_field_only_matches_expr(
     sample_collection, field, new_field=None, prefix=""
 ):
-    label_type = sample_collection._get_label_field_type(field)
-    is_label_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+    path, is_list_field = sample_collection._get_label_field_root(field)
 
     if new_field is not None:
-        field = new_field
+        path = new_field + path[len(field) :]
 
-    field, is_frame_field = sample_collection._handle_frame_field(field)
-
-    if is_label_list_field:
-        field += "." + label_type._LABEL_LIST_FIELD
+    path, is_frame_field = sample_collection._handle_frame_field(path)
 
     if is_frame_field:
-        if is_label_list_field:
+        if is_list_field:
             match_fcn = _get_frames_list_field_only_matches_expr
         else:
             match_fcn = _get_frames_field_only_matches_expr
     else:
-        if is_label_list_field:
+        if is_list_field:
             match_fcn = _get_list_field_only_matches_expr
         else:
             match_fcn = _get_field_only_matches_expr
 
-    return match_fcn(prefix + field)
+    return match_fcn(prefix + path)
 
 
 def _make_omit_empty_labels_pipeline(sample_collection, fields):

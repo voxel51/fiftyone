@@ -162,7 +162,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",

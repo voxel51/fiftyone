@@ -86,12 +86,13 @@ const Looker = ({
     if (propsSampleData) {
       return {
         ...modalSampleData,
+        urls,
         sample: propsSampleData,
       };
     }
 
     return modalSampleData;
-  }, [propsSampleData, modalSampleData]);
+  }, [propsSampleData, modalSampleData, urls]);
 
   const { sample } = sampleData;
 

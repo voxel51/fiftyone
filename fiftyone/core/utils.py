@@ -39,7 +39,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
 
-import asyncio
 
 try:
     import pprintpp as _pprint
@@ -1184,7 +1183,16 @@ class DynamicBatcher(object):
 
 @contextmanager
 def disable_progress_bars():
-    """Context manager that temporarily disables all progress bars."""
+    """Context manager that temporarily disables all progress bars.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        with fo.disable_progress_bars():
+            dataset = foz.load_zoo_dataset("quickstart")
+    """
     prev_show_progress_bars = fo.config.show_progress_bars
     try:
         fo.config.show_progress_bars = False
