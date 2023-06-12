@@ -4991,16 +4991,15 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 1)
 
-        self.assertRaises(
-            ValueError, fo.Dataset.from_images, filepaths, name=dataset.name
-        )
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_images(filepaths, name=dataset.name)
 
         dataset2 = fo.Dataset.from_images(
             filepaths, name=dataset.name, overwrite=True, persistent=True
         )
+
         self.assertEqual(len(dataset2), 1)
         self.assertTrue(dataset2.persistent)
-        dataset2.delete()
 
         samples = [{"filepath": "image.jpg"}]
         sample_parser = _ImageSampleParser()
@@ -5008,13 +5007,12 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 1)
 
-        self.assertRaises(
-            ValueError,
-            fo.Dataset.from_images,
-            samples,
-            sample_parser=sample_parser,
-            name=dataset.name,
-        )
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_images(
+                samples,
+                sample_parser=sample_parser,
+                name=dataset.name,
+            )
 
         dataset2 = fo.Dataset.from_images(
             samples,
@@ -5023,9 +5021,9 @@ class DatasetFactoryTests(unittest.TestCase):
             overwrite=True,
             persistent=True,
         )
+
         self.assertEqual(len(dataset2), 1)
         self.assertTrue(dataset2.persistent)
-        dataset2.delete()
 
     @drop_datasets
     def test_from_videos(self):
@@ -5034,15 +5032,15 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 1)
 
-        self.assertRaises(
-            ValueError, fo.Dataset.from_videos, filepaths, name=dataset.name
-        )
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_videos(filepaths, name=dataset.name)
+
         dataset2 = fo.Dataset.from_videos(
             filepaths, name=dataset.name, overwrite=True, persistent=True
         )
+
         self.assertEqual(len(dataset2), 1)
         self.assertTrue(dataset2.persistent)
-        dataset2.delete()
 
         samples = [{"filepath": "video.mp4"}]
         sample_parser = _VideoSampleParser()
@@ -5050,13 +5048,13 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 1)
 
-        self.assertRaises(
-            ValueError,
-            fo.Dataset.from_videos,
-            samples,
-            sample_parser=sample_parser,
-            name=dataset.name,
-        )
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_videos(
+                samples,
+                sample_parser=sample_parser,
+                name=dataset.name,
+            )
+
         dataset2 = fo.Dataset.from_videos(
             samples,
             sample_parser=sample_parser,
@@ -5064,9 +5062,9 @@ class DatasetFactoryTests(unittest.TestCase):
             overwrite=True,
             persistent=True,
         )
+
         self.assertEqual(len(dataset2), 1)
         self.assertTrue(dataset2.persistent)
-        dataset2.delete()
 
     @drop_datasets
     def test_from_labeled_images(self):
@@ -5078,14 +5076,14 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(dataset.values("ground_truth.label"), ["label"])
 
-        self.assertRaises(
-            ValueError,
-            fo.Dataset.from_labeled_images,
-            samples,
-            sample_parser,
-            label_field="ground_truth",
-            name=dataset.name,
-        )
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_labeled_images(
+                samples,
+                sample_parser,
+                label_field="ground_truth",
+                name=dataset.name,
+            )
+
         dataset2 = fo.Dataset.from_labeled_images(
             samples,
             sample_parser,
@@ -5094,9 +5092,9 @@ class DatasetFactoryTests(unittest.TestCase):
             overwrite=True,
             persistent=True,
         )
+
         self.assertEqual(dataset2.values("ground_truth.label"), ["label"])
         self.assertTrue(dataset2.persistent)
-        dataset2.delete()
 
     @drop_datasets
     def test_from_labeled_videos(self):
@@ -5108,14 +5106,14 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(dataset.values("ground_truth.label"), ["label"])
 
-        self.assertRaises(
-            ValueError,
-            fo.Dataset.from_labeled_videos,
-            samples,
-            sample_parser,
-            label_field="ground_truth",
-            name=dataset.name,
-        )
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_labeled_videos(
+                samples,
+                sample_parser,
+                label_field="ground_truth",
+                name=dataset.name,
+            )
+
         dataset2 = fo.Dataset.from_labeled_videos(
             samples,
             sample_parser,
@@ -5124,9 +5122,9 @@ class DatasetFactoryTests(unittest.TestCase):
             overwrite=True,
             persistent=True,
         )
+
         self.assertEqual(dataset2.values("ground_truth.label"), ["label"])
         self.assertTrue(dataset2.persistent)
-        dataset2.delete()
 
 
 class _ImageSampleParser(foud.ImageSampleParser):
