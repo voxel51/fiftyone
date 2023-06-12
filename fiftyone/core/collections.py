@@ -1040,9 +1040,9 @@ class SampleCollection(object):
         use_db_fields=False,
     ):
         if path is not None:
-            field = self.get_field(
-                path, ftype=fof.EmbeddedDocumentField, leaf=True
-            )
+            field = self.get_field(path, leaf=True)
+            if not isinstance(field, fof.EmbeddedDocumentField):
+                return tuple()
 
             field_names = field._get_default_fields(
                 include_private=include_private,
@@ -1086,11 +1086,9 @@ class SampleCollection(object):
         use_db_fields=False,
     ):
         if path is not None:
-            field = self.get_field(
-                self._FRAMES_PREFIX + path,
-                ftype=fof.EmbeddedDocumentField,
-                leaf=True,
-            )
+            field = self.get_field(self._FRAMES_PREFIX + path, leaf=True)
+            if not isinstance(field, fof.EmbeddedDocumentField):
+                return tuple()
 
             field_names = field._get_default_fields(
                 include_private=include_private,
@@ -1103,6 +1101,22 @@ class SampleCollection(object):
             include_private=include_private,
             use_db_fields=use_db_fields,
         )
+
+    def _is_default_field(self, path):
+        path, is_frame_field = self._handle_frame_field(path)
+
+        chunks = path.rsplit(".", 1)
+        if len(chunks) > 1:
+            root = chunks[0]
+        else:
+            root = None
+
+        if is_frame_field:
+            default_fields = self._get_default_frame_fields(path=root)
+        else:
+            default_fields = self._get_default_sample_fields(path=root)
+
+        return path in default_fields
 
     def get_field(
         self,
@@ -1277,9 +1291,8 @@ class SampleCollection(object):
             a dictionary mapping field paths to field types or lists of field
             types
         """
-        schema = self.get_field_schema()
         return self._get_dynamic_field_schema(
-            schema, fields=fields, recursive=recursive
+            fields=fields, recursive=recursive
         )
 
     def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
@@ -1302,17 +1315,17 @@ class SampleCollection(object):
         if not self._has_frame_fields():
             return None
 
-        schema = self.get_frame_field_schema()
-        prefix = self._FRAMES_PREFIX
         return self._get_dynamic_field_schema(
-            schema, prefix=prefix, fields=fields, recursive=recursive
+            frames=True, fields=fields, recursive=recursive
         )
 
     def _get_dynamic_field_schema(
-        self, schema, prefix=None, fields=None, recursive=True
+        self, frames=False, fields=None, recursive=True
     ):
-        if prefix is None:
-            prefix = ""
+        if frames:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
 
         if fields is not None:
             if etau.is_str(fields):
@@ -1320,19 +1333,17 @@ class SampleCollection(object):
             else:
                 fields = list(fields)
 
-            schema = {
-                k: v
-                for k, v in schema.items()
-                if any(f == k or f.startswith(k + ".") for f in fields)
-            }
-
-        dynamic_schema = self._do_get_dynamic_field_schema(schema, prefix)
+        dynamic_schema = self._do_get_dynamic_field_schema(
+            schema, frames=frames, fields=fields
+        )
 
         # Recurse into new dynamic fields
         if recursive:
             s = dynamic_schema
             while True:
-                s = self._do_get_dynamic_field_schema(s, prefix, new=True)
+                s = self._do_get_dynamic_field_schema(
+                    s, frames=frames, new=True
+                )
                 if s:
                     dynamic_schema.update(s)
                 else:
@@ -1364,19 +1375,34 @@ class SampleCollection(object):
 
         return dynamic_schema
 
-    def _do_get_dynamic_field_schema(self, schema, prefix, new=False):
+    def _do_get_dynamic_field_schema(
+        self, schema, frames=False, fields=None, new=False
+    ):
+        if frames:
+            prefix = self._FRAMES_PREFIX
+        else:
+            prefix = ""
+
         schema = fof.flatten_schema(schema)
+
+        if fields is not None:
+            schema = {
+                k: v
+                for k, v in schema.items()
+                if any(f == k or f.startswith(k + ".") for f in fields)
+            }
 
         aggs = []
         paths = []
         for path, field in schema.items():
+            _path = prefix + path
+
             is_list_field = False
             while isinstance(field, fof.ListField):
                 field = field.field
                 is_list_field = True
 
             if isinstance(field, fof.EmbeddedDocumentField):
-                _path = prefix + path
                 if is_list_field and not _path.endswith("[]"):
                     _path += "[]"
 
@@ -1389,8 +1415,13 @@ class SampleCollection(object):
                     _doc_type = None
 
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
-            elif field is None and is_list_field:
-                agg = foa.ListSchema(prefix + path)
+            elif is_list_field:
+                # Processing untyped default list fields is not allowed
+                _clean_path = _path.replace("[]", "")
+                if field is None and not self._is_default_field(_clean_path):
+                    agg = foa.ListSchema(_path)
+                else:
+                    agg = None
             else:
                 agg = None
 
@@ -1656,9 +1687,8 @@ class SampleCollection(object):
     def _edit_label_tags(
         self, update_fcn, label_field, ids=None, label_ids=None
     ):
-        label_type, root = self._get_label_field_path(label_field)
+        root, is_list_field = self._get_label_field_root(label_field)
         _root, is_frame_field = self._handle_frame_field(root)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
         ops = []
 
@@ -1725,11 +1755,10 @@ class SampleCollection(object):
         is_list_fields = []
         is_frame_fields = []
         for label_field in label_fields:
-            label_type, id_path = view._get_label_field_path(label_field, "id")
-            is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            root, is_list_field = view._get_label_field_root(label_field)
             is_frame_field = view._is_frame_field(label_field)
 
-            paths.append(id_path)
+            paths.append(root + ".id")
             is_list_fields.append(is_list_field)
             is_frame_fields.append(is_frame_field)
 
@@ -2237,10 +2266,9 @@ class SampleCollection(object):
         if is_frame_field:
             label_field = self._FRAMES_PREFIX + label_field
 
-        label_type, root = self._get_label_field_path(label_field)
+        root, is_list_field = self._get_label_field_root(label_field)
+        label_id_path = root + ".id"
         _root, _ = self._handle_frame_field(root)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-        _, label_id_path = self._get_label_field_path(label_field, "id")
 
         id_map = {}
 
@@ -2681,12 +2709,11 @@ class SampleCollection(object):
                 "(found: '%s')" % field_name
             )
 
-        label_type = self._get_label_field_type(field_name)
+        root, is_list_field = self._get_label_field_root(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
         ops = []
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-            root = field_name + "." + label_type._LABEL_LIST_FIELD
+        if is_list_field:
             elem_id = root + "._id"
             set_path = root + ".$"
 
@@ -5630,7 +5657,7 @@ class SampleCollection(object):
                     }
                 },
                 {"$sort": {"_sort_field": -1}},
-                {"$unset": "_sort_field"}
+                {"$project": {"_sort_field": False}},
             ])
 
         Args:
@@ -9783,32 +9810,18 @@ class SampleCollection(object):
         return media_fields
 
     def _get_label_fields(self):
-        fields = self._get_sample_label_fields()
+        return [path for path, _ in _iter_label_fields(self)]
 
-        if self._has_frame_fields():
-            fields.extend(self._get_frame_label_fields())
+    def _get_label_field_schema(self):
+        schema = self.get_field_schema()
+        return dict(_iter_schema_label_fields(schema))
 
-        return fields
-
-    def _get_sample_label_fields(self):
-        return list(
-            self.get_field_schema(
-                ftype=fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Label,
-            ).keys()
-        )
-
-    def _get_frame_label_fields(self):
+    def _get_frame_label_field_schema(self):
         if not self._has_frame_fields():
             return None
 
-        return [
-            self._FRAMES_PREFIX + field
-            for field in self.get_frame_field_schema(
-                ftype=fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Label,
-            ).keys()
-        ]
+        schema = self.get_frame_field_schema()
+        return dict(_iter_schema_label_fields(schema))
 
     def _get_root_fields(self, fields):
         root_fields = set()
@@ -9856,14 +9869,12 @@ class SampleCollection(object):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
-        if field_name.startswith(
-            "___"
-        ):  # for fiftyone.server.view hidden results
+        # for fiftyone.server.view hidden results
+        if field_name.startswith("___"):
             field_name = field_name[3:]
 
-        if field_name.startswith(
-            "__"
-        ):  # for fiftyone.core.stages hidden results
+        # for fiftyone.core.stages hidden results
+        if field_name.startswith("__"):
             field_name = field_name[2:]
 
         if is_frame_field:
@@ -9892,6 +9903,18 @@ class SampleCollection(object):
             )
 
         return field.document_type
+
+    def _get_label_field_root(self, field_name):
+        label_type = self._get_label_field_type(field_name)
+
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            root = field_name + "." + label_type._LABEL_LIST_FIELD
+            is_list_field = True
+        else:
+            root = field_name
+            is_list_field = isinstance(self.get_field(root), fof.ListField)
+
+        return root, is_list_field
 
     def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
@@ -10007,6 +10030,37 @@ class SampleCollection(object):
         return [values_map.get(i, None) for i in ids]
 
 
+def _iter_label_fields(sample_collection):
+    schema = sample_collection.get_field_schema()
+    for path, field in _iter_schema_label_fields(schema):
+        yield path, field
+
+    if not sample_collection._has_frame_fields():
+        return
+
+    prefix = sample_collection._FRAMES_PREFIX
+    schema = sample_collection.get_frame_field_schema()
+    for path, field in _iter_schema_label_fields(schema):
+        yield prefix + path, field
+
+
+def _iter_schema_label_fields(schema, recursive=True):
+    for path, field in schema.items():
+        if isinstance(field, fof.ListField):
+            field = field.field
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            if issubclass(field.document_type, fol.Label):
+                # Do not recurse into Label fields
+                yield path, field
+            else:
+                # Only recurse one level deep into embedded documents
+                for _path, _field in _iter_schema_label_fields(
+                    field.get_field_schema(), recursive=False
+                ):
+                    yield path + "." + _path, _field
+
+
 def _serialize_value(field_name, field, value, validate=True):
     if value is None:
         return None
@@ -10046,7 +10100,9 @@ def _parse_label_field(
         return label_field
 
     if _is_glob_pattern(label_field):
-        label_field = _get_matching_fields(sample_collection, label_field)
+        label_field = _get_matching_label_fields(
+            sample_collection, label_field
+        )
 
     if etau.is_container(label_field):
         return {f: f for f in label_field}
@@ -10086,7 +10142,7 @@ def _parse_frame_labels_field(
         return frame_labels_field
 
     if _is_glob_pattern(frame_labels_field):
-        frame_labels_field = _get_matching_fields(
+        frame_labels_field = _get_matching_label_fields(
             sample_collection, frame_labels_field, frames=True
         )
 
@@ -10124,13 +10180,16 @@ def _is_glob_pattern(s):
     return "*" in s or "?" in s or "[" in s
 
 
-def _get_matching_fields(sample_collection, patt, frames=False):
+def _get_matching_label_fields(sample_collection, patt, frames=False):
     if frames:
-        schema = sample_collection.get_frame_field_schema()
+        label_schema = sample_collection._get_frame_label_field_schema()
     else:
-        schema = sample_collection.get_field_schema()
+        label_schema = sample_collection._get_label_field_schema()
 
-    return fnmatch.filter(list(schema.keys()), patt)
+    if label_schema is None:
+        return label_schema
+
+    return fnmatch.filter(list(label_schema.keys()), patt)
 
 
 def _get_default_label_fields_for_exporter(
@@ -10149,9 +10208,7 @@ def _get_default_label_fields_for_exporter(
         return None
 
     media_type = sample_collection.media_type
-    label_schema = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
+    label_schema = sample_collection._get_label_field_schema()
 
     label_field_or_dict = _get_fields_with_types(
         media_type,
@@ -10188,9 +10245,7 @@ def _get_default_frame_label_fields_for_exporter(
         return None
 
     media_type = sample_collection.media_type
-    frame_label_schema = sample_collection.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
+    frame_label_schema = sample_collection._get_frame_label_field_schema()
 
     frame_labels_field_or_dict = _get_fields_with_types(
         media_type,
@@ -10647,7 +10702,7 @@ def _make_set_field_pipeline(
     # Case 1: no list fields
     if not list_fields:
         expr_dict = _render_expr(expr, path, embedded_root)
-        pipeline = [{"$set": {path: expr_dict}}]
+        pipeline = [{"$addFields": {path: expr_dict}}]
         return pipeline, expr_dict
 
     # Case 2: one list field
@@ -10657,7 +10712,7 @@ def _make_set_field_pipeline(
         expr, expr_dict = _set_terminal_list_field(
             list_field, subfield, expr, embedded_root
         )
-        pipeline = [{"$set": {list_field: expr.to_mongo()}}]
+        pipeline = [{"$addFields": {list_field: expr.to_mongo()}}]
         return pipeline, expr_dict
 
     # Case 3: multiple list fields
@@ -10677,7 +10732,7 @@ def _make_set_field_pipeline(
 
     expr = expr.to_mongo(prefix="$" + list_fields[0])
 
-    pipeline = [{"$set": {list_fields[0]: expr}}]
+    pipeline = [{"$addFields": {list_fields[0]: expr}}]
 
     return pipeline, expr_dict
 

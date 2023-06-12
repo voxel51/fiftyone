@@ -1,21 +1,22 @@
+import * as fos from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
 import React, { useContext } from "react";
+import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
-import DatasetComponent from "../../components/Dataset";
-import * as fos from "@fiftyone/state";
-import { DatasetQuery } from "../../__generated__/DatasetQuery.graphql";
 import {
-  usePreLoadedDataset,
   DatasetNodeQuery,
   DatasetQueryRef,
+  usePreLoadedDataset,
 } from "../../Dataset";
-import { usePreloadedQuery } from "react-relay";
+import { DatasetQuery } from "../../__generated__/DatasetQuery.graphql";
+import DatasetComponent from "../../components/Dataset";
 
 export const Dataset: fos.Route<DatasetQuery> = ({ prepared }) => {
   const router = useContext(fos.RouterContext);
   const [dataset, ready] = usePreLoadedDataset(prepared);
   const queryRef = usePreloadedQuery<DatasetQuery>(DatasetNodeQuery, prepared);
   const name = useRecoilValue(fos.datasetName);
+
   if (!ready) return null;
   if (dataset === null) {
     throw new NotFoundError({

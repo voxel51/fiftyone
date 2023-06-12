@@ -1,7 +1,7 @@
+import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   PreloadedQuery,
   useFragment,
@@ -24,26 +24,26 @@ import {
 } from "@fiftyone/components";
 
 // built in plugins
-import "@fiftyone/map";
-import "@fiftyone/looker-3d";
 import "@fiftyone/embeddings";
+import "@fiftyone/looker-3d";
+import "@fiftyone/map";
 
+import Teams from "../components/Teams/Teams";
+import ViewBar from "../components/ViewBar/ViewBar";
 import gaConfig from "../ga";
 import style from "./Root.module.css";
-import ViewBar from "../components/ViewBar/ViewBar";
-import Teams from "../components/Teams/Teams";
 
-import { RootQuery } from "./__generated__/RootQuery.graphql";
+import * as fos from "@fiftyone/state";
+import { Route, RouterContext, getDatasetName } from "@fiftyone/state";
+import { isElectron } from "@fiftyone/utilities";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { isElectron } from "@fiftyone/utilities";
-import * as fos from "@fiftyone/state";
-import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
+import { RootQuery } from "./__generated__/RootQuery.graphql";
 
-import DatasetSelector from "../components/DatasetSelector";
-import { useColorScheme, IconButton } from "@mui/material";
 import { DarkMode, LightMode } from "@mui/icons-material";
+import { IconButton, useColorScheme } from "@mui/material";
+import DatasetSelector from "../components/DatasetSelector";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {

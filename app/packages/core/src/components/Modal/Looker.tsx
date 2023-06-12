@@ -1,3 +1,7 @@
+import { useTheme } from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
+import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useEffect,
@@ -5,16 +9,9 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-
-import { useEventHandler } from "@fiftyone/state";
-
-import { useTheme } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
-import * as fos from "@fiftyone/state";
-import { useOnSelectLabel } from "@fiftyone/state";
-import { useErrorHandler } from "react-error-boundary";
 
 type EventCallback = (event: CustomEvent) => void;
 
@@ -61,7 +58,7 @@ const useClearSelectedLabels = () => {
 };
 
 interface LookerProps {
-  sample?: fos.SampleData;
+  sample?: fos.ModalSample;
   urls?: { field: string; url: string }[];
   lookerRef?: MutableRefObject<any>;
   lookerRefCallback?: (looker: AbstractLooker) => void;
@@ -77,8 +74,9 @@ const Looker = ({
   onClose,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
+
+  const modalSampleData = useRecoilValue(fos.modalSample);
   const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
-  const modalSampleData = useRecoilValue(fos.modal);
 
   if (!modalSampleData && !propsSampleData) {
     throw new Error("bad");
@@ -88,12 +86,13 @@ const Looker = ({
     if (propsSampleData) {
       return {
         ...modalSampleData,
+        urls,
         sample: propsSampleData,
       };
     }
 
     return modalSampleData;
-  }, [propsSampleData, modalSampleData]);
+  }, [propsSampleData, modalSampleData, urls]);
 
   const { sample } = sampleData;
 

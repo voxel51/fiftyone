@@ -1676,14 +1676,20 @@ def _parse_batch_size(batch_size, model, use_data_loader):
 
 def _make_label_parser(samples, patches_field):
     patches_attr, _ = samples._handle_frame_field(patches_field)
-    label_type, _ = samples._get_label_field_path(patches_field)
+    label_type = samples._get_label_field_type(patches_field)
     is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
     if not is_list_field:
 
         def parse_label(sample):
             label = sample[patches_attr]
-            return [label] if label is not None else []
+            if label is None:
+                return []
+
+            if isinstance(label, list):
+                return label
+
+            return [label]
 
         return parse_label
 

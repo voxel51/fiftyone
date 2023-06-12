@@ -9,16 +9,20 @@ import ListItemText from "@mui/material/ListItemText";
 import { Resizable } from "re-resizable";
 import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import styles from "../../../../../packages/components/src/scrollable.module.css";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
-import { ACTIVE_FIELD } from "./utils";
+import { ACTIVE_FIELD, getDisplayName } from "./utils";
+
+const WIDTH = 230;
 
 const SidebarList: React.FC = () => {
   const theme = useTheme();
   const activeField = useRecoilValue(fos.activeColorField);
 
-  const [width, setWidth] = useState(200);
+  const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.global, ACTIVE_FIELD.json], name: "general" },
+    { paths: ["tags"], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
@@ -47,12 +51,13 @@ const SidebarList: React.FC = () => {
   const getCurrentField = (activeField) => {
     if (activeField === ACTIVE_FIELD.global) return ACTIVE_FIELD.global;
     if (activeField === ACTIVE_FIELD.json) return ACTIVE_FIELD.json;
+
     return activeField?.expandedPath;
   };
   return (
     <Resizable
       size={{ height: "100%", width }}
-      minWidth={200}
+      minWidth={WIDTH}
       maxWidth={600}
       enable={{
         top: false,
@@ -67,7 +72,7 @@ const SidebarList: React.FC = () => {
       onResizeStop={(e, direction, ref, { width: d }) => {
         setWidth(width + d);
         // reset sidebar width on double click
-        if (e.detail === 2) setWidth(200);
+        if (e.detail === 2) setWidth(WIDTH);
       }}
       handleStyles={{
         ["right"]: { right: 0, width: 4 },
@@ -75,7 +80,8 @@ const SidebarList: React.FC = () => {
       handleClasses={{
         ["right"]: resizeHandle,
       }}
-      style={{ overflow: "auto" }}
+      style={{ overflowY: "auto", overflowX: "hidden" }}
+      className={styles.scrollable}
     >
       <List
         sx={{
@@ -119,7 +125,7 @@ const SidebarList: React.FC = () => {
                       disableRipple
                     >
                       <ListItemText
-                        primary={path}
+                        primary={getDisplayName(path)}
                         onClick={() => onSelectField(path)}
                         sx={{ fontFamily: "palanquin, sans-serif" }}
                       />

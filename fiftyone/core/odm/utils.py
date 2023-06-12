@@ -468,8 +468,9 @@ def _parse_embedded_doc_list_fields(values, dynamic):
 
 def _merge_embedded_doc_fields(fields_dict, fields):
     for field in fields:
-        ftype = field["ftype"]
         name = field["name"]
+        ftype = field["ftype"]
+        subfield = field.get("subfield", None)
 
         if name not in fields_dict:
             fields_dict[name] = field
@@ -482,6 +483,11 @@ def _merge_embedded_doc_fields(fields_dict, fields):
                 # @todo could provide an `add_mixed=True` option to declare
                 # mixed fields like this as a generic `Field`
                 fields_dict[name] = None
+            elif etype in (fof.ListField, fof.DictField):
+                if "subfield" in efield and efield["subfield"] != subfield:
+                    efield["subfield"] = None
+                elif subfield is not None:
+                    efield["subfield"] = subfield
             elif ftype == fof.EmbeddedDocumentField:
                 _merge_embedded_doc_fields(efield["fields"], field["fields"])
 

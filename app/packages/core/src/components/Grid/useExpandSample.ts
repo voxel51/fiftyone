@@ -5,8 +5,6 @@ import * as fos from "@fiftyone/state";
 
 export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
   const expandSample = fos.useExpandSample();
-  const setSample = fos.useSetExpandedSample(false);
-  const clear = fos.useClearModal();
 
   return useCallback<
     (
@@ -21,27 +19,18 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
 
         const promise = id ? Promise.resolve(id) : next();
 
-        promise
-          ? promise.then(() => {
-              const id = store.indices.get(index);
+        return promise.then(() => {
+          const id = store.indices.get(index);
 
-              if (!id) {
-                throw new Error("unable to paginate to next sample");
-              }
-
-              setSample(store.samples.get(id), { index, setIndex: getIndex });
-            })
-          : clear();
+          if (!id) {
+            throw new Error("unable to paginate to next sample");
+          }
+          return id;
+        });
       };
 
-      const sample = store.samples.get(sampleId);
-
-      if (!sample) {
-        throw new Error("sample not found");
-      }
-
-      expandSample(sample, { index: clickedIndex, setIndex: getIndex });
+      expandSample(sampleId, clickedIndex, getIndex);
     },
-    [store]
+    [expandSample, store]
   );
 };
