@@ -5109,11 +5109,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         data_path=None,
         labels_path=None,
         name=None,
+        persistent=False,
+        overwrite=False,
         label_field=None,
         tags=None,
         dynamic=False,
-        persistent=False,
-        overwrite=False,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
@@ -5181,6 +5181,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset type being imported
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             label_field (None): controls the field(s) in which imported labels
                 are stored. Only applicable if ``dataset_importer`` is a
                 :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
@@ -5198,10 +5202,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
-            overwrite (False): whether to overwrite an existing dataset of
-                the same name
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
@@ -5230,12 +5230,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         data_path=None,
         labels_path=None,
         name=None,
+        persistent=False,
+        overwrite=False,
         label_field=None,
         tags=None,
         dynamic=False,
         cleanup=True,
-        persistent=False,
-        overwrite=False,
         **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
@@ -5299,6 +5299,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset type being imported
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             label_field (None): controls the field(s) in which imported labels
                 are stored. Only applicable if ``dataset_importer`` is a
                 :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
@@ -5317,10 +5321,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
             cleanup (True): whether to delete the archive after extracting it
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
-            overwrite (False): whether to overwrite an existing dataset of
-                the same name
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
@@ -5347,11 +5347,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls,
         dataset_importer,
         name=None,
+        persistent=False,
+        overwrite=False,
         label_field=None,
         tags=None,
         dynamic=False,
-        persistent=False,
-        overwrite=False,
     ):
         """Creates a :class:`Dataset` by importing the samples in the given
         :class:`fiftyone.utils.data.importers.DatasetImporter`.
@@ -5366,6 +5366,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             label_field (None): controls the field(s) in which imported labels
                 are stored. Only applicable if ``dataset_importer`` is a
                 :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
@@ -5383,10 +5387,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
-            overwrite (False): whether to overwrite an existing dataset of
-                the same name
 
         Returns:
             a :class:`Dataset`
@@ -5406,9 +5406,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         paths_or_samples,
         sample_parser=None,
         name=None,
-        tags=None,
         persistent=False,
         overwrite=False,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given images.
 
@@ -5429,12 +5429,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional tag or iterable of tags to attach to each
-                sample
             persistent (False): whether the dataset should persist in the
                 database after the session terminates
             overwrite (False): whether to overwrite an existing dataset of
                 the same name
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -5451,11 +5451,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples,
         sample_parser,
         name=None,
+        persistent=False,
+        overwrite=False,
         label_field=None,
         tags=None,
         dynamic=False,
-        persistent=False,
-        overwrite=False,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -5474,6 +5474,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             label_field (None): controls the field(s) in which imported labels
                 are stored. If the parser produces a single
                 :class:`fiftyone.core.labels.Label` instance per sample, this
@@ -5487,10 +5491,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
-            overwrite (False): whether to overwrite an existing dataset of
-                the same name
 
         Returns:
             a :class:`Dataset`
@@ -5510,10 +5510,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls,
         images_dir,
         name=None,
-        tags=None,
-        recursive=True,
         persistent=False,
         overwrite=False,
+        tags=None,
+        recursive=True,
     ):
         """Creates a :class:`Dataset` from the given directory of images.
 
@@ -5523,13 +5523,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             images_dir: a directory of images
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional tag or iterable of tags to attach to each
-                sample
-            recursive (True): whether to recursively traverse subdirectories
             persistent (False): whether the dataset should persist in the
                 database after the session terminates
             overwrite (False): whether to overwrite an existing dataset of
                 the same name
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
             a :class:`Dataset`
@@ -5543,9 +5543,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls,
         images_patt,
         name=None,
-        tags=None,
         persistent=False,
         overwrite=False,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given glob pattern of images.
 
@@ -5556,12 +5556,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``/path/to/images/*.jpg``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional tag or iterable of tags to attach to each
-                sample
             persistent (False): whether the dataset should persist in the
                 database after the session terminates
             overwrite (False): whether to overwrite an existing dataset of
                 the same name
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -5576,9 +5576,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         paths_or_samples,
         sample_parser=None,
         name=None,
-        tags=None,
         persistent=False,
         overwrite=False,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given videos.
 
@@ -5599,12 +5599,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional tag or iterable of tags to attach to each
-                sample
             persistent (False): whether the dataset should persist in the
                 database after the session terminates
             overwrite (False): whether to overwrite an existing dataset of
                 the same name
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
@@ -5621,11 +5621,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples,
         sample_parser,
         name=None,
+        persistent=False,
+        overwrite=False,
         label_field=None,
         tags=None,
         dynamic=False,
-        persistent=False,
-        overwrite=False,
     ):
         """Creates a :class:`Dataset` from the given labeled videos.
 
@@ -5644,6 +5644,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             label_field (None): controls the field(s) in which imported labels
                 are stored. If the parser produces a single
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
@@ -5658,10 +5662,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
-            overwrite (False): whether to overwrite an existing dataset of
-                the same name
 
         Returns:
             a :class:`Dataset`
@@ -5681,10 +5681,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls,
         videos_dir,
         name=None,
-        tags=None,
-        recursive=True,
         persistent=False,
         overwrite=False,
+        tags=None,
+        recursive=True,
     ):
         """Creates a :class:`Dataset` from the given directory of videos.
 
@@ -5694,13 +5694,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             videos_dir: a directory of videos
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional tag or iterable of tags to attach to each
-                sample
-            recursive (True): whether to recursively traverse subdirectories
             persistent (False): whether the dataset should persist in the
                 database after the session terminates
             overwrite (False): whether to overwrite an existing dataset of
                 the same name
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
             a :class:`Dataset`
@@ -5710,7 +5710,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_videos_patt(cls, videos_patt, name=None, tags=None):
+    def from_videos_patt(
+        cls,
+        videos_patt,
+        name=None,
+        persistent=False,
+        overwrite=False,
+        tags=None,
+    ):
         """Creates a :class:`Dataset` from the given glob pattern of videos.
 
         This operation does not read/decode the videos.
@@ -5720,17 +5727,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``/path/to/videos/*.mp4``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            tags (None): an optional tag or iterable of tags to attach to each
-                sample
             persistent (False): whether the dataset should persist in the
                 database after the session terminates
             overwrite (False): whether to overwrite an existing dataset of
                 the same name
+            tags (None): an optional tag or iterable of tags to attach to each
+                sample
 
         Returns:
             a :class:`Dataset`
         """
-        dataset = cls(name)
+        dataset = cls(name, persistent=persistent, overwrite=overwrite)
         dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
 
@@ -5739,9 +5746,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls,
         d,
         name=None,
+        persistent=False,
+        overwrite=False,
         rel_dir=None,
         frame_labels_dir=None,
-        persistent=False,
     ):
         """Loads a :class:`Dataset` from a JSON dictionary generated by
         :meth:`fiftyone.core.collections.SampleCollection.to_dict`.
@@ -5753,6 +5761,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             d: a JSON dictionary
             name (None): a name for the new dataset
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
@@ -5762,8 +5774,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 is assumed that the frame labels are included directly in the
                 provided JSON dict. Only applicable to datasets that contain
                 videos
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
 
         Returns:
             a :class:`Dataset`
@@ -5777,7 +5787,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir = fou.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
-        dataset = cls(name, persistent=persistent)
+        dataset = cls(name, persistent=persistent, overwrite=overwrite)
 
         media_type = d.get("media_type", None)
 
@@ -5853,9 +5863,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls,
         path_or_str,
         name=None,
+        persistent=False,
+        overwrite=False,
         rel_dir=None,
         frame_labels_dir=None,
-        persistent=False,
     ):
         """Loads a :class:`Dataset` from JSON generated by
         :func:`fiftyone.core.collections.SampleCollection.write_json` or
@@ -5868,12 +5879,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             path_or_str: the path to a JSON file on disk or a JSON string
             name (None): a name for the new dataset
+            persistent (False): whether the dataset should persist in the
+                database after the session terminates
+            overwrite (False): whether to overwrite an existing dataset of
+                the same name
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
                 (if necessary) via :func:`fiftyone.core.utils.normalize_path`
-            persistent (False): whether the dataset should persist in the
-                database after the session terminates
 
         Returns:
             a :class:`Dataset`
@@ -5882,9 +5895,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return cls.from_dict(
             d,
             name=name,
+            persistent=persistent,
+            overwrite=overwrite,
             rel_dir=rel_dir,
             frame_labels_dir=frame_labels_dir,
-            persistent=persistent,
         )
 
     def _add_view_stage(self, stage):
