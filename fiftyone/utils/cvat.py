@@ -22,7 +22,6 @@ import webbrowser
 
 from bson import ObjectId
 import jinja2
-from mongoengine.base.datastructures import BaseDict, BaseList
 import numpy as np
 import requests
 import urllib3
@@ -3157,9 +3156,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
         self.organization = organization
-        self.frame_start = self._validate_frame_arg(frame_start, "frame_start")
-        self.frame_stop = self._validate_frame_arg(frame_stop, "frame_stop")
-        self.frame_step = self._validate_frame_arg(frame_step, "frame_step")
+        self.frame_start = _validate_frame_arg(frame_start, "frame_start")
+        self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
+        self.frame_step = _validate_frame_arg(frame_step, "frame_step")
 
         # store privately so these aren't serialized
         self._username = username
@@ -3196,39 +3195,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self._load_parameters(
             url=url, username=username, password=password, headers=headers
         )
-
-    def _validate_frame_arg(self, arg, arg_name):
-        if arg is None:
-            return None
-
-        if isinstance(arg, BaseDict):
-            arg = dict(arg)
-
-        if isinstance(arg, BaseList):
-            arg = list(arg)
-
-        if type(arg) not in [int, list, dict]:
-            raise ValueError(
-                "Unsupported type '%s' for argument '%s'. Expected an int, list, or dict."
-                % (type(arg), arg_name)
-            )
-
-        if arg_name == "frame_step":
-            if isinstance(arg, int):
-                arg_list = [arg]
-            elif isinstance(arg, dict):
-                arg_list = arg.values()
-            else:
-                arg_list = arg
-
-            for _arg in arg_list:
-                if _arg < 1:
-                    raise ValueError(
-                        "'frame_step' must be greater than 1 but found %d."
-                        % _arg
-                    )
-
-        return arg
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -4251,13 +4217,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data["stop_frame"] = frame_stop
 
         if frame_step is not None:
-            if frame_step < 1:
-                logger.warning(
-                    "Ignoring 'frame_step' as it must be greater than 1 but found %d."
-                    % frame_step
-                )
-            else:
-                data["frame_filter"] = "step=%d" % frame_step
+            data["frame_filter"] = "step=%d" % frame_step
 
         files, open_files = self._parse_local_files(paths)
 
@@ -4360,11 +4320,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         has_ignored_attributes = False
         save_config = False
-        frame_start = config.frame_start
-        frame_stop = config.frame_stop
-        frame_step = config.frame_step
-
-        is_video = samples.media_type == fom.VIDEO
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
@@ -4416,10 +4371,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
         num_batches = math.ceil(num_samples / batch_size)
+        is_video = samples.media_type == fom.VIDEO
 
         samples.compute_metadata()
 
-        if samples.media_type == fom.VIDEO:
+        if is_video:
             # The current implementation requires frame IDs for all frames that
             # might get labels
             samples.ensure_frames()
@@ -4437,36 +4393,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_shapes = []
                 anno_tracks = []
 
-                def _parse_frame_arg(
-                    arg, arg_name, idx, is_video, samples_batch
-                ):
-                    if arg is not None and not is_video:
-                        logger.warning(
-                            "Ignoring '%s' argument as it was provided for an image dataset, but is only supported for videos. Instead for image datasets, filter the view being annotated directly."
-                            % arg_name
-                        )
-                        return None
-
-                    if isinstance(arg, list):
-                        return arg[idx % len(arg)]
-
-                    elif isinstance(arg, dict):
-                        if len(samples_batch) != 1:
-                            return None
-                        first_filepath = samples_batch.values("filepath")[0]
-                        return arg.get(first_filepath, None)
-
-                    return arg
-
-                _frame_start = _parse_frame_arg(
-                    frame_start, "frame_start", idx, is_video, samples_batch
-                )
-                _frame_stop = _parse_frame_arg(
-                    frame_stop, "frame_stop", idx, is_video, samples_batch
-                )
-                _frame_step = _parse_frame_arg(
-                    frame_step, "frame_step", idx, is_video, samples_batch
-                )
+                if is_video:
+                    _frame_start = _render_frame_arg(
+                        config.frame_start, idx, samples_batch
+                    )
+                    _frame_stop = _render_frame_arg(
+                        config.frame_stop, idx, samples_batch
+                    )
+                    _frame_step = _render_frame_arg(
+                        config.frame_step, idx, samples_batch
+                    )
+                else:
+                    _frame_start = None
+                    _frame_stop = None
+                    _frame_step = None
 
                 for label_field, label_info in label_schema.items():
                     _tags = []
@@ -4658,60 +4598,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     )
                     continue
 
-                def _parse_frame_step(data_resp):
-                    # Parse the frame step from a frame filter like:
-                    # frame_filter="step=5"
-                    filt = data_resp.get("frame_filter", "")
-                    if not filt:
-                        return None
-
-                    steps = [
-                        int(s.split("=")[1])
-                        for s in filt.split(",")
-                        if "step" == s.split("=")[0]
-                    ]
-                    if len(steps) < 1:
-                        return None
-                    else:
-                        return steps[0]
-
                 data_resp = self.get(self.task_data_meta_url(task_id)).json()
                 frames = data_resp["frames"]
                 frame_start = data_resp["start_frame"]
                 frame_stop = data_resp["stop_frame"]
                 frame_step = _parse_frame_step(data_resp)
-
-                def _remap_annotation_frame(
-                    frame_value, frame_start, frame_step
-                ):
-                    _frame_step = 1 if frame_step is None else frame_step
-                    return (frame_value * _frame_step) + frame_start
-
-                def _remap_annotation_frames(
-                    annos, frame_start, frame_stop, frame_step
-                ):
-                    if frame_start == 0 and frame_step is None:
-                        return annos
-                    # If a video was subsampled
-                    if isinstance(annos, list):
-                        return [
-                            _remap_annotation_frames(
-                                a, frame_start, frame_stop, frame_step
-                            )
-                            for a in annos
-                        ]
-                    if isinstance(annos, dict):
-                        for k, v in annos.items():
-                            if k == "frame":
-                                annos[k] = _remap_annotation_frame(
-                                    v, frame_start, frame_step
-                                )
-                            elif isinstance(v, list) or isinstance(v, dict):
-                                annos[k] = _remap_annotation_frames(
-                                    v, frame_start, frame_stop, frame_step
-                                )
-
-                    return annos
 
                 # Download task data
                 attr_id_map, _class_map_rev = self._get_attr_class_maps(
@@ -5435,9 +5326,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frame_stop=frame_stop,
             frame_step=frame_step,
         )
+
         self._verify_uploaded_frames(
             task_id, samples_batch, frame_start, frame_stop, frame_step
         )
+
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
 
         return task_id, class_id_map, attr_id_map
@@ -5448,9 +5341,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_meta = self.get(self.task_data_meta_url(task_id)).json()
         num_uploaded = task_meta.get("size", 0)
         if samples.media_type == fom.VIDEO:
-            sample_frames = samples.count("frames")
             num_frames = self._compute_expected_frames(
-                sample_frames, frame_start, frame_stop, frame_step
+                samples, frame_start, frame_stop, frame_step
             )
             ftype = "frames"
         else:
@@ -5466,14 +5358,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
     def _compute_expected_frames(
-        self, sample_frames, frame_start, frame_stop, frame_step
+        self, samples, frame_start, frame_stop, frame_step
     ):
+        n = samples.count("frames")
         _frame_start = 0 if frame_start is None else frame_start
-        _frame_stop = (
-            sample_frames
-            if frame_stop is None
-            else min(frame_stop, sample_frames)
-        )
+        _frame_stop = n if frame_stop is None else min(frame_stop, n)
         _frame_step = 1 if frame_step is None else frame_step
 
         return int((_frame_stop - _frame_start) / _frame_step)
@@ -6146,13 +6035,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             field = label_field
 
-        def _get_next_frame(sampled_frame_id, frame_step):
-            _frame_step = 1 if frame_step is None else frame_step
-            return sampled_frame_id + _frame_step
-
         frame_id = -1
         for sample in samples:
-            sampled_frame_id = 0 if frame_start is None else frame_start
+            next_frame_idx = 0 if frame_start is None else frame_start
             metadata = sample.metadata
 
             if is_video:
@@ -6162,8 +6047,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 images = [sample]
                 frame_size = (metadata.width, metadata.height)
 
-            for img_idx, image in enumerate(images):
-                if img_idx != sampled_frame_id:
+            for idx, image in enumerate(images):
+                if idx != next_frame_idx:
                     # This is a video being subsampled, only load annotations
                     # for frames that are being rendered
                     continue
@@ -6248,10 +6133,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     else:
                         id_map[sample.id] = ids
 
-                sampled_frame_id = _get_next_frame(
-                    sampled_frame_id, frame_step
-                )
-                if frame_stop is not None and sampled_frame_id > frame_stop:
+                next_frame_idx = _get_next_frame(next_frame_idx, frame_step)
+                if frame_stop is not None and next_frame_idx > frame_stop:
                     break
 
         # Record any attribute name changes due to label attributes being
@@ -7846,3 +7729,96 @@ def _get_interpolated_shapes(track_shapes):
         shapes.extend(interpolate(prev_shape, shape))
 
     return shapes
+
+
+def _validate_frame_arg(arg, arg_name):
+    if arg is None:
+        return arg
+
+    if not isinstance(arg, (int, list, dict)):
+        raise ValueError(
+            "Unsupported type %s for argument '%s'. Expected an int, list, or "
+            "dict" % (type(arg), arg_name)
+        )
+
+    if arg_name == "frame_step":
+        if isinstance(arg, int):
+            args = [arg]
+        elif isinstance(arg, dict):
+            args = arg.values()
+        else:
+            args = arg
+
+        for a in args:
+            if a < 1:
+                raise ValueError("'frame_step' must be >= 1; found %d" % a)
+
+    return arg
+
+
+def _render_frame_arg(arg, idx, samples_batch):
+    if isinstance(arg, list):
+        return arg[idx % len(arg)]
+
+    if isinstance(arg, dict):
+        try:
+            return arg[samples_batch.values("filepath")[0]]
+        except:
+            return None
+
+    return arg
+
+
+def _parse_frame_step(data_resp):
+    # Parse frame step from a frame filter like ``{"frame_filter": "step=5"}``
+    filt = data_resp.get("frame_filter", None)
+    if not filt:
+        return None
+
+    steps = [
+        int(s.split("=")[1])
+        for s in filt.split(",")
+        if "step" == s.split("=")[0]
+    ]
+
+    if len(steps) < 1:
+        return None
+
+    return steps[0]
+
+
+def _remap_annotation_frame(frame_value, frame_start, frame_step):
+    if frame_step is None:
+        frame_step = 1
+
+    return int(frame_value * frame_step) + frame_start
+
+
+def _remap_annotation_frames(annos, frame_start, frame_stop, frame_step):
+    if frame_start == 0 and frame_step is None:
+        return annos
+
+    # If a video was subsampled
+    if isinstance(annos, list):
+        return [
+            _remap_annotation_frames(a, frame_start, frame_stop, frame_step)
+            for a in annos
+        ]
+
+    if isinstance(annos, dict):
+        for k, v in annos.items():
+            if k == "frame":
+                annos[k] = _remap_annotation_frame(v, frame_start, frame_step)
+            elif isinstance(v, list) or isinstance(v, dict):
+                annos[k] = _remap_annotation_frames(
+                    v, frame_start, frame_stop, frame_step
+                )
+
+    return annos
+
+
+def _get_next_frame(next_frame_idx, frame_step):
+    if frame_step is None:
+        frame_step = 1
+
+    return next_frame_idx + frame_step
