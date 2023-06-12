@@ -63,8 +63,7 @@ const navigateDynamicGroupsModal = (ordered: boolean) => {
     const sceneIds = new Set(["0", "1", "2", "3", "4", "5", "6", "7"]);
 
     for (let i = 0; i < sceneIds.size; i++) {
-      // wait for flashlight to load, otherwise scene_id will be incorrect
-      cy.waitForLookerToRender();
+      cy.get("[data-cy=sidebar-entry-id]").should("be.visible");
       cy.get("[data-cy=sidebar-entry-scene_id]").then((sceneId) => {
         const sceneIdText = sceneId.text();
         const sceneIdNumber = Number(sceneIdText);
@@ -105,6 +104,7 @@ const navigateDynamicGroupsModal = (ordered: boolean) => {
 
         // check if random access works
         cy.get("[data-cy=dynamic-group-pagination-bar-input]")
+          .focus()
           .clear()
           .type("22");
 
@@ -144,7 +144,7 @@ describe("dynamic groups", () => {
     });
 
     it("should create dynamic groups based on ground_truth.label", () => {
-      cy.get("[data-cy=entry-counts").should("have.text", "50 samples");
+      cy.get("[data-cy=entry-counts]").should("have.text", "50 samples");
 
       // todo: investigate, "first()" is used to suppress this flakiness;
       // sometimes an extra element is rendered and the test fails
@@ -154,7 +154,7 @@ describe("dynamic groups", () => {
 
       cy.get("[data-cy=dynamic-group-btn-submit]").click();
 
-      cy.get("[data-cy=entry-counts").should("have.text", "10 groups");
+      cy.get("[data-cy=entry-counts]").should("have.text", "10 groups");
 
       // click on the first group and navigate until the end, make sure the tags are consistent
       cy.get("[data-cy=looker]").should("have.length", 10);
@@ -173,6 +173,9 @@ describe("dynamic groups", () => {
           "ship",
           "truck",
         ].forEach((label) => {
+          // this is to make sure sample has loaded
+          cy.get("[data-cy=sidebar-entry-id]").should("be.visible");
+
           cy.get("[data-cy=tag-ground_truth]")
             .should("have.length.gte", 2)
             .each((tag) => {
@@ -187,15 +190,7 @@ describe("dynamic groups", () => {
   context("folding quickstart-groups (media type = group) by scene_id", () => {
     before(() => {
       cy.executePythonFixture("dynamic-groups/dynamic-groups.cy.py");
-    });
-
-    beforeEach(() => {
       cy.waitForGridToBeVisible("quickstart-groups-dynamic");
-      cy.get("[data-cy=entry-counts").should("have.text", "200 groups");
-    });
-
-    afterEach(() => {
-      cy.clearViewStages();
     });
 
     it("should show valid candidates for group-by keys", () => {
@@ -207,34 +202,49 @@ describe("dynamic groups", () => {
       ]);
     });
 
-    context("unordered", () => {
-      it("should create dynamic groups based on scene_id", () => {
-        cy.get("[data-cy=entry-counts").should("have.text", "200 groups");
+    ["left", "right", "pcd"].forEach((slice) => {
+      context(`unordered with slice = ${slice}`, () => {
+        before(() => {
+          cy.waitForGridToBeVisible("quickstart-groups-dynamic");
+          cy.clearViewStages();
 
-        // todo: investigate, "first()" is used to suppress this flakiness;
-        // sometimes an extra element is rendered and the test fails
-        cy.get("[data-cy=dynamic-group-pill-button]").click();
-        cy.get("[data-cy=order-by-selector]").should("not.exist");
-        cy.get("[data-cy=group-by-selector]").click();
-        cy.get("[data-cy=selector-result-scene_id]").click();
+          cy.get("[data-cy=entry-counts]").should("have.text", "200 groups");
+          // todo: investigate, "first()" is used to suppress this flakiness;
+          // sometimes an extra element is rendered and the test fails
+          cy.get("[data-cy=dynamic-group-pill-button]").click();
+          cy.get("[data-cy=order-by-selector]").should("not.exist");
+          cy.get("[data-cy=group-by-selector]").click();
+          cy.get("[data-cy=selector-result-scene_id]").click();
 
-        cy.get("[data-cy=dynamic-group-btn-submit]").click();
+          cy.get("[data-cy=dynamic-group-btn-submit]").click();
 
-        cy.get("[data-cy=entry-counts").should("have.text", "8 groups");
+          cy.get("[data-cy=entry-counts]").should("have.text", "8 groups");
 
-        cy.get("[data-cy=checkbox-scene_id]").click();
-        cy.get("[data-cy=checkbox-timestamp]").click();
+          cy.get("[data-cy=checkbox-scene_id]").click();
+          cy.get("[data-cy=checkbox-timestamp]").click();
 
-        cy.get("[data-cy=looker]").should("have.length", 8);
+          cy.get("[data-cy=looker]").should("have.length", 8);
+        });
 
-        cy.get("[data-cy=looker]").first().click();
+        beforeEach(() => {
+          // select slice in the grid
+          // todo: move it to a custom command
+          cy.get("[data-cy=selector-slice]").first().click();
+          cy.get(`[data-cy=selector-result-${slice}]`).click();
+          cy.get("[data-cy=looker]").first().click();
+        });
 
-        navigateDynamicGroupsModal(false);
+        it("should create dynamic groups based on scene_id", () => {
+          navigateDynamicGroupsModal(false);
+        });
       });
     });
 
     context("ordered", () => {
       it("should create dynamic groups based on scene_id and ordered by timestamp", () => {
+        cy.waitForGridToBeVisible();
+        cy.clearViewStages();
+
         // todo: investigate, "first()" is used to suppress this flakiness;
         // sometimes an extra element is rendered and the test fails
         cy.get("[data-cy=dynamic-group-pill-button]").click();
@@ -256,7 +266,7 @@ describe("dynamic groups", () => {
         cy.get("[data-cy=dynamic-group-btn-submit]").click();
         cy.get("[data-cy=dynamic-group-validation-error").should("not.exist");
 
-        cy.get("[data-cy=entry-counts").should("have.text", "8 groups");
+        cy.get("[data-cy=entry-counts]").should("have.text", "8 groups");
 
         cy.get("[data-cy=checkbox-scene_id]").click();
         cy.get("[data-cy=checkbox-timestamp]").click();

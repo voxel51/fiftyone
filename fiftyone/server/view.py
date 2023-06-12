@@ -183,9 +183,9 @@ def get_extended_view(
             if tags and exclude:
                 view = view.match_tags(tags, bool=False)
 
-        label_tags = filters.get(_LABEL_TAGS, None)
-        if label_tags:
-            view = _match_label_tags(view, label_tags)
+        if _LABEL_TAGS in filters:
+            label_tags = filters.get(_LABEL_TAGS)
+            label_fields = view._get_label_fields()
 
         stages = _make_filter_stages(
             view,

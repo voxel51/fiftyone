@@ -181,8 +181,9 @@ class ClipsView(fov.DatasetView):
             )
 
     def _to_source_ids(self, label_field, ids, label_ids):
-        label_type = self._source_collection._get_label_field_type(label_field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        _, is_list_field = self._source_collection._get_label_field_root(
+            label_field
+        )
 
         if not is_list_field:
             return ids, label_ids
@@ -774,6 +775,7 @@ def _write_temporal_detection_clips(
     dataset, src_collection, field, other_fields=None
 ):
     src_dataset = src_collection._dataset
+    root, is_list_field = src_collection._get_label_field_root(field)
     label_type = src_collection._get_label_field_type(field)
 
     supported_types = (fol.TemporalDetection, fol.TemporalDetections)
@@ -804,28 +806,24 @@ def _write_temporal_detection_clips(
         {"$match": {"$expr": {"$gt": ["$" + field, None]}}},
     ]
 
-    if label_type is fol.TemporalDetections:
-        list_path = field + "." + label_type._LABEL_LIST_FIELD
-        pipeline.extend(
-            [
-                {"$unwind": "$" + list_path},
-                {"$addFields": {field: "$" + list_path}},
-            ]
-        )
+    if is_list_field:
+        pipeline.append({"$unwind": "$" + root})
 
-    support_path = field + ".support"
+    if label_type is fol.TemporalDetections:
+        pipeline.append({"$addFields": {field: "$" + root}})
+
     pipeline.extend(
         [
             {
                 "$addFields": {
                     "_id": "$" + field + "._id",
-                    "support": "$" + support_path,
+                    "support": "$" + field + ".support",
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
                     "_dataset_id": dataset._doc.id,
                 }
             },
-            {"$project": {support_path: False}},
+            {"$project": {field + ".support": False}},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -975,22 +973,15 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
 
 def _get_trajectories(sample_collection, frame_field):
     path = sample_collection._FRAMES_PREFIX + frame_field
-    label_type = sample_collection._get_label_field_type(path)
+    root, is_list_field = sample_collection._get_label_field_root(path)
+    root, _ = sample_collection._handle_frame_field(root)
 
-    if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
-        raise ValueError(
-            "Frame field '%s' has type %s, but trajectories can only be "
-            "extracted for label list fields %s"
-            % (
-                frame_field,
-                label_type,
-                fol._LABEL_LIST_FIELDS,
-            )
-        )
+    if not is_list_field:
+        raise ValueError("Trajectories can only be extracted for label lists")
 
     fn_expr = F("frames").map(F("frame_number"))
     uuid_expr = F("frames").map(
-        F(frame_field + "." + label_type._LABEL_LIST_FIELD).map(
+        F(root).map(
             F("label").concat(
                 ".", (F("index") != None).if_else(F("index").to_string(), "")
             )

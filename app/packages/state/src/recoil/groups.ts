@@ -374,7 +374,13 @@ export const groupSample = selectorFamily<ModalSample, SliceName>({
         return sample;
       }
 
-      return get(groupSampleQuery(sliceName));
+      const fallbackSample = get(groupSampleQuery(sliceName));
+
+      if (fallbackSample?.sample) {
+        return fallbackSample;
+      }
+
+      return sample;
     },
 });
 
