@@ -521,10 +521,10 @@ def _print_all_dataset_info(glob_patt, sort_by, reverse):
 
 
 def _format_cell(cell):
-    if cell == True:
+    if cell is True:
         return "\u2713"
 
-    if cell == False:
+    if cell is False:
         return ""
 
     if cell is None:
