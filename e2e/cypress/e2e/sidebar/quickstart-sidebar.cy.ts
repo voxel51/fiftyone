@@ -254,12 +254,12 @@ describe("Sidebar filter", () => {
         });
     });
 
-    it("should be able to use tagger with no samples selected", () => {
-      // verify sample tags number and label tags number on the tagger popout
-      // tag all labels as "<0.90"
-      // after grids refresh, verify the new tag and its count on label tags
-      // tag all samples in the dataset as "all"
-      // after grids refresh, verify the new sample tags are created
-    });
+    // it("should be able to use tagger with no samples selected", () => {
+    //   // verify sample tags number and label tags number on the tagger popout
+    //   // tag all labels as "<0.90"
+    //   // after grids refresh, verify the new tag and its count on label tags
+    //   // tag all samples in the dataset as "all"
+    //   // after grids refresh, verify the new sample tags are created
+    // });
   });
 });
