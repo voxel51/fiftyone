@@ -3,6 +3,8 @@ import {
   CLASSIFICATION_FIELD,
   DETECTIONS_FIELD,
   DETECTION_FIELD,
+  DISABLED_FIELD_TYPES,
+  DISABLED_PATHS,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   FRAME_NUMBER_FIELD,
@@ -41,78 +43,77 @@ export const disabledField = (
     DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   ].includes(embeddedDocType);
 
-  return (
-    [
-      OBJECT_ID_FIELD,
-      FRAME_NUMBER_FIELD,
-      FRAME_SUPPORT_FIELD,
-      VECTOR_FIELD,
-    ].includes(ftype) ||
-    [path, parentPath].includes(groupField) ||
-    RESERVED_FIELD_KEYS.includes(path) ||
-    path.startsWith("metadata") ||
-    ([
-      TEMPORAL_DETECTION_FIELD,
-      DETECTION_FIELD,
-      DETECTIONS_FIELD,
-      CLASSIFICATION_FIELD,
-      CLASSIFICATIONS_FIELD,
-      KEYPOINT_FILED,
-      REGRESSION_FILED,
-      HEATMAP_FIELD,
-      SEGMENTATION_FIELD,
-      GEO_LOCATIONS_FIELD,
-      GEO_LOCATION_FIELD,
-      POLYLINE_FIELD,
-      POLYLINES_FIELD,
-    ].includes(parentEmbeddedDocType) &&
-      [
-        "id",
-        "tags",
-        "label",
-        "bounding_box",
-        "mask",
-        "confidence",
-        "index",
-        "points",
-        "closed",
-        "filled",
-        "logits",
-        "mask_path",
-        "map",
-        "map_path",
-        "Range",
-        "Confidence",
-        "support",
-        "point",
-        "line",
-        "Polygon",
-        "points",
-        "polygons",
-      ].includes(pathSplit[pathSplit.length - 1])) ||
-    [
-      TEMPORAL_DETECTION_FIELD,
-      DETECTION_FIELD,
-      DETECTIONS_FIELD,
-      CLASSIFICATION_FIELD,
-      CLASSIFICATIONS_FIELD,
-      KEYPOINT_FILED,
-      REGRESSION_FILED,
-      HEATMAP_FIELD,
-      SEGMENTATION_FIELD,
-      GEO_LOCATIONS_FIELD,
-      GEO_LOCATION_FIELD,
-      POLYLINE_FIELD,
-      POLYLINES_FIELD,
-    ].includes(ftype) ||
-    (parentPath &&
-      parentPath !== path &&
-      ftype === LIST_FIELD &&
-      (hasDynamicEmbeddedDocument ||
-        VALID_LABEL_TYPES.includes(
-          embeddedDocType?.includes(".")
-            ? embeddedDocTypeSplit[embeddedDocTypeSplit.length - 1]
-            : embeddedDocType
-        )))
-  );
+  console.log("ftype", path, ftype);
+  return DISABLED_PATHS.includes(path) || DISABLED_FIELD_TYPES.includes(ftype);
+  // [
+  //   // OBJECT_ID_FIELD,
+  //   FRAME_NUMBER_FIELD,
+  //   FRAME_SUPPORT_FIELD,
+  //   VECTOR_FIELD,
+  // ].includes(ftype) ||
+  // [path, parentPath].includes(groupField) ||
+  // RESERVED_FIELD_KEYS.includes(path) ||
+  // path.startsWith("metadata")
+  // ([
+  //   TEMPORAL_DETECTION_FIELD,
+  //   DETECTION_FIELD,
+  //   DETECTIONS_FIELD,
+  //   CLASSIFICATION_FIELD,
+  //   CLASSIFICATIONS_FIELD,
+  //   KEYPOINT_FILED,
+  //   REGRESSION_FILED,
+  //   HEATMAP_FIELD,
+  //   SEGMENTATION_FIELD,
+  //   GEO_LOCATIONS_FIELD,
+  //   GEO_LOCATION_FIELD,
+  //   POLYLINE_FIELD,
+  //   POLYLINES_FIELD,
+  // ].includes(parentEmbeddedDocType) &&
+  // [
+  //   "tags",
+  //   "label",
+  //   "bounding_box",
+  //   "mask",
+  //   "confidence",
+  //   "index",
+  //   "points",
+  //   "closed",
+  //   "filled",
+  //   "logits",
+  //   "mask_path",
+  //   "map",
+  //   "map_path",
+  //   "Range",
+  //   "Confidence",
+  //   "support",
+  //   "point",
+  //   "line",
+  //   "Polygon",
+  //   "points",
+  //   "polygons",
+  // ].includes(pathSplit[pathSplit.length - 1]) ||
+  // [
+  //   TEMPORAL_DETECTION_FIELD,
+  //   DETECTION_FIELD,
+  //   DETECTIONS_FIELD,
+  //   CLASSIFICATION_FIELD,
+  //   CLASSIFICATIONS_FIELD,
+  //   KEYPOINT_FILED,
+  //   REGRESSION_FILED,
+  //   HEATMAP_FIELD,
+  //   SEGMENTATION_FIELD,
+  //   GEO_LOCATIONS_FIELD,
+  //   GEO_LOCATION_FIELD,
+  //   POLYLINE_FIELD,
+  //   POLYLINES_FIELD,
+  // ].includes(ftype) ||
+  // (parentPath &&
+  //   parentPath !== path &&
+  //   ftype === LIST_FIELD &&
+  //   (hasDynamicEmbeddedDocument ||
+  //     VALID_LABEL_TYPES.includes(
+  //       embeddedDocType?.includes(".")
+  //         ? embeddedDocTypeSplit[embeddedDocTypeSplit.length - 1]
+  //         : embeddedDocType
+  //     )))
 };
