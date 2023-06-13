@@ -29,7 +29,8 @@ import {
 export const disabledField = (
   path: string,
   combinedSchema: Record<string, Field>,
-  groupField?: string
+  groupField?: string,
+  isPatchesView?: boolean
 ): boolean => {
   const currField = combinedSchema?.[path] || ({} as Field);
   const { ftype, embeddedDocType } = currField;
