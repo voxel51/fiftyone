@@ -56,11 +56,10 @@ describe("Sidebar filter", () => {
       cy.get("[data-cy=selector-div-ground_truth\\.detections\\.label]").within(
         () => {
           // do not use cy.get("input").type("cat{enter}");
-          // that cause the test to be very flasky
+          // that causes the test to be very flasky
           cy.get("input").type("cat");
           cy.get("input").should("have.value", "cat");
-          // TODO: need this, otherwise the test is very flaky
-          cy.wait(500);
+          cy.wait(300);
           cy.get("input").type("{enter}");
         }
       );
@@ -412,13 +411,5 @@ describe("Sidebar filter", () => {
           cy.get("[data-cy=entry-count-part]").should("have.text", "0 of 3");
         });
     });
-
-    // it("should be able to use tagger with no samples selected", () => {
-    //   // verify sample tags number and label tags number on the tagger popout
-    //   // tag all labels as "<0.90"
-    //   // after grids refresh, verify the new tag and its count on label tags
-    //   // tag all samples in the dataset as "all"
-    //   // after grids refresh, verify the new sample tags are created
-    // });
   });
 });
