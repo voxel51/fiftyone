@@ -92,13 +92,18 @@ const FIELDS = {
   },
   FRAME_ID_FIELD: {
     ...BASE_FIELD,
-    Path: "frames.id",
+    path: "frames.id",
     ftype: OBJECT_ID_FIELD,
   },
   FRAME_NUMBER_FIELD: {
     ...BASE_FIELD,
-    Path: "frames.number",
-    ftype: INT_FIELD,
+    path: "frames.number",
+    ftype: FRAME_NUMBER_FIELD,
+  },
+  SAMPLE_ID_FIELD: {
+    ...BASE_FIELD,
+    path: "sample_id",
+    ftype: OBJECT_ID_FIELD,
   },
 };
 
@@ -107,20 +112,23 @@ const BASE_SCHEMA = {
   filepath: FIELDS.FILEPATH_FIELD,
   tags: FIELDS.TAGS_FIELD,
   metadata: FIELDS.METADATA_FIELD,
+  [FIELDS.SAMPLE_ID_FIELD.path]: FIELDS.SAMPLE_ID_FIELD,
 };
 
 const FRAME_SCHEMA = {
-  id: FIELDS.ID_FIELD,
-  frame_number: FIELDS.FRAME_NUMBER_FIELD,
+  [FIELDS.FRAME_ID_FIELD.path]: FIELDS.FRAME_ID_FIELD,
+  [FIELDS.FRAME_NUMBER_FIELD.path]: FIELDS.FRAME_NUMBER_FIELD,
 };
 
 const DISABLED_TYPES_SCHEMA = {
   ...BASE_SCHEMA,
-  ObjectIdType: FIELDS.OBJECT_ID_TYPE,
+  ObjectIdType: FIELDS.ID_FIELD,
   FrameNumberField: FIELDS.FRAME_NUMBER_TYPE,
   FrameSupportField: FIELDS.FRAME_SUPPORT_TYPE,
   VectorField: FIELDS.VECTOR_TYPE,
   customEmbeddedDocumentField: FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD,
+  [GROUP_DATASET]: FIELDS.GROUP_FIELD,
+  [`${GROUP_DATASET}.name`]: FIELDS.GROUP_CHILD_FIELD,
 };
 
 describe("Disabled field paths in schema fields", () => {
@@ -211,9 +219,10 @@ describe("Disabled group field in schema fields", () => {
     ).toBe(false);
     expect(
       disabledField(
-        FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path,
+        FIELDS.GROUP_FIELD.path,
         DISABLED_TYPES_SCHEMA,
-        GROUP_DATASET
+        GROUP_DATASET,
+        false
       )
     ).toBe(true);
   });
@@ -245,6 +254,23 @@ describe("Video dataset disabled fields", () => {
         FIELDS.FRAME_NUMBER_FIELD.path,
         FRAME_SCHEMA,
         NOT_GROUP_DATASET
+      )
+    ).toBe(true);
+  });
+});
+
+describe("Patches view disabled fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sample_id field is disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        BASE_SCHEMA,
+        NOT_GROUP_DATASET,
+        true
       )
     ).toBe(true);
   });
