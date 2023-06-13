@@ -56,7 +56,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             delegation_target="foo",
             dataset_id=ObjectId(),
             context={"foo": "bar"},
-            view_stages=["foo", "bar"],
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
@@ -71,11 +70,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         operator = "@voxelfiftyone/operator/foo"
         operator2 = "@voxelfiftyone/operator/bar"
 
-        docs_to_trigger = []
+        docs_to_run = []
 
         # get all the existing counts of queued operations
         initial_queued = len(dos.get_queued_operations())
-        initial_triggered = len(dos.list_operations(run_state="triggered"))
+        initial_running = len(dos.list_operations(run_state="running"))
         initial_dataset_queued = len(
             dos.get_queued_operations(dataset_id=dataset_id)
         )
@@ -90,11 +89,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 # delegation_target=f"delegation_target{i}",
                 dataset_id=dataset_id,
                 context={"foo": "bar"},
-                view_stages=["foo", "bar"],
             )
             self.docs_to_delete.append(doc)
             # pylint: disable=no-member
-            docs_to_trigger.append(doc.id)
+            docs_to_run.append(doc.id)
 
         for i in range(10):
             doc = dos.queue_operation(
@@ -102,7 +100,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 # delegation_target=f"delegation_target_2{i}",
                 dataset_id=dataset_id2,
                 context={"foo": "bar"},
-                view_stages=["foo", "bar"],
             )
             self.docs_to_delete.append(doc)
 
@@ -115,14 +112,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         queued = dos.get_queued_operations(operator=operator)
         self.assertEqual(len(queued), 10 + initial_operator_queued)
 
-        for doc in docs_to_trigger:
-            dos.set_triggered(doc)
+        for doc in docs_to_run:
+            dos.set_running(doc)
 
         queued = dos.get_queued_operations()
         self.assertEqual(len(queued), 10 + initial_queued)
 
-        triggered = dos.list_operations(run_state="triggered")
-        self.assertEqual(len(triggered), 10 + initial_triggered)
+        running = dos.list_operations(run_state="running")
+        self.assertEqual(len(running), 10 + initial_running)
 
     def test_set_run_states(self):
         doc = dos.queue_operation(
@@ -130,15 +127,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             delegation_target=f"test_target",
             dataset_id=ObjectId(),
             context={"foo": "bar"},
-            view_stages=["foo", "bar"],
         )
 
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, "queued")
-
-        # pylint: disable=no-member
-        doc = dos.set_triggered(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "triggered")
 
         doc = dos.set_running(doc_id=doc.id)
         self.assertEqual(doc.run_state, "running")
@@ -164,7 +156,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             delegation_target=f"test_target",
             dataset_id=ObjectId(),
             context={"request_params": {"foo": "bar"}},
-            view_stages=["foo", "bar"],
         )
 
         self.docs_to_delete.append(doc)
@@ -176,7 +167,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, "completed")
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
-        self.assertIsNotNone(doc.triggered_at)
         self.assertIsNotNone(doc.completed_at)
 
         self.assertIsNone(doc.error_message)
@@ -196,7 +186,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             delegation_target=f"test_target",
             dataset_id=ObjectId(),
             context={"request_params": {"foo": "bar"}},
-            view_stages=["foo", "bar"],
         )
 
         self.docs_to_delete.append(doc)
@@ -208,7 +197,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, "failed")
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
-        self.assertIsNotNone(doc.triggered_at)
         self.assertIsNone(doc.completed_at)
 
         self.assertIsNotNone(doc.error_message)

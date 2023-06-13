@@ -29,7 +29,6 @@ class DelegatedOperationService(object):
         delegation_target: str = None,
         dataset_id: ObjectId = None,
         context: dict = None,
-        view_stages: list = None,
     ) -> DelegatedOperation:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
         for the operation.
@@ -43,17 +42,15 @@ class DelegatedOperationService(object):
             delegation_target=delegation_target,
             dataset_id=dataset_id,
             context=context,
-            view_stages=view_stages,
         )
         return doc
-
-    def set_triggered(self, doc_id: ObjectId) -> DelegatedOperation:
-        return self._repo.update_run_state(_id=doc_id, run_state="triggered")
 
     def set_running(self, doc_id: ObjectId) -> DelegatedOperation:
         return self._repo.update_run_state(_id=doc_id, run_state="running")
 
-    def set_completed(self, doc_id: ObjectId) -> DelegatedOperation:
+    def set_completed(
+        self, doc_id: ObjectId, results: dict = None
+    ) -> DelegatedOperation:
         return self._repo.update_run_state(_id=doc_id, run_state="completed")
 
     def set_failed(
@@ -103,7 +100,6 @@ class DelegatedOperationService(object):
 
         for op in queued_ops:
             print(op)
-            self.set_triggered(doc_id=op.id)
             result = asyncio.run(self._execute_operator(op))
 
     async def _execute_operator(self, doc: DelegatedOperation):

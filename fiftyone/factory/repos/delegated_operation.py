@@ -19,20 +19,18 @@ class DelegatedOperation:
         delegation_target: str = None,
         dataset_id: ObjectId = None,
         context: dict = None,
-        view_stages: list = None,
     ):
         self.operator = operator
         self.delegation_target = delegation_target
         self.dataset_id = dataset_id
         self.context = context
-        self.view_stages = view_stages
-        self.queued_at = datetime.now()
-        self.triggered_at = None
+        self.queued_at = datetime.utcnow()
         self.started_at = None
         self.completed_at = None
         self.failed_at = None
         self.run_state = "queued"
         self.error_message = None
+        self.results = None
         self.id = None
         self._doc = None
 
@@ -48,10 +46,6 @@ class DelegatedOperation:
         )
         self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
         self.context = doc["context"] if "context" in doc else None
-        self.view_stages = doc["view_stages"] if "view_stages" in doc else None
-        self.triggered_at = (
-            doc["triggered_at"] if "triggered_at" in doc else None
-        )
         self.started_at = doc["started_at"] if "started_at" in doc else None
         self.completed_at = (
             doc["completed_at"] if "completed_at" in doc else None
@@ -60,6 +54,7 @@ class DelegatedOperation:
         self.error_message = (
             doc["error_message"] if "error_message" in doc else None
         )
+        self.results = doc["results"] if "results" in doc else None
 
         # internal fields
         self.id = doc["_id"]
@@ -68,10 +63,10 @@ class DelegatedOperation:
         return self
 
     def to_pymongo(self) -> dict:
-        dict = self.__dict__
-        dict.pop("_doc")
-        dict.pop("id")
-        return dict
+        d = self.__dict__
+        d.pop("_doc")
+        d.pop("id")
+        return d
 
 
 class DelegatedOperationRepo(object):
@@ -83,13 +78,16 @@ class DelegatedOperationRepo(object):
         delegation_target: str = None,
         dataset_id: ObjectId = None,
         context: dict = None,
-        view_stages: list = None,
     ) -> DelegatedOperation:
         """Queue an operation to be executed by a delegated operator."""
         raise NotImplementedError("subclass must implement queue_operation()")
 
     def update_run_state(
-        self, _id: ObjectId, run_state: str, error: str = None
+        self,
+        _id: ObjectId,
+        run_state: str,
+        error: str = None,
+        results: dict = None,
     ) -> DelegatedOperation:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -130,7 +128,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         delegation_target: str = None,
         dataset_id: ObjectId = None,
         context: dict = None,
-        view_stages: list = None,
     ) -> DelegatedOperation:
 
         op = DelegatedOperation(
@@ -138,7 +135,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             delegation_target=delegation_target,
             dataset_id=dataset_id,
             context=context,
-            view_stages=view_stages,
         )
 
         doc = self._collection.insert_one(op.to_pymongo())
@@ -146,7 +142,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         return op
 
     def update_run_state(
-        self, _id: ObjectId, run_state: str, error: str = None
+        self,
+        _id: ObjectId,
+        run_state: str,
+        error: str = None,
+        results: dict = None,
     ) -> DelegatedOperation:
 
         update = None
@@ -155,6 +155,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state,
                     "completed_at": datetime.utcnow(),
+                    "results": results,
                 }
             }
         elif run_state == "failed":
@@ -170,13 +171,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state,
                     "started_at": datetime.utcnow(),
-                }
-            }
-        elif run_state == "triggered":
-            update = {
-                "$set": {
-                    "run_state": run_state,
-                    "triggered_at": datetime.utcnow(),
                 }
             }
 
