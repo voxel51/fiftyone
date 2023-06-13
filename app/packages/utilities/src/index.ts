@@ -380,6 +380,14 @@ export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
   "Polylines",
 ]);
 
+export const DISABLED_PATHS = ["id", "filepath", "tags", "metadata"];
+export const DISABLED_FIELD_TYPES = [
+  OBJECT_ID_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  VECTOR_FIELD,
+];
+
 export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];
 export function withPath(
