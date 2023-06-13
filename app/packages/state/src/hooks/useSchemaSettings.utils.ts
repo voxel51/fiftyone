@@ -30,7 +30,7 @@ export const disabledField = (
   path: string,
   combinedSchema: Record<string, Field>,
   groupField?: string,
-  isPatchesView?: boolean
+  isFrameView?: boolean
 ): boolean => {
   const currField = combinedSchema?.[path] || ({} as Field);
   const { ftype, embeddedDocType } = currField;
@@ -48,7 +48,8 @@ export const disabledField = (
   return (
     DISABLED_PATHS.includes(path) ||
     DISABLED_FIELD_TYPES.includes(ftype) ||
-    [path, parentPath || path].includes(groupField)
+    [path, parentPath || path].includes(groupField) ||
+    (isFrameView && path === "frame_number")
   );
   // RESERVED_FIELD_KEYS.includes(path) ||
   // path.startsWith("metadata")

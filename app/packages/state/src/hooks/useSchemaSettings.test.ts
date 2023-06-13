@@ -95,7 +95,7 @@ const FIELDS = {
     path: "frames.id",
     ftype: OBJECT_ID_FIELD,
   },
-  FRAME_NUMBER_FIELD: {
+  FRAMES_NUMBER_FIELD: {
     ...BASE_FIELD,
     path: "frames.number",
     ftype: FRAME_NUMBER_FIELD,
@@ -105,6 +105,11 @@ const FIELDS = {
     path: "sample_id",
     ftype: OBJECT_ID_FIELD,
   },
+  FRAME_NUMBER_FIELD: {
+    ...BASE_FIELD,
+    path: "frame_number",
+    ftype: INT_FIELD,
+  },
 };
 
 const BASE_SCHEMA = {
@@ -113,11 +118,12 @@ const BASE_SCHEMA = {
   tags: FIELDS.TAGS_FIELD,
   metadata: FIELDS.METADATA_FIELD,
   [FIELDS.SAMPLE_ID_FIELD.path]: FIELDS.SAMPLE_ID_FIELD,
+  [FIELDS.FRAME_NUMBER_FIELD.path]: FIELDS.FRAME_NUMBER_FIELD,
 };
 
 const FRAME_SCHEMA = {
   [FIELDS.FRAME_ID_FIELD.path]: FIELDS.FRAME_ID_FIELD,
-  [FIELDS.FRAME_NUMBER_FIELD.path]: FIELDS.FRAME_NUMBER_FIELD,
+  [FIELDS.FRAMES_NUMBER_FIELD.path]: FIELDS.FRAMES_NUMBER_FIELD,
 };
 
 const DISABLED_TYPES_SCHEMA = {
@@ -126,9 +132,16 @@ const DISABLED_TYPES_SCHEMA = {
   FrameNumberField: FIELDS.FRAME_NUMBER_TYPE,
   FrameSupportField: FIELDS.FRAME_SUPPORT_TYPE,
   VectorField: FIELDS.VECTOR_TYPE,
-  customEmbeddedDocumentField: FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD,
+  [FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path]:
+    FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD,
   [GROUP_DATASET]: FIELDS.GROUP_FIELD,
   [`${GROUP_DATASET}.name`]: FIELDS.GROUP_CHILD_FIELD,
+};
+
+const ALL_SCHEMAS = {
+  ...BASE_SCHEMA,
+  ...DISABLED_TYPES_SCHEMA,
+  ...FRAME_SCHEMA,
 };
 
 describe("Disabled field paths in schema fields", () => {
@@ -213,17 +226,13 @@ describe("Disabled group field in schema fields", () => {
     expect(
       disabledField(
         FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path,
-        DISABLED_TYPES_SCHEMA,
-        NOT_GROUP_DATASET
+        ALL_SCHEMAS,
+        NOT_GROUP_DATASET,
+        false
       )
     ).toBe(false);
     expect(
-      disabledField(
-        FIELDS.GROUP_FIELD.path,
-        DISABLED_TYPES_SCHEMA,
-        GROUP_DATASET,
-        false
-      )
+      disabledField(FIELDS.GROUP_FIELD.path, ALL_SCHEMAS, GROUP_DATASET, false)
     ).toBe(true);
   });
 
@@ -244,16 +253,22 @@ describe("Video dataset disabled fields", () => {
 
   it("frames.id field is disabled", () => {
     expect(
-      disabledField(FIELDS.FRAME_ID_FIELD.path, FRAME_SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.FRAME_ID_FIELD.path,
+        FRAME_SCHEMA,
+        NOT_GROUP_DATASET,
+        false
+      )
     ).toBe(true);
   });
 
   it("frames.frame_number field is disabled", () => {
     expect(
       disabledField(
-        FIELDS.FRAME_NUMBER_FIELD.path,
+        FIELDS.FRAMES_NUMBER_FIELD.path,
         FRAME_SCHEMA,
-        NOT_GROUP_DATASET
+        NOT_GROUP_DATASET,
+        false
       )
     ).toBe(true);
   });
@@ -270,7 +285,63 @@ describe("Patches view disabled fields", () => {
         FIELDS.SAMPLE_ID_FIELD.path,
         BASE_SCHEMA,
         NOT_GROUP_DATASET,
+        false
+      )
+    ).toBe(true);
+  });
+});
+
+describe("Frames view disabled fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sample_id field is disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        BASE_SCHEMA,
+        NOT_GROUP_DATASET,
+        false
+      )
+    ).toBe(true);
+  });
+
+  it("frame_number field is disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.FRAME_NUMBER_FIELD.path,
+        ALL_SCHEMAS,
+        NOT_GROUP_DATASET,
         true
+      )
+    ).toBe(true);
+  });
+});
+
+describe("Clip view disabled fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sample_id field is disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        BASE_SCHEMA,
+        NOT_GROUP_DATASET,
+        false
+      )
+    ).toBe(true);
+  });
+
+  it("support field is disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.FRAME_SUPPORT_TYPE.path,
+        ALL_SCHEMAS,
+        NOT_GROUP_DATASET,
+        false
       )
     ).toBe(true);
   });
