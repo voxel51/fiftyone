@@ -2,6 +2,16 @@
  * This test suite validates that sidebar filtering and tagger menu functionality works in the fiftyone app with quickstart dataset.
  */
 
+const selectSamplesInGrid = (indices: number[]) => {
+  indices.forEach((i) => {
+    cy.get("[data-cy=looker]")
+      .eq(i)
+      .within(() => {
+        cy.get("input").click({ force: true });
+      });
+  });
+};
+
 describe("Sidebar filter", () => {
   context("quickstart dataset filter", () => {
     before(() => {
@@ -187,29 +197,178 @@ describe("Sidebar filter", () => {
       });
     });
 
-    // it("When filter exists, tagger menu aggregation should be correct", () => {
+    it("In grid view, tagger menu count is consistent with aggregation results from sidebar", () => {
+      // 1. Default Mode: no filter, no selection
+      // open the tagger menu
+      cy.get("[data-cy=tagger-pill-button]").should("exist").click();
+      cy.get("[data-cy=tagger-switch-sample]").should("be.visible");
+      cy.get("[data-cy=tagger-switch-label]").should("be.visible");
+      // verify the aggregation results in the sample tagger
+      cy.get("[data-cy=sample-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 50 samples"
+      );
+      // verify the aggregation results in the label tagger
+      cy.get("[data-cy=tagger-switch-label]").click();
+      cy.get("[data-cy=label-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 1,222 labels"
+      );
 
-    // })
+      // 2. Filter Mode, only select predictions labels:
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=checkbox-ground_truth]").should("be.visible").click();
 
-    // it("When filter exists, sample tag works correctly", () => {
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=sample-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 50 samples"
+      );
+      cy.get("[data-cy=tagger-switch-label]").click();
+      cy.get("[data-cy=label-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 1,023 labels"
+      );
+      cy.get("[data-cy=tagger-pill-button]").click();
 
-    // })
+      // 3. Filter Mode, filter by predictions label "elephant" and "broccoli"
+      cy.get("[data-cy=sidebar-field-predictions]").should("be.visible");
+      cy.get("[data-cy=sidebar-field-arrow-predictions]")
+        .should("be.visible")
+        .click();
+      cy.get("[data-cy=sidebar-column]").scrollTo("bottom");
+      cy.contains("1,023", { timeout: 5000 }).should("be.visible");
+      cy.get(
+        "[data-cy=categorical-filter-predictions\\.detections\\.label]"
+      ).should("exist");
+      cy.get('[data-cy="selector-\\+ filter by label"]').should("be.visible");
+      cy.get("[data-cy=selector-div-predictions\\.detections\\.label]").within(
+        () => {
+          cy.get("input").type("broccoli").wait(300).type("{enter}");
+          cy.get("input").type("elephant").wait(300).type("{enter}");
+        }
+      );
 
-    // it("When filter exists, label tag works correctly", () => {
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=sample-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 9 samples"
+      );
+      cy.get("[data-cy=tagger-switch-label]").should("be.visible").click();
+      cy.get("[data-cy=label-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 160 labels"
+      );
+      cy.get("[data-cy=tagger-pill-button]").click();
 
-    // })
+      // 4. Selection mode, select samples in the grid;
+      selectSamplesInGrid([0, 2, 4]);
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=sample-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 3 selected samples"
+      );
+      cy.get("[data-cy=tagger-switch-label]").click();
+      cy.get("[data-cy=label-tag-input]").should(
+        "have.attr",
+        "placeholder",
+        "+ tag 64 selected labels"
+      );
+    });
 
-    // it("Select first two samples in the grid, tagger menu should display correct aggregation info of available labels and samples", () => {
+    it("When filter exists, sample tag works correctly", () => {
+      cy.get("[data-cy=selected-pill-button]").should("be.visible").click();
+      cy.get("[data-cy=item-action-Clear-selected-samples]")
+        .should("be.visible")
+        .click();
+      cy.get("[data-cy=checkbox-tags]").should("be.visible").click();
+      cy.get("[data-cy=sidebar-field-arrow-tags]").should("be.visible").click();
 
-    // })
+      // 1. Filter Mode: tag samples in the dataset
+      cy.get("[data-cy=sidebar-field-arrow-predictions]")
+        .should("be.visible")
+        .click();
+      cy.get("[data-cy=sidebar-column]").scrollTo("bottom");
+      cy.contains("1,023", { timeout: 5000 }).should("be.visible");
+      cy.get(
+        "[data-cy=categorical-filter-predictions\\.detections\\.label]"
+      ).should("exist");
+      cy.get('[data-cy="selector-\\+ filter by label"]').should("be.visible");
+      cy.get("[data-cy=selector-div-predictions\\.detections\\.label]").within(
+        () => {
+          cy.get("input").type("carrot").wait(300).type("{enter}");
+        }
+      );
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=sample-tag-input]")
+        .type("carrot")
+        .wait(200)
+        .type("{enter}");
+      cy.get("[data-cy=Button-Apply").should("be.visible").click();
+      // verify the tag rendered in looker
+      cy.get("[data-cy=tag-tags-carrot]").should("have.length", 7);
+      // verify the sample tag count in the menu
+      cy.get("[data-cy=checkbox-carrot]")
+        .should("be.visible")
+        .first()
+        .within(() => {
+          cy.get("span").contains(7).should("exist");
+          cy.get("span").contains("carrot").should("exist");
+        });
+      cy.get("[data-cy=sidebar-column]").scrollTo("bottom");
+      cy.get("[data-cy=Button-Reset]").should("be.visible").click();
 
-    // it("Select first two samples in the grid, sample tag works correctly", () => {
+      // 2. Select Mode: select some samples in the grid
+      selectSamplesInGrid([0, 1, 2]);
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=sample-tag-input]")
+        .type("top3")
+        .wait(30)
+        .type("{enter}");
+      cy.get("[data-cy=Button-Apply").should("be.visible").click();
+      // verify the tag rendered in looker
+      cy.get("[data-cy=tag-tags-top3]").should("have.length", 3);
+      // verify the sample tag count in the menu
+      cy.get("[data-cy=checkbox-top3]")
+        .should("be.visible")
+        .first()
+        .within(() => {
+          cy.get("span").contains(3).should("be.visible");
+          cy.get("span").contains("top3").should("be.visible");
+        });
+      cy.get("[data-cy=refresh-fo]").should("exist").click();
+    });
 
-    // })
+    it("Should be able to select samples and tag labels in the grid", () => {
+      cy.get("[data-cy=checkbox-_label_tags]").should("be.visible").click();
+      cy.get("[data-cy=sidebar-field-arrow-_label_tags]")
+        .should("be.visible")
+        .click();
 
-    // it("Select first two samples in the grid, label tag works correctly", () => {
-
-    // })
+      // selection samples mode, tag labels in the grid
+      selectSamplesInGrid([0, 1]);
+      cy.get("[data-cy=tagger-pill-button]").click();
+      cy.get("[data-cy=tagger-switch-label]").should("be.visible").click();
+      cy.get("[data-cy=label-tag-input]").type("test").wait(30).type("{enter}");
+      cy.get("[data-cy=Button-Apply").should("be.visible").click();
+      // verify the tag rendered in looker
+      cy.get("[data-cy=tag-_label_tags-test--17]").should("be.visible");
+      cy.get("[data-cy=tag-_label_tags-test--22]").should("be.visible");
+      // verify the label tag count in the sidebar
+      cy.get("[data-cy=checkbox-test]")
+        .should("be.visible")
+        .within(() => {
+          cy.get("span").contains(39).should("be.visible");
+          cy.get("span").contains("test").should("be.visible");
+        });
+    });
 
     it("should be able to filter labels by ground_truth field in modal view", () => {
       // open the modal view

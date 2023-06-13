@@ -41,6 +41,7 @@ export const ActionOption = React.memo(
         onClick={disabled ? null : onClick}
         {...rest}
         style={style ?? animationStyles}
+        data-cy={`item-action-${text.split(" ").join("-")}`}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
           {href ? (

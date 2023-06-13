@@ -295,7 +295,7 @@ const SelectionActions = ({
   lookerRef && useEventHandler(lookerRef.current, "play", close);
 
   return (
-    <Popout modal={modal} bounds={bounds}>
+    <Popout modal={modal} bounds={bounds} data-cy="selected-popout">
       {actions.map((props, i) => (
         <ActionOption {...props} key={i} />
       ))}

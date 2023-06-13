@@ -394,7 +394,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       div.title = title;
       div.style.backgroundColor = color;
       const attribute = ["tags", "_label_tags"].includes(path)
-        ? `tag-${path}-${value}`
+        ? `tag-${path}-${value.split(/[:\s]/).join("-")}` // replace spaces and colons with dashes
         : `tag-${path}`;
       div.setAttribute("data-cy", attribute);
       this.element.appendChild(div);
