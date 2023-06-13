@@ -578,7 +578,7 @@ class Count(Aggregation):
         )
 
         if not sample_collection._contains_videos() or path != "frames":
-            pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
+            pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
 
         pipeline.append({"$count": "count"})
 
