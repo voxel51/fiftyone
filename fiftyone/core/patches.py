@@ -324,7 +324,7 @@ class _PatchesView(fov.DatasetView):
 
     def _sync_source_sample_field(self, sample, field):
         label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        is_list_field = issubclass(label_type, fol._HasLabelList)
 
         sample_id = sample[self._id_field]
 

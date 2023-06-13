@@ -2009,7 +2009,7 @@ class SampleCollection(object):
         if (
             isinstance(self, fov.DatasetView)
             and isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
+            and issubclass(field.document_type, fol._HasLabelList)
         ):
             label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
@@ -9675,7 +9675,7 @@ class SampleCollection(object):
     def _get_label_field_root(self, field_name):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             root = field_name + "." + label_type._LABEL_LIST_FIELD
             is_list_field = True
         else:
@@ -9687,7 +9687,7 @@ class SampleCollection(object):
     def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
         if subfield:

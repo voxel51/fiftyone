@@ -7882,7 +7882,7 @@ def _merge_docs(
                 list_fields.append(root)
             elif isinstance(
                 field_type, fof.EmbeddedDocumentField
-            ) and issubclass(field_type.document_type, fol._LABEL_LIST_FIELDS):
+            ) and issubclass(field_type.document_type, fol._HasLabelList):
                 root = fields[field] if fields is not None else field
                 elem_fields.append(
                     root + "." + field_type.document_type._LABEL_LIST_FIELD
