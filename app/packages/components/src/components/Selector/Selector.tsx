@@ -142,7 +142,6 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
       className={style.container}
       style={containerStyle}
       title={editing && search.length ? search : placeholder}
-      data-cy={`selector-div-${props.id}`}
     >
       <Input
         inputStyle={editing ? { ...inputStyle } : inputStyle}

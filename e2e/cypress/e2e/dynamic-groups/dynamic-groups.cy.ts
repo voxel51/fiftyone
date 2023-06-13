@@ -6,7 +6,7 @@ const verifyCandidateFields = (fields: string[]) => {
   // todo: investigate, "first()" is used to suppress this flakiness;
   // sometimes an extra element is rendered and the test fails
   cy.get("[data-cy=dynamic-group-pill-button]").first().click();
-  cy.get("[data-cy=group-by-selector]").click();
+  cy.get("[data-cy=selector-group\\ by]").click();
   cy.get("[data-cy=selector-results-container]")
     .children()
     .should("have.length", fields.length);
@@ -149,7 +149,7 @@ describe("dynamic groups", () => {
       // todo: investigate, "first()" is used to suppress this flakiness;
       // sometimes an extra element is rendered and the test fails
       cy.get("[data-cy=dynamic-group-pill-button]").first().click();
-      cy.get("[data-cy=group-by-selector]").click();
+      cy.get("[data-cy=selector-group\\ by]").click();
       cy.get("[data-cy=selector-result-ground_truth\\.label]").click();
 
       cy.get("[data-cy=dynamic-group-btn-submit]").click();
@@ -212,8 +212,8 @@ describe("dynamic groups", () => {
           // todo: investigate, "first()" is used to suppress this flakiness;
           // sometimes an extra element is rendered and the test fails
           cy.get("[data-cy=dynamic-group-pill-button]").click();
-          cy.get("[data-cy=order-by-selector]").should("not.exist");
-          cy.get("[data-cy=group-by-selector]").click();
+          cy.get("[data-cy=selector-order\\ by]").should("not.exist");
+          cy.get("[data-cy=selector-group\\ by]").click();
           cy.get("[data-cy=selector-result-scene_id]").click();
 
           cy.get("[data-cy=dynamic-group-btn-submit]").click();
@@ -248,10 +248,10 @@ describe("dynamic groups", () => {
         // todo: investigate, "first()" is used to suppress this flakiness;
         // sometimes an extra element is rendered and the test fails
         cy.get("[data-cy=dynamic-group-pill-button]").click();
-        cy.get("[data-cy=group-by-selector]").click();
+        cy.get("[data-cy=selector-group\\ by]").click(); // this is the input field
         cy.get("[data-cy=selector-result-scene_id]").click();
         cy.get("[data-cy=tab-option-Ordered]").click();
-        cy.get("[data-cy=order-by-selector]").click();
+        cy.get("[data-cy=selector-order\\ by]").click();
         cy.get("[data-cy=selector-result-scene_id]").click();
 
         cy.get("[data-cy=dynamic-group-btn-submit]").click();
@@ -261,7 +261,7 @@ describe("dynamic groups", () => {
           "Group by and order by fields must be different."
         );
 
-        cy.get("[data-cy=order-by-selector]").click();
+        cy.get("[data-cy=selector-order\\ by]").click();
         cy.get("[data-cy=selector-result-timestamp]").click();
         cy.get("[data-cy=dynamic-group-btn-submit]").click();
         cy.get("[data-cy=dynamic-group-validation-error").should("not.exist");
