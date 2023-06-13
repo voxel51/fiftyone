@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { disabledField } from "./useSchemaSettings.utils";
 import {
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   EMBEDDED_DOCUMENT_FIELD,
   FRAME_NUMBER_FIELD,
+  INT_FIELD,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
@@ -22,6 +25,9 @@ const BASE_FIELD = {
   subfield: null,
   visible: false,
 };
+
+const GROUP_DATASET = "group";
+const NOT_GROUP_DATASET = "";
 
 const FIELDS = {
   ID_FIELD: {
@@ -64,6 +70,36 @@ const FIELDS = {
     path: "VectorField",
     ftype: VECTOR_FIELD,
   },
+  CUSTOM_EMBEDDED_DOCUMENT_FIELD: {
+    ...BASE_FIELD,
+    path: "customEmbeddedDocumentField",
+    ftype: EMBEDDED_DOCUMENT_FIELD,
+  },
+  CUSTOM_EMBEDDED_DOCUMENT_NAME_FIELD: {
+    ...BASE_FIELD,
+    path: "customEmbeddedDocumentField.name",
+    ftype: STRING_FIELD,
+  },
+  GROUP_FIELD: {
+    ...BASE_FIELD,
+    path: GROUP_DATASET,
+    ftype: EMBEDDED_DOCUMENT_FIELD,
+  },
+  GROUP_CHILD_FIELD: {
+    ...BASE_FIELD,
+    path: `${GROUP_DATASET}.name`,
+    ftype: STRING_FIELD,
+  },
+  FRAME_ID_FIELD: {
+    ...BASE_FIELD,
+    Path: "frames.id",
+    ftype: OBJECT_ID_FIELD,
+  },
+  FRAME_NUMBER_FIELD: {
+    ...BASE_FIELD,
+    Path: "frames.number",
+    ftype: INT_FIELD,
+  },
 };
 
 const BASE_SCHEMA = {
@@ -73,16 +109,19 @@ const BASE_SCHEMA = {
   metadata: FIELDS.METADATA_FIELD,
 };
 
+const FRAME_SCHEMA = {
+  id: FIELDS.ID_FIELD,
+  frame_number: FIELDS.FRAME_NUMBER_FIELD,
+};
+
 const DISABLED_TYPES_SCHEMA = {
   ...BASE_SCHEMA,
   ObjectIdType: FIELDS.OBJECT_ID_TYPE,
   FrameNumberField: FIELDS.FRAME_NUMBER_TYPE,
   FrameSupportField: FIELDS.FRAME_SUPPORT_TYPE,
   VectorField: FIELDS.VECTOR_TYPE,
+  customEmbeddedDocumentField: FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD,
 };
-
-const GROUP_DATASET = "group";
-const NOT_GROUP_DATASET = "";
 
 describe("Disabled field paths in schema fields", () => {
   afterEach(() => {
@@ -154,5 +193,59 @@ describe("Disabled field types in schema fields", () => {
     const schema = DISABLED_TYPES_SCHEMA;
 
     expect(disabledField(path, schema, NOT_GROUP_DATASET)).toBe(true);
+  });
+});
+
+describe("Disabled group field in schema fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("group field is disabled across all fields", () => {
+    expect(
+      disabledField(
+        FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path,
+        DISABLED_TYPES_SCHEMA,
+        NOT_GROUP_DATASET
+      )
+    ).toBe(false);
+    expect(
+      disabledField(
+        FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path,
+        DISABLED_TYPES_SCHEMA,
+        GROUP_DATASET
+      )
+    ).toBe(true);
+  });
+
+  it("field with parent group is disabled", () => {
+    const parentPath = FIELDS.GROUP_FIELD.path;
+    const path = FIELDS.GROUP_CHILD_FIELD.path;
+    const schema = DISABLED_TYPES_SCHEMA;
+
+    expect(disabledField(parentPath, schema, GROUP_DATASET)).toBe(true);
+    expect(disabledField(path, schema, GROUP_DATASET)).toBe(true);
+  });
+});
+
+describe("Video dataset disabled fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("frames.id field is disabled", () => {
+    expect(
+      disabledField(FIELDS.FRAME_ID_FIELD.path, FRAME_SCHEMA, NOT_GROUP_DATASET)
+    ).toBe(true);
+  });
+
+  it("frames.frame_number field is disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.FRAME_NUMBER_FIELD.path,
+        FRAME_SCHEMA,
+        NOT_GROUP_DATASET
+      )
+    ).toBe(true);
   });
 });

@@ -43,14 +43,11 @@ export const disabledField = (
   ].includes(embeddedDocType);
 
   console.log("ftype", path, ftype);
-  return DISABLED_PATHS.includes(path) || DISABLED_FIELD_TYPES.includes(ftype);
-  // [
-  //   // OBJECT_ID_FIELD,
-  //   FRAME_NUMBER_FIELD,
-  //   FRAME_SUPPORT_FIELD,
-  //   VECTOR_FIELD,
-  // ].includes(ftype) ||
-  // [path, parentPath].includes(groupField) ||
+  return (
+    DISABLED_PATHS.includes(path) ||
+    DISABLED_FIELD_TYPES.includes(ftype) ||
+    [path, parentPath || path].includes(groupField)
+  );
   // RESERVED_FIELD_KEYS.includes(path) ||
   // path.startsWith("metadata")
   // ([
