@@ -1363,7 +1363,7 @@ def _merge_labels(
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
-    if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+    if issubclass(fo_label_type, fol._HasLabelList):
         is_list = True
         list_field = fo_label_type._LABEL_LIST_FIELD
     else:

@@ -8,6 +8,14 @@ export default defineConfig({
     coverage: {
       reporter: ["json", "lcov"],
       reportsDirectory: "./coverage",
+      enabled: true,
+      all: true,
+      exclude: [
+        "**/__generated__/**",
+        "**/__generated__",
+        "**/.yarn/**",
+        "**/.storybook/**",
+      ],
     },
   },
   plugins: [relay],

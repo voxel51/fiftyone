@@ -1512,7 +1512,7 @@ class TorchImagePatchesDataset(Dataset):
                     % (patches_field, label_type)
                 )
 
-            if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            if not issubclass(label_type, fol._HasLabelList):
                 bboxes = [[b] if b is not None else None for b in bboxes]
         else:
             raise ValueError(

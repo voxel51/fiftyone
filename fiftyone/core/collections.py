@@ -2009,7 +2009,7 @@ class SampleCollection(object):
         if (
             isinstance(self, fov.DatasetView)
             and isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
+            and issubclass(field.document_type, fol._HasLabelList)
         ):
             label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
@@ -8390,6 +8390,8 @@ class SampleCollection(object):
                 -   ``"prompt"``: present an interactive prompt to
                     direct/discard unexpected labels
                 -   ``"ignore"``: automatically ignore any unexpected labels
+                -   ``"keep"``: automatically keep all unexpected labels in a
+                    field whose name matches the the label type
                 -   ``"return"``: return a dict containing all unexpected
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
@@ -9673,7 +9675,7 @@ class SampleCollection(object):
     def _get_label_field_root(self, field_name):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             root = field_name + "." + label_type._LABEL_LIST_FIELD
             is_list_field = True
         else:
@@ -9685,7 +9687,7 @@ class SampleCollection(object):
     def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
         if subfield:
@@ -9810,21 +9812,16 @@ def _iter_label_fields(sample_collection):
         yield prefix + path, field
 
 
-def _iter_schema_label_fields(schema, recursive=True):
+def _iter_schema_label_fields(schema):
     for path, field in schema.items():
-        if isinstance(field, fof.ListField):
-            field = field.field
-
         if isinstance(field, fof.EmbeddedDocumentField):
             if issubclass(field.document_type, fol.Label):
-                # Do not recurse into Label fields
                 yield path, field
             else:
-                # Only recurse one level deep into embedded documents
-                for _path, _field in _iter_schema_label_fields(
-                    field.get_field_schema(), recursive=False
-                ):
-                    yield path + "." + _path, _field
+                for _path, _field in field.get_field_schema().items():
+                    if isinstance(_field, fof.EmbeddedDocumentField):
+                        if issubclass(_field.document_type, fol.Label):
+                            yield path + "." + _path, _field
 
 
 def _serialize_value(field_name, field, value, validate=True):
