@@ -393,7 +393,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         : (div.innerHTML = child);
       div.title = title;
       div.style.backgroundColor = color;
-      div.setAttribute("data-cy", `tag-${path}`);
+      const attribute = ["tags", "_label_tags"].includes(path)
+        ? `tag-${path}-${value}`
+        : `tag-${path}`;
+      div.setAttribute("data-cy", attribute);
       this.element.appendChild(div);
     });
 

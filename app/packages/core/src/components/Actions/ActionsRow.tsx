@@ -100,6 +100,8 @@ const Patches = () => {
         highlight={open || Boolean(fields.length)}
         title={isVideo ? "Clips" : "Patches"}
         style={{ cursor: loading ? "default" : "pointer" }}
+        id="to-patches-pill-button"
+        data-cy="to-patches-pill-button"
       />
       {open && <Patcher close={() => setOpen(false)} />}
     </ActionDiv>
@@ -139,6 +141,8 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           showImageSimilarityIcon ? "image" : "text"
         } similarity`}
         style={{ cursor: "pointer" }}
+        id="similarity-pill-button"
+        data-cy="similarity-pill-button"
       />
       {open && (
         <SortBySimilarity
@@ -194,6 +198,8 @@ const Tag = ({
         highlight={(selected || open) && available}
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
+        id={"tagger-pill-button"}
+        data-cy={"tagger-pill-button"}
       />
       {open && available && (
         <Tagger
@@ -255,6 +261,8 @@ const Selected = ({
         text={text}
         ref={mRef}
         title={`Manage selected`}
+        id={"selected-pill-button"}
+        data-cy={"selected-pill-button"}
         style={{
           cursor: loading ? "default" : "pointer",
         }}
@@ -286,6 +294,8 @@ const Options = ({ modal }) => {
         highlight={open}
         ref={mRef}
         title={"Display options"}
+        id="display-options-pill-button"
+        data-cy="display-options-pill-button"
       />
       {open && <OptionsActions modal={modal} bounds={bounds} />}
     </ActionDiv>
@@ -318,6 +328,8 @@ const Colors = () => {
         onClick={onOpen}
         highlight={open}
         title={"Color settings"}
+        id="color-settings-pill-button"
+        data-cy="color-settings-pill-button"
       />
     </ActionDiv>
   );
@@ -339,6 +351,8 @@ const Hidden = () => {
       highlight={true}
       text={`${count}`}
       title={"Clear hidden labels"}
+      id={"clear-hidden-labels-pill-button"}
+      data-cy={"clear-hidden-labels-pill-button"}
     />
   );
 };

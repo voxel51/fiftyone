@@ -136,11 +136,12 @@ const Section = ({
 
   return (
     <>
-      <TaggingContainerInput>
+      <TaggingContainerInput data-cy="tagger-container">
         {isLoading ? (
           <LoadingDots text="" style={{ color: theme.text.secondary }} />
         ) : (
           <TaggingInput
+            data-cy={`${labels ? "label" : "sample"}-tag-input`}
             placeholder={
               count == 0
                 ? `No ${labels ? "labels" : elementNames.plural}`
@@ -215,6 +216,7 @@ const Section = ({
           <PopoutSectionTitle />
           {hasCreate && (
             <Button
+              data-cy={`create-${labels ? "label" : "sample"}-tag`}
               text={`Add "${value}" tag to ${
                 count > 1 ? numeral(count).format("0,0") + " " : ""
               }${
@@ -243,6 +245,7 @@ const Section = ({
             <Button
               text={"Apply"}
               onClick={() => submitWrapper(changes)}
+              data-cy={`apply-${labels ? "label" : "sample"}-tag`}
               style={{
                 margin: "0.25rem -0.5rem",
                 height: "2rem",
@@ -488,12 +491,14 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         <SwitchDiv
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
+          data-cy="tagger-switch-sample"
         >
           {modal ? elementNames.singular : elementNames.plural}
         </SwitchDiv>
         <SwitchDiv
           style={labelProps}
           onClick={() => !labels && setLabels(true)}
+          data-cy="tagger-switch-label"
         >
           Labels
         </SwitchDiv>
