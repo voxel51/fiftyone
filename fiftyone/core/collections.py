@@ -9812,18 +9812,16 @@ def _iter_label_fields(sample_collection):
         yield prefix + path, field
 
 
-def _iter_schema_label_fields(schema, recursive=True):
+def _iter_schema_label_fields(schema):
     for path, field in schema.items():
         if isinstance(field, fof.EmbeddedDocumentField):
             if issubclass(field.document_type, fol.Label):
-                # Do not recurse into Label fields
                 yield path, field
             else:
-                # Only recurse one level deep into embedded documents
-                for _path, _field in _iter_schema_label_fields(
-                    field.get_field_schema(), recursive=False
-                ):
-                    yield path + "." + _path, _field
+                for _path, _field in field.get_field_schema().items():
+                    if isinstance(_field, fof.EmbeddedDocumentField):
+                        if issubclass(_field.document_type, fol.Label):
+                            yield path + "." + _path, _field
 
 
 def _serialize_value(field_name, field, value, validate=True):

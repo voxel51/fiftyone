@@ -91,8 +91,7 @@ class LabelTests(unittest.TestCase):
     def test_dynamic_label_fields(self):
         dynamic_doc = fo.DynamicEmbeddedDocument(
             classification=fo.Classification(label="label"),
-            classifications=[fo.Classification(label="label")],
-            more_classifications=fo.Classifications(
+            classifications=fo.Classifications(
                 classifications=[fo.Classification(label="label")]
             ),
         )
@@ -115,9 +114,8 @@ class LabelTests(unittest.TestCase):
         dynamic = view.first().dynamic
         self.assertTrue(label_id == dynamic.classification.id)
         self.assertFalse("classifications" in dynamic)
-        self.assertFalse("more_classifications" in dynamic)
 
-        label_id = dynamic_doc["classifications"][0].id
+        label_id = dynamic_doc["classifications"].classifications[0].id
         view = dataset.select_labels(
             [
                 {
@@ -128,27 +126,10 @@ class LabelTests(unittest.TestCase):
             ]
         )
         dynamic = view.first().dynamic
-
-        self.assertTrue(label_id == dynamic.classifications[0].id)
-        self.assertFalse("classification" in dynamic)
-        self.assertFalse("more_classifications" in dynamic)
-
-        label_id = dynamic_doc["more_classifications"].classifications[0].id
-        view = dataset.select_labels(
-            [
-                {
-                    "label_id": label_id,
-                    "sample_id": sample.id,
-                    "field": "dynamic.more_classifications",
-                }
-            ]
-        )
-        dynamic = view.first().dynamic
         self.assertTrue(
-            label_id == dynamic.more_classifications.classifications[0].id
+            label_id == dynamic.classifications.classifications[0].id
         )
         self.assertFalse("classification" in dynamic)
-        self.assertFalse("classifications" in dynamic)
 
     @drop_datasets
     def test_dynamic_label_tags(self):
@@ -156,10 +137,6 @@ class LabelTests(unittest.TestCase):
             filepath="image1.jpg",
             dynamic=fo.DynamicEmbeddedDocument(
                 classification=fo.Classification(label="hi"),
-                classification_list=[
-                    fo.Classification(label="foo"),
-                    fo.Classification(label="bar"),
-                ],
                 classifications=fo.Classifications(
                     classifications=[
                         fo.Classification(label="spam"),
@@ -180,7 +157,6 @@ class LabelTests(unittest.TestCase):
             label_fields,
             {
                 "dynamic.classification",
-                "dynamic.classification_list",
                 "dynamic.classifications",
             },
         )
@@ -189,31 +165,25 @@ class LabelTests(unittest.TestCase):
 
         dataset.tag_labels("test")
 
-        self.assertDictEqual(dataset.count_label_tags(), {"test": 5})
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 3})
 
         dataset.untag_labels("test")
 
         self.assertDictEqual(dataset.count_label_tags(), {})
 
-        dataset.tag_labels("test", label_fields="dynamic.classification_list")
+        dataset.tag_labels("test", label_fields="dynamic.classifications")
 
         self.assertDictEqual(dataset.count_label_tags(), {"test": 2})
         self.assertDictEqual(
-            dataset.count_label_tags(
-                label_fields="dynamic.classification_list"
-            ),
+            dataset.count_label_tags(label_fields="dynamic.classifications"),
             {"test": 2},
         )
 
-        dataset.untag_labels(
-            "test", label_fields="dynamic.classification_list"
-        )
+        dataset.untag_labels("test", label_fields="dynamic.classifications")
 
         self.assertDictEqual(dataset.count_label_tags(), {})
         self.assertDictEqual(
-            dataset.count_label_tags(
-                label_fields="dynamic.classification_list"
-            ),
+            dataset.count_label_tags(label_fields="dynamic.classifications"),
             {},
         )
 
