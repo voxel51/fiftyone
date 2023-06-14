@@ -33,6 +33,10 @@ import {
   REGRESSION_DISABLED_SUB_PATHS,
   KEYPOINT_DISABLED_SUB_PATHS,
   SEGMENTATION_DISABLED_SUB_PATHS,
+  HEATMAP_DISABLED_SUB_PATHS,
+  TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
+  GEOLOCATION_DISABLED_SUB_PATHS,
+  GEOLOCATIONS_DISABLED_SUB_PATHS,
 } from "@fiftyone/utilities";
 import { FRAME_SUPPORT_FIELD } from "@fiftyone/utilities";
 import { VECTOR_FIELD } from "@fiftyone/utilities";
@@ -603,6 +607,110 @@ describe("label types are disabled fields", () => {
     });
 
     const enabledSubFields = getEnabledNestedLabelFields("segmentation", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("Heatmap nested fields that are disabled", () => {
+    SCHEMA = { ...ORIGINAL_SCHEMA };
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "heatmap",
+      HEATMAP_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("heatmap", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("TemporalDetection nested fields that are disabled", () => {
+    SCHEMA = { ...ORIGINAL_SCHEMA };
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "temporal",
+      TEMPORAL_DETECTION_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("temporal", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("GeoLocation nested fields that are disabled", () => {
+    SCHEMA = { ...ORIGINAL_SCHEMA };
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "geolocation",
+      GEOLOCATION_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("geolocation", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("GeoLocations nested fields that are disabled", () => {
+    SCHEMA = { ...ORIGINAL_SCHEMA };
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "geolocations",
+      GEOLOCATIONS_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("geolocations", [
       "foo",
       "bar",
     ]);

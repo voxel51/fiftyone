@@ -14,8 +14,11 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
+  GEOLOCATIONS_DISABLED_SUB_PATHS,
+  GEOLOCATION_DISABLED_SUB_PATHS,
   GEO_LOCATIONS_FIELD,
   GEO_LOCATION_FIELD,
+  HEATMAP_DISABLED_SUB_PATHS,
   HEATMAP_FIELD,
   KEYPOINT_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
@@ -29,6 +32,7 @@ import {
   RESERVED_FIELD_KEYS,
   SEGMENTATION_DISABLED_SUB_PATHS,
   SEGMENTATION_FIELD,
+  TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
   VALID_LABEL_TYPES,
   VECTOR_FIELD,
@@ -137,45 +141,39 @@ export const disabledField = (
     return true;
   }
 
+  // field Heatmap has reserved subpaths. ex: "map_path", "Range"
+  if (
+    parentFType === HEATMAP_FIELD &&
+    HEATMAP_DISABLED_SUB_PATHS.includes(shortPath)
+  ) {
+    return true;
+  }
+
+  // field TemporalDetection has reserved subpaths. ex: "support", "tags"
+  if (
+    parentFType === TEMPORAL_DETECTION_FIELD &&
+    TEMPORAL_DETECTION_DISABLED_SUB_PATHS.includes(shortPath)
+  ) {
+    return true;
+  }
+
+  // field Geolocation has reserved subpaths. ex: "polygon", "line", "point"
+  if (
+    parentFType === GEO_LOCATION_FIELD &&
+    GEOLOCATION_DISABLED_SUB_PATHS.includes(shortPath)
+  ) {
+    return true;
+  }
+
+  // field Geolocations has reserved subpaths. ex: "polygons", "line", "point"
+  if (
+    parentFType === GEO_LOCATIONS_FIELD &&
+    GEOLOCATIONS_DISABLED_SUB_PATHS.includes(shortPath)
+  ) {
+    return true;
+  }
+
   return false;
-  // ([
-  //   TEMPORAL_DETECTION_FIELD,
-  //   DETECTION_FIELD,
-  //   DETECTIONS_FIELD,
-  //   CLASSIFICATION_FIELD,
-  //   CLASSIFICATIONS_FIELD,
-  //   KEYPOINT_FIELD,
-  //   REGRESSION_FIELD,
-  //   HEATMAP_FIELD,
-  //   SEGMENTATION_FIELD,
-  //   GEO_LOCATIONS_FIELD,
-  //   GEO_LOCATION_FIELD,
-  //   POLYLINE_FIELD,
-  //   POLYLINES_FIELD,
-  // ].includes(parentEmbeddedDocType) &&
-  // [
-  //   "tags",
-  //   "label",
-  //   "bounding_box",
-  //   "mask",
-  //   "confidence",
-  //   "index",
-  //   "points",
-  //   "closed",
-  //   "filled",
-  //   "logits",
-  //   "mask_path",
-  //   "map",
-  //   "map_path",
-  //   "Range",
-  //   "Confidence",
-  //   "support",
-  //   "point",
-  //   "line",
-  //   "Polygon",
-  //   "points",
-  //   "polygons",
-  // ].includes(pathSplit[pathSplit.length - 1]) ||
   // (parentPath &&
   //   parentPath !== path &&
   //   ftype === LIST_FIELD &&
