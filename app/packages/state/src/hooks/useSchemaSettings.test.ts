@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { disabledField } from "./useSchemaSettings.utils";
 import {
+  ARRAY_FIELD,
   CLASSIFICATIONS_FIELD,
   CLASSIFICATION_FIELD,
   DETECTIONS_FIELD,
+  DETECTION_DISABLED_SUB_PATHS,
   DETECTION_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
@@ -14,6 +16,7 @@ import {
   GEO_LOCATION_FIELD,
   HEATMAP_FIELD,
   INT_FIELD,
+  POLYLINE_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
   LIST_FIELD,
   OBJECT_ID_FIELD,
@@ -26,6 +29,10 @@ import {
   TEMPORAL_DETECTIONS,
   TEMPORAL_DETECTIONS_FIELD,
   TEMPORAL_DETECTION_FIELD,
+  CLASSIFICATION_DISABLED_SUB_PATHS,
+  REGRESSION_DISABLED_SUB_PATHS,
+  KEYPOINT_DISABLED_SUB_PATHS,
+  SEGMENTATION_DISABLED_SUB_PATHS,
 } from "@fiftyone/utilities";
 import { FRAME_SUPPORT_FIELD } from "@fiftyone/utilities";
 import { VECTOR_FIELD } from "@fiftyone/utilities";
@@ -204,30 +211,58 @@ const FIELDS = {
   },
 };
 
-const SCHEMA = {};
+const ORIGINAL_SCHEMA = {};
 Object.values(FIELDS).forEach((f) => {
-  SCHEMA[f.path] = f;
+  ORIGINAL_SCHEMA[f.path] = f;
 });
+let SCHEMA = { ...ORIGINAL_SCHEMA };
 
-// const SCHEMA = {
-//   id: FIELDS.ID_FIELD,
-//   filepath: FIELDS.FILEPATH_FIELD,
-//   tags: FIELDS.TAGS_FIELD,
-//   metadata: FIELDS.METADATA_FIELD,
-//   [FIELDS.SAMPLE_ID_FIELD.path]: FIELDS.SAMPLE_ID_FIELD,
-//   [FIELDS.FRAME_NUMBER_FIELD.path]: FIELDS.FRAME_NUMBER_FIELD,
-//   [FIELDS.FRAME_ID_FIELD.path]: FIELDS.FRAME_ID_FIELD,
-//   [FIELDS.FRAMES_NUMBER_FIELD.path]: FIELDS.FRAMES_NUMBER_FIELD,
-//   ObjectIdType: FIELDS.ID_FIELD,
-//   FrameNumberField: FIELDS.FRAME_NUMBER_TYPE,
-//   FrameSupportField: FIELDS.FRAME_SUPPORT_TYPE,
-//   VectorField: FIELDS.VECTOR_TYPE,
-//   [FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path]:
-//     FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD,
-//   [GROUP_DATASET]: FIELDS.GROUP_FIELD,
-//   [`${GROUP_DATASET}.name`]: FIELDS.GROUP_CHILD_FIELD,
+const getDisabledNestedLabelFields = (prefix: string, paths: string[]) => {
+  const res = [];
+  if (paths.includes("id")) {
+    res.push({ ...BASE_FIELD, path: `${prefix}.id`, ftype: OBJECT_ID_FIELD });
+  }
+  if (paths.includes("tags")) {
+    res.push({ ...BASE_FIELD, path: `${prefix}.tags`, ftype: LIST_FIELD });
+  }
+  if (paths.includes("label")) {
+    res.push({ ...BASE_FIELD, path: `${prefix}.label`, ftype: STRING_FIELD });
+  }
+  if (paths.includes("bounding_box")) {
+    res.push({
+      ...BASE_FIELD,
+      path: `${prefix}.bounding_box`,
+      ftype: LIST_FIELD,
+    });
+  }
+  if (paths.includes("mask")) {
+    res.push({ ...BASE_FIELD, path: `${prefix}.mask`, ftype: ARRAY_FIELD });
+  }
+  if (paths.includes("confidence")) {
+    res.push({
+      ...BASE_FIELD,
+      path: `${prefix}.confidence`,
+      ftype: FLOAT_FIELD,
+    });
+  }
+  if (paths.includes("index")) {
+    res.push({ ...BASE_FIELD, path: `${prefix}.index`, ftype: INT_FIELD });
+  }
 
-// };
+  return res;
+};
+
+const getEnabledNestedLabelFields = (prefix: string, paths: string[]) => {
+  const res = [];
+  for (let i = 0; i < paths.length; i++) {
+    res.push({
+      ...BASE_FIELD,
+      path: `${prefix}.${paths[i]}`,
+      ftype: STRING_FIELD,
+    });
+  }
+  return res;
+};
 
 describe("Disabled field paths in schema fields", () => {
   afterEach(() => {
@@ -239,15 +274,15 @@ describe("Disabled field paths in schema fields", () => {
   });
 
   it("filepath path is disabled across all fields", () => {
-    expect(disabledField(FIELDS.FILEPATH_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.FILEPATH_FIELD.path, SCHEMA)).toBe(true);
   });
 
   it("tags path is disabled across all fields", () => {
-    expect(disabledField(FIELDS.TAGS_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.TAGS_FIELD.path, SCHEMA)).toBe(true);
   });
 
   it("metadata path is disabled across all fields", () => {
-    expect(disabledField(FIELDS.METADATA_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.METADATA_FIELD.path, SCHEMA)).toBe(true);
   });
 });
 
@@ -257,7 +292,7 @@ describe("Disabled field types in schema fields", () => {
   });
 
   it("ObjectIdField type is disabled across all fields", () => {
-    expect(disabledField(FIELDS.OBJECT_ID_TYPE.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.OBJECT_ID_TYPE.path, SCHEMA)).toBe(true);
   });
 
   it("FrameNumberField type is disabled across all fields", () => {
@@ -402,33 +437,180 @@ describe("label types are disabled fields", () => {
   });
 
   it("LABEL fields are disabled", () => {
-    expect(disabledField(FIELDS.DETECTION_FIELD.path, SCHEMA, "")).toBe(true);
-    expect(disabledField(FIELDS.DETECTIONS_FIELD.path, SCHEMA, "")).toBe(true);
-    expect(disabledField(FIELDS.CLASSIFICATION_FIELD.path, SCHEMA, "")).toBe(
+    expect(disabledField(FIELDS.DETECTION_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.DETECTIONS_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.CLASSIFICATION_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.CLASSIFICATIONS_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.KEYPOINT_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.TEMPORAL_DETECTION_FIELD.path, SCHEMA)).toBe(
       true
     );
-    expect(disabledField(FIELDS.CLASSIFICATIONS_FIELD.path, SCHEMA, "")).toBe(
+    expect(disabledField(FIELDS.TEMPORAL_DETECTIONS_FIELD.path, SCHEMA)).toBe(
       true
     );
-    expect(disabledField(FIELDS.KEYPOINT_FIELD.path, SCHEMA, "")).toBe(true);
-    expect(
-      disabledField(FIELDS.TEMPORAL_DETECTION_FIELD.path, SCHEMA, "")
-    ).toBe(true);
-    expect(
-      disabledField(FIELDS.TEMPORAL_DETECTIONS_FIELD.path, SCHEMA, "")
-    ).toBe(true);
-    expect(disabledField(FIELDS.REGRESSION_FIELD.path, SCHEMA, "")).toBe(true);
-    expect(disabledField(FIELDS.HEATMAP_FIELD.path, SCHEMA, "")).toBe(true);
-    expect(disabledField(FIELDS.SEGMENTATION_FIELD.path, SCHEMA, "")).toBe(
-      true
+    expect(disabledField(FIELDS.REGRESSION_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.HEATMAP_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.SEGMENTATION_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.GEO_LOCATION_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.GEO_LOCATIONS_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.POLYLINE_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.POLYLINES_FIELD.path, SCHEMA)).toBe(true);
+  });
+});
+
+describe("label types are disabled fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("Detection nested fields that are disabled", () => {
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "detection",
+      DETECTION_DISABLED_SUB_PATHS
     );
-    expect(disabledField(FIELDS.GEO_LOCATION_FIELD.path, SCHEMA, "")).toBe(
-      true
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("detection", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("Polyline nested fields that are disabled", () => {
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "polyline",
+      POLYLINE_DISABLED_SUB_PATHS
     );
-    expect(disabledField(FIELDS.GEO_LOCATIONS_FIELD.path, SCHEMA, "")).toBe(
-      true
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("polyline", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("Classification nested fields that are disabled", () => {
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "classification",
+      CLASSIFICATION_DISABLED_SUB_PATHS
     );
-    expect(disabledField(FIELDS.POLYLINE_FIELD.path, SCHEMA, "")).toBe(true);
-    expect(disabledField(FIELDS.POLYLINES_FIELD.path, SCHEMA, "")).toBe(true);
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("classification", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("Regression nested fields that are disabled", () => {
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "regression",
+      REGRESSION_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("regression", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("Keypoint nested fields that are disabled", () => {
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "keypoint",
+      KEYPOINT_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("keypoint", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
+  });
+
+  it("Segmentation nested fields that are disabled", () => {
+    SCHEMA = { ...ORIGINAL_SCHEMA };
+    const disabledSubFields = getDisabledNestedLabelFields(
+      "segmentation",
+      SEGMENTATION_DISABLED_SUB_PATHS
+    );
+    disabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+
+    disabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(true);
+    });
+
+    const enabledSubFields = getEnabledNestedLabelFields("segmentation", [
+      "foo",
+      "bar",
+    ]);
+    enabledSubFields.forEach((field) => {
+      SCHEMA[field.path] = field;
+    });
+    enabledSubFields.forEach((field) => {
+      expect(disabledField(field.path, SCHEMA)).toBe(false);
+    });
   });
 });

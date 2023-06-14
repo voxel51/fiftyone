@@ -414,6 +414,48 @@ export const DISABLED_FIELD_TYPES = [
   VECTOR_FIELD,
 ];
 
+const BASE_DISABLED_PATHS = ["id", "tags", "label", "confidence"];
+
+export const DETECTION_DISABLED_SUB_PATHS = [
+  ...BASE_DISABLED_PATHS,
+  "bounding_box",
+  "mask",
+  "index",
+];
+
+export const POLYLINE_DISABLED_SUB_PATHS = [
+  ...BASE_DISABLED_PATHS,
+  "points",
+  "closed",
+  "filled",
+  "index",
+];
+
+export const CLASSIFICATION_DISABLED_SUB_PATHS = [
+  ...BASE_DISABLED_PATHS,
+  "logits",
+];
+
+export const REGRESSION_DISABLED_SUB_PATHS = [
+  "id",
+  "tags",
+  "value",
+  "confidence",
+];
+
+export const KEYPOINT_DISABLED_SUB_PATHS = [
+  ...BASE_DISABLED_PATHS,
+  "points",
+  "index",
+];
+
+export const SEGMENTATION_DISABLED_SUB_PATHS = [
+  "id",
+  "tags",
+  "mask",
+  "mask_path",
+];
+
 export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];
 export function withPath(
