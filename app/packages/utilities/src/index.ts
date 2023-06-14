@@ -449,6 +449,35 @@ export const SEGMENTATION_DISABLED_SUB_PATHS = [
   "mask_path",
 ];
 
+export const HEATMAP_DISABLED_SUB_PATHS = [
+  "id",
+  "tags",
+  "map",
+  "map_path",
+  "Range",
+];
+
+export const TEMPORAL_DETECTION_DISABLED_SUB_PATHS = [
+  ...BASE_DISABLED_PATHS,
+  "support",
+];
+
+export const GEOLOCATION_DISABLED_SUB_PATHS = [
+  "id",
+  "tags",
+  "point",
+  "line",
+  "Polygon",
+];
+
+export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
+  "id",
+  "tags",
+  "point",
+  "line",
+  "Polygons",
+];
+
 export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];
 export function withPath(
