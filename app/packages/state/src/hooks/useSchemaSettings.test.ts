@@ -881,6 +881,19 @@ describe("List of labels", () => {
         NOT_GROUP_DATASET
       )
     ).toBe(true);
+    expect(disabledField(FIELDS.REGRESSION_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.HEATMAP_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.SEGMENTATION_FIELD.path, SCHEMA, "")).toBe(
+      true
+    );
+    expect(disabledField(FIELDS.GEO_LOCATION_FIELD.path, SCHEMA, "")).toBe(
+      true
+    );
+    expect(disabledField(FIELDS.GEO_LOCATIONS_FIELD.path, SCHEMA, "")).toBe(
+      true
+    );
+    expect(disabledField(FIELDS.POLYLINE_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.POLYLINES_FIELD.path, SCHEMA, "")).toBe(true);
   });
 
   it("List of non-labels are enabled", () => {
