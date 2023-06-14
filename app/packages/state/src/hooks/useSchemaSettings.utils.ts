@@ -3,7 +3,9 @@ import {
   CLASSIFICATION_FIELD,
   DETECTIONS_FIELD,
   DETECTION_FIELD,
+  DISABLED_FIELDS_VISIBILITY,
   DISABLED_FIELD_TYPES,
+  DISABLED_LABEL_FIELDS_VISIBILITY,
   DISABLED_PATHS,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
@@ -13,18 +15,22 @@ import {
   GEO_LOCATIONS_FIELD,
   GEO_LOCATION_FIELD,
   HEATMAP_FIELD,
-  KEYPOINT_FILED,
+  KEYPOINT_FIELD,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   POLYLINES_FIELD,
   POLYLINE_FIELD,
-  REGRESSION_FILED,
+  REGRESSION_FIELD,
   RESERVED_FIELD_KEYS,
   SEGMENTATION_FIELD,
   TEMPORAL_DETECTION_FIELD,
   VALID_LABEL_TYPES,
   VECTOR_FIELD,
 } from "@fiftyone/utilities";
+
+export const isMetadataField = (path: string) => {
+  return path === "metadata" || path.startsWith("metadata.");
+};
 
 export const disabledField = (
   path: string,
@@ -44,23 +50,22 @@ export const disabledField = (
     DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   ].includes(embeddedDocType);
 
-  console.log("ftype", path, ftype);
   return (
     DISABLED_PATHS.includes(path) ||
     DISABLED_FIELD_TYPES.includes(ftype) ||
     [path, parentPath || path].includes(groupField) ||
-    (isFrameView && path === "frame_number")
+    (isFrameView && path === "frame_number") ||
+    isMetadataField(path) ||
+    DISABLED_LABEL_FIELDS_VISIBILITY.includes(ftype)
   );
-  // RESERVED_FIELD_KEYS.includes(path) ||
-  // path.startsWith("metadata")
   // ([
   //   TEMPORAL_DETECTION_FIELD,
   //   DETECTION_FIELD,
   //   DETECTIONS_FIELD,
   //   CLASSIFICATION_FIELD,
   //   CLASSIFICATIONS_FIELD,
-  //   KEYPOINT_FILED,
-  //   REGRESSION_FILED,
+  //   KEYPOINT_FIELD,
+  //   REGRESSION_FIELD,
   //   HEATMAP_FIELD,
   //   SEGMENTATION_FIELD,
   //   GEO_LOCATIONS_FIELD,
@@ -91,21 +96,6 @@ export const disabledField = (
   //   "points",
   //   "polygons",
   // ].includes(pathSplit[pathSplit.length - 1]) ||
-  // [
-  //   TEMPORAL_DETECTION_FIELD,
-  //   DETECTION_FIELD,
-  //   DETECTIONS_FIELD,
-  //   CLASSIFICATION_FIELD,
-  //   CLASSIFICATIONS_FIELD,
-  //   KEYPOINT_FILED,
-  //   REGRESSION_FILED,
-  //   HEATMAP_FIELD,
-  //   SEGMENTATION_FIELD,
-  //   GEO_LOCATIONS_FIELD,
-  //   GEO_LOCATION_FIELD,
-  //   POLYLINE_FIELD,
-  //   POLYLINES_FIELD,
-  // ].includes(ftype) ||
   // (parentPath &&
   //   parentPath !== path &&
   //   ftype === LIST_FIELD &&
