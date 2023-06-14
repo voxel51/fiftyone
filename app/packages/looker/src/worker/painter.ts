@@ -23,7 +23,7 @@ export const PainterFactory = (requestColor) => ({
     let color;
     if (coloring.by === "field") {
       if (setting?.fieldColor) {
-        color = setting.fieldColor;
+        color = field === setting.fieldColor;
       } else {
         color = await requestColor(coloring.pool, coloring.seed, field);
       }

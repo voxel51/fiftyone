@@ -261,7 +261,11 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor({ field, expandedPath });
+    if (field.path === ACTIVE_FIELD["_label_tags"]) {
+      setIsCustomizingColor(ACTIVE_FIELD[field.path]);
+    } else {
+      setIsCustomizingColor({ field, expandedPath });
+    }
   };
 
   useEffect(updatePosition, [field, isCollapsed]);

@@ -35,6 +35,9 @@ import {
   prettify,
 } from "./util";
 
+import { lookerTags } from "./tags.module.css";
+import _ from "lodash";
+
 interface TagData {
   color: string;
   title: string;
@@ -45,6 +48,7 @@ interface TagData {
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
+  private labelTagColors: CustomizeColor = {};
   private colorPool: string[];
   private colorByValue: boolean;
   private colorSeed: number;
@@ -63,7 +67,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema, ...r },
-      options: { activePaths, coloring, timeZone, customizeColorSetting },
+      options: {
+        activePaths,
+        coloring,
+        timeZone,
+        customizeColorSetting,
+        labelTagColors,
+      },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -79,6 +89,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorByValue === (coloring.by === "value") &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
+        _.isEqual(this.labelTagColors, labelTagColors) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -282,7 +293,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           const value = `${tag}: ${count}`;
           const v = coloring.by === "value" ? tag : path;
           elements.push({
-            color: getColor(coloring.pool, coloring.seed, v),
+            color: getColorFromOptions({
+              coloring,
+              path,
+              param: tag,
+              labelTagColors,
+              labelDefault: false,
+            }),
             title: value,
             value: value,
             path: v,
@@ -356,6 +373,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
+    this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
 
     elements

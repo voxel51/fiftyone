@@ -66,6 +66,7 @@ export const lookerOptions = selectorFamily<
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring(modal)),
         customizeColorSetting: get(atoms.sessionColorScheme).fields ?? [],
+        labelTagColors: get(atoms.sessionColorScheme).labelTags ?? {},
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
         fullscreen: get(atoms.fullscreen),

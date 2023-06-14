@@ -44,7 +44,9 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
   const { field, expandedPath } = prop;
   const path = field?.path;
-  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const { colorPool, fields, labelTags } = useRecoilValue(
+    fos.sessionColorScheme
+  );
   const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
   const coloring = useRecoilValue(fos.coloring(false));
@@ -88,9 +90,9 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
       const newSetting = cloneDeep(fields ?? []);
       const index = newSetting.findIndex((x) => x.path == path!);
       newSetting[index].fieldColor = color;
-      setColorScheme(false, { colorPool, fields: newSetting });
+      setColorScheme(false, { colorPool, fields: newSetting, labelTags });
     },
-    [fields, path, setColorScheme, colorPool]
+    [fields, path, setColorScheme, colorPool, labelTags]
   );
 
   const onValidateColor = useCallback(
@@ -142,7 +144,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
         valueColors: [],
       } as fos.CustomizeColor;
       const newSetting = [...copy, defaultSetting];
-      setColorScheme(false, { colorPool, fields: newSetting });
+      setColorScheme(false, { colorPool, fields: newSetting, labelTags });
     }
     setState({
       useLabelColors: Boolean(
@@ -183,6 +185,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
                 setColorScheme(false, {
                   colorPool,
                   fields: newSetting,
+                  labelTags,
                 });
               }
               setState((s) => ({ ...s, useFieldColor: v }));
@@ -263,6 +266,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
                 setColorScheme(false, {
                   colorPool,
                   fields: newSetting,
+                  labelTags,
                 });
                 setState((s) => ({ ...s, useLabelColors: v }));
               }}

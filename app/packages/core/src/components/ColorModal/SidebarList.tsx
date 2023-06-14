@@ -37,6 +37,7 @@ const SidebarList: React.FC = () => {
   const onSelectField = useRecoilCallback(
     ({ set, snapshot }) =>
       async (path: string) => {
+        console.info("onSelectField", path);
         if (
           [
             ACTIVE_FIELD.global,

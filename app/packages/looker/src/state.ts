@@ -131,6 +131,7 @@ interface BaseOptions {
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: CustomizeColor;
   selectedLabels: string[];
   showConfidence: boolean;
   showControls: boolean;

@@ -21,7 +21,7 @@ const JSONViewer: React.FC = () => {
     return {
       colorPool: sessionColor?.colorPool ?? [],
       fields: validateJSONSetting(sessionColor?.fields ?? []),
-      labelTags: sessionColor?.labelTags ?? {},
+      labelTags: validateLabelTags(sessionColor?.labelTags) ?? {},
     };
   }, [sessionColor]);
   const setColorScheme = fos.useSetSessionColorScheme();

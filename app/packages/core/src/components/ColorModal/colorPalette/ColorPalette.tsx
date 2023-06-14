@@ -24,18 +24,19 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const computedSessionColorScheme = useRecoilValue(fos.sessionColorScheme);
+  const { colorPool, fields, labelTags } = useRecoilValue(
+    fos.sessionColorScheme
+  );
   const setColorScheme = fos.useSetSessionColorScheme();
-  const colors = computedSessionColorScheme.colorPool;
   const [pickerColor, setPickerColor] = useState<string | null>(null);
 
   const isUsingColorBlindOption = isSameArray(
-    colors,
+    colorPool,
     colorBlindFriendlyPalette
   );
 
   const isUsingFiftyoneClassic = isSameArray(
-    colors,
+    colorPool,
     fiftyoneDefaultColorPalette
   );
 
@@ -47,29 +48,32 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
 
   const handleColorChange = (color: any) => {
     if (activeIndex !== null && color) {
-      const newColors = colors ? [...colors] : [];
+      const newColors = colorPool ? [...colorPool] : [];
       newColors[activeIndex] = color.hex;
       setColorScheme(false, {
         colorPool: newColors,
-        fields: computedSessionColorScheme.fields,
+        fields,
+        labelTags,
       });
     }
   };
 
   const handleColorDelete = (index: number) => {
-    const newColors = colors ? [...colors] : [];
+    const newColors = colorPool ? [...colorPool] : [];
     newColors.splice(index, 1);
     setColorScheme(false, {
       colorPool: newColors,
-      fields: computedSessionColorScheme.fields,
+      fields,
+      labelTags,
     });
   };
 
   const handleColorAdd = () => {
-    if (colors?.length < maxColors) {
+    if (colorPool?.length < maxColors) {
       setColorScheme(false, {
-        colorPool: [...colors, "#ffffff"],
-        fields: computedSessionColorScheme.fields,
+        colorPool: [...colorPool, "#ffffff"],
+        fields,
+        labelTags,
       });
     }
   };
@@ -83,12 +87,12 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
     if (!showPicker) setPickerColor(null);
   }, [showPicker]);
 
-  if (!colors) return null;
+  if (!colorPool) return null;
 
   return (
     <div style={style} id="color-palette">
       <ColorPaletteContainer>
-        {colors.map((color, index) => (
+        {colorPool.map((color, index) => (
           <ColorSquare
             key={index}
             color={color}
@@ -130,7 +134,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
             )}
           </ColorSquare>
         ))}
-        {colors.length < maxColors && (
+        {colorPool.length < maxColors && (
           <AddSquare onClick={handleColorAdd}>
             <AddIcon>+</AddIcon>
           </AddSquare>
@@ -145,7 +149,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
               v &&
               setColorScheme(false, {
                 colorPool: fiftyoneDefaultColorPalette,
-                fields: computedSessionColorScheme.fields,
+                fields,
+                labelTags,
               })
             }
           />
@@ -158,7 +163,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
               v &&
               setColorScheme(false, {
                 colorPool: colorBlindFriendlyPalette,
-                fields: computedSessionColorScheme.fields,
+                fields,
+                labelTags,
               })
             }
           />

@@ -100,62 +100,33 @@ type Param = {
   coloring: Coloring;
   path: string;
   param: Classification | Regression | string;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting?: CustomizeColor[];
+  labelTagColors?: CustomizeColor;
   labelDefault: boolean; // use .label for classification or .value for regression
 };
+
 export const getColorFromOptions = ({
   coloring,
   path,
   param,
   customizeColorSetting,
+  labelTagColors,
   labelDefault,
 }: Param) => {
-  let key;
-  const setting = customizeColorSetting.find((s) => s.path === path);
+  const setting =
+    path === "_label_tags"
+      ? labelTagColors
+      : customizeColorSetting.find((s) => s.path === path);
   if (coloring.by === "field") {
-    if (isValidColor(setting?.fieldColor ?? "")) {
-      return setting.fieldColor;
-    }
-    return getColor(coloring.pool, coloring.seed, path);
+    return getFieldColor(coloring, path, setting);
   }
-  if (coloring.by === "value" && path !== "tags") {
-    if (setting) {
-      key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
-      // check if this label has a assigned color, use it if it is a valid color
-      const valueColor = setting?.valueColors?.find((l) => {
-        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-          return typeof param[key] === "string"
-            ? l.value?.toLowerCase === param[key]
-            : !param[key];
-        }
-        if (["True", "False"].includes(l.value?.toString())) {
-          return (
-            l.value?.toString().toLowerCase() ==
-            param[key]?.toString().toLowerCase()
-          );
-        }
-        return l.value?.toString() == param[key]?.toString();
-      })?.color;
-
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
-    } else {
-      key = labelDefault ? "label" : "value";
-    }
-    return getColor(coloring.pool, coloring.seed, param[key]);
-  }
-  if (coloring.by === "value" && path === "tags") {
-    if (setting) {
-      const valueColor = setting.valueColors?.find(
-        (v) => v.value === param
-      )?.color;
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
-    }
-  }
-  return getColor(coloring.pool, coloring.seed, path);
+  const key =
+    !["tags", "_label_tags"].includes(path) && setting
+      ? setting.colorByAttribute ?? (labelDefault ? "label" : "value")
+      : labelDefault
+      ? "label"
+      : "value";
+  return getValueColor(coloring, path, setting, param[key], param);
 };
 
 // for primitive types
@@ -173,31 +144,38 @@ export const getColorFromOptionsPrimitives = ({
 }: PrimitiveParam) => {
   const setting = customizeColorSetting.find((s) => s.path === path);
   if (coloring.by === "field") {
-    if (isValidColor(setting?.fieldColor ?? "")) {
-      return setting?.fieldColor;
-    }
-    return getColor(coloring.pool, coloring.seed, path);
+    return getFieldColor(coloring, path, setting);
   }
-  if (coloring.by === "value") {
-    if (setting) {
-      // check if this label has a assigned color, use it if it is a valid color
-      const valueColor = setting.valueColors?.find((l) => {
-        const normalized = l.value?.toString().toLowerCase();
-        if (["none", "null", "undefined"].includes(normalized)) {
-          return typeof value === "string"
-            ? normalized === value.toLowerCase()
-            : !value;
-        }
-        if (["True", "False"].includes(l.value?.toString())) {
-          return normalized === value.toString().toLowerCase();
-        }
-        return l.value?.toString() === value.toString();
-      })?.color;
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
-    }
-    return getColor(coloring.pool, coloring.seed, path);
+  return getValueColor(coloring, path, setting, value, value);
+};
+
+// helper function to handle the field color
+const getFieldColor = (coloring, path, setting) => {
+  if (isValidColor(setting?.fieldColor ?? "")) {
+    return setting?.fieldColor;
   }
   return getColor(coloring.pool, coloring.seed, path);
+};
+
+// helper function to handle the value color
+const getValueColor = (coloring, path, setting, key, param) => {
+  if (setting) {
+    const valueColor = setting.valueColors?.find((l) => {
+      const normalized = l.value?.toString().toLowerCase();
+      if (["none", "null", "undefined"].includes(normalized)) {
+        return typeof param === "string"
+          ? normalized === param.toLowerCase()
+          : !param;
+      }
+      if (["True", "False"].includes(l.value?.toString())) {
+        return normalized === param.toString().toLowerCase();
+      }
+      return l.value?.toString() === param.toString();
+    })?.color;
+
+    if (isValidColor(valueColor)) {
+      return valueColor;
+    }
+  }
+  return getColor(coloring.pool, coloring.seed, key);
 };

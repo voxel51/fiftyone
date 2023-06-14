@@ -96,9 +96,12 @@ export const pathColor = selectorFamily<
         adjustedPath = path;
       }
 
-      const setting = get(atoms.sessionColorScheme)?.fields?.find(
-        (x) => x.path === adjustedPath
-      );
+      const setting =
+        path === "_label_tags"
+          ? get(atoms.sessionColorScheme).labelTags
+          : get(atoms.sessionColorScheme)?.fields?.find(
+              (x) => x.path === adjustedPath
+            );
 
       if (isValidColor(setting?.fieldColor ?? "")) {
         return setting!.fieldColor;

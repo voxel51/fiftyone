@@ -18,7 +18,6 @@ import {
 } from "./ShareStyledDiv";
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
-import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
 type State = {
@@ -97,22 +96,20 @@ const LabelTag: React.FC = () => {
   // initialize field settings
   useEffect(() => {
     // check setting to see if custom setting exists
-
-    const copy = cloneDeep(labelTags) ?? {};
-    if (_.isEmpty(copy)) {
+    const copy = cloneDeep(labelTags);
+    if (!copy || _.isEmpty(copy)) {
       const defaultSetting = {
-        path: "_label_tags",
-        fieldColor: undefined,
+        fieldColor: color,
         valueColors: [],
       } as fos.CustomizeColor;
       setColorScheme(false, { colorPool, fields, labelTags: defaultSetting });
+      setState({
+        useLabelColors: Boolean(
+          labelTags?.valueColors && labelTags.valueColors.length > 0
+        ),
+        useFieldColor: Boolean(labelTags?.fieldColor),
+      });
     }
-    setState({
-      useLabelColors: Boolean(
-        labelTags?.valueColors && labelTags.valueColors.length > 0
-      ),
-      useFieldColor: Boolean(labelTags?.fieldColor),
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [labelTags]);
 
@@ -131,73 +128,75 @@ const LabelTag: React.FC = () => {
       <ModeControl />
       <Divider />
 
-      <div style={{ margin: "1rem", width: "100%" }}>
-        <Checkbox
-          name={`Use custom color for label tags field`}
-          value={state.useFieldColor}
-          setValue={(v: boolean) => {
-            const copy = cloneDeep(labelTags);
-            copy.fieldColor = v ? labelTags?.fieldColor : undefined;
-            setColorScheme(false, {
-              colorPool,
-              fields,
-              labelTags: copy,
-            });
-            setState((s) => ({ ...s, useFieldColor: v }));
-          }}
-        />
-        {state?.useFieldColor && (
-          <div
-            style={{
-              margin: "1rem",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "end",
+      {coloring.by === "field" && (
+        <div style={{ margin: "1rem", width: "100%" }}>
+          <Checkbox
+            name={`Use custom color for label tags field`}
+            value={state.useFieldColor}
+            setValue={(v: boolean) => {
+              const copy = cloneDeep(labelTags);
+              copy.fieldColor = v ? labelTags?.fieldColor : undefined;
+              setColorScheme(false, {
+                colorPool,
+                fields,
+                labelTags: copy,
+              });
+              setState((s) => ({ ...s, useFieldColor: v }));
             }}
-          >
-            <FieldColorSquare
-              color={labelTags?.fieldColor ?? input}
-              onClick={toggleColorPicker}
-              id="color-square"
-            >
-              {showFieldPicker && (
-                <PickerWrapper
-                  id="twitter-color-container"
-                  onBlur={hideFieldColorPicker}
-                  visible={showFieldPicker}
-                  tabIndex={0}
-                  ref={wrapperRef}
-                >
-                  <TwitterPicker
-                    color={input ?? labelTags?.fieldColor}
-                    colors={colors}
-                    onChange={(color) => setInput(color.hex)}
-                    onChangeComplete={(color) => {
-                      onChangeFieldColor(color.hex);
-                      setColors([...new Set([...colors, color.hex])]);
-                    }}
-                    className={colorPicker}
-                    ref={pickerRef}
-                  />
-                </PickerWrapper>
-              )}
-            </FieldColorSquare>
-            <Input
-              value={input}
-              setter={(v) => setInput(v)}
-              onBlur={() => onValidateColor(input)}
-              onEnter={() => onValidateColor(input)}
+          />
+          {state?.useFieldColor && (
+            <div
               style={{
-                width: 120,
-                display: "inline-block",
-                margin: 3,
+                margin: "1rem",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "end",
               }}
-            />
-          </div>
-        )}
-      </div>
+            >
+              <FieldColorSquare
+                color={labelTags?.fieldColor ?? input}
+                onClick={toggleColorPicker}
+                id="color-square"
+              >
+                {showFieldPicker && (
+                  <PickerWrapper
+                    id="twitter-color-container"
+                    onBlur={hideFieldColorPicker}
+                    visible={showFieldPicker}
+                    tabIndex={0}
+                    ref={wrapperRef}
+                  >
+                    <TwitterPicker
+                      color={input ?? labelTags?.fieldColor}
+                      colors={colors}
+                      onChange={(color) => setInput(color.hex)}
+                      onChangeComplete={(color) => {
+                        onChangeFieldColor(color.hex);
+                        setColors([...new Set([...colors, color.hex])]);
+                      }}
+                      className={colorPicker}
+                      ref={pickerRef}
+                    />
+                  </PickerWrapper>
+                )}
+              </FieldColorSquare>
+              <Input
+                value={input}
+                setter={(v) => setInput(v)}
+                onBlur={() => onValidateColor(input)}
+                onEnter={() => onValidateColor(input)}
+                style={{
+                  width: 120,
+                  display: "inline-block",
+                  margin: 3,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
-      {coloring.by == "value" && (
+      {coloring.by === "value" && (
         <div>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
@@ -220,7 +219,6 @@ const LabelTag: React.FC = () => {
                 setState((s) => ({ ...s, useLabelColors: v }));
               }}
             />
-            {/* set the attribute used for color */}
             <SectionWrapper>
               <AttributeColorSetting
                 style={FieldCHILD_STYLE}

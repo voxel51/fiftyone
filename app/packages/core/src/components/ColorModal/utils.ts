@@ -35,7 +35,7 @@ export const fiftyoneDefaultColorPalette = [
 export const ACTIVE_FIELD = {
   ["json"]: "JSON editor",
   ["global"]: "Global settings",
-  ["_label_tags"]: "label tags",
+  ["_label_tags"]: "_label_tags",
 };
 
 // disregard the order
@@ -91,7 +91,11 @@ export const validateLabelTags = (json: unknown) => {
   const valueColors = Array.isArray(json["valueColors"])
     ? getValidLabelColors(json["valueColors"])
     : null;
-  return { fieldColor, valueColors } as fos.TagColor;
+  if (fieldColor || (valueColors && valueColors?.length > 0)) {
+    return { fieldColor, valueColors } as fos.TagColor;
+  } else {
+    return {};
+  }
 };
 
 export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
