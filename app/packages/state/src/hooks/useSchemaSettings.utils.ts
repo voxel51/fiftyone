@@ -1,3 +1,5 @@
+import { DETECTION_FILED, SKIP_FIELD_TYPES } from "@fiftyone/utilities";
+import { JUST_FIELD } from "@fiftyone/utilities";
 import {
   CLASSIFICATION_DISABLED_SUB_PATHS,
   CLASSIFICATION_FIELD,
@@ -29,8 +31,31 @@ import {
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
-export const isMetadataField = (path: string) => {
+const isMetadataField = (path: string) => {
   return path === "metadata" || path.startsWith("metadata.");
+};
+
+export const skipField = (path: string, schema: {}) => {
+  if (!path) {
+    throw new Error("skipField requires a path argument");
+  }
+
+  const currentField = schema?.[path] || schema?.[path.replace("frames.", "")];
+  if (!currentField) {
+    return true;
+  }
+
+  const ftype = currentField.ftype;
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+  const pathSplit = path.split(".");
+  const pathLabel = `.${pathSplit[pathSplit.length - 1]}`;
+
+  return (
+    SKIP_FIELD_TYPES.includes(ftype) ||
+    (parentPath &&
+      schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
+      [".bounding_box", ".index"].includes(pathLabel))
+  );
 };
 
 export const disabledField = (
