@@ -1,17 +1,11 @@
 import {
-  CLASSIFICATIONS_FIELD,
   CLASSIFICATION_DISABLED_SUB_PATHS,
   CLASSIFICATION_FIELD,
-  DETECTIONS_FIELD,
   DETECTION_DISABLED_SUB_PATHS,
   DETECTION_FIELD,
-  DISABLED_FIELDS_VISIBILITY,
   DISABLED_FIELD_TYPES,
   DISABLED_LABEL_FIELDS_VISIBILITY,
   DISABLED_PATHS,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
-  FRAME_SUPPORT_FIELD,
   Field,
   GEOLOCATIONS_DISABLED_SUB_PATHS,
   GEOLOCATION_DISABLED_SUB_PATHS,
@@ -21,21 +15,15 @@ import {
   HEATMAP_FIELD,
   KEYPOINT_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
-  LIST_FIELD,
-  POLYLINES_FIELD,
   POLYLINE_DISABLED_SUB_PATHS,
   POLYLINE_FIELD,
   REGRESSION_DISABLED_SUB_PATHS,
   REGRESSION_FIELD,
-  RESERVED_FIELD_KEYS,
   SEGMENTATION_DISABLED_SUB_PATHS,
   SEGMENTATION_FIELD,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
-  VALID_LABEL_TYPES,
-  VECTOR_FIELD,
 } from "@fiftyone/utilities";
-import { FRAME_NUMBER_FIELD, OBJECT_ID_FIELD } from "@fiftyone/utilities";
 
 export const isMetadataField = (path: string) => {
   return path === "metadata" || path.startsWith("metadata.");
@@ -48,17 +36,11 @@ export const disabledField = (
   isFrameView?: boolean
 ): boolean => {
   const currField = combinedSchema?.[path] || ({} as Field);
-  const { ftype, embeddedDocType } = currField;
+  const { ftype } = currField;
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema?.[parentPath];
   const parentFType = parentField?.ftype;
-  const parentEmbeddedDocType = parentField?.embeddedDocType;
   const pathSplit = path.split(".");
-  const embeddedDocTypeSplit = embeddedDocType?.split(".");
-  const hasDynamicEmbeddedDocument = [
-    DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-    DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
-  ].includes(embeddedDocType);
 
   const shortPath = pathSplit[pathSplit.length - 1];
 
@@ -173,13 +155,4 @@ export const disabledField = (
   }
 
   return false;
-  // (parentPath &&
-  //   parentPath !== path &&
-  //   ftype === LIST_FIELD &&
-  //   (hasDynamicEmbeddedDocument ||
-  //     VALID_LABEL_TYPES.includes(
-  //       embeddedDocType?.includes(".")
-  //         ? embeddedDocTypeSplit[embeddedDocTypeSplit.length - 1]
-  //         : embeddedDocType
-  //     )))
 };
