@@ -14,40 +14,122 @@ FiftyOne provides a powerful plugin framework that allows for extending and cust
     repository for a growing collection of prebuilt plugins that you can easily
     :ref:`download <plugins-download>` and use locally!
 
-At its core, a plugin consists of Operators and Components.
+At its core, a plugin consists of Operators and Panels.
 
 Operators are user-facing operations that allow you to interact with the data in your dataset. They can range from simple actions like checking a checkbox to more complex workflows such as requesting annotation of samples from a configurable backend. Operators can even be composed of other operators or be used to add functionality to custom Panels and Visualizers.
 
-Components, on the other hand, are responsible for rendering and event handling. They provide the necessary functionality to display and interact with your plugin in the FiftyOne App. Components also implement form inputs and output rendering for Operators, making it possible to customize the way an operator is rendered in the FiftyOne App.
+Panels, on the other hand, are responsible for rendering and event handling. They provide the necessary functionality to display and interact with your plugin in the FiftyOne App.
 
-Together, Operators and Components form the building blocks of a plugin, enabling you to tailor FiftyOne to your specific use case and workflow. Whether you're working with images, videos, or other data types, a plugin can help you streamline your machine learning workflows and achieve better results.
+Together, Operators and Panels form the building blocks of a plugin, enabling you to tailor FiftyOne to your specific use case and workflow. Whether you're working with images, videos, or other data types, a plugin can help you streamline your machine learning workflows and achieve better results.
 
 What you can and cannot do with plugins?
 ----------------------------------------
 
-Plugins in FiftyOne are a powerful way to extend and customize the functionality of the tool to suit your specific needs. With plugins, you can add new functionality to the FiftyOne App, render custom panels, and add custom buttons to menus. You can even add custom options to built-in options with Operators and execute custom Python code.
+Plugins in FiftyOne are a powerful way to extend and customize the functionality of the tool to suit your specific needs. With plugins, you can add new functionality to the FiftyOne App, render custom panels, and add custom buttons to menus. You can even integrate with 3rd party APIs and libraries as well as leverage the FiftyOne SDK.
 
 However, there are also certain limitations to keep in mind when working with plugins. For example, plugins cannot add functionality to the SDK or trigger app functionality directly from a Python session or notebook. You also cannot customize built-in menus or options, or override the sidebar, viewbar, or samples grid.
 
 Despite these limitations, plugins still offer a wide range of possibilities for customizing your FiftyOne experience. Whether you're looking to add your own panel, customize how samples are visualized or streamline your workflows.
 
-Plugin types
-------------
+
+Plugin building blocks
+----------------------
+
+.. image:: /images/plugins/plugin-building-blocks.png
+    :alt: Plugin building blocks
+    :align: center
+
+**Plugin types**
 
 FiftyOne supports two types of plugins: JS Plugins and Python Plugins.
 
 JS Plugins are built using the @fiftyone TypeScript packages, npm packages, and your own TypeScript. They consist of Operators, Panels, Visualizers, and Components. Panels are a blank canvas that JS Plugins can use to render content, while Visualizers allow JS Plugins to override the built-in sample visualizer.
 
-On the other hand, Python Plugins are built using the FiftyOne Python SDK, pip packages, and your own Python. Python plugins can only define Operators.
+Python Plugins are built using the FiftyOne Python SDK, pip packages, and your own Python. Python plugins can only define Operators.
 
-Component types
----------------
+**UI Components**
+
+FiftyOne will render a Panel using a given React Component. This component can use all features of React to implement the look and feel as well as the functionality of the Panel. Hooks can be used to interact with state at various levels using built in React component state (useState) or by using @fiftyone/states hooks and Recoil atoms and selectors.
+
+**Hooks**
+
+React Hooks allow both Panels and JS Operators to “hook into” the React Lifecyle as well as interact with FiftyOne. One such hook useOperatorExecutor() allows for managing the execution of an operator. Other hooks allow for reading and writing Application state such as the “dataset” atom, which can be read using the useRecoilValue() hook.
+
+**App State**
+
+The current dataset, its schema, samples, information about samples, and even options a user has chosen are available in App State via the @fiftyone/state module. Most of the objects exported by this module are Recoil atoms and selectors. There are several patterns throughout FiftyOne that demonstrate how to interact with App State.
+
+``executeOperator()``
+
+This function allows execution of an operator directly from JavaScript. This is what allows panels to trigger functionality implemented in Python.
+
+**Panel State**
+
+:ref:`Panel state` is similar to App State, but is namespaced per panel. Once a panel closes this state is cleared. This allows a single panel implementation to support multiple instances of the same panel.
+
+**Inputs & Outputs**
+
+Operators are mostly made up of an input definition, an output definition and an ``execute()`` implementation. Using the Operator Type System, an Operator can define a form that prompts the user for input as well as a results view which displays the result returned from the ``execute()`` method to the user. The type system comprises of both value types (eg. ``String``, ``Object``, ``Boolean``, ``Number``, etc.) as well as view types (``Dropdown``, ``RadioGroup``, ``TableView``, etc). Inputs and Outputs are defined as Properties which combine both a value type, which defines how the property is treated at runtime and a view type, which defines how the value is displayed to the user.
+
+``execute()``
+
+The Operator ``execute()`` method is the implementation of the operator. It uses the input ``params`` provided by the caller (the user) and returns the results for display. JavaScript Operators may also define an objects wich contains the result of any hook. Execute may also trigger other operators, allowing chains of operators to combine into more complex behaviors. Eg. after updating a sample an operator can trigger the ``reload_samples`` operator to show the updated sample.
+
+``useHooks()``
+
+As mentioned above, useHooks() allows for an operator to use React Hooks. Anything returned from this method can be used in the execute() method to implement the operator. This is required when the only way to interact with something is by using a hook. Otherwise JavaScript operators can also use the recoil state object directly via ctx.state. This provides methods to get and set values of selectors an atoms without using hooks.
+
+``ExecutionContext``
+
+The ExecutionContext gathers up all contextual information about a given execution of an Operator. This includes the dataset, view, and selected samples. It also includes the params the user provided when executing the Operator.
+
+**Components**
 
 Plugins may register components to add or customize functionality within the FiftyOne App. Each component is registered with an activation function. The component will only be considered for rendering when the activation function returns true.
 
  - :class:`Panel` - JS plugins can register a panel component, that is available from the “new panel” action menu
  - :class:`Visualizer` - JS plugins can register a component that will override the built in visualizer (when active)
  - :class:`Component` - JS plugins can register generic components that can be used to render operator input and output
+
+Plugin Example: VoxelGPT:
+-------------------------
+
+.. image:: /images/plugins/panel-example-voxelgpt.png
+    :alt: Panel Example: VoxelGPT
+    :align: center
+
+**1. Panel Icon**
+
+Panels can register their own custom icon alongside the React component that implements the panel.
+
+**2. Material UI**
+
+Plugins use the Material UI library of React components to provide entirely custom UI.
+
+**3. Send Message Operator**
+
+VoxelGPT uses the ``send_message`` operator to facilitate sending a message from the FiftyOne App to the server. This Operator is implemented in Python and delegates its core functionality to the ``ask_voxel_gpt()`` method, which is a generator function. This generator yields markdown in chunks as a response to the user's message.
+
+.. image:: /images/plugins/panel-example-voxelgpt2.png
+    :alt: Panel Example: VoxelGPT Cont.
+    :align: center
+
+**4. Panel State: Messages**
+
+VoxelGPT uses Panel State to store messages sent to and from the server. This allows for VoxelGPT to send a history of messages along with each message sent. VoxelGPT can use this history to augment how it generates responses.
+
+**5. Operator IO**
+
+In order to enable VoxelGPT to speak UI instead of just text messages, it responds to messages with Operator output types instead of raw text or even markdown. This allows for the generated messages to be displayed as an appropriate UI, which is determined by VoxelGPT instead of the UI.
+
+**6. Loading State**
+
+The panel also stores state around the interaction with VoxelGPT. In this case this state represents whether or not VoxelGPT is responding to a message.
+
+**7. Abort Operator**
+
+In some cases it makes sense to stop a generator operator while it is still executing. The stop button above is implemented using the abort operator hook. This allows the user to tell VoxelGPT to stop generation.
+
 
 Plugin settings
 ---------------
@@ -96,7 +178,7 @@ Operator types
 
 :js:mod:`Typescript API Reference <fiftyone.operators>`
 
-The operator definition is constructed using the types defined below. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
+The operator definition is constructed using the types defined above. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
 
 .. code-block:: python
 
@@ -305,18 +387,6 @@ Executing Brain methods and other long running functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Python operators typically use local execution for simple operations such as queries, tagging, mutating samples, annotation runs, short imports or exports. However for most interesting operations (computing similarity or mistakenness, computing visualizations), long running task orchestration is required. For this we recommend Apache Airflow, although similar tools can be used instead.
-
-A typical long running operation would look like this:
-
-1. Operators are registered in the local execution environment
-2. Browser fetches description of all registered operators
-3. Browser requests execution of a long running operator
-4. Local execution environment executes the operator
-5. Operator makes API request to airflow or another data orchestration platform to schedule a long running task
-   a. Operator returns a unique identifier, that is used to reference this long running task
-6. Browser requests updates on status via an operator that in turn calls the airflow status API
-    a. Browser correlates the previous execution using unique identifier it stored earlier
-    b. Browser displays status of all relevant tasks
 
 .. _plugins-directory:
 
