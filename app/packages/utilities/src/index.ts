@@ -308,7 +308,6 @@ export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
-export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 export const KEYPOINT_FIELD = "fiftyone.core.labels.Keypoint";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
 export const GROUP = "fiftyone.core.groups.Group";
