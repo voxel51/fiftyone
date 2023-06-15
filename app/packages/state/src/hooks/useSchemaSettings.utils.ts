@@ -31,12 +31,15 @@ const isMetadataField = (path: string) => {
   return path === "metadata" || path.startsWith("metadata.");
 };
 
-export const skipField = (path: string, schema: {}) => {
-  if (!path) {
-    throw new Error("skipField requires a path argument");
+export const skipField = (rawPath: string, schema: {}) => {
+  if (!rawPath) {
+    throw new Error("path argument is required");
   }
 
-  const currentField = schema?.[path] || schema?.[path.replace("frames.", "")];
+  // we remove 'frames.' prefix for processing
+  const path = rawPath.replace("frames.", "");
+
+  const currentField = schema?.[path];
   if (!currentField) {
     return true;
   }

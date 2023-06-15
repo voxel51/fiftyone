@@ -166,6 +166,12 @@ const FIELDS = {
     path: "detections.bounding_box",
     ftype: LIST_FIELD,
   },
+  // not a skip path
+  DETECTIONS_NO_SKIP_FIELD: {
+    ...BASE_FIELD,
+    path: "detections.no_skip",
+    ftype: LIST_FIELD,
+  },
   CLASSIFICATION_FIELD: {
     ...BASE_FIELD,
     path: "classification",
@@ -281,7 +287,10 @@ const getEnabledNestedLabelFields = (prefix: string, paths: string[]) => {
   return res;
 };
 
-describe("skip 'index' and 'bounding_box' field paths in schema fields", () => {
+describe(`
+  should skip '.index' and '.bounding_box' subpaths if
+  field's parent's embeddedDocumentType is Detections
+`, () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -289,7 +298,32 @@ describe("skip 'index' and 'bounding_box' field paths in schema fields", () => {
   it("skip Detections's subpath ending with .index", () => {
     expect(skipField(FIELDS.DETECTIONS_INDEX_FIELD.path, SCHEMA)).toBe(true);
   });
-  it("skip Detections's subpath ending with .bounding_box", () => {});
+
+  it("skip Detections's subpath ending with .bounding_box", () => {
+    expect(skipField(FIELDS.DETECTIONS_BOUNDINGBOX_FIELD.path, SCHEMA)).toBe(
+      true
+    );
+  });
+
+  it("Do not skip non skippable path under Detections embed document type", () => {
+    expect(skipField(FIELDS.DETECTIONS_NO_SKIP_FIELD.path, SCHEMA)).toBe(false);
+  });
+
+  it("A skipped path 'index' prefixed with 'frames.' should still skip", () => {
+    expect(
+      skipField(`frames.${FIELDS.DETECTIONS_INDEX_FIELD.path}`, SCHEMA)
+    ).toBe(true);
+  });
+
+  it("passing empty path should throw an error", () => {
+    expect(() => {
+      skipField("", SCHEMA);
+    }).toThrow("path argument is required");
+  });
+
+  it("skip is true if path is not in schema", () => {
+    expect(skipField("not_in_schema", SCHEMA)).toBe(true);
+  });
 });
 
 describe("Disabled field paths in schema fields", () => {
