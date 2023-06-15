@@ -329,7 +329,7 @@ const getEnabledNestedLabelFields = (prefix: string, paths: string[]) => {
 
 describe(`
   should skip '.index' and '.bounding_box' subpaths if
-  field's parent's embeddedDocumentType is Detections
+  the field's parent's embeddedDocumentType is Detections
 `, () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -345,11 +345,11 @@ describe(`
     );
   });
 
-  it("Do not skip non skippable path under Detections embed document type", () => {
+  it("Do not skip regular path under Detections embeddedDocument type", () => {
     expect(skipField(FIELDS.DETECTIONS_NO_SKIP_FIELD.path, SCHEMA)).toBe(false);
   });
 
-  it("A skipped path 'index' prefixed with 'frames.' should still skip", () => {
+  it("A skipped path 'index' prefixed with 'frames.' should still be skipped", () => {
     expect(
       skipField(`frames.${FIELDS.DETECTIONS_INDEX_FIELD.path}`, SCHEMA)
     ).toBe(true);
@@ -361,7 +361,7 @@ describe(`
     }).toThrow("path argument is required");
   });
 
-  it("skip is true if path is not in schema", () => {
+  it("should skip if the path is not in the schema", () => {
     expect(skipField("not_in_schema", SCHEMA)).toBe(true);
   });
 });
