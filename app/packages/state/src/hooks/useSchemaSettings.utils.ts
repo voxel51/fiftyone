@@ -1,4 +1,4 @@
-import { DETECTION_FILED, SKIP_FIELD_TYPES } from "@fiftyone/utilities";
+import { DETECTION_FIELD, SKIP_FIELD_TYPES } from "@fiftyone/utilities";
 import { JUST_FIELD } from "@fiftyone/utilities";
 import {
   CLASSIFICATION_DISABLED_SUB_PATHS,
@@ -56,7 +56,7 @@ export const skipField = (rawPath: string, schema: {}) => {
   return (
     SKIP_FIELD_TYPES.includes(ftype) ||
     (parentPath &&
-      schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
+      schema[parentPath]?.embeddedDocType === DETECTION_FIELD &&
       [".bounding_box", ".index"].includes(pathLabel))
   );
 };
