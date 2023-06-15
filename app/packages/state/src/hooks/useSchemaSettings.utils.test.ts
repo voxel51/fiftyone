@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { disabledField } from "./useSchemaSettings.utils";
+import { disabledField, skipField } from "./useSchemaSettings.utils";
 import {
   ARRAY_FIELD,
   CLASSIFICATIONS_FIELD,
@@ -152,6 +152,19 @@ const FIELDS = {
     ...BASE_FIELD,
     path: "detections",
     ftype: DETECTIONS_FIELD,
+    embeddedDocType: DETECTION_FIELD,
+  },
+  // skip path
+  DETECTIONS_INDEX_FIELD: {
+    ...BASE_FIELD,
+    path: "detections.index",
+    ftype: INT_FIELD,
+  },
+  // skip path
+  DETECTIONS_BOUNDINGBOX_FIELD: {
+    ...BASE_FIELD,
+    path: "detections.bounding_box",
+    ftype: LIST_FIELD,
   },
   CLASSIFICATION_FIELD: {
     ...BASE_FIELD,
@@ -267,6 +280,17 @@ const getEnabledNestedLabelFields = (prefix: string, paths: string[]) => {
   }
   return res;
 };
+
+describe("skip 'index' and 'bounding_box' field paths in schema fields", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("skip Detections's subpath ending with .index", () => {
+    expect(skipField(FIELDS.DETECTIONS_INDEX_FIELD.path, SCHEMA)).toBe(true);
+  });
+  it("skip Detections's subpath ending with .bounding_box", () => {});
+});
 
 describe("Disabled field paths in schema fields", () => {
   afterEach(() => {

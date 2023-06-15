@@ -2,14 +2,11 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
-  DETECTION_FILED,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   Schema,
-  UNSUPPORTED_FILTER_TYPES,
 } from "@fiftyone/utilities";
-import { JUST_FIELD } from "@fiftyone/utilities";
 import { isEmpty, keyBy } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
@@ -22,7 +19,7 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { disabledField } from "./useSchemaSettings.utils";
+import { disabledField, skipField } from "./useSchemaSettings.utils";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -31,19 +28,6 @@ export const TAB_OPTIONS_MAP = {
 
 export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 const SELECT_ALL = "SELECT_ALL";
-
-const skipField = (path: string, ftype: string, schema: {}) => {
-  const parentPath = path.substring(0, path.lastIndexOf("."));
-
-  return (
-    UNSUPPORTED_FILTER_TYPES.includes(ftype) ||
-    ftype === JUST_FIELD ||
-    (parentPath &&
-      schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
-      path.endsWith(".bounding_box")) ||
-    path.endsWith(".index")
-  );
-};
 
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
@@ -94,7 +78,7 @@ export const schemaSearchRestuls = atom<string[]>({
               combinedSchema?.[
                 path.startsWith("frames.") ? path.replace("frames.", "") : path
               ]?.ftype &&
-              !skipField(path, combinedSchema?.[path]?.ftype, combinedSchema)
+              !skipField(path, combinedSchema)
           )
           .map((path) =>
             path.startsWith("frames.") ? path.replace("frames.", "") : path
@@ -143,13 +127,7 @@ export const selectedPathsState = atomFamily({
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
-            const skip = skipField(
-              path,
-              viewSchema?.[path]?.ftype ||
-                viewSchema?.[path.replace("frames.", "")]?.ftype ||
-                fieldSchema?.[path]?.ftype,
-              combinedSchema
-            );
+            const skip = skipField(path, combinedSchema);
             return !!path && !skip;
           })
           .map((path) => mapping?.[path] || path);
@@ -201,11 +179,7 @@ export const excludedPathsState = atomFamily({
             const rawPath = path.replace("frames.", "");
             return (
               !!rawPath &&
-              !skipField(
-                rawPath,
-                combinedSchema?.[rawPath]?.ftype,
-                combinedSchema
-              ) &&
+              !skipField(rawPath, combinedSchema) &&
               !disabledField(
                 path,
                 combinedSchema,
@@ -554,8 +528,7 @@ export default function useSchemaSettings() {
           ? `frames.${pathLabel[pathLabel.length - 1]}`
           : pathLabel[pathLabel.length - 1];
 
-        const ftype = finalSchemaKeyByPath[path].ftype;
-        const skip = skipField(path, ftype, finalSchemaKeyByPath);
+        const skip = skipField(path, finalSchemaKeyByPath);
         const disabled =
           disabledField(
             path,
@@ -725,7 +698,7 @@ export default function useSchemaSettings() {
         const ftype = mergedSchema?.[currPath]?.ftype;
         if (
           currPath.startsWith(path + ".") &&
-          !skipField(currPath, ftype, mergedSchema)
+          !skipField(currPath, mergedSchema)
         ) {
           subPaths.add(getPath(currPath));
         }
@@ -801,11 +774,7 @@ export default function useSchemaSettings() {
     () =>
       mergedSchema
         ? finalSchema.filter((field) => {
-            return !skipField(
-              field.path,
-              mergedSchema?.[field.path],
-              mergedSchema
-            );
+            return !skipField(field.path, mergedSchema);
           })
         : finalSchema,
     [mergedSchema, finalSchema, isGroupDataset]

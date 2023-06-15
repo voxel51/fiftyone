@@ -526,7 +526,7 @@ export const bounds = selectorFamily({
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
-      const { min, max } = get(aggregation(params));
+      const { min, max } = get(aggregation(params)) || {};
 
       return [min, max] as [number, number];
     },

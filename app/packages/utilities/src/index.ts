@@ -373,6 +373,8 @@ export const UNSUPPORTED_FILTER_TYPES = [
   undefined,
 ];
 
+export const SKIP_FIELD_TYPES = [...UNSUPPORTED_FILTER_TYPES, JUST_FIELD];
+
 export const DYNAMIC_GROUP_FIELDS = [
   BOOLEAN_FIELD,
   FLOAT_FIELD,
