@@ -90,14 +90,24 @@ def disable_plugin(plugin_name):
 
 
 def delete_plugin(plugin_name):
-    """Deletes the given plugin from local disk.
+    """Deletes the given plugin and its settings from local disk.
 
     Args:
         plugin_name: the plugin name
     """
-    plugin = _get_plugin(plugin_name)
+    plugin = next(_get_plugin(plugin_name))
     _update_plugin_settings(plugin_name, delete=True)
     etau.delete_dir(plugin.path)
+
+
+def delete_plugin_dir(plugin_dir):
+    """Deletes the plugin located at plugin_dir from local disk without
+    modifying the plugin settings. Useful for deleting duplicate plugins.
+
+    Args:
+        plugin_name: the plugin name
+    """
+    etau.delete_dir(plugin_dir)
 
 
 def list_downloaded_plugins():
@@ -136,7 +146,7 @@ def get_plugin(name):
     Returns:
         a :class:`PluginDefinition`
     """
-    plugin = _get_plugin(name)
+    plugin = next(_get_plugin(name))
     return _load_plugin_definition(plugin)
 
 
@@ -149,8 +159,22 @@ def find_plugin(name):
     Returns:
         the path to the plugin directory
     """
-    plugin = _get_plugin(name)
+    plugin = next(_get_plugin(name))
     return plugin.path
+
+
+def find_duplicates(name):
+    """Returns the paths to the duplicate plugins on local disk.
+
+    Args:
+        name: the plugin name
+
+    Returns:
+        a list of paths to the root directories of plugins with the same name
+    """
+    return [
+        plugin.path for plugin in _get_plugin(name, check_for_duplicates=False)
+    ]
 
 
 def download_plugin(
@@ -530,7 +554,7 @@ def _list_plugins(enabled=None):
 
 
 def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
-    plugin_names = [p.name for p in _list_plugins(enabled=enabled)]
+    plugin_names = (p.name for p in _list_plugins(enabled=enabled))
 
     if check_for_duplicates:
         dups = [n for n, c in Counter(plugin_names).items() if c > 1]
@@ -564,18 +588,20 @@ def _iter_plugin_metadata_files():
 
 
 def _get_plugin(name, enabled=None, check_for_duplicates=True):
+    """Find plugin packages matching name."""
     plugin = None
     for _plugin in _list_plugins(enabled=enabled):
         if _plugin.name == name:
+            if not check_for_duplicates:
+                yield _plugin
             if check_for_duplicates and plugin is not None:
                 raise ValueError(f"Multiple plugins found with name '{name}'")
-
             plugin = _plugin
 
     if plugin is None:
         raise ValueError(f"Plugin '{name}' not found")
-
-    return plugin
+    if check_for_duplicates:
+        yield plugin
 
 
 def _load_plugin_definition(plugin):
