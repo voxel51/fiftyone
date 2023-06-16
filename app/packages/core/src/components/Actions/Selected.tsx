@@ -1,3 +1,10 @@
+import {
+  AbstractLooker,
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
+import { useEventHandler, useSetSelected } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   RefObject,
@@ -10,15 +17,6 @@ import {
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
 } from "recoil";
-
-import {
-  AbstractLooker,
-  FrameLooker,
-  ImageLooker,
-  VideoLooker,
-} from "@fiftyone/looker";
-
-import { useEventHandler, useSetSelected } from "@fiftyone/state";
 
 import * as fos from "@fiftyone/state";
 import { State } from "@fiftyone/state";
@@ -160,8 +158,7 @@ const toIds = (labels: State.SelectedLabel[]) =>
 
 const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const isGroup = useRecoilValue(fos.isGroup);
-  const activeSlice = useRecoilValue(fos.currentSlice(true));
-  const activeSample = useRecoilValue(fos.activeModalSample(activeSlice));
+  const activeSample = useRecoilValue(fos.activeModalSample);
   const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
 
   const currentSampleLabels = lookerRef.current

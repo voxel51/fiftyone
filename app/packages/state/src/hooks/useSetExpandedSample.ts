@@ -1,23 +1,37 @@
-import { useRecoilCallback } from "recoil";
-import {
-  currentModalNavigation,
-  currentModalSample,
-  modalSampleIndex,
-} from "../recoil";
+import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
+import { currentModalNavigation, currentModalSample } from "../recoil";
+import * as groupAtoms from "../recoil/groups";
 
 export default () => {
-  return useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (index: number | ((current: number) => number)) => {
-        if (index instanceof Function) {
-          const current = await snapshot.getPromise(modalSampleIndex);
-          index = index(current);
-        }
-        const getIndex = await snapshot.getPromise(currentModalNavigation);
-        const id = await getIndex(index);
-
+  const setter = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      (
+        id: string,
+        index: number,
+        groupId?: string,
+        groupByFieldValue?: string
+      ) => {
         set(currentModalSample, { id, index });
+        groupId && set(groupAtoms.groupId, groupId);
+        groupByFieldValue &&
+          set(groupAtoms.groupByFieldValue, groupByFieldValue);
       },
     []
+  );
+
+  return useRecoilCallback(
+    ({ snapshot }) =>
+      async (index: number | ((current: number) => number)) => {
+        const current = await snapshot.getPromise(currentModalSample);
+        if (index instanceof Function) {
+          index = index(current.index);
+        }
+        const { id, groupId, groupByFieldValue } = await (
+          await snapshot.getPromise(currentModalNavigation)
+        )(index);
+
+        setter(id, index, groupId, groupByFieldValue);
+      },
+    [setter]
   );
 };

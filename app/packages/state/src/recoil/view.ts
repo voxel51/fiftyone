@@ -1,6 +1,7 @@
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector } from "recoil";
 
 import { Stage } from "@fiftyone/utilities";
+import { groupByFieldValue } from "./groups";
 import { State } from "./types";
 import { getSanitizedGroupByExpression } from "./utils";
 
@@ -169,60 +170,58 @@ export const isDynamicGroup = selector<boolean>({
   },
 });
 
-export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
+export const dynamicGroupViewQuery = selector<Stage[]>({
   key: "dynamicGroupViewQuery",
-  get:
-    (fieldOrExpression) =>
-    ({ get }) => {
-      const params = get(dynamicGroupParameters);
-      if (!dynamicGroupParameters) return [];
+  get: ({ get }) => {
+    const params = get(dynamicGroupParameters);
+    if (!dynamicGroupParameters) return [];
 
-      const { groupBy, orderBy } = params;
+    const { groupBy, orderBy } = params;
 
-      // todo: fix sample_id issue
-      // todo: sanitize expressions
-      const groupBySanitized = getSanitizedGroupByExpression(groupBy);
+    // todo: fix sample_id issue
+    // todo: sanitize expressions
+    const groupBySanitized = getSanitizedGroupByExpression(groupBy);
 
-      const viewStages = [
-        {
-          _cls: MATCH_VIEW_STAGE,
-          kwargs: [
-            [
-              "filter",
-              {
-                $expr: {
-                  $let: {
-                    vars: {
-                      expr: `$${groupBySanitized}`,
-                    },
-                    in: {
-                      $in: [
-                        {
-                          $toString: "$$expr",
-                        },
-                        [fieldOrExpression],
-                      ],
-                    },
+    const viewStages = [
+      {
+        _cls: MATCH_VIEW_STAGE,
+        kwargs: [
+          [
+            "filter",
+            {
+              $expr: {
+                $let: {
+                  vars: {
+                    expr: `$${groupBySanitized}`,
+                  },
+                  in: {
+                    $in: [
+                      {
+                        $toString: "$$expr",
+                      },
+                      [get(groupByFieldValue)],
+                    ],
                   },
                 },
               },
-            ],
+            },
           ],
-        },
-      ];
+        ],
+      },
+    ];
 
-      if (orderBy?.length) {
-        viewStages.push({
-          _cls: SORT_VIEW_STAGE,
-          kwargs: [
-            ["field_or_expr", orderBy],
-            ["reverse", false],
-          ],
-        });
-      }
+    if (orderBy?.length) {
+      viewStages.push({
+        _cls: SORT_VIEW_STAGE,
+        kwargs: [
+          ["field_or_expr", orderBy],
+          ["reverse", false],
+        ],
+      });
+    }
 
-      return viewStages;
-    },
+    return viewStages;
+  },
 });
 
 export const currentViewSlug = selector<string>({

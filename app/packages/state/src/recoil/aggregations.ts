@@ -1,7 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import { Stage, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
-import { GetRecoilValue, selectorFamily } from "recoil";
+import { GetRecoilValue, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
 import { ResponseFrom } from "../utils";
@@ -109,24 +109,19 @@ export const aggregation = selectorFamily({
     },
 });
 
-export const dynamicGroupsElementCount = selectorFamily<
-  number,
-  { groupByValue: string }
->({
+export const dynamicGroupsElementCount = selector<number>({
   key: "dynamicGroupsElementCount",
-  get:
-    ({ groupByValue }) =>
-    ({ get }) => {
-      const aggregations = get(
-        aggregationQuery({
-          customView: get(viewAtoms.dynamicGroupViewQuery(groupByValue)),
-          extended: false,
-          modal: false,
-          paths: [""],
-        })
-      ).aggregations;
-      return aggregations?.at(0)?.count ?? 0;
-    },
+  get: ({ get }) => {
+    const aggregations = get(
+      aggregationQuery({
+        customView: get(viewAtoms.dynamicGroupViewQuery),
+        extended: false,
+        modal: false,
+        paths: [""],
+      })
+    ).aggregations;
+    return aggregations?.at(0)?.count ?? 0;
+  },
 });
 
 export const noneCount = selectorFamily<

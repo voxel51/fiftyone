@@ -49,14 +49,12 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const navigateNext = useCallback(() => {
     onNavigate();
-    setModal((i) => {
-      return i + 1;
-    });
+    setModal((i) => i + 1);
   }, [onNavigate, setModal]);
 
   const navigatePrevious = useCallback(() => {
     onNavigate();
-    setModal((cur) => cur - 1);
+    setModal((i) => i - 1);
   }, [onNavigate, setModal]);
 
   const keyboardHandler = useCallback(

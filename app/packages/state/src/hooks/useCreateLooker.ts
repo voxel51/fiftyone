@@ -1,4 +1,5 @@
 import {
+  AbstractLooker,
   FrameLooker,
   ImageLooker,
   PcdLooker,
@@ -6,25 +7,24 @@ import {
 } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
-  getMimeType,
   LIST_FIELD,
+  getMimeType,
 } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
-import { groupSample, selectedMediaField } from "../recoil";
-
-import { SampleData, selectedSamples } from "../recoil/atoms";
+import { ModalSample, selectedMediaField, sidebarSampleId } from "../recoil";
+import { selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName, mediaTypeSelector } from "../recoil/selectors";
+import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 
-export default <T extends FrameLooker | ImageLooker | VideoLooker>(
+export default <T extends AbstractLooker>(
   isModal: boolean,
   thumbnail: boolean,
-  options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
+  options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight = false
 ) => {
   const selected = useRecoilValue(selectedSamples);
@@ -32,12 +32,11 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal ? useRecoilValue(groupSample(null))._id : null;
+  const activeId = isModal ? useRecoilValue(sidebarSampleId) : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
-  const mediaType = useRecoilValue(mediaTypeSelector);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -47,7 +46,12 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   );
 
   const create = useCallback(
-    ({ frameNumber, frameRate, sample, urls: rawUrls }: SampleData): T => {
+    ({
+      frameNumber,
+      frameRate,
+      sample,
+      urls: rawUrls,
+    }: ModalSample["sample"]): T => {
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
@@ -102,7 +106,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         }
       }
 
-      const config: ReturnType<T["getInitialState"]>["config"] = {
+      const config: ConstructorParameters<T>[1] = {
         fieldSchema: {
           ...fieldSchema,
           frames: {

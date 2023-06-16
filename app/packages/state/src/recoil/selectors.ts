@@ -13,7 +13,7 @@ import { selectedSamples } from "./atoms";
 import { config } from "./config";
 import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
-import { modalSample } from "./modal";
+import { modalSample, modalSampleId } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -479,7 +479,7 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(atoms.modalSampleIndex) !== null;
+      const modal = get(modalSampleId) !== null;
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
