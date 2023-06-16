@@ -20,6 +20,7 @@ import {
   patching,
   resolveGroups,
   savingFilters,
+  selectedFieldsStageState,
   selectedLabels,
   selectedMediaField,
   selectedSamples,
@@ -40,7 +41,6 @@ import {
   viewsAreEqual,
 } from "../utils";
 
-import { selectedFieldsStageState } from "./useSchemaSettings";
 import { convertToHex, isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export interface StateUpdate {

@@ -1,4 +1,4 @@
-import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
+import { affectedPathCountState } from "@fiftyone/state";
 import {
   Bookmark,
   Check,
