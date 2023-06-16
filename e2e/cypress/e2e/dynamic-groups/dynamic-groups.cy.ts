@@ -181,7 +181,9 @@ describe("dynamic groups", () => {
             .each((tag) => {
               cy.wrap(tag).should("have.text", label);
             });
-          cy.get("[data-cy=nav-right-button]").click();
+
+          // truck is the last sample and will not have a right button
+          label !== "truck" && cy.get("[data-cy=nav-right-button]").click();
         });
       });
     });
