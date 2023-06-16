@@ -1,3 +1,4 @@
+import { atom, atomFamily } from "recoil";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
@@ -11,8 +12,6 @@ import { isEmpty, keyBy } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
-  atom,
-  atomFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
@@ -21,12 +20,6 @@ import {
 } from "recoil";
 import { disabledField, skipField } from "./useSchemaSettings.utils";
 
-export const TAB_OPTIONS_MAP = {
-  SELECTION: "Selection",
-  FILTER_RULE: "Filter rule",
-};
-
-export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 const SELECT_ALL = "SELECT_ALL";
 
 export const schemaSearchTerm = atom<string>({
@@ -41,7 +34,7 @@ export const showNestedFieldsState = atom<boolean>({
 
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: TAB_OPTIONS_MAP.SELECTION,
+  default: fos.TAB_OPTIONS_MAP.SELECTION,
 });
 
 export const settingsModal = atom<{ open: boolean } | null>({
@@ -316,8 +309,8 @@ export const selectedFieldsStageState = atom<any>({
 });
 
 export default function useSchemaSettings() {
-  const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
-  const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
+  const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
+  const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
   const router = useContext(fos.RouterContext);
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
@@ -326,7 +319,7 @@ export default function useSchemaSettings() {
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
 
-  const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
+  const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
 
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -335,7 +328,7 @@ export default function useSchemaSettings() {
           return;
         }
 
-        set(selectedFieldsStageState, value);
+        set(fos.selectedFieldsStageState, value);
 
         // router is loaded only in OSS
         if (router.loaded) return;
@@ -361,10 +354,14 @@ export default function useSchemaSettings() {
     [setView, router, dataset]
   );
 
-  const setViewSchema = useSetRecoilState(viewSchemaState);
-  const setFieldSchema = useSetRecoilState(fieldSchemaState);
-  const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
-  const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
+  const setViewSchema = useSetRecoilState(fos.viewSchemaState);
+  const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
+  const [searchTerm, setSearchTerm] = useRecoilState<string>(
+    fos.schemaSearchTerm
+  );
+  const [searchResults, setSearchResults] = useRecoilState(
+    fos.schemaSearchResults
+  );
   const isVideo = dataset.mediaType === "video";
 
   const setSchema = useSetRecoilState(schemaState);
@@ -379,37 +376,39 @@ export default function useSchemaSettings() {
   }, [datasetName]);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
-    allFieldsCheckedState
+    fos.allFieldsCheckedState
   );
 
   const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
-    includeNestedFieldsState
+    fos.includeNestedFieldsState
   );
 
   const [affectedPathCount, setAffectedPathCount] = useRecoilState(
-    affectedPathCountState
+    fos.affectedPathCountState
   );
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
-    lastAppliedPathsState
+    fos.lastAppliedPathsState
   );
 
   const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
-    showNestedFieldsState
+    fos.showNestedFieldsState
   );
 
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
-    searchMetaFilterState
+    fos.searchMetaFilterState
   );
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
   const isClipsView = useRecoilValue(fos.isClipsView);
 
-  const [expandedPaths, setExpandedPaths] = useRecoilState(expandedPathsState);
+  const [expandedPaths, setExpandedPaths] = useRecoilState(
+    fos.expandedPathsState
+  );
 
   const [lastActionToggleSelection, setLastActionToggleSelection] =
-    useRecoilState(lastActionToggleSelectionState);
+    useRecoilState(fos.lastActionToggleSelectionState);
 
   const vStages = useRecoilValue(fos.view);
   const [data, refetch] = useRefetchableFragment<
@@ -451,11 +450,11 @@ export default function useSchemaSettings() {
   }, [viewSchema, fieldSchema]);
 
   const [selectedTab, setSelectedTab] = useRecoilState(
-    schemaSelectedSettingsTab
+    fos.schemaSelectedSettingsTab
   );
-  const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
+  const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
-  const selectedPathState = selectedPathsState({});
+  const selectedPathState = fos.selectedPathsState({});
   const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
     selectedPathState
   );
@@ -489,7 +488,7 @@ export default function useSchemaSettings() {
     selectedPaths,
   ]);
 
-  const excludePathsState = excludedPathsState({});
+  const excludePathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
     excludePathsState
   );
