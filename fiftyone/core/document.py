@@ -13,6 +13,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.odm as foo
 from fiftyone.core.singletons import DocumentSingleton
 
 
@@ -255,6 +256,15 @@ class _Document(object):
                 continue
 
             yield field_name, self.get_field(field_name)
+
+    def _iter_label_fields(self):
+        for name, value in self.iter_fields():
+            if isinstance(value, fol.Label):
+                yield name, value
+            elif isinstance(value, foo.BaseEmbeddedDocument):
+                for _name, _value in value.iter_fields():
+                    if isinstance(_value, fol.Label):
+                        yield name + "." + _name, _value
 
     def merge(
         self,

@@ -4465,6 +4465,50 @@ class DynamicFieldTests(unittest.TestCase):
         dataset.add_dynamic_frame_fields()
 
     @drop_datasets
+    def test_dynamic_fields_defaults(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            shapes=fo.Polylines(
+                polylines=[
+                    fo.Polyline(
+                        tags=["tag1", "tag2"],
+                        label="square",
+                        points=[[(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)]],
+                    ),
+                ]
+            ),
+        )
+        sample.frames[1] = fo.Frame(
+            shapes=fo.Polylines(
+                polylines=[
+                    fo.Polyline(
+                        tags=["tag1", "tag2"],
+                        label="square",
+                        points=[[(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)]],
+                    ),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertDictEqual(dynamic_schema, {})
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema()
+        self.assertDictEqual(dynamic_schema, {})
+
+        dataset.add_dynamic_sample_fields()
+        dataset.add_dynamic_frame_fields()
+
+        field = dataset.get_field("shapes.polylines.points")
+        self.assertIsInstance(field, fof.PolylinePointsField)
+
+        field = dataset.get_field("frames.shapes.polylines.points")
+        self.assertIsInstance(field, fof.PolylinePointsField)
+
+    @drop_datasets
     def test_rename_dynamic_embedded_fields(self):
         sample = fo.Sample(
             filepath="image.jpg",
