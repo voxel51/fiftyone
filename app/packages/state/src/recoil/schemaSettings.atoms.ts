@@ -1,4 +1,4 @@
-import { atom, atomFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 import * as fos from "@fiftyone/state";
 import {
@@ -91,6 +91,36 @@ export const lastActionToggleSelectionState = atom<Record<
 > | null>({
   key: "lastActionToggleSelectionState",
   default: null,
+});
+
+const getRawPath = (path: string) =>
+  path.startsWith("frames.") ? path.replace("frames.", "") : path;
+
+export const schemaSearchResultsSelector = selectorFamily<string[], string[]>({
+  key: "schemaSearchResultsSelector",
+  get:
+    (newPaths = []) =>
+    async ({ get }) => {
+      const viewSchema = await get(viewSchemaState);
+      const fieldSchema = await get(fieldSchemaState);
+      const combinedSchema = { ...fieldSchema, ...viewSchema };
+
+      const greenPaths = [...newPaths]
+        .filter((path) => {
+          const cleanPath = getRawPath(path);
+
+          return (
+            cleanPath &&
+            combinedSchema?.[cleanPath]?.ftype &&
+            !skipField(cleanPath, combinedSchema)
+          );
+        })
+        .map((path) => getRawPath(path));
+      return greenPaths;
+    },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const schemaSearchResults = atom<string[]>({
