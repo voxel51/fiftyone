@@ -1,15 +1,20 @@
-from bson import ObjectId
+import asyncio
+import traceback
+
+from fiftyone.core.expressions import ObjectId
+from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory.repos.delegated_operation import (
-    DelegatedOperation,
+    DelegatedOperationDocument,
     DelegatedOperationRepo,
 )
-import fiftyone.core.utils as fou
+from fiftyone.operators.executor import (
+    prepare_operator_executor,
+    ExecutionResult,
+    ExecutionContext,
+)
 
-foe = fou.lazy_import("fiftyone.operators.executor")
-import asyncio
 
-
-class DelegatedOperationService(object):
+class DelegatedOperation(object):
     """Base class for delegated operations.
 
     Delegated operations are used to define custom operations that can be
@@ -20,23 +25,26 @@ class DelegatedOperationService(object):
 
     """
 
-    def __init__(self, repo: DelegatedOperationRepo):
-        self._repo = repo
+    def __init__(self, repo: DelegatedOperationRepo = None):
+        self._repo = (
+            repo
+            if repo is not None
+            else RepositoryFactory.delegated_operation_repo()
+        )
 
     def queue_operation(
         self,
         operator: str,
         delegation_target: str = None,
         dataset_id: ObjectId = None,
-        context: dict = None,
-    ) -> DelegatedOperation:
+        context: ExecutionContext = None,
+    ) -> DelegatedOperationDocument:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
         for the operation.
 
         Returns:
             a :class:`fiftyone.core.odm.DelegatedOperationDocument`
         """
-
         doc = self._repo.queue_operation(
             operator=operator,
             delegation_target=delegation_target,
@@ -45,22 +53,24 @@ class DelegatedOperationService(object):
         )
         return doc
 
-    def set_running(self, doc_id: ObjectId) -> DelegatedOperation:
+    def set_running(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.update_run_state(_id=doc_id, run_state="running")
 
     def set_completed(
-        self, doc_id: ObjectId, results: dict = None
-    ) -> DelegatedOperation:
-        return self._repo.update_run_state(_id=doc_id, run_state="completed")
-
-    def set_failed(
-        self, doc_id: ObjectId, error: str = None
-    ) -> DelegatedOperation:
+        self, doc_id: ObjectId, result: ExecutionResult = None
+    ) -> DelegatedOperationDocument:
         return self._repo.update_run_state(
-            _id=doc_id, run_state="failed", error=error
+            _id=doc_id, run_state="completed", result=result
         )
 
-    def delete_operation(self, doc_id: ObjectId) -> DelegatedOperation:
+    def set_failed(
+        self, doc_id: ObjectId, result: ExecutionResult
+    ) -> DelegatedOperationDocument:
+        return self._repo.update_run_state(
+            _id=doc_id, run_state="failed", result=result
+        )
+
+    def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.delete_operation(_id=doc_id)
 
     def get_queued_operations(self, operator: str = None, dataset_id=None):
@@ -100,21 +110,21 @@ class DelegatedOperationService(object):
 
         for op in queued_ops:
             print(op)
-            result = asyncio.run(self._execute_operator(op))
+            try:
+                result = asyncio.run(self._execute_operator(op))
+                self.set_completed(doc_id=op.id, result=result)
+                print(f"result: {result}")
+            except Exception as e:
+                result = ExecutionResult(error=traceback.format_exc())
+                self.set_failed(doc_id=op.id, result=result)
 
-    async def _execute_operator(self, doc: DelegatedOperation):
+    async def _execute_operator(self, doc: DelegatedOperationDocument):
         operator_uri = doc.operator
         print(f"operator: {operator_uri}")
         context = doc.context
-        context["request_params"]["run_doc"] = doc.id
-        (operator, executor, ctx) = foe.prepare_operator_executor(
-            operator_uri, context["request_params"]
+        context.request_params["run_doc"] = doc.id
+        (operator, executor, ctx) = prepare_operator_executor(
+            operator_name=operator_uri, request_params=context.request_params
         )
         self.set_running(doc_id=doc.id)
-        try:
-            result = operator.execute(ctx)
-            self.set_completed(doc_id=doc.id)
-            print(f"result: {result}")
-            return result
-        except Exception as e:
-            self.set_failed(doc_id=doc.id, error=str(e))
+        return operator.execute(ctx)

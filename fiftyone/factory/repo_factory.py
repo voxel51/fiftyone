@@ -5,6 +5,9 @@ FiftyOne Server
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import pymongo
+from pymongo.database import Database
+
 from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
     MongoDelegatedOperationRepo,
@@ -12,19 +15,25 @@ from fiftyone.factory.repos.delegated_operation import (
 import fiftyone.core.odm as foo
 import fiftyone as fo
 
-db_client = foo.get_db_client()
-db = db_client[fo.config.database_name]
+db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
+db: Database = db_client[fo.config.database_name]
 
 
 class RepositoryFactory:
-
     repos = {}
 
     @staticmethod
     def delegated_operation_repo() -> DelegatedOperationRepo:
-        if "delegated_op" not in RepositoryFactory.repos:
+        if (
+            MongoDelegatedOperationRepo.COLLECTION_NAME
+            not in RepositoryFactory.repos
+        ):
             RepositoryFactory.repos[
-                "delegated_op"
-            ] = MongoDelegatedOperationRepo(db=db)
+                MongoDelegatedOperationRepo.COLLECTION_NAME
+            ] = MongoDelegatedOperationRepo(
+                collection=db[MongoDelegatedOperationRepo.COLLECTION_NAME]
+            )
 
-        return RepositoryFactory.repos["delegated_op"]
+        return RepositoryFactory.repos[
+            MongoDelegatedOperationRepo.COLLECTION_NAME
+        ]

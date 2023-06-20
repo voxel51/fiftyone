@@ -8,11 +8,12 @@ Dataset run documents.
 from datetime import datetime
 
 import pymongo
-from bson import ObjectId
-from pymongo.database import Database
+from bson import ObjectId, json_util
+from pymongo.collection import Collection
+from fiftyone.operators.executor import ExecutionResult, ExecutionContext
 
 
-class DelegatedOperation:
+class DelegatedOperationDocument(object):
     def __init__(
         self,
         operator: str = None,
@@ -23,14 +24,17 @@ class DelegatedOperation:
         self.operator = operator
         self.delegation_target = delegation_target
         self.dataset_id = dataset_id
-        self.context = context
+        self.context = (
+            context.__dict__
+            if isinstance(context, ExecutionContext)
+            else context
+        )
+        self.run_state = "queued"  # default to queued state on create
         self.queued_at = datetime.utcnow()
         self.started_at = None
         self.completed_at = None
         self.failed_at = None
-        self.run_state = "queued"
-        self.error_message = None
-        self.results = None
+        self.result = None
         self.id = None
         self._doc = None
 
@@ -45,16 +49,31 @@ class DelegatedOperation:
             doc["delegation_target"] if "delegation_target" in doc else None
         )
         self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
-        self.context = doc["context"] if "context" in doc else None
         self.started_at = doc["started_at"] if "started_at" in doc else None
         self.completed_at = (
             doc["completed_at"] if "completed_at" in doc else None
         )
         self.failed_at = doc["failed_at"] if "failed_at" in doc else None
-        self.error_message = (
-            doc["error_message"] if "error_message" in doc else None
-        )
-        self.results = doc["results"] if "results" in doc else None
+
+        if "context" in doc and "request_params" in doc["context"]:
+            self.context = (
+                ExecutionContext(
+                    request_params=doc["context"]["request_params"]
+                )
+                if "context" in doc
+                else None
+            )
+
+        if "result" in doc and doc["result"] is not None:
+
+            res = ExecutionResult()
+            if "result" in doc["result"]:
+                res.result = doc["result"]["result"]
+            if "error" in doc["result"]:
+                res.error = doc["result"]["error"]
+
+            if res.result or res.error:
+                self.result = res
 
         # internal fields
         self.id = doc["_id"]
@@ -77,8 +96,8 @@ class DelegatedOperationRepo(object):
         operator: str,
         delegation_target: str = None,
         dataset_id: ObjectId = None,
-        context: dict = None,
-    ) -> DelegatedOperation:
+        context: ExecutionContext = None,
+    ) -> DelegatedOperationDocument:
         """Queue an operation to be executed by a delegated operator."""
         raise NotImplementedError("subclass must implement queue_operation()")
 
@@ -86,9 +105,8 @@ class DelegatedOperationRepo(object):
         self,
         _id: ObjectId,
         run_state: str,
-        error: str = None,
-        results: dict = None,
-    ) -> DelegatedOperation:
+        result: ExecutionResult = None,
+    ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
 
@@ -108,29 +126,40 @@ class DelegatedOperationRepo(object):
         """List all operations."""
         raise NotImplementedError("subclass must implement list_operations()")
 
-    def delete_operation(self, _id: ObjectId) -> DelegatedOperation:
+    def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
-    def get(self, _id: ObjectId) -> DelegatedOperation:
+    def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
 
 
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
-    def __init__(self, db: Database):
-        self._db = db
-        self._collection = self._db["delegated_ops"]
+    COLLECTION_NAME = "delegated_ops"
+
+    def __init__(self, collection: Collection = None):
+        self._collection = (
+            collection if collection is not None else self._get_collection()
+        )
+
+    def _get_collection(self) -> Collection:
+        import fiftyone.core.odm as foo
+        import fiftyone as fo
+
+        db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
+        database = db_client[fo.config.database_name]
+        return database[self.COLLECTION_NAME]
 
     def queue_operation(
         self,
         operator: str,
         delegation_target: str = None,
         dataset_id: ObjectId = None,
-        context: dict = None,
-    ) -> DelegatedOperation:
+        context: ExecutionContext = None,
+    ) -> DelegatedOperationDocument:
 
-        op = DelegatedOperation(
+        op = DelegatedOperationDocument(
             operator=operator,
             delegation_target=delegation_target,
             dataset_id=dataset_id,
@@ -145,17 +174,17 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self,
         _id: ObjectId,
         run_state: str,
-        error: str = None,
-        results: dict = None,
-    ) -> DelegatedOperation:
+        result: ExecutionResult = None,
+    ) -> DelegatedOperationDocument:
 
         update = None
+
         if run_state == "completed":
             update = {
                 "$set": {
                     "run_state": run_state,
                     "completed_at": datetime.utcnow(),
-                    "results": results,
+                    "result": result.to_json() if result else None,
                 }
             }
         elif run_state == "failed":
@@ -163,7 +192,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state,
                     "failed_at": datetime.utcnow(),
-                    "error_message": error,
+                    "result": result.to_json() if result else None,
                 }
             }
         elif run_state == "running":
@@ -183,7 +212,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
-        return DelegatedOperation().from_pymongo(doc)
+        return DelegatedOperationDocument().from_pymongo(doc)
 
     def get_queued_operations(self, operator: str = None, dataset_id=None):
         return self.list_operations(
@@ -207,14 +236,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if delegation_target:
             query["delegation_target"] = delegation_target
         docs = self._collection.find(query)
-        return [DelegatedOperation().from_pymongo(doc) for doc in docs]
+        return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
-    def delete_operation(self, _id: ObjectId) -> DelegatedOperation:
+    def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_delete(
             filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE
         )
-        return DelegatedOperation().from_pymongo(doc)
+        return DelegatedOperationDocument().from_pymongo(doc)
 
-    def get(self, _id: ObjectId) -> DelegatedOperation:
+    def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one(filter={"_id": _id})
-        return DelegatedOperation().from_pymongo(doc)
+        return DelegatedOperationDocument().from_pymongo(doc)

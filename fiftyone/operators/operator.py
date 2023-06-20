@@ -6,7 +6,6 @@ FiftyOne operators.
 |
 """
 from .types import Object
-from fiftyone.factory.service_factory import ServiceFactory
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
@@ -169,7 +168,9 @@ class Operator(object):
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
         """
-        ServiceFactory.delegated_operation().queue_operation(
+        from .delegated import DelegatedOperation
+
+        DelegatedOperation().queue_operation(
             operator=self.uri,
             context=ctx.serialize(),
             delegation_target=self.delegation_target,

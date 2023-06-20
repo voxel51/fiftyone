@@ -6,9 +6,7 @@ FiftyOne Server
 |
 """
 from fiftyone.factory.repo_factory import RepositoryFactory
-from fiftyone.factory.services.delegated_operation import (
-    DelegatedOperationService,
-)
+from fiftyone.operators.delegated import DelegatedOperation
 
 
 class ServiceFactory:
@@ -16,11 +14,9 @@ class ServiceFactory:
     services = {}
 
     @staticmethod
-    def delegated_operation() -> DelegatedOperationService:
+    def delegated_operation() -> DelegatedOperation:
         if "delegated_op" not in ServiceFactory.services:
-            ServiceFactory.services[
-                "delegated_op"
-            ] = DelegatedOperationService(
+            ServiceFactory.services["delegated_op"] = DelegatedOperation(
                 repo=RepositoryFactory.delegated_operation_repo()
             )
 
