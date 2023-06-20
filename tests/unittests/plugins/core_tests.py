@@ -141,3 +141,41 @@ def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
 
     with pytest.raises(ValueError):
         _ = fop.find_plugin("test-plugin1-name")
+
+
+def test_delete_plugin_dir(mocker, fiftyone_plugins_dir):
+    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
+    plugin_name = _DEFAULT_TEST_PLUGINS[0]
+    plugin_dir = fiftyone_plugins_dir / plugin_name
+    assert os.path.exists(plugin_dir)
+    fop.delete_plugin_dir(plugin_dir)
+    assert not os.path.exists(plugin_dir)
+
+
+def test_find_duplicates(mocker, fiftyone_plugins_dir):
+    # verify that existing plugin is found
+    mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
+    orig_plugin = fop.find_plugin("test-plugin1-name")
+    assert orig_plugin is not None
+
+    # create a duplicate plugin in a different directory
+    dup_plugin = _DEFAULT_TEST_PLUGINS[0]
+    dup_plugin_dir = dup_plugin + "_copy"
+    os.makedirs(fiftyone_plugins_dir / dup_plugin_dir, exist_ok=True)
+    with open(
+        fiftyone_plugins_dir / dup_plugin_dir / "fiftyone.yml", "w"
+    ) as f:
+        pd = {k: dup_plugin + "-" + k for k in _REQUIRED_YML_KEYS}
+        f.write(yaml.dump(pd))
+
+    # verify that the duplicate plugin is detected
+    with pytest.raises(ValueError):
+        _ = fop.find_plugin("test-plugin1-name")
+
+    # verify that all paths with the same plugin name are returned
+    dup_paths = fop.find_duplicates("test-plugin1-name")
+    assert len(dup_paths) == 2
+    assert set(dup_paths) == {
+        str(orig_plugin),
+        str(fiftyone_plugins_dir / dup_plugin_dir),
+    }

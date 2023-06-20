@@ -107,7 +107,8 @@ def delete_plugin_dir(plugin_dir):
     Args:
         plugin_name: the plugin name
     """
-    etau.delete_dir(plugin_dir)
+    if os.path.exists(plugin_dir):
+        etau.delete_dir(plugin_dir)
 
 
 def list_downloaded_plugins():
