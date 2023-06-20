@@ -1,34 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TestSelectorFamily, setMockAtoms } from "../../../../__mocks__/recoil";
+import { snapshot_UNSTABLE } from "../../../../__mocks__/recoil";
 import * as ss from "./schemaSettings.atoms";
-
-const BASE_FIELD = {
-  path: null,
-  embeddedDocType: null,
-  ftype: null,
-  description: null,
-  info: null,
-  name: null,
-  fields: null,
-  dbField: null,
-  subfield: null,
-  visible: false,
-};
+import { FIELDS } from "../hooks/useSchemaSettings.utils.test";
 
 describe("schema search", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("search for 'foo' should have 'foo' in it when 'foo' is a valid field path", async () => {
-    setMockAtoms({
-      viewSchemaState: {},
-      fieldSchemaState: { id: BASE_FIELD },
+  it("search for 'id' should have 'id' in the results", async () => {
+    const schemaFields = {
+      [FIELDS.ID_FIELD.path]: FIELDS.ID_FIELD,
+      [FIELDS.FILEPATH_FIELD.path]: FIELDS.FILEPATH_FIELD,
+    };
+
+    const testSnapshot = snapshot_UNSTABLE(({ set }) => {
+      set(ss.viewSchemaState, {});
+      set(ss.fieldSchemaState, schemaFields);
+      set(ss.schemaSearchResultList([FIELDS.ID_FIELD.path]), [
+        FIELDS.ID_FIELD.path,
+      ]);
     });
-    const test = <TestSelectorFamily<typeof ss.schemaSearchResultsSelector>>(
-      (<unknown>await ss.schemaSearchResultsSelector(["bar"]))
-    );
-    console.log("test", test, typeof test);
-    expect(test()).toBe(["is"]);
+
+    const contents = testSnapshot.getLoadable(
+      ss.schemaSearchResultList([])
+    ).contents;
+
+    expect(contents).toEqual([FIELDS.ID_FIELD.path]);
   });
 });

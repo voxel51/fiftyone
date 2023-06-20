@@ -96,12 +96,12 @@ export const lastActionToggleSelectionState = atom<Record<
 const getRawPath = (path: string) =>
   path.startsWith("frames.") ? path.replace("frames.", "") : path;
 
-export const schemaSearchResultsV2 = selectorFamily<string[], string[]>({
+export const schemaSearchResultList = selectorFamily<string[], string[]>({
   key: "schemaSearchResultsSelector",
   get:
     () =>
-    async ({ get }) =>
-      await get(schemaSearchResults),
+    ({ get }) =>
+      get(schemaSearchResults),
   set:
     (newPaths: string[] = []) =>
     ({ set, get }) => {

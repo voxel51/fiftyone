@@ -65,11 +65,11 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-  const searchResults = useRecoilValue(fos.schemaSearchResultsV2([]));
+  const searchResults = useRecoilValue(fos.schemaSearchResultList([]));
   const setSearchResults = useRecoilCallback(
     ({ set }) =>
       async (newPaths: string[] = []) => {
-        set(fos.schemaSearchResultsV2(newPaths), newPaths);
+        set(fos.schemaSearchResultList(newPaths), newPaths);
       },
     []
   );

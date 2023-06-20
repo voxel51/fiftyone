@@ -53,7 +53,7 @@ const BASE_FIELD = {
 const GROUP_DATASET = "group";
 const NOT_GROUP_DATASET = "";
 
-const FIELDS = {
+export const FIELDS = {
   ID_FIELD: {
     ...BASE_FIELD,
     path: "id",
