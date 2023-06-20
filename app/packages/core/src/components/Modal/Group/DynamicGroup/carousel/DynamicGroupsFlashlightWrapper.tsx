@@ -78,14 +78,9 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
   const id = useId();
   const pageCount = useRef(0);
 
-  const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
   const { data, hasNext, loadNext } = usePaginationFragment(
     foq.paginateGroupPaginationFragment,
-    useRecoilValue(
-      fos.dynamicGroupPaginationFragment({
-        fieldOrExpression: groupByFieldValue!,
-      })
-    )
+    useRecoilValue(fos.dynamicGroupPaginationFragment)
   );
 
   // todo: support pcd

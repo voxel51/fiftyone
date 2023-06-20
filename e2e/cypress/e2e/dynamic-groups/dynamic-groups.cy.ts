@@ -27,6 +27,7 @@ const verifySceneIdTimestamp = (
     "have.value",
     timestamp + 1
   );
+  cy.waitForLookerToRender(1000);
   cy.get("[data-cy=sidebar-entry-timestamp]").should("have.text", timestamp);
   cy.get("[data-cy=sidebar-entry-scene_id]").should("have.text", sceneId);
   cy.get(`[data-cy=dynamic-group-pagination-item-${timestamp + 1}]`).should(
@@ -69,6 +70,7 @@ const navigateDynamicGroupsModal = (ordered: boolean) => {
         const sceneIdNumber = Number(sceneIdText);
         expect(sceneIds.has(sceneIdText)).to.be.true;
 
+        cy.waitForLookerToRender(5000);
         cy.get("[data-cy=tag-scene_id]")
           .should("have.length", 2)
           .each((tag) => {

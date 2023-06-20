@@ -76,7 +76,6 @@ const Looker = ({
   const modalSampleData = useRecoilValue(fos.modalSample);
   const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
 
-  console.log(modalSampleData.id);
   if (!modalSampleData && !propsSampleData) {
     throw new Error("bad");
   }

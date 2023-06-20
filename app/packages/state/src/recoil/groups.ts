@@ -227,24 +227,21 @@ export const groupQuery = graphQLSelector<
   },
 });
 
-export const dynamicGroupPaginationQuery = graphQLSelectorFamily<
+export const dynamicGroupPaginationQuery = graphQLSelector<
   VariablesOf<paginateGroupQuery>,
-  string,
   ResponseFrom<paginateGroupQuery>
 >({
   key: "dynamicGroupQuery",
   environment: RelayEnvironmentKey,
   mapResponse: (response) => response,
   query: paginateGroup,
-  variables:
-    (fieldOrExpression) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        filter: {},
-        view: get(dynamicGroupViewQuery(fieldOrExpression)),
-      };
-    },
+  variables: ({ get }) => {
+    return {
+      dataset: get(datasetName),
+      filter: {},
+      view: get(dynamicGroupViewQuery),
+    };
+  },
 });
 
 export const pcdSampleQueryFamily = graphQLSelectorFamily<
@@ -294,21 +291,18 @@ export const dynamicGroupSamplesStoreMap = atomFamily<
   default: new Map<number, ModalSample>(),
 });
 
-export const dynamicGroupPaginationFragment = selectorFamily<
-  paginateGroup_query$key,
-  { fieldOrExpression: string }
->({
-  key: "dynamicGroupPaginationFragment",
-  get:
-    ({ fieldOrExpression }) =>
-    ({ get }) => {
-      return get(dynamicGroupPaginationQuery(fieldOrExpression));
+export const dynamicGroupPaginationFragment = selector<paginateGroup_query$key>(
+  {
+    key: "dynamicGroupPaginationFragment",
+    get: ({ get }) => {
+      return get(dynamicGroupPaginationQuery);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "lru",
-    maxSize: 20,
-  },
-});
+    cachePolicy_UNSTABLE: {
+      eviction: "lru",
+      maxSize: 20,
+    },
+  }
+);
 
 export const activeModalSample = selector<
   NonNullable<ResponseFrom<pcdSampleQuery>["sample"]>["sample"]

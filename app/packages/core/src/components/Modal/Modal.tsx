@@ -15,14 +15,13 @@ import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import { GroupContextProvider } from "./Group/GroupContextProvider";
-import { usePanels } from "./hooks";
 import ModalNavigation from "./ModalNavigation";
 import Sample from "./Sample";
 import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
+import { usePanels } from "./hooks";
 
 const ModalWrapper = styled.div`
-  position: fixed;
   top: 0;
   left: 0;
   width: 100%;

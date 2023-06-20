@@ -1,8 +1,7 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { get } from "lodash";
-import { useCallback } from "react";
 import { useRelayEnvironment } from "react-relay";
-import { RecoilState, useRecoilCallback, useRecoilValue } from "recoil";
+import { RecoilState, useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -12,17 +11,12 @@ import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import { getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
-import { Lookers, LookerStore } from "./useLookerStore";
+import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
 
 export default <T extends Lookers>(store: LookerStore<T>) => {
   const environment = useRelayEnvironment();
   const setExpandedSample = useSetExpandedSample();
-  const hasGroupSlices = useRecoilValue(groupAtoms.hasGroupSlices);
-  const groupField = useRecoilValue(groupAtoms.groupField);
-  const dynamicGroupParameters = useRecoilValue(
-    viewAtoms.dynamicGroupParameters
-  );
 
   const setModalState = useRecoilCallback(
     ({ set, snapshot }) =>
@@ -74,52 +68,52 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     [environment, setExpandedSample]
   );
 
-  return useCallback<
-    (
-      ...args: Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>
-    ) => void
+  return useRecoilCallback<
+    Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>,
+    void
   >(
-    (next, sampleId, itemIndexMap) => {
-      const clickedIndex = itemIndexMap[sampleId];
+    ({ snapshot }) =>
+      async (next, sampleId, itemIndexMap) => {
+        const clickedIndex = itemIndexMap[sampleId];
 
-      const getIndex = async (index: number) => {
-        if (!store.indices.has(index)) await next();
-
-        const id = store.indices.get(index);
-
-        if (!id) {
-          throw new Error("unable to paginate to next sample");
-        }
-
-        const sample = store.samples.get(id);
-
-        let groupId: string;
-        if (hasGroupSlices) {
-          groupId = get(sample.sample, groupField)._id as string;
-        }
-
-        let groupByFieldValue: string;
-        if (dynamicGroupParameters?.groupBy) {
-          groupByFieldValue = String(
-            get(
-              sample.sample,
-              getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-            )
+        const getIndex = async (index: number) => {
+          const hasGroupSlices = await snapshot.getPromise(
+            groupAtoms.hasGroupSlices
           );
-        }
+          const groupField = await snapshot.getPromise(groupAtoms.groupField);
+          const dynamicGroupParameters = await snapshot.getPromise(
+            viewAtoms.dynamicGroupParameters
+          );
+          if (!store.indices.has(index)) await next();
 
-        return { id, groupId, groupByFieldValue };
-      };
+          const id = store.indices.get(index);
 
-      setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
-    },
-    [
-      dynamicGroupParameters,
-      groupField,
-      hasGroupSlices,
-      setExpandedSample,
-      setModalState,
-      store,
-    ]
+          if (!id) {
+            throw new Error("unable to paginate to next sample");
+          }
+
+          const sample = store.samples.get(id);
+
+          let groupId: string;
+          if (hasGroupSlices) {
+            groupId = get(sample.sample, groupField)._id as string;
+          }
+
+          let groupByFieldValue: string;
+          if (dynamicGroupParameters?.groupBy) {
+            groupByFieldValue = String(
+              get(
+                sample.sample,
+                getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
+              )
+            );
+          }
+
+          return { id, groupId, groupByFieldValue };
+        };
+
+        setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
+      },
+    [setExpandedSample, setModalState, store]
   );
 };
