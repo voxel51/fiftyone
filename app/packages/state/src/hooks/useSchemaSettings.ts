@@ -359,8 +359,13 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-  const [searchResults, setSearchResults] = useRecoilState(
-    fos.schemaSearchResults
+  const searchResults = useRecoilValue(fos.schemaSearchResultsV2([]));
+  const setSearchResults = useRecoilCallback(
+    ({ set }) =>
+      async (newPaths: string[] = []) => {
+        set(fos.schemaSearchResultsV2(newPaths), newPaths);
+      },
+    []
   );
   const isVideo = dataset.mediaType === "video";
 
