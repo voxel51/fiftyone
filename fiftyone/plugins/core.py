@@ -555,7 +555,7 @@ def _list_plugins(enabled=None):
 
 
 def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
-    plugin_names = (p.name for p in _list_plugins(enabled=enabled))
+    plugin_names = [p.name for p in _list_plugins(enabled=enabled)]
 
     if check_for_duplicates:
         dups = [n for n, c in Counter(plugin_names).items() if c > 1]
