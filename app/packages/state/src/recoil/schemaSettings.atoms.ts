@@ -96,13 +96,17 @@ export const lastActionToggleSelectionState = atom<Record<
 const getRawPath = (path: string) =>
   path.startsWith("frames.") ? path.replace("frames.", "") : path;
 
-export const schemaSearchResultsSelector = selectorFamily<string[], string[]>({
+export const schemaSearchResultsV2 = selectorFamily<string[], string[]>({
   key: "schemaSearchResultsSelector",
   get:
-    (newPaths = []) =>
-    async ({ get }) => {
-      const viewSchema = await get(viewSchemaState);
-      const fieldSchema = await get(fieldSchemaState);
+    () =>
+    async ({ get }) =>
+      await get(schemaSearchResults),
+  set:
+    (newPaths: string[] = []) =>
+    ({ set, get }) => {
+      const viewSchema = get(viewSchemaState);
+      const fieldSchema = get(fieldSchemaState);
       const combinedSchema = { ...fieldSchema, ...viewSchema };
 
       const greenPaths = [...newPaths]
@@ -116,7 +120,7 @@ export const schemaSearchResultsSelector = selectorFamily<string[], string[]>({
           );
         })
         .map((path) => getRawPath(path));
-      return greenPaths;
+      set(schemaSearchResults, greenPaths);
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -126,30 +130,6 @@ export const schemaSearchResultsSelector = selectorFamily<string[], string[]>({
 export const schemaSearchResults = atom<string[]>({
   key: "schemaSearchResults",
   default: [],
-  effects: [
-    ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPaths = []) => {
-        const viewSchema = await getPromise(viewSchemaState);
-        const fieldSchema = await getPromise(fieldSchemaState);
-        const combinedSchema = { ...fieldSchema, ...viewSchema };
-
-        const greenPaths = [...newPaths]
-          .filter(
-            (path) =>
-              path &&
-              combinedSchema?.[
-                path.startsWith("frames.") ? path.replace("frames.", "") : path
-              ]?.ftype &&
-              !skipField(path, combinedSchema)
-          )
-          .map((path) =>
-            path.startsWith("frames.") ? path.replace("frames.", "") : path
-          );
-
-        setSelf(greenPaths);
-      });
-    },
-  ],
 });
 
 export const selectedPathsState = atomFamily({
