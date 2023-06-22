@@ -2,9 +2,8 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
-import { useMutation, useRefetchableFragment } from "react-relay";
+import { useRefetchableFragment } from "react-relay";
 import {
-  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
@@ -35,14 +34,7 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-  const searchResults = useRecoilValue(fos.schemaSearchResultList);
-  const setSearchResults = useRecoilCallback(
-    ({ set }) =>
-      async (newPaths: string[] = []) => {
-        set(fos.schemaSearchResultList, newPaths);
-      },
-    []
-  );
+
   const isVideo = dataset.mediaType === "video";
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
@@ -59,10 +51,6 @@ export default function useSchemaSettings() {
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
     fos.lastAppliedPathsState
-  );
-
-  const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
-    fos.searchMetaFilterState
   );
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
@@ -139,6 +127,18 @@ export default function useSchemaSettings() {
 
   const excludedPathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
+
+  const mergedSchema = useMemo(
+    () => ({ ...viewSchema, ...fieldSchema }),
+    [viewSchema, fieldSchema]
+  );
+
+  const {
+    searchResults,
+    searchMetaFilter,
+    searchSchemaFields,
+    setSearchResults,
+  } = fos.useSearchSchemaFields(mergedSchema);
 
   const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
     if (!datasetName || !selectedPaths?.[datasetName] || isEmpty(fieldSchema))
@@ -245,61 +245,7 @@ export default function useSchemaSettings() {
     includeNestedFields,
   ]);
 
-  const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
-    foq.searchSelectFields
-  );
-
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
-
-  const mergedSchema = useMemo(
-    () => ({ ...viewSchema, ...fieldSchema }),
-    [viewSchema, fieldSchema]
-  );
-
-  const searchSchemaFields = useCallback(
-    (object) => {
-      if (!mergedSchema) {
-        return;
-      }
-      searchSchemaFieldsRaw({
-        variables: { datasetName, metaFilter: object },
-        onCompleted: (data) => {
-          if (data) {
-            const { searchSelectFields = [] } = data;
-            const res = (searchSelectFields as string[])
-              .map((p) => p.replace("._cls", ""))
-              .filter((pp) => !pp.startsWith("_"));
-            setSearchResults(res);
-            setSearchMetaFilter(object);
-
-            const shouldExcludePaths = Object.keys(mergedSchema)
-              .filter((path) => !searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setExcludedPaths({ [datasetName]: shouldExcludePaths });
-
-            const shouldSelectPaths = Object.keys(mergedSchema)
-              .filter((path) => searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setSelectedPaths({ [datasetName]: new Set(shouldSelectPaths) });
-          }
-        },
-        onError: (e) => {
-          console.error("failed to search schema fields", e);
-        },
-      });
-    },
-    [datasetName, mergedSchema]
-  );
 
   const setIncludeNestedFields = useCallback(
     (val: boolean) => {
@@ -499,9 +445,6 @@ export default function useSchemaSettings() {
     resetExcludedPaths,
     resetSelectedPaths,
     resetTextFilter,
-    searchMetaFilter,
-    searchResults,
-    searchSchemaFields,
     searchTerm,
     selectedPaths,
     selectedTab,
@@ -510,7 +453,6 @@ export default function useSchemaSettings() {
     setExpandedPaths,
     setIncludeNestedFields,
     setLastAppliedPaths,
-    setSearchResults,
     setSearchTerm,
     setSelectedPaths,
     setSelectedTab,
@@ -521,5 +463,6 @@ export default function useSchemaSettings() {
     showMetadata,
     showNestedFields,
     toggleSelection,
+    mergedSchema,
   };
 }
