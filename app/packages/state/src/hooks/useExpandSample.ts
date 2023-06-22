@@ -75,15 +75,15 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     ({ snapshot }) =>
       async (next, sampleId, itemIndexMap) => {
         const clickedIndex = itemIndexMap[sampleId];
+        const hasGroupSlices = await snapshot.getPromise(
+          groupAtoms.hasGroupSlices
+        );
+        const groupField = await snapshot.getPromise(groupAtoms.groupField);
+        const dynamicGroupParameters = await snapshot.getPromise(
+          viewAtoms.dynamicGroupParameters
+        );
 
         const getIndex = async (index: number) => {
-          const hasGroupSlices = await snapshot.getPromise(
-            groupAtoms.hasGroupSlices
-          );
-          const groupField = await snapshot.getPromise(groupAtoms.groupField);
-          const dynamicGroupParameters = await snapshot.getPromise(
-            viewAtoms.dynamicGroupParameters
-          );
           if (!store.indices.has(index)) await next();
 
           const id = store.indices.get(index);

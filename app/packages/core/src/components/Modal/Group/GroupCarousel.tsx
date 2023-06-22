@@ -1,4 +1,4 @@
-import { Loading, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import Flashlight, { Response } from "@fiftyone/flashlight";
 import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
@@ -12,7 +12,6 @@ import {
 import { Resizable } from "re-resizable";
 import React, {
   MutableRefObject,
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -271,9 +270,7 @@ export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
         setHeight(Math.max(height + delta, 100));
       }}
     >
-      <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <Column />
-      </Suspense>
+      <Column />
     </Resizable>
   );
 };

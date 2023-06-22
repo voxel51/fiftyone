@@ -5,11 +5,11 @@ import { GroupElementsLinkBar } from "./GroupElementsLinkBar";
 
 export const NestedGroup = () => {
   return (
-    <GroupSuspense>
+    <>
       <GroupSuspense>
         <GroupView />
       </GroupSuspense>
       <GroupElementsLinkBar />
-    </GroupSuspense>
+    </>
   );
 };

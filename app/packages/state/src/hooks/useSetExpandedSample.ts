@@ -1,10 +1,14 @@
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
-import { currentModalNavigation, currentModalSample } from "../recoil";
+import {
+  currentModalNavigation,
+  currentModalSample,
+  dynamicGroupCurrentElementIndex,
+} from "../recoil";
 import * as groupAtoms from "../recoil/groups";
 
 export default () => {
   const setter = useRecoilTransaction_UNSTABLE(
-    ({ set }) =>
+    ({ reset, set }) =>
       (
         id: string,
         index: number,
@@ -12,6 +16,8 @@ export default () => {
         groupByFieldValue?: string
       ) => {
         set(currentModalSample, { id, index });
+        reset(groupAtoms.nestedGroupIndex);
+        reset(dynamicGroupCurrentElementIndex);
         groupId && set(groupAtoms.groupId, groupId);
         groupByFieldValue &&
           set(groupAtoms.groupByFieldValue, groupByFieldValue);

@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { currentModalSample, ModalSample } from "@fiftyone/state";
+import { currentModalSample } from "@fiftyone/state";
 import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import { get as getValue } from "lodash";
@@ -8,18 +8,24 @@ import React, {
   useCallback,
   useDeferredValue,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import { PreloadedQuery, usePreloadedQuery, useQueryLoader } from "react-relay";
+import {
+  PreloadedQuery,
+  loadQuery,
+  usePreloadedQuery,
+  useRelayEnvironment,
+} from "react-relay";
 import {
   useRecoilCallback,
   useRecoilState,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import { GroupSuspense } from "../../GroupSuspense";
 import style from "./GroupElementsLinkBar.module.css";
 import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
 
@@ -36,86 +42,50 @@ const BarContainer = styled.div`
 `;
 
 export const GroupElementsLinkBar = () => {
-  const [queryRef, loadQuery] =
-    useQueryLoader<foq.paginateDynamicGroupSamplesQuery>(
-      foq.paginateDynamicGroupSamples
-    );
-
-  const loadDynamicGroupSamples = useRecoilCallback(
-    ({ snapshot }) =>
-      async (cursor?: number) => {
-        const variables = {
-          dataset: await snapshot.getPromise(fos.datasetName),
-          filter: {},
-          view: await snapshot.getPromise(fos.dynamicGroupViewQuery),
+  const dataset = useRecoilValue(fos.datasetName);
+  const view = useRecoilValue(fos.dynamicGroupViewQuery);
+  const cursor = useRecoilValue(fos.nestedGroupIndex);
+  const environment = useRelayEnvironment();
+  const loadDynamicGroupSamples = useCallback(
+    (cursor?: number) => {
+      return loadQuery<foq.paginateDynamicGroupSamplesQuery>(
+        environment,
+        foq.paginateDynamicGroupSamples,
+        {
           cursor: cursor ? String(cursor) : null,
-        };
-
-        loadQuery(variables);
-      },
-    [loadQuery]
+          dataset,
+          filter: {},
+          view,
+        }
+      );
+    },
+    [dataset, loadQuery, view]
   );
 
-  useEffect(() => {
-    if (!queryRef) {
-      loadDynamicGroupSamples();
-    }
-  }, [queryRef, loadDynamicGroupSamples]);
-
-  return (
-    <GroupSuspense>
-      {queryRef && (
-        <GroupElementsLinkBarImpl
-          loadDynamicGroupSamples={loadDynamicGroupSamples}
-          queryRef={queryRef}
-        />
-      )}
-    </GroupSuspense>
+  const queryRef = useMemo(
+    () => loadDynamicGroupSamples(cursor),
+    [loadDynamicGroupSamples, cursor]
   );
+
+  return <GroupElementsLinkBarImpl queryRef={queryRef} />;
 };
 
 const GroupElementsLinkBarImpl = React.memo(
   ({
     queryRef,
-    loadDynamicGroupSamples,
   }: {
     queryRef: PreloadedQuery<foq.paginateDynamicGroupSamplesQuery>;
-    loadDynamicGroupSamples: (cursor?: number) => Promise<void>;
   }) => {
-    const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
-    const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
-
-    const atomFamilyKey = `${groupBy}-${orderBy}-${groupByFieldValue!}`;
-
-    const [dynamicGroupSamplesStoreMap, setDynamicGroupSamplesStoreMap] =
-      useRecoilState(fos.dynamicGroupSamplesStoreMap(atomFamilyKey));
+    const setCursor = useSetRecoilState(fos.nestedGroupIndex);
+    const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
     const data = usePreloadedQuery(foq.paginateDynamicGroupSamples, queryRef);
 
     const [
       dynamicGroupCurrentElementIndex,
       setDynamicGroupCurrentElementIndex,
-    ] = useRecoilState(fos.dynamicGroupCurrentElementIndex(atomFamilyKey));
-
-    const deferredDynamicGroupCurrentElementIndex = useDeferredValue(
-      dynamicGroupCurrentElementIndex
-    );
-
-    useEffect(() => {
-      if (!data?.samples?.edges?.length) {
-        return;
-      }
-
-      setDynamicGroupSamplesStoreMap((prev) => {
-        const newMap = new Map(prev);
-
-        for (const { cursor, node } of data.samples.edges) {
-          newMap.set(Number(cursor), node as ModalSample);
-        }
-
-        return newMap;
-      });
-    }, [data, setDynamicGroupSamplesStoreMap]);
+    ] = useRecoilState(fos.dynamicGroupCurrentElementIndex);
+    const deferred = useDeferredValue(dynamicGroupCurrentElementIndex);
 
     const dynamicGroupParameters = useRecoilValue(
       fos.dynamicGroupParameters
@@ -142,27 +112,34 @@ const GroupElementsLinkBarImpl = React.memo(
       [dynamicGroupParameters, groupField]
     );
 
+    const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
+    const mapRef = useMemo(
+      () => new Map<number, fos.ModalSample>(),
+      [groupByFieldValue]
+    );
+
+    const map = useMemo(() => {
+      if (data?.samples?.edges?.length) {
+        for (const { cursor, node } of data.samples.edges) {
+          mapRef.set(Number(cursor), node as fos.ModalSample);
+        }
+      }
+      return new Map(mapRef);
+    }, [data, mapRef]);
+
     useEffect(() => {
-      if (dynamicGroupSamplesStoreMap.size === 0) {
+      if (map.size === 0) {
         return;
       }
-
-      const nextSample = dynamicGroupSamplesStoreMap.get(
-        deferredDynamicGroupCurrentElementIndex - 1
-      );
+      const nextSample = map.get(deferred - 1);
 
       if (nextSample) {
         setSample(nextSample);
       } else {
         // load a couple of previous samples for extra padding so that previous is just as fast
-        loadDynamicGroupSamples(deferredDynamicGroupCurrentElementIndex - 5);
+        setCursor(deferred - 5);
       }
-    }, [
-      dynamicGroupSamplesStoreMap,
-      loadDynamicGroupSamples,
-      deferredDynamicGroupCurrentElementIndex,
-      setSample,
-    ]);
+    }, [map, setCursor, deferred, setSample]);
 
     const elementsCount = useRecoilValue(fos.dynamicGroupsElementCount);
 
@@ -174,7 +151,7 @@ const GroupElementsLinkBarImpl = React.memo(
         e: React.ChangeEvent<HTMLInputElement>,
         newElementIndex: number
       ) => {
-        if (newElementIndex === deferredDynamicGroupCurrentElementIndex) {
+        if (newElementIndex === deferred) {
           return;
         }
 
@@ -205,7 +182,7 @@ const GroupElementsLinkBarImpl = React.memo(
             newElementIndex = newValueNum;
           }
 
-          if (newElementIndex === deferredDynamicGroupCurrentElementIndex) {
+          if (newElementIndex === deferred) {
             setIsTextBoxEmpty(false);
           }
           setDynamicGroupCurrentElementIndex(newElementIndex);
@@ -215,11 +192,7 @@ const GroupElementsLinkBarImpl = React.memo(
           }, 100);
         }
       },
-      [
-        setDynamicGroupCurrentElementIndex,
-        deferredDynamicGroupCurrentElementIndex,
-        elementsCount,
-      ]
+      [setDynamicGroupCurrentElementIndex, deferred, elementsCount]
     );
 
     const keyNavigationHandler = useRecoilCallback(
@@ -247,7 +220,7 @@ const GroupElementsLinkBarImpl = React.memo(
           count={elementsCount}
           siblingCount={1}
           boundaryCount={2}
-          page={dynamicGroupCurrentElementIndex}
+          page={deferred}
           onChange={onPageChange as PaginationProps["onChange"]}
           shape="rounded"
           color="primary"
@@ -255,10 +228,15 @@ const GroupElementsLinkBarImpl = React.memo(
             root: style.noRipple,
           }}
           renderItem={(item) => {
+            console.log(item);
             return (
               <PaginationItem
                 component={PaginationComponentWithTooltip}
-                atomFamilyKey={atomFamilyKey}
+                orderByValue={
+                  item.page >= 0 && orderBy
+                    ? map.get(item.page - 1)?.sample[orderBy]
+                    : undefined
+                }
                 // hack because page is not being forwarded as-is for some reason
                 currentPage={item.page}
                 isButton={item.type !== "page"}

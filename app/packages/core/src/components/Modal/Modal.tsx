@@ -46,8 +46,8 @@ const Container = styled.div`
 const ContentColumn = styled.div`
   flex-grow: 1;
   width: 1px;
+  height: 100%;
   position: relative;
-  overflow: visible;
   display: flex;
   flex-direction: column;
 `;

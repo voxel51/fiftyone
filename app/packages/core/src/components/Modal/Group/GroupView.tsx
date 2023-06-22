@@ -12,7 +12,6 @@ import { GroupBar } from "../Bars";
 import { GroupCarousel } from "./GroupCarousel";
 import { GroupImageVideoSample } from "./GroupImageVideoSample";
 import { GroupSample3d } from "./GroupSample3d";
-import { GroupSuspense } from "./GroupSuspense";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
@@ -88,9 +87,7 @@ export const GroupView = () => {
             )}
 
             {isImageVisible ? (
-              <GroupSuspense>
-                <GroupImageVideoSample lookerRef={lookerRef} />
-              </GroupSuspense>
+              <GroupImageVideoSample lookerRef={lookerRef} />
             ) : is3DVisible ? (
               <GroupSample3d />
             ) : null}

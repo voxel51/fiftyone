@@ -120,7 +120,7 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
     const buildType = dev ? "dev" : "prod";
 
     ReactGA.initialize(gaConfig.app_ids[buildType], {
-      debug: dev,
+      debug: false,
       gaOptions: {
         storage: "none",
         cookieDomain: "none",

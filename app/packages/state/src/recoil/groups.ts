@@ -282,15 +282,6 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
   get: ({ get }) => get(groupQuery),
 });
 
-export const dynamicGroupSamplesStoreMap = atomFamily<
-  Map<number, ModalSample>,
-  string
->({
-  key: "dynamicGroupSamplesStoreMap",
-  // todo: use map with LRU cache
-  default: new Map<number, ModalSample>(),
-});
-
 export const dynamicGroupPaginationFragment = selector<paginateGroup_query$key>(
   {
     key: "dynamicGroupPaginationFragment",
@@ -303,6 +294,11 @@ export const dynamicGroupPaginationFragment = selector<paginateGroup_query$key>(
     },
   }
 );
+
+export const nestedGroupIndex = atom<number>({
+  key: "nestedGroupIndex",
+  default: null,
+});
 
 export const activeModalSample = selector<
   NonNullable<ResponseFrom<pcdSampleQuery>["sample"]>["sample"]

@@ -1,4 +1,4 @@
-import { atom, atomFamily, selector } from "recoil";
+import { atom, selector } from "recoil";
 
 import { Stage } from "@fiftyone/utilities";
 import { groupByFieldValue } from "./groups";
@@ -136,7 +136,7 @@ export const isFramesView = selector<boolean>({
   },
 });
 
-export const dynamicGroupCurrentElementIndex = atomFamily<number, string>({
+export const dynamicGroupCurrentElementIndex = atom<number>({
   key: "dynamicGroupCurrentElementIndex",
   default: 1,
 });
