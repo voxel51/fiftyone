@@ -15,6 +15,7 @@ import {
   getSubPaths,
   skipField,
 } from "./useSchemaSettings.utils";
+import useSetShowNestedFields from "./schema/useSetShowNestedFields";
 
 const SELECT_ALL = "SELECT_ALL";
 
@@ -69,11 +70,11 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-  const searchResults = useRecoilValue(fos.schemaSearchResultList([]));
+  const searchResults = useRecoilValue(fos.schemaSearchResultList);
   const setSearchResults = useRecoilCallback(
     ({ set }) =>
       async (newPaths: string[] = []) => {
-        set(fos.schemaSearchResultList(newPaths), newPaths);
+        set(fos.schemaSearchResultList, newPaths);
       },
     []
   );
@@ -93,10 +94,6 @@ export default function useSchemaSettings() {
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
     fos.lastAppliedPathsState
-  );
-
-  const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
-    fos.showNestedFieldsState
   );
 
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
@@ -152,15 +149,18 @@ export default function useSchemaSettings() {
     }
   }, [viewSchema, fieldSchema]);
 
+  const { showNestedFields, setShowNestedFields } = useSetShowNestedFields(
+    fieldSchema,
+    viewSchema
+  );
+
   const [selectedTab, setSelectedTab] = useRecoilState(
     fos.schemaSelectedSettingsTab
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
   const selectedPathState = fos.selectedPathsState({});
-  const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
-    selectedPathState
-  );
+  const [selectedPaths, setSelectedPaths] = useRecoilState(selectedPathState);
   // disabled paths are filtered
   const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
   const enabledSelectedPaths =
@@ -173,49 +173,7 @@ export default function useSchemaSettings() {
       : [];
 
   const excludedPathsState = fos.excludedPathsState({});
-  const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
-    excludedPathsState
-  );
-
-  const setShowNestedFields = useCallback(
-    (val: boolean) => {
-      const newExcludePaths = new Set();
-      if (val) {
-        excludedPaths?.[datasetName]?.forEach((path) => {
-          const subPaths = [
-            ...getSubPaths(path, fieldSchema, dataset.mediaType, viewSchema),
-          ];
-          subPaths.forEach((path) => {
-            newExcludePaths.add(path);
-          });
-        });
-      } else {
-        excludedPaths?.[datasetName]?.forEach((path) => {
-          if (
-            isVideo
-              ? (path.split(".")?.length === 2 && path.startsWith("frames.")) ||
-                !path.includes(".")
-              : !path.includes(".")
-          ) {
-            newExcludePaths.add(path);
-          }
-        });
-      }
-
-      setExcludedPaths({ [datasetName]: newExcludePaths });
-      setShowNestedFieldsRaw(val);
-    },
-    [
-      setExcludedPaths,
-      datasetName,
-      setShowNestedFieldsRaw,
-      excludedPaths,
-      fieldSchema,
-      dataset.mediaType,
-      viewSchema,
-      isVideo,
-    ]
-  );
+  const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
 
   const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
     if (!datasetName || !selectedPaths?.[datasetName] || isEmpty(fieldSchema))

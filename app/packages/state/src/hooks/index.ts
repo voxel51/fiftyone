@@ -49,5 +49,5 @@ export { default as useTooltip } from "./useTooltip";
 export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as useSchemaSettings } from "./useSchemaSettings";
-export { default as useSchemaSettingsControls } from "./useSchemaSettingsControls";
+export { default as useSetShowNestedFields } from "./schema/useSetShowNestedFields";
 export { default as withSuspense } from "./withSuspense";

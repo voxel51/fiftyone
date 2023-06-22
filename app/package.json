@@ -17,7 +17,7 @@
         "start-desktop": "yarn workspace FiftyOne start-desktop",
         "test": "yarn vitest run",
         "test-ui": "yarn vitest --ui --coverage",
-        "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
+        "gen:schema": "strawberry fiftyone.server.app:schema > schema.graphql"
     },
     "devDependencies": {
         "@testing-library/react": "latest",

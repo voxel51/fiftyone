@@ -52,6 +52,10 @@ export const getPath = (
   return path;
 };
 
+export interface DatasetSchema {
+  [key: string]: Field;
+}
+
 /**
  * @param path
  * @param schema
@@ -61,9 +65,9 @@ export const getPath = (
  */
 export const getSubPaths = (
   path: string,
-  schema: { [key: string]: Field },
+  schema: DatasetSchema,
   mediaType: MediaType,
-  frameSchema?: { [key: string]: Field }
+  frameSchema?: DatasetSchema
 ) => {
   if (!path) {
     throw new Error("path is required");

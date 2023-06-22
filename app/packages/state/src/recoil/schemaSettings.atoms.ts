@@ -1,4 +1,10 @@
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 import * as fos from "@fiftyone/state";
 import {
@@ -96,32 +102,30 @@ export const lastActionToggleSelectionState = atom<Record<
 const getRawPath = (path: string) =>
   path.startsWith("frames.") ? path.replace("frames.", "") : path;
 
-export const schemaSearchResultList = selectorFamily<string[], string[]>({
+export const schemaSearchResultList = selector<string[]>({
   key: "schemaSearchResultsSelector",
-  get:
-    () =>
-    ({ get }) =>
-      get(schemaSearchResults),
-  set:
-    (newPaths: string[] = []) =>
-    ({ set, get }) => {
-      const viewSchema = get(viewSchemaState);
-      const fieldSchema = get(fieldSchemaState);
-      const combinedSchema = { ...fieldSchema, ...viewSchema };
+  get: ({ get }) => get(schemaSearchResults),
+  set: ({ set, get }, newPaths) => {
+    if (newPaths instanceof DefaultValue) {
+      newPaths = [];
+    }
+    const viewSchema = get(viewSchemaState);
+    const fieldSchema = get(fieldSchemaState);
+    const combinedSchema = { ...fieldSchema, ...viewSchema };
 
-      const greenPaths = [...newPaths]
-        .filter((path) => {
-          const cleanPath = getRawPath(path);
+    const greenPaths = [...newPaths]
+      .filter((path) => {
+        const cleanPath = getRawPath(path);
 
-          return (
-            cleanPath &&
-            combinedSchema?.[cleanPath]?.ftype &&
-            !skipField(cleanPath, combinedSchema)
-          );
-        })
-        .map((path) => getRawPath(path));
-      set(schemaSearchResults, greenPaths);
-    },
+        return (
+          cleanPath &&
+          combinedSchema?.[cleanPath]?.ftype &&
+          !skipField(cleanPath, combinedSchema)
+        );
+      })
+      .map((path) => getRawPath(path));
+    set(schemaSearchResults, greenPaths);
+  },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
