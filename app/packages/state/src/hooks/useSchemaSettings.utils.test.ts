@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { disabledField, skipField } from "./useSchemaSettings.utils";
+import {
+  disabledField,
+  getPath,
+  getSubPaths,
+  skipField,
+} from "./useSchemaSettings.utils";
 import {
   ARRAY_FIELD,
   CLASSIFICATIONS_FIELD,
@@ -33,6 +38,7 @@ import {
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   GEOLOCATION_DISABLED_SUB_PATHS,
   GEOLOCATIONS_DISABLED_SUB_PATHS,
+  DICT_FIELD,
 } from "@fiftyone/utilities";
 import { FRAME_SUPPORT_FIELD } from "@fiftyone/utilities";
 import { VECTOR_FIELD } from "@fiftyone/utilities";
@@ -52,6 +58,7 @@ const BASE_FIELD = {
 
 const GROUP_DATASET = "group";
 const NOT_GROUP_DATASET = "";
+const NON_EXISTENT_PATH = "non-existent-path";
 
 export const FIELDS = {
   ID_FIELD: {
@@ -93,6 +100,11 @@ export const FIELDS = {
     ...BASE_FIELD,
     path: "VectorField",
     ftype: VECTOR_FIELD,
+  },
+  VECTOR_NESTED_TYPE: {
+    ...BASE_FIELD,
+    path: "VectorField.nested",
+    ftype: DICT_FIELD,
   },
   CUSTOM_EMBEDDED_DOCUMENT_FIELD: {
     ...BASE_FIELD,
@@ -774,5 +786,62 @@ describe("label types are disabled fields", () => {
     enabledSubFields.forEach((field) => {
       expect(disabledField(field.path, SCHEMA)).toBe(false);
     });
+  });
+});
+
+describe("getPath() should convert path based on dataset.mediaType'", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("getPath should return original path when dataset.mediaType is 'image'", () => {
+    expect(getPath(FIELDS.SAMPLE_ID_FIELD.path, "image", SCHEMA)).toEqual(
+      FIELDS.SAMPLE_ID_FIELD.path
+    );
+  });
+
+  it("getPath should return [frames.]path when dataset.mediaType is 'video'", () => {
+    expect(getPath(FIELDS.SAMPLE_ID_FIELD.path, "video", SCHEMA)).toEqual(
+      `frames.${FIELDS.SAMPLE_ID_FIELD.path}`
+    );
+  });
+
+  it("getPath should return same paths as input when dataset.mediaType is 'video' but path does not exist in frameSchema", () => {
+    expect(getPath(NON_EXISTENT_PATH, "video", SCHEMA)).toEqual(
+      NON_EXISTENT_PATH
+    );
+  });
+});
+
+describe("getSubPaths() should convert path based on dataset.mediaType'", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("getSubPaths should return error if required variables missing", () => {
+    expect(() => {
+      getSubPaths("", {}, "image", {});
+    }).toThrow("path is required");
+    expect(() => {
+      getSubPaths("foo", null, "image", {});
+    }).toThrow("schema is required");
+    expect(() => {
+      getSubPaths("foo", {}, null, {});
+    }).toThrow("mediaType is required");
+  });
+
+  it("getSubPath should retrun correct subpaths in an image dataset", () => {
+    expect(getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image")).toContain(
+      FIELDS.METADATA_FIELD.path
+    );
+    expect(getSubPaths(FIELDS.METADATA_FIELD.path, SCHEMA, "image")).toContain(
+      FIELDS.METADATA_WIDTH_FIELD.path
+    );
+  });
+
+  it("getSubPath should retrun an empty array if the nested field is skip field", () => {
+    expect([
+      ...getSubPaths(FIELDS.VECTOR_TYPE.path, SCHEMA, "image"),
+    ]).toHaveLength(1);
   });
 });

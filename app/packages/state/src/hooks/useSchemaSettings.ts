@@ -10,7 +10,11 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { disabledField, skipField } from "./useSchemaSettings.utils";
+import {
+  disabledField,
+  getSubPaths,
+  skipField,
+} from "./useSchemaSettings.utils";
 
 const SELECT_ALL = "SELECT_ALL";
 
@@ -168,9 +172,9 @@ export default function useSchemaSettings() {
         )
       : [];
 
-  const excludePathsState = fos.excludedPathsState({});
+  const excludedPathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
-    excludePathsState
+    excludedPathsState
   );
 
   const setShowNestedFields = useCallback(
@@ -178,7 +182,9 @@ export default function useSchemaSettings() {
       const newExcludePaths = new Set();
       if (val) {
         excludedPaths?.[datasetName]?.forEach((path) => {
-          const subPaths = [...getSubPaths(path)];
+          const subPaths = [
+            ...getSubPaths(path, fieldSchema, dataset.mediaType, viewSchema),
+          ];
           subPaths.forEach((path) => {
             newExcludePaths.add(path);
           });
@@ -199,7 +205,16 @@ export default function useSchemaSettings() {
       setExcludedPaths({ [datasetName]: newExcludePaths });
       setShowNestedFieldsRaw(val);
     },
-    [showNestedFields, excludedPaths]
+    [
+      setExcludedPaths,
+      datasetName,
+      setShowNestedFieldsRaw,
+      excludedPaths,
+      fieldSchema,
+      dataset.mediaType,
+      viewSchema,
+      isVideo,
+    ]
   );
 
   const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
@@ -312,17 +327,6 @@ export default function useSchemaSettings() {
   );
 
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
-  const getPath = useCallback(
-    (path: string) => {
-      if (dataset && viewSchema) {
-        return dataset.mediaType === "video" && viewSchema?.[path]
-          ? `frames.${path}`
-          : path;
-      }
-      return path;
-    },
-    [viewSchema, dataset]
-  );
 
   const mergedSchema = useMemo(
     () => ({ ...viewSchema, ...fieldSchema }),
@@ -395,27 +399,6 @@ export default function useSchemaSettings() {
     setSearchTerm("");
   }, [datasetName, viewPaths, fieldSchema]);
 
-  const getSubPaths = useCallback(
-    (path: string) => {
-      if (!datasetName) {
-        return new Set();
-      }
-      const subPaths = new Set<string>();
-      subPaths.add(getPath(path));
-      Object.keys(mergedSchema).forEach((currPath: string) => {
-        const ftype = mergedSchema?.[currPath]?.ftype;
-        if (
-          currPath.startsWith(path + ".") &&
-          !skipField(currPath, mergedSchema)
-        ) {
-          subPaths.add(getPath(currPath));
-        }
-      });
-      return subPaths;
-    },
-    [mergedSchema, datasetName, isGroupDataset]
-  );
-
   useEffect(() => {
     if (!isEmpty(fieldSchema) && datasetName && !selectedPaths?.[datasetName]) {
       const combinedSchema = new Set([
@@ -440,7 +423,12 @@ export default function useSchemaSettings() {
   const toggleSelection = useCallback(
     (rawPath: string, checked: boolean) => {
       if (!selectedPaths || !rawPath || !datasetName) return;
-      const pathAndSubPaths = getSubPaths(rawPath);
+      const pathAndSubPaths = getSubPaths(
+        rawPath,
+        fieldSchema,
+        dataset.mediaType,
+        viewSchema
+      );
       if (!pathAndSubPaths.size) {
         return;
       }
@@ -475,7 +463,17 @@ export default function useSchemaSettings() {
       }
       setAllFieldsChecked(false);
     },
-    [selectedPaths, viewPaths, datasetName, excludedPaths]
+    [
+      selectedPaths,
+      datasetName,
+      fieldSchema,
+      dataset.mediaType,
+      viewSchema,
+      setAllFieldsChecked,
+      excludedPaths,
+      setExcludedPaths,
+      setSelectedPaths,
+    ]
   );
 
   const bareFinalSchema = useMemo(
