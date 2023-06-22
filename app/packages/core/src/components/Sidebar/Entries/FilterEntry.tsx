@@ -30,7 +30,8 @@ const Filter = ({ modal }: { modal: boolean }) => {
     setSearchResults,
   } = fos.useSchemaSettings();
 
-  const setSelectedFieldsStage = fos.useSetSelectedFieldsStage();
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
 
   useDebounce(
     () => {

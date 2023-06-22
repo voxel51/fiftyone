@@ -74,7 +74,8 @@ const SchemaSettings = () => {
     setShowNestedFields,
   } = fos.useSchemaSettings();
 
-  const setSelectedFieldsStage = fos.useSetSelectedFieldsStage();
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
