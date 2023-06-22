@@ -1,7 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { isEmpty, keyBy } from "lodash";
-import { useCallback, useContext, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
   useRecoilCallback,
@@ -22,8 +22,6 @@ const SELECT_ALL = "SELECT_ALL";
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
-  const router = useContext(fos.RouterContext);
-  const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
 
@@ -31,39 +29,6 @@ export default function useSchemaSettings() {
   const datasetName = useRecoilValue(fos.datasetName);
 
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
-
-  const setSelectedFieldsStage = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (value) => {
-        if (!dataset) {
-          return;
-        }
-
-        set(fos.selectedFieldsStageState, value);
-
-        // router is loaded only in OSS
-        if (router.loaded) return;
-        const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription);
-        setView({
-          variables: {
-            view: value ? [...view, value] : view,
-            datasetName: dataset.name,
-            form: {},
-            subscription,
-          },
-          onCompleted: ({ setView: { dataset } }) => {
-            // in an embedded context, we update the dataset schema through the
-            // state proxy
-            set(fos.stateProxy, (current) => ({
-              ...(current || {}),
-              dataset,
-            }));
-          },
-        });
-      },
-    [setView, router, dataset]
-  );
 
   const setViewSchema = useSetRecoilState(fos.viewSchemaState);
   const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
@@ -547,7 +512,6 @@ export default function useSchemaSettings() {
     setLastAppliedPaths,
     setSearchResults,
     setSearchTerm,
-    setSelectedFieldsStage,
     setSelectedPaths,
     setSelectedTab,
     setSettingsModal,

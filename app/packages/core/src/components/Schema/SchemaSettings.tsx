@@ -61,7 +61,6 @@ const SchemaSettings = () => {
     setSelectedTab,
     selectedTab,
     setSearchResults,
-    setSelectedFieldsStage,
     datasetName,
     excludedPaths,
     resetExcludedPaths,
@@ -74,6 +73,8 @@ const SchemaSettings = () => {
     enabledSelectedPaths,
     setShowNestedFields,
   } = fos.useSchemaSettings();
+
+  const setSelectedFieldsStage = fos.useSetSelectedFieldsStage();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
