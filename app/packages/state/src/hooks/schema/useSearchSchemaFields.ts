@@ -9,13 +9,16 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { DatasetSchema } from "../useSchemaSettings.utils";
+import { BaseField, Field } from "@fiftyone/utilities";
 
 /**
  *
  * @param mergedSchema is dataset schema
  * @returns
  */
-export default function useSearchSchemaFields(mergedSchema: DatasetSchema) {
+export default function useSearchSchemaFields(mergedSchema: {
+  [key: string]: object;
+}) {
   const dataset = useRecoilValue(fos.dataset);
   const datasetName = dataset?.name;
 
