@@ -1,13 +1,18 @@
-import { Loading, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import Flashlight, { Response } from "@fiftyone/flashlight";
-import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
+import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { groupPaginationFragment, useBrowserStorage } from "@fiftyone/state";
+import {
+  groupPaginationFragment,
+  selectedSamples,
+  useBrowserStorage,
+} from "@fiftyone/state";
+import { get } from "lodash";
 import { Resizable } from "re-resizable";
 import React, {
   MutableRefObject,
-  Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -15,12 +20,9 @@ import React, {
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { usePaginationFragment } from "react-relay";
-import {
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
+import useSetGroupSample from "./useSetGroupSample";
 
 const process = (
   next: MutableRefObject<number>,
@@ -86,6 +88,13 @@ const Column: React.FC = () => {
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const groupField = useRecoilValue(fos.groupField);
+  const currentSlice = useRecoilValue(fos.groupSlice(true));
+  const highlight = useCallback(
+    (sample: Sample) => {
+      return get(sample, groupField).name === currentSlice;
+    },
+    [currentSlice, groupField]
+  );
   const createLooker = fos.useCreateLooker(
     true,
     true,
@@ -95,7 +104,7 @@ const Column: React.FC = () => {
         return sample[groupField]?.name;
       },
     },
-    true
+    highlight
   );
 
   const hasNextRef = useRef(true);
@@ -124,20 +133,16 @@ const Column: React.FC = () => {
     }
   }, [samples]);
 
-  const setSample = fos.useSetExpandedSample();
-
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;
+  const setGroupSample = useSetGroupSample(store);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
       horizontal: true,
       initialRequestKey: 0,
-      onItemClick: (next, id, items) => {
-        const sample = store.samples.get(id);
-        sample && setSample(sample);
-      },
+      onItemClick: setGroupSample,
       options: {
         rowAspectRatioThreshold: 0,
       },
@@ -202,18 +207,17 @@ const Column: React.FC = () => {
     return () => flashlight.detach();
   }, [flashlight, id]);
 
-  const updateItem = useRecoilCallback(
-    ({ snapshot }) =>
-      async (id: string) => {
-        store.lookers.get(id)?.updateOptions({
-          ...opts,
-          selected: snapshot.getLoadable(fos.selectedSamples).contents.has(id),
-          highlight:
-            (await snapshot.getPromise(fos.groupSample(null)))?.sample._id ===
-            id,
-        });
-      },
-    [opts]
+  const selected = useRecoilValue(selectedSamples);
+
+  const updateItem = useCallback(
+    async (id: string) => {
+      store.lookers.get(id)?.updateOptions({
+        ...opts,
+        selected: selected.has(id),
+        highlight: highlight(store.samples.get(id)!.sample as Sample),
+      });
+    },
+    [highlight, opts, selected, store]
   );
 
   useLayoutEffect(() => {
@@ -224,7 +228,6 @@ const Column: React.FC = () => {
     useRecoilValueLoadable(
       fos.lookerOptions({ modal: true, withFilter: true })
     ),
-    useRecoilValue(fos.modalSample),
     useRecoilValue(fos.selectedSamples),
   ]);
 
@@ -274,9 +277,7 @@ export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
         setHeight(Math.max(height + delta, 100));
       }}
     >
-      <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <Column />
-      </Suspense>
+      <Column />
     </Resizable>
   );
 };

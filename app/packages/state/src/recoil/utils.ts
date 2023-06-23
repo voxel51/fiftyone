@@ -1,3 +1,4 @@
+import { Sample } from "@fiftyone/looker";
 import { getFetchOrigin, getFetchPathPrefix } from "@fiftyone/utilities";
 import { Nullable } from "vitest";
 
@@ -24,7 +25,7 @@ export const getSanitizedGroupByExpression = (expression: string) => {
 
 export const mapSampleResponse = <
   T extends Nullable<{
-    readonly sample?: object | string;
+    readonly sample?: Sample;
   }>
 >(
   data: T

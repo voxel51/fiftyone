@@ -86,14 +86,13 @@ export const GroupView = () => {
                 fullHeight={!is3DVisible && !isImageVisible}
               />
             )}
-
-            {isImageVisible ? (
-              <GroupSuspense>
+            <GroupSuspense>
+              {isImageVisible ? (
                 <GroupImageVideoSample lookerRef={lookerRef} />
-              </GroupSuspense>
-            ) : is3DVisible ? (
-              <GroupSample3d />
-            ) : null}
+              ) : is3DVisible ? (
+                <GroupSample3d />
+              ) : null}
+            </GroupSuspense>
           </Resizable>
         )}
 

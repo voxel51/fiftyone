@@ -43,6 +43,9 @@ const verifySceneIdTimestamp = (
           .find(`[data-cy="tooltip-timestamp: ${timestamp}"]`)
           .should("be.visible");
       });
+    cy.get(`[data-cy=dynamic-group-pagination-item-${timestamp + 1}]`).trigger(
+      "mouseout"
+    );
   }
 };
 
@@ -116,7 +119,7 @@ const navigateDynamicGroupsModal = (ordered: boolean) => {
       });
 
       // navigate to next scene
-      cy.get("[data-cy=nav-right-button]").click();
+      i < 7 && cy.get("[data-cy=nav-right-button]").click();
     }
   });
 };
@@ -181,7 +184,9 @@ describe("dynamic groups", () => {
             .each((tag) => {
               cy.wrap(tag).should("have.text", label);
             });
-          cy.get("[data-cy=nav-right-button]").click();
+
+          // truck is the last sample and will not have a right button
+          label !== "truck" && cy.get("[data-cy=nav-right-button]").click();
         });
       });
     });

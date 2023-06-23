@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 
 import {

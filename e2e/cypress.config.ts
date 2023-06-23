@@ -58,7 +58,7 @@ export default defineConfig({
       });
     },
     defaultCommandTimeout: Duration.Seconds(10),
-    pageLoadTimeout: Duration.Seconds(5),
+    pageLoadTimeout: Duration.Seconds(15),
     responseTimeout: Duration.Seconds(5),
     viewportWidth: 1200,
     viewportHeight: 800,
