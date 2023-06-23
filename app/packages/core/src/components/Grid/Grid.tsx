@@ -1,14 +1,11 @@
+import Flashlight from "@fiftyone/flashlight";
+import { freeVideos } from "@fiftyone/looker";
+import { useEventHandler, useExpandSample } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-
-import Flashlight from "@fiftyone/flashlight";
-import { freeVideos } from "@fiftyone/looker";
-
-import { useEventHandler } from "@fiftyone/state";
 import { flashlightLooker } from "./Grid.module.css";
 import { rowAspectRatioThreshold } from "./recoil";
-import useExpandSample from "./useExpandSample";
 import usePage from "./usePage";
 import useResize from "./useResize";
 

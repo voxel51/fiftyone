@@ -8,12 +8,10 @@ export const DynamicGroup = () => {
   /**
    * check if ordered or unordered
    */
-  const dynamicGroupParameters = useRecoilValue(fos.dynamicGroupParameters);
-  const hasGroupSlices = useRecoilValue(fos.groupSlices)?.length > 0;
+  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
 
-  if (!dynamicGroupParameters) return null;
-
-  const { orderBy } = dynamicGroupParameters;
+  if (!isDynamicGroup) return null;
 
   return (
     <>

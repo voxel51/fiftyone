@@ -20,7 +20,7 @@ import {
 } from "@fiftyone/utilities";
 import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
-import { activeModalSample, currentSlice } from "./groups";
+import { activeModalSample } from "./groups";
 import { State } from "./types";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
@@ -398,7 +398,7 @@ export const activeLabels = selectorFamily<LabelData[], { expanded?: boolean }>(
     get:
       ({ expanded = true }) =>
       ({ get }) => {
-        const sample = get(activeModalSample(get(currentSlice(true))));
+        const sample = get(activeModalSample);
         const paths = get(labelPaths({ expanded }));
         const pathsSet = new Set(paths);
 

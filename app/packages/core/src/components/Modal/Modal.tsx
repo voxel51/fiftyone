@@ -22,7 +22,6 @@ import { TooltipInfo } from "./TooltipInfo";
 import { usePanels } from "./hooks";
 
 const ModalWrapper = styled.div`
-  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -47,8 +46,8 @@ const Container = styled.div`
 const ContentColumn = styled.div`
   flex-grow: 1;
   width: 1px;
+  height: 100%;
   position: relative;
-  overflow: visible;
   display: flex;
   flex-direction: column;
 `;

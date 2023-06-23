@@ -566,7 +566,7 @@ single class list in the store a single target dictionary in the
 :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
 property of your dataset.
 
-These class lists are automatically used, if available, by methods such as
+You can also pass your class lists to methods such as
 :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`,
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
@@ -630,7 +630,7 @@ When you load datasets with |Segmentation| fields in the App that have
 corresponding mask targets, the label strings will appear in the App's tooltip
 when you hover over pixels.
 
-Mask targets are also automatically used, if available, by methods such as
+You can also pass your mask targets to methods such as
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
 require knowledge of the mask targets for a dataset or field(s).
