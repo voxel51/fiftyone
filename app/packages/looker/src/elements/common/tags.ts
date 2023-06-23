@@ -23,6 +23,7 @@ import {
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
+import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
@@ -36,7 +37,7 @@ import {
 interface TagData {
   color: string;
   title: string;
-  path: string;
+  path?: string;
   value: string;
 }
 
@@ -85,12 +86,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const elements: TagData[] = [];
 
-    const PRIMITIVE_RENDERERS: {
-      [key: string]: (
-        path: string,
-        value: unknown
-      ) => { color: string; value: string; title: string };
-    } = {
+    const PRIMITIVE_RENDERERS = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
         const v = value ? "True" : "False";
         return {
@@ -222,12 +218,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
     };
 
-    const LABEL_RENDERERS: {
-      [key: string]: (
-        path: string,
-        value: unknown
-      ) => { color: string; value: string; title: string };
-    } = {
+    const LABEL_RENDERERS = {
       [withPath(LABELS_PATH, CLASSIFICATION)]: (
         path,
         param: Classification
@@ -303,9 +294,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           continue;
         }
 
-        const pushList = (renderer, value) => {
+        const pushList = (renderer, value: unknown[]) => {
           let count = 0;
           let rest = 0;
+
+          value = value.flat();
+
           for (
             let index = 0;
             index < (value as Array<unknown>)?.length;
@@ -412,9 +406,9 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
-const unwind = (name: string, value: unknown) => {
-  if (Array.isArray(value)) {
-    return value.map((val) => unwind(name, val));
+const unwind = (name: string, value: RegularLabel, depth = 1) => {
+  if (Array.isArray(value) && depth) {
+    return value.map((val) => unwind(name, val), depth - 1);
   }
 
   const v = value[name];
@@ -431,11 +425,12 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field | null, unknown] => {
-  let value: unknown = sample;
+): [Field | null, RegularLabel] => {
+  let value: RegularLabel | undefined | object = sample;
   let field: Field = null;
 
-  for (const key of path.split(".")) {
+  // only search up to field.subfield as that is what the sidebar supports
+  for (const key of path.split(".").slice(0, 2)) {
     if (!schema?.[key]) {
       return [null, null];
     }
@@ -447,7 +442,7 @@ const getFieldAndValue = (
     }
 
     if (![undefined, null].includes(value) && field) {
-      value = unwind(field.dbField, value);
+      value = unwind(field.dbField, value as RegularLabel);
     }
 
     if (
@@ -462,7 +457,7 @@ const getFieldAndValue = (
     schema = field ? field.fields : null;
   }
 
-  return [field, value];
+  return [field, value as RegularLabel];
 };
 
 const compareObjectArrays = (arr1, arr2) => {

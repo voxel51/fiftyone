@@ -73,7 +73,8 @@ const accumulateOverlays = <State extends BaseState>(
   data: {
     [key: string]: any;
   },
-  prefix = ""
+  prefix = "",
+  depth = 1
 ): {
   classifications: Labels<TemporalDetectionLabel | ClassificationLabel>;
   overlays: Overlay<State>[];
@@ -93,8 +94,8 @@ const accumulateOverlays = <State extends BaseState>(
     }
 
     for (const label of labels) {
-      if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT) {
-        const nestedResult = accumulateOverlays(label, `${field}.`);
+      if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT && depth) {
+        const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
         classifications.push(...nestedResult.classifications);
         overlays.push(...nestedResult.overlays);
         continue;

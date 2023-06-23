@@ -5,13 +5,7 @@ import styled from "styled-components";
 
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import {
-  currentSlice,
-  groupId,
-  groupStatistics,
-  isGroup,
-  State,
-} from "@fiftyone/state";
+import { groupId, groupStatistics, isGroup, State } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
@@ -81,13 +75,14 @@ export const tagStatistics = selectorFamily<
           dataset: get(fos.datasetName),
           filters: get(modal ? fos.modalFilters : fos.filters),
 
-          groupData: get(isGroup)
-            ? {
-                id: modal ? get(groupId) : null,
-                slices: [get(currentSlice(modal))],
-                mode: get(groupStatistics(modal)),
-              }
-            : null,
+          groupData:
+            get(isGroup) && get(fos.groupField)
+              ? {
+                  id: modal ? get(groupId) : null,
+                  slices: get(fos.currentSlices(modal)),
+                  mode: get(groupStatistics(modal)),
+                }
+              : null,
           hiddenLabels: get(fos.hiddenLabelsArray),
           modal,
           sampleId: modal ? get(fos.sidebarSampleId) : null,

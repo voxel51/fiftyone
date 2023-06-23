@@ -7,7 +7,7 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
-import { groupId, groupStatistics } from "./groups";
+import { currentSlices, groupId, groupStatistics } from "./groups";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -63,7 +63,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           !root && modal && !get(groupId) && !mixed
             ? [get(sidebarSampleId)]
             : [],
-        slices: null, // when mixed, slice is not needed
+        slices: mixed ? null : get(currentSlices(modal)),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
 
