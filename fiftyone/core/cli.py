@@ -2718,6 +2718,9 @@ class PluginsCommand(Command):
         _register_command(subparsers, "enable", PluginsEnableCommand)
         _register_command(subparsers, "disable", PluginsDisableCommand)
         _register_command(subparsers, "delete", PluginsDeleteCommand)
+        _register_command(
+            subparsers, "find-duplicates", PluginsDuplicatesCommand
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2772,6 +2775,31 @@ class PluginsListCommand(Command):
             enabled = "all"
 
         _print_plugins_list(enabled, args.names_only)
+
+
+class PluginsDuplicatesCommand(Command):
+    """List the directories containing plugins with the same `name` to resolve duplicate plugin errors.
+
+    Examples::
+
+        # List all locally available plugins
+        fiftyone plugins find-duplicates <plugin_name>
+
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("name", metavar="NAME", help="the plugin name")
+
+    @staticmethod
+    def execute(parser, args):
+        dupes = fop.find_duplicate_plugins(args.name)
+        if len(dupes) == 0:
+            print('No duplicates found for plugin "%s"' % args.name)
+        else:
+            print("Duplicate plugins found for plugin name '%s':" % args.name)
+            for dupe in dupes:
+                print("    %s" % dupe)
 
 
 def _print_plugins_list(enabled, names_only):

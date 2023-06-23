@@ -18,7 +18,7 @@ from .core import (
     list_enabled_plugins,
     get_plugin,
     find_plugin,
-    find_duplicates,
+    find_duplicate_plugins,
     download_plugin,
     create_plugin,
     load_plugin_requirements,

@@ -164,8 +164,10 @@ def find_plugin(name):
     return plugin.path
 
 
-def find_duplicates(name):
-    """Returns the paths to the duplicate plugins on local disk.
+def find_duplicate_plugins(name):
+    """Returns the paths to the plugins with the same name if duplicates found.
+    Otherwise, returns an empty list.
+
 
     Args:
         name: the plugin name
@@ -173,9 +175,12 @@ def find_duplicates(name):
     Returns:
         a list of paths to the root directories of plugins with the same name
     """
-    return [
+    dupes = [
         plugin.path for plugin in _get_plugin(name, check_for_duplicates=False)
     ]
+    if len(dupes) > 1:
+        return dupes
+    return []
 
 
 def download_plugin(

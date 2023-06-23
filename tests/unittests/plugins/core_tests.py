@@ -173,7 +173,7 @@ def test_find_duplicates(mocker, fiftyone_plugins_dir):
         _ = fop.find_plugin("test-plugin1-name")
 
     # verify that all paths with the same plugin name are returned
-    dup_paths = fop.find_duplicates("test-plugin1-name")
+    dup_paths = fop.find_duplicate_plugins("test-plugin1-name")
     assert len(dup_paths) == 2
     assert set(dup_paths) == {
         str(orig_plugin),
