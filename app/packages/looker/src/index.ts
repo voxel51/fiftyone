@@ -11,6 +11,7 @@ export type {
   FrameOptions,
   ImageConfig,
   ImageOptions,
+  LabelData,
   Point,
   Sample,
   VideoConfig,

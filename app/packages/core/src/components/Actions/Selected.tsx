@@ -158,15 +158,14 @@ const toIds = (labels: State.SelectedLabel[]) =>
 
 const useVisibleSampleLabels = (lookerRef: RefObject<AbstractLooker>) => {
   const isGroup = useRecoilValue(fos.isGroup);
-  const activeSample = useRecoilValue(fos.activeModalSample);
-  const labelValues = useRecoilValue(fos.labelValues({ sample: activeSample }));
+  const activeLabels = useRecoilValue(fos.activeLabels({}));
 
   const currentSampleLabels = lookerRef.current
     ? lookerRef.current.getCurrentSampleLabels()
     : [];
 
   if (isGroup) {
-    return labelValues;
+    return activeLabels;
   }
 
   return currentSampleLabels;
@@ -180,7 +179,6 @@ const useModalActions = (
 ) => {
   const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
-  const hasSorting = useRecoilValue(fos.similarityParameters);
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   const visibleSampleLabels = useVisibleSampleLabels(lookerRef);
   const isVideo =

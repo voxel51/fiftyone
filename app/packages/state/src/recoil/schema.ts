@@ -1,5 +1,4 @@
-import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
-
+import { LabelData } from "@fiftyone/looker";
 import {
   DETECTION,
   DETECTIONS,
@@ -8,7 +7,9 @@ import {
   Field,
   LABEL_LIST,
   LABEL_LISTS,
+  LABEL_LISTS_MAP,
   LABELS,
+  LABELS_MAP,
   LABELS_PATH,
   LIST_FIELD,
   meetsFieldType,
@@ -17,9 +18,9 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-
-import { Sample } from "@fiftyone/looker/src/state";
+import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { activeModalSample } from "./groups";
 import { State } from "./types";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
@@ -391,37 +392,56 @@ export const labelPaths = selectorFamily<
     },
 });
 
-const convertToLabelValue = (sampleId, path) => (raw) => {
-  const labelId = raw._id;
-  const field = path.split(".").shift();
-  return { labelId, field, sampleId };
-};
+export const activeLabels = selectorFamily<LabelData[], { expanded?: boolean }>(
+  {
+    key: "activeLabels",
+    get:
+      ({ expanded = true }) =>
+      ({ get }) => {
+        const sample = get(activeModalSample);
+        const paths = get(labelPaths({ expanded }));
+        const pathsSet = new Set(paths);
 
-export const labelValues = selectorFamily<
-  string[],
-  { sample: Sample; expanded?: boolean }
->({
-  key: "labelValues",
-  get:
-    ({ sample, expanded = true }) =>
-    ({ get }) => {
-      const paths = get(labelPaths({ expanded }));
-      let results = [];
+        const results = [];
 
-      for (const path of paths) {
-        const convert = convertToLabelValue(sample._id, path);
-        const value = get(sample, path, null);
-        if (value !== null) {
-          if (Array.isArray(value)) {
-            results = [...results, ...value.map(convert)];
-          } else {
-            results.push(convert(value));
+        const add = (label, path) => {
+          if (!(label._cls in LABELS_MAP) || label._cls in LABEL_LISTS_MAP)
+            return;
+
+          results.push({
+            labelId: label._id,
+            sampleId: sample._id,
+            field: path,
+          });
+        };
+
+        const accumulate = (data: object, prefix = "") => {
+          for (const field in data) {
+            const label = data[field];
+            if (!label) continue;
+            const currentPath = `${prefix}${field}`;
+            if (paths.every((p) => !p.startsWith(currentPath))) continue;
+
+            const processed = Array.isArray(label) ? label : [label];
+            processed.forEach((label) => {
+              if (label._cls) {
+                accumulate(label, `${currentPath}.`);
+              }
+            });
+
+            if (!pathsSet.has(currentPath)) continue;
+
+            if (Array.isArray(label)) {
+              label.forEach((l) => add(l, currentPath));
+            } else add(label, currentPath);
           }
-        }
-      }
-      return results;
-    },
-});
+        };
+
+        accumulate(sample);
+        return results;
+      },
+  }
+);
 
 export const expandPath = selectorFamily<string, string>({
   key: "expandPath",
