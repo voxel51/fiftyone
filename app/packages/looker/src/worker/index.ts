@@ -6,6 +6,7 @@ import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
   DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT,
   getFetchFunction,
   HEATMAP,
   LABEL_LIST,
@@ -213,11 +214,20 @@ const processLabels = async (
       DeserializerFactory[label._cls](label, buffers);
     }
 
+    if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT) {
+      processLabels(
+        label,
+        coloring,
+        `${prefix}${field}.`,
+        sources,
+        customizeColorSetting
+      );
+    }
+
     if (ALL_VALID_LABELS.has(label._cls)) {
       if (label._cls in LABEL_LIST) {
-        const list = label[LABEL_LIST[label._cls]];
-        if (Array.isArray(list)) {
-          label[LABEL_LIST[label._cls]] = list.map(mapId);
+        if (Array.isArray(label[LABEL_LIST[label._cls]])) {
+          label[LABEL_LIST[label._cls]].forEach(mapId);
         }
       } else {
         mapId(label);

@@ -470,7 +470,7 @@ export const Looker3d = () => {
 
   return (
     <ErrorBoundary>
-      <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
+      <Container onMouseOver={update} onMouseMove={update}>
         <Canvas onClick={() => setCurrentAction(null)} data-cy="looker3d">
           <Screenshot />
           <Environment

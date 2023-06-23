@@ -471,14 +471,14 @@ export class Form extends View {
 }
 
 /**
- * Operator class for describing a readonly {@link View} for an operator type.
+ * Operator class for describing a read-only {@link View} for an operator type.
  */
-export class ReadonlyView extends View {
+export class ReadOnlyView extends View {
   readOnly: boolean;
   constructor(options: ViewProps) {
     super(options);
     this.readOnly = true;
-    this.name = "ReadonlyView";
+    this.name = "ReadOnlyView";
   }
 }
 
@@ -975,7 +975,7 @@ const VIEWS = {
   View,
   InferredView,
   Form,
-  ReadonlyView,
+  ReadOnlyView,
   Choice,
   Choices,
   RadioGroup,

@@ -52,7 +52,7 @@ jobs:
           token: ${{ secrets.TEAMS_GITHUB_PAT }}
           ref: main
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Install pip dependencies

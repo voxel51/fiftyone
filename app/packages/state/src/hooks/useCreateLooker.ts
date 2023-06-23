@@ -1,43 +1,43 @@
 import {
+  AbstractLooker,
   FrameLooker,
   ImageLooker,
   PcdLooker,
+  Sample,
   VideoLooker,
 } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
-  getMimeType,
   LIST_FIELD,
+  getMimeType,
 } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
-import { groupSample, selectedMediaField } from "../recoil";
-
-import { SampleData, selectedSamples } from "../recoil/atoms";
+import { ModalSample, selectedMediaField, sidebarSampleId } from "../recoil";
+import { selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName, mediaTypeSelector } from "../recoil/selectors";
+import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 
-export default <T extends FrameLooker | ImageLooker | VideoLooker>(
+export default <T extends AbstractLooker>(
   isModal: boolean,
   thumbnail: boolean,
-  options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
-  highlight = false
+  options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
+  highlight?: (sample: Sample) => boolean
 ) => {
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal ? useRecoilValue(groupSample(null))._id : null;
+  const activeId = isModal ? useRecoilValue(sidebarSampleId) : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
-  const mediaType = useRecoilValue(mediaTypeSelector);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -47,7 +47,12 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   );
 
   const create = useCallback(
-    ({ frameNumber, frameRate, sample, urls: rawUrls }: SampleData): T => {
+    ({
+      frameNumber,
+      frameRate,
+      sample,
+      urls: rawUrls,
+    }: ModalSample["sample"]): T => {
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
@@ -56,7 +61,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
       const mimeType = getMimeType(sample);
 
-      let urls = {};
+      let urls: { [key: string]: string } = {};
 
       // sometimes the urls are an array of objects, sometimes they are just an object
       // this is a workaround to make sure we can handle both cases
@@ -102,7 +107,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         }
       }
 
-      const config: ReturnType<T["getInitialState"]>["config"] = {
+      const config: ConstructorParameters<T>[1] = {
         fieldSchema: {
           ...fieldSchema,
           frames: {
@@ -119,7 +124,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         frameRate,
         sampleId: sample._id,
         src: getSampleSrc(sampleMediaFilePath),
-        support: isClip ? sample.support : undefined,
+        support: isClip ? sample["support"] : undefined,
         thumbnail,
         dataset,
         view,
@@ -128,8 +133,8 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       const looker = new constructor(sample, config, {
         ...options,
         selected: selected.has(sample._id),
-        highlight: highlight && sample._id === activeId,
-      }) as T;
+        highlight: highlight && highlight(sample),
+      });
 
       looker.addEventListener("error", (event) => {
         handleError(event.error);
@@ -154,7 +159,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       view,
     ]
   );
-  const createLookerRef = useRef<(data: SampleData) => T>(create);
+  const createLookerRef = useRef(create);
 
   createLookerRef.current = create;
   return createLookerRef;
