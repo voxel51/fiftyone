@@ -424,7 +424,6 @@ class Query(fosa.AggregateQuery):
         dataset: str,
         view: BSONArray,
         filter: SampleFilter,
-        index: t.Optional[int] = None,
         filters: t.Optional[JSON] = None,
     ) -> t.Optional[SampleItem]:
         samples = await paginate_samples(

@@ -354,7 +354,7 @@ class _Document(object):
                     _merge_lists(curr_value, value, overwrite=overwrite)
                     continue
 
-                if field_type in fol._LABEL_LIST_FIELDS:
+                if issubclass(field_type, fol._HasLabelList):
                     _merge_labels(curr_value, value, overwrite=overwrite)
                     continue
 

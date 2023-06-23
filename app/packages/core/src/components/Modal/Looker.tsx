@@ -59,7 +59,6 @@ const useClearSelectedLabels = () => {
 
 interface LookerProps {
   sample?: fos.ModalSample;
-  urls?: { field: string; url: string }[];
   lookerRef?: MutableRefObject<any>;
   lookerRefCallback?: (looker: AbstractLooker) => void;
   onClose?: EventCallback;
@@ -68,7 +67,6 @@ interface LookerProps {
 
 const Looker = ({
   sample: propsSampleData,
-  urls,
   lookerRef,
   lookerRefCallback,
   onClose,
@@ -86,13 +84,12 @@ const Looker = ({
     if (propsSampleData) {
       return {
         ...modalSampleData,
-        urls,
-        sample: propsSampleData,
+        ...propsSampleData,
       };
     }
 
     return modalSampleData;
-  }, [propsSampleData, modalSampleData, urls]);
+  }, [propsSampleData, modalSampleData]);
 
   const { sample } = sampleData;
 

@@ -5845,7 +5845,7 @@ class SelectFields(ViewStage):
         if use_db_fields:
             return sample_collection._handle_db_fields(selected_paths)
 
-        return selected_paths
+        return {path for path in selected_paths if path is not None}
 
     def _get_selected_frame_fields(
         self, sample_collection, use_db_fields=False
@@ -5883,7 +5883,7 @@ class SelectFields(ViewStage):
                 selected_paths, frames=True
             )
 
-        return selected_paths
+        return {path for path in selected_paths if path is not None}
 
     def to_mongo(self, sample_collection):
         selected_paths = self._get_selected_fields(

@@ -12,10 +12,7 @@ from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
-
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fost
@@ -72,42 +69,15 @@ class Tagging(HTTPEndpoint):
         return {"count": count, "tags": tags, "items": items}
 
 
-def build_label_tag_aggregations(view: foc.SampleCollection):
-    """Builds required aggregations for the specialty "tag" App filters
-
-    Args:
-        view: a :class:`fiftyone.core.collections.SampleCollection`
-
-    Returns:
-        a `tuple` (count aggregations, tag count aggregations)
-    """
+def build_label_tag_aggregations(sample_collection: foc.SampleCollection):
     counts = []
     tags = []
-    for path, field in view.get_field_schema(flat=True).items():
-        _add_to_label_tags_aggregations(path, field, counts, tags)
+    for path, field in foc._iter_label_fields(sample_collection):
+        label_type = field.document_type
+        if issubclass(label_type, fol._HasLabelList):
+            path += "." + label_type._LABEL_LIST_FIELD
 
-    frame_schema = view.get_frame_field_schema(flat=True)
-    if frame_schema:
-        for field_name, field in frame_schema.items():
-            _add_to_label_tags_aggregations(
-                "frames." + field_name, field, counts, tags
-            )
+        counts.append(foa.Count(path))
+        tags.append(foa.CountValues(path + ".tags"))
 
     return counts, tags
-
-
-def _add_to_label_tags_aggregations(path: str, field: fof.Field, counts, tags):
-    if isinstance(field, fof.ListField):
-        field = field.field
-
-    if not isinstance(field, fof.EmbeddedDocumentField):
-        return
-
-    if not issubclass(field.document_type, fol.Label):
-        return
-
-    if issubclass(field.document_type, fol._HasLabelList):
-        return
-
-    counts.append(foa.Count(path))
-    tags.append(foa.CountValues("%s.tags" % path))

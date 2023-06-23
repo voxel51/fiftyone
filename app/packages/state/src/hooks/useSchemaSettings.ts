@@ -3,13 +3,13 @@ import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
   DETECTION_FILED,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
+  JUST_FIELD,
   LIST_FIELD,
   Schema,
   UNSUPPORTED_FILTER_TYPES,
 } from "@fiftyone/utilities";
-import { JUST_FIELD } from "@fiftyone/utilities";
 import { isEmpty, keyBy } from "lodash";
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
@@ -232,7 +232,7 @@ export const excludedPathsState = atomFamily({
 
               // embedded document could break an exclude_field() call causing mongo query issue.
               const hasDynamicEmbeddedDocument = [
-                DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+                DYNAMIC_EMBEDDED_DOCUMENT_PATH,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
               const isTopLevelPath = isVideo

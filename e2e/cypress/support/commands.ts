@@ -52,6 +52,7 @@ Cypress.Commands.add(
 Cypress.Commands.add("clearViewStages", () => {
   const clear = () => {
     // chaining with root in case modal is open and ctx is within modal
+    cy.wait(1000);
     cy.root().find("[data-cy=btn-clear-view-bar]").click();
     // unfortunately, can take long.
     // todo: emit an event and make it more deterministic.

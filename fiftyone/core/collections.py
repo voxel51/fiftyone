@@ -1077,7 +1077,7 @@ class SampleCollection(object):
         if self.media_type == fom.GROUP:
             field_names += (self.group_field,)
 
-        return field_names
+        return (f for f in field_names if f is not None)
 
     def _get_default_frame_fields(
         self,
@@ -1226,11 +1226,12 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -2118,7 +2119,7 @@ class SampleCollection(object):
         if (
             isinstance(self, fov.DatasetView)
             and isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
+            and issubclass(field.document_type, fol._HasLabelList)
         ):
             label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
@@ -9909,7 +9910,7 @@ class SampleCollection(object):
     def _get_label_field_root(self, field_name):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             root = field_name + "." + label_type._LABEL_LIST_FIELD
             is_list_field = True
         else:
@@ -9921,7 +9922,7 @@ class SampleCollection(object):
     def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
         if subfield:
@@ -10046,21 +10047,16 @@ def _iter_label_fields(sample_collection):
         yield prefix + path, field
 
 
-def _iter_schema_label_fields(schema, recursive=True):
+def _iter_schema_label_fields(schema):
     for path, field in schema.items():
-        if isinstance(field, fof.ListField):
-            field = field.field
-
         if isinstance(field, fof.EmbeddedDocumentField):
             if issubclass(field.document_type, fol.Label):
-                # Do not recurse into Label fields
                 yield path, field
             else:
-                # Only recurse one level deep into embedded documents
-                for _path, _field in _iter_schema_label_fields(
-                    field.get_field_schema(), recursive=False
-                ):
-                    yield path + "." + _path, _field
+                for _path, _field in field.get_field_schema().items():
+                    if isinstance(_field, fof.EmbeddedDocumentField):
+                        if issubclass(_field.document_type, fol.Label):
+                            yield path + "." + _path, _field
 
 
 def _serialize_value(field_name, field, value, validate=True):

@@ -1,19 +1,31 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { currentModalSample } from "@fiftyone/state";
 import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
+import { get as getValue } from "lodash";
 import React, {
   useCallback,
   useDeferredValue,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import { PreloadedQuery, usePreloadedQuery, useQueryLoader } from "react-relay";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import {
+  PreloadedQuery,
+  loadQuery,
+  usePreloadedQuery,
+  useRelayEnvironment,
+} from "react-relay";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
-import { useGroupContext } from "../../GroupContextProvider";
-import { GroupSuspense } from "../../GroupSuspense";
 import style from "./GroupElementsLinkBar.module.css";
 import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
 
@@ -30,226 +42,219 @@ const BarContainer = styled.div`
 `;
 
 export const GroupElementsLinkBar = () => {
-  const { groupByFieldValue } = useGroupContext();
-
-  const [queryRef, loadQuery] =
-    useQueryLoader<foq.paginateDynamicGroupSamplesQuery>(
-      foq.paginateDynamicGroupSamples
-    );
-
-  const loadDynamicGroupSamples = useRecoilCallback(
-    ({ snapshot }) =>
-      async (cursor?: number) => {
-        const variables = {
-          dataset: await snapshot.getPromise(fos.datasetName),
-          filter: {},
-          view: await snapshot.getPromise(
-            fos.dynamicGroupViewQuery(groupByFieldValue!)
-          ),
+  const dataset = useRecoilValue(fos.datasetName);
+  const view = useRecoilValue(fos.dynamicGroupViewQuery);
+  const cursor = useRecoilValue(fos.nestedGroupIndex);
+  const environment = useRelayEnvironment();
+  const loadDynamicGroupSamples = useCallback(
+    (cursor?: number) => {
+      return loadQuery<foq.paginateDynamicGroupSamplesQuery>(
+        environment,
+        foq.paginateDynamicGroupSamples,
+        {
           cursor: cursor ? String(cursor) : null,
-        };
-
-        loadQuery(variables);
-      },
-    [loadQuery, groupByFieldValue]
+          dataset,
+          filter: {},
+          view,
+        }
+      );
+    },
+    [dataset, loadQuery, view]
   );
 
-  useEffect(() => {
-    if (!queryRef) {
-      loadDynamicGroupSamples();
-    }
-  }, [queryRef, loadDynamicGroupSamples]);
+  const queryRef = useMemo(
+    () => loadDynamicGroupSamples(cursor),
+    [loadDynamicGroupSamples, cursor]
+  );
 
-  if (queryRef) {
-    return (
-      <GroupSuspense>
-        <GroupElementsLinkBarImpl
-          loadDynamicGroupSamples={loadDynamicGroupSamples}
-          queryRef={queryRef}
-        />
-      </GroupSuspense>
-    );
-  }
-
-  return null;
+  return <GroupElementsLinkBarImpl queryRef={queryRef} />;
 };
 
-const GroupElementsLinkBarImpl: React.FC<{
-  queryRef: PreloadedQuery<any>;
-  loadDynamicGroupSamples: (cursor?: number) => Promise<void>;
-}> = React.memo(({ queryRef, loadDynamicGroupSamples }) => {
-  const { groupBy, orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
-  const { groupByFieldValue } = useGroupContext();
+const GroupElementsLinkBarImpl = React.memo(
+  ({
+    queryRef,
+  }: {
+    queryRef: PreloadedQuery<foq.paginateDynamicGroupSamplesQuery>;
+  }) => {
+    const setCursor = useSetRecoilState(fos.nestedGroupIndex);
+    const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
-  const atomFamilyKey = `${groupBy}-${orderBy}-${groupByFieldValue!}`;
+    const data = usePreloadedQuery(foq.paginateDynamicGroupSamples, queryRef);
 
-  const [dynamicGroupSamplesStoreMap, setDynamicGroupSamplesStoreMap] =
-    useRecoilState(fos.dynamicGroupSamplesStoreMap(atomFamilyKey));
+    const [
+      dynamicGroupCurrentElementIndex,
+      setDynamicGroupCurrentElementIndex,
+    ] = useRecoilState(fos.dynamicGroupCurrentElementIndex);
+    const deferred = useDeferredValue(dynamicGroupCurrentElementIndex);
 
-  const data = usePreloadedQuery<foq.paginateDynamicGroupSamplesQuery>(
-    foq.paginateDynamicGroupSamples,
-    queryRef
-  );
+    const dynamicGroupParameters = useRecoilValue(
+      fos.dynamicGroupParameters
+    ) as fos.State.DynamicGroupParameters;
+    const groupField = useRecoilValue(fos.groupField);
+    const setSample = useRecoilTransaction_UNSTABLE(
+      ({ set, get }) =>
+        (sample: fos.ModalSample) => {
+          const current = get(fos.currentModalSample);
+          const currentGroup = get(fos.groupByFieldValue);
+          const nextGroup = String(
+            getValue(sample.sample, dynamicGroupParameters.groupBy)
+          );
 
-  const [dynamicGroupCurrentElementIndex, setDynamicGroupCurrentElementIndex] =
-    useRecoilState(fos.dynamicGroupCurrentElementIndex(atomFamilyKey));
-
-  const deferredDynamicGroupCurrentElementIndex = useDeferredValue(
-    dynamicGroupCurrentElementIndex
-  );
-
-  const setSample = fos.useSetExpandedSample(false);
-
-  useEffect(() => {
-    if (!data?.samples?.edges?.length) {
-      return;
-    }
-
-    setDynamicGroupSamplesStoreMap((prev) => {
-      const newMap = new Map(prev);
-
-      for (const { cursor, node } of data.samples.edges) {
-        newMap.set(Number(cursor), node as unknown as fos.SampleData);
-      }
-
-      return newMap;
-    });
-  }, [data, setDynamicGroupSamplesStoreMap]);
-
-  useEffect(() => {
-    if (dynamicGroupSamplesStoreMap.size === 0) {
-      return;
-    }
-
-    const nextSample = dynamicGroupSamplesStoreMap.get(
-      deferredDynamicGroupCurrentElementIndex - 1
+          if (
+            current &&
+            current.id !== sample.id &&
+            currentGroup === nextGroup
+          ) {
+            set(currentModalSample, { index: current.index, id: sample.id });
+            set(fos.groupId, getValue(sample.sample, groupField)._id as string);
+          }
+        },
+      [dynamicGroupParameters, groupField]
     );
 
-    if (nextSample) {
-      setSample(nextSample);
-    } else {
-      // load a couple of previous samples for extra padding so that previous is just as fast
-      loadDynamicGroupSamples(deferredDynamicGroupCurrentElementIndex - 5);
-    }
-  }, [
-    dynamicGroupSamplesStoreMap,
-    loadDynamicGroupSamples,
-    deferredDynamicGroupCurrentElementIndex,
-    setSample,
-  ]);
+    const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
+    const mapRef = useMemo(
+      () => new Map<number, fos.ModalSample>(),
+      [groupByFieldValue]
+    );
 
-  const elementsCount = useRecoilValue(
-    fos.dynamicGroupsElementCount({ groupByValue: groupByFieldValue! })
-  );
+    const map = useMemo(() => {
+      if (data?.samples?.edges?.length) {
+        for (const { cursor, node } of data.samples.edges) {
+          mapRef.set(Number(cursor), node as fos.ModalSample);
+        }
+      }
+      return new Map(mapRef);
+    }, [data, mapRef]);
 
-  const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
-  const textBoxRef = useRef<HTMLInputElement>(null);
-
-  const onPageChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>, newElementIndex: number) => {
-      if (newElementIndex === deferredDynamicGroupCurrentElementIndex) {
+    useEffect(() => {
+      if (map.size === 0) {
         return;
       }
+      const nextSample = map.get(deferred - 1);
 
-      setIsTextBoxEmpty(false);
-
-      if (newElementIndex) {
-        setDynamicGroupCurrentElementIndex(newElementIndex);
+      if (nextSample) {
+        setSample(nextSample);
       } else {
-        const newValue = e.target.value;
+        // load a couple of previous samples for extra padding so that previous is just as fast
+        setCursor(deferred - 5);
+      }
+    }, [map, setCursor, deferred, setSample]);
 
-        if (newValue === "") {
-          setIsTextBoxEmpty(true);
+    const elementsCount = useRecoilValue(fos.dynamicGroupsElementCount);
+
+    const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
+    const textBoxRef = useRef<HTMLInputElement>(null);
+
+    const onPageChange = useCallback(
+      async (
+        e: React.ChangeEvent<HTMLInputElement>,
+        newElementIndex: number
+      ) => {
+        if (newElementIndex === deferred) {
           return;
         }
 
-        const newValueNum = Number(newValue);
+        setIsTextBoxEmpty(false);
 
-        if (isNaN(newValueNum)) {
-          setIsTextBoxEmpty(true);
-          return;
-        }
-
-        if (newValueNum < 1) {
-          newElementIndex = 1;
-        } else if (newValueNum > elementsCount) {
-          newElementIndex = elementsCount;
+        if (newElementIndex) {
+          setDynamicGroupCurrentElementIndex(newElementIndex);
         } else {
-          newElementIndex = newValueNum;
+          const newValue = e.target.value;
+
+          if (newValue === "") {
+            setIsTextBoxEmpty(true);
+            return;
+          }
+
+          const newValueNum = Number(newValue);
+
+          if (isNaN(newValueNum)) {
+            setIsTextBoxEmpty(true);
+            return;
+          }
+
+          if (newValueNum < 1) {
+            newElementIndex = 1;
+          } else if (newValueNum > elementsCount) {
+            newElementIndex = elementsCount;
+          } else {
+            newElementIndex = newValueNum;
+          }
+
+          if (newElementIndex === deferred) {
+            setIsTextBoxEmpty(false);
+          }
+          setDynamicGroupCurrentElementIndex(newElementIndex);
+
+          setTimeout(() => {
+            textBoxRef.current?.focus();
+          }, 100);
         }
+      },
+      [setDynamicGroupCurrentElementIndex, deferred, elementsCount]
+    );
 
-        if (newElementIndex === deferredDynamicGroupCurrentElementIndex) {
-          setIsTextBoxEmpty(false);
-        }
-        setDynamicGroupCurrentElementIndex(newElementIndex);
-
-        setTimeout(() => {
-          textBoxRef.current?.focus();
-        }, 100);
-      }
-    },
-    [
-      setDynamicGroupCurrentElementIndex,
-      deferredDynamicGroupCurrentElementIndex,
-      elementsCount,
-    ]
-  );
-
-  const keyNavigationHandler = useRecoilCallback(
-    () => (e: KeyboardEvent) => {
-      if (e.key === "<") {
-        e.preventDefault();
-        setDynamicGroupCurrentElementIndex((prev) =>
-          prev <= 1 ? prev : prev - 1
-        );
-      } else if (e.key === ">") {
-        e.preventDefault();
-        setDynamicGroupCurrentElementIndex((prev) =>
-          prev >= elementsCount ? prev : prev + 1
-        );
-      }
-    },
-    [elementsCount, setDynamicGroupCurrentElementIndex]
-  );
-
-  fos.useEventHandler(document, "keydown", keyNavigationHandler);
-
-  return (
-    <BarContainer data-cy="dynamic-group-pagination-bar">
-      <Pagination
-        count={elementsCount}
-        siblingCount={1}
-        boundaryCount={2}
-        page={dynamicGroupCurrentElementIndex}
-        onChange={onPageChange as PaginationProps["onChange"]}
-        shape="rounded"
-        color="primary"
-        classes={{
-          root: style.noRipple,
-        }}
-        renderItem={(item) => {
-          return (
-            <PaginationItem
-              component={PaginationComponentWithTooltip}
-              atomFamilyKey={atomFamilyKey}
-              // hack because page is not being forwarded as-is for some reason
-              currentPage={item.page}
-              isButton={item.type !== "page"}
-              {...item}
-            />
+    const keyNavigationHandler = useRecoilCallback(
+      () => (e: KeyboardEvent) => {
+        if (e.key === "<") {
+          e.preventDefault();
+          setDynamicGroupCurrentElementIndex((prev) =>
+            prev <= 1 ? prev : prev - 1
           );
-        }}
-      />
+        } else if (e.key === ">") {
+          e.preventDefault();
+          setDynamicGroupCurrentElementIndex((prev) =>
+            prev >= elementsCount ? prev : prev + 1
+          );
+        }
+      },
+      [elementsCount, setDynamicGroupCurrentElementIndex]
+    );
 
-      {elementsCount >= 10 && (
-        <input
-          data-cy="dynamic-group-pagination-bar-input"
-          ref={textBoxRef}
-          className={style.currentPageInput}
-          value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
-          onChange={onPageChange}
+    fos.useEventHandler(document, "keydown", keyNavigationHandler);
+
+    return (
+      <BarContainer data-cy="dynamic-group-pagination-bar">
+        <Pagination
+          count={elementsCount}
+          siblingCount={1}
+          boundaryCount={2}
+          page={deferred}
+          onChange={onPageChange as PaginationProps["onChange"]}
+          shape="rounded"
+          color="primary"
+          classes={{
+            root: style.noRipple,
+          }}
+          renderItem={(item) => {
+            return (
+              <PaginationItem
+                component={PaginationComponentWithTooltip}
+                orderByValue={
+                  item.page >= 0 && orderBy
+                    ? map.get(item.page - 1)?.sample[orderBy]
+                    : undefined
+                }
+                // hack because page is not being forwarded as-is for some reason
+                currentPage={item.page}
+                isButton={item.type !== "page"}
+                {...item}
+              />
+            );
+          }}
         />
-      )}
-    </BarContainer>
-  );
-});
+
+        {elementsCount >= 10 && (
+          <input
+            data-cy="dynamic-group-pagination-bar-input"
+            ref={textBoxRef}
+            className={style.currentPageInput}
+            value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
+            onChange={onPageChange}
+          />
+        )}
+      </BarContainer>
+    );
+  }
+);

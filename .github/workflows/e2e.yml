@@ -19,7 +19,7 @@ jobs:
           submodules: true
 
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         id: pip-cache
         with:
           python-version: 3.8
@@ -72,13 +72,6 @@ jobs:
           yarn install
           yarn start
         working-directory: ./e2e
-
-      - name: Upload videos
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: videos
-          path: e2e/cypress/videos
 
       - name: Upload snapshots
         if: always()

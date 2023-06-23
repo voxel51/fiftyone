@@ -30,7 +30,7 @@ export interface Regression {
   value?: number | NONFINITE;
 }
 
-type ClassificationLabel = Classification & Regression;
+export type ClassificationLabel = Classification & Regression;
 
 export type Labels<T> = [string, T[]][];
 

@@ -264,7 +264,7 @@ const FilterableEntry = ({
   path: string;
   onFocus?: () => void;
   onBlur?: () => void;
-  trigger: (
+  trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
     cb: () => void
