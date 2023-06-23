@@ -24,6 +24,8 @@ import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
@@ -173,9 +175,11 @@ def cleanup_multiple_config_docs():
 def establish_db_conn(config):
     """Establishes the database connection.
 
-    If ``fiftyone.config.database_uri`` is defined, then we connect to that
-    URI. Otherwise, a :class:`fiftyone.core.service.DatabaseService` is
-    created.
+    The order of precedence is:
+
+    1.  If ``fiftyone.config.api_uri`` is defined, connect to that
+    2.  If ``fiftyone.config.database_uri`` is defined, connect to that
+    3.  Otherwise, a :class:`fiftyone.core.service.DatabaseService` is created
 
     Args:
         config: a :class:`fiftyone.core.config.FiftyOneConfig`
@@ -196,12 +200,12 @@ def establish_db_conn(config):
     global _database_name
 
     _connection_kwargs["appname"] = foc.DATABASE_APPNAME
-    if config.database_uri is None and config.api_uri is not None:
+    if config.api_uri is not None:
         if not config.api_key:
             raise ConnectionError(
                 "No API key found. Refer to "
-                "https://docs.voxel51.com/teams/installation.html to see how "
-                "to provide one"
+                "https://docs.voxel51.com/teams/api_connection.html to see "
+                "how to provide one"
             )
 
         _connection_kwargs = {
@@ -428,13 +432,12 @@ def get_db_client():
 
 
 def has_db():
-    """Returns a whether the database exists.
+    """Determines whether the database exists.
 
     Returns:
-        a ``bool``
+        True/False
     """
     _connect()
-
     return _database_name in _client.list_database_names()
 
 

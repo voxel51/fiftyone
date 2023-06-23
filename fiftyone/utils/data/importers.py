@@ -963,7 +963,7 @@ class DatasetImporter(object):
             remote_paths = list(keys_map.keys())
         else:
             keys_map = None
-            remote_paths = [p for p in filepaths is not fos.is_local(p)]
+            remote_paths = [p for p in filepaths if not fos.is_local(p)]
 
         if not remote_paths:
             return {}
