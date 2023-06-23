@@ -228,7 +228,6 @@ const GroupElementsLinkBarImpl = React.memo(
             root: style.noRipple,
           }}
           renderItem={(item) => {
-            console.log(item);
             return (
               <PaginationItem
                 component={PaginationComponentWithTooltip}

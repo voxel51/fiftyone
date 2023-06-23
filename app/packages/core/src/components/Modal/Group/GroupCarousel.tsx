@@ -1,14 +1,14 @@
 import { useTheme } from "@fiftyone/components";
 import Flashlight, { Response } from "@fiftyone/flashlight";
-import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
+import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   groupPaginationFragment,
-  modalSampleId,
   selectedSamples,
   useBrowserStorage,
 } from "@fiftyone/state";
+import { get } from "lodash";
 import { Resizable } from "re-resizable";
 import React, {
   MutableRefObject,
@@ -88,6 +88,13 @@ const Column: React.FC = () => {
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const groupField = useRecoilValue(fos.groupField);
+  const currentSlice = useRecoilValue(fos.groupSlice(true));
+  const highlight = useCallback(
+    (sample: Sample) => {
+      return get(sample, groupField).name === currentSlice;
+    },
+    [currentSlice, groupField]
+  );
   const createLooker = fos.useCreateLooker(
     true,
     true,
@@ -97,7 +104,7 @@ const Column: React.FC = () => {
         return sample[groupField]?.name;
       },
     },
-    true
+    highlight
   );
 
   const hasNextRef = useRef(true);
@@ -199,7 +206,7 @@ const Column: React.FC = () => {
 
     return () => flashlight.detach();
   }, [flashlight, id]);
-  const currentId = useRecoilValue(modalSampleId);
+
   const selected = useRecoilValue(selectedSamples);
 
   const updateItem = useCallback(
@@ -207,10 +214,10 @@ const Column: React.FC = () => {
       store.lookers.get(id)?.updateOptions({
         ...opts,
         selected: selected.has(id),
-        highlight: currentId === id,
+        highlight: highlight(store.samples.get(id)!.sample as Sample),
       });
     },
-    [currentId, opts, selected]
+    [highlight, opts, selected, store]
   );
 
   useLayoutEffect(() => {

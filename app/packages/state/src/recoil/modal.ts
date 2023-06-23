@@ -31,7 +31,7 @@ export type ModalSampleData = Exclude<
 
 export type ModalSample = {
   readonly sample: Sample;
-} & ModalSampleData;
+} & Omit<ModalSampleData, "sample">;
 
 type ModalSampleResponse = ResponseFrom<mainSampleQuery> & {
   sample: ModalSample;

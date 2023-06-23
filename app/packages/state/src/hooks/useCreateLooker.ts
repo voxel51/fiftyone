@@ -3,6 +3,7 @@ import {
   FrameLooker,
   ImageLooker,
   PcdLooker,
+  Sample,
   VideoLooker,
 } from "@fiftyone/looker";
 import {
@@ -25,7 +26,7 @@ export default <T extends AbstractLooker>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
-  highlight = false
+  highlight?: (sample: Sample) => boolean
 ) => {
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -60,7 +61,7 @@ export default <T extends AbstractLooker>(
 
       const mimeType = getMimeType(sample);
 
-      let urls = {};
+      let urls: { [key: string]: string } = {};
 
       // sometimes the urls are an array of objects, sometimes they are just an object
       // this is a workaround to make sure we can handle both cases
@@ -123,7 +124,7 @@ export default <T extends AbstractLooker>(
         frameRate,
         sampleId: sample._id,
         src: getSampleSrc(sampleMediaFilePath),
-        support: isClip ? sample.support : undefined,
+        support: isClip ? sample["support"] : undefined,
         thumbnail,
         dataset,
         view,
@@ -132,8 +133,8 @@ export default <T extends AbstractLooker>(
       const looker = new constructor(sample, config, {
         ...options,
         selected: selected.has(sample._id),
-        highlight: highlight && sample._id === activeId,
-      }) as T;
+        highlight: highlight && highlight(sample),
+      });
 
       looker.addEventListener("error", (event) => {
         handleError(event.error);
@@ -158,7 +159,7 @@ export default <T extends AbstractLooker>(
       view,
     ]
   );
-  const createLookerRef = useRef<(data: SampleData) => T>(create);
+  const createLookerRef = useRef(create);
 
   createLookerRef.current = create;
   return createLookerRef;

@@ -21,7 +21,6 @@ export const PaginationComponentWithTooltip = React.memo(
     ) => {
       const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
-      console.log(isButton);
       const tooltipText = useMemo(() => {
         if (!orderBy || isButton) {
           return null;
@@ -33,7 +32,6 @@ export const PaginationComponentWithTooltip = React.memo(
       props["data-cy"] = `dynamic-group-pagination-item-${
         isButton ? "btn" : currentPage
       }`;
-      console.log(tooltipText);
 
       if (tooltipText) {
         return (

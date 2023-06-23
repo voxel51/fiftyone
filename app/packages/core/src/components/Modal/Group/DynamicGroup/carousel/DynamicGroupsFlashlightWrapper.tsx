@@ -1,8 +1,8 @@
 import Flashlight, { Response } from "@fiftyone/flashlight";
-import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
+import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { modalSampleId, selectedSamples } from "@fiftyone/state";
+import { selectedSamples } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useCallback,
@@ -100,13 +100,21 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
 
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
+  const modalSampleId = useRecoilValue(fos.modalSampleId);
+  const highlight = useCallback(
+    (sample: Sample) => {
+      return sample._id === modalSampleId;
+    },
+    [modalSampleId]
+  );
+
   const createLooker = fos.useCreateLooker(
     true,
     true,
     {
       ...opts,
     },
-    true
+    highlight
   );
 
   const hasNextRef = useRef(true);
@@ -274,7 +282,6 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     return () => flashlight.detach();
   }, [flashlight, id]);
 
-  const currentId = useRecoilValue(modalSampleId);
   const selected = useRecoilValue(selectedSamples);
 
   const updateItem = useCallback(
@@ -282,10 +289,10 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
       store.lookers.get(id)?.updateOptions({
         ...opts,
         selected: selected.has(id),
-        highlight: currentId === id,
+        highlight: highlight(store.samples.get(id)!.sample as Sample),
       });
     },
-    [currentId, opts, selected]
+    [highlight, opts, selected, store]
   );
 
   useLayoutEffect(() => {
