@@ -72,13 +72,6 @@ jobs:
           yarn start
         working-directory: ./e2e
 
-      - name: Upload videos
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: videos
-          path: e2e/cypress/videos
-
       - name: Upload snapshots
         if: always()
         uses: actions/upload-artifact@v2
