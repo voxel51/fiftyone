@@ -432,13 +432,12 @@ def get_db_client():
 
 
 def has_db():
-    """Returns a whether the database exists.
+    """Determines whether the database exists.
 
     Returns:
-        a ``bool``
+        True/False
     """
     _connect()
-
     return _database_name in _client.list_database_names()
 
 
