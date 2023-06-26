@@ -162,20 +162,6 @@ class Operator(object):
         """
         raise NotImplementedError("subclass must implement execute()")
 
-    def delegate(self, ctx):
-        """delegates the operator execution.
-
-        Args:
-            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
-        """
-        from .delegated import DelegatedOperation
-
-        DelegatedOperation().queue_operation(
-            operator=self.uri,
-            context=ctx.serialize(),
-            delegation_target=self.delegation_target,
-        )
-
     def resolve_type(self, ctx, type):
         """Returns the resolved input or output property.
 

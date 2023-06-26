@@ -3,8 +3,8 @@ import traceback
 
 from fiftyone.core.expressions import ObjectId
 from fiftyone.factory.repo_factory import RepositoryFactory
+from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.factory.repos.delegated_operation import (
-    DelegatedOperationDocument,
     DelegatedOperationRepo,
 )
 from fiftyone.operators.executor import (
@@ -45,13 +45,12 @@ class DelegatedOperation(object):
         Returns:
             a :class:`fiftyone.core.odm.DelegatedOperationDocument`
         """
-        doc = self._repo.queue_operation(
+        return self._repo.queue_operation(
             operator=operator,
             delegation_target=delegation_target,
             dataset_id=dataset_id,
             context=context,
         )
-        return doc
 
     def set_running(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.update_run_state(_id=doc_id, run_state="running")

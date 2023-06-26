@@ -6,86 +6,16 @@ Dataset run documents.
 |
 """
 from datetime import datetime
+from typing import TypeVar, Any
 
 import pymongo
-from bson import ObjectId, json_util
+from bson import ObjectId
 from pymongo.collection import Collection
+
+from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import ExecutionResult, ExecutionContext
 
-
-class DelegatedOperationDocument(object):
-    def __init__(
-        self,
-        operator: str = None,
-        delegation_target: str = None,
-        dataset_id: ObjectId = None,
-        context: dict = None,
-    ):
-        self.operator = operator
-        self.delegation_target = delegation_target
-        self.dataset_id = dataset_id
-        self.context = (
-            context.__dict__
-            if isinstance(context, ExecutionContext)
-            else context
-        )
-        self.run_state = "queued"  # default to queued state on create
-        self.queued_at = datetime.utcnow()
-        self.started_at = None
-        self.completed_at = None
-        self.failed_at = None
-        self.result = None
-        self.id = None
-        self._doc = None
-
-    def from_pymongo(self, doc: dict):
-        # required fields
-        self.operator = doc["operator"]
-        self.queued_at = doc["queued_at"]
-        self.run_state = doc["run_state"]
-
-        # optional fields
-        self.delegation_target = (
-            doc["delegation_target"] if "delegation_target" in doc else None
-        )
-        self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
-        self.started_at = doc["started_at"] if "started_at" in doc else None
-        self.completed_at = (
-            doc["completed_at"] if "completed_at" in doc else None
-        )
-        self.failed_at = doc["failed_at"] if "failed_at" in doc else None
-
-        if "context" in doc and "request_params" in doc["context"]:
-            self.context = (
-                ExecutionContext(
-                    request_params=doc["context"]["request_params"]
-                )
-                if "context" in doc
-                else None
-            )
-
-        if "result" in doc and doc["result"] is not None:
-
-            res = ExecutionResult()
-            if "result" in doc["result"]:
-                res.result = doc["result"]["result"]
-            if "error" in doc["result"]:
-                res.error = doc["result"]["error"]
-
-            if res.result or res.error:
-                self.result = res
-
-        # internal fields
-        self.id = doc["_id"]
-        self._doc = doc
-
-        return self
-
-    def to_pymongo(self) -> dict:
-        d = self.__dict__
-        d.pop("_doc")
-        d.pop("id")
-        return d
+T = TypeVar("T", bound="DelegatedOperationDocument")
 
 
 class DelegatedOperationRepo(object):
@@ -93,10 +23,7 @@ class DelegatedOperationRepo(object):
 
     def queue_operation(
         self,
-        operator: str,
-        delegation_target: str = None,
-        dataset_id: ObjectId = None,
-        context: ExecutionContext = None,
+        **kwargs: Any,
     ) -> DelegatedOperationDocument:
         """Queue an operation to be executed by a delegated operator."""
         raise NotImplementedError("subclass must implement queue_operation()")
@@ -138,6 +65,17 @@ class DelegatedOperationRepo(object):
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
 
+    # for teams
+    _props = [
+        "operator",
+        "delegation_target",
+        "dataset_id",
+        "context",
+        "run_by",
+    ]
+    # for oss
+    _props = ["operator", "delegation_target", "dataset_id", "context"]
+
     def __init__(self, collection: Collection = None):
         self._collection = (
             collection if collection is not None else self._get_collection()
@@ -151,24 +89,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         database = db_client[fo.config.database_name]
         return database[self.COLLECTION_NAME]
 
-    def queue_operation(
-        self,
-        operator: str,
-        delegation_target: str = None,
-        dataset_id: ObjectId = None,
-        context: ExecutionContext = None,
-    ) -> DelegatedOperationDocument:
+    def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
 
-        op = DelegatedOperationDocument(
-            operator=operator,
-            delegation_target=delegation_target,
-            dataset_id=dataset_id,
-            context=context,
-        )
+        op = DelegatedOperationDocument()
+        for prop in self._props:
+            setattr(op, prop, kwargs.get(prop))
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
-        return op
+        return DelegatedOperationDocument().from_pymongo(op.__dict__)
 
     def update_run_state(
         self,

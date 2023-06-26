@@ -106,7 +106,6 @@ async def execute_operator(operator_name, request_params):
     return ExecutionResult(result=raw_result, executor=executor)
 
 
-@coroutine_timeout(seconds=fo.config.operator_timeout)
 async def delegate_operator(operator_name, request_params):
     """Executes the operator with the given name.
 
@@ -121,15 +120,16 @@ async def delegate_operator(operator_name, request_params):
         operator_name, request_params
     )
 
-    try:
-        if asyncio.iscoroutinefunction(operator.delegate):
-            raw_result = await operator.delegate(ctx)
-        else:
-            raw_result = operator.delegate(ctx)
-    except Exception as e:
-        return ExecutionResult(None, executor, str(e))
+    from .delegated import DelegatedOperation
 
-    return ExecutionResult(raw_result, executor, None)
+    op = DelegatedOperation().queue_operation(
+        operator=operator.uri,
+        context=ctx.serialize(),
+        delegation_target=operator.delegation_target,
+    )
+
+    print("Delegated operation context: ", op.context.__dict__)
+    return ExecutionResult(op.__dict__, executor, None)
 
 
 def prepare_operator_executor(operator_name, request_params):
