@@ -65,15 +65,6 @@ class DelegatedOperationRepo(object):
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
 
-    # for teams
-    _props = [
-        "operator",
-        "delegation_target",
-        "dataset_id",
-        "context",
-        "run_by",
-    ]
-    # for oss
     _props = ["operator", "delegation_target", "dataset_id", "context"]
 
     def __init__(self, collection: Collection = None):
