@@ -128,7 +128,6 @@ async def delegate_operator(operator_name, request_params):
         delegation_target=operator.delegation_target,
     )
 
-    print("Delegated operation context: ", op.context.__dict__)
     return ExecutionResult(op.__dict__, executor, None)
 
 

@@ -108,18 +108,15 @@ class DelegatedOperation(object):
         )
 
         for op in queued_ops:
-            print(op)
             try:
                 result = asyncio.run(self._execute_operator(op))
                 self.set_completed(doc_id=op.id, result=result)
-                print(f"result: {result}")
             except Exception as e:
                 result = ExecutionResult(error=traceback.format_exc())
                 self.set_failed(doc_id=op.id, result=result)
 
     async def _execute_operator(self, doc: DelegatedOperationDocument):
         operator_uri = doc.operator
-        print(f"operator: {operator_uri}")
         context = doc.context
         context.request_params["run_doc"] = doc.id
         (operator, executor, ctx) = prepare_operator_executor(
