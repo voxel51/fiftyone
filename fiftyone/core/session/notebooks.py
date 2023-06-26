@@ -72,7 +72,7 @@ def display_ipython(
     iframe = IPython.display.IFrame(
         focx.get_url(
             cell.address,
-            os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
+            cell.port,
             notebook=True,
             proxy_url=proxy_url,
             subscription=cell.subscription,
