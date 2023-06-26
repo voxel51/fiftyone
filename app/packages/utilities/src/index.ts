@@ -310,6 +310,7 @@ export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 export const KEYPOINT_FIELD = "fiftyone.core.labels.Keypoint";
+export const KEYPOINTS_FIELD = "fiftyone.core.labels.Keypoints";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
 export const GROUP = "fiftyone.core.groups.Group";
 
@@ -321,6 +322,7 @@ export const DISABLED_LABEL_FIELDS_VISIBILITY = [
   CLASSIFICATION_FIELD,
   CLASSIFICATIONS_FIELD,
   KEYPOINT_FIELD,
+  KEYPOINTS_FIELD,
   TEMPORAL_DETECTION_FIELD,
   TEMPORAL_DETECTIONS_FIELD,
   REGRESSION_FIELD,
@@ -461,7 +463,7 @@ export const HEATMAP_DISABLED_SUB_PATHS = [
   "tags",
   "map",
   "map_path",
-  "Range",
+  "range",
 ];
 
 export const TEMPORAL_DETECTION_DISABLED_SUB_PATHS = [
@@ -474,7 +476,7 @@ export const GEOLOCATION_DISABLED_SUB_PATHS = [
   "tags",
   "point",
   "line",
-  "Polygon",
+  "polygon",
 ];
 
 export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
@@ -482,7 +484,7 @@ export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
   "tags",
   "point",
   "line",
-  "Polygons",
+  "polygons",
 ];
 
 export function withPath(path: string, types: string): string;

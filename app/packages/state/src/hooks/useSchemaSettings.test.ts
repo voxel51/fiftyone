@@ -7,8 +7,6 @@ import {
   DETECTIONS_FIELD,
   DETECTION_DISABLED_SUB_PATHS,
   DETECTION_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   EMBEDDED_DOCUMENT_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
@@ -25,8 +23,6 @@ import {
   REGRESSION_FIELD,
   SEGMENTATION_FIELD,
   STRING_FIELD,
-  TEMPORAL_DETECTION,
-  TEMPORAL_DETECTIONS,
   TEMPORAL_DETECTIONS_FIELD,
   TEMPORAL_DETECTION_FIELD,
   CLASSIFICATION_DISABLED_SUB_PATHS,
@@ -37,6 +33,7 @@ import {
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   GEOLOCATION_DISABLED_SUB_PATHS,
   GEOLOCATIONS_DISABLED_SUB_PATHS,
+  KEYPOINTS_FIELD,
 } from "@fiftyone/utilities";
 import { FRAME_SUPPORT_FIELD } from "@fiftyone/utilities";
 import { VECTOR_FIELD } from "@fiftyone/utilities";
@@ -167,6 +164,11 @@ const FIELDS = {
     ...BASE_FIELD,
     path: "keypoint",
     ftype: KEYPOINT_FIELD,
+  },
+  KEYPOINTS_FIELD: {
+    ...BASE_FIELD,
+    path: "keypoints",
+    ftype: KEYPOINTS_FIELD,
   },
   REGRESSION_FIELD: {
     ...BASE_FIELD,
@@ -446,6 +448,7 @@ describe("label types are disabled fields", () => {
     expect(disabledField(FIELDS.CLASSIFICATION_FIELD.path, SCHEMA)).toBe(true);
     expect(disabledField(FIELDS.CLASSIFICATIONS_FIELD.path, SCHEMA)).toBe(true);
     expect(disabledField(FIELDS.KEYPOINT_FIELD.path, SCHEMA)).toBe(true);
+    expect(disabledField(FIELDS.KEYPOINTS_FIELD.path, SCHEMA)).toBe(true);
     expect(disabledField(FIELDS.TEMPORAL_DETECTION_FIELD.path, SCHEMA)).toBe(
       true
     );

@@ -35,10 +35,10 @@ export const disabledField = (
   groupField?: string,
   isFrameView?: boolean
 ): boolean => {
-  const currField = combinedSchema?.[path] || ({} as Field);
+  const currField = combinedSchema[path] || ({} as Field);
   const { ftype } = currField;
   const parentPath = path.substring(0, path.lastIndexOf("."));
-  const parentField = combinedSchema?.[parentPath];
+  const parentField = combinedSchema[parentPath];
   const parentFType = parentField?.ftype;
   const pathSplit = path.split(".");
 
