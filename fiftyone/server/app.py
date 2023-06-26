@@ -32,6 +32,7 @@ from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
 from fiftyone.server.scalars import Date, DateTime
+from fiftyone.server.subscription import Subscription
 
 
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
@@ -65,6 +66,7 @@ class HeadersMiddleware(BaseHTTPMiddleware):
 schema = gql.Schema(
     mutation=Mutation,
     query=Query,
+    subscription=Subscription,
     extensions=[EndSession],
     scalar_overrides={
         date: Date,

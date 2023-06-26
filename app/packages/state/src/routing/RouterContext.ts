@@ -1,16 +1,3 @@
-import { createBrowserHistory, createMemoryHistory, Location } from "history";
-import React from "react";
-import { loadQuery, PreloadedQuery } from "react-relay";
-import {
-  Environment,
-  GraphQLResponse,
-  Network,
-  OperationType,
-  RecordSource,
-  Store,
-  VariablesOf,
-} from "relay-runtime";
-
 import {
   getFetchFunction,
   GQLError,
@@ -20,8 +7,23 @@ import {
   NotFoundError,
   Resource,
 } from "@fiftyone/utilities";
+import { createBrowserHistory, createMemoryHistory, Location } from "history";
+import React from "react";
+import { loadQuery, PreloadedQuery } from "react-relay";
+import {
+  Environment,
+  GraphQLResponse,
+  Network,
+  Observable,
+  OperationType,
+  RecordSource,
+  Store,
+  VariablesOf,
+} from "relay-runtime";
+import { v4 } from "uuid";
 import RouteDefinition, { RouteBase } from "./RouteDefinition";
 
+import { Sink } from "relay-runtime/lib/network/RelayObservable";
 import { Route } from "..";
 import { matchPath, MatchPathResult } from "./matchPath";
 
@@ -273,11 +275,12 @@ const prepareMatches = <T extends OperationType | undefined = OperationType>(
 
 async function fetchGraphQL(
   text: string | null | undefined,
-  variables: object
+  variables: object,
+  params?: string
 ): Promise<GraphQLResponse> {
   const data = await getFetchFunction()<unknown, GraphQLResponse>(
     "POST",
-    "/graphql",
+    `/graphql${params?.length ? `?${params}` : ""}`,
     {
       query: text,
       variables,
@@ -298,11 +301,50 @@ const fetchRelay = async (params, variables) => {
   return fetchGraphQL(params.text, variables);
 };
 
-export const getEnvironment = () =>
-  new Environment({
-    network: Network.create(fetchRelay),
+export const getEnvironment = () => {
+  const subscription = v4();
+
+  const operations = new Map<string, Sink<GraphQLResponse>>();
+
+  const poll = () => {
+    getFetchFunction()(
+      "GET",
+      `/graphql?subscription=${subscription}`,
+      undefined,
+      "json",
+      0
+    ).then((a) => {
+      console.log(a);
+      a.data.messages.forEach((m) => {
+        if (m.type === "next") {
+          operations.get(m.id)!.next(m.payload);
+        }
+        console.log(m);
+      });
+      setTimeout(poll, 5000);
+    });
+  };
+  poll();
+
+  return new Environment({
+    network: Network.create(fetchRelay, (operation, variables) => {
+      return Observable.create((sink) => {
+        const opId = v4();
+        fetchGraphQL(
+          operation.text,
+          variables,
+          new URLSearchParams({
+            operation: opId,
+            subscription,
+          }).toString()
+        ).then((...all) => {
+          operations.set(opId, sink);
+        });
+      });
+    }),
     store: new Store(new RecordSource()),
   });
+};
 
 export let RouterContext: React.Context<RoutingContext<any>> = null;
 

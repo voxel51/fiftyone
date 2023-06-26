@@ -13,6 +13,7 @@ export * from "./relay";
 export * from "./schema";
 export * from "./selectors";
 export * from "./sidebar";
+export * from "./tick";
 export * from "./types";
 export * from "./utils";
 export * from "./view";
