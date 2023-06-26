@@ -47,7 +47,10 @@ def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
 
 
 def display(
-    client: Client, cell: NotebookCell, reactivate: bool = False
+    client: Client,
+    cell: NotebookCell,
+    proxy_url: str = None,
+    reactivate: bool = False,
 ) -> None:
     """Displays a running FiftyOne instance."""
     funcs = {
@@ -56,12 +59,13 @@ def display(
         focx._DATABRICKS: display_databricks,
     }
     fn = funcs[focx._get_context()]
-    fn(client, cell, reactivate)
+    fn(client, cell, proxy_url=proxy_url, reactivate=reactivate)
 
 
 def display_ipython(
     client: Client,
     cell: NotebookCell,
+    proxy_url: str = None,
     reactivate: bool = False,
     **kwargs: t.Dict[str, t.Union[str, bool]],
 ) -> None:
@@ -70,6 +74,7 @@ def display_ipython(
             cell.address,
             os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
             notebook=True,
+            proxy_url=proxy_url,
             subscription=cell.subscription,
             **kwargs,
         ),
@@ -83,7 +88,10 @@ def display_ipython(
 
 
 def display_colab(
-    client: Client, cell: NotebookCell, reactivate: bool = False
+    client: Client,
+    cell: NotebookCell,
+    proxy_url: str = None,
+    reactivate: bool = False,
 ) -> None:
     """Display a FiftyOne instance in a Colab output frame.
 
@@ -134,7 +142,10 @@ def display_colab(
 
 
 def display_databricks(
-    client: Client, cell: NotebookCell, reactivate: bool = False
+    client: Client,
+    cell: NotebookCell,
+    proxy_url: str = None,
+    reactivate: bool = False,
 ):
     """Display a FiftyOne instance in a Databricks output frame.
 
@@ -144,6 +155,7 @@ def display_databricks(
     display_ipython(
         client,
         cell,
-        reactivate=reactivate,
         polling=True,
+        proxy_url=proxy_url,
+        reactivate=reactivate,
     )

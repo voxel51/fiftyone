@@ -142,9 +142,11 @@ def _get_context():
 def get_url(
     address: str,
     port: int,
+    proxy_url: str = None,
     **kwargs: t.Dict[str, str],
 ) -> str:
     context = _get_context()
+
     if context == _COLAB:
         # pylint: disable=no-name-in-module,import-error
         from google.colab.output import eval_js
@@ -154,6 +156,8 @@ def get_url(
         _url = _get_databricks_proxy_url(port)
         kwargs["proxy"] = _get_databricks_proxy(port)
         kwargs["context"] = "databricks"
+    elif proxy_url:
+        _url = proxy_url if proxy_url.endswith("/") else f"{proxy_url}/"
     else:
         _url = f"http://{address}:{port}/"
 

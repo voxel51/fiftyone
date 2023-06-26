@@ -20,7 +20,6 @@ import time
 import typing as t
 import webbrowser
 from uuid import uuid4
-from bson import json_util
 
 try:
     import IPython.display
@@ -1033,7 +1032,7 @@ class Session(object):
         )
 
         self._notebook_cells[uuid] = cell
-        fosn.display(self._client, cell)
+        fosn.display(self._client, cell, self.config.proxy_url)
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
