@@ -7,7 +7,7 @@ import { getComponentProps } from "../utils";
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
   const { view = {}, type } = schema;
-  const { choices } = view;
+  const { choices, placeholder = "", readOnly } = view;
 
   const multiple = type === "array";
 
@@ -19,6 +19,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
+        disabled={readOnly}
         autoFocus={autoFocus(props)}
         defaultValue={data ?? schema.default ?? (multiple ? [] : "")}
         size="small"
@@ -26,7 +27,7 @@ export default function DropdownView(props) {
         displayEmpty
         renderValue={(value) => {
           if (value?.length === 0) {
-            return view?.placeholder || "";
+            return placeholder;
           }
           if (multiple) {
             return value.map((item) => choiceLabels[item] || item).join(", ");

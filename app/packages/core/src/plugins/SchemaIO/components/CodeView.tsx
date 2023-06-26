@@ -9,7 +9,7 @@ export default function CodeView(props) {
   const { mode } = useColorScheme();
   const { onChange, path, schema, data } = props;
   const { default: defaultValue, view = {} } = schema;
-  const { language, read_only: readOnly } = view;
+  const { language, readOnly } = view;
   const src = data ?? defaultValue;
   let height = view.height ?? 250;
   if (view.height === "auto") {
