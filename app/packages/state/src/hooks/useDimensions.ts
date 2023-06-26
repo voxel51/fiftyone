@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect, DOMElement } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 
 type Dimensions = {
   width: number;
