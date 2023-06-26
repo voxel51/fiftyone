@@ -1592,7 +1592,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_slice = self._doc.default_group_slice
 
-        self.create_index(field_name + "._id")
+        self.create_index(field_name + ".id")
         self.create_index(field_name + ".name")
 
         return True

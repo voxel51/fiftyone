@@ -8678,6 +8678,10 @@ class SampleCollection(object):
         if self._is_clips:
             return ["id", "filepath", "sample_id"]
 
+        if self.media_type == fom.GROUP:
+            gf = self.group_field
+            return ["id", "filepath", gf + ".id", gf + ".name"]
+
         return ["id", "filepath"]
 
     def reload(self):
