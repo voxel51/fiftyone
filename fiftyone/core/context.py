@@ -8,6 +8,7 @@ Context utilities.
 import json
 import os
 import typing as t
+from urllib.parse import urlparse
 
 try:
     import IPython.display
@@ -158,6 +159,7 @@ def get_url(
         kwargs["context"] = "databricks"
     elif proxy_url:
         _url = proxy_url if proxy_url.endswith("/") else f"{proxy_url}/"
+        kwargs["proxy"] = urlparse(_url).path
     else:
         _url = f"http://{address}:{port}/"
 
