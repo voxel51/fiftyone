@@ -6,6 +6,7 @@ import {
   LABEL_DOC_TYPES,
   LIST_FIELD,
   Schema,
+  StrictField,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
@@ -167,11 +168,11 @@ const DEFAULT_VIDEO_GROUPS = [
 const NONE = [null, undefined];
 
 export const resolveGroups = (
-  dataset: State.Dataset,
+  sampleFields: StrictField[],
+  frameFields: StrictField[],
+  sidebarGroups: State.SidebarGroup[],
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  const sidebarGroups = dataset?.appConfig?.sidebarGroups;
-
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
     : undefined;
@@ -186,7 +187,7 @@ export const resolveGroups = (
   if (!groups) {
     groups = JSON.parse(
       JSON.stringify(
-        dataset.frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
+        frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
       )
     );
   }
@@ -198,39 +199,43 @@ export const resolveGroups = (
   });
 
   const present = new Set<string>(groups.map(({ paths }) => paths).flat());
-  const updater = groupUpdater(groups, buildSchema(dataset), present);
-
-  updater(
-    "labels",
-    fieldsMatcher(dataset.sampleFields, labelsMatcher, present)
+  const updater = groupUpdater(
+    groups,
+    buildSchema(sampleFields, frameFields),
+    present
   );
 
-  dataset.frameFields.length &&
-    updater(
-      "frame labels",
-      fieldsMatcher(dataset.frameFields, labelsMatcher, present)
-    );
+  updater("labels", fieldsMatcher(sampleFields, labelsMatcher, present));
+
+  frameFields.length &&
+    updater("frame labels", fieldsMatcher(frameFields, labelsMatcher, present));
 
   updater(
     "primitives",
-    fieldsMatcher(dataset.sampleFields, primitivesMatcher, present)
+    fieldsMatcher(sampleFields, primitivesMatcher, present)
   );
 
-  dataset.sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+  sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
     updater(
       name,
       fieldsMatcher(fields || [], () => true, present, `${name}.`)
     );
   });
 
-  updater(
-    "other",
-    fieldsMatcher(dataset.sampleFields, unsupportedMatcher, present)
-  );
+  frameFields.length &&
+    frameFields.filter(groupFilter).forEach(({ fields, name }) => {
+      updater(
+        name,
+        fieldsMatcher(fields || [], () => true, present, `${name}.`)
+      );
+      ("frames.");
+    });
+
+  updater("other", fieldsMatcher(sampleFields, unsupportedMatcher, present));
 
   updater(
     "other",
-    fieldsMatcher(dataset.frameFields, () => true, present, "frames.")
+    fieldsMatcher(frameFields, () => true, present, "frames.")
   );
 
   return groups;

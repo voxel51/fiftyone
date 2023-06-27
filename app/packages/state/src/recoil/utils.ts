@@ -130,3 +130,16 @@ export const unsupportedMatcher = (field: StrictField) => {
 
   return false;
 };
+
+export const getLabelFields = (fields: StrictField[], prefix = "") => [
+  ...fieldsMatcher(fields || [], labelsMatcher),
+  ...getEmbeddedLabelFields(fields, prefix),
+];
+
+export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
+  fields
+    .filter(groupFilter)
+    .map(({ fields, name }) =>
+      fieldsMatcher(fields || [], labelsMatcher, undefined, `${prefix}${name}.`)
+    )
+    .flat();

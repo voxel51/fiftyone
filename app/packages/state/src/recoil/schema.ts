@@ -21,10 +21,10 @@ import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { activeModalSample } from "./groups";
 import { State } from "./types";
-import { fieldsMatcher, labelsMatcher } from "./utils";
+import { getLabelFields } from "./utils";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
-  schema[field.name || field.path] = {
+  schema[field.name] = {
     ...field,
     fields: field.fields?.reduce(schemaReduce, {}),
   };
@@ -79,17 +79,21 @@ export const buildFlatExtendedSchema = (schema: Schema): Schema => {
   return flatSchema;
 };
 
-export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
-  const schema = dataset.sampleFields.reduce(schemaReduce, {});
+export const buildSchema = (
+  sampleFields: StrictField[],
+  frameFields: StrictField[],
+  flat = false
+): Schema => {
+  const schema = sampleFields.reduce(schemaReduce, {});
 
   // TODO: mixed datasets - test video
-  if (dataset.frameFields && dataset.frameFields.length) {
+  if (frameFields && frameFields.length) {
     schema.frames = {
       ftype: LIST_FIELD,
       name: "frames",
       fields: flat
-        ? buildFlatExtendedSchema(dataset.frameFields.reduce(schemaReduce, {}))
-        : dataset.frameFields.reduce(schemaReduce, {}),
+        ? buildFlatExtendedSchema(frameFields.reduce(schemaReduce, {}))
+        : frameFields.reduce(schemaReduce, {}),
       dbField: null,
       description: null,
       info: null,
@@ -99,9 +103,7 @@ export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
   }
 
   if (flat) {
-    return buildFlatExtendedSchema(
-      dataset.sampleFields.reduce(schemaReduce, {})
-    );
+    return buildFlatExtendedSchema(sampleFields.reduce(schemaReduce, {}));
   }
 
   return schema;
@@ -186,6 +188,8 @@ export const fullSchema = selector<Schema>({
           embeddedDocType: null,
           subfield: "Frame",
           dbField: null,
+          description: null,
+          info: null,
         },
       } as Schema;
     }
@@ -301,6 +305,8 @@ export const field = selectorFamily<Field | null, string>({
           embeddedDocType: "FRAMES",
           fields: schema,
           dbField: null,
+          description: null,
+          info: null,
         };
         for (const name of keys) {
           if (schema[name]) {
@@ -335,27 +341,15 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     ({ get }) => {
       const dataset = get(atoms.dataset);
 
-      if (space === State.SPACE.FRAME) {
-        return fieldsMatcher(
-          dataset.frameFields,
-          labelsMatcher,
-          undefined,
-          "frames."
-        );
-      }
-
-      if (space === State.SPACE.SAMPLE) {
-        return fieldsMatcher(dataset.sampleFields, labelsMatcher);
+      if (space) {
+        return space === State.SPACE.FRAME
+          ? getLabelFields(dataset.frameFields, "frames.")
+          : getLabelFields(dataset.sampleFields);
       }
 
       return [
-        ...fieldsMatcher(dataset.sampleFields, labelsMatcher),
-        ...fieldsMatcher(
-          dataset.frameFields,
-          labelsMatcher,
-          undefined,
-          "frames."
-        ),
+        ...getLabelFields(dataset.sampleFields),
+        ...getLabelFields(dataset.frameFields, "frames."),
       ];
     },
 });
@@ -485,11 +479,13 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
   get:
     ({ modal }) =>
-    ({ get }) =>
-      filterPaths(
+    ({ get }) => {
+      const dataset = get(atoms.dataset);
+      return filterPaths(
         get(_activeFields({ modal })) || get(labelFields({})),
-        buildSchema(get(atoms.dataset))
-      ),
+        buildSchema(dataset.sampleFields, dataset.frameFields)
+      );
+    },
   set:
     ({ modal }) =>
     ({ set }, value) => {

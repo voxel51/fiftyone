@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as sidebar from "../../src/recoil/sidebar";
 import { State } from "../../src/recoil/types";
 
@@ -10,6 +10,7 @@ const mockDataset: State.Dataset = {
     modalMediaField: "filepath",
     plugins: {},
   },
+
   brainMethods: [],
   createdAt: { $date: new Date().getTime() },
   defaultMaskTargets: {},
@@ -201,6 +202,9 @@ const mockDataset: State.Dataset = {
     },
   ],
   version: "test",
+  viewCls: null,
+  viewFields: [],
+  savedViews: [],
   skeletons: [],
   groupMediaTypes: [],
   groupField: "",
