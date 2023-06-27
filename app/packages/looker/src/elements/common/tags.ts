@@ -218,27 +218,27 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
     };
 
-    const LABEL_RENDERERS = {
-      [withPath(LABELS_PATH, CLASSIFICATION)]: (
+    const CLASSIFICATION_RENDERER = (path, param: Classification) => {
+      if (!param.label) {
+        return null;
+      }
+      return {
         path,
-        param: Classification
-      ) => {
-        if (!param.label) {
-          return null;
-        }
-        return {
+        value: param.label,
+        title: `${path}: ${param.label}`,
+        color: getColorFromOptions({
+          coloring,
           path,
-          value: param.label,
-          title: `${path}: ${param.label}`,
-          color: getColorFromOptions({
-            coloring,
-            path,
-            param,
-            customizeColorSetting,
-            labelDefault: true,
-          }),
-        };
-      },
+          param,
+          customizeColorSetting,
+          labelDefault: true,
+        }),
+      };
+    };
+
+    const LABEL_RENDERERS = {
+      [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
+      [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
         const v = prettyNumber(param.value);
         return {
@@ -406,9 +406,9 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
-const unwind = (name: string, value: RegularLabel, depth = 1) => {
-  if (Array.isArray(value) && depth) {
-    return value.map((val) => unwind(name, val), depth - 1);
+const unwind = (name: string, value: RegularLabel, depth = 0) => {
+  if (Array.isArray(value) && depth < 1) {
+    return value.map((val) => unwind(name, val), depth + 1);
   }
 
   const v = value[name];
@@ -428,6 +428,7 @@ const getFieldAndValue = (
 ): [Field | null, RegularLabel] => {
   let value: RegularLabel | undefined | object = sample;
   let field: Field = null;
+  let classifications = false;
 
   // only search up to field.subfield as that is what the sidebar supports
   for (const key of path.split(".").slice(0, 2)) {
@@ -441,20 +442,23 @@ const getFieldAndValue = (
       return [null, null];
     }
 
+    console.log();
     if (![undefined, null].includes(value) && field) {
       value = unwind(field.dbField, value as RegularLabel);
     }
 
-    if (
-      field &&
-      field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)
-    ) {
+    classifications =
+      field && field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS);
+    if (classifications) {
       value = value?.["classifications"] || [];
-      field = field.fields?.["classifications"];
       break;
     }
 
     schema = field ? field.fields : null;
+  }
+
+  if (!classifications && field.ftype === LIST_FIELD) {
+    return [null, null];
   }
 
   return [field, value as RegularLabel];
