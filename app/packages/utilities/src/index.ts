@@ -155,6 +155,7 @@ export const NONFINITES = new Set(["-inf", "inf", "nan"]);
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
 export const DYNAMIC_EMBEDDED_DOCUMENT = "DynamicEmbeddedDocument";
+export const EMBEDDED_DOCUMENT = "EmbeddedDocument";
 export const DETECTION = "Detection";
 export const DETECTIONS = "Detections";
 export const GEOLOCATION = "GeoLocation";
