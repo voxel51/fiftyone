@@ -91,6 +91,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: Milvus
+    :description: Use our Milvus integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: milvus.html
+    :image: ../_static/images/integrations/milvus.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
     :header: Lightning Flash
     :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
@@ -123,4 +130,5 @@ on the cards below to see how!
     Label Studio <labelstudio.rst>
     Qdrant <qdrant.rst>
     Pinecone <pinecone.rst>
+    Milvus <milvus.rst>
     Lightning Flash <lightning_flash.rst>
