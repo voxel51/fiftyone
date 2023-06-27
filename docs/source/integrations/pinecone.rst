@@ -57,7 +57,7 @@ The example below demonstrates this workflow.
     You must create a `Pinecone account <https://www.pinecone.io/>`_, download
     a `Pinecone API key <https://app.pinecone.io/organizations>`_, and install
     the
-    `Pinecone Python client <hhttps://github.com/pinecone-io/pinecone-python-client>`_
+    `Pinecone Python client <https://github.com/pinecone-io/pinecone-python-client>`_
     to run this example:
 
     .. code-block:: shell
