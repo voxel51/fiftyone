@@ -268,6 +268,7 @@ function FieldInfoExpanded({
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
+  const disabled = useRecoilValue(fos.disabledPaths);
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget
@@ -279,7 +280,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {!isModal && (
+        {!isModal && !disabled && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}
