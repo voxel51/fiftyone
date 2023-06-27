@@ -587,6 +587,10 @@ async def serialize_dataset(
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
 
+        for view in data.saved_views:
+            setattr(view, "view_name", view.view_name())
+            setattr(view, "stage_dicts", view.stage_dicts())
+
         for brain_method in data.brain_methods:
             try:
                 type = brain_method.config.type().value
