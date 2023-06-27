@@ -1,4 +1,11 @@
+import { Tooltip, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { textFilter } from "@fiftyone/state";
+import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
+import { Settings, VisibilityOff } from "@mui/icons-material";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { Box, Typography } from "@mui/material";
 import React, { useState } from "react";
 import { useDebounce } from "react-use";
 import {
@@ -16,6 +23,9 @@ import { Tooltip, useTheme } from "@fiftyone/components";
 const Filter = ({ modal }: { modal: boolean }) => {
   const theme = useTheme();
   const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
+  const [isFilterMode, setIsFilterMode] = useRecoilState(
+    fos.isSidebarFilterMode
+  );
   const [value, setValue] = useState(() => debouncedValue);
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const selectedFieldsStage = useRecoilValue(fos.selectedFieldsStageState);
@@ -107,6 +117,28 @@ const Filter = ({ modal }: { modal: boolean }) => {
               }}
             />
           </Tooltip>
+          {isFilterMode && (
+            <Tooltip text="Toggle to visibility mode" placement="bottom-center">
+              <FilterAltIcon
+                onClick={() => setIsFilterMode(false)}
+                sx={{
+                  color: theme.text.tertiary,
+                  "&:hover": { color: theme.text.primary },
+                }}
+              />
+            </Tooltip>
+          )}
+          {!isFilterMode && (
+            <Tooltip text="Toggle to filter mode" placement="bottom-center">
+              <VisibilityIcon
+                onClick={() => setIsFilterMode(true)}
+                sx={{
+                  color: theme.text.tertiary,
+                  "&:hover": { color: theme.text.primary },
+                }}
+              />
+            </Tooltip>
+          )}
         </Box>
       )}
     </InputDiv>
