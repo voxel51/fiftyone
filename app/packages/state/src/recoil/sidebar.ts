@@ -6,8 +6,6 @@ import {
   LABEL_DOC_TYPES,
   LIST_FIELD,
   Schema,
-  StrictField,
-  UNSUPPORTED_FILTER_TYPES,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
@@ -34,6 +32,13 @@ import {
 } from "./schema";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
+import {
+  fieldsMatcher,
+  groupFilter,
+  labelsMatcher,
+  primitivesMatcher,
+  unsupportedMatcher,
+} from "./utils";
 import * as viewAtoms from "./view";
 
 export enum EntryKind {
@@ -141,84 +146,6 @@ export const RESERVED_GROUPS = new Set([
   "clips tags",
   "tags",
 ]);
-
-const fieldsMatcher = (
-  fields: StrictField[],
-
-  matcher: (field: StrictField) => boolean,
-  present?: Set<string>,
-  prefix = ""
-): string[] => {
-  return fields
-    .filter((field) => matcher(field))
-    .map((field) => `${prefix}${field.name}`)
-    .filter((path) => !present || !present.has(path));
-};
-
-const primitivesMatcher = (field: StrictField) => {
-  if (field.name === "tags") {
-    return false;
-  }
-
-  if (VALID_PRIMITIVE_TYPES.includes(field.ftype)) {
-    return true;
-  }
-
-  if (
-    field.ftype === LIST_FIELD &&
-    VALID_PRIMITIVE_TYPES.includes(field.subfield)
-  ) {
-    return true;
-  }
-
-  return false;
-};
-
-const groupFilter = (field: StrictField) => {
-  if (LABELS.includes(field.embeddedDocType)) {
-    return false;
-  }
-
-  if (field.ftype === EMBEDDED_DOCUMENT_FIELD) {
-    return true;
-  }
-  if (
-    field.ftype === LIST_FIELD &&
-    field.subfield === EMBEDDED_DOCUMENT_FIELD
-  ) {
-    return true;
-  }
-
-  return false;
-};
-
-const labelsMatcher = (field: StrictField) => {
-  if (field.ftype !== EMBEDDED_DOCUMENT_FIELD) {
-    return false;
-  }
-
-  if (!LABELS.includes(field.embeddedDocType)) {
-    return false;
-  }
-
-  return true;
-};
-
-const unsupportedMatcher = (field: StrictField) => {
-  if (UNSUPPORTED_FILTER_TYPES.includes(field.ftype)) {
-    return true;
-  }
-
-  if (
-    field.ftype === LIST_FIELD &&
-    field.subfield === EMBEDDED_DOCUMENT_FIELD &&
-    LABELS.includes(field.embeddedDocType)
-  ) {
-    return true;
-  }
-
-  return false;
-};
 
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 

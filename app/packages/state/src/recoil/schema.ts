@@ -2,7 +2,6 @@ import { LabelData } from "@fiftyone/looker";
 import {
   DETECTION,
   DETECTIONS,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
   LABEL_LIST,
@@ -22,6 +21,7 @@ import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { activeModalSample } from "./groups";
 import { State } from "./types";
+import { fieldsMatcher, labelsMatcher } from "./utils";
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name || field.path] = {
@@ -331,40 +331,32 @@ export const field = selectorFamily<Field | null, string>({
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get:
-    (params) =>
+    ({ space }) =>
     ({ get }) => {
-      const paths = get(fieldPaths(params));
+      const dataset = get(atoms.dataset);
 
-      const flatLabelFieldsBase = paths.filter((path) =>
-        LABELS.includes(get(field(path)).embeddedDocType)
-      );
+      if (space === State.SPACE.FRAME) {
+        return fieldsMatcher(
+          dataset.frameFields,
+          labelsMatcher,
+          undefined,
+          "frames."
+        );
+      }
 
-      /* Remove any paths from the label paths if a parent path exists.
-      ex: parent path: custom_document.detections | type Detections
-          child path: custom_document.detections.detections | type Detection (singular)
-          having both in labelPaths can cause some issues like,
-          - duplicate count of labels
-          - unwanted filtering causing some operations that depend on labelPaths
-            (such as tagging) to fail. */
-      const allSet = new Set(flatLabelFieldsBase);
-      const flatLabelFields = flatLabelFieldsBase.filter((pp) => {
-        const parentPath = pp.substring(0, pp.lastIndexOf("."));
-        return !(parentPath && parentPath !== pp && allSet.has(parentPath));
-      });
+      if (space === State.SPACE.SAMPLE) {
+        return fieldsMatcher(dataset.sampleFields, labelsMatcher);
+      }
 
-      const dynamicLabelFields = paths
-        .filter(
-          (path) =>
-            get(field(path)).embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD
-        )
-        .map((p) =>
-          Object.values(get(field(p)).fields)
-            .filter((f) => LABELS.includes(f.embeddedDocType))
-            .map((f) => f.path)
-        )
-        .flat(1);
-
-      return [...flatLabelFields, ...dynamicLabelFields];
+      return [
+        ...fieldsMatcher(dataset.sampleFields, labelsMatcher),
+        ...fieldsMatcher(
+          dataset.frameFields,
+          labelsMatcher,
+          undefined,
+          "frames."
+        ),
+      ];
     },
 });
 
