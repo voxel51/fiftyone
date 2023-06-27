@@ -23,16 +23,14 @@ import {
 } from "recoil";
 import { getCurrentEnvironment } from "../hooks/useRouter";
 import * as aggregationAtoms from "./aggregations";
-import { dataset } from "./atoms";
+import * as atoms from "./atoms";
 import { isLargeVideo } from "./options";
 import {
-  buildFlatExtendedSchema,
   buildSchema,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
-  schemaReduce,
 } from "./schema";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
@@ -144,32 +142,83 @@ export const RESERVED_GROUPS = new Set([
   "tags",
 ]);
 
-const fieldsReducer =
-  (ftypes: string[], docTypes: string[] = []) =>
-  (
-    acc: string[],
-    { ftype, subfield, embeddedDocType, name }: StrictField
-  ): string[] => {
-    if (name.startsWith("_")) {
-      return acc;
-    }
+const fieldsMatcher = (
+  fields: StrictField[],
 
-    if (ftype === LIST_FIELD) {
-      ftype = subfield;
-    }
+  matcher: (field: StrictField) => boolean,
+  present?: Set<string>,
+  prefix = ""
+): string[] => {
+  return fields
+    .filter((field) => matcher(field))
+    .map((field) => `${prefix}${field.name}`)
+    .filter((path) => !present || !present.has(path));
+};
 
-    if (ftypes.includes(ftype)) {
-      return [...acc, name];
-    }
+const primitivesMatcher = (field: StrictField) => {
+  if (field.name === "tags") {
+    return false;
+  }
 
-    if (ftype === EMBEDDED_DOCUMENT_FIELD) {
-      if (docTypes.includes(embeddedDocType)) {
-        return [...acc, name];
-      }
-    }
+  if (VALID_PRIMITIVE_TYPES.includes(field.ftype)) {
+    return true;
+  }
 
-    return acc;
-  };
+  if (
+    field.ftype === LIST_FIELD &&
+    VALID_PRIMITIVE_TYPES.includes(field.subfield)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const groupFilter = (field: StrictField) => {
+  if (LABELS.includes(field.embeddedDocType)) {
+    return false;
+  }
+
+  if (field.ftype === EMBEDDED_DOCUMENT_FIELD) {
+    return true;
+  }
+  if (
+    field.ftype === LIST_FIELD &&
+    field.subfield === EMBEDDED_DOCUMENT_FIELD
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const labelsMatcher = (field: StrictField) => {
+  if (field.ftype !== EMBEDDED_DOCUMENT_FIELD) {
+    return false;
+  }
+
+  if (!LABELS.includes(field.embeddedDocType)) {
+    return false;
+  }
+
+  return true;
+};
+
+const unsupportedMatcher = (field: StrictField) => {
+  if (UNSUPPORTED_FILTER_TYPES.includes(field.ftype)) {
+    return true;
+  }
+
+  if (
+    field.ftype === LIST_FIELD &&
+    field.subfield === EMBEDDED_DOCUMENT_FIELD &&
+    LABELS.includes(field.embeddedDocType)
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
@@ -178,7 +227,6 @@ const DEFAULT_IMAGE_GROUPS = [
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
-  { name: "other", paths: [] },
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
@@ -187,7 +235,6 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
   { name: "primitives", paths: [] },
-  { name: "other", paths: [] },
 ];
 
 const NONE = [null, undefined];
@@ -223,84 +270,50 @@ export const resolveGroups = (
       : group;
   });
 
-  const present = new Set(groups.map(({ paths }) => paths).flat());
+  const present = new Set<string>(groups.map(({ paths }) => paths).flat());
+  const updater = groupUpdater(groups, buildSchema(dataset), present);
 
-  const updater = groupUpdater(groups, buildSchema(dataset));
-  const primitives = dataset.sampleFields
-    .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
-    .filter((path) => path !== "tags" && !present.has(path));
-
-  const labels = dataset.sampleFields
-    .reduce(fieldsReducer([], LABELS), [])
-    .filter((path) => !present.has(path));
-
-  const frameLabels = dataset.frameFields
-    .reduce(fieldsReducer([], LABELS), [])
-    .map((path) => `frames.${path}`)
-    .filter((path) => !present.has(path));
-
-  updater("labels", labels);
-  dataset.frameFields.length && updater("frame labels", frameLabels);
-  updater("primitives", primitives);
-
-  const fields = Object.fromEntries(
-    dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
+  updater(
+    "labels",
+    fieldsMatcher(dataset.sampleFields, labelsMatcher, present)
   );
 
-  let other = dataset.sampleFields.reduce(
-    fieldsReducer(UNSUPPORTED_FILTER_TYPES),
-    []
+  dataset.frameFields.length &&
+    updater(
+      "frame labels",
+      fieldsMatcher(dataset.frameFields, labelsMatcher, present)
+    );
+
+  updater(
+    "primitives",
+    fieldsMatcher(dataset.sampleFields, primitivesMatcher, present)
   );
 
-  dataset.sampleFields
-    .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
-    .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
-    .forEach((name) => {
-      const fieldPaths = (fields[name].fields || [])
-        .reduce(
-          fieldsReducer([
-            ...VALID_PRIMITIVE_TYPES,
-            EMBEDDED_DOCUMENT_FIELD,
-            LIST_FIELD,
-          ]),
-          []
-        )
-        .map((subfield) => `${name}.${subfield}`)
-        .filter((path) => !present.has(path));
-
-      other = [
-        ...other,
-        ...(fields[name].fields || [])
-          .reduce(fieldsReducer(UNSUPPORTED_FILTER_TYPES), [])
-          .map((subfield) => `${name}.${subfield}`),
-      ];
-
-      updater(name, fieldPaths);
-    });
-
-  other = [
-    ...other,
-    ...dataset.frameFields
-      .reduce(
-        fieldsReducer([
-          ...UNSUPPORTED_FILTER_TYPES,
-          ...VALID_PRIMITIVE_TYPES,
-          DICT_FIELD,
-        ]),
-        []
-      )
-      .map((path) => `frames.${path}`),
-  ];
+  dataset.sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+    updater(
+      name,
+      fieldsMatcher(fields || [], () => true, present, `${name}.`)
+    );
+  });
 
   updater(
     "other",
-    other.filter((path) => !present.has(path))
+    fieldsMatcher(dataset.sampleFields, unsupportedMatcher, present)
+  );
+
+  updater(
+    "other",
+    fieldsMatcher(dataset.frameFields, () => true, present, "frames.")
   );
 
   return groups;
 };
 
-const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
+const groupUpdater = (
+  groups: State.SidebarGroup[],
+  schema: Schema,
+  present: Set<string>
+) => {
   const groupNames = groups.map(({ name }) => name);
 
   for (let i = 0; i < groups.length; i++) {
@@ -309,10 +322,11 @@ const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
 
   return (name: string, paths: string[]) => {
     if (paths.length === 0) return;
+    paths.forEach((path) => present.add(path));
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push({ name, paths, expanded: true });
+      groups.push({ name, paths, expanded: false });
       return;
     }
 
@@ -583,30 +597,41 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const ds = get(dataset);
-    const schema = buildFlatExtendedSchema(
-      ds?.sampleFields?.reduce(schemaReduce, {})
+    const dataset = get(atoms.dataset);
+    const paths = new Set(
+      fieldsMatcher(dataset.sampleFields, unsupportedMatcher)
     );
-    const paths = Object.keys(schema)
-      ?.filter((fieldPath) =>
-        UNSUPPORTED_FILTER_TYPES.includes(schema[fieldPath]?.ftype)
-      )
-      .map((fieldPath) => fieldPath);
 
-    get(fields({ space: State.SPACE.FRAME })).forEach(
-      ({ name, embeddedDocType }) => {
-        if (LABELS.includes(embeddedDocType)) {
-          return;
-        }
-        paths.push(`frames.${name}`);
-      }
-    );
+    dataset.sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+      fieldsMatcher(
+        fields || [],
+        (field) => {
+          if (field.ftype === LIST_FIELD) {
+            return !VALID_PRIMITIVE_TYPES.includes(field.subfield);
+          }
+
+          return (
+            !VALID_PRIMITIVE_TYPES.includes(field.ftype) &&
+            !LABELS.includes(field.embeddedDocType)
+          );
+        },
+        undefined,
+        `${name}.`
+      ).forEach((path) => paths.add(path));
+    });
+
+    fieldsMatcher;
 
     return new Set(paths);
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+});
+
+export const isDisabledPath = selectorFamily<boolean, string>({
+  key: "isDisabledPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledPaths).has(path),
 });
 
 const collapsedPaths = selector<Set<string>>({
