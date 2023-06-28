@@ -1,28 +1,30 @@
-import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { atom, selectorFamily } from "recoil";
+
+import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+
 import { expandPath, fields } from "./schema";
-import { hiddenLabelIds } from "./selectors";
 import { State } from "./types";
+import { hiddenLabelIds } from "./selectors";
 
-export const modalFilters = atom<State.Filters>({
-  key: "modalFilters",
+export const modalFieldVisibility = atom<State.Filters>({
+  key: "modalFieldVisibility",
   default: {},
 });
 
-export const filters = atom<State.Filters>({
-  key: "filters",
+export const fieldVisibility = atom<State.Filters>({
+  key: "fieldVisibility",
   default: {},
 });
 
-export const filter = selectorFamily<
+export const visibility = selectorFamily<
   State.Filters,
   { path: string; modal: boolean }
 >({
-  key: "filter",
+  key: "visibility",
   get:
     ({ path, modal }) =>
     ({ get }) => {
-      const f = get(modal ? modalFilters : filters);
+      const f = get(modal ? modalFieldVisibility : fieldVisibility);
 
       if (f[path]) {
         return f[path];
@@ -32,27 +34,29 @@ export const filter = selectorFamily<
     },
   set:
     ({ path, modal }) =>
-    ({ get, set }, filter) => {
-      const atom = modal ? modalFilters : filters;
-      const newFilters = Object.assign({}, get(atom));
-      if (filter === null) {
-        delete newFilters[path];
+    ({ get, set }, visibility) => {
+      const atom = modal ? modalFieldVisibility : fieldVisibility;
+      const newSetting = Object.assign({}, get(atom));
+      if (visibility === null) {
+        delete newSetting[path];
       } else {
-        newFilters[path] = filter;
+        newSetting[path] = visibility;
       }
-      set(atom, newFilters);
+      set(atom, newSetting);
     },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
 
-export const hasFilters = selectorFamily<boolean, boolean>({
-  key: "hasFilters",
+export const hasVisibility = selectorFamily<boolean, boolean>({
+  key: "hasVisibility",
   get:
     (modal) =>
     ({ get }) => {
-      const f = Object.keys(get(modal ? modalFilters : filters)).length > 0;
+      const f =
+        Object.keys(get(modal ? modalFieldVisibility : fieldVisibility))
+          .length > 0;
       const hidden = Boolean(modal && get(hiddenLabelIds).size);
 
       return f || hidden;
@@ -62,15 +66,15 @@ export const hasFilters = selectorFamily<boolean, boolean>({
   },
 });
 
-export const fieldIsFiltered = selectorFamily<
+export const fieldHasVisibilitySetting = selectorFamily<
   boolean,
   { path: string; modal?: boolean }
 >({
-  key: "fieldIsFiltered",
+  key: "fieldHasVisibilitySetting",
   get:
     ({ path, modal }) =>
     ({ get }) => {
-      const f = get(modal ? modalFilters : filters);
+      const f = get(modal ? modalFieldVisibility : fieldVisibility);
 
       const expandedPath = get(expandPath(path));
       const paths = get(

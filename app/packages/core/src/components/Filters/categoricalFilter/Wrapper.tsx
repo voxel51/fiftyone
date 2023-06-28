@@ -13,6 +13,7 @@ import { Button } from "../../utils";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import { V, isKeypointLabel } from "./CategoricalFilter";
 import FilterOption from "./filterOption/FilterOption";
+import { fieldVisibility } from "@fiftyone/state/src/recoil/fieldVisibility";
 
 interface WrapperProps {
   results: [V["value"], number][];
@@ -39,7 +40,9 @@ const Wrapper = ({
 }: WrapperProps) => {
   const name = path.split(".").slice(-1)[0];
   const schema = useRecoilValue(fos.field(path));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+  const visibility = useRecoilValue(fieldVisibility);
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const setIsMatching = isMatchingAtom
@@ -101,7 +104,7 @@ const Wrapper = ({
       </>
     );
   }
-
+  console.info(visibility);
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
@@ -138,7 +141,7 @@ const Wrapper = ({
           {
             <FilterOption
               nestedField={nestedField}
-              shouldNotShowExclude={shouldNotShowExclude}
+              shouldNotShowExclude={Boolean(shouldNotShowExclude)}
               excludeAtom={excludeAtom}
               isMatchingAtom={isMatchingAtom}
               valueName={name}
