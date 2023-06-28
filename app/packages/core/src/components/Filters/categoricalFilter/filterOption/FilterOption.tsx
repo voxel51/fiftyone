@@ -1,19 +1,28 @@
+import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import Tooltip from "@fiftyone/components/src/components/Tooltip";
+import * as fos from "@fiftyone/state";
+import { useOutsideClick } from "@fiftyone/state";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import HideImageIcon from "@mui/icons-material/HideImage";
 import ImageIcon from "@mui/icons-material/Image";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { IconButton } from "@mui/material";
 import Color from "color";
-import React, { useEffect } from "react";
-import { RecoilState, useRecoilState, useSetRecoilState } from "recoil";
+import React, { useEffect, useMemo } from "react";
+import {
+  RecoilState,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
-import Tooltip from "@fiftyone/components/src/components/Tooltip";
-import { useOutsideClick } from "@fiftyone/state";
 
 import { Popout } from "@fiftyone/components";
 import Item from "./FilterItem";
+import { set } from "lodash";
+import { fieldVisibility } from "@fiftyone/state/src/recoil/fieldVisibility";
 
 interface Props {
   nestedField: string | undefined; // nested ListFields only ("detections")
@@ -34,9 +43,16 @@ type Option = {
   tooltip: string;
 };
 
-type Key = "filter" | "negativeFilter" | "match" | "negativeMatch";
+type Key =
+  | "filter"
+  | "negativeFilter"
+  | "match"
+  | "negativeMatch"
+  | "visible"
+  | "notVisible";
 
 const generateOptions = (
+  isFilterMode: boolean,
   nestedField: string | undefined,
   shouldNotShowExclude: boolean,
   modal: boolean,
@@ -50,6 +66,23 @@ const generateOptions = (
   //  2) BooleanField should not have the negative filter or negative match options;
   //  3) in expanded mode or keypoints field, do not show the match or negative match options;
   const options: Option[] = [];
+  if (!isFilterMode) {
+    options.push({
+      icon: "VisibilityIcon",
+      key: "visible",
+      value: `Show ${isLabelTag ? "label tags" : valueName} 
+      `,
+      tooltip: "",
+    });
+    options.push({
+      icon: "VisibilityOffIcon",
+      key: "notVisible",
+      value: `Hide ${isLabelTag ? "label tags" : valueName}`,
+      tooltip: "",
+    });
+    return options;
+  }
+
   if (nestedField || isLabelTag) {
     options.push({
       icon: "FilterAltIcon",
@@ -106,6 +139,7 @@ const generateOptions = (
         : "dataset.match(~expr)",
     });
   }
+
   return options;
 };
 
@@ -133,18 +167,25 @@ const FilterOption: React.FC<Props> = ({
 }) => {
   const isLabelTag = path?.startsWith("_label_tags");
   const isSampleTag = path?.startsWith("tag");
-
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const setIsMatching = isMatchingAtom
-    ? useSetRecoilState(isMatchingAtom)
-    : null;
+  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
+  const visibility = useRecoilValue(fieldVisibility);
+  const filter = useRecoilValue(fos.filters);
+
   const [key, setKey] = React.useState<Key>(() => {
-    if (!excluded) {
-      return nestedField || isLabelTag ? "filter" : "match";
-    } else {
-      return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
-    }
+    return isFilterMode
+      ? !excluded
+        ? nestedField || isLabelTag
+          ? "filter"
+          : "match"
+        : nestedField || isLabelTag
+        ? "negativeFilter"
+        : "negativeMatch"
+      : !excluded
+      ? "visible"
+      : "notVisible";
   });
 
   const theme = useTheme();
@@ -157,25 +198,51 @@ const FilterOption: React.FC<Props> = ({
     setOpen(false);
   });
 
-  const options = generateOptions(
-    nestedField,
-    shouldNotShowExclude,
-    modal,
-    isKeyPointLabel,
-    valueName,
-    isLabelTag,
-    isSampleTag
+  const options = useMemo(
+    () =>
+      generateOptions(
+        isFilterMode,
+        nestedField,
+        shouldNotShowExclude,
+        modal,
+        isKeyPointLabel,
+        valueName,
+        isLabelTag,
+        isSampleTag
+      ),
+    [
+      isFilterMode,
+      modal,
+      isLabelTag,
+      isSampleTag,
+      nestedField,
+      shouldNotShowExclude,
+      isKeyPointLabel,
+      valueName,
+    ]
   );
 
   useEffect(() => {
-    if (key === "filter") {
-      onSelectFilter();
-    } else if (key === "negativeFilter") {
-      onSelectNegativeFilter();
-    } else if (key === "match") {
-      onSelectMatch();
-    } else if (key === "negativeMatch") {
-      onSelectNegativeMatch();
+    switch (key) {
+      case "filter":
+        console.info("test");
+        onSelectFilter();
+        break;
+      case "negativeFilter":
+        onSelectNegativeFilter();
+        break;
+      case "match":
+        onSelectMatch();
+        break;
+      case "negativeMatch":
+        onSelectNegativeMatch();
+        break;
+      case "visible":
+        onSelectVisible();
+        break;
+      case "notVisible":
+        onSelectNotVisible();
+        break;
     }
   }, [key]);
 
@@ -195,6 +262,10 @@ const FilterOption: React.FC<Props> = ({
         return <ImageIcon fontSize="small" />;
       case "hideimageicon":
         return <HideImageIcon fontSize="small" />;
+      case "visibilityicon":
+        return <VisibilityIcon fontSize="small" />;
+      case "visibilityofficon":
+        return <VisibilityOffIcon fontSize="small" />;
       default:
         return <>{selectedValue}</>;
     }
@@ -206,8 +277,8 @@ const FilterOption: React.FC<Props> = ({
   };
 
   const onSelectFilter = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(false);
+    excluded && setExcluded(false);
+    isMatching && setIsMatching(false);
   };
 
   const onSelectNegativeFilter = () => {
@@ -224,6 +295,39 @@ const FilterOption: React.FC<Props> = ({
     setExcluded && setExcluded(true);
     setIsMatching && setIsMatching(true);
   };
+
+  useEffect(() => {
+    // when swtiching the mode, update the key to reflect the current mode selection
+    if (isFilterMode && ["visible", "notVisible"].includes(key)) {
+      const negative = filter[path]?.exclude;
+      const matchMode = filter[path]?.isMatching;
+      if (!negative && matchMode) {
+        setKey("match");
+      }
+      if (negative && matchMode) {
+        setKey("negativeMatch");
+      }
+      if (!negative && !matchMode) {
+        setKey("filter");
+      }
+      if (negative && !matchMode) {
+        setKey("negativeFilter");
+      }
+    }
+    if (
+      !isFilterMode &&
+      ["filter", "negativeFilter", "match", "negativeMatch"].includes(key)
+    ) {
+      const negative = visibility[path]?.exclude;
+      if (!negative) {
+        setKey("visible");
+      } else {
+        setKey("notVisible");
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFilterMode]);
 
   const children = (
     <Text
