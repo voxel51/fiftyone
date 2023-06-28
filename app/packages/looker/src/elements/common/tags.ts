@@ -7,6 +7,7 @@ import {
   CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   FLOAT_FIELD,
   formatDate,
@@ -61,7 +62,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      config: { fieldSchema },
+      config: { fieldSchema, ...r },
       options: { activePaths, coloring, timeZone, customizeColorSetting },
       playing,
     }: Readonly<State>,
@@ -218,27 +219,27 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
     };
 
-    const LABEL_RENDERERS = {
-      [withPath(LABELS_PATH, CLASSIFICATION)]: (
+    const CLASSIFICATION_RENDERER = (path, param: Classification) => {
+      if (!param.label) {
+        return null;
+      }
+      return {
         path,
-        param: Classification
-      ) => {
-        if (!param.label) {
-          return null;
-        }
-        return {
+        value: param.label,
+        title: `${path}: ${param.label}`,
+        color: getColorFromOptions({
+          coloring,
           path,
-          value: param.label,
-          title: `${path}: ${param.label}`,
-          color: getColorFromOptions({
-            coloring,
-            path,
-            param,
-            customizeColorSetting,
-            labelDefault: true,
-          }),
-        };
-      },
+          param,
+          customizeColorSetting,
+          labelDefault: true,
+        }),
+      };
+    };
+
+    const LABEL_RENDERERS = {
+      [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
+      [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
         const v = prettyNumber(param.value);
         return {
@@ -298,8 +299,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           let count = 0;
           let rest = 0;
 
-          value = value.flat();
-
           for (
             let index = 0;
             index < (value as Array<unknown>)?.length;
@@ -325,8 +324,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         if (value === undefined) continue;
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
-          if (path.startsWith("frames.")) continue;
-
           Array.isArray(value)
             ? pushList(LABEL_RENDERERS[field.embeddedDocType], value)
             : elements.push(
@@ -406,9 +403,13 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
-const unwind = (name: string, value: RegularLabel, depth = 1) => {
-  if (Array.isArray(value) && depth) {
-    return value.map((val) => unwind(name, val), depth - 1);
+const unwind = (
+  name: string,
+  value: RegularLabel[] | RegularLabel,
+  depth = 0
+) => {
+  if (Array.isArray(value) && depth < 2) {
+    return value.map((val) => unwind(name, val), depth + 1);
   }
 
   const v = value[name];
@@ -425,11 +426,21 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field | null, RegularLabel] => {
-  let value: RegularLabel | undefined | object = sample;
+): [Field | null, RegularLabel[]] => {
+  let values: Array<RegularLabel> | undefined = [
+    sample as unknown as RegularLabel,
+  ];
   let field: Field = null;
 
-  // only search up to field.subfield as that is what the sidebar supports
+  if (
+    path.startsWith("frames.") &&
+    schema?.frames?.embeddedDocType === "fiftyone.core.frames.FrameSample"
+  ) {
+    values = values[0]?.frames;
+    schema = schema.frames.fields;
+    path = path.split(".").slice(1).join(".");
+  }
+
   for (const key of path.split(".").slice(0, 2)) {
     if (!schema?.[key]) {
       return [null, null];
@@ -437,27 +448,29 @@ const getFieldAndValue = (
 
     field = schema[key];
 
-    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+    if (
+      field &&
+      field.ftype === LIST_FIELD &&
+      field.subfield === EMBEDDED_DOCUMENT_FIELD
+    ) {
       return [null, null];
     }
 
-    if (![undefined, null].includes(value) && field) {
-      value = unwind(field.dbField, value as RegularLabel);
+    if (values.length && field) {
+      values = unwind(field.dbField, values as RegularLabel[]).filter(
+        (v) => v !== undefined && v !== null
+      );
     }
 
-    if (
-      field &&
-      field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)
-    ) {
-      value = value?.["classifications"] || [];
-      field = field.fields?.["classifications"];
+    if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
+      values = values.map((value) => value?.["classifications"] || []).flat();
       break;
     }
 
     schema = field ? field.fields : null;
   }
 
-  return [field, value as RegularLabel];
+  return [field, values];
 };
 
 const compareObjectArrays = (arr1, arr2) => {

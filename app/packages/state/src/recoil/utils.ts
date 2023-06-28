@@ -1,5 +1,14 @@
 import { Sample } from "@fiftyone/looker";
-import { getFetchOrigin, getFetchPathPrefix } from "@fiftyone/utilities";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  LABELS,
+  LIST_FIELD,
+  StrictField,
+  UNSUPPORTED_FILTER_TYPES,
+  VALID_PRIMITIVE_TYPES,
+  getFetchOrigin,
+  getFetchPathPrefix,
+} from "@fiftyone/utilities";
 import { Nullable } from "vitest";
 
 export const getSampleSrc = (url: string) => {
@@ -43,3 +52,105 @@ export const mapSampleResponse = <
 
   return data;
 };
+
+export const fieldsMatcher = (
+  fields: StrictField[],
+
+  matcher: (field: StrictField) => boolean,
+  present?: Set<string>,
+  prefix = ""
+): string[] => {
+  return fields
+    .filter((field) => matcher(field))
+    .map((field) => `${prefix}${field.name}`)
+    .filter((path) => !present || !present.has(path));
+};
+
+export const primitivesMatcher = (field: StrictField) => {
+  if (field.name === "tags") {
+    return false;
+  }
+
+  if (VALID_PRIMITIVE_TYPES.includes(field.ftype)) {
+    return true;
+  }
+
+  if (
+    field.ftype === LIST_FIELD &&
+    VALID_PRIMITIVE_TYPES.includes(field.subfield)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+export const groupFilter = (field: StrictField) => {
+  if (LABELS.includes(field.embeddedDocType)) {
+    return false;
+  }
+
+  if (field.ftype === EMBEDDED_DOCUMENT_FIELD) {
+    return true;
+  }
+
+  if (
+    field.ftype === LIST_FIELD &&
+    field.subfield === EMBEDDED_DOCUMENT_FIELD
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+export const labelsMatcher =
+  (parent: StrictField | null = null) =>
+  (field: StrictField) => {
+    if (parent?.ftype === LIST_FIELD) {
+      return false;
+    }
+
+    if (field.ftype !== EMBEDDED_DOCUMENT_FIELD) {
+      return false;
+    }
+    if (!LABELS.includes(field.embeddedDocType)) {
+      return false;
+    }
+
+    return true;
+  };
+
+export const unsupportedMatcher = (field: StrictField) => {
+  if (UNSUPPORTED_FILTER_TYPES.includes(field.ftype)) {
+    return true;
+  }
+
+  if (
+    field.ftype === LIST_FIELD &&
+    field.subfield === EMBEDDED_DOCUMENT_FIELD &&
+    LABELS.includes(field.embeddedDocType)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+export const getLabelFields = (fields: StrictField[], prefix = "") => [
+  ...fieldsMatcher(fields || [], labelsMatcher(), undefined, prefix),
+  ...getEmbeddedLabelFields(fields, prefix),
+];
+
+export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
+  fields
+    .filter(groupFilter)
+    .map((parent) =>
+      fieldsMatcher(
+        parent.fields || [],
+        labelsMatcher(parent),
+        undefined,
+        `${prefix}${parent.name}.`
+      )
+    )
+    .flat();

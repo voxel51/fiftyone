@@ -146,7 +146,12 @@ const useStateUpdate = (ignoreSpaces = false) => {
         const previousDataset = get(datasetAtom);
 
         const currentSidebar = get(sidebarGroupsDefinition(false));
-        let groups = resolveGroups(dataset, currentSidebar);
+        let groups = resolveGroups(
+          dataset.sampleFields,
+          dataset.frameFields,
+          dataset.appConfig.sidebarGroups,
+          currentSidebar
+        );
 
         if (
           !previousDataset ||
@@ -155,7 +160,11 @@ const useStateUpdate = (ignoreSpaces = false) => {
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
-            groups = resolveGroups(dataset);
+            groups = resolveGroups(
+              dataset.sampleFields,
+              dataset.frameFields,
+              dataset.appConfig.sidebarGroups
+            );
           }
           reset(_activeFields({ modal: false }));
           reset(selectedFieldsStageState);
