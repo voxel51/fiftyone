@@ -25,6 +25,7 @@ COLOR_BY_TYPES = (
     fof.BooleanField,
     fof.IntField,
     fof.FloatField,
+    fof.ListField,
 )
 
 
@@ -101,6 +102,11 @@ class OnPlotLoad(HTTPEndpoint):
             )
 
             field = view.get_field(label_field)
+
+            if isinstance(field, fof.ListField):
+                labels = [l[0] if l else None for l in labels]
+                field = field.field
+
             if isinstance(field, fof.FloatField):
                 style = "continuous"
             else:
@@ -255,19 +261,14 @@ class ColorByChoices(HTTPEndpoint):
             root += "."
             schema = {k: v for k, v in schema.items() if k.startswith(root)}
 
-        nested_fields = set(
-            k for k, v in schema.items() if isinstance(v, fof.ListField)
+        bad_roots = tuple(
+            k + "." for k, v in schema.items() if isinstance(v, fof.ListField)
         )
 
         fields = [
             k
             for k, v in schema.items()
-            if (
-                isinstance(v, COLOR_BY_TYPES)
-                and not any(
-                    k == r or k.startswith(r + ".") for r in nested_fields
-                )
-            )
+            if isinstance(v, COLOR_BY_TYPES) and not k.startswith(bad_roots)
         ]
 
         return {"fields": fields}
