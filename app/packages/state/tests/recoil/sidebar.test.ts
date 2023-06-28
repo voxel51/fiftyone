@@ -1,25 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as sidebar from "../../src/recoil/sidebar";
-import { State } from "../../src/recoil/types";
 
-const mockDataset: State.Dataset = {
-  id: "mockQuickStart",
-  appConfig: {
-    gridMediaField: "filepath",
-    mediaFields: ["filepath"],
-    modalMediaField: "filepath",
-    plugins: {},
-  },
-
-  brainMethods: [],
-  createdAt: { $date: new Date().getTime() },
-  defaultMaskTargets: {},
-  evaluations: [],
-  frameFields: [],
-  lastLoadedAt: { $date: new Date().getTime() },
-  maskTargets: {},
-  mediaType: "image",
-  name: "quickstart-test",
+const mockFields = {
   sampleFields: [
     {
       dbField: "_id",
@@ -201,19 +183,15 @@ const mockDataset: State.Dataset = {
       path: "list_field",
     },
   ],
-  version: "test",
-  viewCls: null,
-  viewFields: [],
-  savedViews: [],
-  skeletons: [],
-  groupMediaTypes: [],
-  groupField: "",
-  info: {},
 };
 
 describe("ResolveGroups works", () => {
   it("dataset groups should resolve when curent is undefined", () => {
-    const test = sidebar.resolveGroups(mockDataset, undefined);
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      mockFields.sampleFields,
+      []
+    );
 
     expect(test.length).toBe(5);
     expect(test[0].name).toBe("tags");
@@ -256,10 +234,12 @@ describe("ResolveGroups works", () => {
       { name: "test group a", paths: [] },
       { name: "test group b", paths: [] },
     ];
-    const dataSetWithNewGroups = { ...mockDataset };
-    dataSetWithNewGroups.appConfig.sidebarGroups = mockSidebarGroups;
 
-    const test = sidebar.resolveGroups(mockDataset, mockSidebarGroups);
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      mockSidebarGroups
+    );
 
     expect(test.length).toBe(7);
     expect(test[4].name).toBe("other");

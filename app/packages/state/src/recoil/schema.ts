@@ -363,9 +363,9 @@ export const labelPaths = selectorFamily<
     ({ expanded = true, ...params }) =>
     ({ get }) => {
       const fields = get(labelFields(params));
+
       return fields.map((path) => {
         const labelField = get(field(path));
-
         const typePath = labelField.embeddedDocType.split(".");
         const type = typePath[typePath.length - 1];
 

@@ -205,10 +205,13 @@ export const resolveGroups = (
     present
   );
 
-  updater("labels", fieldsMatcher(sampleFields, labelsMatcher, present));
+  updater("labels", fieldsMatcher(sampleFields, labelsMatcher(), present));
 
   frameFields.length &&
-    updater("frame labels", fieldsMatcher(frameFields, labelsMatcher, present));
+    updater(
+      "frame labels",
+      fieldsMatcher(frameFields, labelsMatcher(), present, "frames.")
+    );
 
   updater(
     "primitives",
@@ -224,11 +227,11 @@ export const resolveGroups = (
 
   frameFields.length &&
     frameFields.filter(groupFilter).forEach(({ fields, name }) => {
+      present.add(`frames.${name}`);
       updater(
-        name,
-        fieldsMatcher(fields || [], () => true, present, `${name}.`)
+        `frames.${name}`,
+        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`)
       );
-      ("frames.");
     });
 
   updater("other", fieldsMatcher(sampleFields, unsupportedMatcher, present));
@@ -534,12 +537,16 @@ export const disabledPaths = selector<Set<string>>({
       fieldsMatcher(dataset.sampleFields, unsupportedMatcher)
     );
 
-    dataset.sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+    dataset.sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
-        fields || [],
+        parent.fields || [],
         (field) => {
           if (field.ftype === LIST_FIELD) {
             return !VALID_PRIMITIVE_TYPES.includes(field.subfield);
+          }
+
+          if (parent.ftype === LIST_FIELD) {
+            return !VALID_PRIMITIVE_TYPES.includes(field.ftype);
           }
 
           return (
@@ -548,11 +555,38 @@ export const disabledPaths = selector<Set<string>>({
           );
         },
         undefined,
-        `${name}.`
+        `${parent.name}.`
       ).forEach((path) => paths.add(path));
     });
 
-    fieldsMatcher;
+    fieldsMatcher(
+      dataset.frameFields,
+      primitivesMatcher,
+      undefined,
+      "frames."
+    ).forEach((path) => paths.add(path));
+
+    dataset.frameFields.filter(groupFilter).forEach((parent) => {
+      fieldsMatcher(
+        parent.fields || [],
+        (field) => {
+          if (field.ftype === LIST_FIELD) {
+            return !VALID_PRIMITIVE_TYPES.includes(field.subfield);
+          }
+
+          if (parent.ftype === LIST_FIELD) {
+            return !VALID_PRIMITIVE_TYPES.includes(field.ftype);
+          }
+
+          return (
+            !VALID_PRIMITIVE_TYPES.includes(field.ftype) &&
+            !LABELS.includes(field.embeddedDocType)
+          );
+        },
+        undefined,
+        `frames.${parent.name}.`
+      ).forEach((path) => paths.add(path));
+    });
 
     return new Set(paths);
   },

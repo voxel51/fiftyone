@@ -7,6 +7,7 @@ import {
   CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   FLOAT_FIELD,
   formatDate,
@@ -61,7 +62,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      config: { fieldSchema },
+      config: { fieldSchema, ...r },
       options: { activePaths, coloring, timeZone, customizeColorSetting },
       playing,
     }: Readonly<State>,
@@ -325,8 +326,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         if (value === undefined) continue;
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
-          if (path.startsWith("frames.")) continue;
-
           Array.isArray(value)
             ? pushList(LABEL_RENDERERS[field.embeddedDocType], value)
             : elements.push(
@@ -406,8 +405,12 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
-const unwind = (name: string, value: RegularLabel, depth = 0) => {
-  if (Array.isArray(value) && depth < 1) {
+const unwind = (
+  name: string,
+  value: RegularLabel[] | RegularLabel,
+  depth = 0
+) => {
+  if (Array.isArray(value) && depth < 2) {
     return value.map((val) => unwind(name, val), depth + 1);
   }
 
@@ -425,12 +428,21 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field | null, RegularLabel] => {
-  let value: RegularLabel | undefined | object = sample;
+): [Field | null, RegularLabel[]] => {
+  let values: Array<RegularLabel> | undefined = [
+    sample as unknown as RegularLabel,
+  ];
   let field: Field = null;
-  let classifications = false;
 
-  // only search up to field.subfield as that is what the sidebar supports
+  if (
+    path.startsWith("frames.") &&
+    schema?.frames?.embeddedDocType === "fiftyone.core.frames.FrameSample"
+  ) {
+    values = values[0]?.frames;
+    schema = schema.frames.fields;
+    path = path.split(".").slice(1).join(".");
+  }
+
   for (const key of path.split(".").slice(0, 2)) {
     if (!schema?.[key]) {
       return [null, null];
@@ -438,30 +450,29 @@ const getFieldAndValue = (
 
     field = schema[key];
 
-    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+    if (
+      field &&
+      field.ftype === LIST_FIELD &&
+      field.subfield === EMBEDDED_DOCUMENT_FIELD
+    ) {
       return [null, null];
     }
 
-    console.log();
-    if (![undefined, null].includes(value) && field) {
-      value = unwind(field.dbField, value as RegularLabel);
+    if (values.length && field) {
+      values = unwind(field.dbField, values as RegularLabel[]).filter(
+        (v) => v !== undefined && v !== null
+      );
     }
 
-    classifications =
-      field && field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS);
-    if (classifications) {
-      value = value?.["classifications"] || [];
+    if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
+      values = values.flat().map((value) => value?.["classifications"] || []);
       break;
     }
 
     schema = field ? field.fields : null;
   }
 
-  if (!classifications && field.ftype === LIST_FIELD) {
-    return [null, null];
-  }
-
-  return [field, value as RegularLabel];
+  return [field, values];
 };
 
 const compareObjectArrays = (arr1, arr2) => {
