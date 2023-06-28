@@ -134,6 +134,7 @@ const useOnSelect = (
     ({ snapshot, set }) =>
       async ({ value, count }: V) => {
         const selected = new Set(await snapshot.getPromise(selectedAtom));
+        console.info(selectedCounts);
         selectedCounts.current.set(value, count);
         selected.add(value);
         set(selectedAtom, [...selected].sort());
@@ -204,11 +205,13 @@ const CategoricalFilter = <T extends V = V>({
 
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
+  const onSelectVisibility = useRef(new Map<V["value"], number>());
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
@@ -244,12 +247,31 @@ const CategoricalFilter = <T extends V = V>({
         {results === null && <LoadingDots text="" />}
         {results !== null &&
           (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
-          !skeleton && (
+          !skeleton &&
+          isFilterMode && (
             <Selector
               useSearch={useSearch}
               placeholder={`+ filter by ${name}`}
               component={ResultComponent}
               onSelect={onSelect}
+              inputStyle={{
+                color: theme.text.secondary,
+                fontSize: "1rem",
+                width: "100%",
+              }}
+              containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
+              toKey={({ value }) => String(value)}
+            />
+          )}
+        {results !== null &&
+          (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
+          !skeleton &&
+          !isFilterMode && (
+            <Selector
+              useSearch={useSearch}
+              placeholder={`+ set visibility by ${name}`}
+              component={ResultComponent}
+              onSelect={onSelectVisibility}
               inputStyle={{
                 color: theme.text.secondary,
                 fontSize: "1rem",
