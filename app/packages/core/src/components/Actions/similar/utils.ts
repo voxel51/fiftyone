@@ -35,28 +35,28 @@ export const getQueryIds = async (
 
   const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
-  const modal = await snapshot.getPromise(fos.modalSample);
 
   if (isPatches) {
     if (selectedSamples.size) {
       return [...selectedSamples].map((id) => {
         const sample = fos.getSample(id);
         if (sample) {
-          return sample.sample[labels_field]._id;
+          return sample.sample[labels_field]._id as string;
         }
 
         throw new Error("sample not found");
       });
     }
 
-    return modal.sample[labels_field]._id;
+    return (await snapshot.getPromise(fos.modalSample)).sample[labels_field]
+      ._id as string;
   }
 
   if (selectedSamples.size) {
     return [...selectedSamples];
   }
 
-  return modal.id;
+  return await snapshot.getPromise(fos.modalSampleId);
 };
 
 export const useSortBySimilarity = (close) => {
@@ -77,6 +77,7 @@ export const useSortBySimilarity = (close) => {
         const queryIds = parameters.query
           ? null
           : await getQueryIds(snapshot, parameters.brainKey);
+
         const view = await snapshot.getPromise(fos.view);
         const subscription = await snapshot.getPromise(fos.stateSubscription);
 

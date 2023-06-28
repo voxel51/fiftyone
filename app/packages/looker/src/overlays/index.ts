@@ -83,39 +83,33 @@ const accumulateOverlays = <State extends BaseState>(
   const overlays = [];
 
   for (const field in data) {
-    let labels = data[field];
+    const label = data[field];
 
-    if (!labels) {
+    if (!label || Array.isArray(label)) {
       continue;
     }
 
-    if (!Array.isArray(labels)) {
-      labels = [labels];
+    if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT && depth) {
+      const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
+      classifications.push(...nestedResult.classifications);
+      overlays.push(...nestedResult.overlays);
+      continue;
     }
 
-    for (const label of labels) {
-      if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT && depth) {
-        const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
-        classifications.push(...nestedResult.classifications);
-        overlays.push(...nestedResult.overlays);
-        continue;
-      }
-
-      if (label._cls in FROM_FO) {
-        const labelOverlays = FROM_FO[label._cls](
-          `${prefix}${field}`,
-          label,
-          this
-        );
-        overlays.push(...labelOverlays);
-      } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
-        classifications.push([
-          `${prefix}${field}`,
-          label._cls in LABEL_LISTS_MAP
-            ? label[LABEL_LISTS_MAP[label._cls]]
-            : [label],
-        ]);
-      }
+    if (label._cls in FROM_FO) {
+      const labelOverlays = FROM_FO[label._cls](
+        `${prefix}${field}`,
+        label,
+        this
+      );
+      overlays.push(...labelOverlays);
+    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
+      classifications.push([
+        `${prefix}${field}`,
+        label._cls in LABEL_LISTS_MAP
+          ? label[LABEL_LISTS_MAP[label._cls]]
+          : [label],
+      ]);
     }
   }
 
