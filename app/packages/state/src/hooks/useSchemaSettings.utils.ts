@@ -3,9 +3,10 @@ import {
   CLASSIFICATION_FIELD,
   DETECTION_DISABLED_SUB_PATHS,
   DETECTION_FIELD,
-  DISABLED_FIELD_TYPES,
   DISABLED_LABEL_FIELDS_VISIBILITY,
   DISABLED_PATHS,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   Field,
   GEOLOCATIONS_DISABLED_SUB_PATHS,
   GEOLOCATION_DISABLED_SUB_PATHS,
@@ -15,6 +16,7 @@ import {
   HEATMAP_FIELD,
   KEYPOINT_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
+  OBJECT_ID_FIELD,
   POLYLINE_DISABLED_SUB_PATHS,
   POLYLINE_FIELD,
   REGRESSION_DISABLED_SUB_PATHS,
@@ -33,7 +35,10 @@ export const disabledField = (
   path: string,
   combinedSchema: Record<string, Field>,
   groupField?: string,
-  isFrameView?: boolean
+  isFrameView?: boolean,
+  isClipsView?: boolean,
+  isVideo?: boolean,
+  isPatchesView?: boolean
 ): boolean => {
   const currField = combinedSchema[path] || ({} as Field);
   const { ftype } = currField;
@@ -41,16 +46,33 @@ export const disabledField = (
   const parentField = combinedSchema[parentPath];
   const parentFType = parentField?.ftype;
   const pathSplit = path.split(".");
-
   const shortPath = pathSplit[pathSplit.length - 1];
+  const isTopLevelField =
+    pathSplit.length === 1 ||
+    (pathSplit.length === 1 && pathSplit[0] === "frames");
 
   // ex: 'id' and 'filepath' are always disabled
   if (DISABLED_PATHS.includes(path)) {
     return true;
   }
 
-  // ex: ObjectIdType and VectorType are always disabled
-  if (DISABLED_FIELD_TYPES.includes(ftype)) {
+  if (
+    (isPatchesView || isFrameView || isClipsView) &&
+    ["sample_id", "frames.sample_id"].includes(path)
+  ) {
+    return true;
+  }
+
+  if ("frames.id" === path && ftype === OBJECT_ID_FIELD) {
+    return true;
+  }
+
+  if ("frames.frame_number" === path && ftype === FRAME_NUMBER_FIELD) {
+    return true;
+  }
+
+  // Clip view's top level field(s) with frameSupport type is disabled
+  if (isClipsView && ftype === FRAME_SUPPORT_FIELD && isTopLevelField) {
     return true;
   }
 
@@ -60,7 +82,7 @@ export const disabledField = (
     return true;
   }
 
-  if (isFrameView && path === "frame_number") {
+  if ((isFrameView || isVideo) && path === "frame_number") {
     return true;
   }
 

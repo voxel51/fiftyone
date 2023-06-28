@@ -173,7 +173,9 @@ export const excludedPathsState = atomFamily({
         const dataset = await getPromise(fos.dataset);
         const showNestedField = await getPromise(showNestedFieldsState);
         const searchResults = await getPromise(schemaSearchRestuls);
-        const isFrameVIew = await getPromise(fos.isFramesView);
+        const isFrameView = await getPromise(fos.isFramesView);
+        const isClipsView = await getPromise(fos.isClipsView);
+        const isPatchesView = await getPromise(fos.isPatchesView);
         const isVideo = dataset.mediaType === "video";
         const isImage = dataset.mediaType === "image";
         const isInSearchMode = !!searchResults?.length;
@@ -210,7 +212,10 @@ export const excludedPathsState = atomFamily({
                 path,
                 combinedSchema,
                 dataset?.groupField,
-                isFrameVIew
+                isFrameView,
+                isClipsView,
+                isVideo,
+                isPatchesView
               )
             );
           })
@@ -425,6 +430,7 @@ export default function useSchemaSettings() {
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
+  const isClipsView = useRecoilValue(fos.isClipsView);
 
   const [expandedPaths, setExpandedPaths] = useRecoilState(expandedPathsState);
 
@@ -486,7 +492,15 @@ export default function useSchemaSettings() {
       ? [...datasetSelectedPaths]?.filter(
           ({ path }) =>
             path &&
-            !disabledField(path, combinedSchema, isGroupDataset, isFrameView)
+            !disabledField(
+              path,
+              combinedSchema,
+              isGroupDataset,
+              isFrameView,
+              isClipsView,
+              isVideo,
+              isPatchesView
+            )
         )
       : [];
 
@@ -565,7 +579,10 @@ export default function useSchemaSettings() {
             path,
             finalSchemaKeyByPath,
             isGroupDataset,
-            isFrameView
+            isFrameView,
+            isClipsView,
+            isVideo,
+            isPatchesView
           ) || filterRuleTab;
 
         const fullPath =
@@ -628,6 +645,9 @@ export default function useSchemaSettings() {
     datasetName,
     fieldSchema,
     includeNestedFields,
+    isPatchesView,
+    isClipsView,
+    isVideo,
   ]);
 
   const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
@@ -836,7 +856,15 @@ export default function useSchemaSettings() {
         }
         const res = Object.values(combinedSchema)
           .filter((f) =>
-            disabledField(f.path, combinedSchema, isGroupDataset, isFrameView)
+            disabledField(
+              f.path,
+              combinedSchema,
+              isGroupDataset,
+              isFrameView,
+              isClipsView,
+              isVideo,
+              isPatchesView
+            )
           )
           .map((f) => f.path);
 
@@ -858,6 +886,8 @@ export default function useSchemaSettings() {
     filterRuleTab,
     combinedSchema,
     isPatchesView,
+    isClipsView,
+    isVideo,
   ]);
 
   const setAllFieldsCheckedWrapper = useCallback(

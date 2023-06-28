@@ -34,9 +34,9 @@ import {
   GEOLOCATION_DISABLED_SUB_PATHS,
   GEOLOCATIONS_DISABLED_SUB_PATHS,
   KEYPOINTS_FIELD,
+  VECTOR_FIELD,
+  FRAME_SUPPORT_FIELD,
 } from "@fiftyone/utilities";
-import { FRAME_SUPPORT_FIELD } from "@fiftyone/utilities";
-import { VECTOR_FIELD } from "@fiftyone/utilities";
 
 const BASE_FIELD = {
   path: null,
@@ -77,12 +77,22 @@ const FIELDS = {
   },
   OBJECT_ID_TYPE: {
     ...BASE_FIELD,
-    path: "ObjectIdType",
+    path: "id",
+    ftype: OBJECT_ID_FIELD,
+  },
+  OBJECT_ID_TYPE_NESTED: {
+    ...BASE_FIELD,
+    path: "Nested.ObjectIdType",
     ftype: OBJECT_ID_FIELD,
   },
   FRAME_NUMBER_TYPE: {
     ...BASE_FIELD,
-    path: "FrameNumberField",
+    path: "frame_number",
+    ftype: FRAME_NUMBER_FIELD,
+  },
+  FRAME_NUMBER_CUSTOM_FIELD_TYPE: {
+    ...BASE_FIELD,
+    path: "frame_number_custom_name",
     ftype: FRAME_NUMBER_FIELD,
   },
   FRAME_SUPPORT_TYPE: {
@@ -122,12 +132,17 @@ const FIELDS = {
   },
   FRAMES_NUMBER_FIELD: {
     ...BASE_FIELD,
-    path: "frames.number",
+    path: "frames.frame_number",
     ftype: FRAME_NUMBER_FIELD,
   },
   SAMPLE_ID_FIELD: {
     ...BASE_FIELD,
     path: "sample_id",
+    ftype: OBJECT_ID_FIELD,
+  },
+  FRAME_SAMPLE_ID_FIELD: {
+    ...BASE_FIELD,
+    path: "frames.sample_id",
     ftype: OBJECT_ID_FIELD,
   },
   FRAME_NUMBER_FIELD: {
@@ -210,6 +225,11 @@ const FIELDS = {
     path: "temporal",
     ftype: TEMPORAL_DETECTION_FIELD,
   },
+  TEMPORAL_DETECTION_FRAME_SUPPORT: {
+    ...BASE_FIELD,
+    path: "temporal.support",
+    ftype: FRAME_SUPPORT_FIELD,
+  },
   TEMPORAL_DETECTIONS_FIELD: {
     ...BASE_FIELD,
     path: "temporals",
@@ -254,6 +274,13 @@ const getDisabledNestedLabelFields = (prefix: string, paths: string[]) => {
   if (paths.includes("index")) {
     res.push({ ...BASE_FIELD, path: `${prefix}.index`, ftype: INT_FIELD });
   }
+  if (paths.includes("support")) {
+    res.push({
+      ...BASE_FIELD,
+      path: `${prefix}.support`,
+      ftype: FRAME_SUPPORT_FIELD,
+    });
+  }
 
   return res;
 };
@@ -297,26 +324,71 @@ describe("Disabled field types in schema fields", () => {
     vi.restoreAllMocks();
   });
 
-  it("ObjectIdField type is disabled across all fields", () => {
+  it("A field with ObjectIdField type and top-level 'id' path is disabled", () => {
     expect(disabledField(FIELDS.OBJECT_ID_TYPE.path, SCHEMA)).toBe(true);
   });
 
-  it("FrameNumberField type is disabled across all fields", () => {
+  it("A field with ObjectIdField type and non top-level 'id' path is enabled", () => {
+    expect(disabledField(FIELDS.OBJECT_ID_TYPE_NESTED.path, SCHEMA)).toBe(
+      false
+    );
+  });
+
+  it("top level FrameNumberField type is disabled in a video dataset if path=frame_number", () => {
     expect(
-      disabledField(FIELDS.FRAME_NUMBER_TYPE.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.FRAME_NUMBER_TYPE.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        false,
+        true
+      )
     ).toBe(true);
   });
 
-  it("FrameSupportField type is disabled across all fields", () => {
+  it("top-level FrameNumberField type is disabled in a frameView if path = frame_number", () => {
     expect(
-      disabledField(FIELDS.FRAME_SUPPORT_TYPE.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.FRAME_NUMBER_TYPE.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        true,
+        false,
+        false
+      )
     ).toBe(true);
   });
 
-  it("VectorField type is disabled across all fields", () => {
+  it("top-level FrameNumberField type is disabled in a frameView if path != frame_number", () => {
+    expect(
+      disabledField(
+        FIELDS.FRAME_NUMBER_CUSTOM_FIELD_TYPE.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        true,
+        false,
+        false
+      )
+    ).toBe(false);
+  });
+
+  it("A field with type FrameSupportField is enabled if not ClipView and a top level path ", () => {
+    expect(
+      disabledField(
+        FIELDS.FRAME_SUPPORT_TYPE.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        false
+      )
+    ).toBe(false);
+  });
+
+  it("A field with VectorField type is enabled", () => {
     expect(
       disabledField(FIELDS.VECTOR_TYPE.path, SCHEMA, NOT_GROUP_DATASET)
-    ).toBe(true);
+    ).toBe(false);
   });
 });
 
@@ -355,13 +427,27 @@ describe("Video dataset disabled fields", () => {
 
   it("frames.id field is disabled", () => {
     expect(
-      disabledField(FIELDS.FRAME_ID_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.FRAME_ID_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        false,
+        true
+      )
     ).toBe(true);
   });
 
   it("frames.frame_number field is disabled", () => {
     expect(
-      disabledField(FIELDS.FRAMES_NUMBER_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.FRAMES_NUMBER_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        false,
+        true
+      )
     ).toBe(true);
   });
 });
@@ -371,10 +457,32 @@ describe("Patches view disabled fields", () => {
     vi.restoreAllMocks();
   });
 
-  it("sample_id field is disabled", () => {
+  it("sample_id field is disabled in patches view", () => {
     expect(
-      disabledField(FIELDS.SAMPLE_ID_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        false,
+        false,
+        true
+      )
     ).toBe(true);
+  });
+
+  it("sample_id field is enabled for non patches view", () => {
+    expect(
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        false,
+        false,
+        false
+      )
+    ).toBe(false);
   });
 });
 
@@ -385,7 +493,12 @@ describe("Frames view disabled fields", () => {
 
   it("sample_id field is disabled", () => {
     expect(
-      disabledField(FIELDS.SAMPLE_ID_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        true
+      )
     ).toBe(true);
   });
 
@@ -401,20 +514,32 @@ describe("Frames view disabled fields", () => {
   });
 });
 
-describe("Clip view disabled fields", () => {
+describe("Clip view", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("sample_id field is disabled", () => {
     expect(
-      disabledField(FIELDS.SAMPLE_ID_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.SAMPLE_ID_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        true
+      )
     ).toBe(true);
   });
 
   it("support field is disabled", () => {
     expect(
-      disabledField(FIELDS.FRAME_SUPPORT_TYPE.path, SCHEMA, NOT_GROUP_DATASET)
+      disabledField(
+        FIELDS.FRAME_SUPPORT_TYPE.path,
+        SCHEMA,
+        NOT_GROUP_DATASET,
+        false,
+        true
+      )
     ).toBe(true);
   });
 });
@@ -442,7 +567,7 @@ describe("label types are disabled fields", () => {
     vi.restoreAllMocks();
   });
 
-  it("LABEL fields are disabled", () => {
+  it("Disabled label fields", () => {
     expect(disabledField(FIELDS.DETECTION_FIELD.path, SCHEMA)).toBe(true);
     expect(disabledField(FIELDS.DETECTIONS_FIELD.path, SCHEMA)).toBe(true);
     expect(disabledField(FIELDS.CLASSIFICATION_FIELD.path, SCHEMA)).toBe(true);
@@ -463,9 +588,15 @@ describe("label types are disabled fields", () => {
     expect(disabledField(FIELDS.POLYLINE_FIELD.path, SCHEMA)).toBe(true);
     expect(disabledField(FIELDS.POLYLINES_FIELD.path, SCHEMA)).toBe(true);
   });
+
+  it("disable a field of TemporalDetection label with FrameSupportField type", () => {
+    expect(
+      disabledField(FIELDS.TEMPORAL_DETECTION_FRAME_SUPPORT.path, SCHEMA)
+    ).toBe(true);
+  });
 });
 
-describe("label types are disabled fields", () => {
+describe("Label fields that are disabled", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -656,6 +787,8 @@ describe("label types are disabled fields", () => {
     disabledSubFields.forEach((field) => {
       SCHEMA[field.path] = field;
     });
+
+    console.log("disabledSubFields", disabledSubFields);
 
     disabledSubFields.forEach((field) => {
       expect(disabledField(field.path, SCHEMA)).toBe(true);

@@ -409,12 +409,6 @@ export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
 ]);
 
 export const DISABLED_PATHS = ["id", "filepath", "tags", "metadata"];
-export const DISABLED_FIELD_TYPES = [
-  OBJECT_ID_FIELD,
-  FRAME_NUMBER_FIELD,
-  FRAME_SUPPORT_FIELD,
-  VECTOR_FIELD,
-];
 
 const BASE_DISABLED_PATHS = ["id", "tags", "label", "confidence"];
 
