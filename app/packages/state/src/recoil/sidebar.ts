@@ -570,18 +570,15 @@ export const disabledPaths = selector<Set<string>>({
       fieldsMatcher(
         parent.fields || [],
         (field) => {
-          if (field.ftype === LIST_FIELD) {
-            return !VALID_PRIMITIVE_TYPES.includes(field.subfield);
-          }
-
           if (parent.ftype === LIST_FIELD) {
-            return !VALID_PRIMITIVE_TYPES.includes(field.ftype);
+            return true;
           }
 
-          return (
-            !VALID_PRIMITIVE_TYPES.includes(field.ftype) &&
-            !LABELS.includes(field.embeddedDocType)
-          );
+          if (field.ftype === LIST_FIELD) {
+            return true;
+          }
+
+          return !LABELS.includes(field.embeddedDocType);
         },
         undefined,
         `frames.${parent.name}.`
