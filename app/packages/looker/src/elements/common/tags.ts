@@ -299,8 +299,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           let count = 0;
           let rest = 0;
 
-          value = value.flat();
-
           for (
             let index = 0;
             index < (value as Array<unknown>)?.length;
@@ -465,7 +463,7 @@ const getFieldAndValue = (
     }
 
     if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
-      values = values.flat().map((value) => value?.["classifications"] || []);
+      values = values.map((value) => value?.["classifications"] || []).flat();
       break;
     }
 
