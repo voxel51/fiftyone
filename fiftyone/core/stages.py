@@ -1914,7 +1914,6 @@ def _get_filter_frames_field_pipeline(
     only_matches=True,
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-
     merge = {
         "$cond": {
             "if": cond,
@@ -1924,8 +1923,8 @@ def _get_filter_frames_field_pipeline(
     }
 
     if "." in new_field:
-        parent, new_field = new_field.split(".")
-        obj = {parent: {new_field: merge}}
+        parent, child = new_field.split(".")
+        obj = {parent: {child: merge}}
     else:
         obj = {new_field: merge}
 
