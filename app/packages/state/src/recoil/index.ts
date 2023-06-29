@@ -4,6 +4,7 @@ export * from "./color";
 export * from "./config";
 export * from "./distributions";
 export * from "./filters";
+export * from "./fieldVisibility";
 export * from "./groups";
 export * from "./looker";
 export * from "./modal";
