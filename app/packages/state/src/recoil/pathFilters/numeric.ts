@@ -4,8 +4,10 @@ import {
   selectorFamily,
   SetRecoilState,
 } from "recoil";
+import * as fos from "../atoms";
 import * as aggregationAtoms from "../aggregations";
 import * as filterAtoms from "../filters";
+import * as visibilityAtoms from "../fieldVisibility";
 
 export interface NumericFilter {
   range: Range;
@@ -36,6 +38,26 @@ const getFilter = (
     isMatching: true,
     onlyMatch: true,
     ...get(modal ? filterAtoms.modalFilters : filterAtoms.filters)[path],
+  };
+
+  return result;
+};
+
+const getVisibility = (
+  get: GetRecoilValue,
+  modal: boolean,
+  path: string
+): NumericFilter => {
+  const result = {
+    _CLS: "numeric",
+    range: [null, null] as Range,
+    none: true,
+    nan: true,
+    inf: true,
+    ninf: true,
+    exclude: false,
+    isMatching: null,
+    ...get(visibilityAtoms.visibility({ modal, path })),
   };
 
   return result;
@@ -95,6 +117,53 @@ const setFilter = (
   }
 };
 
+const setVisibility = (
+  get: GetRecoilValue,
+  set: SetRecoilState,
+  modal: boolean,
+  path: string,
+  key: string,
+  value: boolean | Range | DefaultValue
+) => {
+  const visibility = {
+    _CLS: "numeric",
+    onlyMatch: true,
+    isMatching: true,
+    exclude: false,
+    range: [null, null] as Range,
+    ...getFilter(get, modal, path),
+    [key]: value,
+  };
+
+  const check = {
+    ...visibility,
+    [key]: value,
+  };
+
+  const isDefault = meetsDefault(check);
+
+  if (visibility.range[0] === null && visibility.range[1] === null) {
+    visibility.exclude = false;
+    visibility.isMatching = true;
+    visibility.onlyMatch = true;
+  }
+
+  const bounds = get(boundsAtom({ path }));
+  const rangeIsNull =
+    !Boolean(visibility.range) || visibility.range.every((r) => r === null);
+
+  if (!isDefault && rangeIsNull) {
+    set(visibilityAtoms.visibility({ modal, path }), {
+      ...visibility,
+      range: bounds,
+    });
+  } else if (isDefault) {
+    set(visibilityAtoms.visibility({ modal, path }), null);
+  } else {
+    set(visibilityAtoms.visibility({ modal, path }), visibility);
+  }
+};
+
 export const boundsAtom = selectorFamily<
   Range,
   {
@@ -143,7 +212,10 @@ export const rangeAtom = selectorFamily<
   get:
     ({ modal, path, defaultRange, withBounds }) =>
     ({ get }) => {
-      const range = getFilter(get, modal, path).range;
+      const isFilterMode = get(fos.isSidebarFilterMode);
+      const range = isFilterMode
+        ? getFilter(get, modal, path).range
+        : getVisibility(get, modal, path).range;
       if (withBounds && range.every((r) => r === null)) {
         return get(boundsAtom({ path, defaultRange }));
       }
@@ -153,7 +225,12 @@ export const rangeAtom = selectorFamily<
   set:
     ({ modal, path }) =>
     ({ get, set }, range) => {
-      setFilter(get, set, modal, path, "range", range);
+      const isFilterMode = get(fos.isSidebarFilterMode);
+      if (isFilterMode) {
+        setFilter(get, set, modal, path, "range", range);
+      } else {
+        setVisibility(get, set, modal, path, "range", range);
+      }
     },
 });
 
@@ -168,12 +245,22 @@ export const nonfiniteAtom = selectorFamily<
   key: "nonfiniteAtom",
   get:
     ({ modal, path, key }) =>
-    ({ get }) =>
-      getFilter(get, modal, path)[key],
+    ({ get }) => {
+      const isFilterMode = get(fos.isSidebarFilterMode);
+      return isFilterMode
+        ? getFilter(get, modal, path)[key]
+        : getVisibility(get, modal, path)[key];
+    },
   set:
     ({ modal, path, key }) =>
-    ({ get, set }, value) =>
-      setFilter(get, set, modal, path, key, value),
+    ({ get, set }, value) => {
+      const isFilterMode = get(fos.isSidebarFilterMode);
+      if (isFilterMode) {
+        setFilter(get, set, modal, path, key, value);
+      } else {
+        setVisibility(get, set, modal, path, key, value);
+      }
+    },
 });
 
 export const numericExcludeAtom = selectorFamily<
@@ -188,12 +275,20 @@ export const numericExcludeAtom = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
-      return getFilter(get, modal, path).exclude;
+      const isFilterMode = get(fos.isSidebarFilterMode);
+      return isFilterMode
+        ? getFilter(get, modal, path).exclude
+        : getVisibility(get, modal, path).exclude;
     },
   set:
     ({ modal, path, defaultRange }) =>
     ({ get, set }, value) => {
-      setFilter(get, set, modal, path, "exclude", value);
+      const isFilterMode = get(fos.isSidebarFilterMode);
+      if (isFilterMode) {
+        setFilter(get, set, modal, path, "exclude", value);
+      } else {
+        setVisibility(get, set, modal, path, "exclude", value);
+      }
     },
 });
 

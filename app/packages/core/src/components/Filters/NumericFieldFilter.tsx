@@ -125,6 +125,7 @@ const NumericFieldFilter = ({
   color,
 }: Props) => {
   const name = path.split(".").slice(-1)[0];
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const excludeAtom = fos.numericExcludeAtom({
     path,
     modal,
@@ -292,7 +293,7 @@ const NumericFieldFilter = ({
               {...props}
             />
           ))}
-        {isFiltered && hasBounds && (
+        {isFiltered && hasBounds && isFilterMode && (
           <FilterOption
             nestedField={nestedField}
             shouldNotShowExclude={false} // only boolean fields don't use exclude
