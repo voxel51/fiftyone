@@ -734,11 +734,10 @@ export const placementsForPlaceSelector = selectorFamily({
     ({ get }) => {
       const placements = get(operatorPlacementsSelector);
       return placements
-        .filter((p) => p.placement.place === place)
-        .map((p) => ({
-          placement: p.placement,
-          operator: p.operator.operator,
-        }));
+        .filter(
+          (p) => p.placement.place === place && p.operator?.config?.canExecute
+        )
+        .map(({ placement, operator }) => ({ placement, operator }));
     },
 });
 
