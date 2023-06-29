@@ -78,6 +78,10 @@ class DelegatedOperation(object):
     def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.delete_operation(_id=doc_id)
 
+    def rerun_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
+        doc = self._repo.get(_id=doc_id)
+        return self._repo.queue_operation(**doc.__dict__)
+
     def get_queued_operations(self, operator: str = None, dataset_id=None):
         return self._repo.get_queued_operations(
             operator=operator, dataset_id=dataset_id

@@ -39,6 +39,9 @@ class MockOperator(Operator):
 
 
 class DelegatedOperationServiceTests(unittest.TestCase):
+
+    _should_fail = False
+
     def setUp(self):
         self.docs_to_delete = []
         self.svc = DelegatedOperation()
@@ -209,3 +212,47 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result)
         self.assertTrue("Exception: MockOperator failed" in doc.result.error)
         self.assertIsNotNone(doc.failed_at)
+
+    @patch(
+        "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+        return_value=True,
+    )
+    @patch(
+        "fiftyone.operators.registry.OperatorRegistry.get_operator",
+        return_value=MockOperator(success=False),
+    )
+    def test_rerun_failed(self, get_op_mock, op_exists_mock):
+
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target=f"test_target",
+            dataset_id=ObjectId(),
+            context=ctx.serialize(),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, "queued")
+
+        self.svc.execute_queued_operations(delegation_target="test_target")
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, "failed")
+
+        # set the mock back to a successful operation
+        get_op_mock.return_value = MockOperator()
+
+        rerun_doc = self.svc.rerun_operation(doc.id)
+        self.docs_to_delete.append(rerun_doc)
+        self.assertNotEquals(doc.id, rerun_doc.id)
+        self.assertEqual(rerun_doc.run_state, "queued")
+        self.assertIsNotNone(rerun_doc.queued_at)
+        self.assertIsNone(rerun_doc.started_at)
+        self.assertIsNone(rerun_doc.completed_at)
+        self.assertIsNone(rerun_doc.result)
+
+        self.svc.execute_queued_operations(delegation_target="test_target")
+
+        doc = self.svc.get(doc_id=rerun_doc.id)
+        self.assertEqual(doc.run_state, "completed")
