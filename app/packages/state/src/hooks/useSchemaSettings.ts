@@ -385,7 +385,11 @@ export default function useSchemaSettings() {
   const setSchema = useSetRecoilState(schemaState);
   useEffect(() => {
     if (datasetName) {
-      setSchema(dataset ? buildSchema(dataset, true) : null);
+      setSchema(
+        dataset
+          ? buildSchema(dataset.sampleFields, dataset.frameFields, true)
+          : null
+      );
     }
   }, [datasetName]);
 
