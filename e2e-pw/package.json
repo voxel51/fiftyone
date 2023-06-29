@@ -1,0 +1,18 @@
+{
+    "name": "e2e-pw",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "devDependencies": {
+        "@playwright/test": "^1.35.1",
+        "dotenv": "^16.3.1",
+        "ts-dedent": "^2.2.0",
+        "vitest": "^0.32.2",
+        "wait-on": "^7.0.1"
+    },
+    "scripts": {
+        "unittests": "vitest",
+        "e2e": "playwright test",
+        "test": "yarn unittests && yarn e2e"
+    }
+}
