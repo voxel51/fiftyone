@@ -421,7 +421,7 @@ You can conveniently reset the sidebar groups to their default state by setting
 .. _app-filtering:
 
 Filtering sample fields
-_______________________
+-----------------------
 
 The App provides UI elements in both grid view and expanded sample view that
 you can use to filter your dataset. To view the available filter options for a
@@ -446,6 +446,37 @@ only those samples and/or labels that match the filter.
 .. image:: /images/app/app-filters.gif
    :alt: app-filters
    :align: center
+
+.. _app-indexed-filtering:
+
+Leveraging indexes while filtering
+----------------------------------
+
+By default, most sidebar filters require full collection scans to retrieve the
+relevant results.
+
+However, you can optimize any sidebar filter(s) of interest by using
+:meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>`
+to index the field or embedded field that you wish to filter by:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+    # Add index to optimize ground truth label filters
+    dataset.create_index("ground_truth.detections.label")
+
+    session = fo.launch_app(dataset)
+
+You can use
+:meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
+to view the existing indexes on a dataset, and you can use
+:meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
+to delete indexes that you no longer need.
 
 .. _app-create-view:
 
