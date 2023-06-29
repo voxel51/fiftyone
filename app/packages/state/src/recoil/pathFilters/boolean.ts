@@ -4,6 +4,8 @@ import {
   selectorFamily,
   SetRecoilState,
 } from "recoil";
+import * as fos from "../atoms";
+import * as visibilityAtoms from "../fieldVisibility";
 import * as filterAtoms from "../filters";
 
 export interface BooleanFilter {
@@ -33,6 +35,24 @@ const getFilter = (
   };
 };
 
+// getVisibility is similar to getFilter, it uses the visibilityAtoms
+const getVisibility = (
+  get: GetRecoilValue,
+  modal: boolean,
+  path: string
+): BooleanFilter => {
+  return {
+    _CLS: "bool",
+    true: false,
+    false: false,
+    none: false,
+    onlyMatch: true,
+    isMatching: false,
+    exclude: false,
+    ...get(visibilityAtoms.visibility({ modal, path })),
+  };
+};
+
 const meetsDefault = (filter: BooleanFilter) =>
   filter.true === false && filter.false === false && filter.none === false;
 
@@ -55,6 +75,26 @@ const setFilter = (
     set(filterAtoms.filter({ modal, path }), null);
   } else {
     set(filterAtoms.filter({ modal, path }), filter);
+  }
+};
+
+const setVisibility = (
+  get: GetRecoilValue,
+  set: SetRecoilState,
+  modal: boolean,
+  path: string,
+  key: string,
+  value: boolean | DefaultValue
+) => {
+  const visibility = {
+    exclude: false,
+    ...getVisibility(get, modal, path),
+    [key]: value,
+  };
+  if (meetsDefault(visibility)) {
+    set(visibilityAtoms.visibility({ modal, path }), null);
+  } else {
+    set(visibilityAtoms.visibility({ modal, path }), visibility);
   }
 };
 
@@ -109,12 +149,18 @@ export const boolExcludeAtom = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
-      return getFilter(get, modal, path).exclude;
+      const isFiltering = get(fos.isSidebarFilterMode);
+      return isFiltering
+        ? getFilter(get, modal, path).exclude
+        : getVisibility(get, modal, path).exclude;
     },
   set:
     ({ modal, path }) =>
     ({ get, set }, value) => {
-      setFilter(get, set, modal, path, "exclude", value);
+      const isFiltering = get(fos.isSidebarFilterMode);
+      isFiltering
+        ? setFilter(get, set, modal, path, "exclude", value)
+        : setVisibility(get, set, modal, path, "exclude", value);
     },
 });
 
@@ -125,12 +171,20 @@ export const trueAtom = selectorFamily<
   key: "filterBooleanFieldTrue",
   get:
     ({ modal, path }) =>
-    ({ get }) =>
-      getFilter(get, modal, path).true,
+    ({ get }) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      return isFiltering
+        ? getFilter(get, modal, path).true
+        : getVisibility(get, modal, path).true;
+    },
   set:
     ({ modal, path }) =>
-    ({ get, set }, value) =>
-      setFilter(get, set, modal, path, "true", value),
+    ({ get, set }, value) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      isFiltering
+        ? setFilter(get, set, modal, path, "true", value)
+        : setVisibility(get, set, modal, path, "true", value);
+    },
 });
 
 export const falseAtom = selectorFamily<
@@ -140,12 +194,20 @@ export const falseAtom = selectorFamily<
   key: "filterBooleanFieldFalse",
   get:
     ({ modal, path }) =>
-    ({ get }) =>
-      getFilter(get, modal, path).false,
+    ({ get }) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      return isFiltering
+        ? getFilter(get, modal, path).false
+        : getVisibility(get, modal, path).false;
+    },
   set:
     ({ modal, path }) =>
-    ({ get, set }, value) =>
-      setFilter(get, set, modal, path, "false", value),
+    ({ get, set }, value) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      isFiltering
+        ? setFilter(get, set, modal, path, "false", value)
+        : setVisibility(get, set, modal, path, "false", value);
+    },
 });
 
 export const noneAtom = selectorFamily<
@@ -155,29 +217,37 @@ export const noneAtom = selectorFamily<
   key: "filterBooleanFieldNone",
   get:
     ({ modal, path }) =>
-    ({ get }) =>
-      getFilter(get, modal, path).none,
+    ({ get }) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      return isFiltering
+        ? getFilter(get, modal, path).none
+        : getVisibility(get, modal, path).none;
+    },
   set:
     ({ modal, path }) =>
-    ({ get, set }, value) =>
-      setFilter(get, set, modal, path, "none", value),
-});
-
-export const booleanFieldIsFiltered = selectorFamily<
-  boolean,
-  { path: string; modal: boolean }
->({
-  key: "booleanFieldIsFiltered",
-  get:
-    ({ path, modal }) =>
-    ({ get }) => {
-      return (
-        get(noneAtom({ path, modal })) ||
-        get(trueAtom({ path, modal })) ||
-        get(falseAtom({ path, modal }))
-      );
+    ({ get, set }, value) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      isFiltering
+        ? setFilter(get, set, modal, path, "none", value)
+        : setVisibility(get, set, modal, path, "none", value);
     },
 });
+
+// export const booleanFieldIsFiltered = selectorFamily<
+//   boolean,
+//   { path: string; modal: boolean }
+// >({
+//   key: "booleanFieldIsFiltered",
+//   get:
+//     ({ path, modal }) =>
+//     ({ get }) => {
+//       return (
+//         get(noneAtom({ path, modal })) ||
+//         get(trueAtom({ path, modal })) ||
+//         get(falseAtom({ path, modal }))
+//       );
+//     },
+// });
 
 export const booleanSelectedValuesAtom = selectorFamily<
   (null | boolean)[],
