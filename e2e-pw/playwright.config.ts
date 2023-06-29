@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
-import { Duration } from "src/utils";
+import { Duration } from "src/oss/utils";
 import dotenv from "dotenv";
-import { getPythonCommand } from "src/utils/commands";
+import { getPythonCommand } from "src/oss/utils/commands";
 
 dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 
@@ -27,6 +27,9 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
+
+    // todo: change this to data-testid after we migrate off of cypress
+    testIdAttribute: "data-cy",
   },
 
   /* Configure projects for major browsers */

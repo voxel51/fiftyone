@@ -1,6 +1,6 @@
-import { AbstractFiftyoneLoader } from "./abstract-loader";
 import { test as base } from "@playwright/test";
-import { loader } from "./loader";
+import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
+import { OssLoader } from "./loader";
 
 export type MyFixtures = {
   fiftyoneLoader: AbstractFiftyoneLoader;
@@ -8,7 +8,7 @@ export type MyFixtures = {
 
 export const test = base.extend<MyFixtures>({
   fiftyoneLoader: async ({}, use) => {
-    await use(loader);
+    await use(new OssLoader());
   },
 });
 

@@ -1,22 +1,31 @@
 import { Page } from "@playwright/test";
-import { PythonRunner } from "src/python-runner/python-runner";
-import { getStringifiedKwargs } from "src/utils/commands";
-import { AbstractFiftyoneLoader } from "../abstract-loader";
+import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
+import { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { PythonRunner } from "src/shared/python-runner/python-runner";
 
 export class OssLoader extends AbstractFiftyoneLoader {
+  constructor() {
+    super();
+    this.pythonRunner = new PythonRunner(getPythonCommand);
+  }
+
   async loadZooDataset(
     zooDatasetName: string,
+    id: string,
     kwargs: Record<string, string> = {}
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
 
-    PythonRunner.exec(
+    return this.pythonRunner.exec(
       `
       import fiftyone as fo
       import fiftyone.zoo as foz
 
+      if fo.dataset_exists("${id}"):
+        fo.delete_dataset("${id}")
+
       quickstart_groups_dataset = foz.load_zoo_dataset(
-        ${zooDatasetName}${kwargsStringified}
+        "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
       )
       quickstart_groups_dataset.persistent = True
     `
@@ -56,7 +65,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
       await page.goto(`/datasets/${datasetName}`);
       const location = await page.evaluate(() => window.location.href);
 
-      // behavior of directly visiting the dataset page is sometimes flaky
       if (!location.includes("datasets")) {
         await forceDatasetFromSelector();
       }

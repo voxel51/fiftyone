@@ -3,19 +3,24 @@ import dotenv from "dotenv";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { getPythonCommand } from "src/utils/commands";
 import dedent from "ts-dedent";
 
 dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 
+export type PythonCommandGenerator = (argv: string[]) => string;
+
 export class PythonRunner {
-  public static exec(sourceCode: string) {
+  constructor(private pythonCommandGenerator: PythonCommandGenerator) {}
+
+  public exec(sourceCode: string) {
     const dedentedSourceCode = dedent(sourceCode);
     const randomFileName = Math.random().toString(36).substring(8);
     const sourceFilePath = path.join(os.tmpdir(), `${randomFileName}.py`);
     fs.writeFileSync(sourceFilePath, dedentedSourceCode, "utf-8");
 
-    const proc = spawn(getPythonCommand([sourceFilePath]), { shell: true });
+    const proc = spawn(this.pythonCommandGenerator([sourceFilePath]), {
+      shell: true,
+    });
 
     console.log(`Spawning python process with source code:`);
     console.log("=====================================");
@@ -32,19 +37,8 @@ export class PythonRunner {
     console.log();
     console.log("New python process spawned with pid:", proc.pid);
 
-    proc.stdout.on("data", (data) => {
-      console.log(`${proc.pid}: ${data.toString()}`);
-    });
-
-    proc.stderr.on("data", (data) => {
-      console.error(`${proc.pid} STDERR:`);
-      console.error(data.toString());
-    });
-
-    proc.on("error", (data) => {
-      console.error(`${proc.pid} STDERR:`);
-      console.error(data.toString());
-    });
+    proc.stdout.pipe(process.stdout);
+    proc.stderr.pipe(process.stderr);
 
     return new Promise<number>((resolve, reject) =>
       proc.on("exit", (exitCode) =>
