@@ -6,10 +6,11 @@ import {
   FilterList,
   Remove,
 } from "@mui/icons-material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import React, { useRef, useState } from "react";
 import {
-  selectorFamily,
   SetterOrUpdater,
+  selectorFamily,
   useRecoilCallback,
   useRecoilStateLoadable,
   useRecoilValue,
@@ -20,8 +21,12 @@ import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
 
-import { useTheme, PillButton } from "@fiftyone/components";
+import { PillButton, useTheme } from "@fiftyone/components";
 import { datasetName } from "@fiftyone/state";
+import {
+  fieldVisibility,
+  modalFieldVisibility,
+} from "@fiftyone/state/src/recoil/fieldVisibility";
 import Draggable from "./Draggable";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -52,6 +57,35 @@ const numGroupFieldsFiltered = selectorFamily<
       for (const path of get(fos.sidebarGroup({ ...params, loading: true }))) {
         if (
           get(fos.fieldIsFiltered({ path, modal: params.modal })) &&
+          (!f || f(path))
+        )
+          count++;
+      }
+
+      return count;
+    },
+});
+
+const numGroupFieldsVisible = selectorFamily<
+  number,
+  { modal: boolean; group: string }
+>({
+  key: "numGroupFieldsVisible",
+  get:
+    (params) =>
+    ({ get }) => {
+      let count = 0;
+
+      let f = null;
+
+      if (params.modal) {
+        const labels = get(fos.labelPaths({ expanded: false }));
+        f = (path) => labels.includes(path);
+      }
+
+      for (const path of get(fos.sidebarGroup({ ...params, loading: true }))) {
+        if (
+          get(fos.fieldHasVisibilitySetting({ path, modal: params.modal })) &&
           (!f || f(path))
         )
           count++;
@@ -194,7 +228,7 @@ const useClearFiltered = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async () => {
-        let paths = await snapshot.getPromise(
+        const paths = await snapshot.getPromise(
           fos.sidebarGroup({ modal, group, loading: true })
         );
         const filters = await snapshot.getPromise(
@@ -204,6 +238,26 @@ const useClearFiltered = (modal: boolean, group: string) => {
         set(
           modal ? fos.modalFilters : fos.filters,
           removeKeys(filters, paths, true)
+        );
+      },
+    [modal, group]
+  );
+};
+
+const useClearVisibility = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async () => {
+        const paths = await snapshot.getPromise(
+          fos.sidebarGroup({ modal, group, loading: true })
+        );
+        const visibility = await snapshot.getPromise(
+          modal ? modalFieldVisibility : fieldVisibility
+        );
+
+        set(
+          modal ? modalFieldVisibility : fieldVisibility,
+          removeKeys(visibility, paths, true)
         );
       },
     [modal, group]
@@ -475,6 +529,14 @@ export const PathGroupEntry = React.memo(
                 ),
                 onClick: useClearFiltered(modal, name),
                 icon: <FilterList />,
+                title: `Clear ${name} filters`,
+              },
+              {
+                count: useRecoilValue(
+                  numGroupFieldsVisible({ modal, group: name })
+                ),
+                onClick: useClearVisibility(modal, name),
+                icon: <VisibilityIcon />,
                 title: `Clear ${name} filters`,
               },
               {
