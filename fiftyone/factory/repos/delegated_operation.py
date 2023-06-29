@@ -1,5 +1,5 @@
 """
-Dataset run documents.
+Delegated Operation Repository
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -49,6 +49,7 @@ class DelegatedOperationRepo(object):
         dataset_id=None,
         run_state: str = None,
         delegation_target: str = None,
+        **kwargs: Any,
     ):
         """List all operations."""
         raise NotImplementedError("subclass must implement list_operations()")
@@ -145,8 +146,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         dataset_id=None,
         run_state: str = None,
         delegation_target: str = None,
+        **kwargs: Any,
     ):
         query = {}
+        for arg in kwargs:
+            query[arg] = kwargs[arg]
         if operator:
             query["operator"] = operator
         if dataset_id:
@@ -155,6 +159,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["run_state"] = run_state
         if delegation_target:
             query["delegation_target"] = delegation_target
+
+        for arg in kwargs:
+            query[arg] = kwargs[arg]
+
         docs = self._collection.find(query)
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 

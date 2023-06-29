@@ -103,7 +103,7 @@ async def execute_operator(operator_name, request_params):
     except Exception as e:
         return ExecutionResult(executor=executor, error=traceback.format_exc())
 
-    return ExecutionResult(result=raw_result, executor=executor)
+    return ExecutionResult(result=raw_result.__dict__, executor=executor)
 
 
 async def delegate_operator(operator_name, request_params):
@@ -120,7 +120,7 @@ async def delegate_operator(operator_name, request_params):
         operator_name, request_params
     )
 
-    from .delegated import DelegatedOperation
+    from . import DelegatedOperation
 
     op = DelegatedOperation().queue_operation(
         operator=operator.uri,
@@ -146,7 +146,7 @@ def prepare_operator_executor(operator_name, request_params):
             error="Validation Error", validation_ctx=validation_ctx
         )
 
-    return (operator, executor, ctx)
+    return operator, executor, ctx
 
 
 def _is_generator(value):
@@ -283,7 +283,6 @@ class ExecutionContext(object):
         """
         return {
             "request_params": self.request_params,
-            # "executor": self.executor.to_json(),
             "params": self.params,
         }
 

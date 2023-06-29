@@ -45,6 +45,12 @@ class DelegatedOperation(object):
         Returns:
             a :class:`fiftyone.core.odm.DelegatedOperationDocument`
         """
+
+        # TODO:
+        # pull secret values out of context before storing,
+        # leave secrets keys so we know what to grab
+        # back from secrets manager on execute
+
         return self._repo.queue_operation(
             operator=operator,
             delegation_target=delegation_target,
@@ -86,12 +92,14 @@ class DelegatedOperation(object):
         dataset_id: ObjectId = None,
         run_state: str = None,
         delegation_target: str = None,
+        **kwargs,
     ):
         return self._repo.list_operations(
             operator=operator,
             dataset_id=dataset_id,
             run_state=run_state,
             delegation_target=delegation_target,
+            **kwargs,
         )
 
     def execute_queued_operations(
@@ -100,6 +108,7 @@ class DelegatedOperation(object):
         delegation_target: str = None,
         dataset_id: ObjectId = None,
     ):
+
         queued_ops = self.list_operations(
             operator=operator,
             dataset_id=dataset_id,
@@ -109,6 +118,11 @@ class DelegatedOperation(object):
 
         for op in queued_ops:
             try:
+                # TODO:
+                # attach secrets to context
+                # pull keys out of context and retrieve from secrets manager
+                # for execution
+
                 result = asyncio.run(self._execute_operator(op))
                 self.set_completed(doc_id=op.id, result=result)
             except Exception as e:
