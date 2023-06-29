@@ -134,7 +134,6 @@ const useOnSelect = (
     ({ snapshot, set }) =>
       async ({ value, count }: V) => {
         const selected = new Set(await snapshot.getPromise(selectedAtom));
-        console.info(selectedCounts);
         selectedCounts.current.set(value, count);
         selected.add(value);
         set(selectedAtom, [...selected].sort());
@@ -202,16 +201,18 @@ const CategoricalFilter = <T extends V = V>({
     : path.startsWith("_label_tags")
     ? "label tag"
     : name;
-
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const selectedCounts = useRef(new Map<V["value"], number>());
-  const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
-  const onSelectVisibility = useRef(new Map<V["value"], number>());
+  const selectVisibility = useRef(new Map<V["value"], number>());
+  const onSelect = useOnSelect(
+    selectedValuesAtom,
+    isFilterMode ? selectedCounts : selectVisibility
+  );
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
@@ -271,7 +272,7 @@ const CategoricalFilter = <T extends V = V>({
               useSearch={useSearch}
               placeholder={`+ set visibility by ${name}`}
               component={ResultComponent}
-              onSelect={onSelectVisibility}
+              onSelect={onSelect}
               inputStyle={{
                 color: theme.text.secondary,
                 fontSize: "1rem",
