@@ -6,16 +6,14 @@ Delegated Operation Repository
 |
 """
 from datetime import datetime
-from typing import TypeVar, Any
+from typing import Any
 
 import pymongo
 from bson import ObjectId
 from pymongo.collection import Collection
 
 from fiftyone.factory.repos import DelegatedOperationDocument
-from fiftyone.operators.executor import ExecutionResult, ExecutionContext
-
-T = TypeVar("T", bound="DelegatedOperationDocument")
+from fiftyone.operators.executor import ExecutionResult
 
 
 class DelegatedOperationRepo(object):
