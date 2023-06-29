@@ -19,45 +19,57 @@ more.
 
 .. _teams-sdk-api-reference:
 
-API Reference
+API reference
 _____________
 
-Connection Methods
-------------------
+.. _teams-sdk-connections:
+
+Connections
+-----------
 
 .. automodule:: fiftyone.management.connection
    :members: test_api_connection, reload_connection
 
-API Key Management Methods
---------------------------
+.. _teams-sdk-api-keys:
+
+API keys
+--------
 
 .. automodule:: fiftyone.management.api_key
    :members:
    :undoc-members:
 
-Dataset Permission Management Methods
--------------------------------------
+.. _teams-sdk-dataset-permissions:
+
+Dataset permissions
+-------------------
 
 .. automodule:: fiftyone.management.dataset
    :members:
    :undoc-members:
 
-Organization Settings Methods
------------------------------
+.. _teams-sdk-organization-settings:
+
+Organization settings
+---------------------
 
 .. automodule:: fiftyone.management.organization
    :members:
    :undoc-members:
 
-Plugin Management Methods
--------------------------
+.. _teams-sdk-plugin-management:
+
+Plugin management
+-----------------
 
 .. automodule:: fiftyone.management.plugin
    :members:
    :undoc-members:
 
-User Management Methods
------------------------
+.. _teams-sdk-user-management:
+
+User management
+---------------
 
 .. automodule:: fiftyone.management.users
    :members:
