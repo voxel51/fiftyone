@@ -474,9 +474,8 @@ to index the field or embedded field that you wish to filter by:
 
 
 For group datasets, a compound index should be added in addition to the
-individual field index when using the default `slice` App setting. Note that `slice`
-mode is the default App setting. See :ref:`Groups in the App <groups-app>` for
-more information about `slice` mode.
+individual field index when using the default `slice` App setting. See
+:ref:`Groups in the App <groups-app>` for more information about `slice` mode.
 
 .. code-block:: python
     :linenos:
