@@ -553,7 +553,7 @@ class Form(View):
         }
 
 
-class ReadonlyView(View):
+class ReadOnlyView(View):
     """A read-only :class:`View`."""
 
     def __init__(self, **kwargs):
@@ -958,7 +958,7 @@ class HiddenView(View):
         super().__init__(**kwargs)
 
 
-class LoadingView(ReadonlyView):
+class LoadingView(ReadOnlyView):
     """Displays a loading indicator."""
 
     def __init__(self, **kwargs):

@@ -43,6 +43,7 @@ export const DynamicGroupAction = () => {
     <ActionDiv>
       <PillButton
         id={DYNAMIC_GROUP_PILL_BUTTON_ID}
+        data-cy={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}
         open={open}
         onClick={() => {

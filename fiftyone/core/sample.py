@@ -761,7 +761,7 @@ def _apply_confidence_thresh(label, confidence_thresh):
             k: _apply_confidence_thresh(v, confidence_thresh)
             for k, v in label.items()
         }
-    elif isinstance(label, fol._LABEL_LIST_FIELDS):
+    elif isinstance(label, fol._HasLabelList):
         labels = [
             l
             for l in getattr(label, label._LABEL_LIST_FIELD)

@@ -10,13 +10,16 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+
   test:
     uses: ./.github/workflows/test.yml
 
   publish:
     runs-on: ubuntu-latest
     if: github.ref != 'refs/tags/docker-build'
-    needs: [build, test]
+    needs: [build, e2e, test]
     steps:
       - name: Download dist
         uses: actions/download-artifact@v3
@@ -40,7 +43,7 @@ jobs:
           python3 -m twine upload dist/*
 
   build-image:
-    needs: [build, test]
+    needs: [build, e2e, test]
     runs-on: ubuntu-20.04
     steps:
       - name: Clone fiftyone

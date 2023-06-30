@@ -1,4 +1,5 @@
 import { RGB } from "@fiftyone/looker";
+import { convertToHex, isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { useColorScheme } from "@mui/material";
 import {
   TransactionInterface_UNSTABLE,
@@ -10,13 +11,13 @@ import {
   _activeFields,
   activeColorField,
   activePcdSlices,
+  currentModalSample,
   dataset as datasetAtom,
   extendedSelection,
   filters,
   groupSlice,
   groupStatistics,
   isUsingSessionColorScheme,
-  modal,
   patching,
   resolveGroups,
   savingFilters,
@@ -32,16 +33,13 @@ import {
   tagging,
   theme,
 } from "../recoil";
-
 import * as viewAtoms from "../recoil/view";
 import {
   DEFAULT_APP_COLOR_SCHEME,
   collapseFields,
   viewsAreEqual,
 } from "../utils";
-
 import { selectedFieldsStageState } from "./useSchemaSettings";
-import { convertToHex, isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -148,7 +146,12 @@ const useStateUpdate = (ignoreSpaces = false) => {
         const previousDataset = get(datasetAtom);
 
         const currentSidebar = get(sidebarGroupsDefinition(false));
-        let groups = resolveGroups(dataset, currentSidebar);
+        let groups = resolveGroups(
+          dataset.sampleFields,
+          dataset.frameFields,
+          dataset.appConfig.sidebarGroups,
+          currentSidebar
+        );
 
         if (
           !previousDataset ||
@@ -157,7 +160,11 @@ const useStateUpdate = (ignoreSpaces = false) => {
         ) {
           if (dataset?.name !== previousDataset?.name) {
             reset(sidebarMode(false));
-            groups = resolveGroups(dataset);
+            groups = resolveGroups(
+              dataset.sampleFields,
+              dataset.frameFields,
+              dataset.appConfig.sidebarGroups
+            );
           }
           reset(_activeFields({ modal: false }));
           reset(selectedFieldsStageState);
@@ -202,7 +209,7 @@ const useStateUpdate = (ignoreSpaces = false) => {
         set(datasetAtom, dataset);
       }
 
-      set(modal, null);
+      set(currentModalSample, null);
 
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>

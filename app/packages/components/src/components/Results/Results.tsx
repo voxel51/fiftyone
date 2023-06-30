@@ -44,7 +44,11 @@ export const Result = <T extends unknown>({
   const classes = active ? [style.active, style.result] : [style.result];
 
   return (
-    <div onClick={onClick} className={classNames(...classes)}>
+    <div
+      data-cy={`selector-result-${result}`}
+      onClick={onClick}
+      className={classNames(...classes)}
+    >
       <Component value={result} />
     </div>
   );
@@ -72,6 +76,7 @@ const Results = <T extends unknown>({
       <div
         className={style.scrollContainer}
         style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
+        data-cy="selector-results-container"
       >
         {results.map((result, i) => (
           <Result

@@ -11,6 +11,7 @@ export default function CheckboxView(props) {
     <FormControlLabel
       control={
         <Checkbox
+          disabled={schema.view?.readOnly}
           autoFocus={autoFocus(props)}
           defaultChecked={data === true || schema.default === true}
           onChange={(e, value) => onChange(path, value)}

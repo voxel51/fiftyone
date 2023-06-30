@@ -1,17 +1,12 @@
 import { AbstractLooker } from "@fiftyone/looker";
-import * as fos from "@fiftyone/state";
-import { get } from "lodash";
-import React, { useContext, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useContext } from "react";
 
 export type GroupContext = {
   lookerRefCallback: (looker: AbstractLooker) => void;
-  groupByFieldValue: string | null;
 };
 
 const defaultOptions: GroupContext = {
   lookerRefCallback: () => {},
-  groupByFieldValue: null,
 };
 
 export const groupContext = React.createContext<GroupContext>(defaultOptions);
@@ -27,26 +22,10 @@ export const GroupContextProvider = ({
   lookerRefCallback,
   children,
 }: GroupContextProviderProps) => {
-  const modal = useRecoilValue(fos.modal);
-  const dynamicGroupParameters = useRecoilValue(fos.dynamicGroupParameters);
-
-  const groupByFieldValue = useMemo(() => {
-    if (modal && dynamicGroupParameters?.groupBy) {
-      return String(
-        get(
-          modal.sample,
-          fos.getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-        )
-      );
-    }
-    return null;
-  }, [modal, dynamicGroupParameters]);
-
   return (
     <groupContext.Provider
       value={{
         lookerRefCallback,
-        groupByFieldValue,
       }}
     >
       {children}

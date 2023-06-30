@@ -48,77 +48,29 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
-                    "___predictions.detections": {
-                        "$filter": {
-                            "input": "$predictions.detections",
-                            "cond": {
-                                "$or": [
-                                    {
-                                        "$and": [
-                                            {
-                                                "$gte": [
-                                                    "$$this.confidence",
-                                                    0.5,
-                                                ]
-                                            },
-                                            {"$lte": ["$$this.confidence", 1]},
-                                        ],
-                                    },
-                                    {"$in": ["$$this.confidence", []]},
-                                ],
-                            },
-                        },
-                    },
-                },
-            },
-            {
                 "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$size": {
-                                    "$ifNull": [
-                                        "$___predictions.detections",
-                                        [],
-                                    ]
-                                }
-                            },
-                            0,
-                        ],
-                    },
-                },
-            },
-            {
-                "$set": {
-                    "___predictions.detections": {
-                        "$filter": {
-                            "input": "$___predictions.detections",
-                            "cond": {"$in": ["$$this.label", ["carrot"]]},
+                    "$and": [
+                        {
+                            "$and": [
+                                {
+                                    "predictions.detections.confidence": {
+                                        "$gte": 0.5
+                                    }
+                                },
+                                {
+                                    "predictions.detections.confidence": {
+                                        "$lte": 1
+                                    }
+                                },
+                            ],
                         },
-                    },
+                        {"predictions.detections.label": {"$in": ["carrot"]}},
+                    ],
                 },
             },
+            {"$addFields": {"_label_tags": []}},
             {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$size": {
-                                    "$ifNull": [
-                                        "$___predictions.detections",
-                                        [],
-                                    ]
-                                }
-                            },
-                            0,
-                        ],
-                    },
-                },
-            },
-            {"$set": {"_label_tags": []}},
-            {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$cond": {
                             "if": {"$gt": ["$predictions", None]},
@@ -145,7 +97,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$function": {
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
@@ -155,7 +107,6 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "___predictions"},
         ]
 
         self.assertEqual(expected, returned)
@@ -190,7 +141,28 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$match": {
+                    "$and": [
+                        {
+                            "$and": [
+                                {
+                                    "predictions.detections.confidence": {
+                                        "$gte": 0.5
+                                    }
+                                },
+                                {
+                                    "predictions.detections.confidence": {
+                                        "$lte": 1
+                                    }
+                                },
+                            ],
+                        },
+                        {"predictions.detections.label": {"$in": ["carrot"]}},
+                    ],
+                },
+            },
+            {
+                "$addFields": {
                     "predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",
@@ -204,58 +176,25 @@ class ServerViewTests(unittest.TestCase):
                                                     0.5,
                                                 ]
                                             },
-                                            {
-                                                "$lte": [
-                                                    "$$this.confidence",
-                                                    1,
-                                                ]
-                                            },
-                                        ]
+                                            {"$lte": ["$$this.confidence", 1]},
+                                        ],
                                     },
                                     {"$in": ["$$this.confidence", []]},
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$size": {
-                                    "$ifNull": ["$predictions.detections", []]
-                                }
-                            },
-                            0,
-                        ]
-                    }
-                }
-            },
-            {
-                "$set": {
+                "$addFields": {
                     "predictions.detections": {
                         "$filter": {
                             "input": "$predictions.detections",
                             "cond": {"$in": ["$$this.label", ["carrot"]]},
-                        }
-                    }
-                }
-            },
-            {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$size": {
-                                    "$ifNull": ["$predictions.detections", []]
-                                }
-                            },
-                            0,
-                        ]
-                    }
-                }
+                        },
+                    },
+                },
             },
         ]
 
@@ -294,156 +233,33 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
-                    "frames": {
-                        "$map": {
-                            "input": "$frames",
-                            "as": "frame",
-                            "in": {
-                                "$mergeObjects": [
-                                    "$$frame",
-                                    {
-                                        "___detections": {
-                                            "$mergeObjects": [
-                                                "$$frame.detections",
-                                                {
-                                                    "detections": {
-                                                        "$filter": {
-                                                            "input": "$$frame.detections.detections",
-                                                            "cond": {
-                                                                "$or": [
-                                                                    {
-                                                                        "$and": [
-                                                                            {
-                                                                                "$gte": [
-                                                                                    "$$this.index",
-                                                                                    27,
-                                                                                ],
-                                                                            },
-                                                                            {
-                                                                                "$lte": [
-                                                                                    "$$this.index",
-                                                                                    54,
-                                                                                ],
-                                                                            },
-                                                                        ],
-                                                                    },
-                                                                    {
-                                                                        "$in": [
-                                                                            "$$this.index",
-                                                                            [],
-                                                                        ],
-                                                                    },
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                },
-                                            ],
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    },
-                },
-            },
-            {
                 "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": 0,
-                                    "in": {
-                                        "$add": [
-                                            "$$value",
-                                            {
-                                                "$size": {
-                                                    "$ifNull": [
-                                                        "$$this.___detections.detections",
-                                                        [],
-                                                    ],
-                                                },
-                                            },
-                                        ],
-                                    },
+                    "$and": [
+                        {
+                            "$and": [
+                                {
+                                    "frames.detections.detections.index": {
+                                        "$gte": 27
+                                    }
                                 },
-                            },
-                            0,
-                        ],
-                    },
-                },
-            },
-            {
-                "$set": {
-                    "frames": {
-                        "$map": {
-                            "input": "$frames",
-                            "as": "frame",
-                            "in": {
-                                "$mergeObjects": [
-                                    "$$frame",
-                                    {
-                                        "___detections": {
-                                            "$mergeObjects": [
-                                                "$$frame.___detections",
-                                                {
-                                                    "detections": {
-                                                        "$filter": {
-                                                            "input": "$$frame.___detections.detections",
-                                                            "cond": {
-                                                                "$in": [
-                                                                    "$$this.label",
-                                                                    [
-                                                                        "vehicle"
-                                                                    ],
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                },
-                                            ],
-                                        },
-                                    },
-                                ],
-                            },
+                                {
+                                    "frames.detections.detections.index": {
+                                        "$lte": 54
+                                    }
+                                },
+                            ],
                         },
-                    },
+                        {
+                            "frames.detections.detections.label": {
+                                "$in": ["vehicle"]
+                            }
+                        },
+                    ],
                 },
             },
+            {"$addFields": {"_label_tags": []}},
             {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": 0,
-                                    "in": {
-                                        "$add": [
-                                            "$$value",
-                                            {
-                                                "$size": {
-                                                    "$ifNull": [
-                                                        "$$this.___detections.detections",
-                                                        [],
-                                                    ],
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                            0,
-                        ],
-                    },
-                },
-            },
-            {"$set": {"_label_tags": []}},
-            {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$concatArrays": [
                             "$_label_tags",
@@ -486,7 +302,7 @@ class ServerViewTests(unittest.TestCase):
                 },
             },
             {
-                "$set": {
+                "$addFields": {
                     "_label_tags": {
                         "$function": {
                             "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
@@ -496,7 +312,6 @@ class ServerViewTests(unittest.TestCase):
                     },
                 },
             },
-            {"$unset": "frames.___detections"},
         ]
 
         self.assertEqual(expected, returned)
@@ -532,7 +347,32 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$match": {
+                    "$and": [
+                        {
+                            "$and": [
+                                {
+                                    "frames.detections.detections.index": {
+                                        "$gte": 27
+                                    }
+                                },
+                                {
+                                    "frames.detections.detections.index": {
+                                        "$lte": 54
+                                    }
+                                },
+                            ],
+                        },
+                        {
+                            "frames.detections.detections.label": {
+                                "$in": ["vehicle"]
+                            }
+                        },
+                    ],
+                },
+            },
+            {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -556,66 +396,38 @@ class ServerViewTests(unittest.TestCase):
                                                                                 "$gte": [
                                                                                     "$$this.index",
                                                                                     27,
-                                                                                ]
+                                                                                ],
                                                                             },
                                                                             {
                                                                                 "$lte": [
                                                                                     "$$this.index",
                                                                                     54,
-                                                                                ]
+                                                                                ],
                                                                             },
-                                                                        ]
+                                                                        ],
                                                                     },
                                                                     {
                                                                         "$in": [
                                                                             "$$this.index",
                                                                             [],
-                                                                        ]
+                                                                        ],
                                                                     },
-                                                                ]
+                                                                ],
                                                             },
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
-                                            ]
-                                        }
+                                            ],
+                                        },
                                     },
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": 0,
-                                    "in": {
-                                        "$add": [
-                                            "$$value",
-                                            {
-                                                "$size": {
-                                                    "$ifNull": [
-                                                        "$$this.detections.detections",
-                                                        [],
-                                                    ]
-                                                }
-                                            },
-                                        ]
-                                    },
-                                }
-                            },
-                            0,
-                        ]
-                    }
-                }
-            },
-            {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -637,47 +449,19 @@ class ServerViewTests(unittest.TestCase):
                                                                     [
                                                                         "vehicle"
                                                                     ],
-                                                                ]
+                                                                ],
                                                             },
-                                                        }
-                                                    }
+                                                        },
+                                                    },
                                                 },
-                                            ]
-                                        }
+                                            ],
+                                        },
                                     },
-                                ]
+                                ],
                             },
-                        }
-                    }
-                }
-            },
-            {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": 0,
-                                    "in": {
-                                        "$add": [
-                                            "$$value",
-                                            {
-                                                "$size": {
-                                                    "$ifNull": [
-                                                        "$$this.detections.detections",
-                                                        [],
-                                                    ]
-                                                }
-                                            },
-                                        ]
-                                    },
-                                }
-                            },
-                            0,
-                        ]
-                    }
-                }
+                        },
+                    },
+                },
             },
         ]
 
@@ -705,7 +489,101 @@ class ServerViewTests(unittest.TestCase):
 
         expected = [
             {
-                "$set": {
+                "$match": {
+                    "$or": [
+                        {"frames.detections.detections.tags": {"$in": ["one"]}}
+                    ],
+                },
+            },
+            {"$addFields": {"_label_tags": []}},
+            {
+                "$addFields": {
+                    "_label_tags": {
+                        "$concatArrays": [
+                            "$_label_tags",
+                            {
+                                "$reduce": {
+                                    "input": "$frames",
+                                    "initialValue": [],
+                                    "in": {
+                                        "$concatArrays": [
+                                            "$$value",
+                                            {
+                                                "$cond": {
+                                                    "if": {
+                                                        "$gt": [
+                                                            "$$this.detections.detections",
+                                                            None,
+                                                        ],
+                                                    },
+                                                    "then": {
+                                                        "$reduce": {
+                                                            "input": "$$this.detections.detections",
+                                                            "initialValue": [],
+                                                            "in": {
+                                                                "$concatArrays": [
+                                                                    "$$value",
+                                                                    "$$this.tags",
+                                                                ],
+                                                            },
+                                                        },
+                                                    },
+                                                    "else": [],
+                                                },
+                                            },
+                                        ],
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+            {
+                "$addFields": {
+                    "_label_tags": {
+                        "$function": {
+                            "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
+                            "args": ["$_label_tags"],
+                            "lang": "js",
+                        },
+                    },
+                },
+            },
+        ]
+
+        self.assertEqual(expected, returned)
+
+    @drop_datasets
+    def test_extended_view_video_match_label_tags_samples(self):
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": False,
+                "isMatching": False,
+            }
+        }
+
+        dataset = fod.Dataset("test")
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fof.EmbeddedDocumentField, fol.Detections
+        )
+
+        returned = fosv.get_view(
+            "test", filters=filters, count_label_tags=False
+        )._pipeline()[1:]
+
+        expected = [
+            {
+                "$match": {
+                    "$or": [
+                        {"frames.detections.detections.tags": {"$in": ["one"]}}
+                    ],
+                },
+            },
+            {
+                "$addFields": {
                     "frames": {
                         "$map": {
                             "input": "$frames",
@@ -714,7 +592,7 @@ class ServerViewTests(unittest.TestCase):
                                 "$mergeObjects": [
                                     "$$frame",
                                     {
-                                        "___detections": {
+                                        "detections": {
                                             "$mergeObjects": [
                                                 "$$frame.detections",
                                                 {
@@ -735,7 +613,7 @@ class ServerViewTests(unittest.TestCase):
                                                                             "$$this.tags",
                                                                         ],
                                                                     },
-                                                                    "else": None,
+                                                                    "else": False,
                                                                 },
                                                             },
                                                         },
@@ -764,7 +642,7 @@ class ServerViewTests(unittest.TestCase):
                                             {
                                                 "$size": {
                                                     "$ifNull": [
-                                                        "$$this.___detections.detections",
+                                                        "$$this.detections.detections",
                                                         [],
                                                     ],
                                                 },
@@ -777,161 +655,6 @@ class ServerViewTests(unittest.TestCase):
                         ],
                     },
                 },
-            },
-            {"$set": {"_label_tags": []}},
-            {
-                "$set": {
-                    "_label_tags": {
-                        "$concatArrays": [
-                            "$_label_tags",
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": [],
-                                    "in": {
-                                        "$concatArrays": [
-                                            "$$value",
-                                            {
-                                                "$cond": {
-                                                    "if": {
-                                                        "$gt": [
-                                                            "$$this.___detections.detections",
-                                                            None,
-                                                        ],
-                                                    },
-                                                    "then": {
-                                                        "$reduce": {
-                                                            "input": "$$this.___detections.detections",
-                                                            "initialValue": [],
-                                                            "in": {
-                                                                "$concatArrays": [
-                                                                    "$$value",
-                                                                    "$$this.tags",
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                    "else": [],
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                },
-            },
-            {
-                "$set": {
-                    "_label_tags": {
-                        "$function": {
-                            "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
-                            "args": ["$_label_tags"],
-                            "lang": "js",
-                        },
-                    },
-                },
-            },
-            {"$unset": "frames.___detections"},
-        ]
-
-        self.assertEqual(expected, returned)
-
-    @drop_datasets
-    def test_extended_view_video_match_label_tags_samples(self):
-        filters = {
-            "_label_tags": {
-                "values": ["one"],
-                "exclude": False,
-                "isMatching": False,
-            }
-        }
-
-        dataset = fod.Dataset("test")
-        dataset.media_type = "video"
-        dataset.add_frame_field(
-            "detections", fof.EmbeddedDocumentField, fol.Detections
-        )
-
-        returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False
-        )._pipeline()[1:]
-
-        expected = [
-            {
-                "$set": {
-                    "frames": {
-                        "$map": {
-                            "input": "$frames",
-                            "as": "frame",
-                            "in": {
-                                "$mergeObjects": [
-                                    "$$frame",
-                                    {
-                                        "detections": {
-                                            "$mergeObjects": [
-                                                "$$frame.detections",
-                                                {
-                                                    "detections": {
-                                                        "$filter": {
-                                                            "input": "$$frame.detections.detections",
-                                                            "cond": {
-                                                                "$cond": {
-                                                                    "if": {
-                                                                        "$gt": [
-                                                                            "$$this.tags",
-                                                                            None,
-                                                                        ]
-                                                                    },
-                                                                    "then": {
-                                                                        "$in": [
-                                                                            "one",
-                                                                            "$$this.tags",
-                                                                        ]
-                                                                    },
-                                                                    "else": False,
-                                                                }
-                                                            },
-                                                        }
-                                                    }
-                                                },
-                                            ]
-                                        }
-                                    },
-                                ]
-                            },
-                        }
-                    }
-                }
-            },
-            {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": 0,
-                                    "in": {
-                                        "$add": [
-                                            "$$value",
-                                            {
-                                                "$size": {
-                                                    "$ifNull": [
-                                                        "$$this.detections.detections",
-                                                        [],
-                                                    ]
-                                                }
-                                            },
-                                        ]
-                                    },
-                                }
-                            },
-                            0,
-                        ]
-                    }
-                }
             },
         ]
 

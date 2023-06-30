@@ -5,10 +5,11 @@ FiftyOne Server queries.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import typing as t
+from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
+import typing as t
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -319,6 +320,7 @@ class Dataset:
             dataset_name=name,
             serialized_view=view,
             saved_view_slug=saved_view_slug,
+            dicts=False,
         )
 
 
@@ -424,10 +426,15 @@ class Query(fosa.AggregateQuery):
         dataset: str,
         view: BSONArray,
         filter: SampleFilter,
-        index: t.Optional[int] = None,
+        filters: t.Optional[JSON] = None,
     ) -> t.Optional[SampleItem]:
         samples = await paginate_samples(
-            dataset, view, None, 1, sample_filter=filter
+            dataset,
+            view,
+            filters,
+            1,
+            sample_filter=filter,
+            pagination_data=False,
         )
         if samples.edges:
             return samples.edges[0].node
@@ -537,6 +544,7 @@ async def serialize_dataset(
     dataset_name: str,
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
+    dicts=True,
 ) -> Dataset:
     def run():
         dataset = fod.load_dataset(dataset_name)
@@ -581,6 +589,16 @@ async def serialize_dataset(
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
+        if dicts:
+            saved_views = []
+            for view in data.saved_views:
+                view_dict = asdict(view)
+                view_dict["view_name"] = view.view_name()
+                view_dict["stage_dicts"] = view.stage_dicts()
+                saved_views.append(view_dict)
+
+            data.saved_views = saved_views
 
         for brain_method in data.brain_methods:
             try:

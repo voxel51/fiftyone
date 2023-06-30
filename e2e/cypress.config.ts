@@ -15,11 +15,13 @@ export default defineConfig({
     /** end: env for cypress-visual-regression */
   },
   e2e: {
+    video: false,
     baseUrl: DEFAULT_APP_ADDRESS,
     videoUploadOnPasses: false,
-    // retry once on test failure to account for random errors
+    experimentalInteractiveRunEvents: true,
+    // retry once on test failure to account for random errors in CI
     // note: this is a global config, this can be configured per-test as well
-    retries: 1,
+    retries: process.env.CI ? 1 : 0,
     setupNodeEvents(on, config) {
       getCompareSnapshotsPlugin(on, config);
 
@@ -56,7 +58,7 @@ export default defineConfig({
       });
     },
     defaultCommandTimeout: Duration.Seconds(10),
-    pageLoadTimeout: Duration.Seconds(5),
+    pageLoadTimeout: Duration.Seconds(15),
     responseTimeout: Duration.Seconds(5),
     viewportWidth: 1200,
     viewportHeight: 800,

@@ -6,6 +6,8 @@ import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
   DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT,
+  EMBEDDED_DOCUMENT,
   getFetchFunction,
   HEATMAP,
   LABEL_LIST,
@@ -193,46 +195,60 @@ const processLabels = async (
   const promises = [];
 
   for (const field in sample) {
-    const label = sample[field];
-    if (!label) {
-      continue;
+    let labels = sample[field];
+    if (!Array.isArray(labels)) {
+      labels = [labels];
     }
-
-    if (DENSE_LABELS.has(label._cls)) {
-      await imputeOverlayFromPath(
-        field,
-        label,
-        coloring,
-        customizeColorSetting,
-        buffers,
-        sources
-      );
-    }
-
-    if (label._cls in DeserializerFactory) {
-      DeserializerFactory[label._cls](label, buffers);
-    }
-
-    if (ALL_VALID_LABELS.has(label._cls)) {
-      if (label._cls in LABEL_LIST) {
-        const list = label[LABEL_LIST[label._cls]];
-        if (Array.isArray(list)) {
-          label[LABEL_LIST[label._cls]] = list.map(mapId);
-        }
-      } else {
-        mapId(label);
+    for (const label of labels) {
+      if (!label) {
+        continue;
       }
-    }
 
-    if (painterFactory[label._cls]) {
-      promises.push(
-        painterFactory[label._cls](
-          prefix ? prefix + field : field,
+      if (DENSE_LABELS.has(label._cls)) {
+        await imputeOverlayFromPath(
+          field,
           label,
           coloring,
+          customizeColorSetting,
+          buffers,
+          sources
+        );
+      }
+
+      if (label._cls in DeserializerFactory) {
+        DeserializerFactory[label._cls](label, buffers);
+      }
+
+      if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(label._cls)) {
+        processLabels(
+          label,
+          coloring,
+          `${prefix}${field}.`,
+          sources,
           customizeColorSetting
-        )
-      );
+        );
+      }
+
+      if (ALL_VALID_LABELS.has(label._cls)) {
+        if (label._cls in LABEL_LIST) {
+          if (Array.isArray(label[LABEL_LIST[label._cls]])) {
+            label[LABEL_LIST[label._cls]].forEach(mapId);
+          }
+        } else {
+          mapId(label);
+        }
+      }
+
+      if (painterFactory[label._cls]) {
+        promises.push(
+          painterFactory[label._cls](
+            prefix ? prefix + field : field,
+            label,
+            coloring,
+            customizeColorSetting
+          )
+        );
+      }
     }
   }
 

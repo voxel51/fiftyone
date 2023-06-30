@@ -35,8 +35,10 @@ import types
 from xml.parsers.expat import ExpatError
 import zlib
 from matplotlib import colors as mcolors
+from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
+
 
 try:
     import pprintpp as _pprint
@@ -1181,7 +1183,16 @@ class DynamicBatcher(object):
 
 @contextmanager
 def disable_progress_bars():
-    """Context manager that temporarily disables all progress bars."""
+    """Context manager that temporarily disables all progress bars.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        with fo.disable_progress_bars():
+            dataset = foz.load_zoo_dataset("quickstart")
+    """
     prev_show_progress_bars = fo.config.show_progress_bars
     try:
         fo.config.show_progress_bars = False
@@ -1901,6 +1912,16 @@ def to_slug(name):
 
 _T = t.TypeVar("_T")
 
+sync_task_executor = None
+
+
+def get_sync_task_executor():
+    global sync_task_executor
+    max_workers = fo.config.max_thread_pool_workers
+    if sync_task_executor is None and max_workers is not None:
+        sync_task_executor = ThreadPoolExecutor(max_workers=max_workers)
+    return sync_task_executor
+
 
 async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
     """
@@ -1911,7 +1932,7 @@ async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
     """
     loop = asyncio.get_running_loop()
 
-    return await loop.run_in_executor(None, func, *args)
+    return await loop.run_in_executor(get_sync_task_executor(), func, *args)
 
 
 def validate_color(value):
@@ -1929,8 +1950,8 @@ def validate_color(value):
         or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
     ):
         raise ValueError(
-            "%s is neither a valid CSS color name in all lowercase (eg: 'yellowgreen') nor a hex color(eg. '#00ff00')"
-            % value
+            """%s is neither a valid CSS color name in all lowercase \n"""
+            """(eg: 'yellowgreen') nor a hex color(eg. '#00ff00')""" % value
         )
 
 
