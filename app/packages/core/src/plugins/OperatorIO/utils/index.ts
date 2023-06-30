@@ -88,38 +88,45 @@ function getComponentByView(property) {
   }
 }
 
-function getSchema(property, options?) {
+function getSchema(property, options = {}) {
   const { defaultValue, required } = property;
   const typeName = getTypeName(property);
   const type = operatorTypeToJSONSchemaType[typeName];
+  const readOnly =
+    typeof options.readOnly === "boolean" ? options.readOnly : options.isOutput;
   const schema = {
     type,
-    view: { readOnly: options?.isOutput, ...getViewSchema(property) },
+    view: { readOnly, ...getViewSchema(property) },
     default: defaultValue,
     required,
   };
   const component = getComponent(property, options);
   schema.view.component = component;
 
+  const computedOptions = { ...options, readOnly: schema.view.readOnly };
+
   if (typeName === "Object") {
-    schema.properties = getPropertiesSchema(property, options);
+    schema.properties = getPropertiesSchema(property, computedOptions);
   }
 
   if (typeName === "List") {
-    schema.items = getSchema({ type: property.type.elementType }, options);
+    schema.items = getSchema(
+      { type: property.type.elementType },
+      computedOptions
+    );
     schema.minItems = property.type.minItems;
     schema.maxItems = property.type.maxItems;
     if (schema?.view?.items) {
       schema.view.items.component = getComponent(
         { type: property.type.elementType, view: schema?.view?.items },
-        options
+        computedOptions
       );
     }
   }
 
   if (typeName === "OneOf") {
     schema.types = property.type.types.map((type) =>
-      getSchema({ type }, options)
+      getSchema({ type }, computedOptions)
     );
   }
 
@@ -127,15 +134,18 @@ function getSchema(property, options?) {
   //  json schema validation support
   if (typeName === "Tuple") {
     schema.items = property.type.items.map((type) =>
-      getSchema({ type }, options)
+      getSchema({ type }, computedOptions)
     );
   }
 
   if (typeName === "Map") {
-    schema.additionalProperties = getSchema({
-      type: property.type.valueType,
-      view: property?.view?.value,
-    });
+    schema.additionalProperties = getSchema(
+      {
+        type: property.type.valueType,
+        view: property?.view?.value,
+      },
+      computedOptions
+    );
   }
 
   return schema;
@@ -153,6 +163,12 @@ function getViewSchema(property) {
     view = { ...view, choices };
   }
   view = { ...(view?.options || {}), ...view };
+  if (
+    typeof view.read_only === "boolean" &&
+    typeof view.readOnly !== "boolean"
+  ) {
+    view.readOnly = view.read_only;
+  }
   return view;
 }
 

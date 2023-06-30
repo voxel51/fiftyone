@@ -650,6 +650,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `proxy_url`               | `FIFTYONE_APP_PROXY_URL`               | `None`                      | A URL string to override the default server URL. Useful for configuring the session       |
+|                           |                                        |                             | through a reverse proxy in notebook environments.                                         |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.      |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `show_index`              | `FIFTYONE_APP_SHOW_INDEX`              | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.          |
@@ -717,6 +720,7 @@ You can print your App config at any time via the Python library and the CLI:
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
+            "proxy_url": None,
             "show_confidence": true,
             "show_index": true,
             "show_label": true,
@@ -764,6 +768,7 @@ You can print your App config at any time via the Python library and the CLI:
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
+            "proxy_url": None,
             "show_confidence": true,
             "show_index": true,
             "show_label": true,

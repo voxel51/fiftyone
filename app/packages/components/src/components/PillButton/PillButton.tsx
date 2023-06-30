@@ -16,6 +16,7 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
       arrow = false,
       style,
       title,
+      ...otherProps
     } = props;
     const theme = useTheme();
     const baseStyles = useSpring({
@@ -27,6 +28,7 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
 
     const children = (
       <PillButtonDiv
+        {...otherProps}
         onClick={(e: MouseEvent) => {
           onClick(e);
         }}

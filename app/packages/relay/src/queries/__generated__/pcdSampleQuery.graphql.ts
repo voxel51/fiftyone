@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<86537c2cf6ea5044e12a24654ed1c743>>
+ * @generated SignedSource<<97c7a18ff83d4c6de1391bba754b006f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,7 +20,6 @@ export type GroupElementFilter = {
 export type pcdSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
-  index: number;
   view: Array;
 };
 export type pcdSampleQuery$data = {
@@ -52,14 +51,9 @@ v1 = {
 v2 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "index"
-},
-v3 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
   "name": "view"
 },
-v4 = [
+v3 = [
   {
     "kind": "Variable",
     "name": "dataset",
@@ -72,26 +66,21 @@ v4 = [
   },
   {
     "kind": "Variable",
-    "name": "index",
-    "variableName": "index"
-  },
-  {
-    "kind": "Variable",
     "name": "view",
     "variableName": "view"
   }
 ],
-v5 = {
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v6 = {
+v5 = {
   "kind": "InlineFragment",
   "selections": [
-    (v5/*: any*/),
+    (v4/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -128,16 +117,15 @@ v6 = {
   "type": "PointCloudSample",
   "abstractKey": null
 },
-v7 = [
-  (v5/*: any*/)
+v6 = [
+  (v4/*: any*/)
 ];
 return {
   "fragment": {
     "argumentDefinitions": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v2/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
@@ -145,13 +133,13 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": (v4/*: any*/),
+        "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
         "name": "sample",
         "plural": false,
         "selections": [
-          (v6/*: any*/)
+          (v5/*: any*/)
         ],
         "storageKey": null
       }
@@ -163,16 +151,15 @@ return {
   "operation": {
     "argumentDefinitions": [
       (v0/*: any*/),
-      (v3/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v1/*: any*/)
     ],
     "kind": "Operation",
     "name": "pcdSampleQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v4/*: any*/),
+        "args": (v3/*: any*/),
         "concreteType": null,
         "kind": "LinkedField",
         "name": "sample",
@@ -185,16 +172,16 @@ return {
             "name": "__typename",
             "storageKey": null
           },
-          (v6/*: any*/),
+          (v5/*: any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v7/*: any*/),
+            "selections": (v6/*: any*/),
             "type": "ImageSample",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v7/*: any*/),
+            "selections": (v6/*: any*/),
             "type": "VideoSample",
             "abstractKey": null
           }
@@ -204,16 +191,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "1b4ac73d268cbd32b107cff662d64b41",
+    "cacheID": "6c937e342401270b447cd586c47c1e36",
     "id": null,
     "metadata": {},
     "name": "pcdSampleQuery",
     "operationKind": "query",
-    "text": "query pcdSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $index: Int!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter, index: $index) {\n    __typename\n    ... on PointCloudSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ImageSample {\n      id\n    }\n    ... on VideoSample {\n      id\n    }\n  }\n}\n"
+    "text": "query pcdSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on PointCloudSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ImageSample {\n      id\n    }\n    ... on VideoSample {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bf587d10f3ec805fa6219154285e1eb0";
+(node as any).hash = "feb7d193dddb5df136a297ac5857307f";
 
 export default node;

@@ -1,10 +1,12 @@
 import { Loading, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
 import React, { Suspense, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { DynamicGroupsFlashlightWrapper } from "./DynamicGroupsFlashlightWrapper";
 
-const MAX_CAROUSEL_HEIGHT = 500;
+const MAX_CAROUSEL_HEIGHT = 600;
 
 export const DynamicGroupCarousel = () => {
   const [height, setHeight] = useBrowserStorage(
@@ -15,6 +17,8 @@ export const DynamicGroupCarousel = () => {
   const theme = useTheme();
 
   const [isGroupEmpty, setIsGroupEmpty] = useState(false);
+
+  const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
 
   if (isGroupEmpty) {
     return null;
@@ -27,7 +31,7 @@ export const DynamicGroupCarousel = () => {
       maxHeight={MAX_CAROUSEL_HEIGHT}
       enable={{
         bottom: true,
-        top: false,
+        top: !isImageVisible,
         right: false,
         left: false,
         topRight: false,

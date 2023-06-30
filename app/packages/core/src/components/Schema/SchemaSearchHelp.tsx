@@ -17,15 +17,15 @@ const EXAMPLES = [
   },
   {
     title:
-      '# Search across name, description, and all info.* keys for string "foo"',
+      'Search across name, description, and all info.* keys for string "foo"',
     code: "foo",
   },
   {
-    title: '# Match fields whose name contains "ground_truth"',
+    title: 'Match fields whose name contains "ground_truth"',
     code: "name:ground_truth",
   },
   {
-    title: "# Match fields whose owner contains “foo”",
+    title: "Match fields whose owner contains “foo”",
     code: "info.owner:foo",
   },
   {
@@ -42,7 +42,7 @@ export const SchemaSearchHelp = (props: Props) => {
   const theme = useTheme();
 
   return (
-    <Box display="flex" flexDirection="column" padding="1rem">
+    <Box display="flex" flexDirection="column">
       {EXAMPLES.map(({ title, primaryTextColor, code }: Example) => (
         <Box
           key={title}
@@ -64,7 +64,11 @@ export const SchemaSearchHelp = (props: Props) => {
           </Typography>
           {code && (
             <Box paddingTop="0.25rem">
-              <CodeBlock text={code} language="python" />
+              <CodeBlock
+                text={code}
+                language="python"
+                showLineNumbers={false}
+              />
             </Box>
           )}
         </Box>

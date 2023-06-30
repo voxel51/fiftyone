@@ -37,6 +37,7 @@ class Samples(HTTPEndpoint):
                 group=GroupElementFilter(slices=[slice] if slice else None)
             ),
             extended_stages=extended,
+            pagination_data=True,
         )
 
         return JSONResponse(

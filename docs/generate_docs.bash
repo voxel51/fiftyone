@@ -79,9 +79,17 @@ if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
     # macOS users may need to run `brew install coreutils` to get `realpath``
     PATH_TO_TEAMS="$(realpath $PATH_TO_TEAMS)"
 
-    ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${THIS_DIR}/../fiftyone/management"
-    ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${THIS_DIR}/../fiftyone/api"
+    cd "${THIS_DIR}"
+    PATH_TO_FIFTYONE_DIR=$(
+        python -c "import os, fiftyone as fo; print(os.path.dirname(fo.__file__))" ||
+        true
+    )
+    cd -
+
+    ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
+    ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
     echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
+    echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
 fi
 
 cd "${THIS_DIR}/.."
@@ -121,8 +129,8 @@ sphinx-build -M html source build $SPHINXOPTS
 
 # Remove symlink to fiftyone-teams
 if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
-    unlink ../fiftyone/management
-    unlink ../fiftyone/api
+    unlink "$PATH_TO_FIFTYONE_DIR/management"
+    unlink "$PATH_TO_FIFTYONE_DIR/api"
 fi
 
 echo "**** Documentation complete ****"

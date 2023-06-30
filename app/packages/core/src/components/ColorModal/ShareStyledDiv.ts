@@ -33,15 +33,17 @@ export const Container = styled.div<Props>`
 
 export const DraggableContent = styled.div<Props>`
   height: ${(props) => `calc(${props.height}px - 6.5rem)`};
+  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
   width: 100%;
   display: flex;
   flex-direction: row;
 `;
 
 export const Display = styled.div`
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
-  margin: 1rem;
+  padding: 1rem;
   flex: 1;
 `;
 
@@ -51,7 +53,8 @@ export const DraggableModalTitle = styled.div`
   justify-content: space-between;
   width: 100%;
   height: 3rem;
-  padding: 0.75rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
   background-color: ${({ theme }) => theme.background.level2};
   cursor: move;
   font-weight: 600;

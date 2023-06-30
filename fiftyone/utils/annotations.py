@@ -1364,7 +1364,7 @@ def _merge_labels(
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
-    if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+    if issubclass(fo_label_type, fol._HasLabelList):
         is_list = True
         list_field = fo_label_type._LABEL_LIST_FIELD
     else:
@@ -2549,11 +2549,7 @@ def _to_video_labels(sample, label_fields=None):
 
 def _get_sample_labels(sample, label_fields):
     if label_fields is None:
-        return {
-            name: value
-            for name, value in sample.iter_fields()
-            if isinstance(value, fol.Label)
-        }
+        return dict(sample._iter_label_fields())
 
     if label_fields:
         return {name: sample[name] for name in label_fields}
@@ -2568,11 +2564,7 @@ def _get_frame_labels(sample, frame_label_fields):
     frames = {}
     for frame_number, frame in sample.frames.items():
         if frame_label_fields is None:
-            frames[frame_number] = {
-                name: value
-                for name, value in frame.iter_fields()
-                if isinstance(value, fol.Label)
-            }
+            frames[frame_number] = dict(frame._iter_label_fields())
         else:
             frames[frame_number] = {
                 name: frame[name] for name in frame_label_fields

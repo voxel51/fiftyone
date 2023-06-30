@@ -24,6 +24,8 @@ import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
@@ -173,9 +175,11 @@ def cleanup_multiple_config_docs():
 def establish_db_conn(config):
     """Establishes the database connection.
 
-    If ``fiftyone.config.database_uri`` is defined, then we connect to that
-    URI. Otherwise, a :class:`fiftyone.core.service.DatabaseService` is
-    created.
+    The order of precedence is:
+
+    1.  If ``fiftyone.config.api_uri`` is defined, connect to that
+    2.  If ``fiftyone.config.database_uri`` is defined, connect to that
+    3.  Otherwise, a :class:`fiftyone.core.service.DatabaseService` is created
 
     Args:
         config: a :class:`fiftyone.core.config.FiftyOneConfig`
@@ -196,12 +200,12 @@ def establish_db_conn(config):
     global _database_name
 
     _connection_kwargs["appname"] = foc.DATABASE_APPNAME
-    if config.database_uri is None and config.api_uri is not None:
+    if config.api_uri is not None:
         if not config.api_key:
             raise ConnectionError(
                 "No API key found. Refer to "
-                "https://docs.voxel51.com/teams/installation.html to see how "
-                "to provide one"
+                "https://docs.voxel51.com/teams/api_connection.html to see "
+                "how to provide one"
             )
 
         _connection_kwargs = {
@@ -309,7 +313,7 @@ def _delete_non_persistent_datasets_if_allowed(**kwargs):
                 _client.admin.aggregate(
                     [
                         {"$currentOp": {"allUsers": True}},
-                        {"$project": {"appName": 1, "command": 1}},
+                        {"$project": {"appName": True, "command": True}},
                         {
                             "$match": {
                                 "appName": foc.DATABASE_APPNAME,
@@ -427,6 +431,16 @@ def get_db_client():
     return _client
 
 
+def has_db():
+    """Determines whether the database exists.
+
+    Returns:
+        True/False
+    """
+    _connect()
+    return _database_name in _client.list_database_names()
+
+
 def get_db_conn():
     """Returns a connection to the database.
 
@@ -434,7 +448,7 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    db = _client[fo.config.database_name]
+    db = _client[_database_name]
     return _apply_options(db)
 
 
@@ -454,7 +468,7 @@ def get_async_db_conn():
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    db = get_async_db_client()[fo.config.database_name]
+    db = get_async_db_client()[_database_name]
     return _apply_options(db)
 
 
@@ -477,7 +491,7 @@ def _apply_options(db):
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(fo.config.database_name)
+    _client.drop_database(_database_name)
 
 
 def sync_database():

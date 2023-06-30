@@ -355,9 +355,7 @@ const Loadable = ({ path }: { path: string }) => {
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  const activeSlice = useRecoilValue(fos.currentSlice(true));
-
-  let data = useRecoilValue(fos.activeModalSample(activeSlice));
+  let data = useRecoilValue(fos.activeModalSample);
   let field = useRecoilValue(fos.field(keys[0]));
 
   if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {

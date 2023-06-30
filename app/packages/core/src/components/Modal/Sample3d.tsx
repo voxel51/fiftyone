@@ -7,7 +7,7 @@ import { useRecoilValue } from "recoil";
 
 const PluginWrapper = () => {
   const groupId = useRecoilValue(fos.groupId);
-  const sample = useRecoilValue(fos.modal);
+  const { sample } = useRecoilValue(fos.modalSample);
 
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const dataset = useRecoilValue(fos.dataset);
@@ -22,7 +22,7 @@ const PluginWrapper = () => {
   return (
     <plugin.component
       // use group id in group model sample filepath in non-group mode to force a remount when switching between samples
-      key={groupId ?? sample?.sample.filepath}
+      key={groupId ?? sample.filepath}
       api={pluginAPI}
     />
   );

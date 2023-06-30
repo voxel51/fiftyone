@@ -21,7 +21,6 @@ T = t.TypeVar("T")
 @dataclass
 class Context:
     db: mtr.AsyncIOMotorDatabase
-    session: mtr.AsyncIOMotorClientSession
     dataloaders: t.Dict[t.Type[t.Any], DataLoader[str, t.Type[t.Any]]]
     request: strq.Request
     response: strp.Response

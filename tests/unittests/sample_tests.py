@@ -139,6 +139,56 @@ class SampleTests(unittest.TestCase):
         self.assertIsInstance(sample2["sample_id"], str)
         self.assertIsInstance(sample2["embedding"], np.ndarray)
 
+    @drop_datasets
+    def test_nested_fields(self):
+        sample = fo.Sample(
+            filepath="image1.jpg",
+            dynamic=fo.DynamicEmbeddedDocument(
+                classification=fo.Classification(label="hi"),
+                classification_list=[
+                    fo.Classification(label="foo"),
+                    fo.Classification(label="bar"),
+                ],
+                classifications=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="spam"),
+                        fo.Classification(label="eggs"),
+                    ]
+                ),
+            ),
+        )
+
+        self.assertIsInstance(sample["dynamic"], fo.DynamicEmbeddedDocument)
+        self.assertIsInstance(
+            sample["dynamic.classification"], fo.Classification
+        )
+        self.assertIsInstance(sample["dynamic.classification_list"], list)
+        self.assertIsInstance(
+            sample["dynamic.classifications"], fo.Classifications
+        )
+        self.assertIsInstance(
+            sample["dynamic.classifications.classifications"], list
+        )
+        self.assertIsInstance(
+            sample["dynamic.classifications.classifications"][0],
+            fo.Classification,
+        )
+
+        with self.assertRaises(KeyError):
+            sample["foo"]
+
+        with self.assertRaises(KeyError):
+            sample["dynamic.foo"]
+
+        with self.assertRaises(KeyError):
+            sample["dynamic.classification.foo"]
+
+        with self.assertRaises(KeyError):
+            sample["dynamic.classifications.foo"]
+
+        with self.assertRaises(KeyError):
+            sample["dynamic.classifications.classifications.foo"]
+
 
 class SampleInDatasetTests(unittest.TestCase):
     @drop_datasets
@@ -393,6 +443,82 @@ class SampleInDatasetTests(unittest.TestCase):
 
         self.assertIsNone(s1.new_field)
         self.assertEqual(s2.new_field, "fiftyone")
+
+    @drop_datasets
+    def test_nested_fields(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            dynamic=fo.DynamicEmbeddedDocument(
+                classification=fo.Classification(label="hi"),
+                classification_list=[
+                    fo.Classification(label="foo"),
+                    fo.Classification(label="bar"),
+                ],
+                classifications=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="spam"),
+                        fo.Classification(label="eggs"),
+                    ]
+                ),
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="image2.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        self.assertIsInstance(sample1["dynamic"], fo.DynamicEmbeddedDocument)
+        self.assertIsInstance(
+            sample1["dynamic.classification"], fo.Classification
+        )
+        self.assertIsInstance(sample1["dynamic.classification_list"], list)
+        self.assertIsInstance(
+            sample1["dynamic.classifications"], fo.Classifications
+        )
+        self.assertIsInstance(
+            sample1["dynamic.classifications.classifications"], list
+        )
+        self.assertIsInstance(
+            sample1["dynamic.classifications.classifications"][0],
+            fo.Classification,
+        )
+
+        self.assertIsNone(sample2["dynamic"])
+        self.assertIsNone(sample2["dynamic.classification"])
+        self.assertIsNone(sample2["dynamic.classification_list"])
+        self.assertIsNone(sample2["dynamic.classifications"])
+        self.assertIsNone(sample2["dynamic.classifications.classifications"])
+
+        with self.assertRaises(KeyError):
+            sample1["foo"]
+
+        with self.assertRaises(KeyError):
+            sample2["foo"]
+
+        with self.assertRaises(KeyError):
+            sample1["dynamic.foo"]
+
+        with self.assertRaises(KeyError):
+            sample2["dynamic.foo"]
+
+        with self.assertRaises(KeyError):
+            sample1["dynamic.classification.foo"]
+
+        with self.assertRaises(KeyError):
+            sample2["dynamic.classification.foo"]
+
+        with self.assertRaises(KeyError):
+            sample1["dynamic.classifications.foo"]
+
+        with self.assertRaises(KeyError):
+            sample2["dynamic.classifications.foo"]
+
+        with self.assertRaises(KeyError):
+            sample1["dynamic.classifications.classifications.foo"]
+
+        with self.assertRaises(KeyError):
+            sample2["dynamic.classifications.classifications.foo"]
 
 
 class SampleCollectionTests(unittest.TestCase):

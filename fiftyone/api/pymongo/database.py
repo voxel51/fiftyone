@@ -32,15 +32,22 @@ class Database(proxy.PymongoRestProxy):
         read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
         write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
         read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
+        **kwargs,
     ):
         self.__client = client
 
         super().__init__(
             name=name,
-            codec_options=codec_options,
-            read_preference=read_preference,
-            write_concern=write_concern,
-            read_concern=read_concern,
+            **{
+                k: v if v is not None else getattr(client, k)
+                for k, v in dict(
+                    codec_options=codec_options,
+                    read_preference=read_preference,
+                    write_concern=write_concern,
+                    read_concern=read_concern,
+                ).items()
+            },
+            **kwargs,
         )
 
     @property
@@ -85,6 +92,26 @@ class Database(proxy.PymongoRestProxy):
     # pylint: disable-next=missing-function-docstring
     def name(self) -> str:
         return self._proxy_init_kwargs["name"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def codec_options(self):
+        return self._proxy_init_kwargs["codec_options"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def read_preference(self):
+        return self._proxy_init_kwargs["read_preference"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def write_concern(self):
+        return self._proxy_init_kwargs["write_concern"]
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def read_concern(self):
+        return self._proxy_init_kwargs["read_concern"]
 
     # pylint: disable-next=missing-function-docstring
     def aggregate(
@@ -141,18 +168,17 @@ class Database(proxy.PymongoRestProxy):
         write_concern: Optional[pymongo.write_concern.WriteConcern] = None,
         read_concern: Optional[pymongo.read_concern.ReadConcern] = None,
     ) -> "Database":
-        return self.client.get_database(
-            self.name,
-            self._proxy_init_kwargs.update(
-                {
-                    k: v
-                    for k, v in dict(
-                        codec_options=codec_options,
-                        read_preference=read_preference,
-                        write_concern=write_concern,
-                        read_concern=read_concern,
-                    ).items()
-                    if v is not None
-                }
-            ),
+        kwargs = dict(self._proxy_init_kwargs)
+        kwargs.update(
+            {
+                k: v
+                for k, v in dict(
+                    codec_options=codec_options,
+                    read_preference=read_preference,
+                    write_concern=write_concern,
+                    read_concern=read_concern,
+                ).items()
+                if v is not None
+            }
         )
+        return self.client.get_database(**kwargs)

@@ -29,6 +29,12 @@ class MongoClient(proxy.PymongoRestProxy):
 
         super().__init__(*args, **kwargs)
 
+        with pymongo.MongoClient(*args, **kwargs) as cli:
+            self.__codec_options = cli.codec_options
+            self.__read_concern = cli.read_concern
+            self.__read_preference = cli.read_preference
+            self.__write_concern = cli.write_concern
+
     @property
     def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
         return self.__proxy_api_client
@@ -66,6 +72,26 @@ class MongoClient(proxy.PymongoRestProxy):
 
     def __repr__(self):
         return f"MongoClient({{url={self.__proxy_api_client__.base_url}}})"
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def codec_options(self):
+        return self.__codec_options
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def read_preference(self):
+        return self.__read_preference
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def write_concern(self):
+        return self.__write_concern
+
+    @property
+    # pylint: disable-next=missing-function-docstring
+    def read_concern(self):
+        return self.__read_concern
 
     @property
     # pylint: disable-next=missing-function-docstring

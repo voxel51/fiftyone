@@ -301,7 +301,7 @@ export const Looker3d = () => {
   useEffect(() => {
     if (isPointcloudDataset) {
       setCustomColorMap((prev) => {
-        if (Object.hasOwn(prev, "default")) {
+        if (prev && Object.hasOwn(prev, "default")) {
           return prev;
         }
         return { ...(prev ?? {}), default: DEFAULT_GREEN };
@@ -470,7 +470,7 @@ export const Looker3d = () => {
 
   return (
     <ErrorBoundary>
-      <Container onMouseOver={update} onMouseMove={update} onMouseLeave={clear}>
+      <Container onMouseOver={update} onMouseMove={update}>
         <Canvas onClick={() => setCurrentAction(null)} data-cy="looker3d">
           <Screenshot />
           <Environment

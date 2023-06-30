@@ -83,6 +83,8 @@ def plugins_cache(func):
 
 
 def dir_state(dirpath):
+    if not os.path.isdir(dirpath):
+        return None
     return max(
         os.path.getmtime(os.path.join(dirpath, f)) for f in os.listdir(dirpath)
     )

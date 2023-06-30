@@ -1,4 +1,3 @@
-import { Apps } from "@mui/icons-material";
 import Color from "color";
 import React, { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -13,6 +12,7 @@ import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
+import { Apps } from "@mui/icons-material";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 export const SamplesHeader = styled.div`
@@ -72,10 +72,10 @@ const Count = () => {
   }
 
   return (
-    <RightDiv>
+    <RightDiv data-cy="entry-counts">
       <div>
         <PathEntryCounts modal={false} path={""} />
-        &nbsp;
+        {` `}
         {total === 1 ? element.singular : element.plural}
       </div>
     </RightDiv>
@@ -93,13 +93,13 @@ const GroupsCount = () => {
   );
 
   return (
-    <RightDiv>
+    <RightDiv data-cy="entry-counts">
       <div>
         <PathEntryCounts modal={false} path={"_"} />
-        &nbsp;
+        {` `}
         {total === 1 ? "group" : "groups"}
-        &nbsp; (<PathEntryCounts modal={false} path={""} />
-        &nbsp;
+        {` `}(<PathEntryCounts modal={false} path={""} />
+        {` `}
         {elementTotal === 1 ? element.singular : element.plural})
       </div>
     </RightDiv>

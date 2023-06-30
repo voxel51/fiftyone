@@ -9,6 +9,7 @@ import types
 
 from .database import (
     aggregate,
+    has_db,
     get_db_config,
     establish_db_conn,
     get_db_client,
