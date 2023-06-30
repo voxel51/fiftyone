@@ -283,7 +283,7 @@ const NumericFieldFilter = ({
             formatter={
               [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
                 ? (v) => (v ? formatDateTime(v, timeZone) : null)
-                : (v) => (v ? v.toString() : null)
+                : (v) => (typeof v === "number" ? v.toString() : null)
             }
             value={false}
           />
