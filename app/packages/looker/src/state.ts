@@ -132,6 +132,7 @@ interface BaseOptions {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   selectedLabels: string[];
+  fieldVisibility: object;
   showConfidence: boolean;
   showControls: boolean;
   showIndex: boolean;
