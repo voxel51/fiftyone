@@ -50,6 +50,11 @@ class PluginDefinition(object):
         return self._metadata.get("version", None)
 
     @property
+    def url(self):
+        """The URL of the plugin."""
+        return self._metadata.get("url", None)
+
+    @property
     def license(self):
         """The license of the plugin."""
         return self._metadata.get("license", None)
@@ -163,6 +168,7 @@ class PluginDefinition(object):
             "name": self.name,
             "author": self.author,
             "version": self.version,
+            "url": self.url,
             "license": self.license,
             "description": self.description,
             "fiftyone_compatibility": self.fiftyone_compatibility,

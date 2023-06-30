@@ -347,6 +347,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
         )
+        self.proxy_url = self.parse_string(
+            d,
+            "proxy_url",
+            env_var="FIFTYONE_APP_PROXY_URL",
+            default=None,
+        )
         self.show_confidence = self.parse_bool(
             d,
             "show_confidence",

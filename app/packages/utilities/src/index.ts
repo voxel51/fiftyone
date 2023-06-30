@@ -94,8 +94,6 @@ export interface BaseField {
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
-  path: string | null;
-  visible: boolean | null;
 }
 
 export interface StrictField extends BaseField {
@@ -154,6 +152,8 @@ export const NONFINITES = new Set(["-inf", "inf", "nan"]);
 
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
+export const DYNAMIC_EMBEDDED_DOCUMENT = "DynamicEmbeddedDocument";
+export const EMBEDDED_DOCUMENT = "EmbeddedDocument";
 export const DETECTION = "Detection";
 export const DETECTIONS = "Detections";
 export const GEOLOCATION = "GeoLocation";
@@ -295,7 +295,7 @@ export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
 export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.DynamicEmbeddedDocumentField";
-export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2 =
+export const DYNAMIC_EMBEDDED_DOCUMENT_PATH =
   "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
@@ -352,6 +352,13 @@ export const UNSUPPORTED_FILTER_TYPES = [
   VECTOR_FIELD,
   null,
   undefined,
+];
+
+// An embedded document field are only represented as a top-level group, e.g.
+// "metadata", "embedded.embdedded" is an unsupported entry
+export const UNSUPPORTED_FILTER_PATHS = [
+  EMBEDDED_DOCUMENT_FIELD,
+  ...UNSUPPORTED_FILTER_TYPES,
 ];
 
 export const DYNAMIC_GROUP_FIELDS = [
