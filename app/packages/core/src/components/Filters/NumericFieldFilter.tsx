@@ -283,7 +283,7 @@ const NumericFieldFilter = ({
             formatter={
               [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
                 ? (v) => (v ? formatDateTime(v, timeZone) : null)
-                : (v) => null
+                : (v) => (v ? v.toString() : null)
             }
             value={false}
           />
@@ -307,6 +307,7 @@ const NumericFieldFilter = ({
             onlyMatchAtom={onlyMatchAtom}
             isMatchingAtom={isMatchingAtom}
             valueName={field?.name ?? ""}
+            path={path}
             color={color}
             modal={modal}
             isKeyPointLabel={isKeyPoints}
