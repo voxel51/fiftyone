@@ -12,7 +12,7 @@ export class GridPom {
   }
 
   async assertHasNLookers(n: number) {
-    const lookers = this.page.getByTestId("looker");
-    expect(lookers).toHaveLength(n);
+    const lookersCount = await this.page.getByTestId("looker").count();
+    expect(lookersCount).toBe(n);
   }
 }

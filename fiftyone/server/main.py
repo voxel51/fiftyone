@@ -34,10 +34,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--address", type=str, default=fo.config.default_app_address
     )
+    parser.add_argument("--clean_start", action="store_false", default=False)
     args = parser.parse_args()
     config = Config()
     config.bind = [f"{args.address}:{args.port}"]
     set_port(args.port)
 
     config.use_reloader = foc.DEV_INSTALL
+
+    if args.clean_start:
+        fo.delete_datasets("*")
+
     asyncio.run(serve(app, config), debug=foc.DEV_INSTALL)

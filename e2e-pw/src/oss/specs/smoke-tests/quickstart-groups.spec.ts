@@ -17,6 +17,6 @@ test.describe("quickstart-groups dataset", () => {
 
   test("should have four lookers", async ({ page }) => {
     const grid = new GridPom(page);
-    grid.assertHasNLookers(4);
+    await grid.assertHasNLookers(4);
   });
 });

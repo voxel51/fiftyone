@@ -41,7 +41,6 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
   webServer: {
     command: getPythonCommand([
       "../fiftyone/server/main.py",
@@ -49,6 +48,7 @@ export default defineConfig({
       "0.0.0.0",
       "--port",
       "8787",
+      "--clean_start",
     ]),
     url: "http://0.0.0.0:8787",
     reuseExistingServer: !process.env.CI,
@@ -57,6 +57,5 @@ export default defineConfig({
     },
     stdout: "pipe",
     stderr: "pipe",
-    timeout: Duration.Seconds(10),
   },
 });
