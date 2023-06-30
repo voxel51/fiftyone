@@ -15,6 +15,7 @@ import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import skeletonFilter from "./skeletonFilter";
 import * as viewAtoms from "./view";
+import { fieldVisibility } from "./fieldVisibility";
 
 type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
@@ -66,6 +67,7 @@ export const lookerOptions = selectorFamily<
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring(modal)),
         customizeColorSetting: get(atoms.sessionColorScheme).fields ?? [],
+        fieldVisibility: get(fieldVisibility),
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
         fullscreen: get(atoms.fullscreen),
