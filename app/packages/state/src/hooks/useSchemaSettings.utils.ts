@@ -16,6 +16,7 @@ import {
   HEATMAP_FIELD,
   KEYPOINT_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
+  LIST_FIELD,
   OBJECT_ID_FIELD,
   POLYLINE_DISABLED_SUB_PATHS,
   POLYLINE_FIELD,
@@ -25,6 +26,7 @@ import {
   SEGMENTATION_FIELD,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
 export const isMetadataField = (path: string) => {
@@ -41,7 +43,7 @@ export const disabledField = (
   isPatchesView?: boolean
 ): boolean => {
   const currField = combinedSchema[path] || ({} as Field);
-  const { ftype } = currField;
+  const { ftype, embeddedDocType } = currField;
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const parentField = combinedSchema[parentPath];
   const parentFType = parentField?.ftype;
@@ -174,6 +176,17 @@ export const disabledField = (
     GEOLOCATIONS_DISABLED_SUB_PATHS.includes(shortPath)
   ) {
     return true;
+  }
+
+  // list of any valid labels
+  if (embeddedDocType && ftype === LIST_FIELD) {
+    const embeddedRoot = embeddedDocType?.substring(
+      embeddedDocType.lastIndexOf(".") + 1,
+      embeddedDocType.length
+    );
+    if (VALID_LABEL_TYPES.includes(embeddedRoot)) {
+      return true;
+    }
   }
 
   return false;

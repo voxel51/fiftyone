@@ -70,6 +70,11 @@ const FIELDS = {
     path: "tags",
     ftype: LIST_FIELD,
   },
+  CUSTOM_LIST_FIELD: {
+    ...BASE_FIELD,
+    path: "custom_list",
+    ftype: LIST_FIELD,
+  },
   METADATA_FIELD: {
     ...BASE_FIELD,
     path: "metadata",
@@ -164,6 +169,12 @@ const FIELDS = {
     ...BASE_FIELD,
     path: "detections",
     ftype: DETECTIONS_FIELD,
+  },
+  DETECTIONS_LIST_FIELD: {
+    ...BASE_FIELD,
+    path: "detections",
+    ftype: LIST_FIELD,
+    embeddedDocType: DETECTIONS_FIELD,
   },
   CLASSIFICATION_FIELD: {
     ...BASE_FIELD,
@@ -856,5 +867,27 @@ describe("Label fields that are disabled", () => {
     enabledSubFields.forEach((field) => {
       expect(disabledField(field.path, SCHEMA)).toBe(false);
     });
+  });
+});
+
+describe("List of labels", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("List of labels are disabled", () => {
+    expect(
+      disabledField(
+        FIELDS.DETECTIONS_LIST_FIELD.path,
+        SCHEMA,
+        NOT_GROUP_DATASET
+      )
+    ).toBe(true);
+  });
+
+  it("List of non-labels are enabled", () => {
+    expect(
+      disabledField(FIELDS.CUSTOM_LIST_FIELD.path, SCHEMA, NOT_GROUP_DATASET)
+    ).toBe(false);
   });
 });
