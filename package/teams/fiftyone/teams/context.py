@@ -31,11 +31,10 @@ class GraphQL(gqla.GraphQL):
 
         loaders = {}
         for cls, config in dataloaders.items():
-            loaders[cls] = get_dataloader(cls, config, db, session)
+            loaders[cls] = get_dataloader(cls, config, db)
 
         return Context(
             db=db,
-            session=session,
             dataloaders=loaders,
             request=request,
             response=response,
