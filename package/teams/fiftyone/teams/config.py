@@ -74,15 +74,8 @@ def locate_config():
     Returns:
         the path to the :class:`FiftyOneTeamsConfig` on disk
 
-    Raises:
-        OSError: if the config path has been customized but the file does not
-            exist on disk
     """
     if "FIFTYONE_TEAMS_CONFIG_PATH" not in os.environ:
         return fotc.FIFTYONE_TEAMS_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_TEAMS_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_TEAMS_CONFIG_PATH"]
