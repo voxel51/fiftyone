@@ -494,9 +494,7 @@ single :ref:`group slice <groups-app>`:
     dataset.create_index("detections.detections.label")
     
     # Add compound index to optimize detections label filters in "slice" mode
-    dataset.create_index(
-        [("group.name", 1), ("detections.detections.label", 1)]
-    )
+    dataset.create_index([("group.name", 1), ("detections.detections.label", 1)])
 
     session = fo.launch_app(dataset)
 
