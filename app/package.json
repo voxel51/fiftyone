@@ -41,7 +41,7 @@
         "typedoc": "^0.23.21",
         "typescript": "^4.7.4",
         "typescript-plugin-css-modules": "^3.4.0",
-        "vite": "^3.0.0",
+        "vite": "^2.9.16",
         "vite-plugin-eslint": "^1.8.1",
         "vite-plugin-relay": "^2.0.0",
         "vitest": "^0.32.0"
