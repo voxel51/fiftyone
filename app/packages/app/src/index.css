@@ -48,4 +48,6 @@ button {
 
 body {
   overflow: hidden;
+  /* mainChannel override in ThemeProvider is not working for some reason */
+  --fo-palette-primary-mainChannel: 0 0 0;
 }

@@ -351,7 +351,7 @@ export async function executeStartupOperators() {
     (o) => o.config.onStartup === true
   );
   for (const operator of startupOperators) {
-    executeOperator(operator.uri);
+    if (operator.config.canExecute) executeOperator(operator.uri);
   }
 }
 
@@ -567,8 +567,9 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
   const placementsAsJSON = result.placements;
 
   return placementsAsJSON.map((p) => ({
-    operator: getLocalOrRemoteOperator(p.operator_uri),
+    operator: getLocalOrRemoteOperator(p.operator_uri)?.operator,
     placement: types.Placement.fromJSON(p.placement),
+    isRemote: getLocalOrRemoteOperator(p.operator_uri)?.isRemote,
   }));
 }
 
@@ -579,10 +580,7 @@ export async function resolveLocalPlacements(ctx: ExecutionContext) {
   for (const operator of localOperators) {
     const placement = await operator.resolvePlacement(ctx);
     if (placement)
-      localPlacements.push({
-        operator: { operator, isRemote: false },
-        placement,
-      });
+      localPlacements.push({ operator, placement, isRemote: false });
   }
 
   return localPlacements;

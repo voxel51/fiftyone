@@ -11,8 +11,6 @@ from graphql import GraphQLError
 from strawberry.extensions import Extension
 from strawberry.utils.await_maybe import AwaitableOrValue
 
-from fiftyone.server.context import Context
-
 
 class EndSession(Extension):
     async def on_request_end(self) -> AwaitableOrValue[None]:
@@ -32,5 +30,3 @@ class EndSession(Extension):
                 )
                 for error in result.errors
             ]
-        context: Context = self.execution_context.context
-        await context.session.end_session()

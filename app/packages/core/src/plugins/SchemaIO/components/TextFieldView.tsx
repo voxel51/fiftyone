@@ -11,6 +11,7 @@ export default function TextFieldView(props) {
   return (
     <FieldWrapper {...props}>
       <TextField
+        disabled={view.readOnly}
         autoFocus={autoFocus(props)}
         defaultValue={data ?? schema.default}
         size="small"

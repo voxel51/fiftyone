@@ -24,6 +24,7 @@ def beam_import(
     samples,
     parse_fcn=None,
     expand_schema=True,
+    dynamic=False,
     validate=True,
     options=None,
     verbose=False,
@@ -81,6 +82,8 @@ def beam_import(
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
+        dynamic (False): whether to declare dynamic attributes of embedded
+            document fields that are encountered
         validate (True): whether to validate that the fields of each sample
             are compliant with the dataset schema before adding it
         options (None): a
@@ -106,7 +109,12 @@ def beam_import(
         sample0 = parse_fcn(sample0)
 
     # Manually insert first sample to reduce chances of parallel schema changes
-    dataset.add_sample(sample0, expand_schema=expand_schema, validate=validate)
+    dataset.add_sample(
+        sample0,
+        expand_schema=expand_schema,
+        dynamic=dynamic,
+        validate=validate,
+    )
 
     if parse_fcn is None:
         # `Sample` objects are not serializable so we must manually serialize
@@ -117,6 +125,7 @@ def beam_import(
         dataset.name,
         parse_fcn=parse_fcn,
         expand_schema=expand_schema,
+        dynamic=dynamic,
         validate=validate,
     )
 
@@ -335,11 +344,17 @@ def beam_export(
 
 class ImportBatch(beam.DoFn):
     def __init__(
-        self, dataset_name, parse_fcn=None, expand_schema=True, validate=True
+        self,
+        dataset_name,
+        parse_fcn=None,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
     ):
         self.dataset_name = dataset_name
         self.parse_fcn = parse_fcn
         self.expand_schema = expand_schema
+        self.dynamic = dynamic
         self.validate = validate
 
         self._dataset = None
@@ -366,7 +381,7 @@ class ImportBatch(beam.DoFn):
     def finish_bundle(self):
         if self._samples:
             self._dataset._add_samples_batch(
-                self._samples, self.expand_schema, self.validate
+                self._samples, self.expand_schema, self.dynamic, self.validate
             )
 
 
@@ -443,7 +458,7 @@ class MergeBatch(beam.DoFn):
         )
 
         self._dataset._upsert_samples_batch(
-            list(samples), self.expand_schema, True
+            list(samples), self.expand_schema, False, True
         )
 
 

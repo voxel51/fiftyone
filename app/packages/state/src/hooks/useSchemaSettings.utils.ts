@@ -4,7 +4,8 @@ import {
   DETECTIONS_FIELD,
   DETECTION_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
+  FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
   GEO_LOCATIONS_FIELD,
@@ -12,6 +13,7 @@ import {
   HEATMAP_FIELD,
   KEYPOINT_FILED,
   LIST_FIELD,
+  OBJECT_ID_FIELD,
   POLYLINES_FIELD,
   POLYLINE_FIELD,
   REGRESSION_FILED,
@@ -21,7 +23,6 @@ import {
   VALID_LABEL_TYPES,
   VECTOR_FIELD,
 } from "@fiftyone/utilities";
-import { FRAME_NUMBER_FIELD, OBJECT_ID_FIELD } from "@fiftyone/utilities";
 
 export const disabledField = (
   path: string,
@@ -37,7 +38,7 @@ export const disabledField = (
   const embeddedDocTypeSplit = embeddedDocType?.split(".");
   const hasDynamicEmbeddedDocument = [
     DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-    DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+    DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   ].includes(embeddedDocType);
 
   return (

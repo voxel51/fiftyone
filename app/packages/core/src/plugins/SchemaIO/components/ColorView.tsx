@@ -9,7 +9,7 @@ import { getComponentProps } from "../utils";
 export default function ColorView(props) {
   const { onChange, path, schema, data } = props;
   const { view = {} } = schema;
-  const { compact, variant } = view;
+  const { compact, variant, readOnly } = view;
   const [open, setOpen] = useState(false);
   const [color, setColor] = useState(data ?? defaultColor);
   const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
@@ -32,6 +32,7 @@ export default function ColorView(props) {
       >
         <Box
           onClick={(e) => {
+            if (readOnly) return;
             setAnchor(e.currentTarget);
             setOpen(!open);
           }}
@@ -52,6 +53,7 @@ export default function ColorView(props) {
             onChange={(e) => {
               setColor({ hex: e.target.value });
             }}
+            disabled={readOnly}
             {...getComponentProps(props, "field")}
           />
         )}

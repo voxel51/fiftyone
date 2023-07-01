@@ -1,15 +1,13 @@
-import { selector, selectorFamily } from "recoil";
-
 import { Coloring } from "@fiftyone/looker";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import {
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
+  RGB,
   createColorGenerator,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
   getColor,
   hexToRgb,
-  RGB,
 } from "@fiftyone/utilities";
-
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { selector, selectorFamily } from "recoil";
 import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import * as atoms from "./atoms";
 import { colorPalette, colorscale } from "./config";
@@ -93,7 +91,7 @@ export const pathColor = selectorFamily<
 
       if (
         get(schemaAtoms.field(adjustedPath))?.embeddedDocType ===
-        DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2
+        DYNAMIC_EMBEDDED_DOCUMENT_PATH
       ) {
         adjustedPath = path;
       }

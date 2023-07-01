@@ -1914,6 +1914,19 @@ def _get_filter_frames_field_pipeline(
     only_matches=True,
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
+    merge = {
+        "$cond": {
+            "if": cond,
+            "then": "$$frame." + filter_field,
+            "else": None,
+        }
+    }
+
+    if "." in new_field:
+        parent, child = new_field.split(".")
+        obj = {parent: {child: merge}}
+    else:
+        obj = {new_field: merge}
 
     pipeline = [
         {
@@ -1925,15 +1938,7 @@ def _get_filter_frames_field_pipeline(
                         "in": {
                             "$mergeObjects": [
                                 "$$frame",
-                                {
-                                    new_field: {
-                                        "$cond": {
-                                            "if": cond,
-                                            "then": "$$frame." + filter_field,
-                                            "else": None,
-                                        }
-                                    }
-                                },
+                                obj,
                             ]
                         },
                     }
@@ -2469,6 +2474,25 @@ def _get_filter_frames_list_field_pipeline(
 
     old_field = filter_field.split(".")[0]
 
+    merge = {
+        "$mergeObjects": [
+            "$$frame." + old_field,
+            {
+                labels_list: {
+                    "$filter": {
+                        "input": "$$frame." + filter_field,
+                        "cond": cond,
+                    }
+                }
+            },
+        ]
+    }
+    if "." in label_field:
+        parent, label_field = label_field.split(".")
+        obj = {parent: {label_field: merge}}
+    else:
+        obj = {label_field: merge}
+
     pipeline = [
         {
             "$addFields": {
@@ -2476,27 +2500,7 @@ def _get_filter_frames_list_field_pipeline(
                     "$map": {
                         "input": "$frames",
                         "as": "frame",
-                        "in": {
-                            "$mergeObjects": [
-                                "$$frame",
-                                {
-                                    label_field: {
-                                        "$mergeObjects": [
-                                            "$$frame." + old_field,
-                                            {
-                                                labels_list: {
-                                                    "$filter": {
-                                                        "input": "$$frame."
-                                                        + filter_field,
-                                                        "cond": cond,
-                                                    }
-                                                }
-                                            },
-                                        ]
-                                    }
-                                },
-                            ]
-                        },
+                        "in": {"$mergeObjects": ["$$frame", obj]},
                     }
                 }
             }
@@ -5845,7 +5849,7 @@ class SelectFields(ViewStage):
         if use_db_fields:
             return sample_collection._handle_db_fields(selected_paths)
 
-        return selected_paths
+        return {path for path in selected_paths if path is not None}
 
     def _get_selected_frame_fields(
         self, sample_collection, use_db_fields=False
@@ -5883,7 +5887,7 @@ class SelectFields(ViewStage):
                 selected_paths, frames=True
             )
 
-        return selected_paths
+        return {path for path in selected_paths if path is not None}
 
     def to_mongo(self, sample_collection):
         selected_paths = self._get_selected_fields(
@@ -8083,11 +8087,6 @@ def _parse_labels_field(sample_collection, field_path):
         real_path = real_path[len(prefix) :]
 
     hidden = False
-
-    # for fiftyone.server.view hidden results
-    if real_path.startswith("___"):
-        hidden = True
-        real_path = real_path[3:]
 
     # for fiftyone.core.stages hidden results
     if real_path.startswith("__"):

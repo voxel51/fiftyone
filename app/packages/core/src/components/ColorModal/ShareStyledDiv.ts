@@ -40,9 +40,10 @@ export const DraggableContent = styled.div<Props>`
 `;
 
 export const Display = styled.div`
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
-  margin: 1rem;
+  padding: 1rem;
   flex: 1;
 `;
 

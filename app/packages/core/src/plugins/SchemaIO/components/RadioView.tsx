@@ -12,7 +12,7 @@ import { autoFocus, getComponentProps } from "../utils";
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
   const { view = {} } = schema;
-  const { choices, label, description, orientation } = view;
+  const { choices, label, description, orientation, readOnly } = view;
   return (
     <FormControl {...getComponentProps(props, "container")}>
       {(label || description) && (
@@ -38,6 +38,7 @@ export default function RadioView(props: RadioGroupProps) {
             value={value}
             control={
               <Radio
+                disabled={readOnly}
                 autoFocus={autoFocus(props)}
                 {...getComponentProps(props, "radio")}
               />
