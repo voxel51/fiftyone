@@ -5,13 +5,13 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import json
+
 import logging
 import typing as t
 
 from bson import json_util
 from dataclasses import asdict
-from mongoengine.base import BaseDict
+from mongoengine.base import BaseDict, BaseList
 import strawberry as gql
 
 import eta.core.serial as etas
@@ -236,10 +236,20 @@ def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=dict(**field.info)
+                    info=_convert_mongoengine_data(field.info)
                     if isinstance(field.info, BaseDict)
                     else field.info,
                 )
             )
+
+    return data
+
+
+def _convert_mongoengine_data(data):
+    if isinstance(data, BaseDict):
+        return {k: _convert_mongoengine_data(v) for k, v in data.items()}
+
+    if isinstance(data, BaseList):
+        return [_convert_mongoengine_data(v) for v in data]
 
     return data

@@ -1475,6 +1475,15 @@ _PATCHES_FIELDS = (
     Polylines,
 )
 
+_INDEX_FIEDS = (
+    Detection,
+    Detections,
+    Polyline,
+    Polylines,
+    Keypoint,
+    Keypoints,
+)
+
 _SINGLE_LABEL_TO_LIST_MAP = {
     Classification: Classifications,
     Detection: Detections,

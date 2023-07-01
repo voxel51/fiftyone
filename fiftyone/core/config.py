@@ -226,6 +226,13 @@ class FiftyOneConfig(EnvConfig):
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
 
+        self.max_thread_pool_workers = self.parse_int(
+            d,
+            "max_thread_pool_workers",
+            env_var="FIFTYONE_MAX_THREAD_POOL_WORKERS",
+            default=None,
+        )
+
         self._init()
 
     @property
@@ -346,6 +353,12 @@ class AppConfig(EnvConfig):
             "notebook_height",
             env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
+        )
+        self.proxy_url = self.parse_string(
+            d,
+            "proxy_url",
+            env_var="FIFTYONE_APP_PROXY_URL",
+            default=None,
         )
         self.show_confidence = self.parse_bool(
             d,

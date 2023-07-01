@@ -30,7 +30,6 @@ def get_dataloader(
     cls: t.Type[T],
     config: DataLoaderConfig,
     db: mtr.AsyncIOMotorDatabase,
-    session: mtr.AsyncIOMotorClientSession,
 ) -> DataLoader[str, t.Optional[T]]:
     async def load_items(
         keys: t.List[str],

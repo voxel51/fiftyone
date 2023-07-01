@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { IconButton } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
 import {
@@ -19,12 +20,23 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const [title] = usePanelTitle(panelId);
   const closeEffect = usePanelCloseEffect(panelId);
 
+  const handleClose = useCallback(() => {
+    if (node.pinned) return;
+    closeEffect();
+    spaces.removeNode(node);
+  }, [node, closeEffect, spaces]);
+
   if (!panel) return warnPanelNotFound(panelName);
 
   const TabIndicator = panel?.panelOptions?.TabIndicator;
 
   return (
     <StyledTab
+      onMouseDown={(e) => {
+        if (e.button === 1) {
+          handleClose();
+        }
+      }}
       onClick={() => {
         if (!active) spaces.setNodeActive(node);
       }}
@@ -42,8 +54,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            closeEffect();
-            spaces.removeNode(node);
+            handleClose();
           }}
           sx={{ pb: 0, mr: "-8px" }}
           title="Close"

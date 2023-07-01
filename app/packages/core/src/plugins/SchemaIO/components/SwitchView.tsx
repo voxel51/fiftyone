@@ -10,6 +10,7 @@ export default function SwitchView(props) {
     <FormControlLabel
       control={
         <Switch
+          disabled={schema.view?.readOnly}
           autoFocus={autoFocus(props)}
           defaultChecked={data === true || schema.default === true}
           {...getComponentProps(props, "switch")}

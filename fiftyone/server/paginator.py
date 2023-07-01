@@ -44,7 +44,6 @@ class Connection(t.Generic[T, C]):
 
 async def get_items(
     collection: mtr.AsyncIOMotorCollection,
-    session: mtr.AsyncIOMotorClientSession,
     from_db: t.Callable[[dict], T],
     key: str,
     filters: t.List[dict],
@@ -107,7 +106,6 @@ def get_paginator_resolver(
 
         return await get_items(
             info.context.db[collection],
-            info.context.session,
             from_db,
             key,
             filters,

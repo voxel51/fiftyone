@@ -58,8 +58,17 @@ HTTPS_PREFIX = "https://"
 
 
 def init_storage():
-    """Initializes storage client use."""
+    """Initializes storage client use.
+
+    This method may be called at any time to reinitialize storage client usage.
+    """
     global creds_manager
+    global s3_client
+    global gcs_client
+    global azure_client
+    global minio_client
+    global bucket_regions
+    global region_clients
     global minio_alias_prefix
     global minio_endpoint_prefix
     global azure_alias_prefix
@@ -69,6 +78,13 @@ def init_storage():
         creds_manager = foc.CloudCredentialsManager()
     else:
         creds_manager = None
+
+    s3_client = None
+    gcs_client = None
+    azure_client = None
+    minio_client = None
+    bucket_regions.clear()
+    region_clients.clear()
 
     minio_alias_prefix = None
     minio_endpoint_prefix = None
@@ -1928,21 +1944,6 @@ def run(fcn, tasks, num_workers=None, progress=False):
     return results
 
 
-def clear_clients():
-    global s3_client
-    global gcs_client
-    global azure_client
-    global minio_client
-    global bucket_regions
-    global region_clients
-    s3_client = None
-    gcs_client = None
-    azure_client = None
-    minio_client = None
-    bucket_regions.clear()
-    region_clients.clear()
-
-
 def _get_client(fs=None, path=None):
     _check_managed_credentials()
 
@@ -2113,7 +2114,7 @@ def _check_managed_credentials():
         return
 
     if creds_manager.is_expired:
-        clear_clients()
+        init_storage()
 
 
 def _get_managed_credentials(provider):

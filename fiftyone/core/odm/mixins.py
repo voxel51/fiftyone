@@ -113,18 +113,6 @@ class DatasetMixin(object):
         # pylint: disable=no-member
         return tuple(cls._fields[f].db_field or f for f in field_names)
 
-    def has_field(self, field_name):
-        # pylint: disable=no-member
-        return field_name in self._fields
-
-    def get_field(self, field_name):
-        if not self.has_field(field_name):
-            raise AttributeError(
-                "%s has no field '%s'" % (self._doc_name(), field_name)
-            )
-
-        return super().get_field(field_name)
-
     def set_field(
         self,
         field_name,
@@ -796,7 +784,7 @@ class DatasetMixin(object):
 
             view = view.set_field(new_path, expr, _allow_missing=True)
 
-        view = view.mongo([{"$unset": _paths}])
+        view = view.mongo([{"$project": {p: False for p in _paths}}])
 
         #
         # Ideally only the embedded field would be saved, but the `$merge`
@@ -1493,15 +1481,29 @@ class NoDatasetMixin(object):
 
     def has_field(self, field_name):
         try:
-            return field_name in self._data
+            data = self._data
         except AttributeError:
-            # If `_data` is not initialized
+            # `_data` is not initialized
             return False
 
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            value = data.get(chunks[0], None)
+            try:
+                return value.has_field(chunks[1])
+            except AttributeError:
+                return False
+
+        return field_name in data
+
     def get_field(self, field_name):
+        chunks = field_name.split(".", 1)
         try:
-            return self._data[field_name]
-        except KeyError:
+            if len(chunks) > 1:
+                return self._data[chunks[0]].get_field(chunks[1])
+            else:
+                return self._data[field_name]
+        except (KeyError, AttributeError):
             raise AttributeError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
@@ -1514,6 +1516,11 @@ class NoDatasetMixin(object):
         validate=True,
         dynamic=False,
     ):
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            doc = self.get_field(chunks[0])
+            return doc.set_field(chunks[1], value, create=create)
+
         if not create and not self.has_field(field_name):
             raise ValueError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
@@ -1523,17 +1530,30 @@ class NoDatasetMixin(object):
         self._data[field_name] = value
 
     def clear_field(self, field_name):
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            value = self.get_field(chunks[0])
+            if value is not None:
+                return value.clear_field(chunks[1])
+
+            if self.has_field(field_name):
+                return
+
+            raise AttributeError(
+                "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
         if field_name in self.default_fields:
             default_value = self._get_default(self.default_fields[field_name])
             self.set_field(field_name, default_value, create=False)
             return
 
-        if not self.has_field(field_name):
-            raise ValueError(
+        try:
+            self._data.pop(field_name)
+        except KeyError:
+            raise AttributeError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
-
-        self._data.pop(field_name)
 
     def to_dict(self, extended=False):
         d = {}

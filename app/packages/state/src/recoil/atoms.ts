@@ -1,33 +1,8 @@
-import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
-
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { Field } from "@fiftyone/utilities";
+import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
 import { ColorSchemeSetting, State } from "./types";
-
-export interface AppSample extends Sample {
-  _id: string;
-  support?: [number, number];
-}
-
-export interface SampleData {
-  sample: AppSample;
-  aspectRatio: number;
-  frameRate?: number;
-  frameNumber?: number;
-  urls: {
-    [field: string]: string;
-  };
-}
-
-export interface ModalNavigation {
-  index: number;
-  setIndex: (index: number) => void;
-}
-
-export interface ModalSample extends SampleData {
-  navigation: ModalNavigation;
-}
 
 export const refresher = atom<number>({
   key: "refresher",
@@ -43,11 +18,6 @@ export const useRefresh = () => {
     []
   );
 };
-
-export const modal = atom<ModalSample | null>({
-  key: "modal",
-  default: null,
-});
 
 export interface SortResults {
   count: boolean;

@@ -914,6 +914,32 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(frame4["field2"], "b")
 
     @drop_datasets
+    def test_video_frames_view_merge(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(field1="a", field2="b")
+        sample1.frames[2] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(field1="c", field2="d")
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(field1="e", field2="f")
+        sample3.frames[2] = fo.Frame()
+        sample3.frames[3] = fo.Frame()
+
+        dataset1 = fo.Dataset()
+        dataset1.add_samples([sample1, sample2, sample3])
+
+        dataset2 = fo.Dataset()
+        dataset2.media_type = "video"
+
+        dataset2.merge_samples(dataset1[:1])
+        dataset2.merge_samples(dataset1[1:])
+
+        self.assertEqual(dataset2.count(), 3)
+        self.assertEqual(dataset2.count("frames"), 6)
+
+    @drop_datasets
     def test_merge_video_samples_and_labels(self):
         sample11 = fo.Sample(filepath="video1.mp4")
 

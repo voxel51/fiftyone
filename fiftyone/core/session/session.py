@@ -20,7 +20,6 @@ import time
 import typing as t
 import webbrowser
 from uuid import uuid4
-from bson import json_util
 
 try:
     import IPython.display
@@ -553,7 +552,11 @@ class Session(object):
     @property
     def url(self) -> str:
         """The URL of the session."""
-        return focx.get_url(self.server_address, self.server_port)
+        return focx.get_url(
+            self.server_address,
+            self.server_port,
+            proxy_url=self.config.proxy_url,
+        )
 
     @property
     def config(self) -> AppConfig:
@@ -1033,7 +1036,7 @@ class Session(object):
         )
 
         self._notebook_cells[uuid] = cell
-        fosn.display(self._client, cell)
+        fosn.display(self._client, cell, self.config.proxy_url)
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
@@ -1247,7 +1250,7 @@ def _log_welcome_message_if_allowed():
     if focn.VERSION == last_version:
         return
 
-    logger.info(_WELCOME_MESSAGE.format(focn.VERSION))
+    logger.info(_WELCOME_MESSAGE.format(focn.TEAMS_VERSION))
 
     try:
         etas.write_json({"version": focn.VERSION}, focn.WELCOME_PATH)

@@ -7,13 +7,14 @@ import { getComponentProps } from "../utils";
 export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;
   const { view = {} } = schema;
-  const { choices = [] } = view;
+  const { choices = [], readOnly } = view;
 
   const multiple = schema.type === "array";
 
   return (
     <FieldWrapper {...props}>
       <Autocomplete
+        disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
         defaultValue={getDefaultValue(data ?? schema?.default, choices)}

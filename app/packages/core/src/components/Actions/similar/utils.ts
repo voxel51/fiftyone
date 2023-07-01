@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import {
   Method,
-  ModalSample,
   selectedLabels,
   useBrowserStorage,
   useUnprocessedStateUpdate,
@@ -10,8 +9,8 @@ import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import {
-  selectorFamily,
   Snapshot,
+  selectorFamily,
   useRecoilCallback,
   useRecoilValue,
 } from "recoil";
@@ -36,28 +35,28 @@ export const getQueryIds = async (
 
   const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
-  const modal = await snapshot.getPromise(fos.modal);
 
   if (isPatches) {
     if (selectedSamples.size) {
       return [...selectedSamples].map((id) => {
         const sample = fos.getSample(id);
         if (sample) {
-          return sample.sample[labels_field]._id;
+          return sample.sample[labels_field]._id as string;
         }
 
         throw new Error("sample not found");
       });
     }
 
-    return modal?.sample[labels_field]._id;
+    return (await snapshot.getPromise(fos.modalSample)).sample[labels_field]
+      ._id as string;
   }
 
   if (selectedSamples.size) {
     return [...selectedSamples];
   }
 
-  return modal?.sample._id;
+  return await snapshot.getPromise(fos.modalSampleId);
 };
 
 export const useSortBySimilarity = (close) => {
@@ -71,13 +70,14 @@ export const useSortBySimilarity = (close) => {
   }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
-    ({ reset, snapshot, set }) =>
+    ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
 
         const queryIds = parameters.query
           ? null
           : await getQueryIds(snapshot, parameters.brainKey);
+
         const view = await snapshot.getPromise(fos.view);
         const subscription = await snapshot.getPromise(fos.stateSubscription);
 
@@ -112,11 +112,10 @@ export const useSortBySimilarity = (close) => {
 
           update(({ reset, set }) => {
             set(fos.similarityParameters, combinedParameters);
-            set(fos.modal, null);
+            reset(fos.currentModalSample);
             set(fos.similaritySorting, false);
             set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
             set(fos.hiddenLabels, {});
-            set(fos.modal, null);
             reset(fos.selectedLabels);
             reset(fos.selectedSamples);
             close();
@@ -189,7 +188,7 @@ const availablePatchesSimilarityKeys = selectorFamily<
             .filter(([_, field]) => fields.has(field))
             .map(([key]) => key);
         } else {
-          const { sample } = get(fos.modal) as ModalSample;
+          const { sample } = get(fos.modalSample);
 
           return patches.filter(([_, v]) => sample[v]).map(([key]) => key);
         }

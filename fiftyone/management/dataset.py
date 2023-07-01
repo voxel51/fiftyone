@@ -432,6 +432,7 @@ def set_dataset_user_permission(
     dataset_name: str,
     user: Union[str, users.User],
     permission: DatasetPermission,
+    invite: bool = False,
 ) -> None:
     """Grants the given user specific access to the given dataset at the
     specified permission level.
@@ -440,25 +441,47 @@ def set_dataset_user_permission(
 
         The caller must have ``Can Manage`` permissions on the dataset.
 
+    .. warning::
+
+        If an unknown email is passed to this function and ``invite`` is
+        ``True``, an invitation to join the organization will be sent to
+        the email. The user will be created and have access to the dataset
+        on invitation acceptance. Please double-check the email correctness
+        before running.
+
     Examples::
 
         import fiftyone.management as fom
 
         dataset_name = "special-dataset"
-        user = "guest@company.com"
+        guest = "guest@company.com"
+        new_guest = "new-guest@company.com"
 
-        fom.set_dataset_user_permission(dataset_name, user, fom.VIEW)
+        # Existing user
+        fom.set_dataset_user_permission(dataset_name, guest, fom.VIEW)
 
-        assert fom.get_permissions(dataset_name=dataset_name, user=user) == fom.VIEW
+        assert fom.get_permissions(dataset_name=dataset_name, user=guest) == fom.VIEW
+
+        # Nonexisting user
+        fom.set_dataset_user_permission(dataset_name, new_guest, invite=True)
+        assert guest in [i.invitee_email for i in fom.list_pending_invitations()]
 
     Args:
         dataset_name: the dataset name
         user: a user ID, email string, or :class:`~fiftyone.management.users.User`
             instance
         permission: the :class:`~fiftyone.management.dataset.DatasetPermission` to grant
+        invite (False): if ``True`` and ``user`` is an email, an invitation
+            will be sent to join the organization.
     """
     perm_str = _validate_dataset_permission(permission)
-    user_id = users._resolve_user_id(user)
+    try:
+        user_id = users._resolve_user_id(user, pass_unknown_email=invite)
+    except ValueError as e:
+        raise ValueError(
+            "Unknown user. Pass invite=True to invite a "
+            "nonexisting user by email"
+        ) from e
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(

@@ -366,7 +366,9 @@ class ManagementSdkTests(unittest.TestCase):
     def test_set_dataset_user_permission(self):
         for perm in (self.PERMISSION, self.PERMISSION_STR):
             fom.set_dataset_user_permission(self.DATASET_NAME, self.USER, perm)
-            self.resolve_user.assert_called_with(self.USER)
+            self.resolve_user.assert_called_with(
+                self.USER, pass_unknown_email=True
+            )
             self.client.post_graphql_request.assert_called_with(
                 query=fom.dataset._SET_DATASET_USER_PERM_QUERY,
                 variables={
@@ -821,9 +823,15 @@ class ManagementSdkTests(unittest.TestCase):
         self.assertEqual(resolve_user_id(user.email), user.id)
         get_user_mock.assert_called_with(user.email)
 
+        # User not existing
         get_user_mock.reset_mock()
         get_user_mock.return_value = None
         self.assertRaises(ValueError, resolve_user_id, user.email)
+
+        # User not existing but we say its ok - should return email
+        self.assertEqual(
+            resolve_user_id(user.email, pass_unknown_email=True), user.email
+        )
 
         # user dict - just has to have 'id' key actually
         self.assertEqual(resolve_user_id(user), user.id)
@@ -844,7 +852,11 @@ class ManagementSdkTests(unittest.TestCase):
         resolve_user_id = ManagementSdkTests._original_resolve_user
 
         # Have to parametrize ourselves since unittest doesnt support it
-        parameters = [("user@company.com", True)]
+        parameters = [
+            ("user@company.com", True),
+            ("usercompanycom", False),
+            ("user+2@com.co", True),
+        ]
         for email, is_email in parameters:
             with self.subTest(email=email, is_email=is_email):
                 get_user_mock.reset_mock()

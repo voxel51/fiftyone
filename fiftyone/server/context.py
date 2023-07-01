@@ -11,7 +11,7 @@ import strawberry.asgi as gqla
 
 
 import fiftyone as fo
-from fiftyone.core.odm import get_async_db_client, get_async_db_conn
+from fiftyone.core.odm import get_async_db_client
 
 from fiftyone.server.data import Context
 from fiftyone.server.dataloader import dataloaders, get_dataloader
@@ -22,15 +22,13 @@ class GraphQL(gqla.GraphQL):
         self, request: strq.Request, response: strp.Response
     ) -> Context:
         db_client = get_async_db_client()
-        db = get_async_db_conn()
-        session = await db_client.start_session()
+        db = db_client[fo.config.database_name]
         loaders = {}
         for cls, config in dataloaders.items():
-            loaders[cls] = get_dataloader(cls, config, db, session)
+            loaders[cls] = get_dataloader(cls, config, db)
 
         return Context(
             db=db,
-            session=session,
             dataloaders=loaders,
             request=request,
             response=response,
