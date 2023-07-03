@@ -799,8 +799,6 @@ describe("Label fields that are disabled", () => {
       SCHEMA[field.path] = field;
     });
 
-    console.log("disabledSubFields", disabledSubFields);
-
     disabledSubFields.forEach((field) => {
       expect(disabledField(field.path, SCHEMA)).toBe(true);
     });

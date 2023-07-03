@@ -486,9 +486,10 @@ export default function useSchemaSettings() {
     selectedPathState
   );
   // disabled paths are filtered
-  const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
-  const enabledSelectedPaths =
-    datasetSelectedPaths?.size && combinedSchema
+  const enabledSelectedPaths = useMemo(() => {
+    const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
+
+    return datasetSelectedPaths?.size && combinedSchema
       ? [...datasetSelectedPaths]?.filter(
           ({ path }) =>
             path &&
@@ -503,6 +504,16 @@ export default function useSchemaSettings() {
             )
         )
       : [];
+  }, [
+    combinedSchema,
+    datasetName,
+    isClipsView,
+    isFrameView,
+    isGroupDataset,
+    isPatchesView,
+    isVideo,
+    selectedPaths,
+  ]);
 
   const excludePathsState = excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
