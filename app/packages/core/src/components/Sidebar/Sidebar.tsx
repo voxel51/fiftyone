@@ -742,7 +742,7 @@ const InteractiveSidebar = ({
               borderTopRightRadius: 8,
             }}
           >
-            <ViewSelection />
+            <ViewSelection id="saved-views" />
           </Box>
         </Suspense>
       )}
