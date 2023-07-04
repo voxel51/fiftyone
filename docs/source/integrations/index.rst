@@ -91,6 +91,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: LanceDB
+    :description: Use our LancedDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
+    :link: lancedb.html
+    :image: ../_static/images/integrations/lancedb.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
     :header: Lightning Flash
     :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
@@ -123,4 +130,5 @@ on the cards below to see how!
     Label Studio <labelstudio.rst>
     Qdrant <qdrant.rst>
     Pinecone <pinecone.rst>
+    LanceDB <lancedb.rst>
     Lightning Flash <lightning_flash.rst>
