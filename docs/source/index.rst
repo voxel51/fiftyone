@@ -1,351 +1,134 @@
-FiftyOne
-========
 
-.. Social links ---------------------------------------------------------------
+.. _integrations:
 
-.. raw:: html
+FiftyOne Integrations
+=====================
 
-  <div class="social-links">
-    <table id="social-links-table">
-      <th>
-        <a target="_blank" href="https://github.com/voxel51/fiftyone">
-          <img alt="GitHub repository" src="_static/images/icons/github-logo-256px.png">
-          &nbsp View on GitHub
-        </a>
-      </th>
-      <th>
-        <a target="_blank" href="https://slack.voxel51.com">
-          <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
-          &nbsp Join us on Slack
-        </a>
-      </th>
-      <th>
-        <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">
-          <img alt="Colab quickstart" src="_static/images/icons/colab-logo-256px.png">
-          &nbsp Try it in Colab
-        </a>
-      </th>
-    </table>
-  </div>
+.. default-role:: code
 
-.. End social links -----------------------------------------------------------
+FiftyOne integrates naturally with other ML tools that you know and love. Click
+on the cards below to see how!
 
-**The open-source tool for building high-quality datasets and computer vision models**
-
-Nothing hinders the success of machine learning systems more than poor quality
-data. And without the right tools, improving a model can be time-consuming and
-inefficient.
-
-FiftyOne supercharges your machine learning workflows by enabling you to
-visualize datasets and interpret models faster and more effectively.
+.. Integrations cards section -----------------------------------------------------
 
 .. raw:: html
 
-  <div style="margin-top: 20px; margin-bottom: 20px">
-    <video controls muted poster="https://voxel51.com/images/fiftyone-poster-v2.png" style="width: 100%;">
-      <source src="https://voxel51.com/images/fiftyone_long_sizzle_light_bg.mp4" type="video/mp4">
-    </video>
-  </div>
+    <div id="tutorial-cards-container">
 
-Improving data quality and understanding your model's failure modes are the
-most impactful ways to boost the performance of your model.
-
-FiftyOne provides the building blocks for optimizing your dataset analysis
-pipeline. Use it to get hands-on with your data, including visualizing complex
-labels, evaluating your models, exploring scenarios of interest, identifying
-failure modes, finding annotation mistakes, and much more!
-
-.. custombutton::
-    :button_text: Install FiftyOne!
-    :button_link: getting_started/install.html
-
-FiftyOne integrates naturally with your favorite tools. Click on a logo to
-learn how:
-
-.. raw:: html
-
-    <div class="integrations-logos">
-
-.. customimagelink::
-    :image_link: recipes/adding_detections.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-128.png
-    :image_title: PyTorch
-
-.. customimagelink::
-    :image_link: integrations/lightning_flash.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
-    :image_title: PyTorch Lightning
-
-.. customimagelink::
-    :image_link: recipes/adding_detections.html
-    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
-    :image_title: TensorFlow
-
-.. customimagelink::
-    :image_link: tutorials/detectron2.html
-    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
-    :image_title: Detectron2
-
-.. customimagelink::
-    :image_link: tutorials/qdrant.html
-    :image_src: https://voxel51.com/images/integrations/qdrant-128.png
-    :image_title: Qdrant
-
-.. customimagelink::
-    :image_link: integrations/activitynet.html
-    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
-    :image_title: ActivityNet
-
-.. customimagelink::
-    :image_link: integrations/coco.html
-    :image_src: https://voxel51.com/images/integrations/coco-128.png
-    :image_title: COCO
-
-.. customimagelink::
-    :image_link: integrations/open_images.html
-    :image_src: https://voxel51.com/images/integrations/open-images-128.png
-    :image_title: Open Images
-
-.. customimagelink::
-    :image_link: environments/index.html#notebooks
-    :image_src: https://voxel51.com/images/integrations/jupyter-128.png
-    :image_title: Jupyter
-
-.. customimagelink::
-    :image_link: environments/index.html#notebooks
-    :image_src: https://voxel51.com/images/integrations/colab-128.png
-    :image_title: Google Colab
-
-.. customimagelink::
-    :image_link: user_guide/plots.html
-    :image_src: https://voxel51.com/images/integrations/plotly-128.png
-    :image_title: Plotly
-
-.. customimagelink::
-    :image_link: integrations/cvat.html
-    :image_src: https://voxel51.com/images/integrations/cvat-128.png
-    :image_title: CVAT
-
-.. customimagelink::
-    :image_link: integrations/labelbox.html
-    :image_src: https://voxel51.com/images/integrations/labelbox-128.png
-    :image_title: Labelbox
-
-.. customimagelink::
-    :image_link: api/fiftyone.utils.scale.html
-    :image_src: https://voxel51.com/images/integrations/scale-128.png
-    :image_title: Scale AI
-
-.. customimagelink::
-    :image_link: environments/index.html#google-cloud
-    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
-    :image_title: Google Cloud
-
-.. customimagelink::
-    :image_link: environments/index.html#aws
-    :image_src: https://voxel51.com/images/integrations/aws-128.png
-    :image_title: Amazon Web Services
-
-.. customimagelink::
-    :image_link: environments/index.html#azure
-    :image_src: https://voxel51.com/images/integrations/azure-128.png
-    :image_title: Azure
-
-.. raw:: html
-
-    </div>
-
-.. note::
-
-  FiftyOne is growing!
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  to learn about new features as they come out.
-
-.. _core-capabilities:
-
-Core Capabilities
-_________________
-
-.. Callout items --------------------------------------------------------------
-
-.. raw:: html
-
-    <div class="tutorials-callout-container">
-        <div class="row">
-
-.. Add callout items below this line
-
-.. customcalloutitem::
-    :header: Curating datasets
-    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
-    :button_text: Learn how to load data into FiftyOne
-    :button_link: user_guide/dataset_creation/index.html
-    :image: _static/images/homepage_curate.gif
-
-.. customcalloutitem::
-    :header: Evaluating models
-    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
-    :button_text: See how to evaluate models with FiftyOne
-    :button_link: tutorials/evaluate_detections.html
-    :image: _static/images/homepage_evaluate.gif
-
-.. customcalloutitem::
-    :header: Visualizing embeddings
-    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in you data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
-    :button_text: Experience the power of embeddings
-    :button_link: tutorials/image_embeddings.html
-    :image: _static/images/homepage_embeddings.gif
-
-.. customcalloutitem::
-    :header: Working with geolocation
-    :description: Many datasets have location metadata, but visualizing location-based datasets has traditionally required closed source or cloud-based tools. FiftyOne provides native support for storing, visualizing, and querying datasets by location.
-    :button_text: Visualize your location data
-    :button_link: user_guide/plots.html#geolocation-plots
-    :image: _static/images/homepage_location.gif
-
-.. customcalloutitem::
-    :header: Finding annotation mistakes
-    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
-    :button_text: Check out the label mistakes tutorial
-    :button_link: tutorials/classification_mistakes.html
-    :image: _static/images/homepage_mistakes.gif
-
-.. customcalloutitem::
-    :header: Removing redundant images
-    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
-    :button_text: Try the image uniqueness tutorial
-    :button_link: tutorials/uniqueness.html
-    :image: _static/images/homepage_redundant.gif
-
-.. End callouts ---------------------------------------------------------------
-
-.. raw:: html
-
+    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
+        <div class="tutorial-tags-container">
+            <div id="dropdown-filter-tags">
+                <div class="tutorial-filter-menu">
+                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
+                </div>
+            </div>
         </div>
+    </nav>
+
+    <hr class="tutorials-hr">
+
+    <div class="row">
+
+    <div id="tutorial-cards">
+    <div class="list">
+
+.. Add tutorial cards below
+
+.. customcarditem::
+    :header: COCO Dataset
+    :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
+    :link: coco.html
+    :image: ../_static/images/integrations/coco.png
+    :tags: Datasets,Model-Evaluation
+
+.. customcarditem::
+    :header: Open Images Dataset
+    :description: See why FiftyOne is a recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
+    :link: open_images.html
+    :image: ../_static/images/integrations/open_images.png
+    :tags: Datasets,Model-Evaluation
+
+.. customcarditem::
+    :header: ActivityNet Dataset
+    :description: See how to use FiftyOne to download, visualize, and evaluate on the ActivityNet dataset with ease.
+    :link: activitynet.html
+    :image: ../_static/images/integrations/activitynet.png
+    :tags: Datasets,Model-Evaluation
+
+.. customcarditem::
+    :header: CVAT
+    :description: Use our CVAT integration to easily annotate and edit your FiftyOne datasets.
+    :link: cvat.html
+    :image: ../_static/images/integrations/cvat.png
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Labelbox
+    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
+    :link: labelbox.html
+    :image: ../_static/images/integrations/labelbox.jpeg
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Label Studio
+    :description: Annotate and edit your FiftyOne datasets in Label Studio through our integration.
+    :link: labelstudio.html
+    :image: ../_static/images/integrations/labelstudio.png
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Qdrant
+    :description: Use our Qdrant integration to enable vector search and query your FiftyOne datasets at scale.
+    :link: qdrant.html
+    :image: ../_static/images/integrations/qdrant.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: Pinecone
+    :description: Use our Pinecone integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: pinecone.html
+    :image: ../_static/images/integrations/pinecone.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: LanceDB
+    :description: Use our LancedDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
+    :link: lancedb.html
+    :image: ../_static/images/integrations/lancedb.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: Lightning Flash
+    :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
+    :link: lightning_flash.html
+    :image: ../_static/images/integrations/lightning_flash.png
+    :tags: Model-Training,Model-Evaluation
+
+.. End of integrations cards
+
+.. raw:: html
+
     </div>
 
-.. End of callout items -------------------------------------------------------
+    <div class="pagination d-flex justify-content-center"></div>
 
-Core Concepts
-_____________
+    </div>
 
-The FiftyOne tool has three components: the Python library, the App, and the
-Brain.
+    </div>
 
-.. _fiftyone-library:
-
-:doc:`FiftyOne Library <user_guide/basics>`
--------------------------------------------
-
-FiftyOne's core library provides a structured yet dynamic representation to
-explore your datasets. You can efficiently query and manipulate your dataset by
-adding custom tags, model predictions and more.
-
-.. custombutton::
-    :button_text: Explore the library
-    :button_link: user_guide/basics.html
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset("my_dataset")
-
-    sample = fo.Sample(filepath="/path/to/image.png")
-    sample.tags.append("train")
-    sample["custom_field"] = 51
-
-    dataset.add_sample(sample)
-
-    view = dataset.match_tags("train").sort_by("custom_field").limit(10)
-
-    for sample in view:
-        print(sample)
-
-.. note::
-
-    FiftyOne is designed to be lightweight and flexible, making it easy to load
-    your datasets. FiftyOne supports loading datasets in a variety of common
-    formats out-of-the-box, and it also provides the extensibility to load
-    datasets in custom formats.
-
-    Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
-    how to load your data into FiftyOne.
-
-:doc:`FiftyOne App <user_guide/app>`
-------------------------------------
-
-The FiftyOne App is a graphical user interface that makes it easy to explore
-and rapidly gain intuition into your datasets. You can visualize labels like
-bounding boxes and segmentations overlaid on the samples; sort, query and
-slice your dataset into any subset of interest; and more.
-
-.. custombutton::
-    :button_text: See more of the App
-    :button_link: user_guide/app.html
-
-.. image:: images/homepage_app.png
-   :alt: fiftyone-app
-   :align: center
-
-:doc:`FiftyOne Brain <user_guide/brain>`
-----------------------------------------
-
-The FiftyOne Brain is a library of powerful machine learning-powered
-capabilities that provide insights into your datasets and recommend ways to
-modify your datasets that will lead to measurably better performance of your
-models.
-
-.. custombutton::
-    :button_text: Learn more about the Brain
-    :button_link: user_guide/brain.html
-
-.. code-block:: python
-   :linenos:
-
-   import fiftyone.brain as fob
-
-   fob.compute_uniqueness(dataset)
-   rank_view = dataset.sort_by("uniqueness")
-
-What's Next?
-____________
-
-Where should you go from here? You could...
-
-* :ref:`Install FiftyOne <installing-fiftyone>`
-* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
-  capabilities of FiftyOne
-* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
-  your current ML workflows
-* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
-  want to master quickly
-* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
-  how to accomplish various tasks with FiftyOne
-
-Need Support?
-_____________
-
-If you run into any issues with FiftyOne or have any burning questions, feel
-free to `connect with us on Slack <https://slack.voxel51.com>`_ or reach out to
-us at support@voxel51.com.
+.. End integrations cards section -------------------------------------------------
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   Overview <self>
-   Installation <getting_started/install>
-   Environments <environments/index>
-   Tutorials <tutorials/index>
-   Recipes <recipes/index>
-   Cheat Sheets <cheat_sheets/index>
-   User Guide <user_guide/index>
-   FiftyOne Teams <teams/index>
-   Integrations <integrations/index>
-   Plugins <plugins/index>
-   CLI <cli/index>
-   API Reference <api/fiftyone>
-   Release Notes <release-notes>
-   FAQ <faq/index>
+    COCO <coco.rst>
+    Open Images <open_images.rst>
+    ActivityNet <activitynet.rst>
+    CVAT <cvat.rst>
+    Labelbox <labelbox.rst>
+    Label Studio <labelstudio.rst>
+    Qdrant <qdrant.rst>
+    Pinecone <pinecone.rst>
+    LanceDB <lancedb.rst>
+    Lightning Flash <lightning_flash.rst>
