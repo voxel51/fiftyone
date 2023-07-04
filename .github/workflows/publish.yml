@@ -18,7 +18,6 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/tags/docker-build'
     needs: [build, test]
     steps:
       - name: Download dist
