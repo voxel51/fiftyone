@@ -329,6 +329,7 @@ another supported backend:
     backend
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
+-   **LanceDB**: a :ref:`LanceDB backend <lancedb-integration>`
 
 .. note::
 
@@ -714,6 +715,7 @@ The relevant classes for the builtin similarity backends are:
 -   **sklearn**: :class:`fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig`
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
+-   **LanceDB**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
 You can configure a similarity backend's parameters for a specific index by
 simply passing supported config parameters as keyword arguments each time you
@@ -983,8 +985,9 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>` and
-    :ref:`Pinecone <pinecone-integration>`.
+    like :ref:`Qdrant <qdrant-integration>`,
+    :ref: `Pinecone <pinecone-integration>`, or
+    :ref: `LanceDB <lancedb-integration>`
 
 .. note::
 
@@ -1091,8 +1094,9 @@ to delete embeddings from an index by their ID:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>` and
-    :ref:`Pinecone <pinecone-integration>`.
+    like :ref:`Qdrant <qdrant-integration>`,
+    :ref: `Pinecone <pinecone-integration>`, or
+    :ref: `LanceDB <lancedb-integration>`.
 
 Deleting an index
 ~~~~~~~~~~~~~~~~~
@@ -1722,6 +1726,9 @@ and the CLI:
                 },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "lancedb": {
+                    "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
                 }
             }
         }
@@ -1746,6 +1753,9 @@ and the CLI:
                 },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "lancedb": {
+                    "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
                 }
             }
         }
