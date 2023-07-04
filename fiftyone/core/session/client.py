@@ -9,7 +9,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 import logging
 from retrying import retry
-from threading import Thread
+from threading import Thread, Event as ThreadEvent
 import time
 import typing as t
 
@@ -49,6 +49,7 @@ class Client:
     def __post_init__(self) -> None:
         self._subscription = str(uuid4())
         self._connected = True
+        self._closed = ThreadEvent()
         self._listeners: t.Dict[str, t.Set[t.Callable]] = defaultdict(set)
 
     def run(self, state: fos.StateDescription) -> None:
@@ -97,15 +98,18 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception as e:
-                    if foc.DEV_INSTALL:
+                    if logger.level == logging.DEBUG:
                         raise e
 
-                    self._connected = False
-                    print(
-                        "\r\nCould not connect session, trying again "
-                        "in 10 seconds\r\n"
-                    )
-                    time.sleep(10)
+                if self._closed.is_set():
+                    break
+
+                self._connected = False
+                print(
+                    "\r\nCould not connect session, trying again "
+                    "in 10 seconds\r\n"
+                )
+                time.sleep(10)
 
         self._thread = Thread(target=run_client, daemon=True)
         self._thread.start()
@@ -114,6 +118,11 @@ class Client:
     def origin(self) -> str:
         """The origin of the server"""
         return f"http://{self.address}:{self.port}"
+
+    def close(self) -> str:
+        """Close the client connection"""
+        self._closed.set()
+        self._thread.join(timeout=0)
 
     def send_event(self, event: EventType) -> None:
         """Sends an event to the server

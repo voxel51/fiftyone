@@ -515,6 +515,7 @@ class Session(object):
                 # logger may already have been garbage-collected
                 print(_WAIT_INSTRUCTIONS)
 
+            self._client.close()
             _unregister_session(self)
         except:
             # e.g. globals were already garbage-collected
@@ -1105,10 +1106,14 @@ class Session(object):
         if self.remote:
             return
 
-        if self._client._connected and focx._get_context() == focx._NONE:
-            self._client.send_event(CloseSession())
+        if self._client._connected:
+            if focx._get_context() == focx._NONE:
+                pass  # Close Desktop App
+            elif focx.is_notebook_context():
+                self.freeze()
 
         self.plots.disconnect()
+        self.__del__()
 
     def freeze(self) -> None:
         """Screenshots the active App cell, replacing it with a static image.
