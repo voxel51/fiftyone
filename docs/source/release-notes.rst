@@ -3,6 +3,20 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.21.2:
+
+FiftyOne 0.21.2
+---------------
+*Released July 3, 2023*
+
+App
+
+- Fixes grid pagination results after applying sidebar filters
+  `#3249 <https://github.com/voxel51/fiftyone/pull/3249>`_
+- Fixes redundant sidebar groups for custom schemas
+  `#3250 <https://github.com/voxel51/fiftyone/pull/3250>`_
+
+
 .. _release-notes-teams-v1.3.1:
 
 FiftyOne Teams 1.3.1
