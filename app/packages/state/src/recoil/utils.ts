@@ -128,6 +128,13 @@ export const unsupportedMatcher = (field: StrictField) => {
 
   if (
     field.ftype === LIST_FIELD &&
+    (UNSUPPORTED_FILTER_TYPES.includes(field.subfield) || !field.subfield)
+  ) {
+    return true;
+  }
+
+  if (
+    field.ftype === LIST_FIELD &&
     field.subfield === EMBEDDED_DOCUMENT_FIELD &&
     LABELS.includes(field.embeddedDocType)
   ) {

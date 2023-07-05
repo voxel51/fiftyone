@@ -187,11 +187,7 @@ const mockFields = {
 
 describe("ResolveGroups works", () => {
   it("dataset groups should resolve when curent is undefined", () => {
-    const test = sidebar.resolveGroups(
-      mockFields.sampleFields,
-      mockFields.sampleFields,
-      []
-    );
+    const test = sidebar.resolveGroups(mockFields.sampleFields, []);
 
     expect(test.length).toBe(5);
     expect(test[0].name).toBe("tags");
