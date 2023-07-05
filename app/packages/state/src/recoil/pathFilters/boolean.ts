@@ -166,21 +166,19 @@ export const boolExcludeAtom = selectorFamily<
 
 export const trueAtom = selectorFamily<
   boolean,
-  { modal: boolean; path: string }
+  { modal: boolean; path: string; isFiltering: boolean }
 >({
   key: "filterBooleanFieldTrue",
   get:
-    ({ modal, path }) =>
+    ({ modal, path, isFiltering }) =>
     ({ get }) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
       return isFiltering
         ? getFilter(get, modal, path).true
         : getVisibility(get, modal, path).true;
     },
   set:
-    ({ modal, path }) =>
+    ({ modal, path, isFiltering }) =>
     ({ get, set }, value) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
       isFiltering
         ? setFilter(get, set, modal, path, "true", value)
         : setVisibility(get, set, modal, path, "true", value);
@@ -189,21 +187,19 @@ export const trueAtom = selectorFamily<
 
 export const falseAtom = selectorFamily<
   boolean,
-  { modal: boolean; path: string }
+  { modal: boolean; path: string; isFiltering: boolean }
 >({
   key: "filterBooleanFieldFalse",
   get:
-    ({ modal, path }) =>
+    ({ modal, path, isFiltering }) =>
     ({ get }) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
       return isFiltering
         ? getFilter(get, modal, path).false
         : getVisibility(get, modal, path).false;
     },
   set:
-    ({ modal, path }) =>
+    ({ modal, path, isFiltering }) =>
     ({ get, set }, value) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
       isFiltering
         ? setFilter(get, set, modal, path, "false", value)
         : setVisibility(get, set, modal, path, "false", value);
@@ -212,42 +208,24 @@ export const falseAtom = selectorFamily<
 
 export const noneAtom = selectorFamily<
   boolean,
-  { modal: boolean; path: string }
+  { modal: boolean; path: string; isFiltering: boolean }
 >({
   key: "filterBooleanFieldNone",
   get:
-    ({ modal, path }) =>
+    ({ modal, path, isFiltering }) =>
     ({ get }) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
       return isFiltering
         ? getFilter(get, modal, path).none
         : getVisibility(get, modal, path).none;
     },
   set:
-    ({ modal, path }) =>
+    ({ modal, path, isFiltering }) =>
     ({ get, set }, value) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
       isFiltering
         ? setFilter(get, set, modal, path, "none", value)
         : setVisibility(get, set, modal, path, "none", value);
     },
 });
-
-// export const booleanFieldIsFiltered = selectorFamily<
-//   boolean,
-//   { path: string; modal: boolean }
-// >({
-//   key: "booleanFieldIsFiltered",
-//   get:
-//     ({ path, modal }) =>
-//     ({ get }) => {
-//       return (
-//         get(noneAtom({ path, modal })) ||
-//         get(trueAtom({ path, modal })) ||
-//         get(falseAtom({ path, modal }))
-//       );
-//     },
-// });
 
 export const booleanSelectedValuesAtom = selectorFamily<
   (null | boolean)[],
@@ -258,16 +236,16 @@ export const booleanSelectedValuesAtom = selectorFamily<
     ({ modal, path }) =>
     ({ get }) => {
       const values: (null | boolean)[] = [];
-
-      if (get(noneAtom({ modal, path }))) {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      if (get(noneAtom({ modal, path, isFiltering }))) {
         values.push(null);
       }
 
-      if (get(falseAtom({ modal, path }))) {
+      if (get(falseAtom({ modal, path, isFiltering }))) {
         values.push(false);
       }
 
-      if (get(trueAtom({ modal, path }))) {
+      if (get(trueAtom({ modal, path, isFiltering }))) {
         values.push(true);
       }
 
@@ -276,9 +254,10 @@ export const booleanSelectedValuesAtom = selectorFamily<
   set:
     ({ path, modal }) =>
     ({ get, set }, values) => {
-      const noneA = noneAtom({ path, modal });
-      const falseA = falseAtom({ path, modal });
-      const trueA = trueAtom({ modal, path });
+      const isFiltering = get(fos.isSidebarFilterMode);
+      const noneA = noneAtom({ path, modal, isFiltering });
+      const falseA = falseAtom({ path, modal, isFiltering });
+      const trueA = trueAtom({ modal, path, isFiltering });
 
       const currentNone = get(noneA);
       const currentFalse = get(falseA);
@@ -319,24 +298,36 @@ export const boolean = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      if (!get(filterAtoms.filter(params))) {
-        return () => true;
-      }
-
-      const trueValue = get(trueAtom(params));
-      const falseValue = get(falseAtom(params));
-      const noneValue = get(noneAtom(params));
+      const filter = get(filterAtoms.filter(params));
+      const visibility = get(visibilityAtoms.visibility(params));
+      console.info("filter", filter);
+      console.info("visibility", visibility);
+      debugger;
+      const trueValueFilter = get(trueAtom({ ...params, isFiltering: true }));
+      const falseValueFilter = get(falseAtom({ ...params, isFiltering: true }));
+      const noneValueFilter = get(noneAtom({ ...params, isFiltering: true }));
       const isMatching = get(boolIsMatchingAtom(params));
+      const trueValueVisibility = get(
+        trueAtom({ ...params, isFiltering: false })
+      );
+      const falseValueVisibility = get(
+        falseAtom({ ...params, isFiltering: false })
+      );
+      const noneValueVisibility = get(
+        noneAtom({ ...params, isFiltering: false })
+      );
 
-      return (value) => {
-        if (isMatching) {
+      const helperFunction = (
+        value: boolean | null,
+        trueValue,
+        falseValue,
+        noneValue
+      ) => {
+        if (value.toString().toLowerCase() === "true" && trueValue) {
           return true;
         }
-        if (value === true && trueValue) {
-          return true;
-        }
 
-        if (value === false && falseValue) {
+        if (value.toString().toLowerCase() === "false" && falseValue) {
           return true;
         }
 
@@ -346,5 +337,66 @@ export const boolean = selectorFamily<
 
         return false;
       };
+
+      // if there is no filter and no visibility, return true
+      if (!filter && !visibility) {
+        return () => true;
+      }
+
+      // if there is no filter but there is visibility
+      if (!filter && visibility) {
+        return (value) => {
+          console.info(
+            value,
+            trueValueVisibility,
+            falseValueVisibility,
+            noneValueVisibility
+          );
+          return helperFunction(
+            value,
+            trueValueVisibility,
+            falseValueVisibility,
+            noneValueVisibility
+          );
+        };
+      }
+
+      // if there is a filter but no visibility
+      if (filter && !visibility) {
+        return (value) => {
+          if (isMatching) {
+            return true;
+          }
+          return helperFunction(
+            value,
+            trueValueFilter,
+            falseValueFilter,
+            noneValueFilter
+          );
+        };
+      }
+
+      // if there is a filter and a visibility
+      if (filter && visibility) {
+        return (value) => {
+          const filterResult = helperFunction(
+            value,
+            trueValueFilter,
+            falseValueFilter,
+            noneValueFilter
+          );
+          const visibilityResult = helperFunction(
+            value,
+            trueValueVisibility,
+            falseValueVisibility,
+            noneValueVisibility
+          );
+
+          if (isMatching) {
+            return visibilityResult;
+          }
+          return filterResult && visibilityResult;
+        };
+      }
     },
 });
