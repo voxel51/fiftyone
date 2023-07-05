@@ -333,270 +333,168 @@ export const numericIsMatchingAtom = selectorFamily<
     },
 });
 
+const helperFunction = (
+  value: number | null,
+  exclude: boolean,
+  start: number,
+  end: number,
+  none: boolean,
+  inf: boolean,
+  ninf: boolean,
+  nan: boolean
+) => {
+  const noRange = start === null || end === null;
+
+  if (nan && value === "nan") {
+    return !exclude;
+  }
+
+  if (inf && value === "inf") {
+    return !exclude;
+  }
+
+  if (ninf && value === "-inf") {
+    return !exclude;
+  }
+
+  if ((value === null || value === undefined) && none) {
+    return !exclude;
+  }
+
+  if (typeof Number(value) === "number") {
+    return noRange
+      ? true
+      : exclude
+      ? Number(value) < start || Number(value) > end
+      : Number(value) >= start && Number(value) <= end;
+  }
+
+  return false;
+};
+
 // this is where the final filtering for looker occurs in the App
 // it returns a boolean about whether labels are selected or not
-export const numeric = selectorFamily<
-  (value: number | null) => boolean,
-  { modal: boolean; path: string; defaultRange?: Range }
->({
-  key: "numericFilter",
-  get:
-    (params) =>
-    ({ get }) => {
-      const filter = get(filterAtoms.filter(params));
-      const visibility = get(visibilityAtoms.visibility(params));
-      const helperFunction = (
-        value: number | null,
-        exclude: boolean,
-        start: number,
-        end: number,
-        none: boolean,
-        inf: boolean,
-        ninf: boolean,
-        nan: boolean,
-        isVisibility: boolean
-      ) => {
-        const noRange = start === null || end === null;
+export const generateSelectorFamily = (key) =>
+  selectorFamily<
+    (value: number | null) => boolean,
+    { modal: boolean; path: string; defaultRange?: Range }
+  >({
+    key: key,
+    get:
+      (params) =>
+      ({ get }) => {
+        const filter = get(filterAtoms.filter(params));
+        const visibility = get(visibilityAtoms.visibility(params));
 
-        if (nan && value === "nan") {
-          return !exclude;
+        // if no filter and no visibility, return true
+        if (!filter && !visibility) {
+          return () => true;
         }
 
-        if (inf && value === "inf") {
-          return !exclude;
+        // if there is visibility and no filter
+        if (!filter && visibility) {
+          const excludeVisibility = visibility.exclude;
+          const startVisibility = visibility.range[0];
+          const endVisibility = visibility.range[1];
+          const noneVisibility = visibility["none"];
+          const infVisibility = visibility["inf"];
+          const ninfVisibility = visibility["ninf"];
+          const nanVisibility = visibility["nan"];
+
+          return (value) => {
+            return helperFunction(
+              value,
+              excludeVisibility,
+              startVisibility,
+              endVisibility,
+              noneVisibility,
+              infVisibility,
+              ninfVisibility,
+              nanVisibility
+            );
+          };
         }
 
-        if (ninf && value === "-inf") {
-          return !exclude;
+        // if there is filter and no visibility
+        if (filter && !visibility) {
+          const excludeFilter = filter.exclude;
+          const isMatchingFilter = filter.isMatching;
+          const startFilter = filter.range[0];
+          const endFilter = filter.range[1];
+          const noneFilter = filter["none"];
+          const infFilter = filter["inf"];
+          const ninfFilter = filter["ninf"];
+          const nanFilter = filter["nan"];
+
+          return (value) => {
+            if (isMatchingFilter) {
+              return true;
+            }
+
+            return helperFunction(
+              value,
+              excludeFilter,
+              startFilter,
+              endFilter,
+              noneFilter,
+              infFilter,
+              ninfFilter,
+              nanFilter
+            );
+          };
         }
 
-        if ((value === null || value === undefined) && none) {
-          return !exclude;
+        // if there is filter and visibility
+        if (filter && visibility) {
+          const excludeFilter = filter.exclude;
+          const isMatchingFilter = filter.isMatching;
+          const startFilter = filter.range[0];
+          const endFilter = filter.range[1];
+          const noneFilter = filter["none"];
+          const infFilter = filter["inf"];
+          const ninfFilter = filter["ninf"];
+          const nanFilter = filter["nan"];
+
+          const excludeVisibility = visibility.exclude;
+          const startVisibility = visibility.range[0];
+          const endVisibility = visibility.range[1];
+          const noneVisibility = visibility["none"];
+          const infVisibility = visibility["inf"];
+          const ninfVisibility = visibility["ninf"];
+          const nanVisibility = visibility["nan"];
+
+          return (value) => {
+            const visibilityResult = helperFunction(
+              value,
+              excludeVisibility,
+              startVisibility,
+              endVisibility,
+              noneVisibility,
+              infVisibility,
+              ninfVisibility,
+              nanVisibility
+            );
+
+            if (isMatchingFilter) {
+              return visibilityResult;
+            }
+            const filterResult = helperFunction(
+              value,
+              excludeFilter,
+              startFilter,
+              endFilter,
+              noneFilter,
+              infFilter,
+              ninfFilter,
+              nanFilter
+            );
+            return filterResult && visibilityResult;
+          };
         }
 
-        if (typeof Number(value) === "number") {
-          return noRange
-            ? true
-            : exclude
-            ? Number(value) < start || Number(value) > end
-            : Number(value) >= start && Number(value) <= end;
-        }
+        return () => true; // not needed but eslint complains
+      },
+  });
 
-        return false;
-      };
-
-      debugger;
-      // if no filter and no visibility, return true
-      if (!filter && !visibility) {
-        return () => true;
-      }
-
-      // if there is visibility and no filter
-      if (!filter && visibility) {
-        const excludeVisibility = visibility.exclude;
-        const startVisibility = visibility.range[0];
-        const endVisibility = visibility.range[1];
-        const noneVisibility = visibility["none"];
-        const infVisibility = visibility["inf"];
-        const ninfVisibility = visibility["ninf"];
-        const nanVisibility = visibility["nan"];
-
-        return (value) => {
-          return helperFunction(
-            value,
-            excludeVisibility,
-            startVisibility,
-            endVisibility,
-            noneVisibility,
-            infVisibility,
-            ninfVisibility,
-            nanVisibility,
-            true
-          );
-        };
-      }
-
-      // if there is filter and no visibility
-      if (filter && !visibility) {
-        const excludeFilter = filter.exclude;
-        const isMatchingFilter = filter.isMatching;
-        const startFilter = filter.range[0];
-        const endFilter = filter.range[1];
-        const noneFilter = filter["none"];
-        const infFilter = filter["inf"];
-        const ninfFilter = filter["ninf"];
-        const nanFilter = filter["nan"];
-
-        return (value) => {
-          if (isMatchingFilter) {
-            return true;
-          }
-
-          return helperFunction(
-            value,
-            excludeFilter,
-            startFilter,
-            endFilter,
-            noneFilter,
-            infFilter,
-            ninfFilter,
-            nanFilter,
-            false
-          );
-        };
-      }
-
-      // if there is filter and visibility
-      if (filter && visibility) {
-        const excludeFilter = filter.exclude;
-        const isMatchingFilter = filter.isMatching;
-        const startFilter = filter.range[0];
-        const endFilter = filter.range[1];
-        const noneFilter = filter["none"];
-        const infFilter = filter["inf"];
-        const ninfFilter = filter["ninf"];
-        const nanFilter = filter["nan"];
-
-        const excludeVisibility = visibility.exclude;
-        const startVisibility = visibility.range[0];
-        const endVisibility = visibility.range[1];
-        const noneVisibility = visibility["none"];
-        const infVisibility = visibility["inf"];
-        const ninfVisibility = visibility["ninf"];
-        const nanVisibility = visibility["nan"];
-
-        return (value) => {
-          const visibilityResult = helperFunction(
-            value,
-            excludeVisibility,
-            startVisibility,
-            endVisibility,
-            noneVisibility,
-            infVisibility,
-            ninfVisibility,
-            nanVisibility,
-            true
-          );
-          console.info(value, visibilityResult);
-          if (isMatchingFilter) {
-            return visibilityResult;
-          }
-          const filterResult = helperFunction(
-            value,
-            excludeFilter,
-            startFilter,
-            endFilter,
-            noneFilter,
-            infFilter,
-            ninfFilter,
-            nanFilter,
-            false
-          );
-          return filterResult && visibilityResult;
-        };
-      }
-
-      return () => true; // not needed but eslint complains
-    },
-});
-
-export const listNumber = selectorFamily<
-  (value: string | null) => boolean,
-  { modal: boolean; path: string }
->({
-  key: "listFieldNumberFilter",
-  get:
-    (params) =>
-    ({ get }) => {
-      // common properties
-      // const filter = get(filterAtoms.filter(params));
-      // const visibility = get(visibilityAtoms.visibility(params));
-
-      // // when there is no filter and no visibility settings, show the label
-      // if (!filter && !visibility) {
-      //   return () => true;
-      // }
-
-      // // when there is no filter, but there is a visibility setting
-      // if (!filter && visibility) {
-      //   const { values, exclude } = visibility;
-      //   const none = values.includes(null);
-
-      //   return (value) => {
-      //     return handleValues(values, value, none, exclude, true);
-      //   };
-      // }
-
-      // // when there is a filter setting, but no visibility setting
-      // if (filter && !visibility) {
-      //   const { values, exclude, isMatching } = filter;
-      //   const none = values.includes(null);
-
-      //   if (isMatching) {
-      //     return () => true;
-      //   }
-      //   return (value) => {
-      //     return handleValues(values, value, none, exclude, false);
-      //   };
-      // }
-
-      // // when there is a filter and a visibility setting
-      // if (filter && visibility) {
-      //   const { values, exclude, isMatching } = filter;
-      //   const none = values.includes(null);
-
-      //   const visibilityValues = visibility.values;
-      //   const visibilityExclude = visibility.exclude;
-      //   const visibilityNone = visibilityValues.includes(null);
-
-      //   if (isMatching) {
-      //     return (value) => {
-      //       return handleValues(
-      //         visibilityValues,
-      //         value,
-      //         visibilityNone,
-      //         visibilityExclude,
-      //         true
-      //       );
-      //     };
-      //   }
-
-      //   return (value) => {
-      //     const filterResult = handleValues(
-      //       values,
-      //       value,
-      //       none,
-      //       exclude,
-      //       false
-      //     );
-      //     const visibilityResult = handleValues(
-      //       visibilityValues,
-      //       value,
-      //       visibilityNone,
-      //       visibilityExclude,
-      //       true
-      //     );
-
-      //     return filterResult && visibilityResult;
-      //   };
-      // }
-
-      return () => true; // not needed, but eslint complains
-    },
-});
-
-// helper function for list of string fields
-// const handleValues = (
-//   values: string[], // selected list value
-//   value: string | null, // current value of the tag
-//   none: unknown,
-//   exclude: boolean,
-//   isVisibility: boolean // filter and visibility has different logic for list values
-// ) => {
-//   const r =
-//     (isVisibility
-//       ? values.some((v) => value?.includes(v))
-//       : values.every((v) => value?.includes(v)) || (none && NONE.has(value))) &&
-//     Boolean(value);
-//   return exclude ? !r : r;
-// };
+export const numeric = generateSelectorFamily("numericFilter");
+export const listNumber = generateSelectorFamily("listFieldNumericFilter");
