@@ -976,10 +976,6 @@ class Session(object):
         if not self._client.is_open:
             self._client.open(self._state)
 
-        if self.remote:
-            logger.warning("Remote sessions cannot open new App windows")
-            return
-
         if self.plots:
             self.plots.connect()
 
@@ -1110,9 +1106,6 @@ class Session(object):
         """Closes the session and terminates the App, if necessary."""
         if self.desktop:
             self._app_service.stop()
-
-        if self.remote:
-            return
 
         if self._client.is_open and focx.is_notebook_context():
             self.freeze()
