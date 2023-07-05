@@ -300,9 +300,7 @@ export const boolean = selectorFamily<
     ({ get }) => {
       const filter = get(filterAtoms.filter(params));
       const visibility = get(visibilityAtoms.visibility(params));
-      console.info("filter", filter);
-      console.info("visibility", visibility);
-      debugger;
+
       const trueValueFilter = get(trueAtom({ ...params, isFiltering: true }));
       const falseValueFilter = get(falseAtom({ ...params, isFiltering: true }));
       const noneValueFilter = get(noneAtom({ ...params, isFiltering: true }));
@@ -346,12 +344,6 @@ export const boolean = selectorFamily<
       // if there is no filter but there is visibility
       if (!filter && visibility) {
         return (value) => {
-          console.info(
-            value,
-            trueValueVisibility,
-            falseValueVisibility,
-            noneValueVisibility
-          );
           return helperFunction(
             value,
             trueValueVisibility,
