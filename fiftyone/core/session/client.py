@@ -50,15 +50,21 @@ class Client:
         self._subscription = str(uuid4())
         self._connected = True
         self._closed = ThreadEvent()
+        self._closed.set()
         self._listeners: t.Dict[str, t.Set[t.Callable]] = defaultdict(set)
 
-    def run(self, state: fos.StateDescription) -> None:
-        """Runs the client subscription in a background thread
+    @property
+    def origin(self) -> str:
+        """The origin of the server"""
+        return f"http://{self.address}:{self.port}"
+
+    def open(self, state: fos.StateDescription) -> None:
+        """Open the client connection
 
         Arg:
             state: the initial state description
         """
-        if hasattr(self, "_thread"):
+        if not self._closed.is_set():
             raise RuntimeError("Client is already running")
 
         def run_client() -> None:
@@ -114,15 +120,11 @@ class Client:
         self._thread = Thread(target=run_client, daemon=True)
         self._thread.start()
 
-    @property
-    def origin(self) -> str:
-        """The origin of the server"""
-        return f"http://{self.address}:{self.port}"
-
-    def close(self) -> str:
+    def close(self):
         """Close the client connection"""
         self._closed.set()
         self._thread.join(timeout=0)
+        self._thread = None
 
     def send_event(self, event: EventType) -> None:
         """Sends an event to the server
@@ -130,8 +132,12 @@ class Client:
         Args:
             event: the event
         """
+        if self._closed.is_set():
+            return
+
         if not self._connected:
             raise RuntimeError("Client is not connected")
+
         self._post_event(event)
         self._dispatch_event(event)
 
@@ -165,6 +171,9 @@ class Client:
             listener(event)
 
     def _post_event(self, event: Event) -> None:
+        if self._closed.is_set():
+            return
+
         response = requests.post(
             f"{self.origin}/event",
             headers={"Content-type": "application/json"},

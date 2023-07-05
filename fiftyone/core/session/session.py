@@ -422,7 +422,7 @@ class Session(object):
             remote=remote,
             start_time=self._get_time(),
         )
-        self._client.run(self._state)
+        self._client.open(self._state)
         _attach_listeners(self)
         _register_session(self)
 
@@ -971,6 +971,9 @@ class Session(object):
         -   Desktop: opens the desktop App, if necessary
         -   Other (non-remote): opens the App in a new browser tab
         """
+        _register_session(self)
+        self._client.open(self._state)
+
         if self.remote:
             logger.warning("Remote sessions cannot open new App windows")
             return
