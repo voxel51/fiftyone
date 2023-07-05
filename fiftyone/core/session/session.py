@@ -972,7 +972,9 @@ class Session(object):
         -   Other (non-remote): opens the App in a new browser tab
         """
         _register_session(self)
-        self._client.open(self._state)
+
+        if not self._client.is_open:
+            self._client.open(self._state)
 
         if self.remote:
             logger.warning("Remote sessions cannot open new App windows")

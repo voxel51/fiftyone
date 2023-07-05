@@ -58,6 +58,11 @@ class Client:
         """The origin of the server"""
         return f"http://{self.address}:{self.port}"
 
+    @property
+    def is_open(self) -> str:
+        """Whether the client is connected"""
+        return not self._closed.is_set()
+
     def open(self, state: fos.StateDescription) -> None:
         """Open the client connection
 
