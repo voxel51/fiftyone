@@ -390,5 +390,118 @@ export const boolean = selectorFamily<
           return filterResult && visibilityResult;
         };
       }
+
+      return () => true;
     },
 });
+
+export const listBoolean = selectorFamily<
+  (value: string | null) => boolean,
+  { modal: boolean; path: string }
+>({
+  key: "listFieldBooleanFilter",
+  get:
+    (params) =>
+    ({ get }) => {
+      const filter = get(filterAtoms.filter(params));
+      const visibility = get(visibilityAtoms.visibility(params));
+
+      const trueValueFilter = get(trueAtom({ ...params, isFiltering: true }));
+      const falseValueFilter = get(falseAtom({ ...params, isFiltering: true }));
+      const noneValueFilter = get(noneAtom({ ...params, isFiltering: true }));
+      const isMatching = get(boolIsMatchingAtom(params));
+      const trueValueVisibility = get(
+        trueAtom({ ...params, isFiltering: false })
+      );
+      const falseValueVisibility = get(
+        falseAtom({ ...params, isFiltering: false })
+      );
+      const noneValueVisibility = get(
+        noneAtom({ ...params, isFiltering: false })
+      );
+
+      // if there is no filter and no visibility, return true
+      if (!filter && !visibility) {
+        return () => true;
+      }
+
+      // if there is no filter but there is visibility
+      if (!filter && visibility) {
+        return (value) => {
+          return helperFunction(
+            value,
+            trueValueVisibility,
+            falseValueVisibility,
+            noneValueVisibility,
+            true
+          );
+        };
+      }
+
+      // if there is a filter but no visibility
+      if (filter && !visibility) {
+        return (value) => {
+          if (isMatching) {
+            return true;
+          }
+          return helperFunction(
+            value,
+            trueValueFilter,
+            falseValueFilter,
+            noneValueFilter,
+            false
+          );
+        };
+      }
+
+      // if there is a filter and a visibility
+      if (filter && visibility) {
+        return (value) => {
+          const filterResult = helperFunction(
+            value,
+            trueValueFilter,
+            falseValueFilter,
+            noneValueFilter,
+            false
+          );
+          const visibilityResult = helperFunction(
+            value,
+            trueValueVisibility,
+            falseValueVisibility,
+            noneValueVisibility,
+            true
+          );
+
+          if (isMatching) {
+            return visibilityResult;
+          }
+          return filterResult && visibilityResult;
+        };
+      }
+
+      return () => true;
+    },
+});
+
+const helperFunction = (
+  value: boolean | null,
+  trueValue,
+  falseValue,
+  noneValue,
+  isVisibility
+) => {
+  const values = [];
+  if (trueValue) {
+    values.push(true);
+  }
+  if (falseValue) {
+    values.push(false);
+  }
+
+  const r = isVisibility
+    ? values.some((v) => v == value)
+    : values.every((v) => v == value) ||
+      (noneValue && NONE.has(value) && Boolean(value));
+
+  return r;
+};

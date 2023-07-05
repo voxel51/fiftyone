@@ -17,9 +17,9 @@ import { filters, modalFilters } from "../filters";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { State } from "../types";
-import { boolean } from "./boolean";
-import { numeric } from "./numeric";
-import { string, listString } from "./string";
+import { boolean, listBoolean } from "./boolean";
+import { listNumber, numeric } from "./numeric";
+import { string, listString, list } from "./string";
 
 export * from "./boolean";
 export * from "./numeric";
@@ -33,7 +33,7 @@ const primitiveFilter = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
-      const { ftype } = get(schemaAtoms.field(path));
+      const { ftype, subfield } = get(schemaAtoms.field(path));
       if (ftype === BOOLEAN_FIELD) {
         return get(boolean({ modal, path }));
       }
@@ -53,8 +53,22 @@ const primitiveFilter = selectorFamily<
         return get(string({ modal, path }));
       }
 
-      if ([LIST_FIELD].includes(ftype)) {
+      if (
+        [LIST_FIELD].includes(ftype) &&
+        [OBJECT_ID_FIELD, STRING_FIELD].includes(subfield)
+      ) {
         return get(listString({ modal, path }));
+      }
+
+      if ([LIST_FIELD].includes(ftype) && [BOOLEAN_FIELD].includes(subfield)) {
+        return get(listBoolean({ modal, path }));
+      }
+
+      if (
+        [LIST_FIELD].includes(ftype) &&
+        [INT_FIELD, FLOAT_FIELD].includes(subfield)
+      ) {
+        return get(listNumber({ modal, path }));
       }
 
       return (value) => true;
@@ -112,11 +126,17 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
                 current._label_tags
               ) &&
               fs.every((filter) => {
+                console.info("embedded doc. filter", value, filter(value));
                 return filter(value);
               })
             );
           };
         } else if (field) {
+          console.info(
+            "primitive path",
+            path,
+            get(primitiveFilter({ modal, path }))
+          );
           f[path] = get(primitiveFilter({ modal, path }));
         }
 
@@ -124,6 +144,11 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
       }, {});
 
       return (path, value) => {
+        if (newFilters[path]) {
+          console.info("path", path, value, newFilters[path](value));
+        } else {
+          console.info("filter[path] not found", path);
+        }
         if (!newFilters[path]) {
           return false;
         }

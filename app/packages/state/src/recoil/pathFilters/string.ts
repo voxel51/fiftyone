@@ -259,28 +259,13 @@ export const listString = selectorFamily<
   (value: string | null) => boolean,
   { modal: boolean; path: string }
 >({
-  key: "stringFilterForListField",
+  key: "listFieldStringFilter",
   get:
     (params) =>
     ({ get }) => {
       // common properties
       const filter = get(filterAtoms.filter(params));
       const visibility = get(visibilityAtoms.visibility(params));
-      // helper function
-      const handleValues = (
-        values: string[], // selected list value
-        value: string | null, // current value of the tag
-        none: unknown,
-        exclude: boolean,
-        isVisibility: boolean // filter and visibility has different logic for list values
-      ) => {
-        const r =
-          (isVisibility
-            ? values.some((v) => value?.includes(v))
-            : values.every((v) => value?.includes(v)) ||
-              (none && NONE.has(value))) && value;
-        return exclude ? !r : r;
-      };
 
       // when there is no filter and no visibility settings, show the label
       if (!filter && !visibility) {
@@ -354,3 +339,19 @@ export const listString = selectorFamily<
       return () => true; // not needed, but eslint complains
     },
 });
+
+// helper function for list of string fields
+const handleValues = (
+  values: string[], // selected list value
+  value: string | null, // current value of the tag
+  none: unknown,
+  exclude: boolean,
+  isVisibility: boolean // filter and visibility has different logic for list values
+) => {
+  const r =
+    (isVisibility
+      ? values.some((v) => value?.includes(v))
+      : values.every((v) => value?.includes(v)) || (none && NONE.has(value))) &&
+    Boolean(value);
+  return exclude ? !r : r;
+};
