@@ -47,13 +47,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
   async waitUntilLoad(page: Page, datasetName: string) {
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
-      await page.click(`[data-cy="selector-Select dataset"]`);
+      await page.getByTestId(`selector-Select dataset`).click();
 
       if (datasetName) {
-        await page.click(`[data-cy=selector-result-${datasetName}]`);
+        console.log("attempting to click", `selector-result-${datasetName}`);
+        await page.getByTestId(`selector-result-${datasetName}`).click();
       } else {
-        const firstSelectorResult = await page.$(
-          `[data-cy^="selector-result"]`
+        const firstSelectorResult = page.locator(
+          "[data-cy=selector-results-container] > div"
         );
         await firstSelectorResult.click();
       }
@@ -72,7 +73,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     await page.waitForSelector("[data-cy=fo-grid]", { state: "visible" });
 
-    // todo: emit an event when grid is loaded and wait for the event
+    // todo: this is highly unreliable, emit an event when grid is loaded and wait for the event
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(Duration.Seconds(0.5));
   }
 }

@@ -5,14 +5,19 @@
     "license": "MIT",
     "devDependencies": {
         "@playwright/test": "^1.35.1",
+        "@typescript-eslint/eslint-plugin": "^5.60.1",
+        "@typescript-eslint/parser": "^5.60.1",
         "dotenv": "^16.3.1",
+        "eslint": "^8.44.0",
+        "eslint-plugin-playwright": "^0.15.2",
         "ts-dedent": "^2.2.0",
+        "typescript": "^5.1.6",
         "vitest": "^0.32.2",
         "wait-on": "^7.0.1"
     },
     "scripts": {
         "unittests": "vitest",
-        "e2e": "playwright test",
-        "test": "yarn unittests && yarn e2e"
+        "e2e": "playwright test -c playwright.config.ts",
+        "devserver": "export VITE_API=http://localhost:8787 && (cd ../app && yarn dev)"
     }
 }

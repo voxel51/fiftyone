@@ -10,5 +10,5 @@ test("smoke", async ({ page, fiftyoneLoader }) => {
 
   await fiftyoneLoader.waitUntilLoad(page, datasetName);
 
-  await expect(page.getByTestId("entry-count-all")).toHaveText("5");
+  await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
 });
