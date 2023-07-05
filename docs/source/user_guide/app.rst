@@ -472,6 +472,30 @@ to index the field or embedded field that you wish to filter by:
 
     session = fo.launch_app(dataset)
 
+
+For group datasets, a compound index should be added in addition to the
+individual field index when using the default `slice` App setting. See
+:ref:`Groups in the App <groups-app>` for more information about `slice` mode.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Add field index to optimize ground truth label filters in "group" mode
+    dataset.create_index("detections.detections.label")
+    
+    # Add field and group compound index to optimize detection label filters
+    # in "slice" mode
+    dataset.create_index(
+        [("group.name", 1), ("detections.detections.label", 1)]
+    )
+
+    session = fo.launch_app(dataset)
+
 You can use
 :meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
 to view the existing indexes on a dataset, and you can use
