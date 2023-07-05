@@ -162,6 +162,9 @@ const NumericFieldFilter = ({
   });
 
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
+  const hasVisibilitySetting = useRecoilValue(
+    fos.fieldHasVisibilitySetting({ modal, path })
+  );
 
   const bounded = useRecoilValue(
     fos.boundedCount({ modal, path, extended: false })
@@ -306,19 +309,20 @@ const NumericFieldFilter = ({
             isKeyPointLabel={isKeyPoints}
           />
         )}
-        {isFiltered && (
-          <Button
-            text={"Reset"}
-            color={color}
-            onClick={initializeSettings}
-            style={{
-              margin: "0.25rem -0.5rem",
-              height: "2rem",
-              borderRadius: 0,
-              textAlign: "center",
-            }}
-          ></Button>
-        )}
+        {isFiltered ||
+          (hasVisibilitySetting && (
+            <Button
+              text={"Reset"}
+              color={color}
+              onClick={initializeSettings}
+              style={{
+                margin: "0.25rem -0.5rem",
+                height: "2rem",
+                borderRadius: 0,
+                textAlign: "center",
+              }}
+            ></Button>
+          ))}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>
   );
