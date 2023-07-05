@@ -189,19 +189,17 @@ export const string = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
+      // Extract common properties
+      const filter = get(filterAtoms.filter(params));
+      const visibility = get(visibilityAtoms.visibility(params));
+
       // when there is no filter and no visibility settings, show the label
-      if (
-        !get(filterAtoms.filter(params)) &&
-        !get(visibilityAtoms.visibility(params))
-      ) {
+      if (!filter && !visibility) {
         return () => true;
       }
+
       // when there is no filter, but there is a visibility setting
-      if (
-        !get(filterAtoms.filter(params)) &&
-        get(visibilityAtoms.visibility(params))
-      ) {
-        const visibility = get(visibilityAtoms.visibility(params));
+      if (!filter && visibility) {
         const { values, exclude } = visibility;
         const none = values.includes(null);
 
@@ -212,11 +210,7 @@ export const string = selectorFamily<
       }
 
       // when there is a filter setting, but no visibility setting
-      if (
-        get(filterAtoms.filter(params)) &&
-        !get(visibilityAtoms.visibility(params))
-      ) {
-        const filter = get(filterAtoms.filter(params));
+      if (filter && !visibility) {
         const { values, exclude, isMatching } = filter;
         const none = values.includes(null);
 
@@ -229,15 +223,10 @@ export const string = selectorFamily<
         };
       }
       // when there is a filter and a visibility setting
-      if (
-        get(filterAtoms.filter(params)) &&
-        get(visibilityAtoms.visibility(params))
-      ) {
-        const filter = get(filterAtoms.filter(params));
+      if (filter && visibility) {
         const { values, exclude, isMatching } = filter;
         const none = values.includes(null);
 
-        const visibility = get(visibilityAtoms.visibility(params));
         const visibilityValues = visibility.values;
         const visibilityExclude = visibility.exclude;
         const visibilityNone = visibilityValues.includes(null);
@@ -262,7 +251,7 @@ export const string = selectorFamily<
         };
       }
 
-      return () => true; // should not be needed, but eslint complains
+      return () => true; // not needed, but eslint complains
     },
 });
 
@@ -274,34 +263,94 @@ export const listString = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      // when there is no filter and no visibility settings, show the label
-      if (
-        !get(filterAtoms.filter(params)) &&
-        !get(visibilityAtoms.visibility(params))
-      ) {
-        return () => true;
-      }
-
-      if (
-        !get(filterAtoms.filter(params)) &&
-        get(visibilityAtoms.visibility(params))
-      ) {
-      }
-      const isMatching = get(isMatchingAtom(params));
-      if (isMatching) {
-        return () => true;
-      }
-
-      const exclude = get(stringExcludeAtom(params));
-      const values = get(stringSelectedValuesAtom({ ...params }));
-      const none = values.includes(null);
-
-      return (value) => {
-        const c1 = values.every((v) => value?.includes(v));
-        const c2 = none && NONE.has(value);
-        const c3 = value;
-        const r = (c1 || c2) && c3;
+      // common properties
+      const filter = get(filterAtoms.filter(params));
+      const visibility = get(visibilityAtoms.visibility(params));
+      // helper function
+      const handleValues = (
+        values: string[], // selected list value
+        value: string | null, // current value of the tag
+        none: unknown,
+        exclude: boolean,
+        isVisibility: boolean // filter and visibility has different logic for list values
+      ) => {
+        const r =
+          (isVisibility
+            ? values.some((v) => value?.includes(v))
+            : values.every((v) => value?.includes(v)) ||
+              (none && NONE.has(value))) && value;
         return exclude ? !r : r;
       };
+
+      // when there is no filter and no visibility settings, show the label
+      if (!filter && !visibility) {
+        return () => true;
+      }
+
+      // when there is no filter, but there is a visibility setting
+      if (!filter && visibility) {
+        const { values, exclude } = visibility;
+        const none = values.includes(null);
+
+        return (value) => {
+          return handleValues(values, value, none, exclude, true);
+        };
+      }
+
+      // when there is a filter setting, but no visibility setting
+      if (filter && !visibility) {
+        const { values, exclude, isMatching } = filter;
+        const none = values.includes(null);
+
+        if (isMatching) {
+          return () => true;
+        }
+        return (value) => {
+          return handleValues(values, value, none, exclude, false);
+        };
+      }
+
+      // when there is a filter and a visibility setting
+      if (filter && visibility) {
+        const { values, exclude, isMatching } = filter;
+        const none = values.includes(null);
+
+        const visibilityValues = visibility.values;
+        const visibilityExclude = visibility.exclude;
+        const visibilityNone = visibilityValues.includes(null);
+
+        if (isMatching) {
+          return (value) => {
+            return handleValues(
+              visibilityValues,
+              value,
+              visibilityNone,
+              visibilityExclude,
+              true
+            );
+          };
+        }
+
+        return (value) => {
+          const filterResult = handleValues(
+            values,
+            value,
+            none,
+            exclude,
+            false
+          );
+          const visibilityResult = handleValues(
+            visibilityValues,
+            value,
+            visibilityNone,
+            visibilityExclude,
+            true
+          );
+
+          return filterResult && visibilityResult;
+        };
+      }
+
+      return () => true; // not needed, but eslint complains
     },
 });
