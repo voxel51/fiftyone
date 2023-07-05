@@ -71,10 +71,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
-    await page.waitForSelector("[data-cy=fo-grid]", { state: "visible" });
-
-    // todo: this is highly unreliable, emit an event when grid is loaded and wait for the event
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(Duration.Seconds(0.5));
+    await page.waitForSelector("[data-cy=flashlight-section]", {
+      state: "visible",
+    });
   }
 }

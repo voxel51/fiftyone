@@ -5,6 +5,12 @@ export const getPythonCommand = (argv: string[]) => {
     return cmd;
   }
 
+  if (!process.env.VENV_PATH) {
+    throw new Error(
+      "VENV_PATH is not defined. Your .env.dev file is probably missing or misconfigured"
+    );
+  }
+
   return `source ${process.env.VENV_PATH}/bin/activate && export PYTHONPATH=${process.env.PYTHONPATH} && ${cmd}`;
 };
 
