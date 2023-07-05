@@ -1114,11 +1114,8 @@ class Session(object):
         if self.remote:
             return
 
-        if self._client._connected:
-            if focx._get_context() == focx._NONE:
-                pass  # Close Desktop App
-            elif focx.is_notebook_context():
-                self.freeze()
+        if self._client._connected and focx.is_notebook_context():
+            self.freeze()
 
         self.plots.disconnect()
         self.__del__()
