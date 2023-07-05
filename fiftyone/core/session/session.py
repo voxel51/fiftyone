@@ -1114,7 +1114,7 @@ class Session(object):
         if self.remote:
             return
 
-        if self._client._connected and focx.is_notebook_context():
+        if self._client.is_open and focx.is_notebook_context():
             self.freeze()
 
         self.plots.disconnect()
