@@ -289,6 +289,7 @@ export const booleanSelectedValuesAtom = selectorFamily<
 
 // this is where the final filtering for looker occurs in the App
 // it returns a boolean about whether labels are selected or not
+const NONE = new Set<boolean | null | undefined>([undefined, null]);
 
 const helperFunction = (
   value: boolean | null,
