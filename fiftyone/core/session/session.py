@@ -1103,6 +1103,9 @@ class Session(object):
 
     def close(self) -> None:
         """Closes the session and terminates the App, if necessary."""
+        if self.desktop:
+            self._app_service.stop()
+
         if self.remote:
             return
 
