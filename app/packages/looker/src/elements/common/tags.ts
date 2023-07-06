@@ -339,19 +339,26 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (value === undefined) continue;
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           Array.isArray(value)
-            ? filter(path, value) && pushList(LABEL_RENDERERS[field.embeddedDocType], value)
-            : filter(path, value) && elements.push(
+            ? filter(path, value) &&
+              pushList(LABEL_RENDERERS[field.embeddedDocType], value)
+            : filter(path, value) &&
+              elements.push(
                 LABEL_RENDERERS[field.embeddedDocType](path, value)
               );
 
           continue;
         }
 
-        if (field && PRIMITIVE_RENDERERS[field.ftype]) {
-          Array.isArray(value)
-            ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
-            : filter(path, value) &&
-              elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+        if (
+          field &&
+          PRIMITIVE_RENDERERS[field.ftype] &&
+          field.ftype !== LIST_FIELD
+        ) {
+          // none-list field value is in ['value'] format
+          // need to convert to 'value' to pass in the filter
+          const v =
+            Array.isArray(value) && value.length == 1 ? value[0] : value;
+          filter(path, v) && pushList(PRIMITIVE_RENDERERS[field.ftype], value);
           continue;
         }
 
@@ -367,7 +374,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
               visibleValue.push(v);
             }
           });
-
           pushList(PRIMITIVE_RENDERERS[field.subfield], visibleValue);
           continue;
         }
