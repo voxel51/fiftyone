@@ -3,6 +3,27 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.3.3:
+
+FiftyOne Teams 1.3.3
+--------------------
+*Released July 7, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`.
+
+.. _release-notes-v0.21.3:
+
+FiftyOne 0.21.3
+---------------
+*Released July 7, 2023*
+
+News
+
+- Released a :ref:`Milvus integration <milvus-integration>` for native text and
+  image searches on FiftyOne datasets!
+- Released a :ref:`LanceDB integration <lancedb-integration>` for native text
+  and image searches on FiftyOne datasets!
+
 .. _release-notes-teams-v1.3.2:
 
 FiftyOne Teams 1.3.2
@@ -23,7 +44,6 @@ App
   `#3249 <https://github.com/voxel51/fiftyone/pull/3249>`_
 - Fixes redundant sidebar groups for custom schemas
   `#3250 <https://github.com/voxel51/fiftyone/pull/3250>`_
-
 
 .. _release-notes-teams-v1.3.1:
 
