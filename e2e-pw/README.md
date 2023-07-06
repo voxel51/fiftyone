@@ -40,3 +40,9 @@
 
 -   This shows up randomly when running tests from VSCode. Run "Developer:
     Reload Window" to fix it.
+
+#### Troubleshooting
+
+-   Close all stray browser windows from previous test runs.
+-   Reload VSCode developer window.
+-   Try again.
