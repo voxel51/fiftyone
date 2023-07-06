@@ -14,7 +14,7 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { InputDiv } from "./utils";
+import { FilterInputDiv } from "./utils";
 import * as fos from "@fiftyone/state";
 import { Settings, VisibilityOff } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
@@ -50,7 +50,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
 
   return (
-    <InputDiv>
+    <FilterInputDiv>
       <input
         type={"text"}
         placeholder={"FILTER"}
@@ -141,7 +141,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
           )}
         </Box>
       )}
-    </InputDiv>
+    </FilterInputDiv>
   );
 };
 
