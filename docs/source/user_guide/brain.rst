@@ -330,7 +330,7 @@ another supported backend:
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
--   **LanceDB**: a :ref:`LanceDB backend <lancedb-integration>`
+-   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
 
 .. note::
 
@@ -717,7 +717,7 @@ The relevant classes for the builtin similarity backends are:
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
--   **LanceDB**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
+-   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
 You can configure a similarity backend's parameters for a specific index by
 simply passing supported config parameters as keyword arguments each time you
