@@ -51,7 +51,7 @@ The example below demonstrates this workflow.
 
     Note that, if you are using a custom LanceDB URI, you can store your
     credentials as described in :ref:`this section <lancedb-setup>` to avoid
-    entering them manually each time you interact with your Milvus index.
+    entering them manually each time you interact with your LanceDB index.
 
 .. code-block:: python
     :linenos:
@@ -66,7 +66,7 @@ The example below demonstrates this workflow.
     # Steps 2 and 3: Compute embeddings and create a similarity index
     lancedb_index = fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="lancedb_index",
         backend="lancedb",
     )
@@ -81,15 +81,17 @@ by specifying the `brain_key`:
     query = dataset.first().id  # query by sample ID
     view = dataset.sort_by_similarity(
         query, 
-        brain_key=brain_key,
+        brain_key="lancedb_index",
         k=10,  # limit to 10 most similar samples
     )
-    # If the model supports text prompts, you can also query by text
-    view = dataset.sort_by_similarity(
-        "a dog", 
-        brain_key=brain_key,
-        k=10,  # limit to 10 most similar samples
-    )
+
+    # Step 5 (optional): Cleanup
+
+    # Delete the LanceDB table
+    lancedb_index.cleanup()
+
+    # Delete run record from FiftyOne
+    dataset.delete_brain_run("lancedb_index")
 
 .. _lancedb-setup:
 
@@ -148,9 +150,9 @@ your similarity queries. These parameters include:
 
 *   **table_name** (*None*): the name of the LanceDB table to use. If none is
     provided, a new table will be created
-*   **metric** (*cosine*): the embedding distance metric to use when creating a
-    new table. The supported values are ``("cosine", "euclidean")``
-*   **uri** (`/tmp/lancedb`): the database URI to use
+*   **metric** (*"cosine"*): the embedding distance metric to use when creating
+    a new table. The supported values are ``("cosine", "euclidean")``
+*   **uri** (*"/tmp/lancedb"*): the database URI to use
 
 You can specify these parameters via any of the strategies described in the
 previous section. Here's an example of a :ref:`brain config <brain-config>`
@@ -459,7 +461,7 @@ to retrieve embeddings from a LanceDB index by ID:
 
     lancedb_index = fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="lancedb_index",
         backend="lancedb",
     )
@@ -503,7 +505,7 @@ stage to any dataset or view. The query can be any of the following:
 
     fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="lancedb_index",
         backend="lancedb",
     )
@@ -546,11 +548,10 @@ numpy, and arrow:
 .. code:: python
     :linenos:
 
-    lancedb_index = fob.compute_similarity(...)
+    lancedb_index = fob.compute_similarity(..., backend="lancedb", ...)
 
     # Retrieve the raw LanceDB table
     table = lancedb_index.table
 
-    # Integration with Python data ecosystem
     df = table.to_pandas()  # get the table as a pandas dataframe
     pa = table.to_arrow()   # get the table as an arrow table
