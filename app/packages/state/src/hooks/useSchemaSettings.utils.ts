@@ -28,6 +28,7 @@ import {
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
   VALID_LABEL_TYPES,
+  DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
 
 const isMetadataField = (path: string) => {
@@ -52,10 +53,11 @@ export const skipField = (rawPath: string, schema: {}) => {
   const pathSplit = path.split(".");
   const pathLabel = `.${pathSplit[pathSplit.length - 1]}`;
 
+  console.log("parentPath", parentPath, schema[parentPath], pathLabel);
   return (
     SKIP_FIELD_TYPES.includes(ftype) ||
     (parentPath &&
-      schema[parentPath]?.embeddedDocType === DETECTION_FIELD &&
+      schema[parentPath]?.embeddedDocType === DETECTIONS_FIELD &&
       [".bounding_box", ".index"].includes(pathLabel))
   );
 };

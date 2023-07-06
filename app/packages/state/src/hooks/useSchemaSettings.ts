@@ -1,7 +1,7 @@
 import { atom, atomFamily } from "recoil";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { buildSchema } from "@fiftyone/state";
+import { buildSchema, TAB_OPTIONS_MAP } from "@fiftyone/state";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
@@ -34,7 +34,7 @@ export const showNestedFieldsState = atom<boolean>({
 
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: fos.TAB_OPTIONS_MAP.SELECTION,
+  default: "Selection",
 });
 
 export const settingsModal = atom<{ open: boolean } | null>({
