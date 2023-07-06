@@ -23,7 +23,7 @@ const Grid: React.FC<{}> = () => {
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
 
   const selected = useRecoilValue(fos.selectedSamples);
-  const [next, pager] = usePage(false, store);
+  const pager = usePage(false, store);
 
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
@@ -90,7 +90,6 @@ const Grid: React.FC<{}> = () => {
         return;
       }
 
-      next.current = 0;
       flashlight.reset();
       store.reset();
       freeVideos();
