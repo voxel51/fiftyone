@@ -11,7 +11,6 @@
         "dotenv": "^16.3.1",
         "eslint": "^8.44.0",
         "eslint-plugin-playwright": "^0.15.3",
-        "portfinder": "^1.0.32",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
         "typescript": "^5.1.6",
