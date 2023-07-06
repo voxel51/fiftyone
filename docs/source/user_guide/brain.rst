@@ -329,6 +329,7 @@ another supported backend:
     backend
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
+-   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 
 .. note::
 
@@ -714,6 +715,7 @@ The relevant classes for the builtin similarity backends are:
 -   **sklearn**: :class:`fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig`
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
+-   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 
 You can configure a similarity backend's parameters for a specific index by
 simply passing supported config parameters as keyword arguments each time you
@@ -983,8 +985,9 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>` and
-    :ref:`Pinecone <pinecone-integration>`.
+    like :ref:`Qdrant <qdrant-integration>`,
+    :ref:`Pinecone <pinecone-integration>`, and 
+    :ref:`Milvus <milvus-integration>`.
 
 .. note::
 
@@ -1091,15 +1094,16 @@ to delete embeddings from an index by their ID:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>` and
-    :ref:`Pinecone <pinecone-integration>`.
+    like :ref:`Qdrant <qdrant-integration>`,
+    :ref:`Pinecone <pinecone-integration>`, and
+    :ref:`Milvus <milvus-integration>`.
 
 Deleting an index
 ~~~~~~~~~~~~~~~~~
 
-When working with backends like :ref:`Qdrant <qdrant-integration>` and
-:ref:`Pinecone <pinecone-integration>` that leverage external vector databases,
-you can call
+When working with backends like :ref:`Qdrant <qdrant-integration>`,
+:ref:`Pinecone <pinecone-integration>`, and :ref:`Milvus <milvus-integration>`
+that leverage external vector databases, you can call
 :meth:`cleanup() <fiftyone.brain.similarity.SimilarityIndex.cleanup>` to delete
 the external index/collection:
 
@@ -1714,6 +1718,9 @@ and the CLI:
         {
             "default_similarity_backend": "sklearn",
             "similarity_backends": {
+                "milvus": {
+                    "config_cls": "fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig"
+                },
                 "pinecone": {
                     "config_cls": "fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig"
                 },
@@ -1738,6 +1745,9 @@ and the CLI:
         {
             "default_similarity_backend": "sklearn",
             "similarity_backends": {
+                "milvus": {
+                    "config_cls": "fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig"
+                },
                 "pinecone": {
                     "config_cls": "fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig"
                 },
