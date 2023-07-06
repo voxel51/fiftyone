@@ -12,6 +12,7 @@ import { Box } from "@mui/material";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import SchemaSettings from "../Schema/SchemaSettings";
+import Filter from "./Entries/FilterEntry";
 import { replace } from "./Entries/GroupEntries";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
@@ -747,6 +748,7 @@ const InteractiveSidebar = ({
         </Suspense>
       )}
       <Suspense>
+        <Filter modal={modal} />
         <SidebarColumn
           ref={container}
           onScroll={({ target }) => {
@@ -765,8 +767,9 @@ const InteractiveSidebar = ({
                 group = entry.name;
               }
 
-              const { shadow, cursor, ...springs } =
-                items.current[key].controller.springs;
+              const { shadow, cursor, ...springs } = items.current[
+                key
+              ].controller.springs;
               const keyTrigger = ["tags", "_label_tags"].includes(key[1])
                 ? null
                 : trigger;
