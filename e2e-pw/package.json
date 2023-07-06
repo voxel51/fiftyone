@@ -18,6 +18,6 @@
     "scripts": {
         "unittests": "vitest",
         "e2e": "playwright test -c playwright.config.ts",
-        "devserver": "export VITE_API=http://localhost:8787 && (cd ../app && yarn dev)"
+        "devserver": "export VITE_API=http://localhost:8787 && export FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev)"
     }
 }

@@ -9,9 +9,9 @@
 -   This is useful if you want to run the tests against a local dev server of
     the app.
 -   Set `export USE_DEV_BUILD=true` in `.env.dev` file.
--   Either make sure app is already running on `localhost:5173` with
-    `VITE_API=http://localhost:8787` in `app/packages/app/.env.development`
-    file, or run `yarn devserver` to start the app dev server.
+-   Run `yarn devserver` to start the app dev server in a separate terminal
+    window.
+-   Proceed to run e2e tests as usual, from CLI or from VSCode.
 
 ### Tips
 
