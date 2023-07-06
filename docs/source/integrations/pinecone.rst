@@ -423,7 +423,7 @@ possibilities:
     # Option 2: Compute embeddings on the fly from model instance
     fob.compute_similarity(
         dataset,
-        model=model
+        model=model,
         backend="pinecone",
         brain_key=brain_key,
     )
@@ -583,7 +583,7 @@ to retrieve embeddings from a Pinecone index by ID:
 
     pinecone_index = fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="pinecone_index",
         backend="pinecone",
     )
@@ -627,7 +627,7 @@ stage to any dataset or view. The query can be any of the following:
 
     fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="pinecone_index",
         backend="pinecone",
     )
@@ -678,7 +678,7 @@ underlying Pinecone client instance and use its methods as desired:
 
     pinecone_index = fob.compute_similarity(
         dataset,
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="pinecone_index",
         backend="pinecone",
     )

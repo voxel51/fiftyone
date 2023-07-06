@@ -435,7 +435,7 @@ possibilities:
     # Option 2: Compute embeddings on the fly from model instance
     fob.compute_similarity(
         dataset,
-        model=model
+        model=model,
         backend="qdrant",
         brain_key=brain_key,
     )

@@ -100,13 +100,13 @@ by specifying the `brain_key`:
     query = dataset.first().id  # query by sample ID
     view = dataset.sort_by_similarity(
         query, 
-        brain_key=brain_key,
+        brain_key="milvus_index",
         k=10,  # limit to 10 most similar samples
     )
 
     # Step 5 (optional): Cleanup
 
-    # Delete the Milvus index
+    # Delete the Milvus collection
     milvus_index.cleanup()
 
     # Delete run record from FiftyOne
@@ -369,7 +369,7 @@ dataset:
 
     .. code:: python
 
-        # Delete the Milvus index
+        # Delete the Milvus collection
         milvus_index = dataset.load_brain_results(brain_key)
         milvus_index.cleanup()
 
@@ -419,7 +419,7 @@ possibilities:
     # Option 2: Compute embeddings on the fly from model instance
     fob.compute_similarity(
         dataset,
-        model=model
+        model=model,
         backend="milvus",
         brain_key=brain_key,
     )
@@ -579,7 +579,7 @@ to retrieve embeddings from a Milvus index by ID:
 
     milvus_index = fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="milvus_index",
         backend="milvus",
     )
@@ -623,7 +623,7 @@ stage to any dataset or view. The query can be any of the following:
 
     fob.compute_similarity(
         dataset, 
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="milvus_index",
         backend="milvus",
     )
@@ -674,7 +674,7 @@ underlying Milvus collection and use its methods as desired:
 
     milvus_index = fob.compute_similarity(
         dataset,
-        model="clip-vit-base32-torch"
+        model="clip-vit-base32-torch",
         brain_key="milvus_index",
         backend="milvus",
     )
