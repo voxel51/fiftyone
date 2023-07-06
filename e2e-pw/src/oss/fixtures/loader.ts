@@ -22,13 +22,15 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     console.log("starting webserver on port", port);
 
+    process.env.FIFTYONE_DATABASE_NAME = `playwright-${port}`;
+
     const procString = getPythonCommand([
       "../fiftyone/server/main.py",
       "--address",
       "0.0.0.0",
       "--port",
       port.toString(),
-      // "--clean_start",
+      "--clean_start",
     ]);
 
     const proc = spawn(procString, { shell: true });
