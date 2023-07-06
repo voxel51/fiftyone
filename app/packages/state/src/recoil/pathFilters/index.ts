@@ -19,12 +19,10 @@ import * as selectors from "../selectors";
 import { State } from "../types";
 import { boolean, listBoolean } from "./boolean";
 import { listNumber, numeric } from "./numeric";
-import { string, listString, list } from "./string";
-
+import { listString, string } from "./string";
 export * from "./boolean";
 export * from "./numeric";
 export * from "./string";
-
 const primitiveFilter = selectorFamily<
   (value: any) => boolean,
   { modal: boolean; path: string }
@@ -126,17 +124,11 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
                 current._label_tags
               ) &&
               fs.every((filter) => {
-                console.info("embedded doc. filter", value, filter(value));
                 return filter(value);
               })
             );
           };
         } else if (field) {
-          console.info(
-            "primitive path",
-            path,
-            get(primitiveFilter({ modal, path }))
-          );
           f[path] = get(primitiveFilter({ modal, path }));
         }
 
@@ -144,11 +136,6 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
       }, {});
 
       return (path, value) => {
-        if (newFilters[path]) {
-          console.info("path", path, value, newFilters[path](value));
-        } else {
-          console.info("filter[path] not found", path);
-        }
         if (!newFilters[path]) {
           return false;
         }

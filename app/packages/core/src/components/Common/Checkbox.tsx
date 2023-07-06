@@ -1,10 +1,10 @@
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useMemo } from "react";
+import { constSelector, RecoilValueReadOnly, useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
-import { constSelector, RecoilValueReadOnly } from "recoil";
 import { prettify } from "../../utils/generic";
 import { ItemAction } from "../Actions/ItemAction";
 import { useHighlightHover } from "../Actions/utils";
@@ -58,6 +58,7 @@ const Checkbox = <T extends unknown>({
     () => (typeof count === "number" ? constSelector(count) : null),
     [count]
   );
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   return (
     <StyledCheckboxContainer title={text}>
@@ -94,7 +95,7 @@ const Checkbox = <T extends unknown>({
           >
             {prettify(text)}
           </span>
-          {countAtom && (
+          {isFilterMode && countAtom && (
             <SuspenseEntryCounts
               countAtom={countAtom}
               subcountAtom={subcountAtom}

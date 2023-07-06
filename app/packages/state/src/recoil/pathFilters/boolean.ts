@@ -314,7 +314,7 @@ const helperFunction = (
   return r;
 };
 
-export const generateSelectorFamily = (key) =>
+export const generateBooleanSelectorFamily = (key) =>
   selectorFamily<
     (value: boolean | null) => boolean,
     { modal: boolean; path: string }
@@ -405,5 +405,7 @@ export const generateSelectorFamily = (key) =>
       },
   });
 
-export const boolean = generateSelectorFamily("booleanFilter");
-export const listBoolean = generateSelectorFamily("listFieldBooleanFilter");
+export const boolean = generateBooleanSelectorFamily("booleanFilter");
+export const listBoolean = generateBooleanSelectorFamily(
+  "listFieldBooleanFilter"
+);

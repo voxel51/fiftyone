@@ -306,23 +306,23 @@ const NumericFieldFilter = ({
             path={path}
             color={color}
             modal={modal}
+            path={path}
             isKeyPointLabel={isKeyPoints}
           />
         )}
-        {isFiltered ||
-          (hasVisibilitySetting && (
-            <Button
-              text={"Reset"}
-              color={color}
-              onClick={initializeSettings}
-              style={{
-                margin: "0.25rem -0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
-            ></Button>
-          ))}
+        {(isFiltered || hasVisibilitySetting) && (
+          <Button
+            text={"Reset"}
+            color={color}
+            onClick={initializeSettings}
+            style={{
+              margin: "0.25rem -0.5rem",
+              height: "2rem",
+              borderRadius: 0,
+              textAlign: "center",
+            }}
+          ></Button>
+        )}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>
   );
