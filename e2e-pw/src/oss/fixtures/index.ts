@@ -10,6 +10,11 @@ export type CustomFixtures = {
 export const test = base.extend<{}, CustomFixtures>({
   fiftyoneServerPort: [
     async ({}, use, workerInfo) => {
+      if (process.env.USE_DEV_BUILD) {
+        await use(8787);
+        return;
+      }
+
       console.log("worker index is ", workerInfo.workerIndex);
       await use(3050 + workerInfo.workerIndex);
     },
@@ -30,6 +35,11 @@ export const test = base.extend<{}, CustomFixtures>({
     { scope: "worker" },
   ],
   baseURL: async ({ fiftyoneServerPort }, use) => {
+    if (process.env.USE_DEV_BUILD) {
+      await use(`http://localhost:${5193}`);
+      return;
+    }
+
     await use(`http://localhost:${fiftyoneServerPort}`);
   },
 });

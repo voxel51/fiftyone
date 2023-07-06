@@ -10,8 +10,9 @@
     the app.
 -   Set `export USE_DEV_BUILD=true` in `.env.dev` file.
 -   Run `yarn devserver` to start the app dev server in a separate terminal
-    window.
+    window on port 5193.
 -   Proceed to run e2e tests as usual, from CLI or from VSCode.
+-   **NOTE: Parallelization doesn't work with dev build.**
 
 ### Tips
 
