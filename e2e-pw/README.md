@@ -25,6 +25,8 @@
     grid, modal, sidebar.
 -   Do not use assertion logic directly in POMs, instead use composition to
     create POMs that contain the assertion class.
+-   Refrain from using `page.waitForTimeout()`. There is always a better
+    alternative.
 
 ### Known Issues
 

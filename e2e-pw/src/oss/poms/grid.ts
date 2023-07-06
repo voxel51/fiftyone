@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { Duration } from "../utils";
 
 export class GridPom {
   readonly page: Page;
@@ -15,12 +16,29 @@ export class GridPom {
 
   async openFirstLooker() {
     await this.page.getByTestId("looker").first().click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await this.page.waitForTimeout(500);
+    await this.waitForSampleToLoad();
   }
 
   async openNthLooker(n: number) {
     await this.page.getByTestId("looker").nth(n).click();
+    await this.waitForSampleToLoad();
+  }
+
+  async waitForSampleToLoad() {
+    return this.page.waitForFunction(
+      () => {
+        const canvas = document.querySelector(
+          "[data-cy=modal-looker-container] canvas"
+        );
+
+        if (!canvas) {
+          return false;
+        }
+
+        return canvas.getAttribute("sample-loaded") === "true";
+      },
+      { timeout: Duration.Seconds(10) }
+    );
   }
 }
 
