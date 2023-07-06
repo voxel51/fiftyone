@@ -19,13 +19,11 @@ describe("schema search", () => {
     const testSnapshot = snapshot_UNSTABLE(({ set }) => {
       set(ss.viewSchemaState, {});
       set(ss.fieldSchemaState, schemaFields);
-      set(ss.schemaSearchResultList([FIELDS.ID_FIELD.path]), [
-        FIELDS.ID_FIELD.path,
-      ]);
+      set(ss.schemaSearchResultList, [FIELDS.ID_FIELD.path]);
     });
 
     const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList([])
+      ss.schemaSearchResultList
     ).contents;
 
     expect(contents).toEqual([FIELDS.ID_FIELD.path]);
@@ -40,11 +38,11 @@ describe("schema search", () => {
     const testSnapshot = snapshot_UNSTABLE(({ set }) => {
       set(ss.viewSchemaState, {});
       set(ss.fieldSchemaState, schemaFields);
-      set(ss.schemaSearchResultList([NON_EXISTENT_PATH]), [NON_EXISTENT_PATH]);
+      set(ss.schemaSearchResultList, [NON_EXISTENT_PATH]);
     });
 
     const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList([])
+      ss.schemaSearchResultList
     ).contents;
 
     expect(contents).toEqual([]);
