@@ -1791,6 +1791,7 @@ class FilterField(ViewStage):
 
         if is_frame_field:
             return _get_filter_frames_field_pipeline(
+                sample_collection,
                 field_name,
                 new_field,
                 self._filter,
@@ -1798,6 +1799,7 @@ class FilterField(ViewStage):
             )
 
         return _get_filter_field_pipeline(
+            sample_collection,
             field_name,
             new_field,
             self._filter,
@@ -1875,6 +1877,7 @@ class FilterField(ViewStage):
 
 
 def _get_filter_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
@@ -1908,25 +1911,40 @@ def _get_field_only_matches_expr(field):
 
 
 def _get_filter_frames_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
     only_matches=True,
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-    merge = {
-        "$cond": {
-            "if": cond,
-            "then": "$$frame." + filter_field,
-            "else": None,
-        }
-    }
 
     if "." in new_field:
         parent, child = new_field.split(".")
-        obj = {parent: {child: merge}}
+        obj = {
+            "$cond": {
+                "if": {"$gt": ["$$frame." + filter_field, None]},
+                "then": {
+                    "$cond": {
+                        "if": cond,
+                        "then": {parent: {child: "$$frame." + filter_field}},
+                        "else": None,
+                    }
+                },
+                "else": {},
+            },
+        }
+
     else:
-        obj = {new_field: merge}
+        obj = {
+            new_field: {
+                "$cond": {
+                    "if": cond,
+                    "then": "$$frame." + filter_field,
+                    "else": None,
+                }
+            }
+        }
 
     pipeline = [
         {
@@ -2333,6 +2351,7 @@ class FilterLabels(ViewStage):
             _make_filter_pipeline = _get_filter_field_pipeline
 
         filter_pipeline = _make_filter_pipeline(
+            sample_collection,
             labels_field,
             new_field,
             label_filter,
@@ -2433,6 +2452,7 @@ class FilterLabels(ViewStage):
 
 
 def _get_filter_list_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
@@ -2464,19 +2484,31 @@ def _get_list_field_only_matches_expr(field):
 
 
 def _get_filter_frames_list_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
     only_matches=True,
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-    label_field, labels_list = new_field.split(".")[-2:]
 
-    old_field = filter_field.split(".")[0]
+    parent, leaf = filter_field.split(".", 1)
+    new_parent, _ = new_field.split(".", 1)
+    if not issubclass(
+        sample_collection.get_field(f"frames.{parent}").document_type,
+        fol.Label,
+    ):
+        label_field, labels_list = leaf.split(".")
+        obj = lambda merge: {new_parent: {label_field: merge}}
+        label_path = f"{parent}.{label_field}"
+    else:
+        label_field, labels_list = new_parent, leaf
+        label_path = label_field
+        obj = lambda merge: {label_field: merge}
 
     merge = {
         "$mergeObjects": [
-            "$$frame." + old_field,
+            "$$frame." + label_path,
             {
                 labels_list: {
                     "$filter": {
@@ -2487,11 +2519,6 @@ def _get_filter_frames_list_field_pipeline(
             },
         ]
     }
-    if "." in label_field:
-        parent, label_field = label_field.split(".")
-        obj = {parent: {label_field: merge}}
-    else:
-        obj = {label_field: merge}
 
     pipeline = [
         {
@@ -2500,7 +2527,7 @@ def _get_filter_frames_list_field_pipeline(
                     "$map": {
                         "input": "$frames",
                         "as": "frame",
-                        "in": {"$mergeObjects": ["$$frame", obj]},
+                        "in": {"$mergeObjects": ["$$frame", obj(merge)]},
                     }
                 }
             }
