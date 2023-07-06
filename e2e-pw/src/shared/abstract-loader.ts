@@ -2,12 +2,18 @@ import { Page } from "@playwright/test";
 import { PythonRunner } from "./python-runner/python-runner";
 
 type ExitCode = number;
-export abstract class DatasetLocator {
-  abstract visit(path: string): Page;
-}
+
+type WebServerProcessConfig = {
+  port: number;
+  processId: number;
+};
 
 export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;
+  protected webserverProcessConfig: WebServerProcessConfig;
+
+  abstract startWebServer(port: number): Promise<void>;
+  abstract stopWebServer(): Promise<void>;
 
   /**
    * This method is used to load a dataset from the FiftyOne Zoo.
@@ -17,10 +23,10 @@ export abstract class AbstractFiftyoneLoader {
    * @param kwargs optional arguments to be passed to the dataset loader
    */
   abstract loadZooDataset(
-    name: string,
+    zooDatasetName: string,
     id: string,
     kwargs?: Record<string, string | number | boolean>
-  ): Promise<ExitCode>;
+  ): Promise<void>;
 
   /**
    * This method is used to load datasets that are assumed to be already available in the test hosts.

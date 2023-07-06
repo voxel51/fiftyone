@@ -40,10 +40,6 @@ export class PythonRunner {
     proc.stdout.pipe(process.stdout);
     proc.stderr.pipe(process.stderr);
 
-    return new Promise<number>((resolve, reject) =>
-      proc.on("exit", (exitCode) =>
-        exitCode ? reject(exitCode) : resolve(exitCode)
-      )
-    );
+    return new Promise<void>((resolve) => proc.on("exit", () => resolve()));
   }
 }

@@ -34,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--address", type=str, default=fo.config.default_app_address
     )
-    parser.add_argument("--clean_start", action="store_false", default=False)
+    parser.add_argument("--clean_start", action="store_true")
     args = parser.parse_args()
     config = Config()
     config.bind = [f"{args.address}:{args.port}"]

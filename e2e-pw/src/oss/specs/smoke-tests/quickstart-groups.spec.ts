@@ -14,7 +14,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.describe("quickstart-groups dataset", () => {
+test.describe("quickstart-groups", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
       max_samples: 12,
@@ -30,13 +30,12 @@ test.describe("quickstart-groups dataset", () => {
     page,
   }) => {
     await grid.assert.verifyNLookers(4);
-
     const selectorSlice = page.getByTestId("selector-slice");
     await expect(selectorSlice).toHaveValue("left");
   });
 
-  test.describe("group modal", () => {
-    test.beforeEach(async ({ grid }) => {
+  test.describe("modal", () => {
+    test.beforeEach(async ({ page, grid, fiftyoneLoader }) => {
       await grid.openFirstLooker();
     });
 
