@@ -457,7 +457,7 @@ export const HEATMAP_DISABLED_SUB_PATHS = [
   "tags",
   "map",
   "map_path",
-  "Range",
+  "range",
 ];
 
 export const TEMPORAL_DETECTION_DISABLED_SUB_PATHS = [
@@ -470,7 +470,7 @@ export const GEOLOCATION_DISABLED_SUB_PATHS = [
   "tags",
   "point",
   "line",
-  "Polygon",
+  "polygon",
 ];
 
 export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
@@ -478,7 +478,7 @@ export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
   "tags",
   "point",
   "line",
-  "Polygons",
+  "polygons",
 ];
 
 export function withPath(path: string, types: string): string;

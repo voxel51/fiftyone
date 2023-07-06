@@ -53,7 +53,6 @@ export const skipField = (rawPath: string, schema: {}) => {
   const pathSplit = path.split(".");
   const pathLabel = `.${pathSplit[pathSplit.length - 1]}`;
 
-  console.log("parentPath", parentPath, schema[parentPath], pathLabel);
   return (
     SKIP_FIELD_TYPES.includes(ftype) ||
     (parentPath &&
