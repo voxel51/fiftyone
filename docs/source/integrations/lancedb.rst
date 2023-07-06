@@ -1,7 +1,7 @@
 .. _lancedb-integration:
 
 LanceDB Integration
-====================
+===================
 
 .. default-role:: code
 
@@ -104,7 +104,7 @@ You can get started using LanceDB by simply installing the
     pip install lancedb
 
 Using the LanceDB backend
---------------------------
+-------------------------
 
 By default, calling
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` or 
@@ -137,6 +137,8 @@ or by setting the `default_similarity_backend` parameter of your
     {
         "default_similarity_backend": "lancedb"
     }
+
+.. _lancedb-config-parameters:
 
 LanceDB config parameters
 -------------------------
