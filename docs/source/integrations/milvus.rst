@@ -5,12 +5,14 @@ Milvus Integration
 
 .. default-role:: code
 
-`Milvus <https://milvus.io/>`_ is one of the most popular vector databases available, and we've made it easy to use Milvus's vector search
+`Milvus <https://milvus.io/>`_ is one of the most popular vector databases
+available, and we've made it easy to use Milvus's vector search
 capabilities on your computer vision data directly from FiftyOne!
 
-Follow these :ref:`simple instructions <milvus-setup>` to get started using Milvus + FiftyOne.
+Follow these :ref:`simple instructions <milvus-setup>` to get started using
+Milvus + FiftyOne.
 
-FiftyOne provides an API to create Milvus collection, upload vectors, and run
+FiftyOne provides an API to create Milvus collections, upload vectors, and run
 similarity queries, both :ref:`programmatically <milvus-query>` in Python and
 via point-and-click in the App.
 
@@ -29,8 +31,8 @@ via point-and-click in the App.
 Basic recipe
 ____________
 
-The basic workflow to use Milvus to create a similarity index on your
-FiftyOne datasets and use this to query your data is as follows:
+The basic workflow to use Milvus to create a similarity index on your FiftyOne
+datasets and use this to query your data is as follows:
 
 1)  Load a :ref:`dataset <loading-datasets>` into FiftyOne
 
@@ -59,11 +61,14 @@ The example below demonstrates this workflow.
 
     .. code-block:: shell
 
+        wget https://github.com/milvus-io/milvus/releases/download/v2.2.11/milvus-standalone-docker-compose.yml -O docker-compose.yml
+        sudo docker compose up -d
+
         pip install pymilvus
 
-    Note that you can store your Milvus credentials as described in
-    :ref:`this section <milvus-setup>` to avoid entering them manually each
-    time you interact with your Milvus index.
+    Note that, if you are using a custom Milvus server, you can store your
+    credentials as described in :ref:`this section <milvus-setup>` to avoid
+    entering them manually each time you interact with your Milvus index.
 
 First let's load a dataset into FiftyOne and compute embeddings for the
 samples:
@@ -83,7 +88,6 @@ samples:
         dataset, 
         brain_key="milvus_index",
         backend="milvus",
-        collection_name = "first_collection",
     )
 
 Once the similarity index has been generated, we can query our data in FiftyOne
@@ -103,7 +107,6 @@ by specifying the `brain_key`:
     # Step 5 (optional): Cleanup
 
     # Delete the Milvus index
-    milvus_index = dataset.load_brain_results(brain_key)
     milvus_index.cleanup()
 
     # Delete run record from FiftyOne
@@ -119,59 +122,26 @@ by specifying the `brain_key`:
 Setup
 _____
 
-The easiest way to get started with Milvus is to 
-`install Milvus standalone using Docker Compose <https://milvus.io/docs/install_standalone-docker.md>`_.
-
-Download the YAML file by running the following command:
+The easiest way to get started is to
+`install Milvus standalone via Docker Compose <https://milvus.io/docs/install_standalone-docker.md>`_:
 
 .. code-block:: shell
 
-    wget wget https://github.com/milvus-io/milvus/releases/download/v2.2.10/milvus-standalone-docker-compose.yml -O docker-compose.yml
-
-In the same directory as the docker-compose.yml file, start up Milvus by running:
-
-.. code-block:: shell
-
-    sudo docker-compose up -d
-
-.. note::
-
-    If your system has Docker Compose V2 installed instead of V1, use 
-    `docker compose` instead of `docker-compose`. Check if this is the case with 
-    `$ docker compose version`.
+    wget https://github.com/milvus-io/milvus/releases/download/v2.2.11/milvus-standalone-docker-compose.yml -O docker-compose.yml
+    sudo docker compose up -d
 
 Installing the Milvus client
-------------------------------
+----------------------------
 
-In order to use the Milvus backend, you must install the
+In order to use the Milvus backend, you must also install the
 `Milvus Python client <https://github.com/milvus-io/pymilvus>`_:
 
 .. code-block:: shell
 
     pip install pymilvus
 
-
-Connecting to the Milvus server
--------------------------------
-
-Verify which local port the Milvus server is listening on by running:
-
-.. code-block:: shell
-
-    sudo docker-compose ps
-
-To connect to the Milvus server in Python, you must specify the `host` and `port`:
-
-.. code-block:: python
-    :linenos:
-
-    from pymilvus import (
-        connections,
-    )
-    connections.connect("default", host="localhost", port="19530")
-
 Using the Milvus backend
---------------------------
+------------------------
 
 By default, calling
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` or 
@@ -190,8 +160,7 @@ To use the Milvus backend, simply set the optional `backend` parameter of
     fob.compute_similarity(..., backend="milvus", ...)
 
 Alternatively, you can permanently configure FiftyOne to use the Milvus
-backend by setting the `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment
-variable:
+backend by setting the following environment variable:
 
 .. code-block:: shell
 
@@ -209,18 +178,14 @@ or by setting the `default_similarity_backend` parameter of your
 Authentication
 --------------
 
-If you'd like, you can specify the user and password for connecting to a Milvus 
-server. This can be done in a variety of ways, as well as the `uri`.
+If you are using a custom Milvus server, you can provide your credentials in a
+variety of ways.
 
 **Environment variables (recommended)**
 
 The recommended way to configure your Milvus credentials is to store them
-in the
-`FIFTYONE_BRAIN_SIMILARITY_MILVUS_USER`,
-`FIFTYONE_BRAIN_SIMILARITY_MILVUS_PASSWORD`, and
-`FIFTYONE_BRAIN_SIMILARITY_MILVUS_URI` environment variables. These are 
-automatically accessed by FiftyOne whenever a connection to Milvus is
-made.
+in the environment variables shown below, which are  automatically accessed by
+FiftyOne whenever a connection to Milvus is made.
 
 .. code-block:: shell
 
@@ -285,22 +250,18 @@ when loading an index later via
 .. _milvus-config-parameters:
 
 Milvus config parameters
---------------------------
+------------------------
 
 The Milvus backend supports a variety of query parameters that can be used to
 customize your similarity queries. These parameters include:
 
-*   **metric**: the distance/similarity metric to use for the index. If not
-    specified, the default value is `"dotproduct"`. Supported values are
-    `("dotproduct", "euclidean")`. These are referred to via `"IP"` and `"L2"`
-    in the Milvus documentation, respectively.
-*   **collection_name**: the name of the Milvus collection to use or create. If not
-    specified, a new unique name is generated automatically
-*   **uri**: the full address of the Milvus server to connect to. If not
-    specified, the default value is `"http://localhost:19530"`
-*   **user**: username if using `RBAC <https://milvus.io/docs/rbac.md>`_
-*   **password**: password for supplied username
-*   **consistency_level**:  which consistency level to use. Possible values are `("Strong", "Session", "Bounded", "Eventually")`. The default value is `"Session"`.
+-   **collection_name** (*None*): the name of the Milvus collection to use or
+    create. If none is provided, a new collection will be created
+-   **metric** (*"dotproduct"*): the embedding distance metric to use when
+    creating a new index. The supported values are
+    ``("dotproduct", "euclidean")``
+-   **consistency_level** (*"Session"*):  the consistency level to use.
+    Supported values are ``("Strong", "Session", "Bounded", "Eventually")``
 
 For detailed information on these parameters, see the 
 `Milvus authentication documentation <https://milvus.io/docs/authenticate.md>`_ 
@@ -315,12 +276,9 @@ that includes all of the available parameters:
     {
         "similarity_backends": {
             "milvus": {
-                "uri": "XXXXXXXXXXXX",
-                "user": "XXXXXXXXXXXX",
-                "password": "XXXXXXXXXXXX",
-                "collection_name": null,
+                "collection_name": "your_collection",
                 "metric": "dotproduct",
-                "consistency_level": "Strong",
+                "consistency_level": "Strong"
             }
         }
     }
@@ -336,8 +294,9 @@ a specific new index:
         ...
         backend="milvus",
         brain_key="milvus_index",
-        index_name="your-index-name",
+        collection_name="your_collection",
         metric="dotproduct",
+        consistency_level="Strong",
     )
 
 .. _milvus-managing-brain-runs:
@@ -411,8 +370,8 @@ dataset:
     .. code:: python
 
         # Delete the Milvus index
-        milvus_collection = dataset.load_brain_results(brain_key)
-        milvus_collection.cleanup()
+        milvus_index = dataset.load_brain_results(brain_key)
+        milvus_index.cleanup()
 
 .. _milvus-examples:
 
@@ -525,9 +484,9 @@ specifying a `patches_field` argument to
 Connect to an existing collection
 ---------------------------------
 
-If you have already created a Milvus collection storing the embedding vectors for
-the samples or patches in your dataset, you can connect to it by passing the
-`collection_name` to
+If you have already created a Milvus collection storing the embedding vectors
+for the samples or patches in your dataset, you can connect to it by passing
+the `collection_name` to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`:
 
 .. code:: python
@@ -543,7 +502,7 @@ the samples or patches in your dataset, you can connect to it by passing the
         dataset,
         model="clip-vit-base32-torch",      # zoo model used (if applicable)
         embeddings=False,                   # don't compute embeddings
-        collection_name="your-index",            # the existing Milvus index
+        collection_name="your_collection",  # the existing Milvus collection
         brain_key="milvus_index",
         backend="milvus",
     )
@@ -640,7 +599,7 @@ to retrieve embeddings from a Milvus index by ID:
 .. _milvus-query:
 
 Querying a Milvus index
--------------------------
+-----------------------
 
 You can query a Milvus index by appending a
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
@@ -699,10 +658,10 @@ stage to any dataset or view. The query can be any of the following:
 .. _milvus-access-client:
 
 Accessing the Milvus client
------------------------------
+---------------------------
 
-You can use the `get_collection()` method of a Milvus index to directly access the
-underlying Milvus client instance and use its methods as desired:
+You can use the `collection` property of a Milvus index to directly access the
+underlying Milvus collection and use its methods as desired:
 
 .. code:: python
     :linenos:
@@ -720,11 +679,11 @@ underlying Milvus client instance and use its methods as desired:
         backend="milvus",
     )
 
-    print(milvus_index.get_collection())
+    print(milvus_index.collection)
 
     # The Milvus SDK is already initialized for you as well
-    from pymilvus import utility
-    print(utility.list_collections())
+    import pymilvus
+    print(pymilvus.utility.list_collections())
 
 .. _milvus-advanced-usage:
 
@@ -736,8 +695,9 @@ your Milvus indexes by providing optional parameters to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`.
 
 Here's an example of creating a similarity index backed by a customized
-Milvus similarity index. Just for fun, we'll specify a custom collection name, use
-euclidean distance, and populate the index for only a subset of our dataset:
+Milvus similarity index. Just for fun, we'll specify a custom collection name,
+use euclidean distance, and populate the index for only a subset of our
+dataset:
 
 .. code:: python
     :linenos:
@@ -756,7 +716,7 @@ euclidean distance, and populate the index for only a subset of our dataset:
         metric="euclidean",
         brain_key="milvus_index",
         backend="milvus",
-        collection_name="custom-milvus-collection",
+        collection_name="custom_milvus_collection",
     )
 
     # Add embeddings for a subset of the dataset
@@ -764,8 +724,8 @@ euclidean distance, and populate the index for only a subset of our dataset:
     embeddings, sample_ids, _ = milvus_index.compute_embeddings(view)
     milvus_index.add_to_index(embeddings, sample_ids)
 
-    print(milvus_index.index)
+    print(milvus_index.collection)
 
     # The Milvus SDK is already initialized for you as well
-    from pymilvus import utility
-    print(utility.list_collections())
+    import pymilvus
+    print(pymilvus.utility.list_collections())
