@@ -988,9 +988,9 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
 
     This is not required when using external vector databases like
     like :ref:`Qdrant <qdrant-integration>`,
-    :ref: `Pinecone <pinecone-integration>`,
+    :ref:`Pinecone <pinecone-integration>`,
     :ref:`Milvus <milvus-integration>`, and
-    :ref: `LanceDB <lancedb-integration>`
+    :ref:`LanceDB <lancedb-integration>`
 
 .. note::
 
@@ -1098,9 +1098,9 @@ to delete embeddings from an index by their ID:
 
     This is not required when using external vector databases like
     like :ref:`Qdrant <qdrant-integration>`,
-    :ref: `Pinecone <pinecone-integration>`,
+    :ref:`Pinecone <pinecone-integration>`,
     :ref:`Milvus <milvus-integration>`, and
-    :ref: `LanceDB <lancedb-integration>`
+    :ref:`LanceDB <lancedb-integration>`
 
 Deleting an index
 ~~~~~~~~~~~~~~~~~
