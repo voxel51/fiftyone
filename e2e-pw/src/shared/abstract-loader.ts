@@ -1,8 +1,6 @@
 import { Page } from "@playwright/test";
 import { PythonRunner } from "./python-runner/python-runner";
 
-type ExitCode = number;
-
 type WebServerProcessConfig = {
   port: number;
   processId: number;
@@ -12,7 +10,17 @@ export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;
   protected webserverProcessConfig: WebServerProcessConfig;
 
+  /**
+   * This method is used to start the FiftyOne webserver.
+   *
+   * @param port port on which the webserver should be started
+   */
   abstract startWebServer(port: number): Promise<void>;
+
+  /**
+   * This method is used to stop the FiftyOne webserver.
+   *
+   */
   abstract stopWebServer(): Promise<void>;
 
   /**
