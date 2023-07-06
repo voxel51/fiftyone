@@ -155,8 +155,7 @@ To use the Pinecone backend, simply set the optional `backend` parameter of
     fob.compute_similarity(..., backend="pinecone", ...)
 
 Alternatively, you can permanently configure FiftyOne to use the Pinecone
-backend by setting the `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment
-variable:
+backend by setting the following environment variable:
 
 .. code-block:: shell
 
@@ -174,17 +173,14 @@ or by setting the `default_similarity_backend` parameter of your
 Authentication
 --------------
 
-In order to connect to a Pinecone server, you must provide your API key and
-environment, which can be done in a variety of ways.
+In order to connect to a Pinecone server, you must provide your credentials,
+which can be done in a variety of ways.
 
 **Environment variables (recommended)**
 
 The recommended way to configure your Pinecone credentials is to store them
-in the
-`FIFTYONE_BRAIN_SIMILARITY_PINECONE_API_KEY` and
-`FIFTYONE_BRAIN_SIMILARITY_PINECONE_ENVIRONMENT` environment variables. These
-are automatically accessed by FiftyOne whenever a connection to Pinecone is
-made.
+in the environment variables shown below, which are automatically accessed by
+FiftyOne whenever a connection to Pinecone is made:
 
 .. code-block:: shell
 
@@ -250,16 +246,21 @@ Pinecone config parameters
 The Pinecone backend supports a variety of query parameters that can be used to
 customize your similarity queries. These parameters include:
 
-*   **metric**: the distance/similarity metric to use for the index. If not
-    specified, the default value is `"cosine"`. Supported values are
-    `("cosine", "dotproduct", "euclidean")`
-*   **index_name**: the name of the Pinecone index to use or create. If not
-    specified, a new unique name is generated automatically
-*   **pods**: an optional number of pods to use when creating a new index
-*   **pod_type**: an optional pod type to use when creating a new index
-*   **replicas**: an optional number of replicas to use when creating a new
+-   **index_name** (*None*): the name of the Pinecone index to use or create.
+    If not specified, a new unique name is generated automatically
+-   **index_type** (*None*): the index type to use when creating a new index
+-   **namespace** (*None*): a namespace under which to store vectors added to
+    the index
+-   **metric** (*"cosine"*): the distance/similarity metric to use for the
+    index. Supported values are ``("cosine", "dotproduct", "euclidean")``
+-   **replicas** (*None*): an optional number of replicas to use when creating
+    a new index
+-   **shards** (*None*): an optional number of shards to use when creating a
+    new index
+-   **pods** (*None*): an optional number of pods to use when creating a new
     index
-*   **shards**: an optional number of shards to use when creating a new index
+-   **pod_type** (*None*): an optional pod type to use when creating a new
+    index
 
 For detailed information on these parameters, see the 
 `Pinecone documentation <https://docs.pinecone.io/docs/indexes>`_.
@@ -273,9 +274,7 @@ that includes all of the available parameters:
     {
         "similarity_backends": {
             "pinecone": {
-                "api_key": "XXXXXXXXXXXX",
-                "environment": "us-west1-gcp",
-                "project_name": null,
+                "index_name": "your-index",
                 "index_type": null,
                 "namespace": null,
                 "metric": "cosine",
@@ -298,7 +297,7 @@ a specific new index:
         ...
         backend="pinecone",
         brain_key="pinecone_index",
-        index_name="your-index-name",
+        index_name="your-index",
         metric="cosine",
         pod_type="s1",
         pods=2,
