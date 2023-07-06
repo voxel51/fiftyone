@@ -51,9 +51,35 @@ const Filter = ({ modal }: { modal: boolean }) => {
 
   return (
     <FilterInputDiv>
+      <Box alignItems={"center"} display="flex">
+        {isFilterMode && (
+          <Tooltip text="Toggle to visibility mode" placement="bottom-start">
+            <FilterAltIcon
+              onClick={() => setIsFilterMode(false)}
+              sx={{
+                color: theme.text.tertiary,
+                "&:hover": { color: theme.text.primary },
+                margin: "auto 0.25rem",
+              }}
+            />
+          </Tooltip>
+        )}
+        {!isFilterMode && (
+          <Tooltip text="Toggle to filter mode" placement="bottom-start">
+            <VisibilityIcon
+              onClick={() => setIsFilterMode(true)}
+              sx={{
+                color: theme.text.tertiary,
+                "&:hover": { color: theme.text.primary },
+                margin: "auto 0.25rem",
+              }}
+            />
+          </Tooltip>
+        )}
+      </Box>
       <input
         type={"text"}
-        placeholder={"FILTER"}
+        placeholder={isFilterMode ? "FILTER" : "VISIBILITY"}
         value={value}
         maxLength={140}
         onChange={({ target }) => {
@@ -117,28 +143,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
               }}
             />
           </Tooltip>
-          {isFilterMode && (
-            <Tooltip text="Toggle to visibility mode" placement="bottom-center">
-              <FilterAltIcon
-                onClick={() => setIsFilterMode(false)}
-                sx={{
-                  color: theme.text.tertiary,
-                  "&:hover": { color: theme.text.primary },
-                }}
-              />
-            </Tooltip>
-          )}
-          {!isFilterMode && (
-            <Tooltip text="Toggle to filter mode" placement="bottom-center">
-              <VisibilityIcon
-                onClick={() => setIsFilterMode(true)}
-                sx={{
-                  color: theme.text.tertiary,
-                  "&:hover": { color: theme.text.primary },
-                }}
-              />
-            </Tooltip>
-          )}
         </Box>
       )}
     </FilterInputDiv>
