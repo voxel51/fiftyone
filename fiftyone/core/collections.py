@@ -1620,17 +1620,10 @@ class SampleCollection(object):
                     label_ids = self.values(id_path)
 
             for _label_ids in fou.iter_batches(label_ids, 100000):
+                _label_ids = [_id for _id in _label_ids if _id is not None]
                 ops.append(
                     UpdateMany(
-                        {
-                            _id_path: {
-                                "$in": [
-                                    _id
-                                    for _id in _label_ids
-                                    if _id is not None
-                                ]
-                            }
-                        },
+                        {_id_path: {"$in": _label_ids}},
                         update,
                     )
                 )

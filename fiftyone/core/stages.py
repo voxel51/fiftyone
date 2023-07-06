@@ -1920,7 +1920,7 @@ def _get_filter_frames_field_pipeline(
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
 
     if "." in new_field:
-        parent, child = new_field.split(".")
+        parent, child = new_field.split(".", 1)
         obj = {
             "$cond": {
                 "if": {"$gt": ["$$frame." + filter_field, None]},
