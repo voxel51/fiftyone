@@ -1,29 +1,51 @@
-import { expect, Locator, Page, test } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
+import { Duration } from "../utils";
+import { ModalSidebarPom } from "./modal-sidebar";
 
 export class ModalPom {
   readonly page: Page;
+  readonly sidebarPom: ModalSidebarPom;
+  readonly modal: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.sidebarPom = new ModalSidebarPom(page);
+
+    this.modal = page.getByTestId("modal");
   }
 
-  getModal() {
-    return this.page.getByTestId("modal");
+  async navigateSample(direction: "forward" | "backward") {
+    const currentSampleId = await this.sidebarPom.getSampleId();
+
+    await this.modal
+      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
+      .click();
+
+    // wait for sample id to change
+    await this.page.waitForFunction((currentSampleId) => {
+      const sampleId = document.querySelector(
+        "[data-cy=sidebar-entry-id]"
+      )?.textContent;
+      return sampleId !== currentSampleId;
+    }, currentSampleId);
+
+    return this.waitForSampleToLoad();
   }
 
   async navigateNextSample() {
-    await this.page.getByTestId("nav-right-button").click();
+    return this.navigateSample("forward");
   }
+
   async navigatePreviousSample() {
-    await this.page.getByTestId("nav-left-button").click();
+    return this.navigateSample("backward");
   }
 
   async getGroupPinnedText() {
-    return this.page.getByTestId("pinned-slice-bar-description").textContent();
+    return this.modal.getByTestId("pinned-slice-bar-description").textContent();
   }
 
   getLooker3d() {
-    return this.getModal().getByTestId("looker3d");
+    return this.modal.getByTestId("looker3d");
   }
 
   async clickOnLooker3d() {
@@ -31,7 +53,7 @@ export class ModalPom {
   }
 
   getLooker() {
-    return this.getModal().getByTestId("looker").last();
+    return this.modal.getByTestId("looker").last();
   }
 
   async clickOnLooker() {
@@ -39,8 +61,25 @@ export class ModalPom {
   }
 
   getGroupContainer() {
-    return this.getModal().getByTestId("group-container");
+    return this.modal.getByTestId("group-container");
   }
 
   getCarousel() {}
+
+  async waitForSampleToLoad() {
+    return this.page.waitForFunction(
+      () => {
+        const canvas = document.querySelector(
+          "[data-cy=modal-looker-container] canvas"
+        );
+
+        if (!canvas) {
+          return false;
+        }
+
+        return canvas.getAttribute("sample-loaded") === "true";
+      },
+      { timeout: Duration.Seconds(10) }
+    );
+  }
 }

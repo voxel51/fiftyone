@@ -5,6 +5,9 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
 
+const FIRST_SAMPLE_FILENAME = "003037.png";
+const SECOND_SAMPLE_FILENAME = "007195.png";
+
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page }, use) => {
     await use(new GridPom(page));
@@ -35,8 +38,9 @@ test.describe("quickstart-groups", () => {
   });
 
   test.describe("modal", () => {
-    test.beforeEach(async ({ page, grid, fiftyoneLoader }) => {
+    test.beforeEach(async ({ modal, grid }) => {
       await grid.openFirstLooker();
+      await modal.waitForSampleToLoad();
     });
 
     test("shows correct pinned slice in modal", async ({ modal }) => {
@@ -48,6 +52,24 @@ test.describe("quickstart-groups", () => {
     }) => {
       await modal.clickOnLooker3d();
       expect(await modal.getGroupPinnedText()).toBe("pcd is pinned");
+    });
+
+    test("navigation works", async ({ modal }) => {
+      expect(await modal.sidebarPom.getSampleFilepath(false)).toEqual(
+        FIRST_SAMPLE_FILENAME
+      );
+
+      await modal.navigateNextSample();
+
+      expect(await modal.sidebarPom.getSampleFilepath(false)).toEqual(
+        SECOND_SAMPLE_FILENAME
+      );
+
+      await modal.navigatePreviousSample();
+
+      expect(await modal.sidebarPom.getSampleFilepath(false)).toEqual(
+        FIRST_SAMPLE_FILENAME
+      );
     });
   });
 });
