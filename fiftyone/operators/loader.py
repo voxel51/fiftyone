@@ -116,7 +116,7 @@ class PluginContext(object):
             if not os.path.isfile(module_path):
                 return
 
-            parent_dir = os.path.dirname(module_dir)
+            parent_dir = os.path.basename(module_dir)
             spec = importlib.util.spec_from_file_location(
                 parent_dir, module_path
             )
