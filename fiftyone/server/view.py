@@ -134,7 +134,7 @@ def get_view(
         # omit all dict field values for performance, not needed by grid
         view = _project_pagination_paths(view)
 
-    if filters or extended_stages:
+    if filters or extended_stages or count_label_tags:
         view = get_extended_view(
             view,
             filters,
