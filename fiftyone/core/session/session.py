@@ -20,9 +20,6 @@ import time
 import typing as t
 import webbrowser
 from uuid import uuid4
-from bson import json_util
-
-from bson import json_util
 
 try:
     import IPython.display
@@ -53,6 +50,7 @@ from fiftyone.core.session.events import (
     Refresh,
     SelectLabels,
     SelectSamples,
+    SetColorScheme,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -621,7 +619,6 @@ class Session(object):
         return self._state.color_scheme
 
     @color_scheme.setter  # type: ignore
-    @update_state()
     def color_scheme(self, color_scheme: t.Optional[food.ColorScheme]) -> None:
         if color_scheme is None:
             color_scheme = build_color_scheme(None, self.dataset, self.config)
@@ -633,6 +630,7 @@ class Session(object):
             )
 
         self._state.color_scheme = color_scheme
+        self._client.send_event(SetColorScheme.from_odm(color_scheme))
 
     @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
@@ -1152,6 +1150,15 @@ def _attach_listeners(session: "Session"):
         session._state, "selected_labels", event.labels
     )
     session._client.add_event_listener("select_labels", on_select_labels)
+
+    on_set_color_scheme: t.Callable[
+        [SetColorScheme], None
+    ] = lambda event: setattr(
+        session._state.dataset,
+        "color_scheme",
+        event.color_scheme,
+    )
+    session._client.add_event_listener("set_color_scheme", on_set_color_scheme)
 
     on_set_group_slice: t.Callable[
         [SetGroupSlice], None

@@ -1,5 +1,9 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import Flashlight, { Response } from "@fiftyone/flashlight";
+import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
+import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
+import { groupPaginationFragment, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
 import React, {
   MutableRefObject,
@@ -17,11 +21,6 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import { v4 as uuid } from "uuid";
-
-import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
-import * as foq from "@fiftyone/relay";
-import * as fos from "@fiftyone/state";
-import { groupPaginationFragment, useBrowserStorage } from "@fiftyone/state";
 
 const process = (
   next: MutableRefObject<number>,
@@ -225,7 +224,7 @@ const Column: React.FC = () => {
     useRecoilValueLoadable(
       fos.lookerOptions({ modal: true, withFilter: true })
     ),
-    useRecoilValue(fos.modal),
+    useRecoilValue(fos.modalSample),
     useRecoilValue(fos.selectedSamples),
   ]);
 

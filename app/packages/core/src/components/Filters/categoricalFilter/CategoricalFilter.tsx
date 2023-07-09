@@ -64,12 +64,7 @@ const categoricalSearchResults = selectorFamily<
       const search = get(categoricalSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
       const mixed = get(groupStatistics(modal)) === "group";
-      const group = get(groupId) || null;
-      let sampleId: string | undefined = undefined;
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
-      if (modal) {
-        sampleId = get(fos.modal)?.sample._id;
-      }
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
@@ -83,15 +78,16 @@ const categoricalSearchResults = selectorFamily<
         };
       } else {
         data = await getFetchFunction()("POST", "/values", {
-          dataset: get(fos.dataset).name,
+          dataset: get(fos.datasetName),
           view: get(fos.view),
           path,
           search,
           selected,
-          group_id: modal ? group : null,
+          group_id: modal ? get(groupId) || null : null,
           mixed,
-          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
-          sample_id: modal && !group && !mixed ? sampleId : null,
+          slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
+          sample_id:
+            modal && get(groupId) && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }

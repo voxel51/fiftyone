@@ -1,18 +1,18 @@
-import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
-import { v4 as uuid } from "uuid";
-
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
-
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import {
+  StateForm,
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
-import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
+import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
+import { v4 as uuid } from "uuid";
+import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { config } from "./config";
+import { modalSample, modalSampleIndex } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -303,7 +303,7 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
       const labels = get(atoms.hiddenLabels);
       const {
         sample: { _id },
-      } = get(atoms.modal);
+      } = get(modalSample);
 
       if (_id) {
         return Object.entries(labels)
@@ -429,17 +429,35 @@ export const mediaFields = selector<string[]>({
   },
 });
 
-export const modalNavigation = selector<atoms.ModalNavigation>({
-  key: "modalNavigation",
-  get: ({ get }) => get(atoms.modal).navigation,
+export const viewStateForm = selectorFamily<
+  StateForm,
+  {
+    addStages?: string;
+    modal?: boolean;
+    selectSlice?: boolean;
+    omitSelected?: boolean;
+  }
+>({
+  key: "viewStateForm",
+  get:
+    ({ addStages, modal, selectSlice, omitSelected }) =>
+    ({ get }) => {
+      return {
+        filters: get(modal ? modalFilters : filters),
+        sampleIds: omitSelected ? [] : [...get(selectedSamples)],
+        labels: get(selectedLabelList),
+        extended: get(extendedStages),
+        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        addStages: addStages ? JSON.parse(addStages) : [],
+      };
+    },
 });
-
 export const selectedPatchIds = selectorFamily({
   key: "selectedPatchIds",
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(atoms.modal);
+      const modal = get(modalSampleIndex) !== null;
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);

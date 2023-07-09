@@ -30,6 +30,7 @@ import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
+from fiftyone.server.color import ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 import fiftyone.server.events as fose
@@ -192,26 +193,6 @@ class SidebarGroup:
 
 
 @gql.type
-class LabelSetting:
-    value: str
-    color: str
-
-
-@gql.type
-class CustomizeColor:
-    path: str
-    field_color: t.Optional[str]
-    color_by_attribute: t.Optional[str]
-    value_colors: t.Optional[t.List[LabelSetting]]
-
-
-@gql.type
-class ColorScheme:
-    color_pool: t.Optional[t.List[str]] = None
-    fields: t.Optional[t.List[CustomizeColor]] = None
-
-
-@gql.type
 class KeypointSkeleton:
     labels: t.Optional[t.List[str]]
     edges: t.List[t.List[int]]
@@ -231,14 +212,15 @@ class SidebarMode(Enum):
 
 @gql.type
 class DatasetAppConfig:
+    color_scheme: t.Optional[ColorScheme]
     media_fields: t.Optional[t.List[str]]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
-    modal_media_field: t.Optional[str] = gql.field(default="filepath")
-    grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
-    color_scheme: t.Optional[ColorScheme]
+
+    grid_media_field: str = "filepath"
+    modal_media_field: str = "filepath"
 
 
 @gql.type
@@ -426,9 +408,15 @@ class Query(fosa.AggregateQuery):
         view: BSONArray,
         filter: SampleFilter,
         index: t.Optional[int] = None,
+        filters: t.Optional[JSON] = None,
     ) -> t.Optional[SampleItem]:
         samples = await paginate_samples(
-            dataset, view, None, 1, sample_filter=filter
+            dataset,
+            view,
+            filters,
+            1,
+            sample_filter=filter,
+            pagination_data=False,
         )
         if samples.edges:
             return samples.edges[0].node

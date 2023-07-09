@@ -54,45 +54,18 @@ export const filterPaths = (
     : [];
 };
 
-export const buildFlatExtendedSchema = (schema: Schema): Schema => {
-  const flatSchema = {} as Schema;
-  const fieldsQueue = [];
-  for (const fieldName in schema) {
-    const field = schema[fieldName];
-    fieldsQueue.push(field);
-  }
-  while (fieldsQueue?.length) {
-    const ff = fieldsQueue.shift();
-    const ffNest = ff?.fields;
-    const fieldPath = ff?.path;
+export const buildSchema = (
+  sampleFields: StrictField[],
+  frameFields: StrictField[]
+): Schema => {
+  const schema = sampleFields.reduce(schemaReduce, {});
 
-    if (ffNest) {
-      for (const fNested in ffNest) {
-        fieldsQueue.push(ffNest[fNested]);
-      }
-    }
-
-    flatSchema[fieldPath] = {
-      ...ff,
-      visible: false,
-    };
-  }
-
-  return flatSchema;
-};
-
-export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
-  const schema = dataset.sampleFields.reduce(schemaReduce, {});
-
-  // TODO: mixed datasets - test video
-  if (dataset.frameFields && dataset.frameFields.length) {
+  if (frameFields && frameFields.length) {
     schema.frames = {
       path: "frames",
       ftype: LIST_FIELD,
       name: "frames",
-      fields: flat
-        ? buildFlatExtendedSchema(dataset.frameFields.reduce(schemaReduce, {}))
-        : dataset.frameFields.reduce(schemaReduce, {}),
+      fields: frameFields.reduce(schemaReduce, {}),
       dbField: null,
       description: null,
       info: null,
@@ -101,22 +74,13 @@ export const buildSchema = (dataset: State.Dataset, flat = false): Schema => {
     };
   }
 
-  if (flat) {
-    return buildFlatExtendedSchema(
-      dataset.sampleFields.reduce(schemaReduce, {})
-    );
-  }
-
   return schema;
 };
 
-export const fieldSchema = selectorFamily<
-  Schema,
-  { space: State.SPACE; flat?: boolean }
->({
+export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   key: "fieldSchema",
   get:
-    ({ space, flat = false }) =>
+    ({ space }) =>
     ({ get }) => {
       const dataset = get(atoms.dataset);
 
@@ -124,17 +88,10 @@ export const fieldSchema = selectorFamily<
         return {};
       }
 
-      if (flat) {
-        return buildFlatExtendedSchema(
-          (space === State.SPACE.FRAME
-            ? dataset.frameFields
-            : dataset.sampleFields
-          ).reduce(schemaReduce, {})
-        );
-      }
-
       return (
-        space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
+        space === State.SPACE.FRAME
+          ? get(atoms.frameFields)
+          : get(atoms.sampleFields)
       ).reduce(schemaReduce, {});
     },
 });
@@ -189,6 +146,9 @@ export const fullSchema = selector<Schema>({
           embeddedDocType: null,
           subfield: "Frame",
           dbField: null,
+          info: null,
+          path: "frames",
+          description: null,
         },
       } as Schema;
     }

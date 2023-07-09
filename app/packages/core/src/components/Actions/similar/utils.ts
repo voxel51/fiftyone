@@ -1,10 +1,5 @@
 import * as fos from "@fiftyone/state";
-import {
-  Method,
-  ModalSample,
-  selectedLabels,
-  useBrowserStorage,
-} from "@fiftyone/state";
+import { Method, selectedLabels, useBrowserStorage } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { Snapshot, selectorFamily, useRecoilCallback } from "recoil";
@@ -31,7 +26,7 @@ export const getQueryIds = async (
     await snapshot.getPromise(fos.selectedSamples)
   );
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
-  const modal = await snapshot.getPromise(fos.modal);
+  const modal = await snapshot.getPromise(fos.modalSample);
 
   if (isPatches) {
     if (selectedSamples.length) {
@@ -45,14 +40,14 @@ export const getQueryIds = async (
       });
     }
 
-    return modal?.sample[labels_field]._id as string;
+    return modal.sample[labels_field]._id as string;
   }
 
   if (selectedSamples.length) {
     return [...selectedSamples];
   }
 
-  return modal?.sample._id;
+  return modal.id;
 };
 
 export const useSortBySimilarity = (close) => {
@@ -165,7 +160,7 @@ const availablePatchesSimilarityKeys = selectorFamily<
             .filter(([_, field]) => fields.has(field))
             .map(([key]) => key);
         } else {
-          const { sample } = get(fos.modal) as ModalSample;
+          const { sample } = get(fos.modalSample);
 
           return patches.filter(([_, v]) => sample[v]).map(([key]) => key);
         }

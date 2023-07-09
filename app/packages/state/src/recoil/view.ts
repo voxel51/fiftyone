@@ -7,8 +7,9 @@ import {
   viewFragment,
   viewFragment$key,
 } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { State } from "./types";
+import { getSanitizedGroupByExpression } from "./utils";
 
 export const stageDefinitions = graphQLSyncFragmentAtom<
   stageDefinitionsFragment$key,
@@ -212,8 +213,8 @@ export const dynamicGroupParameters =
       if (isFlat) return null;
 
       return {
-        groupBy: groupByViewStageNode.kwargs[0][1], // first index is 'field_or_expr', which defines group-by
-        orderBy: groupByViewStageNode.kwargs[1][1], // second index is 'order_by', which defines order-by
+        groupBy: groupByViewStageNode.kwargs[0][1] as string, // first index is 'field_or_expr', which defines group-by
+        orderBy: groupByViewStageNode.kwargs[1][1] as string, // second index is 'order_by', which defines order-by
       };
     },
   });
@@ -225,7 +226,7 @@ export const isDynamicGroup = selector<boolean>({
   },
 });
 
-export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
+export const dynamicGroupViewQuery = selectorFamily<State.Stage[], string>({
   key: "dynamicGroupViewQuery",
   get:
     (fieldOrExpression) =>
@@ -272,6 +273,7 @@ export const dynamicGroupViewQuery = selectorFamily<Stage[], string>({
           _cls: SORT_VIEW_STAGE,
           kwargs: [
             ["field_or_expr", orderBy],
+            // @ts-ignore
             ["reverse", false],
           ],
         });

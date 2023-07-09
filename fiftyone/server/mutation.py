@@ -14,13 +14,7 @@ import eta.core.serial as etas
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
-from fiftyone.core.session.events import (
-    SelectLabels,
-    SelectSamples,
-    SetSpaces,
-    SetGroupSlice,
-    StateUpdate,
-)
+import fiftyone.core.session.events as fose
 from fiftyone.core.session.events import StateUpdate
 from fiftyone.core.session.session import build_color_scheme
 from fiftyone.core.spaces import default_spaces, Space
@@ -28,6 +22,7 @@ import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.color import SetColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.inputs import SelectedLabel
@@ -35,7 +30,7 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view
 
 
@@ -61,14 +56,8 @@ class SavedViewInfo:
     color: t.Optional[str] = None
 
 
-@gql.input
-class ColorSchemeInput:
-    color_pool: t.Optional[t.List[str]] = None
-    fields: t.Optional[JSONArray] = None
-
-
 @gql.type
-class Mutation:
+class Mutation(SetColorScheme):
     @gql.mutation
     async def set_dataset(
         self,
@@ -89,6 +78,18 @@ class Mutation:
             None, state.dataset, state.config
         )
         await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_group_slice(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        slice: str,
+    ) -> bool:
+        state = get_state()
+        state.dataset.group_slice = slice
+        await dispatch_event(subscription, fose.SetGroupSlice(slice=slice))
         return True
 
     @gql.mutation
@@ -133,7 +134,9 @@ class Mutation:
         session: t.Optional[str],
         selected: t.List[str],
     ) -> bool:
-        await dispatch_event(subscription, SelectSamples(sample_ids=selected))
+        await dispatch_event(
+            subscription, fose.SelectSamples(sample_ids=selected)
+        )
         return True
 
     @gql.mutation
@@ -147,7 +150,7 @@ class Mutation:
 
         state.selected_labels = [asdict(l) for l in selected_labels]
         await dispatch_event(
-            subscription, SelectLabels(labels=selected_labels)
+            subscription, fose.SelectLabels(labels=selected_labels)
         )
         return True
 
@@ -223,18 +226,6 @@ class Mutation:
     @gql.mutation
     async def store_teams_submission(self) -> bool:
         etas.write_json({"submitted": True}, foc.TEAMS_PATH)
-        return True
-
-    @gql.mutation
-    async def set_group_slice(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        slice: str,
-    ) -> bool:
-        state = get_state()
-        state.dataset.group_slice = slice
-        await dispatch_event(subscription, SetGroupSlice(slice=slice))
         return True
 
     @gql.mutation
@@ -392,35 +383,7 @@ class Mutation:
     ) -> bool:
         state = get_state()
         state.spaces = Space.from_dict(spaces)
-        await dispatch_event(subscription, SetSpaces(spaces=spaces))
-        return True
-
-    @gql.mutation
-    async def set_color_scheme(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        dataset: str,
-        stages: BSONArray,
-        color_scheme: ColorSchemeInput,
-        save_to_app: bool,
-    ) -> bool:
-        state = get_state()
-        view = get_view(dataset, stages=stages)
-        state.color_scheme = foo.ColorScheme(
-            color_pool=color_scheme.color_pool,
-            fields=color_scheme.fields,
-        )
-
-        if save_to_app:
-            view._dataset.app_config.color_scheme = foo.ColorScheme(
-                color_pool=color_scheme.color_pool,
-                fields=color_scheme.fields,
-            )
-            view._dataset.save()
-            state.view = view
-
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, fose.SetSpaces(spaces=spaces))
         return True
 
     @gql.mutation

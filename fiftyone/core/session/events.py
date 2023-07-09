@@ -14,9 +14,12 @@ import asyncio
 from bson import json_util
 from dacite import from_dict
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
+
 from fiftyone.core.config import AppConfig
+import fiftyone.core.odm.dataset as foo
 import fiftyone.core.state as fos
 from fiftyone.core.utils import run_sync_task
 
@@ -28,6 +31,7 @@ EventType = t.Union[
     "ReactivateNotebookCell",
     "SelectSamples",
     "SelectLabels",
+    "SetColorScheme",
     "SetGroupSlice",
     "SetSpaces",
     "StateUpdate",
@@ -146,6 +150,37 @@ class SelectLabels(Event):
 
 
 @dataclass
+class ValueColor:
+    color: str
+    value: str
+
+
+@dataclass
+class CustomizeColor:
+    path: str
+    field_color: str
+    color_by_attribute: bool = False
+    value_colors: t.Optional[t.List[ValueColor]] = None
+
+
+@dataclass
+class ColorScheme:
+    color_pool: t.Optional[t.List[str]] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
+
+
+@dataclass
+class SetColorScheme(Event):
+    """Set color scheme event"""
+
+    color_scheme: ColorScheme
+
+    @classmethod
+    def from_odm(cls, color_scheme: foo.ColorScheme):
+        return cls(color_scheme=color_scheme.to_dict())
+
+
+@dataclass
 class SetSpaces(Event):
     """Set spaces event"""
 
@@ -200,7 +235,7 @@ def add_screenshot(event: CaptureNotebookCell) -> None:
 
 def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
     return dict(
-        (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
+        (k, v.serialize() if isinstance(v, etas.Serializable) else v)
         for k, v in data
     )
 

@@ -4,7 +4,8 @@ import "@fiftyone/looker-3d";
 import "@fiftyone/map";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
-import { datasetQueryContext, modal } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
+import { datasetQueryContext } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
 import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
@@ -37,8 +38,7 @@ const DatasetPageQueryNode = graphql`
 
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
-  const isModalActive = Boolean(useRecoilValue(modal));
-
+  const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
   useEffect(() => {
     document
       .getElementById("modal")

@@ -1,22 +1,16 @@
-import React, { Fragment, useCallback, useRef } from "react";
-import styled from "styled-components";
-
+import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-
-import CloseIcon from "@mui/icons-material/Close";
-import { Box, Typography } from "@mui/material";
-
-import { Button, useTheme } from "@fiftyone/components";
-import { TabOption } from "../utils";
-
+import { useOutsideClick } from "@fiftyone/state";
 import useSchemaSettings, {
   TAB_OPTIONS,
-  TAB_OPTIONS_MAP,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
-
+import CloseIcon from "@mui/icons-material/Close";
+import { Box, Typography } from "@mui/material";
+import React, { Fragment, useCallback, useRef } from "react";
+import styled from "styled-components";
+import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useOutsideClick } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -49,6 +43,9 @@ const Container = styled.div`
   background: white;
 `;
 
+const FIELD_VISIBILITY_DOCUMENTATION_LINK =
+  "https://docs.voxel51.com/user_guide/app.html#app-field-visibility";
+
 const SchemaSettings = () => {
   const theme = useTheme();
 
@@ -66,12 +63,15 @@ const SchemaSettings = () => {
     setSelectedFieldsStage,
     datasetName,
     excludedPaths,
-    selectedPaths,
     resetExcludedPaths,
     setSelectedPaths,
     setLastAppliedPaths,
     lastAppliedPaths,
     setExcludedPaths,
+    isFilterRuleActive,
+    searchMetaFilter,
+    enabledSelectedPaths,
+    setShowNestedFields,
   } = useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -127,6 +127,7 @@ const SchemaSettings = () => {
               position: "relative",
               display: "flex",
               justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
             <Typography
@@ -135,10 +136,23 @@ const SchemaSettings = () => {
               fontSize="1.5rem"
               style={{
                 width: "100%",
+                letterSpacing: "0.05rem",
               }}
             >
               Field visibility
             </Typography>
+            <ExternalLink
+              style={{
+                color: theme.text.secondary,
+                display: "flex",
+                alignItems: "center",
+                marginRight: "0.5rem",
+              }}
+              title="Documentation"
+              href={FIELD_VISIBILITY_DOCUMENTATION_LINK}
+            >
+              <InfoIcon />
+            </ExternalLink>
             <CloseIcon
               sx={{
                 color: theme.text.primary,
@@ -153,6 +167,7 @@ const SchemaSettings = () => {
               overflow: "hidden",
               width: "100%",
               paddingTop: "0.5rem",
+              letterSpacing: "0.05rem",
             }}
           >
             <TabOption
@@ -164,18 +179,25 @@ const SchemaSettings = () => {
                   title: `Fiele ${value}`,
                   onClick: () => {
                     setSelectedTab(value);
+                    setShowNestedFields(false);
+                    setSelectedPaths({
+                      [datasetName]: new Set(lastAppliedPaths.selected),
+                    });
+                    setExcludedPaths({
+                      [datasetName]: new Set(lastAppliedPaths.excluded),
+                    });
                   },
                 };
               })}
             />
           </Box>
-          {selectedTab === TAB_OPTIONS_MAP.FILTER_RULE && (
+          {isFilterRuleActive && (
             <SchemaSearch
               setSearchTerm={setSearchTerm}
               searchTerm={searchTerm}
             />
           )}
-          {selectedTab === TAB_OPTIONS_MAP.SELECTION && <SchemaSelection />}
+          {!isFilterRuleActive && <SchemaSelection />}
           <Box
             style={{
               position: "sticky",
@@ -197,16 +219,25 @@ const SchemaSettings = () => {
               onClick={() => {
                 const initialFieldNames = [...excludedPaths[datasetName]];
 
-                const stageKwargs = {
-                  field_names: initialFieldNames,
-                  _allow_missing: true,
-                };
+                let stage;
+                if (isFilterRuleActive) {
+                  stage = {
+                    _cls: "fiftyone.core.stages.SelectFields",
+                    kwargs: {
+                      meta_filter: searchMetaFilter,
+                      _allow_missing: true,
+                    },
+                  };
+                } else {
+                  stage = {
+                    _cls: "fiftyone.core.stages.ExcludeFields",
+                    kwargs: {
+                      field_names: initialFieldNames,
+                      _allow_missing: true,
+                    },
+                  };
+                }
 
-                const stageCls = "fiftyone.core.stages.ExcludeFields";
-                const stage = {
-                  _cls: stageCls,
-                  kwargs: stageKwargs,
-                };
                 try {
                   setSelectedFieldsStage(stage);
                 } catch (e) {
@@ -215,7 +246,7 @@ const SchemaSettings = () => {
                   setSettingsModal({ open: false });
                 }
                 setLastAppliedPaths({
-                  selected: selectedPaths[datasetName],
+                  selected: enabledSelectedPaths[datasetName],
                   excluded: excludedPaths[datasetName],
                 });
               }}

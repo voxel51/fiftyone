@@ -105,7 +105,7 @@ export default function ViewSelection() {
 
   const loadedView = useRecoilValue(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
-  const extendedStagesVal = useRecoilValue(extendedStages);
+  const extendedStagesVal = useRecoilValue(fos.extendedStages);
   const isEmptyView =
     !bookmarkIconOn && !loadedView?.length && extendedStagesVal?.length > 2;
 

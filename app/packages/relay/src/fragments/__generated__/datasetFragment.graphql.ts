@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<606594e718002de971be784a3bbe59e7>>
+ * @generated SignedSource<<baca08a40e7bc0e12ceba7894c8ffafd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,9 +15,9 @@ export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetFragment$data = {
   readonly appConfig: {
-    readonly gridMediaField: string | null;
+    readonly gridMediaField: string;
     readonly mediaFields: ReadonlyArray<string> | null;
-    readonly modalMediaField: string | null;
+    readonly modalMediaField: string;
     readonly plugins: object | null;
     readonly sidebarMode: SidebarMode | null;
   } | null;

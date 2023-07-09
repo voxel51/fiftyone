@@ -173,6 +173,7 @@ const ViewBar = React.memo(() => {
       </ViewBarDiv>
       <IconsContainer>
         <Close
+          data-cy="btn-clear-view-bar"
           onClick={() => send("CLEAR")}
           style={{
             cursor: "pointer",

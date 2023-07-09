@@ -73,21 +73,24 @@ export interface SelectorProps<T> {
   onMouseEnter?: React.MouseEventHandler;
 }
 
-const Selector = <T extends unknown>({
-  id,
-  value,
-  onSelect,
-  placeholder,
-  useSearch,
-  component,
-  toKey = (value) => String(value),
-  inputStyle,
-  inputClassName,
-  containerStyle,
-  resultsPlacement,
-  overflow = false,
-  onMouseEnter,
-}: SelectorProps<T>) => {
+const Selector = <T extends unknown>(props: SelectorProps<T>) => {
+  const {
+    id,
+    value,
+    onSelect,
+    placeholder,
+    useSearch,
+    component,
+    toKey = (value) => String(value),
+    inputStyle,
+    inputClassName,
+    containerStyle,
+    resultsPlacement,
+    overflow = false,
+    onMouseEnter,
+    ...otherProps
+  } = props;
+
   const [editing, setEditing] = useState(false);
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
@@ -138,6 +141,7 @@ const Selector = <T extends unknown>({
 
   return (
     <div
+      {...otherProps}
       onMouseEnter={() => {
         hovering.current = true;
       }}

@@ -44,7 +44,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
   const { field, expandedPath } = prop;
   const path = field?.path;
-  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
   const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
   const coloring = useRecoilValue(fos.coloring(false));
@@ -142,7 +142,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
         valueColors: [],
       } as fos.CustomizeColor;
       const newSetting = [...copy, defaultSetting];
-      setColorScheme(false, { colorPool, fields: newSetting });
+      setColorScheme({ colorPool, fields: newSetting });
     }
     setState({
       useLabelColors: Boolean(
@@ -180,7 +180,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
                 newSetting[index].fieldColor = v
                   ? setting?.fieldColor
                   : undefined;
-                setColorScheme(false, {
+                setColorScheme({
                   colorPool,
                   fields: newSetting,
                 });
@@ -260,7 +260,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
                 if (field.embeddedDocType && !v) {
                   newSetting[index].colorByAttribute = undefined;
                 }
-                setColorScheme(false, {
+                setColorScheme({
                   colorPool,
                   fields: newSetting,
                 });

@@ -87,6 +87,106 @@ class LabelTests(unittest.TestCase):
         self.assertIsInstance(detection2.embedding, np.ndarray)
         self.assertEqual(detection2["custom_id"], detection["custom_id"])
 
+    @drop_datasets
+    def test_dynamic_label_fields(self):
+        dynamic_doc = fo.DynamicEmbeddedDocument(
+            classification=fo.Classification(label="label"),
+            classifications=fo.Classifications(
+                classifications=[fo.Classification(label="label")]
+            ),
+        )
+        sample = fo.Sample(filepath="image.jpg", dynamic=dynamic_doc)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+
+        label_id = dynamic_doc["classification"].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "field": "dynamic.classification",
+                }
+            ]
+        )
+        dynamic = view.first().dynamic
+        self.assertTrue(label_id == dynamic.classification.id)
+        self.assertFalse("classifications" in dynamic)
+
+        label_id = dynamic_doc["classifications"].classifications[0].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "field": "dynamic.classifications",
+                }
+            ]
+        )
+        dynamic = view.first().dynamic
+        self.assertTrue(
+            label_id == dynamic.classifications.classifications[0].id
+        )
+        self.assertFalse("classification" in dynamic)
+
+    @drop_datasets
+    def test_dynamic_label_tags(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            dynamic=fo.DynamicEmbeddedDocument(
+                classification=fo.Classification(label="hi"),
+                classifications=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="spam"),
+                        fo.Classification(label="eggs"),
+                    ]
+                ),
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="image2.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        label_fields = set(dataset._get_label_fields())
+
+        self.assertSetEqual(
+            label_fields,
+            {
+                "dynamic.classification",
+                "dynamic.classifications",
+            },
+        )
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels("test")
+
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 3})
+
+        dataset.untag_labels("test")
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels("test", label_fields="dynamic.classifications")
+
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 2})
+        self.assertDictEqual(
+            dataset.count_label_tags(label_fields="dynamic.classifications"),
+            {"test": 2},
+        )
+
+        dataset.untag_labels("test", label_fields="dynamic.classifications")
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+        self.assertDictEqual(
+            dataset.count_label_tags(label_fields="dynamic.classifications"),
+            {},
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

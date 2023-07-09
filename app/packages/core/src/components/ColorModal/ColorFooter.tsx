@@ -29,7 +29,7 @@ const ColorFooter: React.FC = () => {
     fos.activeColorField
   );
   const savedSettings = useRecoilValue(fos.datasetAppConfig).colorScheme;
-  const colorScheme = useRecoilValue(fos.sessionColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
   const setReset = useSetRecoilState(resetColor);
 
   const hasSavedSettings = useMemo(() => {

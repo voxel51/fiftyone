@@ -13,33 +13,10 @@ import {
 } from "@fiftyone/relay";
 import { Field, StrictField } from "@fiftyone/utilities";
 import { AtomEffect, DefaultValue, atom, atomFamily } from "recoil";
+import { ModalSample } from "..";
 import { sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
-import { ColorSchemeSetting, State } from "./types";
-
-export interface AppSample extends Sample {
-  _id: string;
-  support?: [number, number];
-}
-
-export interface SampleData {
-  sample: AppSample;
-  aspectRatio: number;
-  frameRate?: number;
-  frameNumber?: number;
-  urls: {
-    [field: string]: string;
-  };
-}
-
-export interface ModalNavigation {
-  index: number;
-  setIndex: (index: number) => void;
-}
-
-export interface ModalSample extends SampleData {
-  navigation: ModalNavigation;
-}
+import { State } from "./types";
 
 export const refresher = atom<number>({
   key: "refresher",
@@ -476,6 +453,11 @@ export const canEditSavedViews = sessionAtom({
   default: true,
 });
 
+export const canEditCustomColors = sessionAtom({
+  key: "canEditCustomColors",
+  default: true,
+});
+
 export const readOnly = sessionAtom({
   key: "readOnly",
   default: false,
@@ -508,15 +490,7 @@ export const activeColorField = atom<
   default: null,
 });
 
-export const sessionColorScheme = atom<ColorSchemeSetting>({
-  key: "sessionColorScheme",
-  default: {
-    colorPool: [],
-    fields: [],
-  },
-});
-
-export const isUsingSessionColorScheme = atom<boolean>({
-  key: "isUsingSessionColorScheme",
-  default: false,
+export const colorScheme = sessionAtom({
+  key: "colorScheme",
+  default: { fields: [], colorPool: [] },
 });

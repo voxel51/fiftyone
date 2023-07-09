@@ -45,7 +45,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
 
   const setColorScheme = fos.useSetSessionColorScheme();
   const activeField = useRecoilValue(fos.activeColorField).field as Field;
-  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
   const index = fields.findIndex((s) => s.path == activeField.path);
 
   const options = eligibleFields.map((field) => ({
@@ -55,7 +55,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
       const copy = cloneDeep(fields);
       if (index > -1) {
         copy[index].colorByAttribute = field.path?.split(".").slice(-1)[0];
-        setColorScheme(false, { colorPool, fields: copy });
+        setColorScheme({ colorPool, fields: copy });
         setOpen(false);
       }
     },

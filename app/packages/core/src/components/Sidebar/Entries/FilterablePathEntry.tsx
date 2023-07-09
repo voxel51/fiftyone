@@ -1,3 +1,28 @@
+import { PillButton, useTheme } from "@fiftyone/components";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
+import * as fos from "@fiftyone/state";
+import {
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DETECTION,
+  DETECTIONS,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  Field,
+  INT_FIELD,
+  KEYPOINTS,
+  LABELS,
+  LABELS_PATH,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  VALID_KEYPOINTS,
+  VALID_PRIMITIVE_TYPES,
+  meetsFieldType,
+  withPath,
+} from "@fiftyone/utilities";
 import {
   KeyboardArrowDown,
   KeyboardArrowUp,
@@ -5,7 +30,7 @@ import {
 } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
 import Color from "color";
-import React, { useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -13,41 +38,12 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-
-import {
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DETECTION,
-  DETECTIONS,
-  Field,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  FRAME_SUPPORT_FIELD,
-  INT_FIELD,
-  KEYPOINTS,
-  LABELS,
-  LABELS_PATH,
-  LIST_FIELD,
-  meetsFieldType,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  VALID_KEYPOINTS,
-  VALID_PRIMITIVE_TYPES,
-  withPath,
-} from "@fiftyone/utilities";
-
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import {
   BooleanFieldFilter,
   NumericFieldFilter,
   StringFieldFilter,
 } from "../../Filters";
-
-import { PillButton, useTheme } from "@fiftyone/components";
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
-import * as fos from "@fiftyone/state";
-
-import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
@@ -180,7 +176,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     (path) =>
     ({ get }) => {
       const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+      const sampleId = get(fos.modalSampleId);
 
       if (data[sampleId]) {
         return data[sampleId][path] || [];
@@ -192,7 +188,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     (path) =>
     ({ set, get }, value) => {
       const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+      const sampleId = get(fos.modalSampleId);
 
       set(fos.pathHiddenLabelsMap, {
         ...data,
@@ -204,7 +200,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     },
 });
 
-const useHidden = (path: string) => {
+const Hidden = ({ path }: { path: string }) => {
   const [hidden, set] = useRecoilState(hiddenPathLabels(path));
   const num = hidden.length;
   const text = num.toLocaleString();
@@ -302,8 +298,6 @@ const FilterableEntry = ({
 
   const active = useRecoilValue(fos.activeField({ modal, path }));
 
-  const hidden = modal ? useHidden(path) : null;
-
   const onClick = useOnClick({ disabled, modal, path });
   const isLabelTag = path === "_label_tags";
 
@@ -328,6 +322,7 @@ const FilterableEntry = ({
                 padding: 0,
               }}
               key="checkbox"
+              data-cy={`checkbox-${path}`}
               onClick={onClick}
             />
           )}
@@ -343,7 +338,11 @@ const FilterableEntry = ({
                       {PATH_OVERRIDES[path] || path}
                     </span>
                   </span>
-                  {hidden}
+                  {modal && (
+                    <Suspense>
+                      <Hidden path={path} />
+                    </Suspense>
+                  )}
                   <PathEntryCounts
                     key="count"
                     modal={modal}

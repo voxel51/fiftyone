@@ -2,28 +2,27 @@ import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
+import { Link } from "@mui/material";
+import colorString from "color-string";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
-import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
-import colorString from "color-string";
-import { Link } from "@mui/material";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
-  const sessionColor = useRecoilValue(fos.sessionColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
 
   const setting = useMemo(() => {
     return {
-      colorPool: sessionColor?.colorPool ?? [],
-      fields: validateJSONSetting(sessionColor?.fields ?? []),
+      colorPool: colorScheme?.colorPool ?? [],
+      fields: validateJSONSetting(colorScheme.fields),
     };
-  }, [sessionColor]);
+  }, [colorScheme]);
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
@@ -51,7 +50,7 @@ const JSONViewer: React.FC = () => {
       colorPool: validColors,
       fields: validatedSetting,
     });
-    setColorScheme(false, {
+    setColorScheme({
       colorPool: validColors,
       fields: validatedSetting,
     });

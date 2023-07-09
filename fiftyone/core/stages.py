@@ -30,7 +30,7 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
-from fiftyone.core.fields import EmbeddedDocumentField
+from fiftyone.core.fields import EmbeddedDocumentField, ListField
 
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
@@ -818,7 +818,7 @@ class ExcludeFields(ViewStage):
         if not excluded_paths:
             return []
 
-        return [{"$unset": excluded_paths}]
+        return [{"$project": {p: False for p in excluded_paths}}]
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -1135,7 +1135,7 @@ class ExcludeFrames(ViewStage):
     def to_mongo(self, _):
         frame_ids = [ObjectId(_id) for _id in self._frame_ids]
         select_expr = F("frames").filter(~F("_id").is_in(frame_ids))
-        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+        pipeline = [{"$addFields": {"frames": select_expr.to_mongo()}}]
 
         if self._omit_empty:
             non_empty_expr = F("frames").length() > 0
@@ -1884,7 +1884,7 @@ def _get_filter_field_pipeline(
 
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 new_field: {
                     "$cond": {
                         "if": cond,
@@ -1917,7 +1917,7 @@ def _get_filter_frames_field_pipeline(
 
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 "frames": {
                     "$map": {
                         "input": "$frames",
@@ -2436,7 +2436,7 @@ def _get_filter_list_field_pipeline(
     cond = _get_list_field_mongo_filter(filter_arg)
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 new_field: {
                     "$filter": {
                         "input": "$" + filter_field,
@@ -2471,7 +2471,7 @@ def _get_filter_frames_list_field_pipeline(
 
     pipeline = [
         {
-            "$set": {
+            "$addFields": {
                 "frames": {
                     "$map": {
                         "input": "$frames",
@@ -2515,46 +2515,47 @@ def _get_frames_list_field_only_matches_expr(field):
 
 
 def _get_trajectories_filter(sample_collection, field, filter_arg):
+    root, is_list_field = sample_collection._get_label_field_root(field)
+    root, is_frame_field = sample_collection._handle_frame_field(root)
     label_type = sample_collection._get_label_field_type(field)
-    path, is_frame_field = sample_collection._handle_frame_field(field)
 
     if not is_frame_field:
         raise ValueError(
             "Filtering trajectories is only supported for frame fields"
         )
 
-    if issubclass(label_type, (fol.Detections, fol.Polylines, fol.Keypoints)):
-        path += "." + label_type._LABEL_LIST_FIELD
+    if label_type not in fol._INDEX_FIEDS:
+        raise ValueError(
+            "Cannot filter trajectories for field '%s' of type %s"
+            % (field, fol._INDEX_FIEDS)
+        )
+
+    if is_list_field:
         cond = _get_list_trajectory_mongo_filter(filter_arg)
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
-            (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")),
+            (F(root) != None).if_else(
+                F(root).filter(filter_expr).map(F("index")),
                 [],
             )
         )
-    elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
+    else:
         cond = _get_trajectory_mongo_filter(filter_arg)
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = (
-            F(path)
+            F(root)
             .apply(filter_expr)
-            .if_else(VALUE.append(F(path + ".index")), VALUE)
-        )
-    else:
-        raise ValueError(
-            "Cannot filter trajectories for field '%s' of type %s"
-            % (field, label_type)
+            .if_else(VALUE.append(F(root + ".index")), VALUE)
         )
 
     # union() removes duplicates
     indexes_expr = F("frames").reduce(reduce_expr, []).union()
 
-    set_pipeline = [{"$set": {"_indexes": indexes_expr.to_mongo()}}]
+    set_pipeline = [{"$addFields": {"_indexes": indexes_expr.to_mongo()}}]
     label_filter = (F("$_indexes") != None) & F("$_indexes").contains(
         [F("index")]
     )
-    unset_pipeline = [{"$unset": "_indexes"}]
+    unset_pipeline = [{"$project": {"_indexes": False}}]
 
     return set_pipeline, label_filter, unset_pipeline
 
@@ -3088,7 +3089,10 @@ class GeoNear(_GeoStage):
         if self._query is not None:
             geo_near_expr["query"] = self._query
 
-        return [{"$geoNear": geo_near_expr}, {"$unset": distance_field}]
+        return [
+            {"$geoNear": geo_near_expr},
+            {"$project": {distance_field: False}},
+        ]
 
     def _kwargs(self):
         return [
@@ -3383,9 +3387,9 @@ class GroupBy(ViewStage):
             order = -1 if self._reverse else 1
             pipeline.extend(
                 [
-                    {"$set": {"_sort_field": sort_expr}},
+                    {"$addFields": {"_sort_field": sort_expr}},
                     {"$sort": {"_sort_field": order}},
-                    {"$unset": "_sort_field"},
+                    {"$project": {"_sort_field": False}},
                 ]
             )
 
@@ -3864,9 +3868,15 @@ class LimitLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        list_field, is_frame_field = _parse_labels_list_field(
+        list_field, is_list_field, is_frame_field = _parse_labels_field(
             sample_collection, self._field
         )
+
+        if not is_list_field:
+            raise ValueError(
+                "Field '%s' does not contain a list of labels" % self._field
+            )
+
         self._labels_list_field = list_field
         self._is_frame_field = is_frame_field
 
@@ -4674,7 +4684,7 @@ class MatchFrames(ViewStage):
     def to_mongo(self, _):
         pipeline = [
             {
-                "$set": {
+                "$addFields": {
                     "frames": {
                         "$filter": {
                             "input": "$frames",
@@ -5088,7 +5098,9 @@ class MatchLabels(ViewStage):
 
         # Delete temporary fields
         if fields_map:
-            pipeline.append({"$unset": list(fields_map.values())})
+            pipeline.append(
+                {"$project": {f: False for f in fields_map.values()}}
+            )
 
         return pipeline
 
@@ -5367,14 +5379,14 @@ class Mongo(ViewStage):
 
         stage = fo.Mongo([
             {
-                "$set": {
+                "$addFields": {
                     "_sort_field": {
                         "$size": {"$ifNull": ["$predictions.detections", []]}
                     }
                 }
             },
             {"$sort": {"_sort_field": -1}},
-            {"$unset": "_sort_field"}
+            {"$project": {"_sort_field": False}},
         ])
         view = dataset.add_stage(stage)
 
@@ -5510,12 +5522,12 @@ class Select(ViewStage):
             pipeline.extend(
                 [
                     {
-                        "$set": {
+                        "$addFields": {
                             "_select_order": {"$indexOfArray": [ids, "$_id"]}
                         }
                     },
                     {"$sort": {"_select_order": 1}},
-                    {"$unset": "_select_order"},
+                    {"$project": {"_select_order": False}},
                 ]
             )
 
@@ -5636,14 +5648,14 @@ class SelectBy(ViewStage):
             pipeline.extend(
                 [
                     {
-                        "$set": {
+                        "$addFields": {
                             "_select_order": {
                                 "$indexOfArray": [values, "$" + path]
                             }
                         }
                     },
                     {"$sort": {"_select_order": 1}},
-                    {"$unset": "_select_order"},
+                    {"$project": {"_select_order": False}},
                 ]
             )
 
@@ -6009,7 +6021,7 @@ class SelectFrames(ViewStage):
     def to_mongo(self, _):
         frame_ids = [ObjectId(_id) for _id in self._frame_ids]
         select_expr = F("frames").filter(F("_id").is_in(frame_ids))
-        pipeline = [{"$set": {"frames": select_expr.to_mongo()}}]
+        pipeline = [{"$addFields": {"frames": select_expr.to_mongo()}}]
 
         if self._omit_empty:
             non_empty_expr = F("frames").length() > 0
@@ -6115,14 +6127,14 @@ class SelectGroups(ViewStage):
             pipeline.extend(
                 [
                     {
-                        "$set": {
+                        "$addFields": {
                             "_select_order": {
                                 "$indexOfArray": [ids, "$" + id_path]
                             }
                         }
                     },
                     {"$sort": {"_select_order": 1}},
-                    {"$unset": "_select_order"},
+                    {"$project": {"_select_order": False}},
                 ]
             )
 
@@ -6563,9 +6575,13 @@ class Shuffle(ViewStage):
     def to_mongo(self, _):
         # @todo can we avoid creating a new field here?
         return [
-            {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
+            {
+                "$addFields": {
+                    "_rand_shuffle": {"$mod": [self._randint, "$_rand"]}
+                }
+            },
             {"$sort": {"_rand_shuffle": 1}},
-            {"$unset": "_rand_shuffle"},
+            {"$project": {"_rand_shuffle": False}},
         ]
 
     def _kwargs(self):
@@ -6754,12 +6770,12 @@ class SortBy(ViewStage):
         pipeline = []
 
         if set_dict:
-            pipeline.append({"$set": set_dict})
+            pipeline.append({"$addFields": set_dict})
 
         pipeline.append({"$sort": sort_dict})
 
         if set_dict:
-            pipeline.append({"$unset": list(set_dict.keys())})
+            pipeline.append({"$project": {f: False for f in set_dict.keys()}})
 
         return pipeline
 
@@ -7197,10 +7213,14 @@ class Take(ViewStage):
 
         # @todo can we avoid creating a new field here?
         return [
-            {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
+            {
+                "$addFields": {
+                    "_rand_take": {"$mod": [self._randint, "$_rand"]}
+                }
+            },
             {"$sort": {"_rand_take": 1}},
             {"$limit": self._size},
-            {"$unset": "_rand_take"},
+            {"$project": {"_rand_take": False}},
         ]
 
     def _kwargs(self):
@@ -8053,30 +8073,27 @@ def _get_rng(seed):
 
 
 def _parse_labels_field(sample_collection, field_path):
-    label_type = sample_collection._get_label_field_type(field_path)
+    path, is_list_field = sample_collection._get_label_field_root(field_path)
     is_frame_field = sample_collection._is_frame_field(field_path)
-    is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-    if is_list_field:
-        path = field_path + "." + label_type._LABEL_LIST_FIELD
-    else:
-        path = field_path
+
+    prefix = ""
+    real_path = path
+    if is_frame_field:
+        prefix = sample_collection._FRAMES_PREFIX
+        real_path = real_path[len(prefix) :]
+
+    hidden = False
+
+    # for fiftyone.core.stages hidden results
+    if real_path.startswith("__"):
+        hidden = True
+        real_path = real_path[2:]
+
+    if hidden:
+        real_field = sample_collection.get_field(prefix + real_path)
+        is_list_field = isinstance(real_field, ListField)
 
     return path, is_list_field, is_frame_field
-
-
-def _parse_labels_list_field(sample_collection, field_path):
-    label_type = sample_collection._get_label_field_type(field_path)
-    is_frame_field = sample_collection._is_frame_field(field_path)
-
-    if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
-        raise ValueError(
-            "Field '%s' must be a labels list type %s; found %s"
-            % (field_path, fol._LABEL_LIST_FIELDS, label_type)
-        )
-
-    path = field_path + "." + label_type._LABEL_LIST_FIELD
-
-    return path, is_frame_field
 
 
 def _remove_path_collisions(paths):
@@ -8117,29 +8134,25 @@ def _parse_labels(labels):
 def _get_label_field_only_matches_expr(
     sample_collection, field, new_field=None, prefix=""
 ):
-    label_type = sample_collection._get_label_field_type(field)
-    is_label_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+    path, is_list_field = sample_collection._get_label_field_root(field)
 
     if new_field is not None:
-        field = new_field
+        path = new_field + path[len(field) :]
 
-    field, is_frame_field = sample_collection._handle_frame_field(field)
-
-    if is_label_list_field:
-        field += "." + label_type._LABEL_LIST_FIELD
+    path, is_frame_field = sample_collection._handle_frame_field(path)
 
     if is_frame_field:
-        if is_label_list_field:
+        if is_list_field:
             match_fcn = _get_frames_list_field_only_matches_expr
         else:
             match_fcn = _get_frames_field_only_matches_expr
     else:
-        if is_label_list_field:
+        if is_list_field:
             match_fcn = _get_list_field_only_matches_expr
         else:
             match_fcn = _get_field_only_matches_expr
 
-    return match_fcn(prefix + field)
+    return match_fcn(prefix + path)
 
 
 def _make_omit_empty_labels_pipeline(sample_collection, fields):

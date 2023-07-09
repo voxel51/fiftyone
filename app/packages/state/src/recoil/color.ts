@@ -9,7 +9,6 @@ import {
   hexToRgb,
   RGB,
 } from "@fiftyone/utilities";
-import { DEFAULT_APP_COLOR_SCHEME } from "../utils";
 import * as atoms from "./atoms";
 import { colorPalette, colorscale } from "./config";
 import * as schemaAtoms from "./schema";
@@ -21,7 +20,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const pool = get(colorPalette);
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,
@@ -48,7 +47,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const pool = get(colorPalette);
       const seed = get(atoms.colorSeed(modal));
       return createColorGenerator(pool, seed);
     },
@@ -77,7 +76,7 @@ export const pathColor = selectorFamily<
     ({ get }) => {
       // video path tweak
       const field = get(schemaAtoms.field(path));
-      const video = get(selectors.mediaTypeSelector) !== "image";
+      const video = get(atoms.mediaType) !== "image";
 
       const parentPath =
         video && path.startsWith("frames.")
@@ -97,7 +96,7 @@ export const pathColor = selectorFamily<
         adjustedPath = path;
       }
 
-      const setting = get(atoms.sessionColorScheme)?.fields?.find(
+      const setting = get(atoms.colorScheme)?.fields?.find(
         (x) => x.path === adjustedPath
       );
 
@@ -113,9 +112,6 @@ export const pathColor = selectorFamily<
 
       return map(path);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const eligibleFieldsToCustomizeColor = selector({

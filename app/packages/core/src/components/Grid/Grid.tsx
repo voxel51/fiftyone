@@ -27,7 +27,7 @@ const Grid: React.FC<{}> = () => {
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
-  const isModalOpen = Boolean(useRecoilValue(fos.modal));
+  const isModalOpen = useRecoilValue(fos.isModalActive);
 
   // create flashlight only one time
   const [flashlight] = React.useState(() => {
@@ -148,13 +148,13 @@ const Grid: React.FC<{}> = () => {
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set, reset }) =>
+      ({ snapshot, reset }) =>
         async (event: KeyboardEvent) => {
           if (event.key !== "Escape") {
             return;
           }
 
-          if (!(await snapshot.getPromise(fos.modal))) {
+          if ((await snapshot.getPromise(fos.modalSampleIndex)) === null) {
             reset(fos.selectedSamples);
           }
         },

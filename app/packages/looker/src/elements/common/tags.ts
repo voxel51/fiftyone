@@ -40,6 +40,7 @@ import { lookerTags } from "./tags.module.css";
 interface TagData {
   color: string;
   title: string;
+  path: string;
   value: string;
 }
 
@@ -99,6 +100,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
         const v = value ? "True" : "False";
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
@@ -113,6 +115,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const v = prettyNumber(value);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
@@ -127,6 +130,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const v = formatDate(value.datetime);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
@@ -141,6 +145,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const v = formatDateTime(value.datetime, timeZone);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
@@ -155,6 +160,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const v = prettyNumber(value);
 
         return {
+          path,
           value: v,
           title: `${path}: ${value}`,
           color: getColorFromOptionsPrimitives({
@@ -169,6 +175,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const v = prettyNumber(value);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
@@ -182,6 +189,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
         const v = `[${value.join(", ")}]`;
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
@@ -194,6 +202,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       [OBJECT_ID_FIELD]: (path, value: string) => {
         return {
+          path,
           value,
           title: `${path}: ${value}`,
           color: getColorFromOptionsPrimitives({
@@ -206,6 +215,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       [STRING_FIELD]: (path, value: string) => {
         return {
+          path,
           value,
           title: `${path}: ${value}`,
           color: getColorFromOptionsPrimitives({
@@ -229,6 +239,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         param: Classification
       ) => {
         return {
+          path,
           value: param.label,
           title: `${path}: ${param.label}`,
           color: getColorFromOptions({
@@ -243,6 +254,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
         const v = prettyNumber(param.value);
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
           color: getColorFromOptions({
@@ -263,9 +275,16 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           sample.tags.forEach((tag) => {
             const v = coloring.by === "value" ? tag : "tags";
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, v),
+              color: getColorFromOptions({
+                coloring,
+                path,
+                param: tag,
+                customizeColorSetting,
+                labelDefault: false,
+              }),
               title: tag,
               value: tag,
+              path: v,
             });
           });
         }
@@ -277,6 +296,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             color: getColor(coloring.pool, coloring.seed, v),
             title: value,
             value: value,
+            path: v,
           });
         });
       } else {
@@ -365,7 +385,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.customizedColors = customizeColorSetting;
     this.colorPool = coloring.pool as string[];
 
-    elements.forEach(({ value, color, title }) => {
+    elements.forEach(({ path, value, color, title }) => {
       const div = document.createElement("div");
       const child = prettify(value);
       child instanceof HTMLElement
@@ -373,6 +393,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         : (div.innerHTML = child);
       div.title = title;
       div.style.backgroundColor = color;
+      div.setAttribute("data-cy", `tag-${path}`);
       this.element.appendChild(div);
     });
 

@@ -33,7 +33,6 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
@@ -453,26 +452,6 @@ export const BrowseOperations = () => {
 
 export const GridActionsRow = () => {
   const hideTagging = useRecoilValue(fos.readOnly);
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
-  const isUsingSessionColorScheme = useRecoilValue(
-    fos.isUsingSessionColorScheme
-  );
-
-  useEffect(() => {
-    if (!isUsingSessionColorScheme && datasetColorScheme) {
-      const colorPool =
-        datasetColorScheme.colorPool?.length > 0
-          ? datasetColorScheme.colorPool
-          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const fields =
-        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
-      setSessionColor({
-        colorPool,
-        fields,
-      });
-    }
-  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
   return (
     <ActionsRowDiv>
@@ -496,7 +475,7 @@ export const ModalActionsRow = ({
   lookerRef,
   isGroup,
 }: {
-  lookerRef?: MutableRefObject<VideoLooker | undefined>;
+  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
   isGroup?: boolean;
 }) => {
   const hideTagging = useRecoilValue(fos.readOnly);

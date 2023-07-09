@@ -6,7 +6,6 @@ export {
 } from "./useBeforeScreenshot";
 export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
-export { default as useClearSessionColorScheme } from "./useClearSessionColorScheme";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useDimensions } from "./useDimensions";
 export { default as useExpandSample } from "./useExpandSample";
@@ -29,7 +28,6 @@ export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";
-export { default as useSessionColorScheme } from "./useSessionColorScheme";
 export { default as useSessionSpaces } from "./useSessionSpaces";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";

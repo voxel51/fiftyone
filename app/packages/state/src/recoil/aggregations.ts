@@ -48,9 +48,6 @@ export const aggregationQuery = graphQLSelectorFamily<
       const dataset = get(selectors.datasetName);
       if (!dataset) return null;
       mixed = mixed || get(groupStatistics(modal)) === "group";
-
-      const group = get(groupId) || null;
-
       const aggForm = {
         index: get(refresher),
         dataset,
@@ -59,13 +56,15 @@ export const aggregationQuery = graphQLSelectorFamily<
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal ? group : null,
+        groupId: !root && modal ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
         sampleIds:
-          !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
-        slice: mixed ? null : get(currentSlices(modal)) || null, // when mixed, slice is not needed
+          !root && modal && !get(groupId) && !mixed
+            ? [get(sidebarSampleId)]
+            : [],
+        slices: null, // when mixed, slice is not needed
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
 

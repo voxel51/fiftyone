@@ -319,7 +319,9 @@ const useTagCallback = (
   return useRecoilCallback(
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
-        const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
+        const modalData = modal
+          ? await snapshot.getPromise(fos.modalSample)
+          : null;
         const isGroup = await snapshot.getPromise(fos.isGroup);
         const slice = await snapshot.getPromise(currentSlice(modal));
         const { samples } = await getFetchFunction()("POST", "/tag", {
@@ -365,8 +367,7 @@ const useTagCallback = (
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));
           samples.forEach((sample) => {
-            if (modalData.sample._id === sample._id) {
-              set(fos.modal, { ...modalData, sample });
+            if (modalData?.id === sample._id) {
               lookerRef &&
                 lookerRef.current &&
                 lookerRef.current.updateSample(sample);

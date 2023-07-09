@@ -33,7 +33,7 @@ export default () => {
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
         reset(fos.selectedLabels);
         reset(fos.hiddenLabels);
-        set(fos.modal, null);
+        set(fos.currentModalSample, null);
       },
     []
   );

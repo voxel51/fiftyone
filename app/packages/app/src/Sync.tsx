@@ -1,5 +1,7 @@
 import { Loading } from "@fiftyone/components";
 import {
+  setColorScheme,
+  setColorSchemeMutation,
   setDataset,
   setDatasetMutation,
   setGroupSlice,
@@ -16,7 +18,6 @@ import {
   subscribe,
   Writer,
 } from "@fiftyone/relay";
-import { SpaceNodeJSON } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import {
   datasetName,
@@ -59,7 +60,7 @@ enum AppReadyState {
 
 export const SessionContext = React.createContext<Session>({});
 
-const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+const Sync = ({ children }: { children?: React.ReactNode }) => {
   const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
   const readyStateRef = useRef<AppReadyState>();
   readyStateRef.current = readyState;
@@ -124,7 +125,8 @@ const Sync: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   payload.state.selected_labels
                 ) as State.SelectedLabel[]
               );
-              setter("sessionSpaces", payload.state.spaces);
+              payload.state.spaces &&
+                setter("sessionSpaces", payload.state.spaces);
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
@@ -368,12 +370,27 @@ const dispatchSideEffect = (
 };
 
 const WRITE_HANDLERS: {
-  [key: string]: (
+  [K in keyof Omit<
+    Session,
+    "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+  >]: (
     environment: IEnvironment,
-    value: any,
+    value: Session[K] | DefaultValue,
     subscription: string
   ) => void;
 } = {
+  colorScheme: (environment, colorScheme, subscription) => {
+    if (colorScheme instanceof DefaultValue) {
+      throw new Error("not implemented");
+    }
+    commitMutation<setColorSchemeMutation>(environment, {
+      mutation: setColorScheme,
+      variables: {
+        colorScheme,
+        subscription,
+      },
+    });
+  },
   selectedSamples: (
     environment,
     selected: Set<string> | DefaultValue,
@@ -387,11 +404,7 @@ const WRITE_HANDLERS: {
       },
     });
   },
-  selectedLabels: (
-    environment,
-    selectedLabels: State.SelectedLabel[] | DefaultValue,
-    subscription
-  ) => {
+  selectedLabels: (environment, selectedLabels, subscription) => {
     commitMutation<setSelectedLabelsMutation>(environment, {
       mutation: setSelectedLabels,
       variables: {
@@ -401,7 +414,7 @@ const WRITE_HANDLERS: {
       },
     });
   },
-  sessionSpaces: (environment, spaces: SpaceNodeJSON, subscription) => {
+  sessionSpaces: (environment, spaces, subscription) => {
     commitMutation<setSpacesMutation>(environment, {
       mutation: setSpaces,
       variables: {

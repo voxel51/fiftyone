@@ -1,6 +1,5 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 import DeleteIcon from "@material-ui/icons/Delete";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
@@ -16,8 +15,8 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
-import { colorPicker } from "./Colorpicker.module.css";
 import { resetColor } from "../ColorFooter";
+import { colorPicker } from "./Colorpicker.module.css";
 
 const RowContainer = styled.div`
   display: flex;
@@ -72,7 +71,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(fos.activeColorField);
   const activePath = useMemo(() => activeField.field.path, [activeField]);
-  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
+  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
     () => fields.find((s) => s.path == activePath),
@@ -103,7 +102,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
     const newSetting = cloneDeep(fields);
     newSetting[index].valueColors = newInput;
     setInput(newInput);
-    setColorScheme(false, { colorPool, fields: newSetting });
+    setColorScheme({ colorPool, fields: newSetting });
     setShowPicker([...showPicker, false]);
   }, [colorPool, input, index, fields, setColorScheme, showPicker]);
 
@@ -116,7 +115,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       setInput(valueColors);
       const newSetting = cloneDeep(fields);
       newSetting[index].valueColors = valueColors;
-      setColorScheme(false, { colorPool, fields: newSetting });
+      setColorScheme({ colorPool, fields: newSetting });
     },
     [colorPool, index, fields, setColorScheme, input]
   );
@@ -126,7 +125,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       const newSetting = cloneDeep(fields);
       newSetting[index].valueColors = copy;
       setInput(copy);
-      setColorScheme(false, { colorPool, fields: newSetting });
+      setColorScheme({ colorPool, fields: newSetting });
     },
     [colorPool, fields, index, setColorScheme]
   );
@@ -177,7 +176,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       const idx = fields.findIndex((s) => s.path == activePath);
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
-        setColorScheme(false, { colorPool, fields: copy });
+        setColorScheme({ colorPool, fields: copy });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,7 +237,6 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
                     })
                   }
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
-                  popperProps={{ positionFixed: true }}
                   ref={pickerRef}
                   disableAlpha={true}
                   onBlur={() =>

@@ -6,7 +6,6 @@ import {
 } from "@fiftyone/relay";
 import { RGB } from "@fiftyone/utilities";
 import { atom, selector } from "recoil";
-import { sessionColorScheme } from "./atoms";
 
 const configData = graphQLSyncFragmentAtom<
   configFragment$key,
@@ -30,19 +29,14 @@ export const config = selector({
   get: ({ get }) => get(configData).config,
 });
 
-export const colorPalette = atom<string[]>({
-  key: "colorPalette",
-  default: selector({
-    key: "initial",
-    get: ({ get }) => {
-      return get(sessionColorScheme).colorPool;
-    },
-  }),
-});
-
 export const colorPool = selector({
   key: "colorPool",
   get: ({ get }) => get(config).colorPool,
+});
+
+export const colorPalette = atom<readonly string[]>({
+  key: "colorPalette",
+  default: colorPool,
 });
 
 export const themeConfig = selector({

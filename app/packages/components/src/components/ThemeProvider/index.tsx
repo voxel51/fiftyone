@@ -4,7 +4,7 @@ import {
   experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
 function dynamicTheme(accessor: string) {

@@ -1,15 +1,16 @@
-import { subscribe } from "@fiftyone/relay";
+import { colorSchemeFragment$data, subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { atom, DefaultValue, RecoilState, selector } from "recoil";
+import { DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
 export interface Session {
-  canEditCustomColors?: boolean;
-  canEditSavedViews?: boolean;
-  readOnly?: boolean;
-  selectedSamples?: Set<string>;
-  selectedLabels?: State.SelectedLabel[];
-  sessionSpaces?: SpaceNodeJSON;
+  canEditCustomColors: boolean;
+  canEditSavedViews: boolean;
+  readOnly: boolean;
+  selectedSamples: Set<string>;
+  selectedLabels: State.SelectedLabel[];
+  sessionSpaces: SpaceNodeJSON;
+  colorScheme: Omit<colorSchemeFragment$data, " $fragmentType">;
 }
 
 type Setter = <K extends keyof Session>(key: K, value: Session[K]) => void;
@@ -22,7 +23,12 @@ type SessionAtomOptions<K extends keyof Session> = {
 let sessionRef: Session;
 let setterRef: Setter;
 
-type Setters<K extends keyof Session = keyof Session> = Partial<{
+type Setters<
+  K extends keyof Session = keyof Omit<
+    Session,
+    "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+  >
+> = Partial<{
   [key in K]: (value: Session[K]) => void;
 }>;
 const setters: Setters = {};
@@ -31,7 +37,15 @@ export const useSession = (setter: Setter, ref: Session) => {
   setterRef = setter;
   sessionRef = ref;
 
-  return <K extends keyof Session>(key: K, value: Session[K]) => {
+  return <
+    K extends keyof Omit<
+      Session,
+      "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+    >
+  >(
+    key: K,
+    value: Session[K]
+  ) => {
     const setter = setters[key];
     setter && setter(value);
     sessionRef[key] = value;
@@ -46,6 +60,7 @@ export function sessionAtom<K extends keyof Session>(
     effects: [
       ({ setSelf, trigger }) => {
         if (trigger === "get") {
+          options.key === "sessionSpaces" && console.log(sessionRef);
           setSelf(
             sessionRef[options.key] === undefined
               ? options.default

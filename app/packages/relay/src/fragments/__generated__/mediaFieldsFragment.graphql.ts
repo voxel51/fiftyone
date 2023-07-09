@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7ec042e6d14b4d9c7e07632ae66e9ce8>>
+ * @generated SignedSource<<8acb625d436c0bc6f665b7f5af732677>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type mediaFieldsFragment$data = {
   readonly appConfig: {
-    readonly gridMediaField: string | null;
+    readonly gridMediaField: string;
   } | null;
   readonly name: string;
   readonly sampleFields: ReadonlyArray<{

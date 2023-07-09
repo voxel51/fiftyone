@@ -1,12 +1,10 @@
-import { atom, selectorFamily } from "recoil";
-
-import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-
 import {
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
+import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+import { atom, selectorFamily } from "recoil";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
 import { State } from "./types";

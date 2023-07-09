@@ -95,13 +95,13 @@ export const prettify = (
   return result;
 };
 
-// for classification types and regression types
+// for classification types and regression and sample tag types
 type Param = {
   coloring: Coloring;
   path: string;
-  param: Classification | Regression;
+  param: Classification | Regression | string;
   customizeColorSetting: CustomizeColor[];
-  labelDefault: boolean; // use .label or .value as default
+  labelDefault: boolean; // use .label for classification or .value for regression
 };
 export const getColorFromOptions = ({
   coloring,
@@ -118,7 +118,7 @@ export const getColorFromOptions = ({
     }
     return getColor(coloring.pool, coloring.seed, path);
   }
-  if (coloring.by === "value") {
+  if (coloring.by === "value" && path !== "tags") {
     if (setting) {
       key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
       // check if this label has a assigned color, use it if it is a valid color
@@ -144,6 +144,16 @@ export const getColorFromOptions = ({
       key = labelDefault ? "label" : "value";
     }
     return getColor(coloring.pool, coloring.seed, param[key]);
+  }
+  if (coloring.by === "value" && path === "tags") {
+    if (setting) {
+      const valueColor = setting.valueColors?.find(
+        (v) => v.value === param
+      )?.color;
+      if (isValidColor(valueColor)) {
+        return valueColor;
+      }
+    }
   }
   return getColor(coloring.pool, coloring.seed, path);
 };

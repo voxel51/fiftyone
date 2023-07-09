@@ -114,13 +114,13 @@ enum ColorBy {
 }
 
 type ColorScheme {
-  colorPool: [String!]
-  fields: [CustomizeColor!]
+  colorPool: [String!]!
+  fields: [CustomizeColor!]!
 }
 
 input ColorSchemeInput {
-  colorPool: [String!] = null
-  fields: JSONArray = null
+  colorPool: [String!]!
+  fields: [CustomizeColorInput!]!
 }
 
 input Count {
@@ -137,9 +137,16 @@ input CountValues {
 
 type CustomizeColor {
   path: String!
-  fieldColor: String
-  colorByAttribute: String
-  valueColors: [LabelSetting!]
+  fieldColor: String!
+  valueColors: [ValueColor!]!
+  colorByAttribute: Boolean!
+}
+
+input CustomizeColorInput {
+  path: String!
+  fieldColor: String!
+  colorByAttribute: Boolean! = false
+  valueColors: [ValueColorInput!]!
 }
 
 type DataAggregation implements Aggregation {
@@ -178,14 +185,14 @@ type Dataset {
 }
 
 type DatasetAppConfig {
+  colorScheme: ColorScheme
   mediaFields: [String!]
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   sidebarMode: SidebarMode
-  modalMediaField: String
-  gridMediaField: String
   spaces: JSON
-  colorScheme: ColorScheme
+  gridMediaField: String!
+  modalMediaField: String!
 }
 
 type DatasetStrConnection {
@@ -297,16 +304,9 @@ type IntValueCount {
 
 scalar JSON
 
-scalar JSONArray
-
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
-}
-
-type LabelSetting {
-  value: String!
-  color: String!
 }
 
 enum MediaType {
@@ -322,11 +322,20 @@ type MediaURL {
 }
 
 type Mutation {
+  setColorScheme(
+    subscription: String!
+    colorScheme: ColorSchemeInput!
+  ): Boolean!
   setDataset(
     subscription: String!
     session: String
     name: String
     viewName: String
+  ): Boolean!
+  setGroupSlice(
+    subscription: String!
+    session: String
+    slice: String!
   ): Boolean!
   setSidebarGroups(
     subscription: String!
@@ -354,11 +363,6 @@ type Mutation {
     form: StateForm = null
   ): BSONArray
   storeTeamsSubmission: Boolean!
-  setGroupSlice(
-    subscription: String!
-    session: String
-    slice: String!
-  ): Boolean!
   createSavedView(
     subscription: String!
     session: String
@@ -383,14 +387,6 @@ type Mutation {
     datasetName: String = null
   ): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
-  setColorScheme(
-    subscription: String!
-    session: String
-    dataset: String!
-    stages: BSONArray!
-    colorScheme: ColorSchemeInput!
-    saveToApp: Boolean!
-  ): Boolean!
   searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
@@ -444,6 +440,7 @@ type Query {
     view: BSONArray!
     filter: SampleFilter!
     index: Int = null
+    filters: JSON = null
   ): SampleItem
   stageDefinitions: [StageDefinition!]!
   teamsSubmission: Boolean!
@@ -621,6 +618,16 @@ enum Theme {
   browser
   dark
   light
+}
+
+type ValueColor {
+  color: String!
+  value: String!
+}
+
+input ValueColorInput {
+  color: String!
+  value: String!
 }
 
 type VideoSample implements Sample {
