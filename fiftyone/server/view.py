@@ -328,29 +328,24 @@ def _make_filter_stages(
 
 
 def _iter_paths(view, filters):
-    field_schema = view.get_field_schema()
-    if view.media_type != fom.IMAGE:
-        frame_field_schema = view.get_frame_field_schema()
-    else:
-        frame_field_schema = None
-
     for path in sorted(filters):
         if path == "tags" or path.startswith("_"):
             continue
 
-        args = filters[path]
-        frames = path.startswith(view._FRAMES_PREFIX)
-        keys = path.split(".")
-        if frames:
-            field = frame_field_schema[keys[1]]
-            keys = keys[2:]
-            prefix = "frames."
+        if "." in path:
+            parent_path = ".".join(path.split(".")[:-1])
         else:
-            field = field_schema[keys[0]]
-            keys = keys[1:]
-            prefix = ""
+            parent_path = path
 
-        yield path, field, prefix, args
+        parent_field = view.get_field(parent_path)
+        if isinstance(parent_field, fof.ListField) and isinstance(
+            parent_field.field, fof.EmbeddedDocumentField
+        ):
+            if issubclass(parent_field.field.document_type, fol.Label):
+                parent_path = ".".join(parent_path.split(".")[:-1])
+                parent_field = view.get_field(parent_path)
+
+        yield path, parent_path, parent_field, filters[path]
 
 
 def _is_support(field):
@@ -378,6 +373,8 @@ def _is_label(field):
 
 
 def _make_query(path, field, args):
+    keys = path.split(".")
+    path = ".".join(keys[:-1] + [field.db_field or field.name])
     if isinstance(field, fof.ListField):
         field = field.field
 
