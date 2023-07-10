@@ -8,18 +8,17 @@ import {
 
 import * as fos from "@fiftyone/state";
 
-import FilterOption from "./filterOption/FilterOption";
 import Checkbox from "../../Common/Checkbox";
 import { Button } from "../../utils";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
-import { isKeypointLabel, V } from "./CategoricalFilter";
+import { V, isKeypointLabel } from "./CategoricalFilter";
+import FilterOption from "./filterOption/FilterOption";
 
 interface WrapperProps {
   results: [V["value"], number][];
   selectedValuesAtom: RecoilState<V["value"][]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
-  onlyMatchAtom: RecoilState<boolean>;
   color: string;
   totalCount: number;
   modal: boolean;
@@ -34,7 +33,6 @@ const Wrapper = ({
   selectedValuesAtom,
   excludeAtom,
   isMatchingAtom,
-  onlyMatchAtom,
   modal,
   path,
   selectedCounts,
@@ -44,7 +42,6 @@ const Wrapper = ({
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
   const setIsMatching = isMatchingAtom
     ? useSetRecoilState(isMatchingAtom)
     : null;
@@ -87,7 +84,6 @@ const Wrapper = ({
 
   const initializeSettings = () => {
     setExcluded && setExcluded(false);
-    setOnlyMatch && setOnlyMatch(true);
     setIsMatching && setIsMatching(!nestedField);
   };
 
@@ -144,7 +140,6 @@ const Wrapper = ({
               nestedField={nestedField}
               shouldNotShowExclude={shouldNotShowExclude}
               excludeAtom={excludeAtom}
-              onlyMatchAtom={onlyMatchAtom}
               isMatchingAtom={isMatchingAtom}
               valueName={name}
               color={color}
