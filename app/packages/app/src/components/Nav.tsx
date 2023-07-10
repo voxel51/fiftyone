@@ -90,7 +90,7 @@ export const useGA = (fragment: NavGA$key) => {
     const buildType = dev ? "dev" : "prod";
 
     ReactGA.initialize(ga.app_ids[buildType], {
-      debug: dev,
+      debug: false,
       gaOptions: {
         storage: "none",
         cookieDomain: "none",

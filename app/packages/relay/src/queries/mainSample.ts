@@ -19,6 +19,14 @@ export default r(graphql`
           url
         }
       }
+      ... on PointCloudSample {
+        id
+        sample
+        urls {
+          field
+          url
+        }
+      }
       ... on VideoSample {
         id
         sample

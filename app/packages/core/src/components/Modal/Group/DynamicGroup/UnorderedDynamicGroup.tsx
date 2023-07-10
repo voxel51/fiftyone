@@ -7,6 +7,7 @@ import styled from "styled-components";
 import { ModalActionsRow } from "../../../Actions";
 import Sample from "../../Sample";
 import { useGroupContext } from "../GroupContextProvider";
+import { GroupSuspense } from "../GroupSuspense";
 import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
 
 const RootContainer = styled.div`
@@ -23,8 +24,9 @@ const ElementsContainer = styled.div`
 `;
 
 export const UnorderedDynamicGroup = () => {
-  const { lookerRefCallback, groupByFieldValue } = useGroupContext();
+  const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<AbstractLooker>();
+  const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
   const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
   const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
@@ -41,11 +43,13 @@ export const UnorderedDynamicGroup = () => {
         {isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
         {isCarouselVisible && <DynamicGroupCarousel key={groupByFieldValue} />}
         {isImageVisible && (
-          <Sample
-            lookerRefCallback={lookerRefCallback}
-            lookerRef={lookerRef}
-            hideSampleBar
-          />
+          <GroupSuspense>
+            <Sample
+              lookerRefCallback={lookerRefCallback}
+              lookerRef={lookerRef}
+              hideSampleBar
+            />
+          </GroupSuspense>
         )}
       </ElementsContainer>
     </RootContainer>

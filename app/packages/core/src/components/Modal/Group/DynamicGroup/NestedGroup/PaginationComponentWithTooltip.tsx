@@ -7,28 +7,31 @@ import { useRecoilValue } from "recoil";
 export const PaginationComponentWithTooltip = React.memo(
   React.forwardRef(
     (
-      props: PaginationItemProps & {
-        atomFamilyKey: string;
+      {
+        currentPage,
+        isButton,
+        orderByValue,
+        ...props
+      }: PaginationItemProps & {
         currentPage: number | null;
         isButton: boolean;
+        orderByValue?: string | number | boolean;
       },
       ref: React.Ref<HTMLDivElement>
     ) => {
-      const { atomFamilyKey, isButton, currentPage, ...otherProps } = props;
-
       const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
-      const dynamicGroupSamplesStoreMap = useRecoilValue(
-        fos.dynamicGroupSamplesStoreMap(atomFamilyKey)
-      );
 
       const tooltipText = useMemo(() => {
         if (!orderBy || isButton) {
           return null;
         }
 
-        const sample = dynamicGroupSamplesStoreMap.get(currentPage! - 1);
-        return `${orderBy}: ${sample?.sample[orderBy] ?? "click to load"}`;
-      }, [dynamicGroupSamplesStoreMap, isButton, orderBy, currentPage]);
+        return `${orderBy}: ${orderByValue ?? "click to load"}`;
+      }, [isButton, orderBy, orderByValue]);
+
+      props["data-cy"] = `dynamic-group-pagination-item-${
+        isButton ? "btn" : currentPage
+      }`;
 
       otherProps["data-cy"] = `dynamic-group-pagination-item-${
         isButton ? "btn" : currentPage
@@ -37,12 +40,12 @@ export const PaginationComponentWithTooltip = React.memo(
       if (tooltipText) {
         return (
           <Tooltip text={tooltipText} placement="top-center">
-            <div ref={ref} {...otherProps} />
+            <div ref={ref} {...props} />
           </Tooltip>
         );
       }
 
-      return <div ref={ref} {...otherProps} />;
+      return <div ref={ref} {...props} />;
     }
   )
 );

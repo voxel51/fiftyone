@@ -5,13 +5,7 @@ import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { Resizable } from "re-resizable";
-import {
-  default as React,
-  default as React,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";

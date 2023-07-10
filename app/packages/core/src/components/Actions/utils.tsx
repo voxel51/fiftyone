@@ -63,30 +63,29 @@ export const tagStatistics = selectorFamily<
 >({
   key: "tagStatistics",
   get:
-    ({ modal, labels: count_labels }) =>
+    ({ modal, labels: countLabels }) =>
     async ({ get }) => {
       return await getFetchFunction()(
         "POST",
         "/tagging",
         tagParameters({
           activeFields: get(fos.activeLabelFields({ modal })),
-
           dataset: get(fos.datasetName),
           filters: get(modal ? fos.modalFilters : fos.filters),
-
-          groupData: get(isGroup)
-            ? {
-                id: modal ? get(groupId) : null,
-                slices: [get(currentSlice(modal))],
-                mode: get(groupStatistics(modal)),
-              }
-            : null,
+          groupData:
+            get(isGroup) && get(fos.groupField)
+              ? {
+                  id: modal ? get(groupId) : null,
+                  slices: get(fos.currentSlices(modal)),
+                  mode: get(groupStatistics(modal)),
+                }
+              : null,
           hiddenLabels: get(fos.hiddenLabelsArray),
           modal,
           sampleId: modal ? get(fos.sidebarSampleId) : null,
-          selectedSamples: [...get(fos.selectedSamples)],
+          selectedSamples: get(fos.selectedSamples),
           selectedLabels: get(fos.selectedLabels),
-          targetLabels: count_labels,
+          targetLabels: countLabels,
           view: get(fos.view),
         })
       );

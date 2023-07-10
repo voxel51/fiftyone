@@ -1,6 +1,5 @@
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useOutsideClick } from "@fiftyone/state";
 import useSchemaSettings, {
   TAB_OPTIONS,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";

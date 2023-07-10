@@ -558,7 +558,11 @@ class Session(object):
     @property
     def url(self) -> str:
         """The URL of the session."""
-        return focx.get_url(self.server_address, self.server_port)
+        return focx.get_url(
+            self.server_address,
+            self.server_port,
+            proxy_url=self.config.proxy_url,
+        )
 
     @property
     def config(self) -> AppConfig:
@@ -1038,7 +1042,7 @@ class Session(object):
         )
 
         self._notebook_cells[uuid] = cell
-        fosn.display(self._client, cell)
+        fosn.display(self._client, cell, self.config.proxy_url)
 
     def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App

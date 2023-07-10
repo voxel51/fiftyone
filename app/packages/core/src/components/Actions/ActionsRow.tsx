@@ -1,5 +1,10 @@
 import { PillButton, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  AbstractLooker,
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { subscribe } from "@fiftyone/relay";

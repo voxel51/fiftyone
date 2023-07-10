@@ -23,14 +23,12 @@ class GraphQL(gqla.GraphQL):
     ) -> Context:
         db_client = get_async_db_client()
         db = db_client[fo.config.database_name]
-        session = await db_client.start_session()
         loaders = {}
         for cls, config in dataloaders.items():
-            loaders[cls] = get_dataloader(cls, config, db, session)
+            loaders[cls] = get_dataloader(cls, config, db)
 
         return Context(
             db=db,
-            session=session,
             dataloaders=loaders,
             request=request,
             response=response,

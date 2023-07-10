@@ -1,13 +1,17 @@
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { deferrer, stringifyObj, useEventHandler } from "@fiftyone/state";
-import { default as React, useEffect, useLayoutEffect, useRef } from "react";
+import {
+  deferrer,
+  stringifyObj,
+  useEventHandler,
+  useExpandSample,
+} from "@fiftyone/state";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { flashlightLooker } from "./Grid.module.css";
 import { rowAspectRatioThreshold } from "./recoil";
-import useExpandSample from "./useExpandSample";
 import usePage from "./usePage";
 import useResize from "./useResize";
 
@@ -22,7 +26,7 @@ const Grid: React.FC<{}> = () => {
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
 
   const selected = useRecoilValue(fos.selectedSamples);
-  const [next, pager] = usePage(false, store);
+  const pager = usePage(false, store);
 
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
@@ -89,7 +93,6 @@ const Grid: React.FC<{}> = () => {
         return;
       }
 
-      next.current = 0;
       flashlight.reset();
       store.reset();
       freeVideos();

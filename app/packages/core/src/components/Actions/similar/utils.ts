@@ -26,7 +26,6 @@ export const getQueryIds = async (
     await snapshot.getPromise(fos.selectedSamples)
   );
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
-  const modal = await snapshot.getPromise(fos.modalSample);
 
   if (isPatches) {
     if (selectedSamples.length) {
@@ -40,14 +39,15 @@ export const getQueryIds = async (
       });
     }
 
-    return modal.sample[labels_field]._id as string;
+    return (await snapshot.getPromise(fos.modalSample)).sample[labels_field]
+      ._id as string;
   }
 
   if (selectedSamples.length) {
     return [...selectedSamples];
   }
 
-  return modal.id;
+  return await snapshot.getPromise(fos.modalSampleId);
 };
 
 export const useSortBySimilarity = (close) => {
@@ -58,7 +58,7 @@ export const useSortBySimilarity = (close) => {
   }, [lastUsedBrainkeys]);
 
   return useRecoilCallback(
-    ({ set, snapshot }) =>
+    ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
         const dataset = await snapshot.getPromise(fos.dataset);
@@ -69,6 +69,7 @@ export const useSortBySimilarity = (close) => {
         const queryIds = parameters.query
           ? null
           : await getQueryIds(snapshot, parameters.brainKey);
+
         const view = await snapshot.getPromise(fos.view);
         const subscription = await snapshot.getPromise(fos.stateSubscription);
 

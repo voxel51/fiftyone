@@ -1,5 +1,5 @@
 import Flashlight, { Response } from "@fiftyone/flashlight";
-import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
+import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, {
@@ -19,7 +19,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import { useGroupContext } from "../../GroupContextProvider";
+import useSetDynamicGroupSample from "./useSetDynamicGroupSample";
 
 export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =
   "dynamic-groups-flashlight-container";
@@ -77,15 +77,9 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
   const id = useId();
   const pageCount = useRef(0);
 
-  const { groupByFieldValue } = useGroupContext();
-
   const { data, hasNext, loadNext } = usePaginationFragment(
     foq.paginateGroupPaginationFragment,
-    useRecoilValue(
-      fos.dynamicGroupPaginationFragment({
-        fieldOrExpression: groupByFieldValue!,
-      })
-    )
+    useRecoilValue(fos.dynamicGroupPaginationFragment)
   );
 
   // todo: support pcd
@@ -105,13 +99,21 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
 
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
+  const modalSampleId = useRecoilValue(fos.modalSampleId);
+  const highlight = useCallback(
+    (sample: Sample) => {
+      return sample._id === modalSampleId;
+    },
+    [modalSampleId]
+  );
+
   const createLooker = fos.useCreateLooker(
     true,
     true,
     {
       ...opts,
     },
-    true
+    highlight
   );
 
   const hasNextRef = useRef(true);
@@ -140,8 +142,6 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     }
   }, [samples]);
 
-  const setSample = fos.useSetExpandedSample();
-
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   const flashlightRef = useRef<Flashlight<number>>();
@@ -165,6 +165,8 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     return { elementWidth, elementsCount, containerWidth };
   }, []);
 
+  const setSample = useSetDynamicGroupSample();
+
   const navigationCallback = useRecoilCallback(
     ({ snapshot }) =>
       async (isPrevious) => {
@@ -174,13 +176,8 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
           return;
         }
 
-        const modalSampleId = await snapshot.getPromise(fos.modalSampleId);
-
-        if (!modalSampleId) {
-          return;
-        }
-
-        const currentSampleIndex = flashlight.itemIndexes[modalSampleId];
+        const id = await snapshot.getPromise(modalSampleId);
+        const currentSampleIndex = flashlight.itemIndexes[id];
         const nextSampleIndex = currentSampleIndex + (isPrevious ? -1 : 1);
         const nextSampleId = store.indices.get(nextSampleIndex);
 
@@ -188,8 +185,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
           return;
         }
 
-        const nextSample = store.samples.get(nextSampleId);
-        nextSample && setSample(nextSample);
+        setSample(id);
 
         // todo: implement better scrolling logic
         if (flashlightRef.current) {
@@ -205,7 +201,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
           });
         }
       },
-    [setSample, store.indices, store.samples]
+    [store, store, setSample]
   );
 
   const [flashlight] = useState(() => {
@@ -219,10 +215,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
         nextKey: ">",
       },
       initialRequestKey: 0,
-      onItemClick: (next, id, items) => {
-        const sample = store.samples.get(id);
-        sample && setSample(sample);
-      },
+      onItemClick: (_, id) => setSample(id),
       options: {
         rowAspectRatioThreshold: 0,
       },
@@ -288,16 +281,17 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     return () => flashlight.detach();
   }, [flashlight, id]);
 
-  const updateItem = useRecoilCallback(
-    ({ snapshot }) =>
-      async (id: string) => {
-        store.lookers.get(id)?.updateOptions({
-          ...opts,
-          selected: snapshot.getLoadable(fos.selectedSamples).contents.has(id),
-          highlight: (await snapshot.getPromise(fos.modalSampleId)) === id,
-        });
-      },
-    [opts]
+  const selected = useRecoilValue(selectedSamples);
+
+  const updateItem = useCallback(
+    async (id: string) => {
+      store.lookers.get(id)?.updateOptions({
+        ...opts,
+        selected: selected.has(id),
+        highlight: highlight(store.samples.get(id)!.sample as Sample),
+      });
+    },
+    [highlight, opts, selected, store]
   );
 
   useLayoutEffect(() => {
@@ -308,7 +302,6 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     useRecoilValueLoadable(
       fos.lookerOptions({ modal: true, withFilter: true })
     ),
-    useRecoilValue(fos.currentModalSample),
     useRecoilValue(fos.selectedSamples),
   ]);
 

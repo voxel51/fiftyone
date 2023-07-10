@@ -2,7 +2,7 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   DETECTION_FILED,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
   JUST_FIELD,
   LIST_FIELD,
@@ -172,8 +172,11 @@ export const excludedPathsState = atomFamily({
         const dataset = await getPromise(fos.dataset);
         const showNestedField = await getPromise(showNestedFieldsState);
         const searchResults = await getPromise(schemaSearchRestuls);
-        const isVideo = mediaType === "video";
-        const isImage = mediaType === "image";
+        const isFrameView = await getPromise(fos.isFramesView);
+        const isClipsView = await getPromise(fos.isClipsView);
+        const isPatchesView = await getPromise(fos.isPatchesView);
+        const isVideo = dataset.mediaType === "video";
+        const isImage = dataset.mediaType === "image";
         const isInSearchMode = !!searchResults?.length;
 
         if (!dataset) {
@@ -204,7 +207,15 @@ export const excludedPathsState = atomFamily({
                 combinedSchema?.[rawPath]?.ftype,
                 combinedSchema
               ) &&
-              !disabledField(path, combinedSchema, dataset?.groupField)
+              !disabledField(
+                path,
+                combinedSchema,
+                dataset?.groupField,
+                isFrameView,
+                isClipsView,
+                isVideo,
+                isPatchesView
+              )
             );
           })
           .map((path) => mapping?.[path] || path);
@@ -231,7 +242,7 @@ export const excludedPathsState = atomFamily({
 
               // embedded document could break an exclude_field() call causing mongo query issue.
               const hasDynamicEmbeddedDocument = [
-                DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+                DYNAMIC_EMBEDDED_DOCUMENT_PATH,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
               const isTopLevelPath = isVideo
@@ -319,9 +330,11 @@ export const selectedFieldsStageState = atom<any>({
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
-  const isVideo = useRecoilValue(fos.isVideoDataset);
-  const groupField = useRecoilValue(fos.groupField);
-  const isGroup = useRecoilValue(fos.isGroup);
+  const router = useContext(fos.RouterContext);
+  const [setView] = useMutation<foq.setViewMutation>(foq.setView);
+  const dataset = useRecoilValue(fos.dataset);
+  const isGroupDataset = dataset?.groupField;
+
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
 
@@ -333,6 +346,18 @@ export default function useSchemaSettings() {
   const setFieldSchema = useSetRecoilState(fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
+  const isVideo = dataset.mediaType === "video";
+
+  const setSchema = useSetRecoilState(schemaState);
+  useEffect(() => {
+    if (datasetName) {
+      setSchema(
+        dataset
+          ? buildSchema(dataset.sampleFields, dataset.frameFields, true)
+          : null
+      );
+    }
+  }, [datasetName]);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     allFieldsCheckedState
@@ -357,6 +382,10 @@ export default function useSchemaSettings() {
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
     searchMetaFilterState
   );
+
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
+  const isFrameView = useRecoilValue(fos.isFramesView);
+  const isClipsView = useRecoilValue(fos.isClipsView);
 
   const [expandedPaths, setExpandedPaths] = useRecoilState(expandedPathsState);
 
@@ -412,19 +441,34 @@ export default function useSchemaSettings() {
     selectedPathState
   );
   // disabled paths are filtered
-  const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
-  const enabledSelectedPaths =
-    datasetSelectedPaths?.size && combinedSchema
+  const enabledSelectedPaths = useMemo(() => {
+    const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
+
+    return datasetSelectedPaths?.size && combinedSchema
       ? [...datasetSelectedPaths]?.filter(
           ({ path }) =>
             path &&
             !disabledField(
               path,
               combinedSchema,
-              isGroup ? groupField : undefined
+              isGroupDataset,
+              isFrameView,
+              isClipsView,
+              isVideo,
+              isPatchesView
             )
         )
       : [];
+  }, [
+    combinedSchema,
+    datasetName,
+    isClipsView,
+    isFrameView,
+    isGroupDataset,
+    isPatchesView,
+    isVideo,
+    selectedPaths,
+  ]);
 
   const excludePathsState = excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
@@ -500,7 +544,11 @@ export default function useSchemaSettings() {
           disabledField(
             path,
             finalSchemaKeyByPath,
-            isGroup ? groupField : undefined
+            isGroupDataset,
+            isFrameView,
+            isClipsView,
+            isVideo,
+            isPatchesView
           ) || filterRuleTab;
 
         const fullPath =
@@ -563,6 +611,9 @@ export default function useSchemaSettings() {
     datasetName,
     fieldSchema,
     includeNestedFields,
+    isPatchesView,
+    isClipsView,
+    isVideo,
   ]);
 
   const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
@@ -666,7 +717,7 @@ export default function useSchemaSettings() {
       });
       return subPaths;
     },
-    [mergedSchema, datasetName]
+    [mergedSchema, datasetName, isGroupDataset]
   );
 
   useEffect(() => {
@@ -742,7 +793,70 @@ export default function useSchemaSettings() {
             );
           })
         : finalSchema,
-    [mergedSchema, finalSchema]
+    [mergedSchema, finalSchema, isGroupDataset]
+  );
+
+  useEffect(() => {
+    if (!allPaths?.length || !combinedSchema) return;
+    if (lastActionToggleSelection) {
+      const val = lastActionToggleSelection[SELECT_ALL];
+
+      if (val) {
+        setExcludedPaths({ [datasetName]: new Set() });
+        setSelectedPaths({ [datasetName]: new Set([...allPaths]) });
+      } else {
+        if (includeNestedFields && filterRuleTab) {
+          setExcludedPaths({ [datasetName]: new Set(allPaths) });
+        } else {
+          const topLevelPaths = (allPaths || []).filter((path) =>
+            path.startsWith("frames.")
+              ? !path.replace("frames.", "").includes(".")
+              : !path.includes(".")
+          );
+          setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
+        }
+        const res = Object.values(combinedSchema)
+          .filter((f) =>
+            disabledField(
+              f.path,
+              combinedSchema,
+              isGroupDataset,
+              isFrameView,
+              isClipsView,
+              isVideo,
+              isPatchesView
+            )
+          )
+          .map((f) => f.path);
+
+        setSelectedPaths({
+          [datasetName]: new Set(res),
+        });
+      }
+
+      setLastActionToggleSelection(null);
+    }
+  }, [
+    lastActionToggleSelection,
+    allPaths,
+    setLastActionToggleSelection,
+    setExcludedPaths,
+    datasetName,
+    setSelectedPaths,
+    includeNestedFields,
+    filterRuleTab,
+    combinedSchema,
+    isPatchesView,
+    isClipsView,
+    isVideo,
+  ]);
+
+  const setAllFieldsCheckedWrapper = useCallback(
+    (val: boolean) => {
+      setAllFieldsChecked(val);
+      setLastActionToggleSelection({ SELECT_ALL: val });
+    },
+    [finalSchema]
   );
 
   useEffect(() => {
@@ -833,7 +947,7 @@ export default function useSchemaSettings() {
     finalSchemaKeyByPath,
     includeNestedFields,
     isFilterRuleActive: filterRuleTab,
-    isVideo,
+    isVideo: dataset?.mediaType === "video",
     lastAppliedPaths,
     resetExcludedPaths,
     resetSelectedPaths,

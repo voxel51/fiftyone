@@ -1,30 +1,27 @@
-import React, { useState } from "react";
-import { selector, useRecoilValue } from "recoil";
-import { useSpring } from "@react-spring/web";
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import {
   useToClips,
-  useToPatches,
   useToEvaluationPatches,
+  useToPatches,
 } from "@fiftyone/state";
-
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
   PATCHES_FIELDS,
 } from "@fiftyone/utilities";
-
+import { useSpring } from "@react-spring/web";
+import { default as React, useState } from "react";
+import { selector, useRecoilValue } from "recoil";
 import {
-  OBJECT_PATCHES,
-  EVALUATION_PATCHES,
   CLIPS_VIEWS,
+  EVALUATION_PATCHES,
+  OBJECT_PATCHES,
 } from "../../utils/links";
-
-import Popout from "./Popout";
 import { ActionOption } from "./Common";
-import { SwitcherDiv, SwitchDiv } from "./utils";
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import Popout from "./Popout";
+import { SwitchDiv, SwitcherDiv } from "./utils";
 
 export const patchesFields = selector<string[]>({
   key: "patchesFields",

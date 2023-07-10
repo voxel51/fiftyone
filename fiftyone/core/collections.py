@@ -968,7 +968,7 @@ class SampleCollection(object):
         if self.media_type == fom.GROUP:
             field_names += (self.group_field,)
 
-        return field_names
+        return (f for f in field_names if f is not None)
 
     def _get_default_frame_fields(
         self,
@@ -1117,11 +1117,12 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -8677,6 +8678,10 @@ class SampleCollection(object):
         if self._is_clips:
             return ["id", "filepath", "sample_id"]
 
+        if self.media_type == fom.GROUP:
+            gf = self.group_field
+            return ["id", "filepath", gf + ".id", gf + ".name"]
+
         return ["id", "filepath"]
 
     def reload(self):
@@ -9779,22 +9784,34 @@ class SampleCollection(object):
         )
 
     def _get_values_by_id(self, path_or_expr, ids, link_field=None):
+        is_list_field = False
         if link_field == "frames":
             if self._is_frames:
                 id_path = "id"
             else:
                 id_path = "frames.id"
         elif link_field is not None:
-            _, id_path = self._get_label_field_path(link_field, "id")
+            root, is_list_field = self._get_label_field_root(link_field)
+            id_path = root + ".id"
         elif self._is_patches:
             id_path = "sample_id"
         else:
             id_path = "id"
 
-        values_map = {
-            i: v
-            for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
-        }
+        ref_ids, values = self.values([id_path, path_or_expr])
+        values_map = {}
+
+        if is_list_field:
+            for _ids, _values in zip(ref_ids, values):
+                if not _ids:
+                    continue
+
+                for _id, _val in zip(_ids, _values):
+                    values_map[_id] = _val
+        else:
+            for _id, _val in zip(ref_ids, values):
+                values_map[_id] = _val
+
         return [values_map.get(i, None) for i in ids]
 
 

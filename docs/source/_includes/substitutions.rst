@@ -16,6 +16,8 @@
 .. |ToClips| replace:: :class:`ToClips <fiftyone.core.stages.ToClips>`
 .. |SortBySimilarity| replace:: :class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>`
 
+.. |Document| replace:: :class:`Document <fiftyone.core.document.Document>`
+
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
 .. |SampleView| replace:: :class:`SampleView <fiftyone.core.sample.SampleView>`
 

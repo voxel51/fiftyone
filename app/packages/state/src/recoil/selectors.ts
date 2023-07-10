@@ -12,7 +12,9 @@ import { v4 as uuid } from "uuid";
 import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { config } from "./config";
-import { modalSample, modalSampleIndex } from "./modal";
+import { filters, modalFilters } from "./filters";
+import { resolvedGroupSlice } from "./groups";
+import { isModalActive, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -457,7 +459,7 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(modalSampleIndex) !== null;
+      const modal = get(isModalActive);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
