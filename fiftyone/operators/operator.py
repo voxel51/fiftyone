@@ -26,7 +26,6 @@ class OperatorConfig(object):
         on_startup (False): whether the operator should be executed on startup
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
-        should_delegate (False): whether the operator should be delegated to remote operation
         delegation_target (None): the target to delegate the operation to
     """
 
@@ -40,7 +39,6 @@ class OperatorConfig(object):
         unlisted=False,
         on_startup=False,
         disable_schema_validation=False,
-        should_delegate=False,
         delegation_target=None,
     ):
         self.name = name
@@ -51,7 +49,6 @@ class OperatorConfig(object):
         self.unlisted = unlisted
         self.on_startup = on_startup
         self.disable_schema_validation = disable_schema_validation
-        self.should_delegate = should_delegate
         self.delegation_target = delegation_target
 
     def to_json(self):
@@ -64,7 +61,6 @@ class OperatorConfig(object):
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
             "disable_schema_validation": self.disable_schema_validation,
-            "should_delegate": self.should_delegate,
             "delegation_target": self.delegation_target,
         }
 
@@ -108,10 +104,6 @@ class Operator(object):
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
-
-    @property
-    def should_delegate(self):
-        return self.config.should_delegate
 
     @property
     def delegation_target(self):
@@ -219,6 +211,20 @@ class Operator(object):
             a :class:`fiftyone.operators.types.Property`, or None
         """
         return None
+
+    def resolve_delegation(self, ctx) -> bool:
+        """Returns the resolved delegation flag.
+
+        Subclasses can implement this method to define the logic which decides
+        if the operation should be queued for delegation
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a boolean
+        """
+        return False
 
     def resolve_placement(self, ctx):
         """Returns the resolved placement of the operator.

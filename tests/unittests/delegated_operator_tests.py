@@ -12,7 +12,7 @@ from bson import ObjectId
 
 from fiftyone.operators.executor import ExecutionContext, ExecutionResult
 from fiftyone.operators.operator import Operator, OperatorConfig
-from fiftyone.operators.delegated import DelegatedOperation
+from fiftyone.operators.delegated import DelegatedOperation, RunState
 
 
 class MockOperator(Operator):
@@ -25,12 +25,14 @@ class MockOperator(Operator):
         return OperatorConfig(
             name="mock_operator",
             label="mock_operator",
-            should_delegate=True,
             disable_schema_validation=True,
         )
 
     def resolve_input(self, *args, **kwargs):
         return
+
+    def resolve_delegation(self, ctx) -> bool:
+        return True
 
     def execute(self, ctx):
         if not self.success:
@@ -62,7 +64,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
-        self.assertEqual(doc.run_state, "queued")
+        self.assertEqual(doc.run_state, RunState.QUEUED)
 
     def test_list_queued_operations(self):
         self.delete_test_data()
@@ -77,7 +79,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # get all the existing counts of queued operations
         initial_queued = len(self.svc.get_queued_operations())
-        initial_running = len(self.svc.list_operations(run_state="running"))
+        initial_running = len(
+            self.svc.list_operations(run_state=RunState.RUNNING)
+        )
         initial_dataset_queued = len(
             self.svc.get_queued_operations(dataset_id=dataset_id)
         )
@@ -121,7 +125,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         queued = self.svc.get_queued_operations()
         self.assertEqual(len(queued), 10 + initial_queued)
 
-        running = self.svc.list_operations(run_state="running")
+        running = self.svc.list_operations(run_state=RunState.RUNNING)
         self.assertEqual(len(running), 10 + initial_running)
 
     def test_set_run_states(self):
@@ -133,19 +137,19 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, "queued")
+        self.assertEqual(doc.run_state, RunState.QUEUED)
 
         doc = self.svc.set_running(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "running")
+        self.assertEqual(doc.run_state, RunState.RUNNING)
 
         doc = self.svc.set_completed(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "completed")
+        self.assertEqual(doc.run_state, RunState.COMPLETED)
 
         doc = self.svc.set_failed(
             doc_id=doc.id,
             result=ExecutionResult(error=str(ValueError("oops!"))),
         )
-        self.assertEqual(doc.run_state, "failed")
+        self.assertEqual(doc.run_state, RunState.FAILED)
         self.assertIsNotNone(doc.result.error)
 
     @patch(
@@ -165,12 +169,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, "queued")
+        self.assertEqual(doc.run_state, RunState.QUEUED)
 
         self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "completed")
+        self.assertEqual(doc.run_state, RunState.COMPLETED)
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
         self.assertIsNotNone(doc.completed_at)
@@ -199,12 +203,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, "queued")
+        self.assertEqual(doc.run_state, RunState.QUEUED)
 
         self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "failed")
+        self.assertEqual(doc.run_state, RunState.FAILED)
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
         self.assertIsNone(doc.completed_at)
@@ -233,12 +237,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, "queued")
+        self.assertEqual(doc.run_state, RunState.QUEUED)
 
         self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
-        self.assertEqual(doc.run_state, "failed")
+        self.assertEqual(doc.run_state, RunState.FAILED)
 
         # set the mock back to a successful operation
         get_op_mock.return_value = MockOperator()
@@ -246,7 +250,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         rerun_doc = self.svc.rerun_operation(doc.id)
         self.docs_to_delete.append(rerun_doc)
         self.assertNotEquals(doc.id, rerun_doc.id)
-        self.assertEqual(rerun_doc.run_state, "queued")
+        self.assertEqual(rerun_doc.run_state, RunState.QUEUED)
         self.assertIsNotNone(rerun_doc.queued_at)
         self.assertIsNone(rerun_doc.started_at)
         self.assertIsNone(rerun_doc.completed_at)
@@ -255,4 +259,4 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=rerun_doc.id)
-        self.assertEqual(doc.run_state, "completed")
+        self.assertEqual(doc.run_state, RunState.COMPLETED)

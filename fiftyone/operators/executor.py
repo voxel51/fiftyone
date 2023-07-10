@@ -18,6 +18,15 @@ from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
 from fiftyone.core.utils import run_sync_task
 
+from enum import Enum
+
+
+class RunState(Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
 
 class InvocationRequest(object):
     """Represents a request to invoke an operator.
@@ -79,7 +88,7 @@ class Executor(object):
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
-async def execute_operator(operator_name, request_params):
+async def execute_or_delegate_operator(operator_name, request_params):
     """Executes the operator with the given name.
 
     Args:
@@ -94,41 +103,41 @@ async def execute_operator(operator_name, request_params):
         operator_name, request_params
     )
 
-    try:
-        raw_result = await (
-            operator.execute(ctx)
-            if asyncio.iscoroutinefunction(operator.execute)
-            else run_sync_task(operator.execute, ctx)
-        )
-    except Exception as e:
-        return ExecutionResult(executor=executor, error=traceback.format_exc())
+    if operator.resolve_delegation(ctx):
+        try:
+            from . import DelegatedOperation
 
-    return ExecutionResult(result=raw_result.__dict__, executor=executor)
+            op = DelegatedOperation().queue_operation(
+                operator=operator.uri,
+                context=ctx.serialize(),
+                delegation_target=operator.delegation_target,
+            )
 
+            execution = ExecutionResult(op.__dict__, executor, None)
+            execution.result["context"] = (
+                execution.result["context"].serialize()
+                if execution.result["context"]
+                else None
+            )
+            return execution
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor, error=traceback.format_exc()
+            )
+    else:
+        try:
+            raw_result = await (
+                operator.execute(ctx)
+                if asyncio.iscoroutinefunction(operator.execute)
+                else run_sync_task(operator.execute, ctx)
+            )
 
-async def delegate_operator(operator_name, request_params):
-    """Executes the operator with the given name.
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor, error=traceback.format_exc()
+            )
 
-    Args:
-        operator_name: the name of the operator
-        request_params: a dictionary of parameters for the operator
-
-    Returns:
-        the result of the operator as a dictionary or ``None``
-    """
-    (operator, executor, ctx) = prepare_operator_executor(
-        operator_name, request_params
-    )
-
-    from . import DelegatedOperation
-
-    op = DelegatedOperation().queue_operation(
-        operator=operator.uri,
-        context=ctx.serialize(),
-        delegation_target=operator.delegation_target,
-    )
-
-    return ExecutionResult(op.__dict__, executor, None)
+        return ExecutionResult(result=raw_result.__dict__, executor=executor)
 
 
 def prepare_operator_executor(operator_name, request_params):

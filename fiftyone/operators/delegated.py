@@ -7,10 +7,12 @@ from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
 )
+
 from fiftyone.operators.executor import (
     prepare_operator_executor,
     ExecutionResult,
     ExecutionContext,
+    RunState,
 )
 
 
@@ -59,20 +61,22 @@ class DelegatedOperation(object):
         )
 
     def set_running(self, doc_id: ObjectId) -> DelegatedOperationDocument:
-        return self._repo.update_run_state(_id=doc_id, run_state="running")
+        return self._repo.update_run_state(
+            _id=doc_id, run_state=RunState.RUNNING
+        )
 
     def set_completed(
         self, doc_id: ObjectId, result: ExecutionResult = None
     ) -> DelegatedOperationDocument:
         return self._repo.update_run_state(
-            _id=doc_id, run_state="completed", result=result
+            _id=doc_id, run_state=RunState.COMPLETED, result=result
         )
 
     def set_failed(
         self, doc_id: ObjectId, result: ExecutionResult
     ) -> DelegatedOperationDocument:
         return self._repo.update_run_state(
-            _id=doc_id, run_state="failed", result=result
+            _id=doc_id, run_state=RunState.FAILED, result=result
         )
 
     def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
@@ -94,7 +98,7 @@ class DelegatedOperation(object):
         self,
         operator: str = None,
         dataset_id: ObjectId = None,
-        run_state: str = None,
+        run_state: RunState = None,
         delegation_target: str = None,
         **kwargs,
     ):
@@ -117,7 +121,7 @@ class DelegatedOperation(object):
             operator=operator,
             dataset_id=dataset_id,
             delegation_target=delegation_target,
-            run_state="queued",
+            run_state=RunState.QUEUED,
         )
 
         for op in queued_ops:

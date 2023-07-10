@@ -1,7 +1,19 @@
-from datetime import datetime
+"""
+FiftyOne Delegated Operation Repository Document
 
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from datetime import datetime
 from bson import ObjectId
-from fiftyone.operators.executor import ExecutionContext, ExecutionResult
+
+from fiftyone.operators.executor import (
+    ExecutionContext,
+    ExecutionResult,
+    RunState,
+)
 
 
 class DelegatedOperationDocument(object):
@@ -20,7 +32,7 @@ class DelegatedOperationDocument(object):
             if isinstance(context, ExecutionContext)
             else context
         )
-        self.run_state = "queued"  # default to queued state on create
+        self.run_state = RunState.QUEUED  # default to queued state on create
         self.queued_at = datetime.utcnow()
         self.started_at = None
         self.completed_at = None
@@ -33,7 +45,7 @@ class DelegatedOperationDocument(object):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
-        self.run_state = doc["run_state"]
+        self.run_state = RunState(doc["run_state"])
 
         # optional fields
         self.delegation_target = (
@@ -74,6 +86,7 @@ class DelegatedOperationDocument(object):
 
     def to_pymongo(self) -> dict:
         d = self.__dict__
+        d["run_state"] = d["run_state"].value
         d["context"] = (
             d["context"].__dict__
             if isinstance(d["context"], ExecutionContext)

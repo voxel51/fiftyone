@@ -1,5 +1,5 @@
 """
-Delegated Operation Repository
+FiftyOne Delegated Operation Repository
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -12,8 +12,9 @@ import pymongo
 from bson import ObjectId
 from pymongo.collection import Collection
 
+from fiftyone.core.runs import Run
 from fiftyone.factory.repos import DelegatedOperationDocument
-from fiftyone.operators.executor import ExecutionResult
+from fiftyone.operators.executor import ExecutionResult, RunState
 
 
 class DelegatedOperationRepo(object):
@@ -29,7 +30,7 @@ class DelegatedOperationRepo(object):
     def update_run_state(
         self,
         _id: ObjectId,
-        run_state: str,
+        run_state: RunState,
         result: ExecutionResult = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
@@ -45,7 +46,7 @@ class DelegatedOperationRepo(object):
         self,
         operator: str = None,
         dataset_id=None,
-        run_state: str = None,
+        run_state: RunState = None,
         delegation_target: str = None,
         **kwargs: Any,
     ):
@@ -92,32 +93,32 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def update_run_state(
         self,
         _id: ObjectId,
-        run_state: str,
+        run_state: RunState,
         result: ExecutionResult = None,
     ) -> DelegatedOperationDocument:
 
         update = None
 
-        if run_state == "completed":
+        if run_state == RunState.COMPLETED:
             update = {
                 "$set": {
-                    "run_state": run_state,
+                    "run_state": run_state.value,
                     "completed_at": datetime.utcnow(),
                     "result": result.to_json() if result else None,
                 }
             }
-        elif run_state == "failed":
+        elif run_state == RunState.FAILED:
             update = {
                 "$set": {
-                    "run_state": run_state,
+                    "run_state": run_state.value,
                     "failed_at": datetime.utcnow(),
                     "result": result.to_json() if result else None,
                 }
             }
-        elif run_state == "running":
+        elif run_state == RunState.RUNNING:
             update = {
                 "$set": {
-                    "run_state": run_state,
+                    "run_state": run_state.value,
                     "started_at": datetime.utcnow(),
                 }
             }
@@ -133,16 +134,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def get_queued_operations(self, operator: str = None, dataset_id=None):
+    def get_queued_operations(
+        self, operator: str = None, dataset_id: ObjectId = None
+    ):
         return self.list_operations(
-            operator=operator, dataset_id=dataset_id, run_state="queued"
+            operator=operator, dataset_id=dataset_id, run_state=RunState.QUEUED
         )
 
     def list_operations(
         self,
         operator: str = None,
-        dataset_id=None,
-        run_state: str = None,
+        dataset_id: ObjectId = None,
+        run_state: RunState = None,
         delegation_target: str = None,
         **kwargs: Any,
     ):
@@ -154,7 +157,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if dataset_id:
             query["dataset_id"] = dataset_id
         if run_state:
-            query["run_state"] = run_state
+            query["run_state"] = run_state.value
         if delegation_target:
             query["delegation_target"] = delegation_target
 
