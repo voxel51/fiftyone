@@ -1120,6 +1120,59 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
 
     @drop_datasets
+    def test_merge_sample22(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar", tags=["a"])
+        sample2 = fo.Sample(filepath="image.jpg", spam="eggs", tags=["b"])
+        sample3 = fo.Sample(filepath="image.jpg", tags=[])
+
+        # No dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        s1.merge(s2)
+        s1.merge(s3)
+
+        self.assertListEqual(s1["tags"], ["a", "b"])
+        self.assertEqual(s1["foo"], "bar")
+        self.assertEqual(s1["spam"], "eggs")
+
+        # In dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1)
+
+        dataset.merge_sample(s2)
+        dataset.merge_sample(s3)
+
+        self.assertListEqual(s1["tags"], ["a", "b"])
+        self.assertEqual(s1["foo"], "bar")
+        self.assertEqual(s1["spam"], "eggs")
+
+        # List merging variations
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1)
+
+        dataset.merge_sample(s2, merge_lists=False)
+
+        self.assertListEqual(s1["tags"], ["b"])
+
+        # Tests an edge case when setting a typed list field to an empty list
+        dataset.merge_sample(s3, merge_lists=False, dynamic=True)
+
+        self.assertListEqual(s1["tags"], [])
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
