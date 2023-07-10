@@ -222,30 +222,6 @@ const FilterOption: React.FC<Props> = ({
     ]
   );
 
-  useEffect(() => {
-    switch (key) {
-      case "filter":
-        console.info("test");
-        onSelectFilter();
-        break;
-      case "negativeFilter":
-        onSelectNegativeFilter();
-        break;
-      case "match":
-        onSelectMatch();
-        break;
-      case "negativeMatch":
-        onSelectNegativeMatch();
-        break;
-      case "visible":
-        onSelectVisible();
-        break;
-      case "notVisible":
-        onSelectNotVisible();
-        break;
-    }
-  }, [key]);
-
   const selectedValue = options.find((o) => o.key === key)?.value;
 
   const Selected = () => {
@@ -274,6 +250,26 @@ const FilterOption: React.FC<Props> = ({
   const onSelectItem = (key: Key) => {
     setKey(key);
     setOpen(false);
+    switch (key) {
+      case "filter":
+        onSelectFilter();
+        break;
+      case "negativeFilter":
+        onSelectNegativeFilter();
+        break;
+      case "match":
+        onSelectMatch();
+        break;
+      case "negativeMatch":
+        onSelectNegativeMatch();
+        break;
+      case "visible":
+        onSelectVisible();
+        break;
+      case "notVisible":
+        onSelectNotVisible();
+        break;
+    }
   };
 
   const onSelectFilter = () => {
