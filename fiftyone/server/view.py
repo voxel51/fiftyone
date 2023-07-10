@@ -320,7 +320,7 @@ def _make_filter_stages(
                     fosg.FilterLabels(
                         prefix + parent.name,
                         expr,
-                        only_matches=False,
+                        only_matches=only_matches,
                     )
                 )
 
