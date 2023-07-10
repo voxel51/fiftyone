@@ -15,7 +15,6 @@ export const test = base.extend<{}, CustomFixtures>({
         return;
       }
 
-      console.log("worker index is ", workerInfo.workerIndex);
       await use(3050 + workerInfo.workerIndex);
     },
     { scope: "worker" },

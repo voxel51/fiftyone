@@ -8,8 +8,6 @@ import waitOn from "wait-on";
 import { Duration } from "../utils";
 
 export class OssLoader extends AbstractFiftyoneLoader {
-  public uniqueCode: string;
-
   constructor() {
     super();
     this.pythonRunner = new PythonRunner(getPythonCommand);
