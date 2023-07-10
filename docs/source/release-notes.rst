@@ -7,15 +7,19 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.3.3
 --------------------
-*Released July 7, 2023*
+*Released July 12, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`.
+
+API connections
+
+- Fixed a bug when launching the App locally via API connections
 
 .. _release-notes-v0.21.3:
 
 FiftyOne 0.21.3
 ---------------
-*Released July 7, 2023*
+*Released July 12, 2023*
 
 News
 
@@ -23,6 +27,23 @@ News
   image searches on FiftyOne datasets!
 - Released a :ref:`LanceDB integration <lancedb-integration>` for native text
   and image searches on FiftyOne datasets!
+
+App
+
+- Fixed a bug that caused non-matching samples to remain in the grid when
+  applying multiple sidebar filters
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
+- Fixed a bug when filtering by IDs in the sidebar
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
+
+Core
+
+- Added a :meth:`merge_sample() <fiftyone.core.dataset.Dataset.merge_sample>`
+  method for merging individual samples into existing datasets
+  `#3274 <https://github.com/voxel51/fiftyone/pull/3274>`_
+- Fixed a bug when passing dict-valued `points` to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>`
+  `#3268 <https://github.com/voxel51/fiftyone/pull/3268>`_
 
 .. _release-notes-teams-v1.3.2:
 
@@ -69,6 +90,7 @@ API connections
   :ref:`direct database connections <configuring-mongodb-connection>`
 - Fixed a bug when connecting to Teams deployments with non-standard database
   names via API connections
+- Fixed a bug when saving run results using API connections
 - Fixed a bug when deleting datasets using API connections
 
 Management SDK
