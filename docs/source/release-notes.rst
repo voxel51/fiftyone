@@ -9,7 +9,7 @@ FiftyOne Teams 1.3.3
 --------------------
 *Released July 12, 2023*
 
-Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`.
+Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`, plus:
 
 API connections
 
