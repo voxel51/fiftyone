@@ -1,12 +1,18 @@
 /**
  * Copyright 2017-2023, Voxel51, Inc.
  */
-import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
+import {
+  DYNAMIC_EMBEDDED_DOCUMENT,
+  LABEL_LISTS_MAP,
+} from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";
 import { Overlay } from "./base";
 import {
+  ClassificationLabel,
   ClassificationsOverlay,
+  Labels,
+  TemporalDetectionLabel,
   TemporalDetectionOverlay,
 } from "./classifications";
 import DetectionOverlay, { getDetectionPoints } from "./detection";
@@ -14,7 +20,6 @@ import HeatmapOverlay, { getHeatmapPoints } from "./heatmap";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
-import { convertId } from "./util";
 
 const fromLabel = (overlayType) => (field, label) =>
   [new overlayType(field, label)];
@@ -52,41 +57,7 @@ export const loadOverlays = <State extends BaseState>(
   },
   video = false
 ): Overlay<State>[] => {
-  const classifications = [];
-  const overlays = [];
-
-  for (const field in sample) {
-    const label = sample[field];
-
-    if (!label) {
-      continue;
-    }
-
-    const dynamicLabel =
-      label._cls === "DynamicEmbeddedDocument"
-        ? convertId(Object.entries(label)[1][1])
-        : label;
-    const dynamicField =
-      label._cls === "DynamicEmbeddedDocument"
-        ? [field, Object.entries(label)[1][0]].join(".")
-        : field;
-
-    if (dynamicLabel._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[dynamicLabel._cls](
-        dynamicField,
-        dynamicLabel,
-        this
-      );
-      overlays.push(...labelOverlays);
-    } else if (LABEL_TAGS_CLASSES.includes(dynamicLabel._cls)) {
-      classifications.push([
-        dynamicField,
-        dynamicLabel._cls in LABEL_LISTS_MAP
-          ? dynamicLabel[LABEL_LISTS_MAP[dynamicLabel._cls]]
-          : [dynamicLabel],
-      ]);
-    }
-  }
+  const { classifications, overlays } = accumulateOverlays(sample);
 
   if (classifications.length > 0) {
     const overlay = video
@@ -96,4 +67,51 @@ export const loadOverlays = <State extends BaseState>(
   }
 
   return overlays;
+};
+
+const accumulateOverlays = <State extends BaseState>(
+  data: {
+    [key: string]: any;
+  },
+  prefix = "",
+  depth = 1
+): {
+  classifications: Labels<TemporalDetectionLabel | ClassificationLabel>;
+  overlays: Overlay<State>[];
+} => {
+  const classifications = [];
+  const overlays = [];
+
+  for (const field in data) {
+    const label = data[field];
+
+    if (!label || Array.isArray(label)) {
+      continue;
+    }
+
+    if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT && depth) {
+      const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
+      classifications.push(...nestedResult.classifications);
+      overlays.push(...nestedResult.overlays);
+      continue;
+    }
+
+    if (label._cls in FROM_FO) {
+      const labelOverlays = FROM_FO[label._cls](
+        `${prefix}${field}`,
+        label,
+        this
+      );
+      overlays.push(...labelOverlays);
+    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
+      classifications.push([
+        `${prefix}${field}`,
+        label._cls in LABEL_LISTS_MAP
+          ? label[LABEL_LISTS_MAP[label._cls]]
+          : [label],
+      ]);
+    }
+  }
+
+  return { classifications, overlays };
 };

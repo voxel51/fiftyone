@@ -39,6 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
 
+
 try:
     import pprintpp as _pprint
     from mongoengine.base.datastructures import BaseDict, BaseList
@@ -1182,7 +1183,16 @@ class DynamicBatcher(object):
 
 @contextmanager
 def disable_progress_bars():
-    """Context manager that temporarily disables all progress bars."""
+    """Context manager that temporarily disables all progress bars.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        with fo.disable_progress_bars():
+            dataset = foz.load_zoo_dataset("quickstart")
+    """
     prev_show_progress_bars = fo.config.show_progress_bars
     try:
         fo.config.show_progress_bars = False
@@ -1940,8 +1950,8 @@ def validate_color(value):
         or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
     ):
         raise ValueError(
-            "%s is neither a valid CSS color name in all lowercase (eg: 'yellowgreen') nor a hex color(eg. '#00ff00')"
-            % value
+            """%s is neither a valid CSS color name in all lowercase \n"""
+            """(eg: 'yellowgreen') nor a hex color(eg. '#00ff00')""" % value
         )
 
 

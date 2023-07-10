@@ -19,7 +19,6 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { ACTIVE_FIELD } from "../ColorModal/utils";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -260,7 +259,7 @@ function FieldInfoExpanded({
   };
   const colorSettings = useRecoilValue(coloring(false));
 
-  const isModal = useRecoilValue(fos.modal);
+  const isModal = useRecoilValue(fos.currentModalSample) !== null;
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
@@ -269,6 +268,7 @@ function FieldInfoExpanded({
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
+  const disabled = useRecoilValue(fos.disabledPaths);
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget
@@ -280,7 +280,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {!isModal && (
+        {!isModal && !disabled.has(field) && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}

@@ -16,11 +16,7 @@ import { GroupSuspense } from "./GroupSuspense";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
-interface GroupViewProps {
-  subBar?: React.ReactNode;
-}
-
-export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
+export const GroupView = () => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
   const key = useRecoilValue(groupId);
@@ -90,14 +86,13 @@ export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
                 fullHeight={!is3DVisible && !isImageVisible}
               />
             )}
-
-            {isImageVisible ? (
-              <GroupSuspense>
+            <GroupSuspense>
+              {isImageVisible ? (
                 <GroupImageVideoSample lookerRef={lookerRef} />
-              </GroupSuspense>
-            ) : is3DVisible ? (
-              <GroupSample3d />
-            ) : null}
+              ) : is3DVisible ? (
+                <GroupSample3d />
+              ) : null}
+            </GroupSuspense>
           </Resizable>
         )}
 
@@ -105,7 +100,6 @@ export const GroupView: React.FC<GroupViewProps> = ({ subBar }) => {
 
         {!shouldSplitVertically && is3DVisible && <GroupSample3d />}
       </div>
-      {subBar && subBar}
     </div>
   );
 };

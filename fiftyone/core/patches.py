@@ -324,7 +324,7 @@ class _PatchesView(fov.DatasetView):
 
     def _sync_source_sample_field(self, sample, field):
         label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        is_list_field = issubclass(label_type, fol._HasLabelList)
 
         sample_id = sample[self._id_field]
 
@@ -592,6 +592,25 @@ def make_patches_dataset(
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
+
+    keys = field.split(".")
+    if len(keys) > 2:
+        raise ValueError(
+            f"Cannot create nested patches field of depth greater than 1: {field}"
+        )
+
+    if len(keys) == 2:
+        parent = sample_collection.get_field(keys[0])
+        if not isinstance(parent, fof.EmbeddedDocumentField):
+            raise ValueError(
+                f"Cannot create nested patches field of parent: {parent.ftype}"
+            )
+
+        dataset.add_sample_field(
+            keys[0],
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=foo.DynamicEmbeddedDocument,
+        )
 
     dataset.add_sample_field(field, **foo.get_field_kwargs(patches_field))
 

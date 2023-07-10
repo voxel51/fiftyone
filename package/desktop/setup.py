@@ -16,7 +16,7 @@ import os
 import shutil
 
 
-VERSION = "0.27.0"
+VERSION = "0.28.1"
 
 
 def get_version():
@@ -74,7 +74,7 @@ class CustomBdistWheel(bdist_wheel):
         elif is_platform("linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
         elif is_platform("mac", "arm64"):
-            self.plat_name = "macosx_11_10_arm64"
+            self.plat_name = "macosx_11_0_arm64"
         elif is_platform("mac", "x86_64"):
             self.plat_name = "macosx_10_10_x86_64"
         elif is_platform("win"):
@@ -116,7 +116,7 @@ class CustomBdistWheel(bdist_wheel):
             apps = [os.environ["FIFTYONE_APP_EXE_PATH"]]
         elif self.plat_name.startswith("manylinux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
-        elif self.plat_name == "macosx_11_10_arm64":
+        elif self.plat_name == "macosx_11_0_arm64":
             apps = glob.glob(
                 os.path.join(release_dir, "mac-arm64", "FiftyOne*.app")
             )

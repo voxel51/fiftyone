@@ -1,14 +1,11 @@
+import Flashlight from "@fiftyone/flashlight";
+import { freeVideos } from "@fiftyone/looker";
+import { useEventHandler, useExpandSample } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-
-import Flashlight from "@fiftyone/flashlight";
-import { freeVideos } from "@fiftyone/looker";
-
-import { useEventHandler } from "@fiftyone/state";
 import { flashlightLooker } from "./Grid.module.css";
 import { rowAspectRatioThreshold } from "./recoil";
-import useExpandSample from "./useExpandSample";
 import usePage from "./usePage";
 import useResize from "./useResize";
 
@@ -26,12 +23,12 @@ const Grid: React.FC<{}> = () => {
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
 
   const selected = useRecoilValue(fos.selectedSamples);
-  const [next, pager] = usePage(false, store);
+  const pager = usePage(false, store);
 
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
-  const isModalOpen = Boolean(useRecoilValue(fos.modal));
+  const isModalOpen = useRecoilValue(fos.isModalActive);
 
   // create flashlight only one time
   const [flashlight] = React.useState(() => {
@@ -93,7 +90,6 @@ const Grid: React.FC<{}> = () => {
         return;
       }
 
-      next.current = 0;
       flashlight.reset();
       store.reset();
       freeVideos();
@@ -152,13 +148,13 @@ const Grid: React.FC<{}> = () => {
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set, reset }) =>
+      ({ snapshot, reset }) =>
         async (event: KeyboardEvent) => {
           if (event.key !== "Escape") {
             return;
           }
 
-          if (!(await snapshot.getPromise(fos.modal))) {
+          if ((await snapshot.getPromise(fos.modalSampleIndex)) === null) {
             reset(fos.selectedSamples);
           }
         },

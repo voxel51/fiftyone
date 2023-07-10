@@ -42,6 +42,7 @@ export const DatasetNodeQuery = graphql`
       mediaType
       defaultGroupSlice
       groupField
+      groupSlice
       groupMediaTypes {
         name
         mediaType

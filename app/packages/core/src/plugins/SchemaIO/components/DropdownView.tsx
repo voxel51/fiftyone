@@ -1,16 +1,22 @@
+import { Box, ListItemText, MenuItem, Select, Typography } from "@mui/material";
 import React from "react";
-import { Box, Typography, Select, MenuItem, ListItemText } from "@mui/material";
-import FieldWrapper from "./FieldWrapper";
-import autoFocus from "../utils/auto-focus";
 import { getComponentProps } from "../utils";
+import autoFocus from "../utils/auto-focus";
 import AlertView from "./AlertView";
+import FieldWrapper from "./FieldWrapper";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
   const { default: defaultValue, view = {}, type } = schema;
-  const { choices, multiple: multiSelect, separator = "," } = view;
+  const {
+    choices,
+    multiple: multiSelect,
+    placeholder = "",
+    separator = ",",
+    readOnly,
+  } = view;
 
   if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
     return (
@@ -44,6 +50,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
+        disabled={readOnly}
         autoFocus={autoFocus(props)}
         defaultValue={computedDefaultValue}
         size="small"
@@ -51,7 +58,7 @@ export default function DropdownView(props) {
         displayEmpty
         renderValue={(value) => {
           if (value?.length === 0) {
-            return view?.placeholder || "";
+            return placeholder;
           }
           if (multiple) {
             return value.map((item) => choiceLabels[item] || item).join(", ");
