@@ -1120,7 +1120,34 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
 
     @drop_datasets
-    def test_merge_sample22(self):
+    def test_one(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        filepath = dataset.first().filepath
+
+        sample = dataset.one(F("filepath") == filepath)
+
+        self.assertEqual(sample.filepath, filepath)
+
+        with self.assertRaises(ValueError):
+            _ = dataset.one(F("filepath") == "bad")
+
+        sample = dataset.one(F("filepath").ends_with(".jpg"))
+
+        self.assertTrue(sample.filepath.endswith(".jpg"))
+
+        with self.assertRaises(ValueError):
+            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_merge_sample(self):
         sample1 = fo.Sample(filepath="image.jpg", foo="bar", tags=["a"])
         sample2 = fo.Sample(filepath="image.jpg", spam="eggs", tags=["b"])
         sample3 = fo.Sample(filepath="image.jpg", tags=[])
