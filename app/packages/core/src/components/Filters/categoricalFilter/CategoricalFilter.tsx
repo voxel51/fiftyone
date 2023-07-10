@@ -175,7 +175,6 @@ interface Props<T extends V = V> {
   selectedValuesAtom: RecoilState<T["value"][]>;
   excludeAtom: RecoilState<boolean>; // toggles select or exclude
   isMatchingAtom: RecoilState<boolean>; // toggles match or filter
-  onlyMatchAtom: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
   countsAtom: RecoilValue<{
     count: number;
     results: [T["value"], number][];
@@ -190,7 +189,6 @@ const CategoricalFilter = <T extends V = V>({
   countsAtom,
   selectedValuesAtom,
   excludeAtom,
-  onlyMatchAtom,
   isMatchingAtom,
   path,
   modal,
@@ -267,7 +265,6 @@ const CategoricalFilter = <T extends V = V>({
           selectedValuesAtom={selectedValuesAtom}
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
-          onlyMatchAtom={onlyMatchAtom}
           modal={modal}
           totalCount={count}
           selectedCounts={selectedCounts}
