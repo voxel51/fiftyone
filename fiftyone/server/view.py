@@ -377,8 +377,8 @@ def _make_query(path, field, args):
         if args["exclude"]:
             return {
                 "$or": [
-                    {path: {"$lt": mn}},
-                    {path: {"$gt": mx}},
+                    {path: {"$lte": mn}},
+                    {path: {"$gte": mx}},
                 ]
             }
 

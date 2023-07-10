@@ -48,11 +48,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["carrot"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "predictions.detections.confidence": {
                 "range": [0.5, 1],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": False,
             },
@@ -65,11 +63,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["carrot"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "predictions.detections.confidence": {
                 "range": [0.0, 0.5],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": False,
             },
@@ -83,11 +79,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
             "list_int": {
                 "range": [0, 2],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": True,
             },
@@ -102,11 +96,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["empty"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
             "list_int": {
                 "range": [0, 2],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": True,
             },
@@ -119,11 +111,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
             "list_int": {
                 "range": [3, 4],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": True,
             },
@@ -137,7 +127,6 @@ class ServerViewTests(unittest.TestCase):
                 "false": True,
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -149,7 +138,6 @@ class ServerViewTests(unittest.TestCase):
                 "false": True,
                 "exclude": True,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -161,7 +149,6 @@ class ServerViewTests(unittest.TestCase):
                 "false": False,
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -182,7 +169,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["two"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -194,7 +180,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -216,7 +201,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["two"],
                 "exclude": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -228,7 +212,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -252,7 +235,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": True,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -283,11 +265,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["carrot"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "frames.predictions.detections.confidence": {
                 "range": [0.5, 1],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": False,
             },
@@ -300,11 +280,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["carrot"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "frames.predictions.detections.confidence": {
                 "range": [0.0, 0.5],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": False,
             },
@@ -328,7 +306,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["two"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -340,7 +317,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -362,7 +338,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["two"],
                 "exclude": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -374,7 +349,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -399,7 +373,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": True,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -430,6 +403,16 @@ class ServerViewTests(unittest.TestCase):
                 list_int=[1, 2],
                 list_str=["one", "two"],
             ),
+            dynamic_list=[
+                fo.DynamicEmbeddedDocument(
+                    bool=True,
+                    int=1,
+                    str="str",
+                    list_bool=[True],
+                    list_int=[1, 2],
+                    list_str=["one", "two"],
+                )
+            ],
         )
         dataset.add_sample(sample)
         dataset.add_dynamic_sample_fields()
@@ -439,11 +422,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["carrot"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "dynamic.predictions.detections.confidence": {
                 "range": [0.5, 1],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": False,
             },
@@ -456,11 +437,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["carrot"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "dynamic.predictions.detections.confidence": {
                 "range": [0.0, 0.5],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": False,
             },
@@ -474,11 +453,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
             "dynamic.list_int": {
                 "range": [0, 2],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": True,
             },
@@ -493,11 +470,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["empty"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
             "dynamic.list_int": {
                 "range": [0, 2],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": True,
             },
@@ -510,11 +485,9 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
             "dynamic.list_int": {
                 "range": [3, 4],
-                "_CLS": "numeric",
                 "exclude": False,
                 "isMatching": True,
             },
@@ -528,7 +501,6 @@ class ServerViewTests(unittest.TestCase):
                 "false": True,
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -540,7 +512,6 @@ class ServerViewTests(unittest.TestCase):
                 "false": True,
                 "exclude": True,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -552,7 +523,6 @@ class ServerViewTests(unittest.TestCase):
                 "false": False,
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -573,7 +543,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["two"],
                 "exclude": False,
                 "isMatching": True,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -585,7 +554,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -607,7 +575,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["two"],
                 "exclude": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -619,7 +586,6 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
         }
         view = fosv.get_view("test", filters=filters)
@@ -643,7 +609,110 @@ class ServerViewTests(unittest.TestCase):
                 "values": ["one"],
                 "exclude": True,
                 "isMatching": True,
-                "_CLS": "str",
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.bool": {
+                "true": False,
+                "false": True,
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.list_bool": {
+                "true": False,
+                "false": True,
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.bool": {
+                "true": True,
+                "false": False,
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.list_bool": {
+                "true": True,
+                "false": False,
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.int": {
+                "range": [-1, 0],
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.list_int": {
+                "range": [-1, 0],
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.int": {
+                "range": [0, 1],
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.list_int": {
+                "range": [0, 1],
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.int": {
+                "range": [0, 2],
+                "exclude": True,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.list_int": {
+                "range": [0, 2],
+                "exclude": True,
+                "isMatching": True,
             },
         }
         view = fosv.get_view("test", filters=filters)
