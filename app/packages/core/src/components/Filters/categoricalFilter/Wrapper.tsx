@@ -1,10 +1,5 @@
 import React, { MutableRefObject } from "react";
-import {
-  RecoilState,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
@@ -40,15 +35,12 @@ const Wrapper = ({
 }: WrapperProps) => {
   const name = path.split(".").slice(-1)[0];
   const schema = useRecoilValue(fos.field(path));
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const visibility = useRecoilValue(fieldVisibility);
   const filter = useRecoilValue(fos.filters);
   const selectedSet = new Set(selected);
-  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setIsMatching = isMatchingAtom
-    ? useSetRecoilState(isMatchingAtom)
-    : null;
+  const [excluded, setExcluded] = useRecoilState(excludeAtom);
+  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
 
   const counts = Object.fromEntries(results);
@@ -87,8 +79,8 @@ const Wrapper = ({
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(!nestedField);
+    excluded && setExcluded(false);
+    setIsMatching(!nestedField);
   };
 
   if (totalCount === 0) {
@@ -105,8 +97,8 @@ const Wrapper = ({
       </>
     );
   }
-  console.info(visibility);
-  console.info(filter);
+  console.info("V", visibility);
+  console.info("F", filter);
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (

@@ -296,7 +296,7 @@ const NumericFieldFilter = ({
               {...props}
             />
           ))}
-        {isFiltered && hasBounds && isFilterMode && (
+        {isFiltered && hasBounds && (
           <FilterOption
             nestedField={nestedField}
             shouldNotShowExclude={false} // only boolean fields don't use exclude
@@ -306,7 +306,6 @@ const NumericFieldFilter = ({
             path={path}
             color={color}
             modal={modal}
-            path={path}
             isKeyPointLabel={isKeyPoints}
           />
         )}

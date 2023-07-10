@@ -157,8 +157,12 @@ export const onlyMatchAtom = selectorFamily<
       getFilter(get, modal, path).onlyMatch,
   set:
     ({ modal, path }) =>
-    ({ get, set }, value) =>
-      setFilter(get, set, modal, path, "onlyMatch", value),
+    ({ get, set }, value) => {
+      const isFiltering = get(fos.isSidebarFilterMode);
+      return isFiltering
+        ? setFilter(get, set, modal, path, "onlyMatch", value)
+        : null;
+    },
 });
 
 // updates if it is filter or match model
