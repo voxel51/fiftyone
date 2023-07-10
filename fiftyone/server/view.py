@@ -460,6 +460,10 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
+        if exclude:
+            # pylint: disable=invalid-unary-operand-type
+            expr = ~expr
+
         if none and not is_label and not list_field:
             if exclude:
                 expr &= f.exists()
