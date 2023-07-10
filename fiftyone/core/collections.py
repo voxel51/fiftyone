@@ -788,6 +788,10 @@ class SampleCollection(object):
             exact (False): whether to raise an error if multiple samples match
                 the expression
 
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
         Returns:
             a :class:`fiftyone.core.sample.SampleView`
         """
