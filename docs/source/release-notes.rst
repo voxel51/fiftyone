@@ -40,9 +40,9 @@ App
   `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
 - Fixed a bug when filtering by IDs in the sidebar
   `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
-- Fixed keypoint filtering for list and 
+- Fixed keypoint filtering for list and
   `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
-- Fixed label tags grid bubbles for filterless view 
+- Fixed label tags grid bubbles for filterless view
   `#3257 <https://github.com/voxel51/fiftyone/pull/3267>`_
 
 Core
