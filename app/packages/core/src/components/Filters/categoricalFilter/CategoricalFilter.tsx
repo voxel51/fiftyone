@@ -201,6 +201,7 @@ const CategoricalFilter = <T extends V = V>({
     : path.startsWith("_label_tags")
     ? "label tag"
     : name;
+
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });
@@ -211,7 +212,7 @@ const CategoricalFilter = <T extends V = V>({
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
-
+  if (countsLoadable.state === "hasError") throw countsLoadable.contents;
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;
 
