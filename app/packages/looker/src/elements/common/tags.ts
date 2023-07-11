@@ -36,7 +36,6 @@ import {
 } from "./util";
 
 import _ from "lodash";
-import { lookerTags } from "./tags.module.css";
 
 interface TagData {
   color: string;
@@ -293,14 +292,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           const v = coloring.by === "value" ? tag : path;
-          if (filter(path, tag)) {
-            elements.push({
-              color: getColor(coloring.pool, coloring.seed, v),
-              title: value,
-              value: value,
-              path: v,
-            });
-          }
+          elements.push({
+            color: getColor(coloring.pool, coloring.seed, v),
+            title: value,
+            value: value,
+            path: v,
+          });
         });
       } else {
         const [field, value] = getFieldAndValue(sample, fieldSchema, path);
