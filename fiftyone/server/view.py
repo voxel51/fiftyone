@@ -267,8 +267,10 @@ def _make_filter_stages(
         is_matching = args.get("isMatching", True)
 
         is_label_field = _is_label(field)
-        if is_label_field and issubclass(
-            field.document_type, (fol.Keypoint, fol.Keypoints)
+        if (
+            is_label_field
+            and issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
+            and isinstance(field, fof.ListField)
         ):
             continue
 
@@ -287,7 +289,7 @@ def _make_filter_stages(
         field = view.get_field(path)
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
-        ):
+        ) and isinstance(field, fof.ListField):
             expr = _make_keypoint_list_filter(args, view, path, field)
             if expr is not None:
                 stages.append(
@@ -377,8 +379,8 @@ def _make_query(path, field, args):
         if args["exclude"]:
             return {
                 "$or": [
-                    {path: {"$lte": mn}},
-                    {path: {"$gte": mx}},
+                    {path: {"$lt": mn}},
+                    {path: {"$gt": mx}},
                 ]
             }
 

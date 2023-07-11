@@ -5,6 +5,7 @@ FiftyOne server-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import math
 import unittest
 
 import fiftyone as fo
@@ -717,3 +718,85 @@ class ServerViewTests(unittest.TestCase):
         }
         view = fosv.get_view("test", filters=filters)
         self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_extended_keypoint_sample(self):
+        dataset = fod.Dataset("test")
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["top-left", "center", "bottom-right"], edges=[[0, 1, 2]]
+        )
+        sample = fos.Sample(
+            filepath="video.mp4",
+            keypoint=fo.Keypoint(
+                label="keypoint",
+                points=[[0, 0], [0.5, 0.5], [1, 1]],
+                confidence=[0, 0.5, 1],
+                dynamic=["one", "two", "three"],
+                tags=["keypoint"],
+            ),
+            dynamic=fo.DynamicEmbeddedDocument(
+                keypoint=fo.Keypoint(
+                    label="keypoint",
+                    points=[[0, 0], [0.5, 0.5], [1, 1]],
+                    confidence=[0, 0.5, 1],
+                    dynamic=["one", "two", "three"],
+                    tags=["dynamic.keypoint"],
+                )
+            ),
+        )
+        sample.frames[1] = fo.Frame(
+            keypoint=fo.Keypoint(
+                label="keypoint",
+                points=[[0, 0], [0.5, 0.5], [1, 1]],
+                confidence=[0, 0.5, 1],
+                dynamic=["one", "two", "three"],
+                tags=["frames.keypoint"],
+            ),
+            dynamic=fo.DynamicEmbeddedDocument(
+                keypoint=fo.Keypoint(
+                    label="keypoint",
+                    points=[[0, 0], [0.5, 0.5], [1, 1]],
+                    confidence=[0, 0.5, 1],
+                    dynamic=["one", "two", "three"],
+                    tags=["frames.dynamic.keypoint"],
+                )
+            ),
+        )
+
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+        dataset.add_dynamic_frame_fields()
+
+        filters = {
+            "keypoint.label": {
+                "values": ["empty"],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "keypoint.label": {
+                "values": ["keypoint"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "keypoint.points": {
+                "values": ["top-left"],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(view.first().keypoint.points[0], [0, 0])
+        for point in view.first().keypoint.points[1:]:
+            self.assertTrue(math.isnan(point[0]))
+            self.assertTrue(math.isnan(point[1]))
