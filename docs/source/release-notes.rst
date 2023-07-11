@@ -53,6 +53,8 @@ Core
 - Fixed a bug when passing dict-valued `points` to
   :func:`compute_visualization() <fiftyone.brain.compute_visualization>`
   `#3268 <https://github.com/voxel51/fiftyone/pull/3268>`_
+- Fixed a bug when filtering keypoints stored in embedded documents
+  `#3279 <https://github.com/voxel51/fiftyone/pull/3279>`_
 
 .. _release-notes-teams-v1.3.2:
 
