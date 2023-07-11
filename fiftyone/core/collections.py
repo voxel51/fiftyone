@@ -9787,7 +9787,7 @@ class SampleCollection(object):
             self,
             field,
             expr,
-            embedded_root,
+            embedded_root=embedded_root,
             allow_missing=allow_missing,
             new_field=new_field,
             context=context,
@@ -10367,7 +10367,9 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     def _replace(path):
-        return ".".join([new_field] + path.split(".")[1:])
+        n = new_field.count(".") + 1
+        chunks = path.split(".", n)
+        return new_field + "." + chunks[-1] if len(chunks) > n else new_field
 
     if new_field:
         field_name = _replace(field_name)
@@ -10458,7 +10460,7 @@ def _make_set_field_pipeline(
     sample_collection,
     field,
     expr,
-    embedded_root,
+    embedded_root=False,
     allow_missing=False,
     new_field=None,
     context=None,

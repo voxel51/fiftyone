@@ -2733,7 +2733,6 @@ class FilterKeypoints(ViewStage):
         _, points_path = sample_collection._get_label_field_path(
             self._field, "points"
         )
-        new_field = self._get_new_field(sample_collection)
 
         pipeline = []
 
@@ -2808,25 +2807,17 @@ class FilterKeypoints(ViewStage):
 
         if self._only_matches:
             # Remove Keypoint objects with no points after filtering
+            has_points = (
+                F("points").filter(F()[0] != float("nan")).length() > 0
+            )
             if is_list_field:
-                has_points = (
-                    F("points").filter(F()[0] != float("nan")).length() > 0
-                )
-                match_expr = F("keypoints").filter(has_points)
+                only_expr = F().filter(has_points)
             else:
-                field, _ = sample_collection._handle_frame_field(new_field)
-                has_points = (
-                    F(field + ".points")
-                    .filter(F()[0] != float("nan"))
-                    .length()
-                    > 0
-                )
-                match_expr = has_points.if_else(F(field), None)
+                only_expr = has_points.if_else(F(), None)
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
                 root_path,
-                match_expr,
-                embedded_root=True,
+                only_expr,
                 allow_missing=True,
                 new_field=self._new_field,
             )
