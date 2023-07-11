@@ -30,11 +30,20 @@ News
 
 App
 
+- Added support for embedded keypoint fields in
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
+  `#3279 <https://github.com/voxel51/fiftyone/pull/3279>`_
+- Fixed keypoint filtering
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3280>`_
 - Fixed a bug that caused non-matching samples to remain in the grid when
   applying multiple sidebar filters
   `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
 - Fixed a bug when filtering by IDs in the sidebar
   `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
+- Fixed keypoint filtering for list and 
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
+- Fixed label tags grid bubbles for filterless view 
+  `#3257 <https://github.com/voxel51/fiftyone/pull/3267>`_
 
 Core
 
