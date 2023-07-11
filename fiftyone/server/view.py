@@ -308,7 +308,7 @@ def _make_filter_stages(
                     fosg.FilterLabels(
                         label_path,
                         expr,
-                        only_matches=True,
+                        only_matches=not args.get("exclude", False),
                     )
                 )
 
