@@ -265,19 +265,19 @@ def _make_filter_stages(
     queries = []
     for path, label_path, field, args in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
-
+        path_field = view.get_field(path)
         is_label_field = _is_label(field)
         if (
             is_label_field
             and issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
-            and isinstance(field, (fof.KeypointsField, fof.ListField))
+            and isinstance(path_field, (fof.KeypointsField, fof.ListField))
         ):
             continue
 
         if args.get("exclude") and not is_matching:
             continue
 
-        queries.append(_make_query(path, view.get_field(path), args))
+        queries.append(_make_query(path, path_field, args))
 
     if queries:
         stages.append(fosg.Match({"$and": queries}))
@@ -366,7 +366,7 @@ def _is_label(field):
 def _make_query(path, field, args):
     keys = path.split(".")
     path = ".".join(keys[:-1] + [field.db_field or field.name])
-    if isinstance(field, fof.ListField):
+    if isinstance(field, fof.ListField) and field.field:
         field = field.field
 
     if isinstance(
