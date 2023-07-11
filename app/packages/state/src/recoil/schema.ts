@@ -303,17 +303,15 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   get:
     ({ space }) =>
     ({ get }) => {
-      const dataset = get(atoms.dataset);
-
       if (space) {
         return space === State.SPACE.FRAME
-          ? getLabelFields(dataset.frameFields, "frames.")
-          : getLabelFields(dataset.sampleFields);
+          ? getLabelFields(get(atoms.frameFields), "frames.")
+          : getLabelFields(get(atoms.sampleFields));
       }
 
       return [
-        ...getLabelFields(dataset.sampleFields),
-        ...getLabelFields(dataset.frameFields, "frames."),
+        ...getLabelFields(get(atoms.sampleFields)),
+        ...getLabelFields(get(atoms.frameFields), "frames."),
       ];
     },
 });

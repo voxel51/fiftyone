@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<23bb6f6facc2a163fa838ed29fc2f473>>
+ * @generated SignedSource<<173fa47e91bb6feb3c79bf5dc7e3af1d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,16 +11,16 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
-  readonly colorPool: ReadonlyArray<string> | null;
+  readonly colorPool: ReadonlyArray<string>;
   readonly fields: ReadonlyArray<{
-    readonly colorByAttribute: string | null;
-    readonly fieldColor: string | null;
+    readonly colorByAttribute: boolean;
+    readonly fieldColor: string;
     readonly path: string;
     readonly valueColors: ReadonlyArray<{
       readonly color: string;
       readonly value: string;
-    }> | null;
-  }> | null;
+    }>;
+  }>;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {
@@ -73,7 +73,7 @@ const node: ReaderFragment = {
         {
           "alias": null,
           "args": null,
-          "concreteType": "LabelSetting",
+          "concreteType": "ValueColor",
           "kind": "LinkedField",
           "name": "valueColors",
           "plural": true,

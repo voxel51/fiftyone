@@ -140,6 +140,16 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
+    async def set_selected_fields(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        fields: t.List[str],
+    ) -> bool:
+        await dispatch_event(subscription, fose.SelectFields(fields))
+        return True
+
+    @gql.mutation
     async def set_selected_labels(
         self,
         subscription: str,

@@ -1,7 +1,6 @@
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import {
-  StateForm,
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtom,
@@ -12,8 +11,6 @@ import { v4 as uuid } from "uuid";
 import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { config } from "./config";
-import { filters, modalFilters } from "./filters";
-import { resolvedGroupSlice } from "./groups";
 import { isModalActive, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
@@ -431,29 +428,6 @@ export const mediaFields = selector<string[]>({
   },
 });
 
-export const viewStateForm = selectorFamily<
-  StateForm,
-  {
-    addStages?: string;
-    modal?: boolean;
-    selectSlice?: boolean;
-    omitSelected?: boolean;
-  }
->({
-  key: "viewStateForm",
-  get:
-    ({ addStages, modal, selectSlice, omitSelected }) =>
-    ({ get }) => {
-      return {
-        filters: get(modal ? modalFilters : filters),
-        sampleIds: omitSelected ? [] : [...get(selectedSamples)],
-        labels: get(selectedLabelList),
-        extended: get(extendedStages),
-        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
-        addStages: addStages ? JSON.parse(addStages) : [],
-      };
-    },
-});
 export const selectedPatchIds = selectorFamily({
   key: "selectedPatchIds",
   get:

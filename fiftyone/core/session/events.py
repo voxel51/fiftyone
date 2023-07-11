@@ -136,10 +136,10 @@ class Refresh(Event):
 
 
 @dataclass
-class SelectSamples(Event):
-    """Select samples event"""
+class SelectFields(Event):
+    """Select fields event"""
 
-    sample_ids: t.List[str]
+    fields: t.List[str]
 
 
 @dataclass
@@ -147,6 +147,13 @@ class SelectLabels(Event):
     """Select labels event"""
 
     labels: t.List[LabelData]
+
+
+@dataclass
+class SelectSamples(Event):
+    """Select samples event"""
+
+    sample_ids: t.List[str]
 
 
 @dataclass

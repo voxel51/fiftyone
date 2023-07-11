@@ -169,7 +169,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
         return current?.length === 1 ? current[0] : get(defaultPcdSlice);
       }
 
-      return get(groupSlice(modal)) || get(defaultGroupSlice);
+      return get(modalGroupSlice) || get(defaultGroupSlice);
     },
 });
 
@@ -185,7 +185,7 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
       }
 
       const defaultCurrentSlice =
-        get(groupSlice(modal)) || get(defaultGroupSlice);
+        get(modalGroupSlice) || get(defaultGroupSlice);
 
       return defaultCurrentSlice ? [defaultCurrentSlice] : null;
     },

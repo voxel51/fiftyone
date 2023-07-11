@@ -27,6 +27,7 @@ from fiftyone.core.session.events import (
     EventType,
     ListenPayload,
     Refresh,
+    SelectFields,
     SelectLabels,
     SelectSamples,
     StateUpdate,
@@ -69,6 +70,9 @@ async def dispatch_event(
 
     if isinstance(event, SelectLabels):
         _state.selected_labels = event.labels
+
+    if isinstance(event, SelectFields):
+        _state.selected = event.fields
 
     if isinstance(event, SelectSamples):
         _state.selected = event.sample_ids

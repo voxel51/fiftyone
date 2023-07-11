@@ -53,6 +53,7 @@ class StateDescription(etas.Serializable):
         config=None,
         dataset=None,
         selected=None,
+        selected_fields=None,
         selected_labels=None,
         spaces=None,
         color_scheme=None,
@@ -62,6 +63,7 @@ class StateDescription(etas.Serializable):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
+        self.selected_fields = selected_fields or []
         self.selected_labels = selected_labels or []
         if dataset is not None:
             dataset.reload()
@@ -189,6 +191,7 @@ class StateDescription(etas.Serializable):
             config=config,
             dataset=dataset,
             selected=d.get("selected", []),
+            selected_fields=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,
             spaces=spaces,

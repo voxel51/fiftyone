@@ -48,6 +48,7 @@ from fiftyone.core.session.events import (
     DeactivateNotebookCell,
     ReactivateNotebookCell,
     Refresh,
+    SelectFields,
     SelectLabels,
     SelectSamples,
     SetColorScheme,
@@ -677,6 +678,7 @@ class Session(object):
             None, dataset, self.config
         )
         self._state.selected = []
+        self._state.selected_fields = []
         self._state.selected_labels = []
 
     @property
@@ -716,6 +718,7 @@ class Session(object):
             self._state.view_name = view.name
 
         self._state.selected = []
+        self._state.selected_fields = []
         self._state.selected_labels = []
 
     @property
@@ -750,6 +753,15 @@ class Session(object):
         self._client.send_event(Refresh(config=self.config))
 
     @property
+    def selected_fields(self) -> t.List[str]:
+        return list(self._state.selected_fields)
+
+    @selected_fields.setter  # type: ignore
+    def selected_fields(self, fields: t.List[str]) -> t.List[str]:
+        self._state.selected_fields = list(fields) if fields else []
+        self._client.send_event(SelectFields(fields))
+
+    @property
     def selected(self) -> t.List[str]:
         """A list of sample IDs of the currently selected samples in the App,
         if any.
@@ -766,7 +778,6 @@ class Session(object):
         self._state.selected = []
         self._client.send_event(SelectSamples([]))
 
-    @update_state()
     def select_samples(
         self,
         ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,

@@ -1,12 +1,7 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { get } from "lodash";
 import { useRelayEnvironment } from "react-relay";
-import {
-  RecoilState,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
-import { currentModalNavigation, currentModalSample } from "../recoil";
+import { RecoilState, useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -17,21 +12,11 @@ import * as sidebarAtoms from "../recoil/sidebar";
 import { getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { LookerStore, Lookers } from "./useLookerStore";
+import useSetExpandedSample from "./useSetExpandedSample";
 
 export default <T extends Lookers>(store: LookerStore<T>) => {
   const environment = useRelayEnvironment();
-  const setModal = useRecoilTransaction_UNSTABLE(
-    ({ set }) =>
-      (
-        id: string,
-        index: number,
-        getIndex: (index: number) => Promise<string>
-      ) => {
-        set(currentModalSample, { id, index });
-        set(currentModalNavigation, () => getIndex);
-      },
-    []
-  );
+  const setExpandedSample = useSetExpandedSample();
 
   const setModalState = useRecoilCallback(
     ({ set, snapshot }) =>
@@ -65,7 +50,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
           [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
 
-          [groupAtoms.groupSlice(true), groupAtoms.groupSlice(false)],
+          [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
         ];
 
         const results = await Promise.all(
@@ -127,8 +112,8 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           return { id, groupId, groupByFieldValue };
         };
 
-        // setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
+        setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
       },
-    [setModalState, store]
+    [setExpandedSample, setModalState, store]
   );
 };

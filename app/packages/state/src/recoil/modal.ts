@@ -7,7 +7,7 @@ import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
 import { pinned3DSample } from "./atoms";
 import { filters } from "./filters";
-import { groupId, groupSlice, hasGroupSlices } from "./groups";
+import { groupId, hasGroupSlices, modalGroupSlice } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
@@ -82,11 +82,6 @@ export const modalSampleId = selector<string>({
   },
 });
 
-export const isModalActive = selector<boolean>({
-  key: "isModalActive",
-  get: ({ get }) => get(currentModalSample) !== null,
-});
-
 export const modalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
@@ -113,97 +108,14 @@ export const modalSample = graphQLSelector<
       filter: {
         id: current.id,
         group: get(hasGroupSlices)
-          ? { slices: [get(groupSlice(true))], id: get(groupId) }
+          ? { slices: [get(modalGroupSlice)], id: get(groupId) }
           : null,
       },
     };
   },
 });
 
-export type ModalSample = NonNullable<
-  Exclude<
-    ResponseFrom<mainSampleQuery>["sample"],
-    {
-      readonly __typename: "%other";
-    }
-  >
->;
-
-export const currentModalSample = atom<{ id: string; index: number } | null>({
-  key: "currentModalSample",
-  default: null,
-});
-
-export const currentModalNavigation = atom<
-  ((index: number) => Promise<string>) | null
->({
-  key: "currentModalNavigation",
-  default: null,
-});
-
-export const modalSampleIndex = selector<number>({
-  key: "modalSampleIndex",
-  get: ({ get }) => {
-    const current = get(currentModalSample);
-
-    if (!current) {
-      throw new Error("modal sample is not defined");
-    }
-
-    return current.index;
-  },
-});
-
-export const modalSampleId = selector<string | null>({
-  key: "modalSampleId",
-  get: ({ get }) => {
-    const current = get(currentModalSample);
-
-    if (!current) {
-      throw new Error("modal sample is not defined");
-    }
-
-    return current.id;
-  },
-});
-
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
   get: ({ get }) => get(currentModalSample) !== null,
-});
-
-export const modalSample = graphQLSelector<
-  VariablesOf<mainSampleQuery>,
-  ModalSample
->({
-  environment: RelayEnvironmentKey,
-  key: "modalSample",
-  query: mainSample,
-  mapResponse: (data: ResponseFrom<mainSampleQuery>, { get }) => {
-    const current = get(currentModalSample);
-    if (!data.sample) {
-      throw new Error(`sample with index ${current.index} not found`);
-    }
-
-    if (
-      data.sample.__typename !== "ImageSample" &&
-      data.sample.__typename !== "VideoSample"
-    ) {
-      throw new Error(`unexpected sample item ${data.sample.__typename}`);
-    }
-
-    return mapSampleResponse(data.sample);
-  },
-  variables: ({ get }) => {
-    const current = get(currentModalSample);
-    if (current === null) return null;
-    return {
-      dataset: get(datasetName),
-      view: get(view),
-      filter: {
-        id: current.id,
-      },
-      filters: get(filters),
-    };
-  },
 });

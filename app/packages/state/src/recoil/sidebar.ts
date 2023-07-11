@@ -24,6 +24,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
+import { cloneDeep } from "lodash";
 import { VariablesOf, commitMutation } from "react-relay";
 import {
   DefaultValue,
@@ -184,28 +185,19 @@ export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
   sidebarGroups?: State.SidebarGroup[],
-  current?: NonNullable<
+  current: NonNullable<
     sidebarGroupsFragment$data["appConfig"]
-  >["sidebarGroups"]
+  >["sidebarGroups"] = []
 ): State.SidebarGroup[] => {
-  let groups = sidebarGroups
-    ? JSON.parse(JSON.stringify(sidebarGroups))
-    : undefined;
-
-  const expanded = current
-    ? current.reduce((map, { name, expanded }) => {
-        map[name] = expanded;
-        return map;
-      }, {})
-    : {};
-
-  if (!groups) {
-    groups = JSON.parse(
-      JSON.stringify(
-        frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
-      )
-    );
-  }
+  let groups = sidebarGroups?.length
+    ? cloneDeep(sidebarGroups)
+    : frameFields.length
+    ? DEFAULT_VIDEO_GROUPS
+    : DEFAULT_IMAGE_GROUPS;
+  const expanded = current.reduce((map, { name, expanded }) => {
+    map[name] = expanded;
+    return map;
+  }, {});
 
   groups = groups.map((group) => {
     return expanded[group.name] !== undefined
@@ -305,7 +297,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
         keys: ["dataset"],
         sync: (modal) => !modal,
         read: (data) => {
-          config = data.appConfig?.sidebarGroups || null;
+          config = data.appConfig?.sidebarGroups || [];
           current = resolveGroups(
             collapseFields(
               readFragment(
@@ -320,6 +312,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
             current,
             config
           );
+
           return current;
         },
         default: [],
@@ -585,12 +578,10 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const dataset = get(atoms.dataset);
-    const paths = new Set(
-      fieldsMatcher(dataset.sampleFields, unsupportedMatcher)
-    );
+    const sampleFields = get(atoms.sampleFields);
+    const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
 
-    dataset.sampleFields.filter(groupFilter).forEach((parent) => {
+    sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
         (field) => {
@@ -612,14 +603,13 @@ export const disabledPaths = selector<Set<string>>({
       ).forEach((path) => paths.add(path));
     });
 
-    fieldsMatcher(
-      dataset.frameFields,
-      primitivesMatcher,
-      undefined,
-      "frames."
-    ).forEach((path) => paths.add(path));
+    const frameFields = get(atoms.frameFields);
 
-    dataset.frameFields.filter(groupFilter).forEach((parent) => {
+    fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
+      (path) => paths.add(path)
+    );
+
+    frameFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
         (field) => {

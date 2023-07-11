@@ -1,4 +1,5 @@
 import {
+  datasetFragment,
   graphQLSyncFragmentAtomFamily,
   mediaFieldsFragment,
   mediaFieldsFragment$key,
@@ -17,7 +18,7 @@ export const selectedMediaField = graphQLSyncFragmentAtomFamily<
   boolean
 >(
   {
-    fragments: [mediaFieldsFragment],
+    fragments: [datasetFragment, mediaFieldsFragment],
     keys: ["dataset"],
     default: "filepath",
     read: (data, prev) => {

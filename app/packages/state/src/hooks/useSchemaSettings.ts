@@ -1,11 +1,13 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { buildSchema } from "@fiftyone/state";
 import {
   DETECTION_FILED,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
   JUST_FIELD,
   LIST_FIELD,
+  Schema,
   UNSUPPORTED_FILTER_TYPES,
 } from "@fiftyone/utilities";
 import { isEmpty, keyBy } from "lodash";
@@ -14,6 +16,7 @@ import { useMutation, useRefetchableFragment } from "react-relay";
 import {
   atom,
   atomFamily,
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
@@ -118,11 +121,11 @@ export const selectedPathsState = atomFamily({
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPathsMap) => {
-        const mediaType = await getPromise(fos.mediaType);
         const dataset = await getPromise(fos.dataset);
         const viewSchema = await getPromise(viewSchemaState);
         const fieldSchema = await getPromise(fieldSchemaState);
         const combinedSchema = { ...fieldSchema, ...viewSchema };
+        const mediaType = await getPromise(fos.mediaType);
         const isImage = mediaType === "image";
         const isVideo = mediaType === "video";
 
@@ -166,7 +169,6 @@ export const excludedPathsState = atomFamily({
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPathsMap) => {
-        const mediaType = await getPromise(fos.mediaType);
         const viewSchema = await getPromise(viewSchemaState);
         const fieldSchema = await getPromise(fieldSchemaState);
         const dataset = await getPromise(fos.dataset);
@@ -175,8 +177,9 @@ export const excludedPathsState = atomFamily({
         const isFrameView = await getPromise(fos.isFramesView);
         const isClipsView = await getPromise(fos.isClipsView);
         const isPatchesView = await getPromise(fos.isPatchesView);
-        const isVideo = dataset.mediaType === "video";
-        const isImage = dataset.mediaType === "image";
+        const mediaType = await getPromise(fos.mediaType);
+        const isImage = mediaType === "image";
+        const isVideo = mediaType === "video";
         const isInSearchMode = !!searchResults?.length;
 
         if (!dataset) {
@@ -282,6 +285,10 @@ export const excludedPathsState = atomFamily({
     },
   ],
 });
+export const schemaState = atom<Schema>({
+  key: "schemaState",
+  default: null,
+});
 
 export const viewSchemaState = atom({
   key: "viewSchemaState",
@@ -330,7 +337,6 @@ export const selectedFieldsStageState = atom<any>({
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
-  const router = useContext(fos.RouterContext);
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
@@ -340,22 +346,26 @@ export default function useSchemaSettings() {
 
   const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
 
-  const setSelectedFieldsStage = useSetRecoilState(selectedFieldsStageState);
+  const setSelectedFieldsStage = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (value) => {
+        set(selectedFieldsStageState, value);
+      },
+    [setView, dataset]
+  );
 
   const setViewSchema = useSetRecoilState(viewSchemaState);
   const setFieldSchema = useSetRecoilState(fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
   const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
-  const isVideo = dataset.mediaType === "video";
+  const isVideo = useRecoilValue(fos.isVideoDataset);
+  const sampleFields = useRecoilValue(fos.sampleFields);
+  const frameFields = useRecoilValue(fos.frameFields);
 
   const setSchema = useSetRecoilState(schemaState);
   useEffect(() => {
     if (datasetName) {
-      setSchema(
-        dataset
-          ? buildSchema(dataset.sampleFields, dataset.frameFields, true)
-          : null
-      );
+      setSchema(dataset ? buildSchema(sampleFields, frameFields) : null);
     }
   }, [datasetName]);
 
@@ -623,9 +633,12 @@ export default function useSchemaSettings() {
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
   const getPath = useCallback(
     (path: string) => {
-      return isVideo && viewSchema?.[path] ? `frames.${path}` : path;
+      if (dataset && viewSchema) {
+        return isVideo && viewSchema?.[path] ? `frames.${path}` : path;
+      }
+      return path;
     },
-    [viewSchema, isVideo]
+    [viewSchema, dataset, isVideo]
   );
 
   const mergedSchema = useMemo(
@@ -859,62 +872,6 @@ export default function useSchemaSettings() {
     [finalSchema]
   );
 
-  useEffect(() => {
-    if (!allPaths?.length || !combinedSchema) return;
-    if (lastActionToggleSelection) {
-      const val = lastActionToggleSelection[SELECT_ALL];
-
-      if (val) {
-        setExcludedPaths({ [datasetName]: new Set() });
-        setSelectedPaths({ [datasetName]: new Set([...allPaths]) });
-      } else {
-        if (includeNestedFields && filterRuleTab) {
-          setExcludedPaths({ [datasetName]: new Set(allPaths) });
-        } else {
-          const topLevelPaths = (allPaths || []).filter((path) =>
-            path.startsWith("frames.")
-              ? !path.replace("frames.", "").includes(".")
-              : !path.includes(".")
-          );
-          setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
-        }
-        const res = Object.values(combinedSchema)
-          .filter((f) =>
-            disabledField(
-              f.path,
-              combinedSchema,
-              isGroup ? groupField : undefined
-            )
-          )
-          .map((f) => f.path);
-
-        setSelectedPaths({
-          [datasetName]: new Set(res),
-        });
-      }
-
-      setLastActionToggleSelection(null);
-    }
-  }, [
-    lastActionToggleSelection,
-    allPaths,
-    setLastActionToggleSelection,
-    setExcludedPaths,
-    datasetName,
-    setSelectedPaths,
-    includeNestedFields,
-    filterRuleTab,
-    combinedSchema,
-  ]);
-
-  const setAllFieldsCheckedWrapper = useCallback(
-    (val: boolean) => {
-      setAllFieldsChecked(val);
-      setLastActionToggleSelection({ SELECT_ALL: val });
-    },
-    [finalSchema]
-  );
-
   // updates the affected fields count
   useEffect(() => {
     if (finalSchema?.length && excludedPaths?.[datasetName]) {
@@ -947,7 +904,7 @@ export default function useSchemaSettings() {
     finalSchemaKeyByPath,
     includeNestedFields,
     isFilterRuleActive: filterRuleTab,
-    isVideo: dataset?.mediaType === "video",
+    isVideo,
     lastAppliedPaths,
     resetExcludedPaths,
     resetSelectedPaths,

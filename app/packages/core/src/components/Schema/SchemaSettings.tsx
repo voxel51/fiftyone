@@ -1,13 +1,19 @@
-import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import React, { Fragment, useCallback, useRef } from "react";
+import styled from "styled-components";
+
 import * as fos from "@fiftyone/state";
+
+import CloseIcon from "@mui/icons-material/Close";
+import { Box, Typography } from "@mui/material";
+
+import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import { TabOption } from "../utils";
+
 import useSchemaSettings, {
   TAB_OPTIONS,
 } from "@fiftyone/state/src/hooks/useSchemaSettings";
-import CloseIcon from "@mui/icons-material/Close";
-import { Box, Typography } from "@mui/material";
-import React, { Fragment, useCallback, useRef } from "react";
-import styled from "styled-components";
-import { TabOption } from "../utils";
+
+import { useOutsideClick } from "@fiftyone/state";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 
@@ -216,7 +222,9 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
-                const initialFieldNames = [...excludedPaths[datasetName]];
+                const initialFieldNames = [
+                  ...(excludedPaths[datasetName] || []),
+                ];
 
                 let stage;
                 if (isFilterRuleActive) {
