@@ -5,10 +5,10 @@ FiftyOne Server queries.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
+import logging
 import os
 import typing as t
 
