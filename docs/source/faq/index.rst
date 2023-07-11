@@ -18,7 +18,7 @@ web browser whenever you call
 You can also run FiftyOne
 :ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
 
-Check out the :ref:`enviornments guide <environments>` to see how to use
+Check out the :ref:`environments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-supported-browsers:
@@ -48,7 +48,7 @@ your browser or as a desktop App. You can also set the ``desktop_app`` flag of
 your :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
 default.
 
-Check out the :ref:`enviornments guide <environments>` to see how to use
+Check out the :ref:`environments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-app-no-session:
@@ -518,7 +518,7 @@ On your local machine, you can
 :ref:`connect to these remote sessions <remote-app-local-machine>` using a
 different local port `XXXX` and `YYYY` for each.
 
-If you do not have Fiftyone installed on your local machine, open a new
+If you do not have FiftyOne installed on your local machine, open a new
 terminal window on your local machine and execute the following command to
 setup port forwarding to connect to your remote sessions:
 
@@ -680,7 +680,7 @@ Are the Brain methods open source?
 
 Although the `core library <https://github.com/voxel51/fiftyone>`_ is open
 source and the :ref:`Brain methods <fiftyone-brain>` are freely available for
-use for any commerical or non-commerical purposes, the Brain methods are closed
+use for any commercial or non-commercial purposes, the Brain methods are closed
 source.
 
 Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
