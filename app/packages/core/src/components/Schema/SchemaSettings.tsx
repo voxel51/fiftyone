@@ -9,10 +9,6 @@ import { Box, Typography } from "@mui/material";
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
-import useSchemaSettings, {
-  TAB_OPTIONS,
-} from "@fiftyone/state/src/hooks/useSchemaSettings";
-
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 import { useOutsideClick } from "@fiftyone/state";
@@ -77,7 +73,7 @@ const SchemaSettings = () => {
     searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
-  } = useSchemaSettings();
+  } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
@@ -177,7 +173,7 @@ const SchemaSettings = () => {
           >
             <TabOption
               active={selectedTab}
-              options={TAB_OPTIONS.map((value) => {
+              options={fos.TAB_OPTIONS.map((value) => {
                 return {
                   key: value,
                   text: value,
