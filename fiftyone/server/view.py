@@ -270,7 +270,7 @@ def _make_filter_stages(
         if (
             is_label_field
             and issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
-            and isinstance(field, fof.ListField)
+            and isinstance(field, (fof.KeypointsField, fof.ListField))
         ):
             continue
 
@@ -370,7 +370,8 @@ def _make_query(path, field, args):
         field = field.field
 
     if isinstance(
-        field, (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField)
+        field,
+        (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField),
     ):
         mn, mx = args["range"]
         if isinstance(field, (fof.DateField, fof.DateTimeField)):
