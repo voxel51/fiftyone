@@ -31,7 +31,9 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-import fiftyone.internal.credentials as foc
+import fiftyone.internal.credentials as fic
+
+foc = fou.lazy_import("fiftyone.core.cache")
 
 
 logger = logging.getLogger(__name__)
@@ -74,8 +76,8 @@ def init_storage():
     global azure_alias_prefix
     global azure_endpoint_prefix
 
-    if foc.has_encryption_key():
-        creds_manager = foc.CloudCredentialsManager()
+    if fic.has_encryption_key():
+        creds_manager = fic.CloudCredentialsManager()
     else:
         creds_manager = None
 
@@ -1695,9 +1697,7 @@ def copy_files(inpaths, outpaths, skip_failures=False, progress=False):
         progress (False): whether to render a progress bar tracking the status
             of the operation
     """
-    tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
-    if tasks:
-        _run(_do_copy_file, tasks, progress=progress)
+    _copy_files(inpaths, outpaths, skip_failures, False, progress)
 
 
 def copy_dir(
@@ -1841,6 +1841,7 @@ def upload_media(
     rel_dir=None,
     media_field="filepath",
     update_filepaths=False,
+    cache=False,
     overwrite=False,
     skip_failures=False,
     progress=False,
@@ -1862,6 +1863,12 @@ def upload_media(
         media_field ("filepath"): the field containing the media paths
         update_filepaths (False): whether to update the ``media_field`` of each
             sample in the collection to its remote path
+        cache (False): whether to store the uploaded media in your local media
+            cache. The supported values are:
+
+            -   ``False`` (default): do not cache the media
+            -   ``True`` or ``"copy"``: copy the media into your local cache
+            -   ``"move"``: move the media into your local cache
         overwrite (False): whether to overwrite (True) or skip (False) existing
             remote files
         skip_failures (False): whether to gracefully continue without raising
@@ -1899,9 +1906,7 @@ def upload_media(
 
     if paths_map:
         inpaths, outpaths = zip(*paths_map.items())
-        copy_files(
-            inpaths, outpaths, skip_failures=skip_failures, progress=progress
-        )
+        _copy_files(inpaths, outpaths, skip_failures, cache, progress)
 
     if update_filepaths:
         sample_collection.set_values(media_field, remote_paths)
@@ -2182,6 +2187,22 @@ def _load_minio_credentials():
     return credentials
 
 
+def _copy_files(inpaths, outpaths, skip_failures, cache, progress):
+    supported_cache_values = ("copy", "move", True, False)
+    if cache not in supported_cache_values:
+        raise ValueError(
+            "Unsupported cache parameter '%s'. The supported values are %s"
+            % (cache, supported_cache_values)
+        )
+
+    if cache is True:
+        cache = "copy"
+
+    tasks = [(i, o, skip_failures, cache) for i, o in zip(inpaths, outpaths)]
+    if tasks:
+        _run(_do_copy_file, tasks, progress=progress)
+
+
 def _run(fcn, tasks, num_workers=None, progress=False):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
@@ -2205,10 +2226,15 @@ def _run(fcn, tasks, num_workers=None, progress=False):
 
 
 def _do_copy_file(arg):
-    inpath, outpath, skip_failures = arg
+    inpath, outpath, skip_failures, cache = arg
 
     try:
         _copy_file(inpath, outpath, cleanup=False)
+        if cache:
+            # Implicitly assumes outpath is the remote path
+            foc.media_cache.add(
+                [inpath], [outpath], method=cache, overwrite=True
+            )
     except Exception as e:
         if not skip_failures:
             raise

@@ -92,6 +92,21 @@ learn how:
     :image_title: Qdrant
 
 .. customimagelink::
+    :image_link: tutorials/pinecone.html
+    :image_src: https://voxel51.com/images/integrations/pinecone-128.png
+    :image_title: Pinecone
+
+.. customimagelink::
+    :image_link: tutorials/milvus.html
+    :image_src: https://voxel51.com/images/integrations/milvus-128.png
+    :image_title: Milvus
+
+.. customimagelink::
+    :image_link: tutorials/lancedb.html
+    :image_src: https://voxel51.com/images/integrations/lancedb-128.png
+    :image_title: LanceDB
+
+.. customimagelink::
     :image_link: integrations/activitynet.html
     :image_src: https://voxel51.com/images/integrations/activitynet-128.png
     :image_title: ActivityNet

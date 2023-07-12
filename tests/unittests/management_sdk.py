@@ -11,6 +11,7 @@ import unittest
 from unittest import mock
 
 import bson
+import pytest
 
 import fiftyone.management as fom
 import fiftyone.management.util as fom_util
@@ -718,6 +719,34 @@ class ManagementSdkTests(unittest.TestCase):
             query=fom.users._DELETE_INVITATION_QUERY,
             variables={"invitationId": invitation_id},
         )
+
+        # Test delete by email
+        self.client.post_graphql_request.reset_mock()
+        with mock.patch(
+            "fiftyone.management.users.list_pending_invitations"
+        ) as list_pending_invitations_mock:
+            now = datetime.datetime.utcnow()
+            email = "user@company.com"
+            list_pending_invitations_mock.return_value = [
+                fom.users.Invitation(
+                    id=invitation_id,
+                    created_at=now,
+                    expires_at=now,
+                    invitee_role=fom.UserRole.GUEST,
+                    invitee_email=email,
+                    url="blah@blah.com",
+                )
+            ]
+            fom.delete_user_invitation(email)
+            list_pending_invitations_mock.assert_called()
+            self.client.post_graphql_request.assert_called_with(
+                query=fom.users._DELETE_INVITATION_QUERY,
+                variables={"invitationId": invitation_id},
+            )
+
+            # Nonexisting email
+            with pytest.raises(ValueError):
+                fom.delete_user_invitation(email + "mm")
 
     def test_send_user_invitation(self):
         for role in (self.ROLE, self.ROLE_STR):

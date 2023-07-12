@@ -79,7 +79,6 @@ async def paginate_samples(
         stages=stages,
         filters=filters,
         pagination_data=pagination_data,
-        count_label_tags=True,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
         reload=reload,

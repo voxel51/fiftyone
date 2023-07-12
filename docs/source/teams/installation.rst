@@ -85,7 +85,7 @@ _________
 To work with FiftyOne datasets whose media are stored in Amazon S3, you simply
 need to provide
 `AWS credentials <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_
-to your Teams client with read access to the relevant files.
+to your Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -106,6 +106,15 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
 In the above, the `.ini` file should use the syntax of the
 `boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
 
+.. note::
+
+    FiftyOne Teams requires either the `s3:ListBucket` or
+    `s3:GetBucketLocation` permission in order to access objects in S3 buckets.
+
+    If you wish to use multi-account credentials, your credentials must have
+    the `s3:ListBucket` permission, as `s3:GetBucketLocation` does not support
+    this.
+
 .. _teams-google-cloud:
 
 Google Cloud Storage
@@ -114,7 +123,7 @@ ____________________
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
 you simply need to provide
 `service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
-to your Teams client with read access to the relevant files.
+to your Teams client with read access to the relevant objects and buckets.
 
 You can register GCP credentials on a particular machine by adding the
 following key to your :ref:`media cache config <teams-media-cache-config>`:
@@ -133,7 +142,7 @@ _______________
 To work with FiftyOne datasets whose media are stored in Azure Storage, you
 simply need to provide
 `Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
-to your Teams client with read access to the relevant files.
+to your Teams client with read access to the relevant objects and containers.
 
 You can do this in any of the following ways:
 
@@ -243,7 +252,7 @@ _____
 
 To work with FiftyOne datasets whose media are stored in
 `MinIO <https://min.io/>`_, you simply need to provide the credentials to your
-Teams client with read access to the relevant files.
+Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 

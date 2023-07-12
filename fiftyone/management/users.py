@@ -182,7 +182,7 @@ def delete_user(user: Union[str, User]) -> None:
     )
 
 
-def delete_user_invitation(invitation_id: str) -> None:
+def delete_user_invitation(invitation: str) -> None:
     """Deletes/revokes a previously-sent invitation if it has not been accepted.
 
     .. note::
@@ -197,17 +197,39 @@ def delete_user_invitation(invitation_id: str) -> None:
 
         invite_id = fom.send_user_invitation(new_guest, fom.GUEST)
 
+        # Delete by invitation ID
         fom.delete_user_invitation(invite_id)
+
+        # Delete by user email
+        fom.delete_user_invitation(new_guest)
 
         pending = fom.list_pending_invitations()
         assert not any(p.id == invite_id for p in pending)
 
 
     Args:
-        invitation_id: an invitation ID as returned by
-            :meth:`send_user_invitation`
+        invitation: an invitation ID as returned by
+            :meth:`send_user_invitation`, or email address
     """
     client = connection.APIClientConnection().client
+
+    if _ROUGH_EMAIL_REGEX.fullmatch(invitation):
+        matching_invite = next(
+            (
+                i
+                for i in list_pending_invitations()
+                if i.invitee_email == invitation
+            ),
+            None,
+        )
+        if not matching_invite:
+            raise ValueError(
+                f"No pending invitation found for email {invitation}"
+            )
+        invitation_id = matching_invite.id
+
+    else:
+        invitation_id = invitation
 
     client.post_graphql_request(
         query=_DELETE_INVITATION_QUERY,

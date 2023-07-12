@@ -5,11 +5,15 @@ FiftyOne server-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import math
 import unittest
 
+import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 import fiftyone.server.view as fosv
 
 from decorators import drop_datasets
@@ -17,645 +21,761 @@ from decorators import drop_datasets
 
 class ServerViewTests(unittest.TestCase):
     @drop_datasets
-    def test_extended_view_image_label_filters_samples(self):
+    def test_extended_image_sample(self):
+        dataset = fod.Dataset("test")
+        sample = fos.Sample(
+            filepath="image.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(
+                        label="carrot", confidence=0.25, tags=["one", "two"]
+                    ),
+                    fol.Detection(
+                        label="not_carrot", confidence=0.75, tags=["two"]
+                    ),
+                ]
+            ),
+            bool=True,
+            int=1,
+            str="str",
+            list_bool=[True],
+            list_int=[1, 2],
+            list_str=["one", "two"],
+        )
+        dataset.add_sample(sample)
+        filters = {
+            "id": {
+                "values": [dataset.first().id],
+                "exclude": False,
+            }
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "id": {
+                "values": [dataset.first().id],
+                "exclude": True,
+            }
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
         filters = {
             "predictions.detections.label": {
                 "values": ["carrot"],
                 "exclude": False,
-                "onlyMatch": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "predictions.detections.confidence": {
                 "range": [0.5, 1],
-                "_CLS": "numeric",
                 "exclude": False,
-                "onlyMatch": True,
                 "isMatching": False,
             },
         }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
 
-        dataset = fod.Dataset("test")
-        dataset.add_sample_field(
-            "predictions", fof.EmbeddedDocumentField, fol.Detections
-        )
-
-        returned = fosv.get_view(
-            "test",
-            filters=filters,
-            count_label_tags=True,
-        )._pipeline()
-
-        expected = [
-            {
-                "$match": {
-                    "$and": [
-                        {
-                            "$and": [
-                                {
-                                    "predictions.detections.confidence": {
-                                        "$gte": 0.5
-                                    }
-                                },
-                                {
-                                    "predictions.detections.confidence": {
-                                        "$lte": 1
-                                    }
-                                },
-                            ],
-                        },
-                        {"predictions.detections.label": {"$in": ["carrot"]}},
-                    ],
-                },
-            },
-            {"$addFields": {"_label_tags": []}},
-            {
-                "$addFields": {
-                    "_label_tags": {
-                        "$cond": {
-                            "if": {"$gt": ["$predictions", None]},
-                            "then": {
-                                "$concatArrays": [
-                                    "$_label_tags",
-                                    {
-                                        "$reduce": {
-                                            "input": "$predictions.detections",
-                                            "initialValue": [],
-                                            "in": {
-                                                "$concatArrays": [
-                                                    "$$value",
-                                                    "$$this.tags",
-                                                ],
-                                            },
-                                        },
-                                    },
-                                ],
-                            },
-                            "else": "$_label_tags",
-                        },
-                    },
-                },
-            },
-            {
-                "$addFields": {
-                    "_label_tags": {
-                        "$function": {
-                            "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
-                            "args": ["$_label_tags"],
-                            "lang": "js",
-                        },
-                    },
-                },
-            },
-        ]
-
-        self.assertEqual(expected, returned)
-
-    @drop_datasets
-    def test_extended_view_image_label_filters_aggregations(self):
         filters = {
             "predictions.detections.label": {
                 "values": ["carrot"],
                 "exclude": False,
-                "onlyMatch": True,
                 "isMatching": False,
-                "_CLS": "str",
             },
             "predictions.detections.confidence": {
-                "range": [0.5, 1],
-                "_CLS": "numeric",
+                "range": [0.0, 0.5],
                 "exclude": False,
-                "onlyMatch": True,
                 "isMatching": False,
             },
         }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().predictions.detections), 1)
 
-        dataset = fod.Dataset("test")
-        dataset.add_sample_field(
-            "predictions", fof.EmbeddedDocumentField, fol.Detections
-        )
-
-        returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False
-        )._pipeline()
-
-        expected = [
-            {
-                "$match": {
-                    "$and": [
-                        {
-                            "$and": [
-                                {
-                                    "predictions.detections.confidence": {
-                                        "$gte": 0.5
-                                    }
-                                },
-                                {
-                                    "predictions.detections.confidence": {
-                                        "$lte": 1
-                                    }
-                                },
-                            ],
-                        },
-                        {"predictions.detections.label": {"$in": ["carrot"]}},
-                    ],
-                },
-            },
-            {
-                "$addFields": {
-                    "predictions.detections": {
-                        "$filter": {
-                            "input": "$predictions.detections",
-                            "cond": {
-                                "$or": [
-                                    {
-                                        "$and": [
-                                            {
-                                                "$gte": [
-                                                    "$$this.confidence",
-                                                    0.5,
-                                                ]
-                                            },
-                                            {"$lte": ["$$this.confidence", 1]},
-                                        ],
-                                    },
-                                    {"$in": ["$$this.confidence", []]},
-                                ],
-                            },
-                        },
-                    },
-                },
-            },
-            {
-                "$addFields": {
-                    "predictions.detections": {
-                        "$filter": {
-                            "input": "$predictions.detections",
-                            "cond": {"$in": ["$$this.label", ["carrot"]]},
-                        },
-                    },
-                },
-            },
-        ]
-
-        self.assertEqual(expected, returned)
-
-    @drop_datasets
-    def test_extended_view_video_label_filters_samples(self):
         filters = {
-            "frames.detections.detections.index": {
-                "range": [27, 54],
-                "_CLS": "numeric",
+            "list_str": {
+                "values": ["one"],
                 "exclude": False,
-                "onlyMatch": True,
-                "isMatching": False,
             },
-            "frames.detections.detections.label": {
-                "values": ["vehicle"],
+            "list_int": {
+                "range": [0, 2],
                 "exclude": False,
-                "onlyMatch": True,
-                "isMatching": False,
-                "_CLS": "str",
             },
         }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().list_str), 2)
+        self.assertEqual(len(view.first().list_int), 2)
 
-        dataset = fod.Dataset("test")
-        dataset.media_type = "video"
-        dataset.add_frame_field(
-            "detections", fof.EmbeddedDocumentField, fol.Detections
-        )
-
-        returned = fosv.get_view(
-            "test",
-            filters=filters,
-            count_label_tags=True,
-        )._pipeline()[1:]
-
-        expected = [
-            {
-                "$match": {
-                    "$and": [
-                        {
-                            "$and": [
-                                {
-                                    "frames.detections.detections.index": {
-                                        "$gte": 27
-                                    }
-                                },
-                                {
-                                    "frames.detections.detections.index": {
-                                        "$lte": 54
-                                    }
-                                },
-                            ],
-                        },
-                        {
-                            "frames.detections.detections.label": {
-                                "$in": ["vehicle"]
-                            }
-                        },
-                    ],
-                },
-            },
-            {"$addFields": {"_label_tags": []}},
-            {
-                "$addFields": {
-                    "_label_tags": {
-                        "$concatArrays": [
-                            "$_label_tags",
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": [],
-                                    "in": {
-                                        "$concatArrays": [
-                                            "$$value",
-                                            {
-                                                "$cond": {
-                                                    "if": {
-                                                        "$gt": [
-                                                            "$$this.detections.detections",
-                                                            None,
-                                                        ],
-                                                    },
-                                                    "then": {
-                                                        "$reduce": {
-                                                            "input": "$$this.detections.detections",
-                                                            "initialValue": [],
-                                                            "in": {
-                                                                "$concatArrays": [
-                                                                    "$$value",
-                                                                    "$$this.tags",
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                    "else": [],
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                },
-            },
-            {
-                "$addFields": {
-                    "_label_tags": {
-                        "$function": {
-                            "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
-                            "args": ["$_label_tags"],
-                            "lang": "js",
-                        },
-                    },
-                },
-            },
-        ]
-
-        self.assertEqual(expected, returned)
-
-    @drop_datasets
-    def test_extended_view_video_label_filters_aggregations(self):
         filters = {
-            "frames.detections.detections.index": {
-                "range": [27, 54],
-                "_CLS": "numeric",
+            "list_str": {
+                "values": ["empty"],
                 "exclude": False,
-                "onlyMatch": True,
-                "isMatching": False,
             },
-            "frames.detections.detections.label": {
-                "values": ["vehicle"],
+            "list_int": {
+                "range": [0, 2],
                 "exclude": False,
-                "onlyMatch": True,
-                "isMatching": False,
-                "_CLS": "str",
             },
         }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
 
-        dataset = fod.Dataset("test")
-        dataset.media_type = "video"
-        dataset.add_frame_field(
-            "detections", fof.EmbeddedDocumentField, fol.Detections
+        filters = {
+            "list_str": {
+                "values": ["one"],
+                "exclude": False,
+            },
+            "list_int": {
+                "range": [3, 4],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "list_bool": {
+                "true": False,
+                "false": True,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "list_bool": {
+                "true": False,
+                "false": True,
+                "exclude": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "list_bool": {
+                "true": True,
+                "false": False,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
         )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
 
-        returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False
-        )._pipeline()[1:]
-
-        expected = [
-            {
-                "$match": {
-                    "$and": [
-                        {
-                            "$and": [
-                                {
-                                    "frames.detections.detections.index": {
-                                        "$gte": 27
-                                    }
-                                },
-                                {
-                                    "frames.detections.detections.index": {
-                                        "$lte": 54
-                                    }
-                                },
-                            ],
-                        },
-                        {
-                            "frames.detections.detections.label": {
-                                "$in": ["vehicle"]
-                            }
-                        },
-                    ],
-                },
-            },
-            {
-                "$addFields": {
-                    "frames": {
-                        "$map": {
-                            "input": "$frames",
-                            "as": "frame",
-                            "in": {
-                                "$mergeObjects": [
-                                    "$$frame",
-                                    {
-                                        "detections": {
-                                            "$mergeObjects": [
-                                                "$$frame.detections",
-                                                {
-                                                    "detections": {
-                                                        "$filter": {
-                                                            "input": "$$frame.detections.detections",
-                                                            "cond": {
-                                                                "$or": [
-                                                                    {
-                                                                        "$and": [
-                                                                            {
-                                                                                "$gte": [
-                                                                                    "$$this.index",
-                                                                                    27,
-                                                                                ],
-                                                                            },
-                                                                            {
-                                                                                "$lte": [
-                                                                                    "$$this.index",
-                                                                                    54,
-                                                                                ],
-                                                                            },
-                                                                        ],
-                                                                    },
-                                                                    {
-                                                                        "$in": [
-                                                                            "$$this.index",
-                                                                            [],
-                                                                        ],
-                                                                    },
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                },
-                                            ],
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    },
-                },
-            },
-            {
-                "$addFields": {
-                    "frames": {
-                        "$map": {
-                            "input": "$frames",
-                            "as": "frame",
-                            "in": {
-                                "$mergeObjects": [
-                                    "$$frame",
-                                    {
-                                        "detections": {
-                                            "$mergeObjects": [
-                                                "$$frame.detections",
-                                                {
-                                                    "detections": {
-                                                        "$filter": {
-                                                            "input": "$$frame.detections.detections",
-                                                            "cond": {
-                                                                "$in": [
-                                                                    "$$this.label",
-                                                                    [
-                                                                        "vehicle"
-                                                                    ],
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                },
-                                            ],
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    },
-                },
-            },
-        ]
-
-        self.assertEqual(expected, returned)
-
-    @drop_datasets
-    def test_extended_view_video_match_label_tags_aggregations(self):
         filters = {
             "_label_tags": {
-                "values": ["one"],
+                "values": ["two"],
                 "exclude": False,
                 "isMatching": True,
-            }
+            },
         }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().predictions.detections), 2)
 
-        dataset = fod.Dataset("test")
-        dataset.media_type = "video"
-        dataset.add_frame_field(
-            "detections", fof.EmbeddedDocumentField, fol.Detections
-        )
-
-        returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=True
-        )._pipeline()[1:]
-
-        expected = [
-            {
-                "$match": {
-                    "$or": [
-                        {"frames.detections.detections.tags": {"$in": ["one"]}}
-                    ],
-                },
-            },
-            {"$addFields": {"_label_tags": []}},
-            {
-                "$addFields": {
-                    "_label_tags": {
-                        "$concatArrays": [
-                            "$_label_tags",
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": [],
-                                    "in": {
-                                        "$concatArrays": [
-                                            "$$value",
-                                            {
-                                                "$cond": {
-                                                    "if": {
-                                                        "$gt": [
-                                                            "$$this.detections.detections",
-                                                            None,
-                                                        ],
-                                                    },
-                                                    "then": {
-                                                        "$reduce": {
-                                                            "input": "$$this.detections.detections",
-                                                            "initialValue": [],
-                                                            "in": {
-                                                                "$concatArrays": [
-                                                                    "$$value",
-                                                                    "$$this.tags",
-                                                                ],
-                                                            },
-                                                        },
-                                                    },
-                                                    "else": [],
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                },
-            },
-            {
-                "$addFields": {
-                    "_label_tags": {
-                        "$function": {
-                            "body": "function(items) {let counts = {};items && items.forEach((i) => {counts[i] = 1 + (counts[i] || 0);});return counts;}",
-                            "args": ["$_label_tags"],
-                            "lang": "js",
-                        },
-                    },
-                },
-            },
-        ]
-
-        self.assertEqual(expected, returned)
-
-    @drop_datasets
-    def test_extended_view_video_match_label_tags_samples(self):
         filters = {
             "_label_tags": {
                 "values": ["one"],
                 "exclude": False,
                 "isMatching": False,
-            }
+            },
         }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().predictions.detections), 1)
 
-        dataset = fod.Dataset("test")
-        dataset.media_type = "video"
-        dataset.add_frame_field(
-            "detections", fof.EmbeddedDocumentField, fol.Detections
+        view = fosv.get_view("test", pagination_data=True, filters=filters)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+
+        filters = {
+            "_label_tags": {
+                "values": ["two"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().predictions.detections), 0)
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(
+            view.first().predictions.detections[0].label, "not_carrot"
         )
 
-        returned = fosv.get_view(
-            "test", filters=filters, count_label_tags=False
-        )._pipeline()[1:]
+        view = fosv.get_view("test", pagination_data=True, filters=filters)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"two": 1})
 
-        expected = [
-            {
-                "$match": {
-                    "$or": [
-                        {"frames.detections.detections.tags": {"$in": ["one"]}}
-                    ],
-                },
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": True,
+                "isMatching": True,
             },
-            {
-                "$addFields": {
-                    "frames": {
-                        "$map": {
-                            "input": "$frames",
-                            "as": "frame",
-                            "in": {
-                                "$mergeObjects": [
-                                    "$$frame",
-                                    {
-                                        "detections": {
-                                            "$mergeObjects": [
-                                                "$$frame.detections",
-                                                {
-                                                    "detections": {
-                                                        "$filter": {
-                                                            "input": "$$frame.detections.detections",
-                                                            "cond": {
-                                                                "$cond": {
-                                                                    "if": {
-                                                                        "$gt": [
-                                                                            "$$this.tags",
-                                                                            None,
-                                                                        ],
-                                                                    },
-                                                                    "then": {
-                                                                        "$in": [
-                                                                            "one",
-                                                                            "$$this.tags",
-                                                                        ],
-                                                                    },
-                                                                    "else": False,
-                                                                },
-                                                            },
-                                                        },
-                                                    },
-                                                },
-                                            ],
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    },
-                },
-            },
-            {
-                "$match": {
-                    "$expr": {
-                        "$gt": [
-                            {
-                                "$reduce": {
-                                    "input": "$frames",
-                                    "initialValue": 0,
-                                    "in": {
-                                        "$add": [
-                                            "$$value",
-                                            {
-                                                "$size": {
-                                                    "$ifNull": [
-                                                        "$$this.detections.detections",
-                                                        [],
-                                                    ],
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                            0,
-                        ],
-                    },
-                },
-            },
-        ]
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
 
-        self.assertEqual(expected, returned)
+    @drop_datasets
+    def test_extended_frame_sample(self):
+        dataset = fod.Dataset("test")
+        sample = fos.Sample(
+            filepath="video.mp4",
+        )
+        sample.frames[1] = fo.Frame(
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(
+                        label="carrot", confidence=0.25, tags=["one", "two"]
+                    ),
+                    fol.Detection(
+                        label="not_carrot", confidence=0.75, tags=["two"]
+                    ),
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+
+        filters = {
+            "frames.predictions.detections.label": {
+                "values": ["carrot"],
+                "exclude": False,
+                "isMatching": False,
+            },
+            "frames.predictions.detections.confidence": {
+                "range": [0.5, 1],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "frames.predictions.detections.label": {
+                "values": ["carrot"],
+                "exclude": False,
+                "isMatching": False,
+            },
+            "frames.predictions.detections.confidence": {
+                "range": [0.0, 0.5],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().frames[1].predictions.detections), 1)
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+
+        filters = {
+            "_label_tags": {
+                "values": ["two"],
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().frames[1].predictions.detections), 2)
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().frames[1].predictions.detections), 1)
+
+        view = fosv.get_view("test", pagination_data=True, filters=filters)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+
+        filters = {
+            "_label_tags": {
+                "values": ["two"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().frames[1].predictions.detections), 0)
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(
+            view.first().frames[1].predictions.detections[0].label,
+            "not_carrot",
+        )
+
+        view = fosv.get_view("test", pagination_data=True, filters=filters)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": True,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_extended_dynamic_image_sample(self):
+        dataset = fod.Dataset("test")
+        sample = fos.Sample(
+            filepath="image.png",
+            dynamic=fo.DynamicEmbeddedDocument(
+                predictions=fol.Detections(
+                    detections=[
+                        fol.Detection(
+                            label="carrot",
+                            confidence=0.25,
+                            tags=["one", "two"],
+                        ),
+                        fol.Detection(
+                            label="not_carrot", confidence=0.75, tags=["two"]
+                        ),
+                    ]
+                ),
+                bool=True,
+                int=1,
+                str="str",
+                list_bool=[True],
+                list_int=[1, 2],
+                list_str=["one", "two"],
+            ),
+            dynamic_list=[
+                fo.DynamicEmbeddedDocument(
+                    bool=True,
+                    int=1,
+                    str="str",
+                    list_bool=[True],
+                    list_int=[1, 2],
+                    list_str=["one", "two"],
+                )
+            ],
+        )
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+
+        filters = {
+            "dynamic.predictions.detections.label": {
+                "values": ["carrot"],
+                "exclude": False,
+                "isMatching": False,
+            },
+            "dynamic.predictions.detections.confidence": {
+                "range": [0.5, 1],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic.predictions.detections.label": {
+                "values": ["carrot"],
+                "exclude": False,
+                "isMatching": False,
+            },
+            "dynamic.predictions.detections.confidence": {
+                "range": [0.0, 0.5],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().dynamic.predictions.detections), 1)
+
+        filters = {
+            "dynamic.list_str": {
+                "values": ["one"],
+                "exclude": False,
+            },
+            "dynamic.list_int": {
+                "range": [0, 2],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().dynamic.list_str), 2)
+        self.assertEqual(len(view.first().dynamic.list_int), 2)
+
+        filters = {
+            "dynamic.list_str": {
+                "values": ["empty"],
+                "exclude": False,
+            },
+            "dynamic.list_int": {
+                "range": [0, 2],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic.list_str": {
+                "values": ["one"],
+                "exclude": False,
+            },
+            "dynamic.list_int": {
+                "range": [3, 4],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic.list_bool": {
+                "true": False,
+                "false": True,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic.list_bool": {
+                "true": False,
+                "false": True,
+                "exclude": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic.list_bool": {
+                "true": True,
+                "false": False,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 2})
+
+        filters = {
+            "_label_tags": {
+                "values": ["two"],
+                "exclude": False,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().dynamic.predictions.detections), 2)
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": False,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().dynamic.predictions.detections), 1)
+
+        view = fosv.get_view("test", pagination_data=True, filters=filters)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"one": 1, "two": 1})
+
+        filters = {
+            "_label_tags": {
+                "values": ["two"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(len(view.first().dynamic.predictions.detections), 0)
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": True,
+                "isMatching": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(
+            view.first().dynamic.predictions.detections[0].label, "not_carrot"
+        )
+
+        view = fosv.get_view("test", pagination_data=True, filters=filters)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertIn("_label_tags", sample)
+        self.assertDictEqual(sample["_label_tags"], {"two": 1})
+
+        filters = {
+            "_label_tags": {
+                "values": ["one"],
+                "exclude": True,
+                "isMatching": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.bool": {
+                "true": False,
+                "false": True,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.list_bool": {
+                "true": False,
+                "false": True,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.bool": {
+                "true": True,
+                "false": False,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.list_bool": {
+                "true": True,
+                "false": False,
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.int": {
+                "range": [-1, 0],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.list_int": {
+                "range": [-1, 0],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.int": {
+                "range": [0, 1],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.list_int": {
+                "range": [0, 1],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+
+        filters = {
+            "dynamic_list.int": {
+                "range": [0, 2],
+                "exclude": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "dynamic_list.list_int": {
+                "range": [0, 2],
+                "exclude": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_extended_keypoint_sample(self):
+        dataset = fod.Dataset("test")
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["top-left", "center", "bottom-right"], edges=[[0, 1, 2]]
+        )
+        sample = fos.Sample(
+            filepath="video.mp4",
+            keypoint=fo.Keypoint(
+                label="keypoint",
+                points=[[0, 0], [0.5, 0.5], [1, 1]],
+                confidence=[0, 0.5, 1],
+                dynamic=["one", "two", "three"],
+                tags=["keypoint"],
+            ),
+            keypoints=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(
+                        label="keypoint",
+                        points=[[0, 0], [0.5, 0.5], [1, 1]],
+                        confidence=[0, 0.5, 1],
+                        dynamic=["one", "two", "three"],
+                        tags=["keypoint"],
+                    )
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+        dataset.add_dynamic_frame_fields()
+
+        filters = {
+            "keypoint.label": {
+                "values": ["empty"],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "keypoint.label": {
+                "values": ["keypoint"],
+                "exclude": True,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 0)
+
+        filters = {
+            "keypoint.points": {
+                "values": ["top-left"],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)
+        self.assertListEqual(view.first().keypoint.points[0], [0, 0])
+        for point in view.first().keypoint.points[1:]:
+            self.assertTrue(math.isnan(point[0]))
+            self.assertTrue(math.isnan(point[1]))
+
+        filters = {
+            "keypoint.points": {
+                "values": ["top-left"],
+                "exclude": False,
+            },
+        }
+        view = fosv.get_view("test", filters=filters)
+        self.assertEqual(len(view), 1)

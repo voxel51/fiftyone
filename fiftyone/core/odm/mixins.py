@@ -993,6 +993,19 @@ class DatasetMixin(object):
                 ):
                     return {path: field}
 
+            #
+            # In principle, merging an untyped list field into a typed list
+            # field --- eg ListField(StringField) --- should not be allowed, as
+            # the untyped list may contain incompatible values.
+            #
+            # However, we are intentionally skipping validation here so that
+            # the following will work::
+            #
+            #   doc.set_field("tags", [], validate=True)
+            #
+            if is_list_field and field is None:
+                return
+
             if validate:
                 validate_fields_match(path, field, existing_field)
 

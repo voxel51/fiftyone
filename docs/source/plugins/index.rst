@@ -374,7 +374,7 @@ You can then download plugins using any of the methods described below:
         # Download plugin(s) from a GitHub repository
         fiftyone plugins download https://github.com/<user>/<repo>[/tree/branch]
 
-        # Download plugin(b) by specifying the GitHub repository details
+        # Download plugin(s) by specifying the GitHub repository details
         fiftyone plugins download <user>/<repo>[/<ref>]
 
         # Download specific plugins from a GitHub repository

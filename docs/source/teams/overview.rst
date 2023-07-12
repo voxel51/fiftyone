@@ -115,7 +115,7 @@ would with open source FiftyOne:
      - | :ref:`Exporting data for model training <exporting-datasets>`
        | `Adding model predictions to FiftyOne <https://voxel51.com/docs/fiftyone/tutorials/evaluate_detections.html#Add-predictions-to-dataset>`_
        | :ref:`Evaluating models in FiftyOne <evaluating-models>`
-       | :ref:`Using interactice plots to explore results <interactive-plots>`
+       | :ref:`Using interactive plots to explore results <interactive-plots>`
 
 .. _teams-system-architecture:
 

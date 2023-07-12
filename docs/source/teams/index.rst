@@ -95,7 +95,7 @@ pages on this site apply to Teams deployments as well.
 
     Overview <overview>
     Installation <installation>
-    API Connection <api_connection>
+    API connection <api_connection>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>
