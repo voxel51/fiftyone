@@ -147,9 +147,7 @@ const getFilterData = (
 
       return (
         !label ||
-        (name !== "tags" &&
-          !excluded.includes(name) &&
-          VALID_PRIMITIVE_TYPES.includes(ftype))
+        (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
       );
     })
     .map<FilterItem>(({ ftype, subfield, name }) => {
