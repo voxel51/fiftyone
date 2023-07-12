@@ -104,8 +104,8 @@ export const selectedPathsState = atomFamily({
         const fieldSchema = await getPromise(fieldSchemaState);
         const combinedSchema = { ...fieldSchema, ...viewSchema };
         const mediaType = await getPromise(fos.mediaType);
-        const isImage = mediaType === "image";
         const isVideo = mediaType === "video";
+        const isImage = mediaType === "image";
 
         const mapping = {};
         Object.keys(combinedSchema).forEach((path) => {
@@ -150,8 +150,8 @@ export const excludedPathsState = atomFamily({
         const isClipsView = await getPromise(fos.isClipsView);
         const isPatchesView = await getPromise(fos.isPatchesView);
         const mediaType = await getPromise(fos.mediaType);
-        const isImage = mediaType === "image";
         const isVideo = mediaType === "video";
+        const isImage = mediaType === "image";
         const isInSearchMode = !!searchResults?.length;
 
         if (!dataset) {
@@ -295,9 +295,7 @@ export const selectedFieldsStageState = atom<any>({
   default: undefined,
   effects: [
     ({ onSet }) => {
-      onSet((value) => {
-        console.log(value);
-      });
+      onSet((value) => {});
     },
   ],
 });
@@ -308,13 +306,20 @@ export default function useSchemaSettings() {
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
+
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
+
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
+
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
       async (value) => {
-        set(selectedFieldsStageState, value);
+        if (!dataset) {
+          return;
+        }
+
+        set(fos.selectedFieldsStageState, value);
       },
     [setView, dataset]
   );
@@ -332,14 +337,16 @@ export default function useSchemaSettings() {
       },
     []
   );
-  const isVideo = useRecoilValue(fos.isVideoDataset);
-  const sampleFields = useRecoilValue(fos.sampleFields);
-  const frameFields = useRecoilValue(fos.frameFields);
+  const isVideo = dataset.mediaType === "video";
 
   const setSchema = useSetRecoilState(schemaState);
   useEffect(() => {
     if (datasetName) {
-      setSchema(dataset ? buildSchema(sampleFields, frameFields) : null);
+      setSchema(
+        dataset
+          ? buildSchema(dataset.sampleFields, dataset.frameFields, true)
+          : null
+      );
     }
   }, [datasetName]);
 
@@ -609,11 +616,13 @@ export default function useSchemaSettings() {
   const getPath = useCallback(
     (path: string) => {
       if (dataset && viewSchema) {
-        return isVideo && viewSchema?.[path] ? `frames.${path}` : path;
+        return dataset.mediaType === "video" && viewSchema?.[path]
+          ? `frames.${path}`
+          : path;
       }
       return path;
     },
-    [viewSchema, dataset, isVideo]
+    [viewSchema, dataset]
   );
 
   const mergedSchema = useMemo(
