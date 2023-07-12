@@ -180,11 +180,7 @@ a specific new index:
     lancedb_index = fob.compute_similarity(
         ...
         backend="lancedb",
-<<<<<<< HEAD
-        brain_key="lacebdb_index",
-=======
         brain_key="lancedb_index",
->>>>>>> main
         table_name="your-table",
         metric="euclidean",
         uri="/tmp/lancedb",

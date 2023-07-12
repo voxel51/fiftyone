@@ -2,13 +2,10 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { buildSchema } from "@fiftyone/state";
 import {
-  DETECTION_FILED,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
-  JUST_FIELD,
   LIST_FIELD,
   Schema,
-  UNSUPPORTED_FILTER_TYPES,
 } from "@fiftyone/utilities";
 import { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
@@ -22,28 +19,9 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { disabledField } from "./useSchemaSettings.utils";
+import { disabledField, skipField } from "./useSchemaSettings.utils";
 
-export const TAB_OPTIONS_MAP = {
-  SELECTION: "Selection",
-  FILTER_RULE: "Filter rule",
-};
-
-export const TAB_OPTIONS = Object.values(TAB_OPTIONS_MAP);
 const SELECT_ALL = "SELECT_ALL";
-
-const skipField = (path: string, ftype: string, schema: {}) => {
-  const parentPath = path.substring(0, path.lastIndexOf("."));
-
-  return (
-    UNSUPPORTED_FILTER_TYPES.includes(ftype) ||
-    ftype === JUST_FIELD ||
-    (parentPath &&
-      schema[parentPath]?.embeddedDocType === DETECTION_FILED &&
-      path.endsWith(".bounding_box")) ||
-    path.endsWith(".index")
-  );
-};
 
 export const schemaSearchTerm = atom<string>({
   key: "schemaSearchTerm",
@@ -57,7 +35,7 @@ export const showNestedFieldsState = atom<boolean>({
 
 export const schemaSelectedSettingsTab = atom<string>({
   key: "schemaSelectedSettingsTab",
-  default: TAB_OPTIONS_MAP.SELECTION,
+  default: "Selection",
 });
 
 export const settingsModal = atom<{ open: boolean } | null>({
@@ -94,7 +72,7 @@ export const schemaSearchRestuls = atom<string[]>({
               combinedSchema?.[
                 path.startsWith("frames.") ? path.replace("frames.", "") : path
               ]?.ftype &&
-              !skipField(path, combinedSchema?.[path]?.ftype, combinedSchema)
+              !skipField(path, combinedSchema)
           )
           .map((path) =>
             path.startsWith("frames.") ? path.replace("frames.", "") : path
@@ -144,13 +122,7 @@ export const selectedPathsState = atomFamily({
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
-            const skip = skipField(
-              path,
-              viewSchema?.[path]?.ftype ||
-                viewSchema?.[path.replace("frames.", "")]?.ftype ||
-                fieldSchema?.[path]?.ftype,
-              combinedSchema
-            );
+            const skip = skipField(path, combinedSchema);
             return !!path && !skip;
           })
           .map((path) => mapping?.[path] || path);
@@ -205,11 +177,7 @@ export const excludedPathsState = atomFamily({
             const rawPath = path.replace("frames.", "");
             return (
               !!rawPath &&
-              !skipField(
-                rawPath,
-                combinedSchema?.[rawPath]?.ftype,
-                combinedSchema
-              ) &&
+              !skipField(rawPath, combinedSchema) &&
               !disabledField(
                 path,
                 combinedSchema,
@@ -335,17 +303,14 @@ export const selectedFieldsStageState = atom<any>({
 });
 
 export default function useSchemaSettings() {
-  const [settingModal, setSettingsModal] = useRecoilState(settingsModal);
-  const [showMetadata, setShowMetadata] = useRecoilState(showMetadataState);
+  const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
+  const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
   const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
-
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
-
-  const resetSelectedPaths = useResetRecoilState(selectedPathsState({}));
-
+  const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
       async (value) => {
@@ -354,10 +319,19 @@ export default function useSchemaSettings() {
     [setView, dataset]
   );
 
-  const setViewSchema = useSetRecoilState(viewSchemaState);
-  const setFieldSchema = useSetRecoilState(fieldSchemaState);
-  const [searchTerm, setSearchTerm] = useRecoilState<string>(schemaSearchTerm);
-  const [searchResults, setSearchResults] = useRecoilState(schemaSearchRestuls);
+  const setViewSchema = useSetRecoilState(fos.viewSchemaState);
+  const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
+  const [searchTerm, setSearchTerm] = useRecoilState<string>(
+    fos.schemaSearchTerm
+  );
+  const searchResults = useRecoilValue(fos.schemaSearchResultList);
+  const setSearchResults = useRecoilCallback(
+    ({ set }) =>
+      async (newPaths: string[] = []) => {
+        set(fos.schemaSearchResultList, newPaths);
+      },
+    []
+  );
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const sampleFields = useRecoilValue(fos.sampleFields);
   const frameFields = useRecoilValue(fos.frameFields);
@@ -370,37 +344,39 @@ export default function useSchemaSettings() {
   }, [datasetName]);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
-    allFieldsCheckedState
+    fos.allFieldsCheckedState
   );
 
   const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
-    includeNestedFieldsState
+    fos.includeNestedFieldsState
   );
 
   const [affectedPathCount, setAffectedPathCount] = useRecoilState(
-    affectedPathCountState
+    fos.affectedPathCountState
   );
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
-    lastAppliedPathsState
+    fos.lastAppliedPathsState
   );
 
   const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
-    showNestedFieldsState
+    fos.showNestedFieldsState
   );
 
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
-    searchMetaFilterState
+    fos.searchMetaFilterState
   );
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
   const isClipsView = useRecoilValue(fos.isClipsView);
 
-  const [expandedPaths, setExpandedPaths] = useRecoilState(expandedPathsState);
+  const [expandedPaths, setExpandedPaths] = useRecoilState(
+    fos.expandedPathsState
+  );
 
   const [lastActionToggleSelection, setLastActionToggleSelection] =
-    useRecoilState(lastActionToggleSelectionState);
+    useRecoilState(fos.lastActionToggleSelectionState);
 
   const vStages = useRecoilValue(fos.view);
   const [data, refetch] = useRefetchableFragment<
@@ -442,11 +418,11 @@ export default function useSchemaSettings() {
   }, [viewSchema, fieldSchema]);
 
   const [selectedTab, setSelectedTab] = useRecoilState(
-    schemaSelectedSettingsTab
+    fos.schemaSelectedSettingsTab
   );
-  const filterRuleTab = selectedTab === TAB_OPTIONS_MAP.FILTER_RULE;
+  const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
-  const selectedPathState = selectedPathsState({});
+  const selectedPathState = fos.selectedPathsState({});
   const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
     selectedPathState
   );
@@ -480,7 +456,7 @@ export default function useSchemaSettings() {
     selectedPaths,
   ]);
 
-  const excludePathsState = excludedPathsState({});
+  const excludePathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
     excludePathsState
   );
@@ -548,8 +524,7 @@ export default function useSchemaSettings() {
           ? `frames.${pathLabel[pathLabel.length - 1]}`
           : pathLabel[pathLabel.length - 1];
 
-        const ftype = finalSchemaKeyByPath[path].ftype;
-        const skip = skipField(path, ftype, finalSchemaKeyByPath);
+        const skip = skipField(path, finalSchemaKeyByPath);
         const disabled =
           disabledField(
             path,
@@ -723,7 +698,7 @@ export default function useSchemaSettings() {
         const ftype = mergedSchema?.[currPath]?.ftype;
         if (
           currPath.startsWith(path + ".") &&
-          !skipField(currPath, ftype, mergedSchema)
+          !skipField(currPath, mergedSchema)
         ) {
           subPaths.add(getPath(currPath));
         }
@@ -799,11 +774,7 @@ export default function useSchemaSettings() {
     () =>
       mergedSchema
         ? finalSchema.filter((field) => {
-            return !skipField(
-              field.path,
-              mergedSchema?.[field.path],
-              mergedSchema
-            );
+            return !skipField(field.path, mergedSchema);
           })
         : finalSchema,
     [mergedSchema, finalSchema, isGroupDataset]

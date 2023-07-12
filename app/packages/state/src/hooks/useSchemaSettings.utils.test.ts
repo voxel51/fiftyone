@@ -36,7 +36,7 @@ import {
   VECTOR_FIELD,
 } from "@fiftyone/utilities";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { disabledField } from "./useSchemaSettings.utils";
+import { disabledField, skipField } from "./useSchemaSettings.utils";
 
 const BASE_FIELD = {
   path: null,
@@ -54,7 +54,7 @@ const BASE_FIELD = {
 const GROUP_DATASET = "group";
 const NOT_GROUP_DATASET = "";
 
-const FIELDS = {
+export const FIELDS = {
   ID_FIELD: {
     ...BASE_FIELD,
     path: "id",
@@ -169,12 +169,31 @@ const FIELDS = {
     ...BASE_FIELD,
     path: "detections",
     ftype: DETECTIONS_FIELD,
+    embeddedDocType: DETECTION_FIELD,
+  },
+  // skip path
+  DETECTIONS_INDEX_FIELD: {
+    ...BASE_FIELD,
+    path: "detections.index",
+    ftype: INT_FIELD,
+  },
+  // skip path
+  DETECTIONS_BOUNDINGBOX_FIELD: {
+    ...BASE_FIELD,
+    path: "detections.bounding_box",
+    ftype: LIST_FIELD,
   },
   DETECTIONS_LIST_FIELD: {
     ...BASE_FIELD,
     path: "detections",
     ftype: LIST_FIELD,
     embeddedDocType: DETECTIONS_FIELD,
+  },
+  // not a skip path
+  DETECTIONS_NO_SKIP_FIELD: {
+    ...BASE_FIELD,
+    path: "detections.no_skip",
+    ftype: LIST_FIELD,
   },
   CLASSIFICATION_FIELD: {
     ...BASE_FIELD,
@@ -307,6 +326,45 @@ const getEnabledNestedLabelFields = (prefix: string, paths: string[]) => {
   }
   return res;
 };
+
+describe(`
+  should skip '.index' and '.bounding_box' subpaths if
+  the field's parent's embeddedDocumentType is Detections
+`, () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("skip Detections's subpath ending with .index", () => {
+    expect(skipField(FIELDS.DETECTIONS_INDEX_FIELD.path, SCHEMA)).toBe(true);
+  });
+
+  it("skip Detections's subpath ending with .bounding_box", () => {
+    expect(skipField(FIELDS.DETECTIONS_BOUNDINGBOX_FIELD.path, SCHEMA)).toBe(
+      true
+    );
+  });
+
+  it("Do not skip regular path under Detections embeddedDocument type", () => {
+    expect(skipField(FIELDS.DETECTIONS_NO_SKIP_FIELD.path, SCHEMA)).toBe(false);
+  });
+
+  it("A skipped path 'index' prefixed with 'frames.' should still be skipped", () => {
+    expect(
+      skipField(`frames.${FIELDS.DETECTIONS_INDEX_FIELD.path}`, SCHEMA)
+    ).toBe(true);
+  });
+
+  it("passing empty path should throw an error", () => {
+    expect(() => {
+      skipField("", SCHEMA);
+    }).toThrow("path argument is required");
+  });
+
+  it("should skip if the path is not in the schema", () => {
+    expect(skipField("not_in_schema", SCHEMA)).toBe(true);
+  });
+});
 
 describe("Disabled field paths in schema fields", () => {
   afterEach(() => {
@@ -881,6 +939,11 @@ describe("List of labels", () => {
         NOT_GROUP_DATASET
       )
     ).toBe(true);
+    expect(disabledField(FIELDS.REGRESSION_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.HEATMAP_FIELD.path, SCHEMA, "")).toBe(true);
+    expect(disabledField(FIELDS.SEGMENTATION_FIELD.path, SCHEMA, "")).toBe(
+      true
+    );
   });
 
   it("List of non-labels are enabled", () => {

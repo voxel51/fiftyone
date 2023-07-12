@@ -1,19 +1,11 @@
-import React, { Fragment, useCallback, useRef } from "react";
-import styled from "styled-components";
-
+import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-
+import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-
-import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import React, { Fragment, useCallback, useRef } from "react";
+import styled from "styled-components";
 import { TabOption } from "../utils";
-
-import useSchemaSettings, {
-  TAB_OPTIONS,
-} from "@fiftyone/state/src/hooks/useSchemaSettings";
-
-import { useOutsideClick } from "@fiftyone/state";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 
@@ -77,7 +69,7 @@ const SchemaSettings = () => {
     searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
-  } = useSchemaSettings();
+  } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
@@ -177,7 +169,7 @@ const SchemaSettings = () => {
           >
             <TabOption
               active={selectedTab}
-              options={TAB_OPTIONS.map((value) => {
+              options={fos.TAB_OPTIONS.map((value) => {
                 return {
                   key: value,
                   text: value,

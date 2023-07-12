@@ -23,6 +23,7 @@ export { default as useSavedViews } from "./useSavedViews";
 export {
   settingsModal,
   default as useSchemaSettings,
+  default as useSchemaSettings,
 } from "./useSchemaSettings";
 export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";

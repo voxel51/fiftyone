@@ -17,3 +17,4 @@ export * from "./sidebar";
 export * from "./types";
 export * from "./utils";
 export * from "./view";
+export * from "./schemaSettings.atoms";
