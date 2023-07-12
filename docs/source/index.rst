@@ -87,22 +87,22 @@ learn how:
     :image_title: Detectron2
 
 .. customimagelink::
-    :image_link: tutorials/qdrant.html
+    :image_link: integrations/qdrant.html
     :image_src: https://voxel51.com/images/integrations/qdrant-128.png
     :image_title: Qdrant
 
 .. customimagelink::
-    :image_link: tutorials/pinecone.html
+    :image_link: integrations/pinecone.html
     :image_src: https://voxel51.com/images/integrations/pinecone-128.png
     :image_title: Pinecone
 
 .. customimagelink::
-    :image_link: tutorials/milvus.html
+    :image_link: integrations/milvus.html
     :image_src: https://voxel51.com/images/integrations/milvus-128.png
     :image_title: Milvus
 
 .. customimagelink::
-    :image_link: tutorials/lancedb.html
+    :image_link: integrations/lancedb.html
     :image_src: https://voxel51.com/images/integrations/lancedb-128.png
     :image_title: LanceDB
 
