@@ -246,6 +246,7 @@ const NumericFieldFilter = ({
             disabled={true}
             name={"No results"}
             setValue={() => {}}
+            omitAggregation={!isFilterMode}
           />
         )}
         {hasBounds && !one ? (
@@ -283,6 +284,7 @@ const NumericFieldFilter = ({
                 : (v) => (typeof v === "number" ? v.toString() : null)
             }
             value={false}
+            omitAggregation={!isFilterMode}
           />
         ) : null}
         {((hasNone && isSliderAtInitialPostion) || !hasBounds) &&
@@ -293,6 +295,7 @@ const NumericFieldFilter = ({
               name={NONFINITES[key]}
               forceColor={true}
               disabled={one && nonfinites.length === 1 && !(one && hasBounds)}
+              omitAggregation={!isFilterMode}
               {...props}
             />
           ))}

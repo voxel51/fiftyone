@@ -24,9 +24,9 @@ import { removeKeys } from "@fiftyone/utilities";
 import { PillButton, useTheme } from "@fiftyone/components";
 import { datasetName } from "@fiftyone/state";
 import {
-  fieldVisibility,
-  modalFieldVisibility,
-} from "@fiftyone/state/src/recoil/fieldVisibility";
+  attributeVisibility,
+  modalAttributeVisibility,
+} from "@fiftyone/state/src/recoil/attributeVisibility";
 import Draggable from "./Draggable";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -252,11 +252,11 @@ const useClearVisibility = (modal: boolean, group: string) => {
           fos.sidebarGroup({ modal, group, loading: true })
         );
         const visibility = await snapshot.getPromise(
-          modal ? modalFieldVisibility : fieldVisibility
+          modal ? modalAttributeVisibility : attributeVisibility
         );
 
         set(
-          modal ? modalFieldVisibility : fieldVisibility,
+          modal ? modalAttributeVisibility : attributeVisibility,
           removeKeys(visibility, paths, true)
         );
       },

@@ -3,12 +3,12 @@ import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
+import { attributeVisibility } from "@fiftyone/state/src/recoil/attributeVisibility";
 import Checkbox from "../../Common/Checkbox";
 import { Button } from "../../utils";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import { V, isKeypointLabel } from "./CategoricalFilter";
 import FilterOption from "./filterOption/FilterOption";
-import { fieldVisibility } from "@fiftyone/state/src/recoil/fieldVisibility";
 
 interface WrapperProps {
   results: [V["value"], number][];
@@ -36,12 +36,11 @@ const Wrapper = ({
   const name = path.split(".").slice(-1)[0];
   const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
-  const visibility = useRecoilValue(fieldVisibility);
-  const filter = useRecoilValue(fos.filters);
   const selectedSet = new Set(selected);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
@@ -93,12 +92,12 @@ const Wrapper = ({
           disabled={true}
           name={"No results"}
           setValue={() => {}}
+          omitAggregation={!isFilterMode}
         />
       </>
     );
   }
-  console.info("V", visibility);
-  console.info("F", filter);
+
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
@@ -128,6 +127,7 @@ const Wrapper = ({
             extended: true,
             value: value as string,
           })}
+          omitAggregation={!isFilterMode}
         />
       ))}
       {Boolean(selectedSet.size) && (

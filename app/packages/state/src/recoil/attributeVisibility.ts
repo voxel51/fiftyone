@@ -3,16 +3,16 @@ import { atom, selectorFamily } from "recoil";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 
 import { expandPath, fields } from "./schema";
-import { State } from "./types";
 import { hiddenLabelIds } from "./selectors";
+import { State } from "./types";
 
-export const modalFieldVisibility = atom<State.Filters>({
-  key: "modalFieldVisibility",
+export const modalAttributeVisibility = atom<State.Filters>({
+  key: "modalAttributeVisibility",
   default: {},
 });
 
-export const fieldVisibility = atom<State.Filters>({
-  key: "fieldVisibility",
+export const attributeVisibility = atom<State.Filters>({
+  key: "attributeVisibility",
   default: {},
 });
 
@@ -24,7 +24,7 @@ export const visibility = selectorFamily<
   get:
     ({ path, modal }) =>
     ({ get }) => {
-      const f = get(modal ? modalFieldVisibility : fieldVisibility);
+      const f = get(modal ? modalAttributeVisibility : attributeVisibility);
 
       if (f[path]) {
         return f[path];
@@ -35,7 +35,7 @@ export const visibility = selectorFamily<
   set:
     ({ path, modal }) =>
     ({ get, set }, visibility) => {
-      const atom = modal ? modalFieldVisibility : fieldVisibility;
+      const atom = modal ? modalAttributeVisibility : attributeVisibility;
       const newSetting = Object.assign({}, get(atom));
       if (visibility === null) {
         delete newSetting[path];
@@ -55,7 +55,7 @@ export const hasVisibility = selectorFamily<boolean, boolean>({
     (modal) =>
     ({ get }) => {
       const f =
-        Object.keys(get(modal ? modalFieldVisibility : fieldVisibility))
+        Object.keys(get(modal ? modalAttributeVisibility : attributeVisibility))
           .length > 0;
       const hidden = Boolean(modal && get(hiddenLabelIds).size);
 
@@ -74,7 +74,7 @@ export const fieldHasVisibilitySetting = selectorFamily<
   get:
     ({ path, modal }) =>
     ({ get }) => {
-      const f = get(modal ? modalFieldVisibility : fieldVisibility);
+      const f = get(modal ? modalAttributeVisibility : attributeVisibility);
 
       const expandedPath = get(expandPath(path));
       const paths = get(

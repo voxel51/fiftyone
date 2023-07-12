@@ -51,7 +51,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
-  private fieldVisibility: object;
+  private attributeVisibility: object;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -72,7 +72,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         timeZone,
         customizeColorSetting,
         filter,
-        fieldVisibility,
+        attributeVisibility,
       },
       playing,
     }: Readonly<State>,
@@ -89,7 +89,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorByValue === (coloring.by === "value") &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
-        _.isEqual(this.fieldVisibility, fieldVisibility) &&
+        _.isEqual(this.attributeVisibility, attributeVisibility) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -383,7 +383,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
     this.colorPool = coloring.pool as string[];
-    this.fieldVisibility = fieldVisibility;
+    this.attributeVisibility = attributeVisibility;
 
     elements
       .filter((e) => Boolean(e))

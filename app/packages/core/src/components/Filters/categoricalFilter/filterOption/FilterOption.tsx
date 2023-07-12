@@ -11,18 +11,12 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { IconButton } from "@mui/material";
 import Color from "color";
 import React, { useEffect, useMemo } from "react";
-import {
-  RecoilState,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Popout } from "@fiftyone/components";
+import { attributeVisibility } from "@fiftyone/state/src/recoil/attributeVisibility";
 import Item from "./FilterItem";
-import { set } from "lodash";
-import { fieldVisibility } from "@fiftyone/state/src/recoil/fieldVisibility";
 
 interface Props {
   nestedField: string | undefined; // nested ListFields only ("detections")
@@ -171,21 +165,19 @@ const FilterOption: React.FC<Props> = ({
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
-  const visibility = useRecoilValue(fieldVisibility);
+  const visibility = useRecoilValue(attributeVisibility);
   const filter = useRecoilValue(fos.filters);
 
   const [key, setKey] = React.useState<Key>(() => {
-    return isFilterMode
-      ? !excluded
-        ? nestedField || isLabelTag
-          ? "filter"
-          : "match"
-        : nestedField || isLabelTag
-        ? "negativeFilter"
-        : "negativeMatch"
-      : !excluded
-      ? "visible"
-      : "notVisible";
+    if (isFilterMode) {
+      if (!excluded) {
+        return nestedField || isLabelTag ? "filter" : "match";
+      } else {
+        return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
+      }
+    } else {
+      return !excluded ? "visible" : "notVisible";
+    }
   });
 
   const theme = useTheme();
