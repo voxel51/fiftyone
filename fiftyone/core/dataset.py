@@ -2679,6 +2679,108 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             overwrite_info=overwrite_info,
         )
 
+    def merge_sample(
+        self,
+        sample,
+        key_field="filepath",
+        skip_existing=False,
+        insert_new=True,
+        fields=None,
+        omit_fields=None,
+        merge_lists=True,
+        overwrite=True,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
+        """Merges the fields of the given sample into this dataset.
+
+        By default, the sample is merged with an existing sample with the same
+        absolute ``filepath``, if one exists. Otherwise a new sample is
+        inserted. You can customize this behavior via the ``key_field``,
+        ``skip_existing``, and ``insert_new`` parameters.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided sample are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both samples are updated rather
+        than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge only specific fields, or all but certain fields
+        -   Mapping input sample fields to different field names of this sample
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. May contain frame fields for video samples.
+                This can also be a dict mapping field names of the input sample
+                to field names of this dataset
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. May contain frame fields for video
+                samples
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                sample
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if any fields are not in the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
+        """
+        try:
+            F = foe.ViewField
+            existing_sample = self.one(F(key_field) == sample[key_field])
+        except ValueError:
+            if insert_new:
+                self.add_sample(
+                    sample,
+                    expand_schema=expand_schema,
+                    dynamic=dynamic,
+                    validate=validate,
+                )
+
+            return
+
+        if not skip_existing:
+            existing_sample.merge(
+                sample,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                overwrite=overwrite,
+                expand_schema=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
+            existing_sample.save()
+
     def merge_samples(
         self,
         samples,

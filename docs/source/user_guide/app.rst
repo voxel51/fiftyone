@@ -472,10 +472,15 @@ to index the field or embedded field that you wish to filter by:
 
     session = fo.launch_app(dataset)
 
+You can use
+:meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
+to view the existing indexes on a dataset, and you can use
+:meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
+to delete indexes that you no longer need.
 
-For group datasets, a compound index should be added in addition to the
-individual field index when using the default `slice` App setting. See
-:ref:`Groups in the App <groups-app>` for more information about `slice` mode.
+For :ref:`group datasets <groups>`, you should also add a compound index that
+includes your group `name` field to optimize filters applied when viewing a
+single :ref:`group slice <groups-app>`:
 
 .. code-block:: python
     :linenos:
@@ -485,22 +490,13 @@ individual field index when using the default `slice` App setting. See
 
     dataset = foz.load_zoo_dataset("quickstart-groups")
 
-    # Add field index to optimize ground truth label filters in "group" mode
+    # Add index to optimize detections label filters in "group" mode
     dataset.create_index("detections.detections.label")
     
-    # Add field and group compound index to optimize detection label filters
-    # in "slice" mode
-    dataset.create_index(
-        [("group.name", 1), ("detections.detections.label", 1)]
-    )
+    # Add compound index to optimize detections label filters in "slice" mode
+    dataset.create_index([("group.name", 1), ("detections.detections.label", 1)])
 
     session = fo.launch_app(dataset)
-
-You can use
-:meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
-to view the existing indexes on a dataset, and you can use
-:meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
-to delete indexes that you no longer need.
 
 .. _app-create-view:
 

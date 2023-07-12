@@ -788,6 +788,10 @@ class SampleCollection(object):
             exact (False): whether to raise an error if multiple samples match
                 the expression
 
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
         Returns:
             a :class:`fiftyone.core.sample.SampleView`
         """
@@ -1620,7 +1624,13 @@ class SampleCollection(object):
                     label_ids = self.values(id_path)
 
             for _label_ids in fou.iter_batches(label_ids, 100000):
-                ops.append(UpdateMany({_id_path: {"$in": _label_ids}}, update))
+                _label_ids = [_id for _id in _label_ids if _id is not None]
+                ops.append(
+                    UpdateMany(
+                        {_id_path: {"$in": _label_ids}},
+                        update,
+                    )
+                )
 
         if ops:
             self._dataset._bulk_write(ops, frames=is_frame_field)
@@ -9777,7 +9787,7 @@ class SampleCollection(object):
             self,
             field,
             expr,
-            embedded_root,
+            embedded_root=embedded_root,
             allow_missing=allow_missing,
             new_field=new_field,
             context=context,
@@ -10357,7 +10367,9 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     def _replace(path):
-        return ".".join([new_field] + path.split(".")[1:])
+        n = new_field.count(".") + 1
+        chunks = path.split(".", n)
+        return new_field + "." + chunks[-1] if len(chunks) > n else new_field
 
     if new_field:
         field_name = _replace(field_name)
@@ -10448,7 +10460,7 @@ def _make_set_field_pipeline(
     sample_collection,
     field,
     expr,
-    embedded_root,
+    embedded_root=False,
     allow_missing=False,
     new_field=None,
     context=None,

@@ -1,27 +1,24 @@
-import React, { PropsWithChildren, useEffect } from "react";
-import styled from "styled-components";
-import { RecoilState, useRecoilState, useSetRecoilState } from "recoil";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
-import ImageIcon from "@mui/icons-material/Image";
 import HideImageIcon from "@mui/icons-material/HideImage";
+import ImageIcon from "@mui/icons-material/Image";
 import { IconButton } from "@mui/material";
-import { useSpring } from "framer-motion";
 import Color from "color";
+import React, { useEffect } from "react";
+import { RecoilState, useRecoilState, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 
-import { useOutsideClick } from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import Tooltip from "@fiftyone/components/src/components/Tooltip";
+import { useOutsideClick } from "@fiftyone/state";
 
-import { PopoutDiv } from "../../../utils";
-import Item from "./FilterItem";
 import { Popout } from "@fiftyone/components";
+import Item from "./FilterItem";
 
 interface Props {
   nestedField: string | undefined; // nested ListFields only ("detections")
   shouldNotShowExclude: boolean; // for BooleanFields
   excludeAtom: RecoilState<boolean>;
-  onlyMatchAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
   valueName: string;
   color: string;
@@ -132,7 +129,6 @@ const FilterOption: React.FC<Props> = ({
   nestedField,
   shouldNotShowExclude,
   excludeAtom,
-  onlyMatchAtom,
   isMatchingAtom,
 }) => {
   const isLabelTag = path?.startsWith("_label_tags");
@@ -140,7 +136,6 @@ const FilterOption: React.FC<Props> = ({
 
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
   const setIsMatching = isMatchingAtom
     ? useSetRecoilState(isMatchingAtom)
     : null;
@@ -213,25 +208,21 @@ const FilterOption: React.FC<Props> = ({
   const onSelectFilter = () => {
     setExcluded && setExcluded(false);
     setIsMatching && setIsMatching(false);
-    setOnlyMatch && setOnlyMatch(true);
   };
 
   const onSelectNegativeFilter = () => {
     setExcluded && setExcluded(true);
     setIsMatching && setIsMatching(false);
-    setOnlyMatch && setOnlyMatch(false);
   };
 
   const onSelectMatch = () => {
     setExcluded && setExcluded(false);
     setIsMatching && setIsMatching(true);
-    setOnlyMatch && setOnlyMatch(true);
   };
 
   const onSelectNegativeMatch = () => {
     setExcluded && setExcluded(true);
     setIsMatching && setIsMatching(true);
-    setOnlyMatch && setOnlyMatch(true);
   };
 
   const children = (
