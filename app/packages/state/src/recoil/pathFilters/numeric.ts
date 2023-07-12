@@ -6,7 +6,7 @@ import {
 } from "recoil";
 import * as aggregationAtoms from "../aggregations";
 import * as fos from "../atoms";
-import * as visibilityAtoms from "../fieldVisibility";
+import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 
 export interface NumericFilter {

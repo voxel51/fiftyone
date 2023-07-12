@@ -9,13 +9,13 @@ import {
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 
 import * as atoms from "./atoms";
+import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
 import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import skeletonFilter from "./skeletonFilter";
 import * as viewAtoms from "./view";
-import { fieldVisibility } from "./fieldVisibility";
 
 type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
@@ -67,7 +67,7 @@ export const lookerOptions = selectorFamily<
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring(modal)),
         customizeColorSetting: get(atoms.sessionColorScheme).fields ?? [],
-        fieldVisibility: get(fieldVisibility),
+        attributeVisibility: get(attributeVisibility),
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
         fullscreen: get(atoms.fullscreen),

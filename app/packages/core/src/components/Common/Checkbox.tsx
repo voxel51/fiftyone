@@ -1,9 +1,8 @@
 import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useMemo } from "react";
-import { constSelector, RecoilValueReadOnly, useRecoilValue } from "recoil";
+import { constSelector, RecoilValueReadOnly } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../utils/generic";
 import { ItemAction } from "../Actions/ItemAction";
@@ -23,6 +22,7 @@ interface CheckboxProps<T> {
   muted?: boolean;
   forceColor?: boolean;
   formatter?: (value: T | undefined) => string | null | undefined;
+  omitAggregation?: boolean;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -48,6 +48,7 @@ const Checkbox = <T extends unknown>({
   forceColor,
   muted,
   formatter,
+  omitAggregation = false,
 }: CheckboxProps<T>) => {
   const theme = useTheme();
   color = color ?? theme.primary.plainColor;
@@ -58,7 +59,6 @@ const Checkbox = <T extends unknown>({
     () => (typeof count === "number" ? constSelector(count) : null),
     [count]
   );
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   return (
     <StyledCheckboxContainer title={text}>
@@ -95,7 +95,7 @@ const Checkbox = <T extends unknown>({
           >
             {prettify(text)}
           </span>
-          {isFilterMode && countAtom && (
+          {!omitAggregation && countAtom && (
             <SuspenseEntryCounts
               countAtom={countAtom}
               subcountAtom={subcountAtom}

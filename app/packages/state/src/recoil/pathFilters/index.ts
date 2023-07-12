@@ -14,7 +14,10 @@ import { selectorFamily } from "recoil";
 
 import { filters, modalFilters } from "../filters";
 
-import { fieldVisibility, modalFieldVisibility } from "../fieldVisibility";
+import {
+  attributeVisibility,
+  modalAttributeVisibility,
+} from "../attributeVisibility";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { State } from "../types";
@@ -88,8 +91,8 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
 
       const currentFilter = modal ? get(modalFilters) : get(filters);
       const currentVisibility = modal
-        ? get(modalFieldVisibility)
-        : get(fieldVisibility);
+        ? get(modalAttributeVisibility)
+        : get(attributeVisibility);
 
       const newFilters = paths.reduce((f, path) => {
         if (path.startsWith("_")) return f;

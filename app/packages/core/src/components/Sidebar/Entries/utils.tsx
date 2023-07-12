@@ -14,7 +14,6 @@ export const InputDiv = styled.div`
   justify-content: space-between;
   & > input {
     color: ${({ theme }) => theme.text.secondary};
-    font-size: 14px !important;
     font-size: 1rem;
     width: 100%;
     background: transparent;

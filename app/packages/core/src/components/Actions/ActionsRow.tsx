@@ -60,7 +60,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const isSimilarityOn = get(fos.similarityParameters);
 
     const affectedPathCount = get(affectedPathCountState);
-    const isFieldVisibilityOn = affectedPathCount > 0;
+    const isAttributeVisibilityOn = affectedPathCount > 0;
 
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
@@ -69,7 +69,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
       isExtendedSelectionOn ||
         hasFiltersValue ||
         selectedSampleSet.size > 0 ||
-        isFieldVisibilityOn
+        isAttributeVisibilityOn
     );
   },
 });
