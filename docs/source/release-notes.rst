@@ -11,6 +11,12 @@ FiftyOne Teams 1.3.3
 
 Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`, plus:
 
+SDK
+
+- Added a `cache=True` option to the
+  :ref:`upload_media() <teams-cloud-api-reference>` utility that allows for
+  automatically adding any uploaded files to your local cache
+
 API connections
 
 - Fixed a bug when launching the App locally via API connections
