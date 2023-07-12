@@ -317,6 +317,63 @@ class MediaCache(object):
 
         return local_paths
 
+    def add(
+        self,
+        filepaths,
+        remote_paths,
+        method="copy",
+        overwrite=True,
+        skip_failures=True,
+    ):
+        """Adds the given files to your local media cache and associates them
+        with the given remote paths.
+
+        .. note::
+
+            This method does not access the remote paths; they are simply
+            assumed to exist. As a result, this method does not populate cache
+            checksums, and thus calling :meth:`update` will redownload the
+            files from their remote paths.
+
+        Args:
+            filepaths: an iterable of media paths
+            remote_paths: an iterable of associated remote media paths
+            method ("copy"): whether to ``"copy"`` or ``"move"`` the files into
+                the cache
+            overwrite (True): whether to overwrite (True) or skip (False)
+                already cached files
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a file cannot be cached
+        """
+        supported_methods = ("copy", "move")
+        if method not in supported_methods:
+            raise ValueError(
+                "Unsupported method=%s. The supported values are %s"
+                % (method, supported_methods)
+            )
+
+        tasks = []
+        for filepath, remote_path in zip(filepaths, remote_paths):
+            # We must manually check for cache existence to avoid fancy logic
+            # in `_parse_filepath()` that is intended to avoid download retries
+            _, local_path, _, _ = self._parse_filepath(
+                remote_path, check_exists=False
+            )
+            exists = os.path.isfile(local_path)
+
+            if not exists or overwrite:
+                task = (
+                    filepath,
+                    local_path,
+                    remote_path,
+                    method,
+                    skip_failures,
+                )
+                tasks.append(task)
+
+        if tasks:
+            _cache_media(tasks, self.num_workers)
+
     def get_url(self, remote_path, method="GET", hours=1):
         """Retrieves a URL for accessing the given remote file.
 
@@ -727,6 +784,45 @@ def _do_download_media(arg):
         checksum = None
 
     _write_cache_result(remote_path, local_path, success, checksum)
+
+
+def _cache_media(tasks, num_workers):
+    num_tasks = len(tasks)
+
+    if num_tasks == 1:
+        _do_cache_media(tasks[0])
+        return
+
+    logger.info("Caching media...")
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar(total=num_tasks) as pb:
+            for task in pb(tasks):
+                _do_cache_media(task)
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=num_tasks) as pb:
+                results = pool.imap_unordered(_do_cache_media, tasks)
+                for _ in pb(results):
+                    pass
+
+
+def _do_cache_media(args):
+    filepath, local_path, remote_path, method, skip_failures = args
+
+    success = True
+    try:
+        if method == "move":
+            fos.move_file(filepath, local_path)
+        else:
+            fos.copy_file(filepath, local_path)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        logger.warning(e)
+        success = False
+
+    _write_cache_result(remote_path, local_path, success, None)
 
 
 async def _do_async_download_media(arg):

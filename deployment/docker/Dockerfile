@@ -72,6 +72,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 RUN --mount=type=cache,from=builder,target=/builder,ro \
     pip --no-cache-dir install -U pip setuptools wheel \
     && pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    && mkdir -p /opt/plugins \
     && chown --changes --silent --no-dereference --recursive voxel51:voxel51 /opt
 
 # run as the voxel51 user

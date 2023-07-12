@@ -422,7 +422,7 @@ class Session(object):
             remote=remote,
             start_time=self._get_time(),
         )
-        self._client.run(self._state)
+        self._client.open(self._state)
         _attach_listeners(self)
         _register_session(self)
 
@@ -515,6 +515,7 @@ class Session(object):
                 # logger may already have been garbage-collected
                 print(_WAIT_INSTRUCTIONS)
 
+            self._client.close()
             _unregister_session(self)
         except:
             # e.g. globals were already garbage-collected
@@ -970,9 +971,10 @@ class Session(object):
         -   Desktop: opens the desktop App, if necessary
         -   Other (non-remote): opens the App in a new browser tab
         """
-        if self.remote:
-            logger.warning("Remote sessions cannot open new App windows")
-            return
+        _register_session(self)
+
+        if not self._client.is_open:
+            self._client.open(self._state)
 
         if self.plots:
             self.plots.connect()
@@ -1102,13 +1104,14 @@ class Session(object):
 
     def close(self) -> None:
         """Closes the session and terminates the App, if necessary."""
-        if self.remote:
-            return
+        if self.desktop:
+            self._app_service.stop()
 
-        if self._client._connected and focx._get_context() == focx._NONE:
-            self._client.send_event(CloseSession())
+        if self._client.is_open and focx.is_notebook_context():
+            self.freeze()
 
         self.plots.disconnect()
+        self.__del__()
 
     def freeze(self) -> None:
         """Screenshots the active App cell, replacing it with a static image.

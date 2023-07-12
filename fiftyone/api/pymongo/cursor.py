@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 import pymongo
 
-from fiftyone.api import socket
 from fiftyone.api.pymongo import mixin, proxy
 
 if TYPE_CHECKING:

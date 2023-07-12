@@ -18,8 +18,6 @@ class MotorProxyMeta(proxy.PymongoProxyMeta):
     def _wrap_member(
         cls, name: str, member: Any, *_, is_async: bool = False, **__
     ) -> Any:
-        super()._wrap_member(cls, name, member)
-
         if is_async:
 
             async def ainner(instance, *args, **kwargs):
@@ -28,7 +26,7 @@ class MotorProxyMeta(proxy.PymongoProxyMeta):
             return ainner
 
         else:
-            super()._wrap_member(cls, name, member)
+            return super()._wrap_member(name, member)
 
     def _wrap_members(cls):  # pylint: disable=no-self-argument
         # Get the public members defined on the class.
@@ -42,6 +40,7 @@ class MotorProxyMeta(proxy.PymongoProxyMeta):
             for base in reversed(inspect.getmro(cls.__proxy_class__))
             for name, attr in base.__dict__.items()
             if isinstance(attr, motor.metaprogramming.Async)
+            or getattr(attr, "coroutine_annotation", False)
         }
 
         # Get the members defined on the Pymongo base class.
