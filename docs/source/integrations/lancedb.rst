@@ -5,7 +5,7 @@ LanceDB Integration
 
 .. default-role:: code
 
-`LanceDB <https://www.lancedb.com>`_ is a serveless vector database with deep 
+`LanceDB <https://www.lancedb.com>`_ is a serverless vector database with deep 
 integrations with the Python ecosystem. It requires no setup and is free to
 use.
 
@@ -180,7 +180,11 @@ a specific new index:
     lancedb_index = fob.compute_similarity(
         ...
         backend="lancedb",
+<<<<<<< HEAD
         brain_key="lacebdb_index",
+=======
+        brain_key="lancedb_index",
+>>>>>>> main
         table_name="your-table",
         metric="euclidean",
         uri="/tmp/lancedb",

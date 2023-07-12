@@ -8,6 +8,7 @@ FiftyOne Server queries.
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
+import logging
 import os
 import typing as t
 
@@ -511,7 +512,13 @@ def _flatten_fields(
 ) -> t.List[t.Dict]:
     result = []
     for field in fields:
-        key = field.pop("name")
+        key = field.pop("name", None)
+        if key is None:
+            # Issues with concurrency can cause this to happen.
+            # Until it's fixed, just ignore these fields to avoid throwing hard
+            # errors when loading in the app.
+            logging.debug("Skipping field with no name: %s", field)
+            continue
         field_path = path + [key]
         field["path"] = ".".join(field_path)
         result.append(field)

@@ -15,8 +15,8 @@ dataset permissions *are enforced*.
 
 .. note::
 
-   API connections are currently in beta. If preferred, you can also directly
-   connect to your Teams deployment's
+   **API connections are currently in beta.** The recommended stable solution
+   is to use your Teams deployment's
    :ref:`MongoDB connection <configuring-mongodb-connection>`.
 
 Configuring an API connection

@@ -15,6 +15,9 @@ import fiftyone as fo
 from decorators import drop_datasets
 
 
+F = fo.ViewField
+
+
 class LabelTests(unittest.TestCase):
     @drop_datasets
     def test_id(self):
@@ -184,6 +187,155 @@ class LabelTests(unittest.TestCase):
         self.assertDictEqual(dataset.count_label_tags(), {})
         self.assertDictEqual(
             dataset.count_label_tags(label_fields="dynamic.classifications"),
+            {},
+        )
+
+    @drop_datasets
+    def test_dynamic_frame_label_fields(self):
+        dynamic_doc = fo.DynamicEmbeddedDocument(
+            classification=fo.Classification(label="label"),
+            classifications=fo.Classifications(
+                classifications=[fo.Classification(label="label")]
+            ),
+        )
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1]["dynamic"] = dynamic_doc
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        dataset.add_dynamic_frame_fields()
+
+        label_id = dynamic_doc["classification"].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "frame_number": 1,
+                    "field": "frames.dynamic.classification",
+                }
+            ]
+        )
+        dynamic = view.first().frames[1].dynamic
+        self.assertTrue(label_id == dynamic.classification.id)
+        self.assertFalse("classifications" in dynamic)
+
+        view = dataset.filter_labels(
+            "frames.dynamic.classification", F("label") == "label"
+        )
+        dynamic = view.first().frames[1].dynamic
+        self.assertTrue(label_id == dynamic.classification.id)
+
+        label_id = dynamic_doc["classifications"].classifications[0].id
+        view = dataset.select_labels(
+            [
+                {
+                    "label_id": label_id,
+                    "sample_id": sample.id,
+                    "frame_number": 1,
+                    "field": "frames.dynamic.classifications",
+                }
+            ]
+        )
+        dynamic = view.first().frames[1].dynamic
+        self.assertTrue(
+            label_id == dynamic.classifications.classifications[0].id
+        )
+        self.assertFalse("classification" in dynamic)
+
+        view = dataset.filter_labels(
+            "frames.dynamic.classifications", F("label") == "label"
+        )
+        dynamic = view.first().frames[1].dynamic
+        self.assertTrue(
+            label_id == dynamic.classifications.classifications[0].id
+        )
+
+    @drop_datasets
+    def test_dynamic_frame_label_tags(self):
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+        )
+        sample1.frames[1]["dynamic"] = fo.DynamicEmbeddedDocument(
+            classification=fo.Classification(label="hi"),
+            classifications=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="spam"),
+                    fo.Classification(label="eggs"),
+                ]
+            ),
+        )
+        # test with empty documents
+        sample1.frames[2]["dynamic"] = fo.DynamicEmbeddedDocument()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        label_fields = set(dataset._get_label_fields())
+
+        self.assertSetEqual(
+            label_fields,
+            {
+                "frames.dynamic.classification",
+                "frames.dynamic.classifications",
+            },
+        )
+
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels("test")
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 3})
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="frames.dynamic.classification"
+            ),
+            {"test": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="frames.dynamic.classifications"
+            ),
+            {"test": 2},
+        )
+
+        dataset.untag_labels("test")
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels(
+            "test", label_fields="frames.dynamic.classification"
+        )
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 1})
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="frames.dynamic.classification"
+            ),
+            {"test": 1},
+        )
+
+        dataset.untag_labels("test")
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        dataset.tag_labels(
+            "test", label_fields="frames.dynamic.classifications"
+        )
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 2})
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="frames.dynamic.classifications"
+            ),
+            {"test": 2},
+        )
+
+        dataset.untag_labels(
+            "test", label_fields="frames.dynamic.classifications"
+        )
+        self.assertDictEqual(dataset.count_label_tags(), {})
+        self.assertDictEqual(
+            dataset.count_label_tags(
+                label_fields="frames.dynamic.classifications"
+            ),
             {},
         )
 

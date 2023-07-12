@@ -3,6 +3,63 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.3.3:
+
+FiftyOne Teams 1.3.3
+--------------------
+*Released July 12, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`, plus:
+
+SDK
+
+- Added a `cache=True` option to the
+  :ref:`upload_media() <teams-cloud-api-reference>` utility that allows for
+  automatically adding any uploaded files to your local cache
+
+API connections
+
+- Fixed a bug when launching the App locally via API connections
+
+.. _release-notes-v0.21.3:
+
+FiftyOne 0.21.3
+---------------
+*Released July 12, 2023*
+
+News
+
+- Released a :ref:`Milvus integration <milvus-integration>` for native text and
+  image searches on FiftyOne datasets!
+- Released a :ref:`LanceDB integration <lancedb-integration>` for native text
+  and image searches on FiftyOne datasets!
+
+App
+
+- Added support for embedded keypoint fields in
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
+  `#3279 <https://github.com/voxel51/fiftyone/pull/3279>`_
+- Fixed keypoint filtering
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3280>`_
+- Fixed a bug that caused non-matching samples to remain in the grid when
+  applying multiple sidebar filters
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
+- Fixed a bug when filtering by IDs in the sidebar
+  `#3270 <https://github.com/voxel51/fiftyone/pull/3270>`_
+- Fixed label tags grid bubbles for filterless views
+  `#3257 <https://github.com/voxel51/fiftyone/pull/3267>`_
+
+Core
+
+- Added a :meth:`merge_sample() <fiftyone.core.dataset.Dataset.merge_sample>`
+  method for merging individual samples into existing datasets
+  `#3274 <https://github.com/voxel51/fiftyone/pull/3274>`_
+- Fixed a bug when passing dict-valued `points` to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>`
+  `#3268 <https://github.com/voxel51/fiftyone/pull/3268>`_
+- Fixed a bug when filtering keypoints stored in embedded documents
+  `#3279 <https://github.com/voxel51/fiftyone/pull/3279>`_
+
 .. _release-notes-teams-v1.3.2:
 
 FiftyOne Teams 1.3.2
@@ -24,7 +81,10 @@ App
 - Fixes redundant sidebar groups for custom schemas
   `#3250 <https://github.com/voxel51/fiftyone/pull/3250>`_
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 .. _release-notes-teams-v1.3.1:
 
 FiftyOne Teams 1.3.1
@@ -49,6 +109,7 @@ API connections
   :ref:`direct database connections <configuring-mongodb-connection>`
 - Fixed a bug when connecting to Teams deployments with non-standard database
   names via API connections
+- Fixed a bug when saving run results using API connections
 - Fixed a bug when deleting datasets using API connections
 
 Management SDK

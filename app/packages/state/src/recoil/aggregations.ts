@@ -205,7 +205,7 @@ export const stringCountResults = selectorFamily({
       const isSkeletonPoints =
         VALID_KEYPOINTS.includes(
           get(schemaAtoms.field(parent)).embeddedDocType
-        ) && keys[2] === "points";
+        ) && keys.slice(-1)[0] === "points";
 
       if (isSkeletonPoints) {
         const skeleton = get(selectors.skeleton(parent));

@@ -96,7 +96,7 @@ export const groupSlices = selector<string[]>({
 
 export const hasGroupSlices = selector<boolean>({
   key: "hasGroupSlices",
-  get: ({ get }) => Boolean(get(groupSlices).length),
+  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
 });
 
 export const defaultPcdSlice = selector<string | null>({
