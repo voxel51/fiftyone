@@ -5,13 +5,9 @@ FiftyOne Teams app
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
-import eta.core.utils as etau
 import starlette.applications as stra
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
@@ -33,19 +29,6 @@ from fiftyone.teams.schema import schema
 routes = [
     Route(route, authenticate_route(endpoint)) for route, endpoint in routes
 ]
-
-etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
-
-
-class Static(StaticFiles):
-    async def get_response(self, path: str, scope: Scope) -> Response:
-        response = await super().get_response(path, scope)
-
-        if response.status_code == 404:
-            full_path, stat_result = self.lookup_path("index.html")
-            return self.file_response(full_path, stat_result, scope)
-
-        return response
 
 
 app = stra.Starlette(
@@ -70,20 +53,12 @@ app = stra.Starlette(
         Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
         Mount(
             "/plugins",
-            app=Static(
+            app=StaticFiles(
                 directory=fo.config.plugins_dir,
                 html=True,
                 check_dir=False,
             ),
             name="plugins",
-        ),
-        Mount(
-            "/",
-            app=Static(
-                directory=os.path.join(os.path.dirname(__file__), "static"),
-                html=True,
-            ),
-            name="static",
         ),
     ],
 )
