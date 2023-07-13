@@ -272,7 +272,7 @@ const NumericFieldFilter = ({
             disabled={true}
             name={bounds[0]}
             setValue={() => {}}
-            count={bounded}
+            count={isFilterMode ? bounded : undefined} // visibility mode does not show count
             subcountAtom={fos.boundedCount({
               modal,
               path,
@@ -284,7 +284,6 @@ const NumericFieldFilter = ({
                 : (v) => (typeof v === "number" ? v.toString() : null)
             }
             value={false}
-            omitAggregation={!isFilterMode}
           />
         ) : null}
         {((hasNone && isSliderAtInitialPostion) || !hasBounds) &&
@@ -295,7 +294,6 @@ const NumericFieldFilter = ({
               name={NONFINITES[key]}
               forceColor={true}
               disabled={one && nonfinites.length === 1 && !(one && hasBounds)}
-              omitAggregation={!isFilterMode}
               {...props}
             />
           ))}

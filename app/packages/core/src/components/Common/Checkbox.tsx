@@ -22,7 +22,6 @@ interface CheckboxProps<T> {
   muted?: boolean;
   forceColor?: boolean;
   formatter?: (value: T | undefined) => string | null | undefined;
-  omitAggregation?: boolean;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -48,7 +47,6 @@ const Checkbox = <T extends unknown>({
   forceColor,
   muted,
   formatter,
-  omitAggregation = false,
 }: CheckboxProps<T>) => {
   const theme = useTheme();
   color = color ?? theme.primary.plainColor;
@@ -95,7 +93,7 @@ const Checkbox = <T extends unknown>({
           >
             {prettify(text)}
           </span>
-          {!omitAggregation && countAtom && (
+          {countAtom && (
             <SuspenseEntryCounts
               countAtom={countAtom}
               subcountAtom={subcountAtom}

@@ -3,7 +3,6 @@ import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
-import { attributeVisibility } from "@fiftyone/state/src/recoil/attributeVisibility";
 import Checkbox from "../../Common/Checkbox";
 import { Button } from "../../utils";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
@@ -92,7 +91,6 @@ const Wrapper = ({
           disabled={true}
           name={"No results"}
           setValue={() => {}}
-          omitAggregation={!isFilterMode}
         />
       </>
     );
@@ -107,7 +105,7 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={
-            count < 0
+            count < 0 || !isFilterMode
               ? null
               : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
@@ -127,12 +125,11 @@ const Wrapper = ({
             extended: true,
             value: value as string,
           })}
-          omitAggregation={!isFilterMode}
         />
       ))}
       {Boolean(selectedSet.size) && (
         <>
-          {isFilterMode && (
+          {
             <FilterOption
               nestedField={nestedField}
               shouldNotShowExclude={Boolean(shouldNotShowExclude)}
@@ -144,7 +141,7 @@ const Wrapper = ({
               path={path}
               isKeyPointLabel={isKeyPoints}
             />
-          )}
+          }
           <Button
             text={"Reset"}
             color={color}
