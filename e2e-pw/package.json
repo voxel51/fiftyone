@@ -4,7 +4,7 @@
     "main": "index.js",
     "license": "MIT",
     "devDependencies": {
-        "@playwright/test": "^1.35.1",
+        "@playwright/test": "^1.36.0",
         "@types/wait-on": "^5.3.1",
         "@typescript-eslint/eslint-plugin": "^5.61.0",
         "@typescript-eslint/parser": "^5.61.0",

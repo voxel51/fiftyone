@@ -9,6 +9,7 @@ jobs:
     env:
       FIFTYONE_DO_NOT_TRACK: true
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
     defaults:
       run:
         shell: bash
@@ -17,9 +18,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-          node-version: 16
+          node-version: 18
 
-      - name: Set up Python 3.8
+      - name: Setup node 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Set up Python 3.8 and cache pip
         uses: actions/setup-python@v4
         id: pip-cache
         with:
@@ -30,17 +36,17 @@ jobs:
             requirements/github.txt
             requirements/test.txt
 
-      - name: Install requirements
+      - name: Install setup dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+
+      - name: Install requirements.txt
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
           pip install -r requirements/github.txt
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel
-
       - name: Cache Node Modules
-        id: node-cache
+        id: app-node-cache
         uses: actions/cache@v3
         with:
           path: |
@@ -49,11 +55,13 @@ jobs:
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
 
       - name: Install app
-        if: steps.node-cache.outputs.cache-hit != 'true'
-        run: cd app && yarn install
+        if: steps.app-node-cache.outputs.cache-hit != 'true'
+        run: yarn install
+        working-directory: app
 
       - name: Build app
-        run: make app
+        run: yarn build
+        working-directory: app
 
       - name: Install fiftyone
         run: pip install .
@@ -67,17 +75,41 @@ jobs:
       - name: FFmpeg
         uses: FedericoCarboni/setup-ffmpeg@v2
 
-      - name: Install E2E dependencies
-        run: yarn
-        working-directory: ./e2e
+      - name: Cache E2E Node Modules
+        id: e2e-node-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            e2e-pw/node_modules
+          key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
 
-      - name: Install Playwright browsers
-        run: yarn playwright install --with-deps
-        working-directory: ./e2e
+      - name: Install E2E dependencies if not cached
+        run: yarn install
+        if: steps.e2e-node-cache.outputs.cache-hit != 'true'
+        working-directory: e2e-pw
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: |
+          echo "PLAYWRIGHT_VERSION=$(node -e "process.stdout.write(require('@playwright/test/package.json').version)")" >> $GITHUB_OUTPUT
+        working-directory: e2e-pw
+
+      - name: Check if Playwright browser is cached
+        uses: actions/cache@v3
+        id: playwright-browser-cache
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
+          working-directory: e2e-pw
+
+      - name: Install Playwright browser if not cached
+        run: yarn playwright install
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: e2e-pw
 
       - name: Run Playwright tests
         run: yarn e2e
-        working-directory: ./e2e
+        working-directory: e2e-pw
 
       - name: Upload snapshots
         if: always()
@@ -86,3 +118,4 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+          working-directory: e2e-pw

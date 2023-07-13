@@ -2,6 +2,8 @@
 
 -   Install playwright extension for VSCode.
 -   Copy `.env.dev.template` into `.env.dev` and fill in the values.
+-   Run `yarn` to install dependencies. Make sure you're using node 18.x.
+    `nvm install 18 && nvm use 18`.
 -   Run tests directly from VSCode or from the command line with `yarn e2e`.
 
 ### To use the local dev server of the app
