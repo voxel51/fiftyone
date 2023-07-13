@@ -10,12 +10,11 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { IconButton } from "@mui/material";
 import Color from "color";
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Popout } from "@fiftyone/components";
-import { attributeVisibility } from "@fiftyone/state/src/recoil/attributeVisibility";
 import Item from "./FilterItem";
 
 interface Props {
@@ -165,19 +164,16 @@ const FilterOption: React.FC<Props> = ({
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
-  const visibility = useRecoilValue(attributeVisibility);
-  const filter = useRecoilValue(fos.filters);
 
-  const [key, setKey] = React.useState<Key>(() => {
-    if (isFilterMode) {
-      if (!excluded) {
-        return nestedField || isLabelTag ? "filter" : "match";
-      } else {
-        return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
-      }
+  const [filterKey, setFilterKey] = React.useState<Key>(() => {
+    if (!excluded) {
+      return nestedField || isLabelTag ? "filter" : "match";
     } else {
-      return !excluded ? "visible" : "notVisible";
+      return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
     }
+  });
+  const [visibilityKey, setVisibilityKey] = React.useState<Key>(() => {
+    return !excluded ? "visible" : "notVisible";
   });
 
   const theme = useTheme();
@@ -214,12 +210,16 @@ const FilterOption: React.FC<Props> = ({
     ]
   );
 
-  const selectedValue = options.find((o) => o.key === key)?.value;
+  const selectedValue = options.find(
+    (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
+  )?.value;
 
   const Selected = () => {
     // render the icon for selected filter method
-    const icon = options.find((o) => o.key === key)?.icon;
-    if (!icon) return <>{key}</>;
+    const icon = options.find(
+      (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
+    )?.icon;
+    if (!icon) return <>{isFilterMode ? filterKey : visibilityKey}</>;
 
     switch (icon.toLowerCase()) {
       case "filteralticon":
@@ -240,7 +240,7 @@ const FilterOption: React.FC<Props> = ({
   };
 
   const onSelectItem = (key: Key) => {
-    setKey(key);
+    isFilterMode ? setFilterKey(key) : setVisibilityKey(key);
     setOpen(false);
     switch (key) {
       case "filter":
@@ -270,52 +270,27 @@ const FilterOption: React.FC<Props> = ({
   };
 
   const onSelectNegativeFilter = () => {
-    setExcluded && setExcluded(true);
-    setIsMatching && setIsMatching(false);
+    !excluded && setExcluded(true);
+    isMatching && setIsMatching(false);
   };
 
   const onSelectMatch = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(true);
+    excluded && setExcluded(false);
+    !isMatching && setIsMatching(true);
   };
 
   const onSelectNegativeMatch = () => {
-    setExcluded && setExcluded(true);
-    setIsMatching && setIsMatching(true);
+    !excluded && setExcluded(true);
+    !isMatching && setIsMatching(true);
   };
 
-  useEffect(() => {
-    // when swtiching the mode, update the key to reflect the current mode selection
-    if (isFilterMode && ["visible", "notVisible"].includes(key)) {
-      const negative = filter[path]?.exclude;
-      const matchMode = filter[path]?.isMatching;
-      if (!negative && matchMode) {
-        setKey("match");
-      }
-      if (negative && matchMode) {
-        setKey("negativeMatch");
-      }
-      if (!negative && !matchMode) {
-        setKey("filter");
-      }
-      if (negative && !matchMode) {
-        setKey("negativeFilter");
-      }
-    }
-    if (
-      !isFilterMode &&
-      ["filter", "negativeFilter", "match", "negativeMatch"].includes(key)
-    ) {
-      const negative = visibility[path]?.exclude;
-      if (!negative) {
-        setKey("visible");
-      } else {
-        setKey("notVisible");
-      }
-    }
+  const onSelectVisible = () => {
+    excluded && setExcluded(false);
+  };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFilterMode]);
+  const onSelectNotVisible = () => {
+    !excluded && setExcluded(true);
+  };
 
   const children = (
     <Text
