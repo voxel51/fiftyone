@@ -137,6 +137,20 @@ class Operator(object):
 
         return definition
 
+    def resolve_delegation(self, ctx) -> bool:
+        """Returns the resolved delegation flag.
+
+        Subclasses can implement this method to define the logic which decides
+        if the operation should be queued for delegation
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a boolean
+        """
+        return False
+
     def execute(self, ctx):
         """Executes the operator.
 
