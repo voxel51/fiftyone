@@ -166,11 +166,7 @@ const FilterOption: React.FC<Props> = ({
   const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
 
   const [filterKey, setFilterKey] = React.useState<Key>(() => {
-    if (!excluded) {
-      return nestedField || isLabelTag ? "filter" : "match";
-    } else {
-      return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
-    }
+    return !excluded ? "match" : "negativeMatch";
   });
   const [visibilityKey, setVisibilityKey] = React.useState<Key>(() => {
     return !excluded ? "visible" : "notVisible";
