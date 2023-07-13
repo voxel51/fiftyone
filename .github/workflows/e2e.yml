@@ -4,6 +4,7 @@ on: workflow_call
 
 jobs:
   test-e2e:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -13,9 +14,10 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
+          node-version: 16
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
@@ -65,16 +67,22 @@ jobs:
       - name: FFmpeg
         uses: FedericoCarboni/setup-ffmpeg@v2
 
-      - name: Run e2e tests
-        run: |
-          FIFTYONE_DATABASE_NAME=cypress python ../fiftyone/server/main.py --address 0.0.0.0 --port 8787 &
-          yarn install
-          yarn start
+      - name: Install E2E dependencies
+        run: yarn
+        working-directory: ./e2e
+
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps
+        working-directory: ./e2e
+
+      - name: Run Playwright tests
+        run: yarn e2e
         working-directory: ./e2e
 
       - name: Upload snapshots
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
-          name: snapshots
-          path: e2e/cypress/snapshots/actual
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
