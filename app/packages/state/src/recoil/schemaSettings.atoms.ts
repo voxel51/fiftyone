@@ -2,7 +2,7 @@ import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 import * as fos from "@fiftyone/state";
 import {
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
@@ -248,7 +248,7 @@ export const excludedPathsState = atomFamily({
 
               // embedded document could break an exclude_field() call causing mongo query issue.
               const hasDynamicEmbeddedDocument = [
-                DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+                DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
               const isTopLevelPath = isVideo
