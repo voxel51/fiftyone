@@ -10,7 +10,7 @@ import {
   PATCHES_FIELDS,
 } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
-import React, { useState } from "react";
+import React, { MutableRefObject, RefObject, useState } from "react";
 import { selector, useRecoilValue } from "recoil";
 import {
   CLIPS_VIEWS,
@@ -175,9 +175,10 @@ const EvaluationPatches = ({ close }) => {
 
 type PatcherProps = {
   close: () => void;
+  anchorRef?: MutableRefObject<unknown>;
 };
 
-const Patcher = ({ bounds, close }: PatcherProps) => {
+const Patcher = ({ bounds, close, anchorRef }: PatcherProps) => {
   const theme = useTheme();
   const isVideo =
     useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
@@ -197,7 +198,7 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
     cursor: labels ? "pointer" : "default",
   });
   return (
-    <Popout modal={false} bounds={bounds}>
+    <Popout modal={false} bounds={bounds} fixed anchorRef={anchorRef}>
       <SwitcherDiv>
         <SwitchDiv
           style={labelProps}
