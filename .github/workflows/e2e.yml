@@ -60,8 +60,7 @@ jobs:
         working-directory: app
 
       - name: Build app
-        run: yarn build
-        working-directory: app
+        run: make app
 
       - name: Install fiftyone
         run: pip install .
