@@ -10,6 +10,7 @@ export interface Session {
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
+  selectedFields: unknown;
   colorScheme: Omit<colorSchemeFragment$data, " $fragmentType">;
 }
 
@@ -60,7 +61,6 @@ export function sessionAtom<K extends keyof Session>(
     effects: [
       ({ setSelf, trigger }) => {
         if (trigger === "get") {
-          options.key === "sessionSpaces" && console.log(sessionRef);
           setSelf(
             sessionRef[options.key] === undefined
               ? options.default

@@ -10,7 +10,6 @@ import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick } from "@fiftyone/state";
-import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   Bookmark,
   Check,
@@ -58,7 +57,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
-    const affectedPathCount = get(affectedPathCountState);
+    const affectedPathCount = get(fos.affectedPathCountState);
     const isFieldVisibilityOn = affectedPathCount > 0;
 
     const isExtendedSelectionOn =

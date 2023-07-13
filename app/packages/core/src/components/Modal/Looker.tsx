@@ -74,7 +74,7 @@ const Looker = ({
   const [id] = useState(() => uuid());
 
   const modalSampleData = useRecoilValue(fos.modalSample);
-  const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
 
   if (!modalSampleData && !propsSampleData) {
     throw new Error("bad");
@@ -89,7 +89,7 @@ const Looker = ({
     }
 
     return modalSampleData;
-  }, [propsSampleData, modalSampleData, urls]);
+  }, [propsSampleData, modalSampleData]);
 
   const { sample } = sampleData;
 

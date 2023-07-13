@@ -1,18 +1,9 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { buildSchema } from "@fiftyone/state";
-import {
-  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
-  EMBEDDED_DOCUMENT_FIELD,
-  LIST_FIELD,
-  Schema,
-} from "@fiftyone/utilities";
 import { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useMutation, useRefetchableFragment } from "react-relay";
 import {
-  atom,
-  atomFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
@@ -22,283 +13,6 @@ import {
 import { disabledField, skipField } from "./useSchemaSettings.utils";
 
 const SELECT_ALL = "SELECT_ALL";
-
-export const schemaSearchTerm = atom<string>({
-  key: "schemaSearchTerm",
-  default: "",
-});
-
-export const showNestedFieldsState = atom<boolean>({
-  key: "showNestedFieldsState",
-  default: false,
-});
-
-export const schemaSelectedSettingsTab = atom<string>({
-  key: "schemaSelectedSettingsTab",
-  default: "Selection",
-});
-
-export const settingsModal = atom<{ open: boolean } | null>({
-  key: "settingsModal",
-  default: {
-    open: false,
-  },
-});
-
-export const allFieldsCheckedState = atom<boolean>({
-  key: "allFieldsCheckedState",
-  default: true,
-});
-
-export const expandedPathsState = atom<{} | null>({
-  key: "expandedPathsState",
-  default: null,
-});
-
-export const schemaSearchRestuls = atom<string[]>({
-  key: "schemaSearchRestuls",
-  default: [],
-  effects: [
-    ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPaths = []) => {
-        const viewSchema = await getPromise(viewSchemaState);
-        const fieldSchema = await getPromise(fieldSchemaState);
-        const combinedSchema = { ...fieldSchema, ...viewSchema };
-
-        const greenPaths = [...newPaths]
-          .filter(
-            (path) =>
-              path &&
-              combinedSchema?.[
-                path.startsWith("frames.") ? path.replace("frames.", "") : path
-              ]?.ftype &&
-              !skipField(path, combinedSchema)
-          )
-          .map((path) =>
-            path.startsWith("frames.") ? path.replace("frames.", "") : path
-          );
-
-        setSelf(greenPaths);
-      });
-    },
-  ],
-});
-
-// tracks action and value - currently used for (un)select all action
-export const lastActionToggleSelectionState = atom<Record<
-  string,
-  boolean
-> | null>({
-  key: "lastActionToggleSelectionState",
-  default: null,
-});
-
-export const selectedPathsState = atomFamily({
-  key: "selectedPathsState",
-  default: (param: {}) => param,
-  effects: [
-    ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPathsMap) => {
-        const dataset = await getPromise(fos.dataset);
-        const viewSchema = await getPromise(viewSchemaState);
-        const fieldSchema = await getPromise(fieldSchemaState);
-        const combinedSchema = { ...fieldSchema, ...viewSchema };
-        const mediaType = await getPromise(fos.mediaType);
-        const isVideo = mediaType === "video";
-        const isImage = mediaType === "image";
-
-        const mapping = {};
-        Object.keys(combinedSchema).forEach((path) => {
-          if (isImage) {
-            mapping[path] = path;
-          }
-          if (isVideo && viewSchema) {
-            Object.keys(viewSchema).forEach((path) => {
-              mapping[path] = `frames.${path}`;
-            });
-          }
-        });
-
-        const newPaths = newPathsMap?.[dataset?.name] || [];
-        const greenPaths = [...newPaths]
-          .filter((path) => {
-            const skip = skipField(path, combinedSchema);
-            return !!path && !skip;
-          })
-          .map((path) => mapping?.[path] || path);
-
-        setSelf({
-          [dataset?.name]: new Set(greenPaths),
-        });
-      });
-    },
-  ],
-});
-
-export const excludedPathsState = atomFamily({
-  key: "excludedPathsState",
-  default: (param: {}) => param,
-  effects: [
-    ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPathsMap) => {
-        const viewSchema = await getPromise(viewSchemaState);
-        const fieldSchema = await getPromise(fieldSchemaState);
-        const dataset = await getPromise(fos.dataset);
-        const showNestedField = await getPromise(showNestedFieldsState);
-        const searchResults = await getPromise(schemaSearchRestuls);
-        const isFrameView = await getPromise(fos.isFramesView);
-        const isClipsView = await getPromise(fos.isClipsView);
-        const isPatchesView = await getPromise(fos.isPatchesView);
-        const mediaType = await getPromise(fos.mediaType);
-        const isVideo = mediaType === "video";
-        const isImage = mediaType === "image";
-        const isInSearchMode = !!searchResults?.length;
-
-        if (!dataset) {
-          return;
-        }
-
-        const combinedSchema = { ...fieldSchema, ...viewSchema };
-        const mapping = {};
-        Object.keys(combinedSchema).forEach((path) => {
-          if (isImage) {
-            mapping[path] = path;
-          }
-          if (isVideo && viewSchema) {
-            Object.keys(viewSchema).forEach((path) => {
-              mapping[path] = `frames.${path}`;
-            });
-          }
-        });
-
-        const newPaths = newPathsMap?.[dataset?.name] || [];
-        const greenPaths = [...newPaths]
-          .filter((path) => {
-            const rawPath = path.replace("frames.", "");
-            return (
-              !!rawPath &&
-              !skipField(rawPath, combinedSchema) &&
-              !disabledField(
-                path,
-                combinedSchema,
-                dataset?.groupField,
-                isFrameView,
-                isClipsView,
-                isVideo,
-                isPatchesView
-              )
-            );
-          })
-          .map((path) => mapping?.[path] || path);
-
-        // if top level only, count should be top-level too
-        // if nested fields are shown, exclude more granular
-        let finalGreenPaths = greenPaths;
-        if (!showNestedField && !isInSearchMode) {
-          finalGreenPaths = greenPaths.filter((path) =>
-            isVideo
-              ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
-                !path.includes(".")
-              : !path.includes(".")
-          );
-        }
-
-        const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
-        finalGreenPaths = shouldFilterTopLevelFields
-          ? finalGreenPaths.filter((path) => {
-              const isEmbeddedOrListType = [
-                EMBEDDED_DOCUMENT_FIELD,
-                LIST_FIELD,
-              ].includes(combinedSchema[path]?.ftype);
-
-              // embedded document could break an exclude_field() call causing mongo query issue.
-              const hasDynamicEmbeddedDocument = [
-                DYNAMIC_EMBEDDED_DOCUMENT_PATH,
-              ].includes(combinedSchema[path]?.embeddedDocType);
-
-              const isTopLevelPath = isVideo
-                ? !(
-                    path.split(".").length === 2 && path.startsWith("frames.")
-                  ) || !path.includes(".")
-                : !path.includes(".");
-
-              return !(
-                isEmbeddedOrListType &&
-                hasDynamicEmbeddedDocument &&
-                isTopLevelPath
-              );
-            })
-          : finalGreenPaths;
-
-        // filter out subpaths if a parent (or higher) path is also in the list
-        const finalGreenPathsSet = new Set(finalGreenPaths);
-        if (showNestedField) {
-          finalGreenPaths = finalGreenPaths.filter((path) => {
-            let tmp = path;
-            while (tmp.indexOf(".") > 0) {
-              const parentPath = tmp.substring(0, tmp.lastIndexOf("."));
-              if (finalGreenPathsSet.has(parentPath) || path === parentPath) {
-                return false;
-              }
-              tmp = parentPath;
-            }
-            return true;
-          });
-        }
-
-        setSelf({
-          [dataset.name]: new Set(finalGreenPaths),
-        });
-      });
-    },
-  ],
-});
-export const schemaState = atom<Schema>({
-  key: "schemaState",
-  default: null,
-});
-
-export const viewSchemaState = atom({
-  key: "viewSchemaState",
-  default: null,
-});
-export const fieldSchemaState = atom({
-  key: "fieldSchemaState",
-  default: null,
-});
-export const showMetadataState = atom({
-  key: "showMetadataState",
-  default: false,
-});
-export const includeNestedFieldsState = atom({
-  key: "includeNestedFieldsState",
-  default: true,
-});
-export const affectedPathCountState = atom({
-  key: "affectedPathCountState",
-  default: 0,
-});
-export const searchMetaFilterState = atom({
-  key: "searchMetaFilterState",
-  default: {},
-});
-export const lastAppliedPathsState = atom({
-  key: "lastAppliedExcludedPathsState",
-  default: {
-    excluded: [],
-    selected: [],
-  },
-});
-
-export const selectedFieldsStageState = atom<any>({
-  key: "selectedFieldsStageState",
-  default: undefined,
-  effects: [
-    ({ onSet }) => {
-      onSet((value) => {});
-    },
-  ],
-});
 
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
@@ -313,7 +27,7 @@ export default function useSchemaSettings() {
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
 
   const setSelectedFieldsStage = useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ set }) =>
       async (value) => {
         if (!dataset) {
           return;
@@ -338,17 +52,6 @@ export default function useSchemaSettings() {
     []
   );
   const isVideo = dataset.mediaType === "video";
-
-  const setSchema = useSetRecoilState(schemaState);
-  useEffect(() => {
-    if (datasetName) {
-      setSchema(
-        dataset
-          ? buildSchema(dataset.sampleFields, dataset.frameFields, true)
-          : null
-      );
-    }
-  }, [datasetName]);
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     fos.allFieldsCheckedState
@@ -430,9 +133,11 @@ export default function useSchemaSettings() {
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
   const selectedPathState = fos.selectedPathsState({});
+
   const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
     selectedPathState
   );
+  console.log(selectedPaths);
   // disabled paths are filtered
   const enabledSelectedPaths = useMemo(() => {
     const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
@@ -611,18 +316,14 @@ export default function useSchemaSettings() {
   const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
     foq.searchSelectFields
   );
-
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
   const getPath = useCallback(
     (path: string) => {
-      if (dataset && viewSchema) {
-        return dataset.mediaType === "video" && viewSchema?.[path]
-          ? `frames.${path}`
-          : path;
-      }
+      isVideo && viewSchema?.[path] ? `frames.${path}` : path;
+
       return path;
     },
-    [viewSchema, dataset]
+    [viewSchema, isVideo]
   );
 
   const mergedSchema = useMemo(

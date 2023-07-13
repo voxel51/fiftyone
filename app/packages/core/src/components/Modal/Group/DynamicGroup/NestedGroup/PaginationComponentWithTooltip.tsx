@@ -33,7 +33,7 @@ export const PaginationComponentWithTooltip = React.memo(
         isButton ? "btn" : currentPage
       }`;
 
-      otherProps["data-cy"] = `dynamic-group-pagination-item-${
+      props["data-cy"] = `dynamic-group-pagination-item-${
         isButton ? "btn" : currentPage
       }`;
 

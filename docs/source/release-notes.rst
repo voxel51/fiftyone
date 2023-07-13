@@ -81,10 +81,7 @@ App
 - Fixes redundant sidebar groups for custom schemas
   `#3250 <https://github.com/voxel51/fiftyone/pull/3250>`_
 
-<<<<<<< HEAD
 
-=======
->>>>>>> main
 .. _release-notes-teams-v1.3.1:
 
 FiftyOne Teams 1.3.1

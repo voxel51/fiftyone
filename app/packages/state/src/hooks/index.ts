@@ -20,10 +20,7 @@ export * from "./useOnSelectLabel";
 export { default as usePanel } from "./usePanel";
 export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
 export { default as useSavedViews } from "./useSavedViews";
-export {
-  settingsModal,
-  default as useSchemaSettings,
-} from "./useSchemaSettings";
+export { default as useSchemaSettings } from "./useSchemaSettings";
 export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
 export { default as useSelectSample } from "./useSelectSample";

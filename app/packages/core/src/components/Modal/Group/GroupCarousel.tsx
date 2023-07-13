@@ -88,7 +88,7 @@ const Column: React.FC = () => {
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const groupField = useRecoilValue(fos.groupField);
-  const currentSlice = useRecoilValue(fos.groupSlice(true));
+  const currentSlice = useRecoilValue(fos.modalGroupSlice);
   const highlight = useCallback(
     (sample: Sample) => {
       return get(sample, groupField).name === currentSlice;
