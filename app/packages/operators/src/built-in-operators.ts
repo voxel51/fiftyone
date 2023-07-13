@@ -649,6 +649,36 @@ class TestOperator extends Operator {
   }
 }
 
+class SetSelectedLabels extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_selected_labels",
+      label: "Set selected labels",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setSelected: fos.useSetSelectedLabels(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    hooks.setSelected(params.labels);
+  }
+}
+
+class ClearSelectedLabels extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_selected_labels",
+      label: "Clear selected labels",
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.selectedLabels, {});
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     registerOperator(CopyViewAsJSON);
@@ -677,6 +707,8 @@ export function registerBuiltInOperators() {
     registerOperator(ShowOutput);
     registerOperator(TestOperator);
     registerOperator(SplitPanel);
+    registerOperator(SetSelectedLabels);
+    registerOperator(ClearSelectedLabels);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
