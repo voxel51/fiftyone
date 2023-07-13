@@ -26,8 +26,8 @@ type State = {
 };
 
 const LabelTag: React.FC = () => {
-  const wrapperRef: React.RefObject<HTMLDivElement> = React.useRef();
-  const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const pickerRef = React.useRef<TwitterPicker>(null);
   const { colorPool, fields, labelTags } = useRecoilValue(
     fos.sessionColorScheme
   );
