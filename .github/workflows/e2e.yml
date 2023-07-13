@@ -110,7 +110,7 @@ jobs:
         run: yarn e2e
         working-directory: e2e-pw
 
-      - name: Upload snapshots
+      - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v3
         with:
