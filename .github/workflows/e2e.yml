@@ -93,7 +93,7 @@ jobs:
           echo "PLAYWRIGHT_VERSION=$(node -e "process.stdout.write(require('@playwright/test/package.json').version)")" >> $GITHUB_OUTPUT
         working-directory: e2e-pw
 
-      - name: Check if Playwright browser is cached
+      - name: Cache playwright browser
         uses: actions/cache@v3
         id: playwright-browser-cache
         with:
@@ -103,7 +103,7 @@ jobs:
 
       - name: Install Playwright browser if not cached
         run: yarn playwright install
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
 
       - name: Run Playwright tests
