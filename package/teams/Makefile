@@ -1,4 +1,4 @@
-.PHONY: app python docker docker-export
+.PHONY: python docker docker-export
 
 .DEFAULT_GOAL := docker-export
 
