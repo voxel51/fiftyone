@@ -97,7 +97,7 @@ learn how:
     :image_title: Pinecone
 
 .. customimagelink::
-    :image_link: tutorials/milvus.html
+    :image_link: integrations/milvus.html
     :image_src: https://voxel51.com/images/integrations/milvus-128.png
     :image_title: Milvus
 
