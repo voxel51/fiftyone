@@ -33,6 +33,7 @@ const Grid: React.FC<{}> = () => {
   // create flashlight only one time
   const [flashlight] = React.useState(() => {
     const flashlight = new Flashlight<number>({
+      containerId: "grid-flashlight",
       horizontal: false,
       initialRequestKey: 1,
       options: { rowAspectRatioThreshold: threshold, offset: 52 },
