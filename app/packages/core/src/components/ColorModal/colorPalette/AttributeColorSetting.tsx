@@ -218,25 +218,37 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(fields);
-
       const idx = fields.findIndex((s) => s.path == activePath);
       if (idx > -1) {
         copy[idx]["valueColors"] = [defaultValue];
         setColorScheme(false, { colorPool, fields: copy, labelTags });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, activePath]);
+  }, [
+    values,
+    activePath,
+    fields,
+    defaultValue,
+    setColorScheme,
+    colorPool,
+    labelTags,
+  ]);
 
   useEffect(() => {
     if (!labelTags?.valueColors) {
       const copy = cloneDeep(labelTags);
-
       copy["valueColors"] = [defaultValue];
       setColorScheme(false, { colorPool, fields, labelTags: copy });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [labelTags?.valueColors, activePath]);
+  }, [
+    labelTags?.valueColors,
+    activePath,
+    labelTags,
+    defaultValue,
+    setColorScheme,
+    colorPool,
+    fields,
+  ]);
 
   // on reset, sync local state with new session values
   useEffect(() => {
