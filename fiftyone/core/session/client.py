@@ -123,6 +123,7 @@ class Client:
                 time.sleep(10)
 
         self._thread = Thread(target=run_client, daemon=True)
+        self._closed.clear()
         self._thread.start()
 
     def close(self):
