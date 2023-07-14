@@ -9,7 +9,6 @@ import { TwitterPicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
-import { resetColor } from "./ColorFooter";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
@@ -19,6 +18,7 @@ import {
 import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ModeControl from "./controls/ModeControl";
+import { useResetColor } from "./useResetColor";
 
 type State = {
   useLabelColors: boolean;
@@ -37,7 +37,7 @@ const LabelTag: React.FC = () => {
   const color = getColor(colorPool, coloring.seed, "_label_tags");
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
-  const [input, setInput] = useState(color);
+  const [input, setInput] = useResetColor(color);
   const [colors, setColors] = useState(colorPool);
   const [state, setState] = useState<State>({
     useLabelColors: Boolean(
@@ -58,7 +58,7 @@ const LabelTag: React.FC = () => {
     [setColorScheme, labelTags, colorPool, fields]
   );
 
-  const onValidateColor = useCallback(
+  const validateColor = useCallback(
     (input) => {
       if (isValidColor(input)) {
         const hexColor = colorString.to.hex(
@@ -71,11 +71,11 @@ const LabelTag: React.FC = () => {
         // revert input to previous value
         setInput("invalid");
         setTimeout(() => {
-          setInput(labelTags?.fieldColor);
+          setInput(labelTags?.fieldColor ?? "");
         }, 1000);
       }
     },
-    [onChangeFieldColor, colors, labelTags?.fieldColor]
+    [onChangeFieldColor, colors, labelTags?.fieldColor, setInput]
   );
 
   const toggleColorPicker = (e) => {
@@ -96,12 +96,11 @@ const LabelTag: React.FC = () => {
   // initialize field settings
   useEffect(() => {
     // check setting to see if custom setting exists
-    const copy = cloneDeep(labelTags);
-    if (!copy || _.isEmpty(copy)) {
+    if (!labelTags || _.isEmpty(labelTags)) {
       const defaultSetting = {
         fieldColor: color,
         valueColors: [],
-      } as fos.CustomizeColor;
+      } as fos.TagColor;
       setColorScheme(false, { colorPool, fields, labelTags: defaultSetting });
       setState({
         useLabelColors: Boolean(
@@ -110,14 +109,7 @@ const LabelTag: React.FC = () => {
         useFieldColor: Boolean(labelTags?.fieldColor),
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [labelTags]);
-
-  // on reset, sync local state input with session values
-  useEffect(() => {
-    setInput(color);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor)]);
+  }, [color, colorPool, fields, labelTags, setColorScheme]);
 
   fos.useOutsideClick(wrapperRef, () => {
     setShowFieldPicker(false);
@@ -183,8 +175,8 @@ const LabelTag: React.FC = () => {
               <Input
                 value={input}
                 setter={(v) => setInput(v)}
-                onBlur={() => onValidateColor(input)}
-                onEnter={() => onValidateColor(input)}
+                onBlur={() => validateColor(input)}
+                onEnter={() => validateColor(input)}
                 style={{
                   width: 120,
                   display: "inline-block",
@@ -210,7 +202,6 @@ const LabelTag: React.FC = () => {
                 copy.valueColors = v
                   ? [{ value: "", color: defaultColor }]
                   : [];
-
                 setColorScheme(false, {
                   colorPool,
                   fields,

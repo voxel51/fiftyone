@@ -19,6 +19,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",

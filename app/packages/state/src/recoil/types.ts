@@ -18,7 +18,6 @@ export namespace State {
   export interface Config {
     colorPool: string[];
     customizedColors: CustomizeColor[];
-    // labelTags: CustomizeColor;
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;

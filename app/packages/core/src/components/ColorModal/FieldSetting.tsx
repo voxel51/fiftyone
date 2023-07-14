@@ -29,6 +29,7 @@ import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
+import { useResetColor } from "./useResetColor";
 
 type Prop = {
   prop: { field: Field; expandedPath: string };
@@ -40,8 +41,8 @@ type State = {
 };
 
 const FieldSetting: React.FC<Prop> = ({ prop }) => {
-  const wrapperRef: React.RefObject<HTMLDivElement> = React.useRef();
-  const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const pickerRef = React.useRef<TwitterPicker>(null);
   const { field, expandedPath } = prop;
   const path = field?.path;
   const { colorPool, fields, labelTags } = useRecoilValue(
@@ -53,7 +54,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const color = getColor(colorPool, coloring.seed, path);
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
-  const [input, setInput] = useState(color);
+  const [input, setInput] = useResetColor(color);
   const [colors, setColors] = useState(colorPool);
   const [state, setState] = useState<State>({
     useLabelColors: Boolean(
@@ -155,12 +156,6 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, fields]);
-
-  // on reset, sync local state input with session values
-  useEffect(() => {
-    setInput(color);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor)]);
 
   fos.useOutsideClick(wrapperRef, () => {
     setShowFieldPicker(false);
