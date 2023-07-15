@@ -5,8 +5,8 @@ FiftyOne Release Notes
 
 .. _release-notes-v0.21.4:
 
-FiftyOne 0.21.4 (Teams SDK 0.13.4)
-----------------------------------
+FiftyOne 0.21.4
+---------------
 *Released July 14, 2023*
 
 - Fixed :class:`Session <fiftyone.core.session.Session>` event emission
