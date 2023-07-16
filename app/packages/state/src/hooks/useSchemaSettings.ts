@@ -11,6 +11,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { disabledField, skipField } from "./useSchemaSettings.utils";
+import _ from "lodash";
 
 const SELECT_ALL = "SELECT_ALL";
 
@@ -26,6 +27,21 @@ export default function useSchemaSettings() {
   const datasetName = useRecoilValue(fos.datasetName);
 
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
+
+  const [filters, setFilters] = useRecoilState(fos.filters);
+  const [modalFilters, setModalFilters] = useRecoilState(fos.modalFilters);
+  const [attributeVisibility, setAttributeVisibility] = useRecoilState(
+    fos.attributeVisibility
+  );
+  const [modalAttributeVisibility, setModalAttributeVisibility] =
+    useRecoilState(fos.modalAttributeVisibility);
+
+  const resetAttributeFilters = () => {
+    !_.isEmpty(filters) && setFilters({});
+    !_.isEmpty(modalFilters) && setModalFilters({});
+    !_.isEmpty(attributeVisibility) && setAttributeVisibility({});
+    !_.isEmpty(modalAttributeVisibility) && setModalAttributeVisibility({});
+  };
 
   const setSelectedFieldsStage = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -637,5 +653,6 @@ export default function useSchemaSettings() {
     showMetadata,
     showNestedFields,
     toggleSelection,
+    resetAttributeFilters,
   };
 }
