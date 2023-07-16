@@ -6,6 +6,7 @@ export * from "./config";
 export * from "./distributions";
 export * from "./filters";
 export * from "./groups";
+export * from "./groupEntries";
 export * from "./looker";
 export * from "./modal";
 export * from "./options";
