@@ -7,12 +7,12 @@ import {
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
+import * as schemaAtoms from "../schema";
 
 export interface BooleanFilter {
   false: boolean;
   true: boolean;
   none: boolean;
-  onlyMatch: boolean;
   isMatching: boolean;
   exclude: boolean;
   _CLS: "bool";
@@ -23,13 +23,17 @@ const getFilter = (
   modal: boolean,
   path: string
 ): BooleanFilter => {
+  // nested listfield, label tag and modal use "isMatching: false" default
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = get(schemaAtoms.field(fieldPath));
+  const isNestedfield = fieldSchema?.ftype.includes("ListField");
+  const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
   return {
     _CLS: "bool",
     true: false,
     false: false,
     none: false,
-    onlyMatch: true,
-    isMatching: false,
+    isMatching: defaultToFilterMode ? false : true,
     exclude: false,
     ...get(filterAtoms.filter({ modal, path })),
   };
