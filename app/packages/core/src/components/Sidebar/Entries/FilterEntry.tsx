@@ -1,32 +1,25 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { textFilter } from "@fiftyone/state";
-import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import { Settings, VisibilityOff } from "@mui/icons-material";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
-import React, { useState } from "react";
-import { useDebounce } from "react-use";
+import React from "react";
 import {
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
+import styled from "styled-components";
 import { FilterInputDiv } from "./utils";
-import * as fos from "@fiftyone/state";
-import { Settings, VisibilityOff } from "@mui/icons-material";
-import { Box, Typography } from "@mui/material";
-import { Tooltip, useTheme } from "@fiftyone/components";
 
 const Filter = ({ modal }: { modal: boolean }) => {
   const theme = useTheme();
-  const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode
   );
-  const [value, setValue] = useState(() => debouncedValue);
+
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const selectedFieldsStage = useRecoilValue(fos.selectedFieldsStageState);
   const resetSelectedFieldStages = useResetRecoilState(
@@ -41,30 +34,32 @@ const Filter = ({ modal }: { modal: boolean }) => {
     setSearchResults,
   } = fos.useSchemaSettings();
 
-  useDebounce(
-    () => {
-      setDebouncedValue(value);
-    },
-    200,
-    [value]
-  );
+  const Text = styled.div`
+    font-size: 1rem;
+  `;
 
   return (
-    <FilterInputDiv>
+    <FilterInputDiv modal={modal}>
       <Box alignItems={"center"} display="flex">
-        {isFilterMode && (
-          <Tooltip text="Toggle to visibility mode" placement="bottom-start">
+        {(isFilterMode || modal) && (
+          <Tooltip
+            text={!modal ? "Toggle to visibility mode" : null}
+            placement="bottom-start"
+          >
             <FilterAltIcon
-              onClick={() => setIsFilterMode(false)}
+              onClick={() => !modal && setIsFilterMode(false)}
               sx={{
                 color: theme.text.tertiary,
-                "&:hover": { color: theme.text.primary },
+                "&:hover": {
+                  color: !modal ? theme.text.primary : theme.text.tertiary,
+                },
                 margin: "auto 0.25rem",
+                cursor: !modal ? "pointer" : "default",
               }}
             />
           </Tooltip>
         )}
-        {!isFilterMode && (
+        {!isFilterMode && !modal && (
           <Tooltip text="Toggle to filter mode" placement="bottom-start">
             <VisibilityIcon
               onClick={() => setIsFilterMode(true)}
@@ -77,16 +72,22 @@ const Filter = ({ modal }: { modal: boolean }) => {
           </Tooltip>
         )}
       </Box>
-      <input
-        type={"text"}
-        placeholder={isFilterMode ? "FILTER" : "VISIBILITY"}
-        value={value}
-        maxLength={140}
-        onChange={({ target }) => {
-          setValue(target.value);
-        }}
-        style={{ textTransform: "unset" }}
-      />
+      {(isFilterMode || modal) && (
+        <Tooltip
+          text="Use the controls below to create filtered views into your data"
+          placement="bottom-start"
+        >
+          <Text>FILTER</Text>
+        </Tooltip>
+      )}
+      {!isFilterMode && !modal && (
+        <Tooltip
+          text="Use the controls below to toggle the visibility of field values in the grid"
+          placement="bottom-start"
+        >
+          <Text>VISIBILITY</Text>
+        </Tooltip>
+      )}
       {!modal && (
         <Box display="flex" alignItems="center">
           {selectedFieldsStage && affectedPathCount > 0 && (

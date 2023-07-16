@@ -1,6 +1,6 @@
+import { Field } from "@fiftyone/utilities";
 import { atomFamily } from "recoil";
 import styled from "styled-components";
-import { Field } from "@fiftyone/utilities";
 
 export const InputDiv = styled.div`
   box-sizing: border-box;
@@ -27,7 +27,7 @@ export const InputDiv = styled.div`
   }
 `;
 
-export const FilterInputDiv = styled.div`
+export const FilterInputDiv = styled.div<{ modal: boolean }>`
   box-sizing: border-box;
   cursor: pointer;
   font-weight: bold;
@@ -36,7 +36,8 @@ export const FilterInputDiv = styled.div`
   margin: 0 1rem 0.25rem 1rem;
 
   display: flex;
-  justify-content: space-between;
+  justify-content: ${({ modal }) => (modal ? "flex-start" : "space-between")};
+
   & > input {
     color: ${({ theme }) => theme.text.secondary};
     font-size: 14px !important;
