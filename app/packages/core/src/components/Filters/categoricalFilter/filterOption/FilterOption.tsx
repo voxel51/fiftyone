@@ -80,9 +80,11 @@ const generateOptions = (
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: `Select ${nestedField ?? "labels"} with ${
-        isLabelTag ? "label tag" : valueName
-      }`,
+      value: modal
+        ? `Show  ${nestedField ?? "labels"}`
+        : `Select ${nestedField ?? "labels"} with ${
+            isLabelTag ? "label tag" : valueName
+          }`,
       tooltip: isLabelTag
         ? "dataset.select_labels(tags=expr)"
         : isKeyPointLabel
@@ -94,9 +96,11 @@ const generateOptions = (
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: `Exclude ${nestedField ?? "labels"} with ${
-        isLabelTag ? "label tag" : valueName
-      }`,
+      value: modal
+        ? `Hide ${nestedField ?? "labels"}`
+        : `Exclude ${nestedField ?? "labels"} with ${
+            isLabelTag ? "label tag" : valueName
+          }`,
       tooltip: isLabelTag
         ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
         : isKeyPointLabel
@@ -161,11 +165,12 @@ const FilterOption: React.FC<Props> = ({
   const isLabelTag = path?.startsWith("_label_tags");
   const isSampleTag = path?.startsWith("tag");
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+  const defaultToFilter = path === "_label_tags" || nestedField || modal;
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
-
   const [filterKey, setFilterKey] = React.useState<Key>(() => {
+    if (defaultToFilter) return !excluded ? "filter" : "negativeFilter";
     return !excluded ? "match" : "negativeMatch";
   });
   const [visibilityKey, setVisibilityKey] = React.useState<Key>(() => {

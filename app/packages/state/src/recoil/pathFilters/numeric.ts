@@ -8,6 +8,7 @@ import * as aggregationAtoms from "../aggregations";
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
+import * as schemaAtoms from "../schema";
 
 export interface NumericFilter {
   range: Range;
@@ -27,6 +28,12 @@ const getFilter = (
   modal: boolean,
   path: string
 ): NumericFilter => {
+  // nested listfield, label tag and modal use "isMatching: false" default
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = get(schemaAtoms.field(fieldPath));
+  const isNestedfield = fieldSchema?.ftype.includes("ListField");
+  const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
+
   const result = {
     _CLS: "numeric",
     range: [null, null] as Range,
@@ -35,8 +42,7 @@ const getFilter = (
     inf: true,
     ninf: true,
     exclude: false,
-    isMatching: true,
-    onlyMatch: true,
+    isMatching: defaultToFilterMode ? false : true,
     ...get(modal ? filterAtoms.modalFilters : filterAtoms.filters)[path],
   };
 

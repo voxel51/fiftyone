@@ -7,6 +7,7 @@ import {
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
+import * as schemaAtoms from "../schema";
 
 export interface StringFilter {
   values: string[];
@@ -21,11 +22,16 @@ const getFilter = (
   modal: boolean,
   path: string
 ): StringFilter => {
+  // nested listfield, label tag and modal use "isMatching: false" default
+  const fieldPath = path.split(".").slice(0, -1).join(".");
+  const fieldSchema = get(schemaAtoms.field(fieldPath));
+  const isNestedfield = fieldSchema?.ftype.includes("ListField");
+  const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
+
   return {
     values: [],
     exclude: false,
-    isMatching: true,
-    onlyMatch: true,
+    isMatching: defaultToFilterMode ? false : true,
     _CLS: "str",
     ...get(filterAtoms.filter({ modal, path })),
   } as StringFilter;
