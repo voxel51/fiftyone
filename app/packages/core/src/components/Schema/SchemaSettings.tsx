@@ -9,9 +9,10 @@ import { Box, Typography } from "@mui/material";
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
+import { useOutsideClick } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useOutsideClick } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -52,6 +53,7 @@ const SchemaSettings = () => {
 
   const schemaModalWrapperRef = useRef<HTMLDivElement>(null);
   const schemaModalRef = useRef<HTMLDivElement>(null);
+  const filters = useRecoilValue(fos.filters);
 
   const {
     settingModal,
@@ -73,6 +75,7 @@ const SchemaSettings = () => {
     searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
+    resetAttributeFilters,
   } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -107,7 +110,7 @@ const SchemaSettings = () => {
     setSelectedPaths({ [datasetName]: new Set(lastAppliedPaths.selected) });
     setExcludedPaths({ [datasetName]: new Set(lastAppliedPaths.excluded) });
   };
-
+  console.info("filters", filters);
   return (
     <Fragment>
       <ModalWrapper
@@ -218,8 +221,8 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
+                resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-
                 let stage;
                 if (isFilterRuleActive) {
                   stage = {
@@ -267,6 +270,7 @@ const SchemaSettings = () => {
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
                 setSearchResults([]);
+                resetAttributeFilters();
               }}
             >
               Reset
