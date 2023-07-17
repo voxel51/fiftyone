@@ -42,52 +42,50 @@ const Filter = ({ modal }: { modal: boolean }) => {
     <FilterInputDiv modal={modal}>
       <Box alignItems={"center"} display="flex">
         {(isFilterMode || modal) && (
-          <Tooltip
-            text={!modal ? "Toggle to visibility mode" : null}
-            placement="bottom-start"
-          >
-            <FilterAltIcon
-              onClick={() => !modal && setIsFilterMode(false)}
-              sx={{
-                color: theme.text.tertiary,
-                "&:hover": {
-                  color: !modal ? theme.text.primary : theme.text.tertiary,
-                },
-                margin: "auto 0.25rem",
-                cursor: !modal ? "pointer" : "default",
-              }}
-            />
-          </Tooltip>
+          <Box display="flex" onClick={() => !modal && setIsFilterMode(false)}>
+            <Tooltip
+              text={!modal ? "Toggle to visibility mode" : null}
+              placement="bottom-start"
+            >
+              <FilterAltIcon
+                sx={{
+                  color: theme.text.tertiary,
+                  "&:hover": {
+                    color: !modal ? theme.text.primary : theme.text.tertiary,
+                  },
+                  margin: "auto 0.25rem",
+                  cursor: !modal ? "pointer" : "default",
+                }}
+              />
+            </Tooltip>
+            <Tooltip
+              text="Use the controls below to create filtered views into your data"
+              placement="bottom-start"
+            >
+              <Text>FILTER</Text>
+            </Tooltip>
+          </Box>
         )}
         {!isFilterMode && !modal && (
-          <Tooltip text="Toggle to filter mode" placement="bottom-start">
-            <VisibilityIcon
-              onClick={() => setIsFilterMode(true)}
-              sx={{
-                color: theme.text.tertiary,
-                "&:hover": { color: theme.text.primary },
-                margin: "auto 0.25rem",
-              }}
-            />
-          </Tooltip>
+          <Box display="flex" onClick={() => setIsFilterMode(true)}>
+            <Tooltip text="Toggle to filter mode" placement="bottom-start">
+              <VisibilityIcon
+                sx={{
+                  color: theme.text.tertiary,
+                  "&:hover": { color: theme.text.primary },
+                  margin: "auto 0.25rem",
+                }}
+              />
+            </Tooltip>
+            <Tooltip
+              text="Use the controls below to toggle the visibility of field values in the grid"
+              placement="bottom-start"
+            >
+              <Text>VISIBILITY</Text>
+            </Tooltip>
+          </Box>
         )}
       </Box>
-      {(isFilterMode || modal) && (
-        <Tooltip
-          text="Use the controls below to create filtered views into your data"
-          placement="bottom-start"
-        >
-          <Text>FILTER</Text>
-        </Tooltip>
-      )}
-      {!isFilterMode && !modal && (
-        <Tooltip
-          text="Use the controls below to toggle the visibility of field values in the grid"
-          placement="bottom-start"
-        >
-          <Text>VISIBILITY</Text>
-        </Tooltip>
-      )}
       {!modal && (
         <Box display="flex" alignItems="center">
           {selectedFieldsStage && affectedPathCount > 0 && (
