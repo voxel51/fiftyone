@@ -250,7 +250,7 @@ class DatasetMixin(object):
 
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
-        dataset_doc.reload(cls._fields_attr())
+        cls._reload_fields()
 
         for path, field in new_schema.items():
             # Special syntax for declaring the subfield of a ListField
@@ -472,7 +472,7 @@ class DatasetMixin(object):
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         if schema_paths:
-            dataset_doc.reload(cls._fields_attr())
+            cls._reload_fields()
 
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
@@ -557,7 +557,7 @@ class DatasetMixin(object):
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         if schema_paths:
-            dataset_doc.reload(cls._fields_attr())
+            cls._reload_fields()
 
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
@@ -687,7 +687,7 @@ class DatasetMixin(object):
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         if del_schema_paths:
-            dataset_doc.reload(cls._fields_attr())
+            cls._reload_fields()
 
         cls._delete_fields_simple(del_paths)
 
@@ -761,7 +761,7 @@ class DatasetMixin(object):
 
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
-        dataset_doc.reload(cls._fields_attr())
+        cls._reload_fields()
 
         for del_path in del_paths:
             cls._delete_field_schema(del_path)
@@ -1119,6 +1119,11 @@ class DatasetMixin(object):
         _delete_field_doc(field_docs, field_name)
 
     @classmethod
+    def _reload_fields(cls):
+        dataset_doc = cls._dataset._doc
+        dataset_doc.reload(cls._fields_attr())
+
+    @classmethod
     def _get_field(cls, path, allow_missing=False, check_default=False):
         chunks = path.split(".")
         field_name = chunks[-1]
@@ -1147,7 +1152,12 @@ class DatasetMixin(object):
         return field, is_default
 
     @classmethod
-    def _get_field_doc(cls, path, allow_missing=False):
+    def _get_field_doc(cls, path, allow_missing=False, reload=True):
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if reload:
+            cls._reload_fields()
+
         chunks = path.split(".")
         field_docs = cls._dataset._doc[cls._fields_attr()]
 
