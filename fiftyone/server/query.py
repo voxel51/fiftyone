@@ -208,8 +208,8 @@ class CustomizeColor:
 
 @gql.type
 class LabelTagColor:
-    fieldColor: t.Optional[str]
-    valueColors: t.Optional[t.List[LabelSetting]]
+    field_color: t.Optional[str]
+    value_colors: t.Optional[t.List[LabelSetting]]
 
 
 @gql.type
