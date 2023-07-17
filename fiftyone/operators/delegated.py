@@ -146,8 +146,14 @@ class DelegatedOperation(object):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
-        (operator, executor, ctx) = prepare_operator_executor(
+
+        prepared = prepare_operator_executor(
             operator_name=operator_uri, request_params=context.request_params
         )
-        self.set_running(doc_id=doc.id)
-        return operator.execute(ctx)
+
+        if isinstance(prepared, ExecutionResult):
+            self.set_failed(doc_id=doc.id, result=prepared)
+        else:
+            (operator, _, ctx) = prepared
+            self.set_running(doc_id=doc.id)
+            return operator.execute(ctx)

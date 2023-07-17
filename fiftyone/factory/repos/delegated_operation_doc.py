@@ -47,7 +47,7 @@ class DelegatedOperationDocument(object):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
-        self.run_state = ExecutionRunState(doc["run_state"])
+        self.run_state = ExecutionRunState(doc["run_state"]).value
 
         # optional fields
         self.delegation_target = (
