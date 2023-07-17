@@ -8,15 +8,22 @@ FiftyOne operator execution.
 import asyncio
 import types as python_types
 import traceback
+from enum import Enum
 
 import fiftyone as fo
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
 
-from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
 from fiftyone.core.utils import run_sync_task
+
+
+class ExecutionRunState(Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class InvocationRequest(object):
@@ -78,8 +85,7 @@ class Executor(object):
         }
 
 
-@coroutine_timeout(seconds=fo.config.operator_timeout)
-async def execute_operator(operator_name, request_params):
+async def execute_or_delegate_operator(operator_name, request_params):
     """Executes the operator with the given name.
 
     Args:
@@ -89,6 +95,49 @@ async def execute_operator(operator_name, request_params):
     Returns:
         the result of the operator as a dictionary or ``None``
     """
+
+    (operator, executor, ctx) = prepare_operator_executor(
+        operator_name, request_params
+    )
+
+    if operator.resolve_delegation(ctx):
+        try:
+            from .delegated import DelegatedOperation
+
+            op = DelegatedOperation().queue_operation(
+                operator=operator.uri,
+                context=ctx.serialize(),
+                delegation_target=operator.delegation_target,
+            )
+
+            execution = ExecutionResult(op.__dict__, executor, None)
+            execution.result["context"] = (
+                execution.result["context"].serialize()
+                if execution.result["context"]
+                else None
+            )
+            return execution
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor, error=traceback.format_exc()
+            )
+    else:
+        try:
+            raw_result = await (
+                operator.execute(ctx)
+                if asyncio.iscoroutinefunction(operator.execute)
+                else run_sync_task(operator.execute, ctx)
+            )
+
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor, error=traceback.format_exc()
+            )
+
+        return ExecutionResult(result=raw_result.__dict__, executor=executor)
+
+
+def prepare_operator_executor(operator_name, request_params):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_name) is False:
         raise ValueError("Operator '%s' does not exist" % operator_name)
@@ -103,16 +152,7 @@ async def execute_operator(operator_name, request_params):
             error="Validation Error", validation_ctx=validation_ctx
         )
 
-    try:
-        raw_result = await (
-            operator.execute(ctx)
-            if asyncio.iscoroutinefunction(operator.execute)
-            else run_sync_task(operator.execute, ctx)
-        )
-    except Exception as e:
-        return ExecutionResult(executor=executor, error=traceback.format_exc())
-
-    return ExecutionResult(result=raw_result, executor=executor)
+    return operator, executor, ctx
 
 
 def _is_generator(value):
@@ -203,20 +243,6 @@ class ExecutionContext(object):
         return self.request_params.get("selected", [])
 
     @property
-    def selected_labels(self):
-        """A list of labels currently selected in the App.
-
-        Items are dictionaries with the following keys:
-
-        -   ``label_id``: the ID of the label
-        -   ``sample_id``: the ID of the sample containing the label
-        -   ``field``: the field name containing the label
-        -   ``frame_number``: the frame number containing the label (only
-            applicable to video samples)
-        """
-        return self.request_params.get("selected_labels", [])
-
-    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` to operate on."""
         dataset_name = self.request_params.get("dataset_name", None)
@@ -254,6 +280,17 @@ class ExecutionContext(object):
             message: a message to log
         """
         self.trigger("console_log", {"message": message})
+
+    def serialize(self):
+        """Serializes the execution context.
+
+        Returns:
+            a JSON dict
+        """
+        return {
+            "request_params": self.request_params,
+            "params": self.params,
+        }
 
 
 class ExecutionResult(object):

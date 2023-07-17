@@ -39,6 +39,7 @@ class OperatorConfig(object):
         unlisted=False,
         on_startup=False,
         disable_schema_validation=False,
+        delegation_target=None,
     ):
         self.name = name
         self.label = label or name
@@ -48,6 +49,7 @@ class OperatorConfig(object):
         self.unlisted = unlisted
         self.on_startup = on_startup
         self.disable_schema_validation = disable_schema_validation
+        self.delegation_target = delegation_target
 
     def to_json(self):
         return {
@@ -59,6 +61,7 @@ class OperatorConfig(object):
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
             "disable_schema_validation": self.disable_schema_validation,
+            "delegation_target": self.delegation_target,
         }
 
 
@@ -84,6 +87,10 @@ class Operator(object):
     @property
     def name(self):
         return self.config.name
+
+    @property
+    def delegation_target(self):
+        return self.config.delegation_target
 
     @property
     def uri(self):
@@ -136,6 +143,20 @@ class Operator(object):
             definition.add_property("outputs", output_property)
 
         return definition
+
+    def resolve_delegation(self, ctx) -> bool:
+        """Returns the resolved delegation flag.
+
+        Subclasses can implement this method to define the logic which decides
+        if the operation should be queued for delegation
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a boolean
+        """
+        return False
 
     def execute(self, ctx):
         """Executes the operator.
