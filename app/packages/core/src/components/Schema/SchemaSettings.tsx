@@ -10,7 +10,6 @@ import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
 import { useOutsideClick } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 
@@ -53,7 +52,6 @@ const SchemaSettings = () => {
 
   const schemaModalWrapperRef = useRef<HTMLDivElement>(null);
   const schemaModalRef = useRef<HTMLDivElement>(null);
-  const filters = useRecoilValue(fos.filters);
 
   const {
     settingModal,
@@ -110,7 +108,7 @@ const SchemaSettings = () => {
     setSelectedPaths({ [datasetName]: new Set(lastAppliedPaths.selected) });
     setExcludedPaths({ [datasetName]: new Set(lastAppliedPaths.excluded) });
   };
-  console.info("filters", filters);
+
   return (
     <Fragment>
       <ModalWrapper
