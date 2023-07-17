@@ -6,6 +6,7 @@ Session class for interacting with the FiftyOne App.
 |
 """
 from collections import defaultdict
+from dataclasses import asdict
 from functools import wraps
 
 try:
@@ -37,7 +38,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.state import StateDescription
+from fiftyone.core.state import build_color_scheme, StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -48,7 +49,6 @@ from fiftyone.core.session.events import (
     DeactivateNotebookCell,
     ReactivateNotebookCell,
     Refresh,
-    SelectFields,
     SelectLabels,
     SelectSamples,
     SetColorScheme,
@@ -679,7 +679,6 @@ class Session(object):
             None, dataset, self.config
         )
         self._state.selected = []
-        self._state.selected_fields = []
         self._state.selected_labels = []
 
     @property
@@ -719,7 +718,6 @@ class Session(object):
             self._state.view_name = view.name
 
         self._state.selected = []
-        self._state.selected_fields = []
         self._state.selected_labels = []
 
     @property
@@ -752,15 +750,6 @@ class Session(object):
     def refresh(self) -> None:
         """Refreshes the current App window."""
         self._client.send_event(Refresh(config=self.config))
-
-    @property
-    def selected_fields(self) -> t.List[str]:
-        return list(self._state.selected_fields)
-
-    @selected_fields.setter  # type: ignore
-    def selected_fields(self, fields: t.List[str]) -> t.List[str]:
-        self._state.selected_fields = list(fields) if fields else []
-        self._client.send_event(SelectFields(fields))
 
     @property
     def selected(self) -> t.List[str]:
@@ -1171,11 +1160,7 @@ def _attach_listeners(session: "Session"):
 
     on_set_color_scheme: t.Callable[
         [SetColorScheme], None
-    ] = lambda event: setattr(
-        session._state.dataset,
-        "color_scheme",
-        event.color_scheme,
-    )
+    ] = lambda event: print(event.color_scheme)
     session._client.add_event_listener("set_color_scheme", on_set_color_scheme)
 
     on_set_group_slice: t.Callable[
@@ -1278,21 +1263,6 @@ def _unregister_session(session: Session) -> None:
         if session.server_port in _server_services:
             service = _server_services.pop(session.server_port)
             service.stop()
-
-
-def build_color_scheme(
-    color_scheme: food.ColorScheme, dataset: fod.Dataset, app_config: AppConfig
-) -> food.ColorScheme:
-    if color_scheme is None:
-        if dataset is not None and dataset.app_config.color_scheme is not None:
-            color_scheme = dataset.app_config.color_scheme.copy()
-        else:
-            color_scheme = food.ColorScheme()
-
-    if not color_scheme.color_pool:
-        color_scheme.color_pool = app_config.color_pool
-
-    return color_scheme
 
 
 def _log_welcome_message_if_allowed():

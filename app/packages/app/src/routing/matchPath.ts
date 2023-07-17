@@ -1,3 +1,4 @@
+import { State } from "@fiftyone/state";
 import { Key, pathToRegexp } from "path-to-regexp";
 import { OperationType, VariablesOf } from "relay-runtime";
 
@@ -22,9 +23,19 @@ const compilePath = (path: string): CompilePathResult => {
   return result;
 };
 
-interface MatchPathOptions {
+export type LocationState<T extends OperationType> = {
+  view?: State.Stage[];
+  savedViewSlug?: string;
+  extendedStages?: State.Stage[];
+} & VariablesOf<T>;
+
+interface MatchPathOptions<T extends OperationType> {
   path: string;
   searchParams?: { [key: string]: string };
+  transform?: (
+    state: LocationState<T>,
+    variables: Partial<VariablesOf<T>>
+  ) => VariablesOf<T>;
 }
 
 export interface MatchPathResult<T extends OperationType> {
@@ -35,11 +46,11 @@ export interface MatchPathResult<T extends OperationType> {
 
 export const matchPath = <T extends OperationType>(
   pathname: string,
-  options: MatchPathOptions,
+  options: MatchPathOptions<T>,
   search: string,
-  variables: Partial<VariablesOf<T>>
+  state: LocationState<T>
 ): MatchPathResult<T> | null => {
-  const { path, searchParams = {} } = options;
+  const { path, searchParams = {}, transform } = options;
 
   const { regexp, keys } = compilePath(path);
   const match = regexp.exec(pathname);
@@ -49,7 +60,7 @@ export const matchPath = <T extends OperationType>(
 
   let all = keys.reduce((acc, key, i) => {
     return { ...acc, [key.name]: decodeURIComponent(values[i]) };
-  }, variables);
+  }, state);
 
   const params = new URLSearchParams(search);
   Object.entries(searchParams).forEach(([param, variable]) => {
@@ -64,6 +75,6 @@ export const matchPath = <T extends OperationType>(
   return {
     path,
     url: path === "/" && url === "" ? "/" : url,
-    variables: all,
+    variables: transform ? transform(state, all) : all,
   };
 };

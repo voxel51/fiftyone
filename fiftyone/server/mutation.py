@@ -16,8 +16,8 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 import fiftyone.core.session.events as fose
 from fiftyone.core.session.events import StateUpdate
-from fiftyone.core.session.session import build_color_scheme
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -137,16 +137,6 @@ class Mutation(SetColorScheme):
         await dispatch_event(
             subscription, fose.SelectSamples(sample_ids=selected)
         )
-        return True
-
-    @gql.mutation
-    async def set_selected_fields(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        fields: t.List[str],
-    ) -> bool:
-        await dispatch_event(subscription, fose.SelectFields(fields))
         return True
 
     @gql.mutation

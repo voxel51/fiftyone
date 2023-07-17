@@ -17,6 +17,7 @@ from starlette.requests import Request
 
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
+import fiftyone.core.odm as foo
 from fiftyone.core.session.events import (
     add_screenshot,
     CaptureNotebookCell,
@@ -27,9 +28,9 @@ from fiftyone.core.session.events import (
     EventType,
     ListenPayload,
     Refresh,
-    SelectFields,
     SelectLabels,
     SelectSamples,
+    SetColorScheme,
     StateUpdate,
 )
 import fiftyone.core.state as fos
@@ -71,11 +72,15 @@ async def dispatch_event(
     if isinstance(event, SelectLabels):
         _state.selected_labels = event.labels
 
-    if isinstance(event, SelectFields):
-        _state.selected = event.fields
-
     if isinstance(event, SelectSamples):
         _state.selected = event.sample_ids
+
+    print(type(event))
+    if isinstance(event, SetColorScheme):
+        _state.color_scheme = foo.ColorScheme.from_dict(
+            asdict(event.color_scheme)
+        )
+        print(_state.color_scheme)
 
     if isinstance(event, StateUpdate):
         _state = event.state

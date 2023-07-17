@@ -293,5 +293,5 @@ export const excludedPathsState = atomFamily({
 
 export const selectedFieldsStageState = fos.sessionAtom({
   key: "selectedFields",
-  default: undefined,
+  default: null,
 });

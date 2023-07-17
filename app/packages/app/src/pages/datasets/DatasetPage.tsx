@@ -24,8 +24,9 @@ const DatasetPageQueryNode = graphql`
     $savedViewSlug: String
     $name: String!
     $view: BSONArray
+    $extendedView: BSONArray
   ) {
-    dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
+    dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       ...datasetFragment
     }

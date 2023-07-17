@@ -19,13 +19,14 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
-
+from fiftyone.core.config import AppConfig
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
+from fiftyone.core.spaces import Space
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.core.spaces import Space
 from fiftyone.server.scalars import JSON
 
 
@@ -53,7 +54,6 @@ class StateDescription(etas.Serializable):
         config=None,
         dataset=None,
         selected=None,
-        selected_fields=None,
         selected_labels=None,
         spaces=None,
         color_scheme=None,
@@ -63,7 +63,6 @@ class StateDescription(etas.Serializable):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
-        self.selected_fields = selected_fields or []
         self.selected_labels = selected_labels or []
         if dataset is not None:
             dataset.reload()
@@ -73,7 +72,7 @@ class StateDescription(etas.Serializable):
             else view
         )
         self.spaces = spaces
-        self.color_scheme = color_scheme
+        self.color_scheme = color_scheme or build_color_scheme()
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -124,7 +123,7 @@ class StateDescription(etas.Serializable):
                 d["spaces"] = self.spaces.to_json()
 
             if isinstance(self.color_scheme, ColorScheme):
-                d["color_scheme"] = self.color_scheme.to_json()
+                d["color_scheme"] = self.color_scheme.to_dict(True)
 
             return d
 
@@ -185,13 +184,12 @@ class StateDescription(etas.Serializable):
 
         color_scheme = d.get("color_scheme", None)
         if color_scheme:
-            color_scheme = ColorScheme.from_dict(json_util.loads(color_scheme))
+            color_scheme = ColorScheme.from_dict(color_scheme)
 
         return cls(
             config=config,
             dataset=dataset,
             selected=d.get("selected", []),
-            selected_fields=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,
             spaces=spaces,
@@ -261,3 +259,23 @@ def _convert_mongoengine_data(data):
         return [_convert_mongoengine_data(v) for v in data]
 
     return data
+
+
+def build_color_scheme(
+    color_scheme: t.Optional[foo.ColorScheme] = None,
+    dataset: t.Optional[fod.Dataset] = None,
+    app_config: t.Optional[AppConfig] = None,
+) -> foo.ColorScheme:
+    if color_scheme is None:
+        if dataset is not None and dataset.app_config.color_scheme is not None:
+            color_scheme = dataset.app_config.color_scheme.copy()
+        else:
+            color_scheme = foo.ColorScheme()
+
+    if app_config is None:
+        app_config = fo.app_config
+
+    if not color_scheme.color_pool:
+        color_scheme.color_pool = app_config.color_pool
+
+    return color_scheme

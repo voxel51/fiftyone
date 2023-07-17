@@ -131,7 +131,7 @@ export const useScreenshot = (
       });
   }, [captureCallbacks, context, subscription]);
 
-  const run = () => {
+  return useCallback(() => {
     const notebook = new URLSearchParams(window.location.search).get(
       "notebook"
     );
@@ -144,9 +144,7 @@ export const useScreenshot = (
     } else {
       chain.then(applyStyles).then(capture);
     }
-  };
-
-  return run;
+  }, [inlineImages, applyStyles, capture, context, fitSVGs]);
 };
 
 export default useScreenshot;

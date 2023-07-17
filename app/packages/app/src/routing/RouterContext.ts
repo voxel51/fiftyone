@@ -1,4 +1,3 @@
-import { State } from "@fiftyone/state";
 import {
   isElectron,
   isNotebook,
@@ -21,26 +20,23 @@ import {
   VariablesOf,
 } from "relay-runtime";
 
-import { Queries, Route } from ".";
-import { matchPath, MatchPathResult } from "./matchPath";
+import { Route } from ".";
+import { IndexPageQuery } from "../pages/__generated__/IndexPageQuery.graphql";
+import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import { LocationState, matchPath, MatchPathResult } from "./matchPath";
 import RouteDefinition from "./RouteDefinition";
 
-export interface RouteData<T extends Queries> {
+export interface RouteData<T extends OperationType> {
   path: string;
   url: string;
   variables: VariablesOf<T>;
 }
 
-type LocationState<T extends OperationType> = {
-  view?: State.Stage[];
-  savedViewSlug?: string;
-} & VariablesOf<T>;
-
 interface FiftyOneLocation extends Location {
-  state: LocationState<Queries>;
+  state: LocationState<OperationType>;
 }
 
-export interface Entry<T extends Queries> extends FiftyOneLocation {
+export interface Entry<T extends OperationType> extends FiftyOneLocation {
   component: Route<T>;
   concreteRequest: ConcreteRequest;
   preloadedQuery: PreloadedQuery<T>;
@@ -48,35 +44,35 @@ export interface Entry<T extends Queries> extends FiftyOneLocation {
   cleanup: () => void;
 }
 
-type Subscription = (entry: Entry<Queries>, action?: Action) => void;
+type Subscription = (entry: Entry<OperationType>, action?: Action) => void;
 
 type Subscribe = (
   subscription: Subscription,
   onPending?: () => void
 ) => () => void;
 
-export interface RoutingContext<T extends Queries> {
+export interface RoutingContext<T extends OperationType> {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
   load: (hard?: boolean) => Promise<Entry<T>>;
   subscribe: Subscribe;
 }
 
-export interface Router<T extends Queries> {
+export interface Router<T extends OperationType> {
   cleanup: () => void;
   context: RoutingContext<T>;
 }
 
 export const createRouter = (
   environment: Environment,
-  routes: RouteDefinition<Queries>[]
-): Router<Queries> => {
+  routes: RouteDefinition<OperationType>[]
+): Router<OperationType> => {
   const history =
     isElectron() || isNotebook()
       ? createMemoryHistory()
       : createBrowserHistory();
 
-  let currentEntryResource: Resource<Entry<Queries>>;
+  let currentEntryResource: Resource<Entry<OperationType>>;
 
   let nextId = 0;
   const subscribers = new Map<
@@ -89,17 +85,19 @@ export const createRouter = (
       subscribers.forEach(([_, onPending]) => onPending && onPending())
     );
     currentEntryResource.load().then(({ cleanup }) => {
-      currentEntryResource = getEntryResource(
+      const nextCurrentEntryResource = getEntryResource(
         environment,
         routes,
         location as FiftyOneLocation
       );
+      currentEntryResource = nextCurrentEntryResource;
 
       currentEntryResource.load().then((entry) => {
-        requestAnimationFrame(() => {
-          subscribers.forEach(([cb]) => cb(entry, action));
-          cleanup();
-        });
+        nextCurrentEntryResource === currentEntryResource &&
+          requestAnimationFrame(() => {
+            subscribers.forEach(([cb]) => cb(entry, action));
+            cleanup();
+          });
       });
     });
   };
@@ -109,8 +107,9 @@ export const createRouter = (
     update(location as FiftyOneLocation, action);
   });
 
-  const context: RoutingContext<Queries> = {
+  const context: RoutingContext<OperationType> = {
     history,
+
     load(hard = false) {
       const runUpdate = currentEntryResource && hard;
       if (!currentEntryResource || hard) {
@@ -145,12 +144,12 @@ export const createRouter = (
   };
 
   return {
-    cleanup,
+    cleanup: () => cleanup && cleanup(),
     context,
   };
 };
 
-const getEntryResource = <T extends Queries>(
+const getEntryResource = <T extends OperationType>(
   environment: Environment,
   routes: RouteDefinition<T>[],
   location: FiftyOneLocation,
@@ -228,5 +227,5 @@ const getEntryResource = <T extends Queries>(
 };
 
 export const RouterContext = React.createContext<
-  RoutingContext<Queries> | undefined
+  RoutingContext<IndexPageQuery | DatasetPageQuery> | undefined
 >(undefined);

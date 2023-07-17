@@ -35,10 +35,10 @@ import React, { useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { DefaultValue, useRecoilValue } from "recoil";
-import { commitMutation, IEnvironment } from "relay-runtime";
+import { commitMutation, IEnvironment, OperationType } from "relay-runtime";
 import Setup from "./components/Setup";
 import { pendingEntry } from "./Renderer";
-import { Entry, matchPath, Queries, useRouterContext } from "./routing";
+import { Entry, matchPath, RoutingContext, useRouterContext } from "./routing";
 import useRefresh from "./useRefresh";
 
 enum Events {
@@ -46,6 +46,7 @@ enum Events {
   REFRESH = "refresh",
   SELECT_LABELS = "select_labels",
   SELECT_SAMPLES = "select_samples",
+  SET_COLOR_SCHEME = "set_color_scheme",
   SET_SPACES = "set_spaces",
   SET_GROUP_SLICE = "set_group_slice",
   STATE_UPDATE = "state_update",
@@ -79,7 +80,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   );
   const sessionRef = useRef<Session>({});
   const setter = useSession((key, value) => {
-    WRITE_HANDLERS[key](environment, value, subscription);
+    WRITE_HANDLERS[key](router, environment, value, subscription);
   }, sessionRef.current);
 
   React.useEffect(() => {
@@ -102,6 +103,12 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             case Events.REFRESH:
               refresh();
               break;
+            case Events.SET_COLOR_SCHEME:
+              setter(
+                "colorScheme",
+                toCamelCase(JSON.parse(msg.data)).color_scheme
+              );
+              break;
             case Events.SELECT_LABELS:
               setter(
                 "selectedLabels",
@@ -118,6 +125,11 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
+              setter(
+                "colorScheme",
+                ensureColorScheme(payload.state.color_scheme)
+              );
+              console.log(payload.state.color_scheme);
               setter("selectedSamples", new Set(payload.state.selected));
               setter(
                 "selectedLabels",
@@ -152,11 +164,13 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
                   )}${search}`
                 : `/${search}`;
 
-              router.history.push(path, { view: payload.state.view || [] });
               if (readyStateRef.current !== AppReadyState.OPEN) {
-                router.load().then(() => {
-                  setReadyState(AppReadyState.OPEN);
+                router.history.replace(path, {
+                  view: payload.state.view || [],
                 });
+                router.load().then(() => setReadyState(AppReadyState.OPEN));
+              } else {
+                router.history.push(path, { view: payload.state.view || [] });
               }
               break;
             }
@@ -186,7 +200,9 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
       }
     );
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [
     clearModal,
     handleError,
@@ -204,7 +220,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
         <Loading>Pixelating...</Loading>
       )}
       {readyState === AppReadyState.OPEN && (
-        <Writer<Queries>
+        <Writer<OperationType>
           read={() => {
             const { concreteRequest, data, preloadedQuery } = router.get();
             return {
@@ -233,6 +249,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
                     onCompleted: ({ setView: view }) => {
                       sessionRef.current.selectedSamples = new Set();
                       sessionRef.current.selectedLabels = [];
+                      sessionRef.current.selectedFields = undefined;
                       router.history.push(`${router.get().pathname}`, {
                         view,
                       });
@@ -322,6 +339,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             return router.subscribe((entry, action) => {
               sessionRef.current.selectedSamples = new Set();
               sessionRef.current.selectedLabels = [];
+              sessionRef.current.selectedFields = undefined;
               // @ts-ignore
               if (current.name !== entry.preloadedQuery.variables.name) {
                 sessionRef.current.sessionSpaces = fos.SPACES_DEFAULT;
@@ -340,7 +358,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
 };
 
 const dispatchSideEffect = (
-  entry: Entry<Queries>,
+  entry: Entry<OperationType>,
   action: Action | undefined,
   subscription: string
 ) => {
@@ -374,12 +392,13 @@ const WRITE_HANDLERS: {
     Session,
     "canEditCustomColors" | "canEditSavedViews" | "readOnly"
   >]: (
+    router: RoutingContext<OperationType>,
     environment: IEnvironment,
     value: Session[K] | DefaultValue,
     subscription: string
   ) => void;
 } = {
-  colorScheme: (environment, colorScheme, subscription) => {
+  colorScheme: (_, environment, colorScheme, subscription) => {
     if (colorScheme instanceof DefaultValue) {
       throw new Error("not implemented");
     }
@@ -392,6 +411,7 @@ const WRITE_HANDLERS: {
     });
   },
   selectedSamples: (
+    _,
     environment,
     selected: Set<string> | DefaultValue,
     subscription: string
@@ -404,7 +424,7 @@ const WRITE_HANDLERS: {
       },
     });
   },
-  selectedLabels: (environment, selectedLabels, subscription) => {
+  selectedLabels: (_, environment, selectedLabels, subscription) => {
     commitMutation<setSelectedLabelsMutation>(environment, {
       mutation: setSelectedLabels,
       variables: {
@@ -414,7 +434,7 @@ const WRITE_HANDLERS: {
       },
     });
   },
-  sessionSpaces: (environment, spaces, subscription) => {
+  sessionSpaces: (_, environment, spaces, subscription) => {
     commitMutation<setSpacesMutation>(environment, {
       mutation: setSpaces,
       variables: {
@@ -422,6 +442,15 @@ const WRITE_HANDLERS: {
         subscription,
       },
     });
+  },
+  selectedFields: (router, _, selectedFields, __) => {
+    router.history.push(
+      `${router.history.location.pathname}${router.history.location.search}`,
+      {
+        ...router.get().state,
+        extendedStages: [selectedFields],
+      }
+    );
   },
 };
 
@@ -452,4 +481,12 @@ const getSavedViewName = (search: string) => {
   }
 
   return null;
+};
+
+const ensureColorScheme = (colorScheme) => {
+  console.log(colorScheme);
+  return {
+    colorPool: colorScheme.color_pool,
+    fields: colorScheme.fields || [],
+  };
 };

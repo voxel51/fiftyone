@@ -137,7 +137,7 @@ export default function useSchemaSettings() {
   const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
     selectedPathState
   );
-  console.log(selectedPaths);
+
   // disabled paths are filtered
   const enabledSelectedPaths = useMemo(() => {
     const datasetSelectedPaths = selectedPaths[datasetName] || new Set();

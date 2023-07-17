@@ -492,5 +492,4 @@ export const activeColorField = atom<
 
 export const colorScheme = sessionAtom({
   key: "colorScheme",
-  default: { fields: [], colorPool: [] },
 });

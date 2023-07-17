@@ -136,13 +136,6 @@ class Refresh(Event):
 
 
 @dataclass
-class SelectFields(Event):
-    """Select fields event"""
-
-    fields: t.List[str]
-
-
-@dataclass
 class SelectLabels(Event):
     """Select labels event"""
 
@@ -184,7 +177,7 @@ class SetColorScheme(Event):
 
     @classmethod
     def from_odm(cls, color_scheme: foo.ColorScheme):
-        return cls(color_scheme=color_scheme.to_dict())
+        return cls(color_scheme=from_dict(ColorScheme, color_scheme.to_dict()))
 
 
 @dataclass

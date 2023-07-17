@@ -439,7 +439,6 @@ type Query {
     dataset: String!
     view: BSONArray!
     filter: SampleFilter!
-    index: Int = null
     filters: JSON = null
   ): SampleItem
   stageDefinitions: [StageDefinition!]!

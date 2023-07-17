@@ -38,8 +38,6 @@ const ColorFooter: React.FC = () => {
     return true;
   }, [savedSettings]);
 
-  // set to be true only for teams
-  const isTeams = useRecoilValue(fos.compactLayout);
   const datasetDefault =
     useRecoilValue(fos.datasetAppConfig)?.colorScheme ?? null;
 
@@ -52,7 +50,7 @@ const ColorFooter: React.FC = () => {
           text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(false, isTeams ? datasetDefault : null);
+            setColorScheme(datasetDefault);
             setReset((prev) => prev + 1);
           }}
           style={BUTTON_STYLE}

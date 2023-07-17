@@ -1,5 +1,6 @@
 import { colorSchemeFragment$data, subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { useCallback } from "react";
 import { DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
@@ -10,7 +11,7 @@ export interface Session {
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
-  selectedFields: unknown;
+  selectedFields?: State.Stage;
   colorScheme: Omit<colorSchemeFragment$data, " $fragmentType">;
 }
 
@@ -18,7 +19,7 @@ type Setter = <K extends keyof Session>(key: K, value: Session[K]) => void;
 
 type SessionAtomOptions<K extends keyof Session> = {
   key: K;
-  default: Session[K];
+  default?: Session[K];
 };
 
 let sessionRef: Session;
@@ -38,19 +39,22 @@ export const useSession = (setter: Setter, ref: Session) => {
   setterRef = setter;
   sessionRef = ref;
 
-  return <
-    K extends keyof Omit<
-      Session,
-      "canEditCustomColors" | "canEditSavedViews" | "readOnly"
-    >
-  >(
-    key: K,
-    value: Session[K]
-  ) => {
-    const setter = setters[key];
-    setter && setter(value);
-    sessionRef[key] = value;
-  };
+  return useCallback(
+    <
+      K extends keyof Omit<
+        Session,
+        "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+      >
+    >(
+      key: K,
+      value: Session[K]
+    ) => {
+      const setter = setters[key];
+      setter && setter(value);
+      sessionRef[key] = value;
+    },
+    []
+  );
 };
 
 export function sessionAtom<K extends keyof Session>(
@@ -60,7 +64,16 @@ export function sessionAtom<K extends keyof Session>(
     ...options,
     effects: [
       ({ setSelf, trigger }) => {
+        const assertValue = () => {
+          if (
+            sessionRef[options.key] === undefined &&
+            options.default === undefined
+          ) {
+            throw new Error(`A value is required session atom ${options.key}`);
+          }
+        };
         if (trigger === "get") {
+          assertValue();
           setSelf(
             sessionRef[options.key] === undefined
               ? options.default
@@ -75,6 +88,7 @@ export function sessionAtom<K extends keyof Session>(
         };
 
         return subscribe((_, { set }) => {
+          assertValue();
           set(
             value,
             sessionRef[options.key] === undefined

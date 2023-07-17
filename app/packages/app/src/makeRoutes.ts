@@ -1,27 +1,35 @@
 import { createResourceGroup } from "@fiftyone/utilities";
-import { ConcreteRequest } from "relay-runtime";
+import { ConcreteRequest, OperationType } from "relay-runtime";
 
-import { Queries, Route, RouteDefinition, RouteOptions } from "./routing";
+import { datasetQuery } from "@fiftyone/relay";
+import { pagesQuery } from "./pages/__generated__/pagesQuery.graphql";
+import { Route, RouteDefinition, RouteOptions } from "./routing";
 
-const components = createResourceGroup<Route<Queries>>();
+interface Routes {
+  "/": RouteOptions<pagesQuery>;
+  "/datasets/:name": RouteOptions<datasetQuery>;
+}
+
+const components = createResourceGroup<Route<OperationType>>();
 
 const makeRouteDefinitions = (
-  routes: RouteOptions<Queries>[]
-): RouteDefinition<Queries>[] => {
+  routes: Routes
+): RouteDefinition<OperationType>[] => {
   const queries = createResourceGroup<ConcreteRequest>();
 
-  return routes.map(({ path, component, query, searchParams }) => ({
-    path,
-    component: components(path, component),
-    query: queries(path, query),
-    searchParams,
-  }));
+  return Object.entries(routes).map(([path, { component, query, ...rest }]) => {
+    return {
+      path,
+      component: components(path, component),
+      query: queries(path, query),
+      ...rest,
+    };
+  });
 };
 
 const makeRoutes = () => {
-  return makeRouteDefinitions([
-    {
-      path: "/",
+  return makeRouteDefinitions({
+    "/": {
       component: () =>
         import("./pages/IndexPage").then((module) => module.default),
       query: () =>
@@ -29,19 +37,27 @@ const makeRoutes = () => {
           (module) => module.default
         ),
     },
-    {
-      path: "/datasets/:name",
+
+    "/datasets/:name": {
       component: () =>
-        import("./pages/datasets/DatasetPage").then(
-          (module) => module.default as Route<Queries>
-        ),
+        import("./pages/datasets/DatasetPage").then((module) => module.default),
       query: () =>
         import("./pages/datasets/__generated__/DatasetPageQuery.graphql").then(
           (module) => module.default
         ),
       searchParams: { view: "savedViewSlug" },
+      transform: (state, variables) => {
+        if (!variables.name) {
+          throw new Error("dataset name not provided");
+        }
+
+        return {
+          ...variables,
+          extendedView: state.view.concat(state.extendedStages || []),
+        };
+      },
     },
-  ]);
+  });
 };
 
 export default makeRoutes;

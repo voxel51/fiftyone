@@ -9,17 +9,29 @@ import {
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
-import { colorPalette, colorscale } from "./config";
+import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+
+export const colorscale = selector<RGB[]>({
+  key: "colorscale",
+  get: ({ get }) => {
+    return get(configData).colorscale as RGB[];
+  },
+});
+
+export const colorPool = selector({
+  key: "colorPool",
+  get: ({ get }) => get(atoms.colorScheme).colorPool,
+});
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPalette);
+      const pool = get(colorPool);
       const seed = get(atoms.colorSeed(modal));
       return {
         seed,
@@ -46,7 +58,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const pool = get(colorPalette);
+      const pool = get(colorPool);
       const seed = get(atoms.colorSeed(modal));
       return createColorGenerator(pool, seed);
     },
