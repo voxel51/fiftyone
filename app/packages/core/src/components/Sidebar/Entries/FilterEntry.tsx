@@ -41,7 +41,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
   return (
     <FilterInputDiv modal={modal}>
       <Box alignItems={"center"} display="flex">
-        {(isFilterMode || modal) && (
+        {isFilterMode && !modal && (
           <Box display="flex" onClick={() => !modal && setIsFilterMode(false)}>
             <Tooltip
               text={!modal ? "Toggle to visibility mode" : null}
