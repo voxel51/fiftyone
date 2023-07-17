@@ -1152,7 +1152,7 @@ class DatasetMixin(object):
         return field, is_default
 
     @classmethod
-    def _get_field_doc(cls, path, allow_missing=False, reload=True):
+    def _get_field_doc(cls, path, allow_missing=False, reload=False):
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         if reload:
