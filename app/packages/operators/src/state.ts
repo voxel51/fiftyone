@@ -367,9 +367,14 @@ export const availableOperators = selector({
         label: operator.label,
         name: operator.name,
         value: operator.uri,
-        description: operator.description,
+        description: operator.config.description,
         unlisted: operator.unlisted,
         canExecute: operator.config.canExecute,
+        pluginName: operator.pluginName,
+        _builtIn: operator._builtIn,
+        icon: operator.config.icon,
+        darkIcon: operator.config.darkIcon,
+        lightIcon: operator.config.lightIcon,
       };
     });
   },
