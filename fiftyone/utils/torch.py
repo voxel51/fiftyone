@@ -214,6 +214,7 @@ class TorchImageModel(
 
     def __init__(self, config):
         self.config = config
+
         # Parse model details
         self._classes = self._parse_classes(config)
         self._mask_targets = self._parse_mask_targets(config)
@@ -239,12 +240,11 @@ class TorchImageModel(
             )
         else:
             self._device = torch.device(self.config.device)
-        print("Using device:", self._device)
+
         self._using_half_precision = (
             self.config.use_half_precision is True
         ) and self._cuda_available
         self._model = self._load_model(config)
-        self._model.eval()
         self._no_grad = None
         self._benchmark_orig = None
 
@@ -493,7 +493,7 @@ class TorchImageModel(
 
         self._load_state_dict(model, config)
 
-        model.train(False)
+        model.eval()
 
         return model
 
