@@ -690,6 +690,7 @@ const InteractiveSidebar = ({
 
   return shown ? (
     <Resizable
+      data-cy="sidebar"
       size={{ height: "100%", width }}
       minWidth={200}
       maxWidth={600}

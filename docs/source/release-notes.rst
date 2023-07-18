@@ -3,6 +3,15 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.21.4:
+
+FiftyOne 0.21.4
+---------------
+*Released July 14, 2023*
+
+- Fixed :class:`Session <fiftyone.core.session.Session>` event emission
+  `#3301 <https://github.com/voxel51/fiftyone/pull/3301>`_
+
 .. _release-notes-teams-v1.3.3:
 
 FiftyOne Teams 1.3.3
@@ -80,7 +89,6 @@ App
   `#3249 <https://github.com/voxel51/fiftyone/pull/3249>`_
 - Fixes redundant sidebar groups for custom schemas
   `#3250 <https://github.com/voxel51/fiftyone/pull/3250>`_
-
 
 .. _release-notes-teams-v1.3.1:
 
