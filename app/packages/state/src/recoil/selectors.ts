@@ -7,7 +7,7 @@ import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
-import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
+import { selectedFieldsStageState } from "@fiftyone/state";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";

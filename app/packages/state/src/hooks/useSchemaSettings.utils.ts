@@ -1,11 +1,12 @@
 import {
   CLASSIFICATION_DISABLED_SUB_PATHS,
   CLASSIFICATION_FIELD,
+  SKIP_FIELD_TYPES,
   DETECTION_DISABLED_SUB_PATHS,
   DETECTION_FIELD,
   DISABLED_LABEL_FIELDS_VISIBILITY,
-  DISABLED_PATHS,
   FRAME_NUMBER_FIELD,
+  DISABLED_PATHS,
   FRAME_SUPPORT_FIELD,
   Field,
   GEOLOCATIONS_DISABLED_SUB_PATHS,
@@ -27,10 +28,37 @@ import {
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
   VALID_LABEL_TYPES,
+  DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
 
-export const isMetadataField = (path: string) => {
+const isMetadataField = (path: string) => {
   return path === "metadata" || path.startsWith("metadata.");
+};
+
+export const skipField = (rawPath: string, schema: {}) => {
+  if (!rawPath) {
+    throw new Error("path argument is required");
+  }
+
+  // we remove 'frames.' prefix for processing
+  const path = rawPath.replace("frames.", "");
+
+  const currentField = schema?.[path];
+  if (!currentField) {
+    return true;
+  }
+
+  const ftype = currentField.ftype;
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+  const pathSplit = path.split(".");
+  const pathLabel = `.${pathSplit[pathSplit.length - 1]}`;
+
+  return (
+    SKIP_FIELD_TYPES.includes(ftype) ||
+    (parentPath &&
+      schema[parentPath]?.embeddedDocType === DETECTIONS_FIELD &&
+      [".bounding_box", ".index"].includes(pathLabel))
+  );
 };
 
 export const disabledField = (

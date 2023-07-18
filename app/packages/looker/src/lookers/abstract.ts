@@ -284,6 +284,8 @@ export abstract class AbstractLooker<
           this.currentOverlays[index].draw(ctx, this.state);
         }
         ctx.globalAlpha = 1;
+
+        ctx.canvas.setAttribute("sample-loaded", "true");
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });

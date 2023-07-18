@@ -142,6 +142,8 @@ class TorchImageModelConfig(foc.Config):
         cudnn_benchmark (None): a value to use for
             :attr:`torch:torch.backends.cudnn.benchmark` while the model is
             running
+        device (None): a string specifying the device to use
+            (e.g., ``"cuda:0"``, ``"cpu"``, ``"mps"``, etc.)
     """
 
     def __init__(self, d):
@@ -192,6 +194,7 @@ class TorchImageModelConfig(foc.Config):
         self.cudnn_benchmark = self.parse_bool(
             d, "cudnn_benchmark", default=None
         )
+        self.device = self.parse_string(d, "device", default=None)
 
 
 class TorchImageModel(
@@ -224,11 +227,23 @@ class TorchImageModel(
         self._preprocess = True
 
         # Load model
-        self._using_gpu = torch.cuda.is_available()
-        self._device = torch.device("cuda:0" if self._using_gpu else "cpu")
+        self._cuda_available = torch.cuda.is_available()
+        self._mps_available = torch.backends.mps.is_available()
+        self._using_gpu = self._cuda_available or self._mps_available
+        if self.config.device is None:
+            self._device = torch.device(
+                "cuda:0"
+                if self._cuda_available
+                else "mps"
+                if self._mps_available
+                else "cpu"
+            )
+        else:
+            self._device = torch.device(self.config.device)
+
         self._using_half_precision = (
             self.config.use_half_precision is True
-        ) and self._using_gpu
+        ) and self._cuda_available
         self._model = self._load_model(config)
         self._no_grad = None
         self._benchmark_orig = None
@@ -384,7 +399,7 @@ class TorchImageModel(
         frame_size = (width, height)
 
         if self._using_gpu:
-            imgs = imgs.cuda()
+            imgs = imgs.to(self._device)
 
         if self._using_half_precision:
             imgs = imgs.half()
@@ -478,7 +493,7 @@ class TorchImageModel(
 
         self._load_state_dict(model, config)
 
-        model.train(False)
+        model.eval()
 
         return model
 

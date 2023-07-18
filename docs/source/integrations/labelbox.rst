@@ -187,7 +187,7 @@ _____
 
 FiftyOne supports both
 `standard Labelbox cloud accounts <https://app.labelbox.com/signin>`_  and
-`on-premesis Labelbox deployments <https://docs.labelbox.com/docs/labelbox-on-premises>`_.
+`on-premise Labelbox deployments <https://docs.labelbox.com/docs/labelbox-on-premises>`_.
 
 The easiest way to get started is to use
 `app.labelbox.com <https://app.labelbox.com>`_, which simply requires creating

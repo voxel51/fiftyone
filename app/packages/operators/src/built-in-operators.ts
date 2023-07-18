@@ -25,6 +25,7 @@ import { useShowOperatorIO } from "./state";
 // BUILT-IN OPERATORS
 //
 class ReloadSamples extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "reload_samples",
@@ -37,6 +38,7 @@ class ReloadSamples extends Operator {
   }
 }
 class ReloadDataset extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "reload_dataset",
@@ -50,6 +52,7 @@ class ReloadDataset extends Operator {
   }
 }
 class ClearSelectedSamples extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "clear_selected_samples",
@@ -69,6 +72,7 @@ class ClearSelectedSamples extends Operator {
 }
 
 class CopyViewAsJSON extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "copy_view_as_json",
@@ -83,6 +87,7 @@ class CopyViewAsJSON extends Operator {
 }
 
 class ViewFromJSON extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "view_from_clipboard",
@@ -101,6 +106,7 @@ class ViewFromJSON extends Operator {
 }
 
 class OpenPanel extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "open_panel",
@@ -172,6 +178,7 @@ class OpenPanel extends Operator {
 }
 
 class OpenAllPanels extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "open_all_panel",
@@ -197,6 +204,7 @@ class OpenAllPanels extends Operator {
 }
 
 class ClosePanel extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "close_panel",
@@ -243,6 +251,7 @@ class ClosePanel extends Operator {
 }
 
 class CloseAllPanels extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "close_all_panel",
@@ -266,6 +275,7 @@ class CloseAllPanels extends Operator {
 }
 
 class SplitPanel extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "split_panel",
@@ -297,6 +307,7 @@ class SplitPanel extends Operator {
 }
 
 class OpenDataset extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "open_dataset",
@@ -320,6 +331,7 @@ class OpenDataset extends Operator {
 }
 
 class ClearView extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "clear_view",
@@ -331,6 +343,7 @@ class ClearView extends Operator {
   }
 }
 class ClearSidebarFilters extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "clear_sidebar_filters",
@@ -343,6 +356,7 @@ class ClearSidebarFilters extends Operator {
 }
 
 class ClearAllStages extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "clear_all_stages",
@@ -365,6 +379,7 @@ class ClearAllStages extends Operator {
 }
 
 class RefreshColors extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "refresh_colors",
@@ -379,6 +394,7 @@ class RefreshColors extends Operator {
 }
 
 class ShowSelectedSamples extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "show_selected_samples",
@@ -402,6 +418,7 @@ class ShowSelectedSamples extends Operator {
 }
 
 class ConvertExtendedSelectionToSelectedSamples extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "convert_extended_selection_to_selected_samples",
@@ -427,6 +444,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
 
 // an operator that sets selected samples based on ctx.params
 class SetSelectedSamples extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "set_selected_samples",
@@ -445,6 +463,7 @@ class SetSelectedSamples extends Operator {
 }
 
 class SetView extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "set_view",
@@ -473,6 +492,7 @@ class SetView extends Operator {
 const SHOW_SAMPLES_STAGE_ID = "show_samples_stage_id";
 
 class ShowSamples extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "show_samples",
@@ -538,6 +558,7 @@ class ShowSamples extends Operator {
 // }
 
 class ConsoleLog extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "console_log",
@@ -559,6 +580,7 @@ class ConsoleLog extends Operator {
 }
 
 class ShowOutput extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "show_output",
@@ -593,6 +615,7 @@ class ShowOutput extends Operator {
 }
 
 class TestOperator extends Operator {
+  _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
       name: "test_operator",
@@ -649,6 +672,36 @@ class TestOperator extends Operator {
   }
 }
 
+class SetSelectedLabels extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_selected_labels",
+      label: "Set selected labels",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setSelected: fos.useSetSelectedLabels(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    hooks.setSelected(params.labels);
+  }
+}
+
+class ClearSelectedLabels extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_selected_labels",
+      label: "Clear selected labels",
+    });
+  }
+  async execute({ state }: ExecutionContext) {
+    state.set(fos.selectedLabels, {});
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     registerOperator(CopyViewAsJSON);
@@ -677,6 +730,8 @@ export function registerBuiltInOperators() {
     registerOperator(ShowOutput);
     registerOperator(TestOperator);
     registerOperator(SplitPanel);
+    registerOperator(SetSelectedLabels);
+    registerOperator(ClearSelectedLabels);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
