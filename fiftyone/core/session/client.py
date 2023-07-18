@@ -144,7 +144,6 @@ class Client:
         Args:
             event: the event
         """
-        print(type(event), self._closed.is_set())
         if self._closed.is_set():
             return
 

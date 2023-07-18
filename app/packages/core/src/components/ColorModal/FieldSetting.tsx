@@ -1,4 +1,5 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
@@ -18,7 +19,6 @@ import { TwitterPicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
-import { resetColor } from "./ColorFooter";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
@@ -40,8 +40,8 @@ type State = {
 };
 
 const FieldSetting: React.FC<Prop> = ({ prop }) => {
-  const wrapperRef: React.RefObject<HTMLDivElement> = React.useRef();
-  const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const pickerRef = React.useRef<TwitterPicker>(null);
   const { field, expandedPath } = prop;
   const path = field?.path;
   const { colorPool, fields } = useRecoilValue(fos.colorScheme);
@@ -88,7 +88,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
       const newSetting = cloneDeep(fields ?? []);
       const index = newSetting.findIndex((x) => x.path == path!);
       newSetting[index].fieldColor = color;
-      setColorScheme(false, { colorPool, fields: newSetting });
+      setColorScheme({ colorPool, fields: newSetting });
     },
     [fields, path, setColorScheme, colorPool]
   );
@@ -138,9 +138,9 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
       const defaultSetting = {
         path: path,
         fieldColor: undefined,
-        colorByAttribute: undefined,
+        colorByAttribute: false,
         valueColors: [],
-      } as fos.CustomizeColor;
+      } as CustomizeColorInput;
       const newSetting = [...copy, defaultSetting];
       setColorScheme({ colorPool, fields: newSetting });
     }
@@ -151,14 +151,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
       ),
       useFieldColor: Boolean(setting?.fieldColor),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, fields]);
-
-  // on reset, sync local state input with session values
-  useEffect(() => {
-    setInput(color);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor)]);
 
   fos.useOutsideClick(wrapperRef, () => {
     setShowFieldPicker(false);

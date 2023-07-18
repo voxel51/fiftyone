@@ -1,11 +1,11 @@
-import React, { DetailedReactHTMLElement } from "react";
-import styled from "styled-components";
-import { IconButton } from "@mui/material";
+import { Tooltip } from "@fiftyone/components";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
-import ImageIcon from "@mui/icons-material/Image";
 import HideImageIcon from "@mui/icons-material/HideImage";
-import { Tooltip } from "@fiftyone/components";
+import ImageIcon from "@mui/icons-material/Image";
+import { IconButton } from "@mui/material";
+import React, { ForwardedRef } from "react";
+import styled from "styled-components";
 
 type ItemProp = {
   icon?: string;
@@ -13,7 +13,7 @@ type ItemProp = {
   tooltip?: string;
   color?: string; // icon color
   highlightedBGColor?: string; // background color onHover
-  onClick: () => void;
+  onClick: React.MouseEventHandler;
 };
 
 const Text = styled.div`

@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
-import { configData } from "./config";
+import { config, configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
@@ -21,9 +21,25 @@ export const colorscale = selector<RGB[]>({
   },
 });
 
+export const datasetColorScheme = selector({
+  key: "datasetColorScheme",
+  get: ({ get }) => get(selectors.datasetAppConfig).colorScheme,
+});
+
+export const defaultColorPool = selector({
+  key: "defaultColorPool",
+  get: ({ get }) => get(config).colorPool,
+});
+
 export const colorPool = selector({
   key: "colorPool",
-  get: ({ get }) => get(atoms.colorScheme).colorPool,
+  get: ({ get }) => {
+    const pool = get(atoms.colorScheme).colorPool;
+
+    if (!pool) throw new Error("color pool not defined");
+
+    return pool;
+  },
 });
 
 export const coloring = selectorFamily<Coloring, boolean>({

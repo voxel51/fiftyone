@@ -115,7 +115,7 @@ enum ColorBy {
 
 type ColorScheme {
   colorPool: [String!]!
-  fields: [CustomizeColor!]!
+  fields: [CustomizeColor!]
 }
 
 input ColorSchemeInput {
@@ -326,6 +326,10 @@ type Mutation {
     subscription: String!
     colorScheme: ColorSchemeInput!
   ): Boolean!
+  setDatasetColorScheme(
+    datasetName: String!
+    colorScheme: ColorSchemeInput = null
+  ): Void
   setDataset(
     subscription: String!
     session: String
@@ -636,6 +640,11 @@ type VideoSample implements Sample {
   aspectRatio: Float!
   frameRate: Float!
 }
+
+"""
+Represents NULL values
+"""
+scalar Void
 
 scalar date
 

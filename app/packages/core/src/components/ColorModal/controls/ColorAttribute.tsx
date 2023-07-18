@@ -7,7 +7,6 @@ import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDown
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import { cloneDeep } from "lodash";
 import React from "react";
-import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
@@ -31,17 +30,11 @@ type Prop = {
   style: React.CSSProperties;
 };
 
-type Option = {
-  value: string;
-  onClick: () => void;
-};
-
 const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
   const theme = useTheme();
-  const ref = React.useRef<HTMLDivElement>();
+  const ref = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
 
   const setColorScheme = fos.useSetSessionColorScheme();
   const activeField = useRecoilValue(fos.activeColorField).field as Field;
@@ -50,7 +43,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
 
   const options = eligibleFields.map((field) => ({
     value: field.path?.split(".").slice(-1),
-    onClick: (e) => {
+    onClick: (e: React.MouseEvent) => {
       e.preventDefault();
       const copy = cloneDeep(fields);
       if (index > -1) {
@@ -74,11 +67,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
           }
           placement={"bottom-center"}
         >
-          <SelectButton
-            onClick={() => setOpen((o) => !o)}
-            ref={mRef}
-            theme={theme}
-          >
+          <SelectButton onClick={() => setOpen((o) => !o)} theme={theme}>
             <div>{selected}</div>
             {open ? (
               <KeyboardArrowUpOutlinedIcon />
@@ -89,7 +78,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
         </Tooltip>
         {open && (
           <PopoutDiv style={{ zIndex: 1000000001, opacity: 1, width: "100%" }}>
-            {options.map((option: Option) => (
+            {options.map((option) => (
               <Item key={option.value} {...option} />
             ))}
           </PopoutDiv>

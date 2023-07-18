@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<173fa47e91bb6feb3c79bf5dc7e3af1d>>
+ * @generated SignedSource<<6d82000cca42fd97b302c69162b8924b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,7 +20,7 @@ export type colorSchemeFragment$data = {
       readonly color: string;
       readonly value: string;
     }>;
-  }>;
+  }> | null;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {

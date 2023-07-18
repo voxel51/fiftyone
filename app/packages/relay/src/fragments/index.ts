@@ -1,5 +1,6 @@
 export * from "./__generated__/colorSchemeFragment.graphql";
 export * from "./__generated__/configFragment.graphql";
+export * from "./__generated__/datasetAppConfigFragment.graphql";
 export * from "./__generated__/datasetFragment.graphql";
 export * from "./__generated__/frameFieldsFragment.graphql";
 export * from "./__generated__/groupSliceFragment.graphql";
@@ -13,6 +14,7 @@ export * from "./__generated__/stageDefinitionsFragment.graphql";
 export * from "./__generated__/viewFragment.graphql";
 export { default as colorSchemeFragment } from "./colorSchemeFragment";
 export { default as configFragment } from "./configFragment";
+export { default as datasetAppConfigFragment } from "./datasetAppConfigFragment";
 export { default as datasetFragment } from "./datasetFragment";
 export { default as frameFieldsFragment } from "./frameFieldsFragment";
 export { default as groupSliceFragment } from "./groupSliceFragment";

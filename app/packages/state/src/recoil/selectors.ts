@@ -1,14 +1,17 @@
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import {
+  datasetAppConfigFragment,
+  datasetAppConfigFragment$data,
+  datasetAppConfigFragment$key,
   datasetFragment,
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
+import { selectedFieldsStageState } from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
-import { selectedFieldsStageState } from "@fiftyone/state";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { isModalActive, modalSample } from "./modal";
@@ -92,10 +95,20 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   }
 );
 
-export const datasetAppConfig = selector<State.DatasetAppConfig>({
-  key: "datasetAppConfig",
-  get: ({ get }) => get(atoms.dataset)?.appConfig,
-});
+export const datasetAppConfig = graphQLSyncFragmentAtom<
+  datasetAppConfigFragment$key,
+  datasetAppConfigFragment$data
+>(
+  {
+    fragments: [datasetFragment, datasetAppConfigFragment],
+    keys: ["dataset", "appConfig"],
+    read: (data) => data,
+    default: null,
+  },
+  {
+    key: "datasetAppConfig",
+  }
+);
 
 export const defaultTargets = selector({
   key: "defaultTargets",

@@ -1,3 +1,4 @@
+import { CustomizeColorInput } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
@@ -16,7 +17,7 @@ export namespace State {
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
-    customizedColors: CustomizeColor[];
+    customizedColors: CustomizeColorInput[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
@@ -118,7 +119,6 @@ export namespace State {
     mediaFields?: string[];
     plugins?: PluginConfig;
     sidebarMode?: "all" | "best" | "fast";
-    colorScheme?: ColorScheme;
   }
 
   /**
@@ -159,7 +159,7 @@ export namespace State {
   /**
    * @hidden
    */
-  type Filter = CategoricalFilter<string>;
+  export type Filter = CategoricalFilter<string>;
 
   export interface SortBySimilarityParameters {
     brainKey: string;

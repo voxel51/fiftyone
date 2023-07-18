@@ -1160,7 +1160,7 @@ def _attach_listeners(session: "Session"):
 
     on_set_color_scheme: t.Callable[
         [SetColorScheme], None
-    ] = lambda event: print(event.color_scheme)
+    ] = lambda event: setattr(session._state, "color_scheme", event.to_odm())
     session._client.add_event_listener("set_color_scheme", on_set_color_scheme)
 
     on_set_group_slice: t.Callable[

@@ -3,22 +3,26 @@ import AddIcon from "@material-ui/icons/Add";
 import DeleteIcon from "@material-ui/icons/Delete";
 import React, { useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
+import { selector, useRecoilValue } from "recoil";
 import styled from "styled-components";
-
 import Checkbox from "../../Common/Checkbox";
+import { colorBlindFriendlyPalette, isSameArray } from "../utils";
 import { colorPicker } from "./Colorpicker.module.css";
-
-import { useRecoilValue } from "recoil";
-import {
-  colorBlindFriendlyPalette,
-  fiftyoneDefaultColorPalette,
-  isSameArray,
-} from "../utils";
 
 interface ColorPaletteProps {
   maxColors?: number;
   style?: React.CSSProperties;
 }
+
+const isDefaultColorPool = selector({
+  key: "isDefaultColorPool",
+  get: ({ get }) => isSameArray(get(fos.colorPool), get(fos.defaultColorPool)),
+});
+
+const isColorBlindColorPool = selector({
+  key: "isColorBlindColorPool",
+  get: ({ get }) => isSameArray(get(fos.colorPool), colorBlindFriendlyPalette),
+});
 
 const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
@@ -29,15 +33,9 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const colors = colorScheme.colorPool;
   const [pickerColor, setPickerColor] = useState<string | null>(null);
 
-  const isUsingColorBlindOption = isSameArray(
-    colors,
-    colorBlindFriendlyPalette
-  );
-
-  const isUsingFiftyoneClassic = isSameArray(
-    colors,
-    fiftyoneDefaultColorPalette
-  );
+  const isUsingDefault = useRecoilValue(isDefaultColorPool);
+  const isUsingColorBlindOption = useRecoilValue(isColorBlindColorPool);
+  const defaultPool = useRecoilValue(fos.defaultColorPool);
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -137,15 +135,15 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
         )}
       </ColorPaletteContainer>
       <div style={{ width: "50%" }}>
-        {!isUsingFiftyoneClassic && (
+        {!isUsingDefault && (
           <Checkbox
-            name={"Use fiftyone classic option"}
-            value={isUsingFiftyoneClassic}
+            name={"Use default"}
+            value={isUsingDefault}
             setValue={(v) =>
               v &&
               setColorScheme((current) => ({
                 ...current,
-                colorPool: fiftyoneDefaultColorPalette,
+                colorPool: defaultPool,
               }))
             }
           />

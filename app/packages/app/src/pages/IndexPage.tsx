@@ -1,15 +1,18 @@
 import { Loading } from "@fiftyone/components";
 import React from "react";
+import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";
 import { Route } from "../routing";
-
-import { usePreloadedQuery } from "react-relay";
-import style from "./index.module.css";
 import { IndexPageQuery } from "./__generated__/IndexPageQuery.graphql";
+import style from "./index.module.css";
 
 const IndexPageQueryNode = graphql`
   query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
+    config {
+      colorPool
+    }
+
     ...NavFragment
     ...configFragment
   }

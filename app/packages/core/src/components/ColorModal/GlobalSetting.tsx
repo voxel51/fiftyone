@@ -1,12 +1,12 @@
-import React from "react";
-import { Divider, Slider } from "@mui/material";
 import { SettingsBackupRestore } from "@mui/icons-material";
+import { Divider, Slider } from "@mui/material";
+import React from "react";
 
 import * as fos from "@fiftyone/state";
 
+import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import ColorPalette from "./colorPalette/ColorPalette";
-import Checkbox from "../Common/Checkbox";
 
 import {
   ControlGroupWrapper,
@@ -15,11 +15,8 @@ import {
 } from "./ShareStyledDiv";
 import ShuffleColor from "./controls/RefreshColor";
 
-const GlobalSetting: React.FC = ({}) => {
+const GlobalSetting = () => {
   const { props } = fos.useGlobalColorSetting();
-  const handleSliderChange = (event: Event, newValue: number | number[]) => {
-    props.setOpacity(newValue as number);
-  };
 
   return (
     <div>
@@ -54,7 +51,9 @@ const GlobalSetting: React.FC = ({}) => {
         </LabelTitle>
         <Slider
           value={Number(props.opacity)}
-          onChange={handleSliderChange}
+          onChange={(event: Event, newValue: number | number[]) => {
+            props.setOpacity(newValue as number);
+          }}
           min={0}
           max={1}
           step={0.01}

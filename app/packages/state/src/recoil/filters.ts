@@ -4,7 +4,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { atom, selectorFamily } from "recoil";
+import { DefaultValue, atom, selectorFamily } from "recoil";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
 import { State } from "./types";
@@ -55,7 +55,7 @@ export const filter = selectorFamily<
     ({ get, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
-      if (filter === null) {
+      if (filter === null || filter instanceof DefaultValue) {
         delete newFilters[path];
       } else {
         newFilters[path] = filter;

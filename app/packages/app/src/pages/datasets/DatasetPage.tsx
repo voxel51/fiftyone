@@ -26,8 +26,26 @@ const DatasetPageQueryNode = graphql`
     $view: BSONArray
     $extendedView: BSONArray
   ) {
+    config {
+      colorPool
+    }
+
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
+      appConfig {
+        colorScheme {
+          colorPool
+          fields {
+            colorByAttribute
+            fieldColor
+            path
+            valueColors {
+              color
+              value
+            }
+          }
+        }
+      }
       ...datasetFragment
     }
     ...NavFragment

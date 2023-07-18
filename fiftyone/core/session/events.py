@@ -179,6 +179,12 @@ class SetColorScheme(Event):
     def from_odm(cls, color_scheme: foo.ColorScheme):
         return cls(color_scheme=from_dict(ColorScheme, color_scheme.to_dict()))
 
+    def to_odm(self):
+        return foo.ColorScheme(
+            color_pool=self.color_scheme.color_pool,
+            fields=self.color_scheme.fields,
+        )
+
 
 @dataclass
 class SetSpaces(Event):

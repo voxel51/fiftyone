@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<baca08a40e7bc0e12ceba7894c8ffafd>>
+ * @generated SignedSource<<792a7572da4cffeefb660e0656d55887>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,15 +11,10 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type BrainRunType = "similarity" | "visualization" | "%future added value";
 export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
-export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetFragment$data = {
   readonly appConfig: {
-    readonly gridMediaField: string;
-    readonly mediaFields: ReadonlyArray<string> | null;
-    readonly modalMediaField: string;
-    readonly plugins: object | null;
-    readonly sidebarMode: SidebarMode | null;
+    readonly " $fragmentSpreads": FragmentRefs<"datasetAppConfigFragment">;
   } | null;
   readonly brainMethods: ReadonlyArray<{
     readonly config: {
@@ -229,39 +224,9 @@ return {
       "plural": false,
       "selections": [
         {
-          "alias": null,
           "args": null,
-          "kind": "ScalarField",
-          "name": "gridMediaField",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "mediaFields",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "modalMediaField",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "plugins",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "sidebarMode",
-          "storageKey": null
+          "kind": "FragmentSpread",
+          "name": "datasetAppConfigFragment"
         }
       ],
       "storageKey": null
@@ -496,6 +461,6 @@ return {
 };
 })();
 
-(node as any).hash = "844325ebe1f034e26bddc88b05d5d215";
+(node as any).hash = "013bfe228d576ef36f239fd9d32e0de1";
 
 export default node;

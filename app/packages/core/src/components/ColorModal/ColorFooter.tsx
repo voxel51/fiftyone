@@ -1,12 +1,11 @@
-import * as fos from "@fiftyone/state";
-import React, { useMemo } from "react";
 import {
-  atom,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
-
+  setDatasetColorScheme,
+  setDatasetColorSchemeMutation,
+} from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
+import React from "react";
+import { useMutation } from "react-relay";
+import { atom, useRecoilState, useRecoilValue } from "recoil";
 import { Button } from "../utils";
 import {
   BUTTON_STYLE,
@@ -14,7 +13,6 @@ import {
   LONG_BUTTON_STYLE,
   ModalActionButtonContainer,
 } from "./ShareStyledDiv";
-import { isDefaultSetting } from "./utils";
 
 // this reset is used to trigger a sync of local state input with the session color values
 export const resetColor = atom<number>({
@@ -28,20 +26,19 @@ const ColorFooter: React.FC = () => {
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
   );
-  const savedSettings = useRecoilValue(fos.datasetAppConfig).colorScheme;
+  const [setDataset] = useMutation<setDatasetColorSchemeMutation>(
+    setDatasetColorScheme
+  );
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const setReset = useSetRecoilState(resetColor);
+  const datasetName = useRecoilValue(fos.datasetName);
+  const defaultColorPool = useRecoilValue(fos.defaultColorPool);
 
-  const hasSavedSettings = useMemo(() => {
-    if (!savedSettings) return false;
-    if (isDefaultSetting(savedSettings)) return false;
-    return true;
-  }, [savedSettings]);
-
-  const datasetDefault =
-    useRecoilValue(fos.datasetAppConfig)?.colorScheme ?? null;
-
+  const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   if (!activeColorModalField) return null;
+
+  if (!datasetName) {
+    throw new Error("dataset not defined");
+  }
 
   return (
     <ModalActionButtonContainer>
@@ -50,8 +47,9 @@ const ColorFooter: React.FC = () => {
           text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(datasetDefault);
-            setReset((prev) => prev + 1);
+            setColorScheme(
+              datasetDefault || { fields: [], colorPool: defaultColorPool }
+            );
           }}
           style={BUTTON_STYLE}
         />
@@ -60,19 +58,27 @@ const ColorFooter: React.FC = () => {
             text={"Save as default"}
             title={`Save to dataset appConfig`}
             onClick={() => {
-              setColorScheme(true, colorScheme);
+              setDataset({
+                variables: {
+                  datasetName,
+                  colorScheme: {
+                    fields: colorScheme.fields || [],
+                    colorPool: colorScheme.colorPool || [],
+                  },
+                },
+              });
               setActiveColorModalField(null);
             }}
             style={LONG_BUTTON_STYLE}
           />
         )}
-        {canEdit && hasSavedSettings && (
+        {canEdit && datasetDefault && (
           <Button
             text={"Clear default"}
             title={`Clear`}
             onClick={() => {
-              setColorScheme(true, null);
-              setReset((prev) => prev + 1);
+              setColorScheme({ fields: [], colorPool: defaultColorPool });
+              setDataset({ variables: { datasetName, colorScheme: null } });
             }}
             style={LONG_BUTTON_STYLE}
           />

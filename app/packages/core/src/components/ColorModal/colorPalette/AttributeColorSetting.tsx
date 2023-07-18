@@ -15,7 +15,6 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
-import { resetColor } from "../ColorFooter";
 import { colorPicker } from "./Colorpicker.module.css";
 
 const RowContainer = styled.div`

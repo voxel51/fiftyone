@@ -75,12 +75,10 @@ async def dispatch_event(
     if isinstance(event, SelectSamples):
         _state.selected = event.sample_ids
 
-    print(type(event))
     if isinstance(event, SetColorScheme):
         _state.color_scheme = foo.ColorScheme.from_dict(
             asdict(event.color_scheme)
         )
-        print(_state.color_scheme)
 
     if isinstance(event, StateUpdate):
         _state = event.state
@@ -281,6 +279,7 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 state.selected = []
                 state.selected_labels = []
                 state.view = None
+
             except:
                 state.dataset = None
                 state.selected = []
@@ -317,6 +316,9 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 pass
 
         if update:
+            state.color_scheme = fos.build_color_scheme(
+                None, state.dataset, state.config
+            )
             await dispatch_event(payload.subscription, StateUpdate(state))
 
     elif not is_app:

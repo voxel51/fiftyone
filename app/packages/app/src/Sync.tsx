@@ -102,11 +102,12 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               break;
             case Events.REFRESH:
               refresh();
+              console.log(JSON.parse(msg.data));
               break;
             case Events.SET_COLOR_SCHEME:
               setter(
                 "colorScheme",
-                toCamelCase(JSON.parse(msg.data)).color_scheme
+                ensureColorScheme(JSON.parse(msg.data).color_scheme)
               );
               break;
             case Events.SELECT_LABELS:
@@ -129,7 +130,6 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
                 "colorScheme",
                 ensureColorScheme(payload.state.color_scheme)
               );
-              console.log(payload.state.color_scheme);
               setter("selectedSamples", new Set(payload.state.selected));
               setter(
                 "selectedLabels",
@@ -194,6 +194,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
           Events.REFRESH,
           Events.SELECT_LABELS,
           Events.SELECT_SAMPLES,
+          Events.SET_COLOR_SCHEME,
           Events.SET_SPACES,
           Events.STATE_UPDATE,
         ],
@@ -344,6 +345,17 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               if (current.name !== entry.preloadedQuery.variables.name) {
                 sessionRef.current.sessionSpaces = fos.SPACES_DEFAULT;
               }
+
+              // @ts-ignore
+              sessionRef.current.colorScheme = ensureColorScheme(
+                // @ts-ignore
+                entry.data.dataset?.appConfig?.colorScheme || {
+                  // @ts-ignore
+                  colorPool: entry.data.config.colorPool,
+                  fields: [],
+                }
+              );
+
               current = entry.preloadedQuery.variables;
               dispatchSideEffect(entry, action, subscription);
               fn(entry);
@@ -484,9 +496,8 @@ const getSavedViewName = (search: string) => {
 };
 
 const ensureColorScheme = (colorScheme) => {
-  console.log(colorScheme);
   return {
-    colorPool: colorScheme.color_pool,
+    colorPool: colorScheme.color_pool || colorScheme.colorPool,
     fields: colorScheme.fields || [],
   };
 };

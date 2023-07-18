@@ -11,13 +11,8 @@ export default graphql`
     mediaType
     name
     version
-
     appConfig {
-      gridMediaField
-      mediaFields
-      modalMediaField
-      plugins
-      sidebarMode
+      ...datasetAppConfigFragment
     }
     brainMethods {
       key

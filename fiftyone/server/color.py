@@ -5,12 +5,15 @@ FiftyOne Server coloring
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import asdict
 import typing as t
 
 import strawberry as gql
 
+import fiftyone as fo
 import fiftyone.core.session.events as fose
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 
 from fiftyone.server.events import dispatch_event, get_state
 
@@ -32,7 +35,7 @@ class CustomizeColor:
 @gql.type
 class ColorScheme:
     color_pool: t.List[str]
-    fields: t.List[CustomizeColor]
+    fields: t.Optional[t.List[CustomizeColor]] = None
 
 
 @gql.input
@@ -64,12 +67,54 @@ class SetColorScheme:
         color_scheme: ColorSchemeInput,
     ) -> bool:
         state = get_state()
-        state.color_scheme = foo.ColorScheme(
-            color_pool=color_scheme.color_pool,
-            fields=color_scheme.fields,
-        )
+        state.color_scheme = _to_odm_color_scheme(color_scheme)
 
         await dispatch_event(
             subscription, fose.SetColorScheme(color_scheme=color_scheme)
         )
         return True
+
+    @gql.field
+    async def set_dataset_color_scheme(
+        self,
+        dataset_name: str,
+        color_scheme: t.Optional[ColorSchemeInput] = None,
+    ) -> None:
+        def run():
+            dataset = fo.load_dataset(dataset_name)
+            dataset.app_config.color_scheme = (
+                foo.ColorScheme(
+                    color_pool=color_scheme.color_pool,
+                    fields=color_scheme.fields,
+                )
+                if color_scheme
+                else None
+            )
+            dataset.save()
+
+        await fou.run_sync_task(run)
+
+
+def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
+    return foo.ColorScheme(
+        color_pool=color_scheme.color_pool,
+        fields=_to_camel_case(
+            [asdict(f) for f in color_scheme.fields]
+            if color_scheme.fields
+            else []
+        ),
+    )
+
+
+def _to_camel_case(d):
+    if isinstance(d, list):
+        return [_to_camel_case(v) for v in d]
+    if not isinstance(d, dict):
+        return d
+
+    return {_to_camel_case(k): _to_camel_case_str(v) for k, v in d.items()}
+
+
+def _to_camel_case_str(value: str) -> str:
+    words = value.split("_")
+    return "".join([words[0]] + [word.title() for word in words[1:]])

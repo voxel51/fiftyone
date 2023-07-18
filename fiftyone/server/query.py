@@ -367,8 +367,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        config = fose.get_state().config
-        d = config.serialize()
+        d = fo.app_config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d)
 

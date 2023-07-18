@@ -63,7 +63,7 @@ export function sessionAtom<K extends keyof Session>(
   const value = atom<Session[K]>({
     ...options,
     effects: [
-      ({ setSelf, trigger }) => {
+      ({ setSelf, trigger, ...r }) => {
         const assertValue = () => {
           if (
             sessionRef[options.key] === undefined &&
@@ -101,7 +101,7 @@ export function sessionAtom<K extends keyof Session>(
   });
 
   return selector<Session[K]>({
-    key: `__${options.key}_SELECTOR`,
+    key: `__${options.key}_selector`,
     get: ({ get }) => get(value),
     set: ({ set }, newValue) => {
       if (newValue instanceof DefaultValue) {
