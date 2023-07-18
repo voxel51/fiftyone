@@ -224,6 +224,9 @@ class DatasetMixin(object):
                 existing field of the same name or a new field is found but
                 ``expand_schema == False``
         """
+        dataset = cls._dataset
+        dataset_doc = dataset._doc
+
         new_schema = {}
 
         for path, field in schema.items():
@@ -245,6 +248,10 @@ class DatasetMixin(object):
         if not new_schema:
             return False
 
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        cls._reload_fields()
+
         for path, field in new_schema.items():
             # Special syntax for declaring the subfield of a ListField
             if path.endswith("[]"):
@@ -253,7 +260,7 @@ class DatasetMixin(object):
 
             cls._add_field_schema(path, field)
 
-        cls._dataset.save()
+        dataset_doc.save()
 
         return True
 
@@ -462,6 +469,11 @@ class DatasetMixin(object):
             if field is not None:
                 schema_paths.append((path, new_path))
 
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if schema_paths:
+            cls._reload_fields()
+
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._rename_fields_simple(_paths, _new_paths)
@@ -483,7 +495,7 @@ class DatasetMixin(object):
             new_paths = [dataset._FRAMES_PREFIX + p for p in new_paths]
 
         dataset_doc.app_config._rename_paths(paths, new_paths)
-        dataset.save()
+        dataset_doc.save()
 
     @classmethod
     def _clone_fields(cls, sample_collection, paths, new_paths):
@@ -542,6 +554,11 @@ class DatasetMixin(object):
             if field is not None:
                 schema_paths.append((path, new_path))
 
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if schema_paths:
+            cls._reload_fields()
+
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._clone_fields_simple(_paths, _new_paths)
@@ -553,7 +570,7 @@ class DatasetMixin(object):
         for path, new_path in schema_paths:
             cls._clone_field_schema(path, new_path)
 
-        dataset.save()
+        dataset_doc.save()
 
     @classmethod
     def _clear_fields(cls, sample_collection, paths):
@@ -664,18 +681,24 @@ class DatasetMixin(object):
             del_paths.append(path)
             del_schema_paths.append(path)
 
-        if del_paths:
-            cls._delete_fields_simple(del_paths)
+        if not del_paths:
+            return
+
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if del_schema_paths:
+            cls._reload_fields()
+
+        cls._delete_fields_simple(del_paths)
 
         for del_path in del_schema_paths:
             cls._delete_field_schema(del_path)
 
-        if del_paths:
-            if is_frame_field:
-                del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
+        if is_frame_field:
+            del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
 
-            dataset_doc.app_config._delete_paths(del_paths)
-            dataset.save()
+        dataset_doc.app_config._delete_paths(del_paths)
+        dataset_doc.save()
 
     @classmethod
     def _remove_dynamic_fields(cls, paths, error_level=0):
@@ -691,6 +714,9 @@ class DatasetMixin(object):
             -   1: log warning if a field cannot be removed
             -   2: ignore fields that cannot be removed
         """
+        dataset = cls._dataset
+        dataset_doc = dataset._doc
+
         del_paths = []
 
         for path in paths:
@@ -730,16 +756,21 @@ class DatasetMixin(object):
 
             del_paths.append(path)
 
+        if not del_paths:
+            return
+
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        cls._reload_fields()
+
         for del_path in del_paths:
             cls._delete_field_schema(del_path)
 
-        if del_paths:
-            dataset = cls._dataset
-            if cls._is_frames_doc:
-                del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
+        if cls._is_frames_doc:
+            del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
 
-            dataset._doc.app_config._delete_paths(del_paths)
-            dataset.save()
+        dataset_doc.app_config._delete_paths(del_paths)
+        dataset_doc.save()
 
     @classmethod
     def _rename_fields_simple(cls, paths, new_paths):
@@ -1088,6 +1119,11 @@ class DatasetMixin(object):
         _delete_field_doc(field_docs, field_name)
 
     @classmethod
+    def _reload_fields(cls):
+        dataset_doc = cls._dataset._doc
+        dataset_doc.reload(cls._fields_attr())
+
+    @classmethod
     def _get_field(cls, path, allow_missing=False, check_default=False):
         chunks = path.split(".")
         field_name = chunks[-1]
@@ -1116,7 +1152,12 @@ class DatasetMixin(object):
         return field, is_default
 
     @classmethod
-    def _get_field_doc(cls, path, allow_missing=False):
+    def _get_field_doc(cls, path, allow_missing=False, reload=False):
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if reload:
+            cls._reload_fields()
+
         chunks = path.split(".")
         field_docs = cls._dataset._doc[cls._fields_attr()]
 

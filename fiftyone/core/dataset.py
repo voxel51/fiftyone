@@ -3370,9 +3370,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         path, is_frame_field = self._handle_frame_field(field.path)
         if is_frame_field:
-            field_doc = self._frame_doc_cls._get_field_doc(path)
+            field_doc = self._frame_doc_cls._get_field_doc(path, reload=True)
         else:
-            field_doc = self._sample_doc_cls._get_field_doc(path)
+            field_doc = self._sample_doc_cls._get_field_doc(path, reload=True)
 
         field_doc.description = field.description
         field_doc.info = field.info
