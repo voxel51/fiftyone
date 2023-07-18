@@ -102,12 +102,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         update = None
 
+        execution_result = result
+        if result is not None and not isinstance(result, ExecutionResult):
+            execution_result = ExecutionResult(result=result)
+
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
                     "run_state": run_state.value,
                     "completed_at": datetime.utcnow(),
-                    "result": result.to_json() if result else None,
+                    "result": execution_result.to_json()
+                    if execution_result
+                    else None,
                 }
             }
         elif run_state == ExecutionRunState.FAILED:
@@ -115,7 +121,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state.value,
                     "failed_at": datetime.utcnow(),
-                    "result": result.to_json() if result else None,
+                    "result": execution_result.to_json()
+                    if execution_result
+                    else None,
                 }
             }
         elif run_state == ExecutionRunState.RUNNING:
