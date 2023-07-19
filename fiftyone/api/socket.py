@@ -25,7 +25,7 @@ class Socket:
         self,
         base_url: str,
         url_path: str,
-        headers: Mapping[str, str],
+        headers: list | dict,
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
     ):
         self._timeout = timeout
