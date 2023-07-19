@@ -2,6 +2,7 @@ import React from "react";
 import {
   ReadOnlySelectorOptions,
   ReadWriteSelectorOptions,
+  RecoilState,
   selector,
 } from "recoil";
 
@@ -22,10 +23,14 @@ export function SelectorEffectContext({
 }
 
 export function selectorWithEffect<T>(
-  options: ReadOnlySelectorOptions<T> & {
+  {
+    state,
+    ...options
+  }: ReadOnlySelectorOptions<T> & {
     set?:
       | ((newValue: Parameters<ReadWriteSelectorOptions<T>["set"]>[1]) => void)
       | boolean;
+    state?: RecoilState<T>;
   },
   itemKey?: string
 ) {
@@ -40,6 +45,7 @@ export function selectorWithEffect<T>(
       options.set instanceof Function && options.set(params[1]);
 
       set(...params);
+      state && params[0].set(state, params[1]);
     },
   });
 }

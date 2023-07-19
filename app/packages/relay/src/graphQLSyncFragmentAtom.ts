@@ -23,6 +23,7 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   ) => K | ((current: K) => K);
   default: K;
   selectorEffect?:
+    | "write"
     | boolean
     | ((newValue: Parameters<ReadWriteSelectorOptions<K>["set"]>[1]) => void);
 };
@@ -119,7 +120,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
       {
         key: `_${options.key}__setter`,
         get: ({ get }) => get(value),
-        set: fragmentOptions.selectorEffect,
+        state: fragmentOptions.selectorEffect === "write" ? value : undefined,
       },
       options.key
     );

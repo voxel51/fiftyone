@@ -1,6 +1,7 @@
 import {
   datasetFragment,
   datasetFragment$key,
+  getPageQuery,
   graphQLSyncFragmentAtom,
   graphQLSyncFragmentAtomFamily,
   groupSliceFragment,
@@ -17,7 +18,7 @@ import {
   GROUP,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { VariablesOf } from "react-relay";
+import { VariablesOf, commitLocalUpdate } from "react-relay";
 import { atom, selector, selectorFamily, waitForAll } from "recoil";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
@@ -51,10 +52,24 @@ export const groupSlice = graphQLSyncFragmentAtom<
       return data.groupSlice;
     },
     default: null,
-    selectorEffect: true,
+    selectorEffect: "write",
   },
   {
     key: "groupSlice",
+    effects: [
+      ({ getPromise, onSet }) => {
+        onSet((newValue) => {
+          commitLocalUpdate(
+            getPageQuery().pageQuery.preloadedQuery.environment,
+            (store) => {
+              getPromise(dataset).then(({ id }) => {
+                store.get(id).setValue(newValue, "groupSlice");
+              });
+            }
+          );
+        });
+      },
+    ],
   }
 );
 
