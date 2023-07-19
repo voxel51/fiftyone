@@ -7,6 +7,7 @@ File storage utilities.
 """
 from contextlib import contextmanager
 import io
+import itertools
 import json
 import logging
 import multiprocessing.dummy
@@ -1588,6 +1589,27 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
             dirpath, abs_paths=abs_paths, recursive=recursive
         )
 
+    if _is_root(dirpath):
+        fs = get_file_system(dirpath)
+        buckets = list_buckets(fs, abs_paths=True)
+        buckets = sorted(buckets)
+
+        if recursive:
+            dirs = list(
+                itertools.chain.from_iterable(
+                    list_subdirs(b, abs_paths=True, recursive=True)
+                    for b in buckets
+                )
+            )
+        else:
+            dirs = buckets
+
+        if not abs_paths:
+            n = len(dirpath)
+            dirs = [d[n:] for d in dirs]
+
+        return dirs
+
     dirs = {os.path.dirname(p) for p in list_files(dirpath, recursive=True)}
 
     if not recursive:
@@ -1599,6 +1621,83 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
         dirs = [join(dirpath, d) for d in dirs]
 
     return dirs
+
+
+def _is_root(path):
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return path == os.path.abspath(os.sep)
+
+    if fs == FileSystem.S3:
+        return path == S3_PREFIX
+
+    if fs == FileSystem.GCS:
+        return path == GCS_PREFIX
+
+    if fs == FileSystem.AZURE:
+        return path in (azure_alias_prefix, azure_endpoint_prefix)
+
+    if fs == FileSystem.MINIO:
+        return path in (minio_alias_prefix, minio_endpoint_prefix)
+
+    return False
+
+
+def list_buckets(fs, abs_paths=False):
+    """Lists the available buckets in the given file system.
+
+    For local file systems, this method returns subdirectories of ``/``(or the
+    current drive on Windows).
+
+    Args:
+        fs: a :class:`FileSystem` value
+        abs_paths (False): whether to return absolute paths
+
+    Returns:
+        a list of buckets or local directories
+    """
+    if fs == FileSystem.LOCAL:
+        root = os.path.abspath(os.sep)
+        return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
+
+    client = get_client(fs=fs)
+
+    if fs == FileSystem.S3:
+        resp = client._client.list_buckets()
+        buckets = [r["Name"] for r in resp.get("Buckets", [])]
+        if abs_paths:
+            prefix = S3_PREFIX
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    if fs == FileSystem.GCS:
+        buckets = [b.name for b in client._client.list_buckets()]
+        if abs_paths:
+            prefix = GCS_PREFIX
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    if fs == FileSystem.AZURE:
+        buckets = [c["name"] for c in client._client.list_containers()]
+        if abs_paths:
+            prefix = azure_alias_prefix or azure_endpoint_prefix
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    if fs == FileSystem.MINIO:
+        resp = client._client.list_buckets()
+        buckets = [r["Name"] for r in resp.get("Buckets", [])]
+        if abs_paths:
+            prefix = minio_alias_prefix or minio_endpoint_prefix
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    raise ValueError("Unsupported file system '%s'" % fs)
 
 
 def get_glob_matches(glob_patt):
