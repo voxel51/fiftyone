@@ -50,4 +50,6 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as useSchemaSettings } from "./useSchemaSettings";
 export { default as useSetShowNestedFields } from "./schema/useSetShowNestedFields";
+export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
+export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
 export { default as withSuspense } from "./withSuspense";

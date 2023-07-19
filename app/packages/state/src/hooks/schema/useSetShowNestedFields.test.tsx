@@ -2,12 +2,10 @@ import React from "react";
 import { act, renderHook } from "@testing-library/react-hooks";
 import { RecoilRoot, useRecoilState, useRecoilValue } from "recoil";
 
-import { afterEach, describe, expect, it, test, vi } from "vitest";
-import { snapshot_UNSTABLE } from "../../../../../__mocks__/recoil";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import * as fos from "@fiftyone/state";
 import { FIELDS } from "../useSchemaSettings.utils.test";
 
-const NON_EXISTENT_PATH = "non-existent-path";
 const TEST_DS = {
   name: "test-dataset",
   mediaType: "image",

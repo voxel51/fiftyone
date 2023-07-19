@@ -24,12 +24,14 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
 
   const {
-    setSelectedFieldsStage,
     resetTextFilter,
     resetExcludedPaths,
     affectedPathCount,
     setSearchResults,
   } = fos.useSchemaSettings();
+
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
 
   useDebounce(
     () => {

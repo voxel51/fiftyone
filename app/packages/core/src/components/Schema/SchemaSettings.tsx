@@ -12,6 +12,8 @@ import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 import { useOutsideClick } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
+import { keyBy } from "lodash";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -60,8 +62,6 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    setSearchResults,
-    setSelectedFieldsStage,
     datasetName,
     excludedPaths,
     resetExcludedPaths,
@@ -70,10 +70,16 @@ const SchemaSettings = () => {
     lastAppliedPaths,
     setExcludedPaths,
     isFilterRuleActive,
-    searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
+    mergedSchema,
   } = fos.useSchemaSettings();
+
+  const { setSearchResults, searchMetaFilter } =
+    fos.useSearchSchemaFields(mergedSchema);
+
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();

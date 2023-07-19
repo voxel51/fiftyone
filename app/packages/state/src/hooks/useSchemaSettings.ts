@@ -1,10 +1,9 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { isEmpty, keyBy } from "lodash";
-import { useCallback, useContext, useEffect, useMemo } from "react";
-import { useMutation, useRefetchableFragment } from "react-relay";
+import { useCallback, useEffect, useMemo } from "react";
+import { useRefetchableFragment } from "react-relay";
 import {
-  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
@@ -22,8 +21,6 @@ const SELECT_ALL = "SELECT_ALL";
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
-  const router = useContext(fos.RouterContext);
-  const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
 
@@ -32,52 +29,12 @@ export default function useSchemaSettings() {
 
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
 
-  const setSelectedFieldsStage = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (value) => {
-        if (!dataset) {
-          return;
-        }
-
-        set(fos.selectedFieldsStageState, value);
-
-        // router is loaded only in OSS
-        if (router.loaded) return;
-        const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription);
-        setView({
-          variables: {
-            view: value ? [...view, value] : view,
-            datasetName: dataset.name,
-            form: {},
-            subscription,
-          },
-          onCompleted: ({ setView: { dataset } }) => {
-            // in an embedded context, we update the dataset schema through the
-            // state proxy
-            set(fos.stateProxy, (current) => ({
-              ...(current || {}),
-              dataset,
-            }));
-          },
-        });
-      },
-    [setView, router, dataset]
-  );
-
   const setViewSchema = useSetRecoilState(fos.viewSchemaState);
   const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-  const searchResults = useRecoilValue(fos.schemaSearchResultList);
-  const setSearchResults = useRecoilCallback(
-    ({ set }) =>
-      async (newPaths: string[] = []) => {
-        set(fos.schemaSearchResultList, newPaths);
-      },
-    []
-  );
+
   const isVideo = dataset.mediaType === "video";
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
@@ -94,10 +51,6 @@ export default function useSchemaSettings() {
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
     fos.lastAppliedPathsState
-  );
-
-  const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
-    fos.searchMetaFilterState
   );
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
@@ -174,6 +127,18 @@ export default function useSchemaSettings() {
 
   const excludedPathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
+
+  const mergedSchema = useMemo(
+    () => ({ ...viewSchema, ...fieldSchema }),
+    [viewSchema, fieldSchema]
+  );
+
+  const {
+    searchResults,
+    searchMetaFilter,
+    searchSchemaFields,
+    setSearchResults,
+  } = fos.useSearchSchemaFields(mergedSchema);
 
   const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
     if (!datasetName || !selectedPaths?.[datasetName] || isEmpty(fieldSchema))
@@ -280,61 +245,7 @@ export default function useSchemaSettings() {
     includeNestedFields,
   ]);
 
-  const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
-    foq.searchSelectFields
-  );
-
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
-
-  const mergedSchema = useMemo(
-    () => ({ ...viewSchema, ...fieldSchema }),
-    [viewSchema, fieldSchema]
-  );
-
-  const searchSchemaFields = useCallback(
-    (object) => {
-      if (!mergedSchema) {
-        return;
-      }
-      searchSchemaFieldsRaw({
-        variables: { datasetName, metaFilter: object },
-        onCompleted: (data) => {
-          if (data) {
-            const { searchSelectFields = [] } = data;
-            const res = (searchSelectFields as string[])
-              .map((p) => p.replace("._cls", ""))
-              .filter((pp) => !pp.startsWith("_"));
-            setSearchResults(res);
-            setSearchMetaFilter(object);
-
-            const shouldExcludePaths = Object.keys(mergedSchema)
-              .filter((path) => !searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setExcludedPaths({ [datasetName]: shouldExcludePaths });
-
-            const shouldSelectPaths = Object.keys(mergedSchema)
-              .filter((path) => searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setSelectedPaths({ [datasetName]: new Set(shouldSelectPaths) });
-          }
-        },
-        onError: (e) => {
-          console.error("failed to search schema fields", e);
-        },
-      });
-    },
-    [datasetName, mergedSchema]
-  );
 
   const setIncludeNestedFields = useCallback(
     (val: boolean) => {
@@ -534,9 +445,6 @@ export default function useSchemaSettings() {
     resetExcludedPaths,
     resetSelectedPaths,
     resetTextFilter,
-    searchMetaFilter,
-    searchResults,
-    searchSchemaFields,
     searchTerm,
     selectedPaths,
     selectedTab,
@@ -545,9 +453,7 @@ export default function useSchemaSettings() {
     setExpandedPaths,
     setIncludeNestedFields,
     setLastAppliedPaths,
-    setSearchResults,
     setSearchTerm,
-    setSelectedFieldsStage,
     setSelectedPaths,
     setSelectedTab,
     setSettingsModal,
@@ -557,5 +463,6 @@ export default function useSchemaSettings() {
     showMetadata,
     showNestedFields,
     toggleSelection,
+    mergedSchema,
   };
 }
