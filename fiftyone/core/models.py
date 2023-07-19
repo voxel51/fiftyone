@@ -355,22 +355,21 @@ def _apply_image_model_data_loader(
     filename_maker,
     **kwargs,
 ):
-    if isinstance(model, SamplesMixin):
-        model.needs_fields = kwargs
-        extra_fields = model.needs_fields
-    else:
-        extra_fields = None
+    needs_samples = isinstance(model, SamplesMixin)
 
-    samples = samples.select_fields(extra_fields)
-    # we need to make sure classes are available in the samples
-    if extra_fields:
-        class_labels = samples.values(
-            f"{model.needs_fields[0]}.{model.field_type}.label"
-        )
-        class_labels = list(
-            set(one for labels in class_labels for one in labels)
-        )
-        samples.classes.update({model.needs_fields[0]: class_labels})
+    if needs_samples:
+        model.needs_fields = kwargs
+        fields = model.needs_fields
+
+        # These models need class lists
+        if fields and label_field not in samples.classes:
+            label_field = fields[0]
+            _, label_path = samples._get_label_field_path(label_field, "label")
+            samples.classes[label_field] = samples.distinct(label_path)
+    else:
+        fields = None
+
+    samples = samples.select_fields(fields)
 
     samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
@@ -383,7 +382,7 @@ def _apply_image_model_data_loader(
                 if isinstance(imgs, Exception):
                     raise imgs
 
-                if extra_fields is not None:
+                if needs_samples:
                     labels_batch = model.predict_all(imgs, sample_batch[0])
                 else:
                     labels_batch = model.predict_all(imgs)
@@ -2028,50 +2027,48 @@ class PromptMixin(object):
 
 
 class SamplesMixin(object):
-    """Mixin for :class:`Model` classes that need extra sample fields for prediction."""
+    """Mixin for :class:`Model` classes that need samples for prediction."""
 
     @property
     def needs_fields(self):
-        """Which sample fields are required for this model to run."""
+        """A list of sample fields that are required for prediction, or
+        ``None`` if no fields are required.
+        """
         if self.keypoint_field is not None:
             return [self.keypoint_field]
-        elif self.detection_field is not None:
-            return [self.detection_field]
-        else:
-            return None
 
-    @property
-    def field_type(self):
-        """Which sample fields are required for this model to run."""
-        if self.keypoint_field is not None:
-            return "keypoints"
-        elif self.detection_field is not None:
-            return "detections"
-        else:
-            return None
+        if self.detection_field is not None:
+            return [self.detection_field]
+
+        return None
 
     @needs_fields.setter
     def needs_fields(self, kwargs):
-        """Find whether points or boxes are requested and set required fields as one of them if any.
-
-        Args:
-            kwargs: keyword arguments that may contain fields to extract
-
-        """
         self.keypoint_field = kwargs.get("points_from", None)
         self.detection_field = kwargs.get("boxes_from", None)
+
+    @property
+    def field_type(self):
+        """The type of labels that this model uses as input."""
+        if self.keypoint_field is not None:
+            return "keypoints"
+
+        if self.detection_field is not None:
+            return "detections"
+
+        return None
 
     @property
     def keypoint_field(self):
         return getattr(self, "_keypoint_field")
 
-    @property
-    def detection_field(self):
-        return getattr(self, "_detection_field")
-
     @keypoint_field.setter
     def keypoint_field(self, field_name):
         self._keypoint_field = field_name
+
+    @property
+    def detection_field(self):
+        return getattr(self, "_detection_field")
 
     @detection_field.setter
     def detection_field(self, field_name):
@@ -2088,9 +2085,11 @@ class SamplesMixin(object):
     def _get_field_name(self, samples):
         if not self.needs_fields:
             raise ValueError("Set needs_fields before calling get_labels")
+
         field_name = self.needs_fields[0]
         if not samples.has_field(field_name):
             raise ValueError(f"Samples must have {field_name}.label field")
+
         return field_name
 
 

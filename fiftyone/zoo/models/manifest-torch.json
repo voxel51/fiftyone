@@ -83,11 +83,11 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "segment-anything-vit_b-torch",
+            "base_name": "segment-anything-vitb-torch",
             "base_filename": "sam_vit_b_01ec64.pth",
             "version": null,
             "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>` with ViT-B/16 backbone trained on SA-1B",
-            "source": "https://segment-anything.com/",
+            "source": "https://segment-anything.com",
             "size_bytes": 732512,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -116,11 +116,11 @@
             "date_added": "2023-05-12 11:40:51"
         },
         {
-            "base_name": "segment-anything-vit_h-torch",
+            "base_name": "segment-anything-vith-torch",
             "base_filename": "sam_vit_h_4b8939.pth",
             "version": null,
             "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>` with ViT-H/16 backbone trained on SA-1B",
-            "source": "https://segment-anything.com/",
+            "source": "https://segment-anything.com",
             "size_bytes": 5008896,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -149,11 +149,11 @@
             "date_added": "2023-05-12 11:40:51"
         },
         {
-            "base_name": "segment-anything-vit_l-torch",
+            "base_name": "segment-anything-vitl-torch",
             "base_filename": "sam_vit_l_0b3195.pth",
             "version": null,
             "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>` with ViT-L/16 backbone trained on SA-1B",
-            "source": "https://segment-anything.com/",
+            "source": "https://segment-anything.com",
             "size_bytes": 2440480,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
