@@ -2229,7 +2229,10 @@ def _make_coco_keypoints(keypoint, frame_size):
 
     keypoints = []
     for x, y in keypoint.points:
-        keypoints.extend((int(x * width), int(y * height), 2))
+        if np.isnan(x) or np.isnan(y):
+            keypoints.extend((0, 0, 0))
+        else:
+            keypoints.extend((int(x * width), int(y * height), 2))
 
     return keypoints
 
