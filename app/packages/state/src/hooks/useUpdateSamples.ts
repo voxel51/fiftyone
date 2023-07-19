@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 import { commitLocalUpdate, useRelayEnvironment } from "react-relay";
-import { AppSample } from "../recoil";
+import { ModalSample } from "../recoil";
 import { stores } from "./useLookerStore";
 
 export const useUpdateSamples = () => {
   const environment = useRelayEnvironment();
 
   return useCallback(
-    (samples: [string, AppSample | undefined][]) => {
+    (samples: [string, ModalSample["sample"] | undefined][]) => {
       commitLocalUpdate(environment, (store) => {
         samples.forEach(([id, sample]) => {
           sample &&

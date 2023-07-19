@@ -498,6 +498,6 @@ const getSavedViewName = (search: string) => {
 const ensureColorScheme = (colorScheme) => {
   return {
     colorPool: colorScheme.color_pool || colorScheme.colorPool,
-    fields: colorScheme.fields || [],
+    fields: toCamelCase(colorScheme.fields || []),
   };
 };

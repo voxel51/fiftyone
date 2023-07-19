@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3b1567795f61a784e69ff54dbf060a15>>
+ * @generated SignedSource<<124b83c8a5190cf4d3ea7e013c294709>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,13 +16,14 @@ export type datasetAppConfigFragment$data = {
     readonly colorPool: ReadonlyArray<string>;
     readonly fields: ReadonlyArray<{
       readonly colorByAttribute: boolean;
-      readonly fieldColor: string;
+      readonly fieldColor: string | null;
       readonly path: string;
       readonly valueColors: ReadonlyArray<{
         readonly color: string;
         readonly value: string;
       }>;
     }> | null;
+    readonly id: string;
   } | null;
   readonly gridMediaField: string;
   readonly mediaFields: ReadonlyArray<string> | null;
@@ -85,6 +86,13 @@ const node: ReaderFragment = {
       "name": "colorScheme",
       "plural": false,
       "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "id",
+          "storageKey": null
+        },
         {
           "alias": null,
           "args": null,
@@ -157,6 +165,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "9107945720b5add44f990a9861853cf9";
+(node as any).hash = "01a72352cac6b13ecdb1635977b0e9d0";
 
 export default node;

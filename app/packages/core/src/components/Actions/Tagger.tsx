@@ -24,6 +24,7 @@ import {
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
@@ -309,11 +310,19 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>
 ) => {
-  const updateSample = fos.useUpdateSample();
+  const setAggs = useSetRecoilState(fos.refresher);
+  const setLabels = fos.useSetSelectedLabels();
+  const setSamples = fos.useSetSelected();
+  const updateSamples = fos.useUpdateSamples();
 
   const finalize = [
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
-    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+    () => setLabels([]),
+    () => setSamples(new Set()),
+    () => setAggs((cur) => cur + 1),
+    ...[
+      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
+      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+    ],
   ];
 
   return useRecoilCallback(
@@ -376,9 +385,8 @@ const useTagCallback = (
         }
 
         set(fos.anyTagging, false);
-        set(fos.selectedLabels, []);
-        set(fos.selectedSamples, new Set());
-        set(fos.refresher, (cur) => cur + 1);
+        reset(fos.selectedLabels);
+        reset(fos.selectedSamples);
 
         finalize.forEach((r) => r());
       },

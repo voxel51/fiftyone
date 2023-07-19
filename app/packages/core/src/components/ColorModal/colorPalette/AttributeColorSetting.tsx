@@ -185,7 +185,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     setInput(values ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor), activePath]);
+  }, [activePath]);
 
   useEffect(() => {
     if (!useLabelColors) setInput([]);

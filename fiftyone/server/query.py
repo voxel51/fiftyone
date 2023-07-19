@@ -35,7 +35,6 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
-import fiftyone.server.events as fose
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (

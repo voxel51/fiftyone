@@ -8,6 +8,7 @@ FiftyOne Server coloring
 from dataclasses import asdict
 import typing as t
 
+from bson import ObjectId
 import strawberry as gql
 
 import fiftyone as fo
@@ -27,13 +28,14 @@ class ValueColor:
 @gql.type
 class CustomizeColor:
     path: str
-    field_color: str
     value_colors: t.List[ValueColor]
     color_by_attribute: bool = False
+    field_color: t.Optional[str] = None
 
 
 @gql.type
 class ColorScheme:
+    id: gql.ID = gql.field(default_factory=lambda: str(ObjectId()))
     color_pool: t.List[str]
     fields: t.Optional[t.List[CustomizeColor]] = None
 
@@ -47,9 +49,9 @@ class ValueColorInput:
 @gql.input
 class CustomizeColorInput:
     path: str
-    field_color: str
-    color_by_attribute: bool = False
     value_colors: t.List[ValueColorInput]
+    color_by_attribute: bool = False
+    field_color: t.Optional[str] = None
 
 
 @gql.input
@@ -85,7 +87,9 @@ class SetColorScheme:
             dataset.app_config.color_scheme = (
                 foo.ColorScheme(
                     color_pool=color_scheme.color_pool,
-                    fields=color_scheme.fields,
+                    fields=[asdict(f) for f in color_scheme.fields]
+                    if color_scheme.fields
+                    else None,
                 )
                 if color_scheme
                 else None
@@ -98,23 +102,7 @@ class SetColorScheme:
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
     return foo.ColorScheme(
         color_pool=color_scheme.color_pool,
-        fields=_to_camel_case(
-            [asdict(f) for f in color_scheme.fields]
-            if color_scheme.fields
-            else []
-        ),
+        fields=[asdict(f) for f in color_scheme.fields]
+        if color_scheme.fields
+        else [],
     )
-
-
-def _to_camel_case(d):
-    if isinstance(d, list):
-        return [_to_camel_case(v) for v in d]
-    if not isinstance(d, dict):
-        return d
-
-    return {_to_camel_case(k): _to_camel_case_str(v) for k, v in d.items()}
-
-
-def _to_camel_case_str(value: str) -> str:
-    words = value.split("_")
-    return "".join([words[0]] + [word.title() for word in words[1:]])

@@ -8,6 +8,7 @@ export default graphql`
     plugins
     sidebarMode
     colorScheme {
+      id
       colorPool
       fields {
         colorByAttribute

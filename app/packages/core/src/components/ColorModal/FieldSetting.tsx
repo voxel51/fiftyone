@@ -132,7 +132,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   // initialize field settings
   useEffect(() => {
     // check setting to see if custom setting exists
-    const setting = fields.find((x) => x.path === path);
+    const setting = fields?.find((x) => x.path === path);
     const copy = cloneDeep(fields) ?? [];
     if (!setting) {
       const defaultSetting = {

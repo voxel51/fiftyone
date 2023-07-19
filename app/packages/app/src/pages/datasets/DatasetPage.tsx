@@ -34,6 +34,7 @@ const DatasetPageQueryNode = graphql`
       name
       appConfig {
         colorScheme {
+          id
           colorPool
           fields {
             colorByAttribute

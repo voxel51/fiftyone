@@ -114,6 +114,7 @@ enum ColorBy {
 }
 
 type ColorScheme {
+  id: ID!
   colorPool: [String!]!
   fields: [CustomizeColor!]
 }
@@ -137,16 +138,16 @@ input CountValues {
 
 type CustomizeColor {
   path: String!
-  fieldColor: String!
   valueColors: [ValueColor!]!
   colorByAttribute: Boolean!
+  fieldColor: String
 }
 
 input CustomizeColorInput {
   path: String!
-  fieldColor: String!
-  colorByAttribute: Boolean! = false
   valueColors: [ValueColorInput!]!
+  colorByAttribute: Boolean! = false
+  fieldColor: String = null
 }
 
 type DataAggregation implements Aggregation {

@@ -9,7 +9,6 @@ import { TwitterPicker } from "react-color";
 import { useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
-import { resetColor } from "./ColorFooter";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
@@ -109,12 +108,6 @@ const LabelTag: React.FC = () => {
       });
     }
   }, [labelTags]);
-
-  // on reset, sync local state input with session values
-  useEffect(() => {
-    setInput(color);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor)]);
 
   fos.useOutsideClick(wrapperRef, () => {
     setShowFieldPicker(false);

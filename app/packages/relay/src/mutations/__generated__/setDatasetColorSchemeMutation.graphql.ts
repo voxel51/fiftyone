@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d7849d723d11aeefea9efd39150a34a5>>
+ * @generated SignedSource<<1279f84cd70ff7106ab15bae5c187f84>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type ColorSchemeInput = {
 };
 export type CustomizeColorInput = {
   colorByAttribute: boolean;
-  fieldColor: string;
+  fieldColor?: string | null;
   path: string;
   valueColors: ReadonlyArray<ValueColorInput>;
 };
