@@ -1,0 +1,25 @@
+{
+    "name": "e2e-pw",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "devDependencies": {
+        "@playwright/test": "^1.36.0",
+        "@types/wait-on": "^5.3.1",
+        "@typescript-eslint/eslint-plugin": "^5.61.0",
+        "@typescript-eslint/parser": "^5.61.0",
+        "dotenv": "^16.3.1",
+        "eslint": "^8.44.0",
+        "eslint-plugin-playwright": "^0.15.3",
+        "tree-kill": "^1.2.2",
+        "ts-dedent": "^2.2.0",
+        "typescript": "^5.1.6",
+        "vitest": "^0.33.0",
+        "wait-on": "^7.0.1"
+    },
+    "scripts": {
+        "unittests": "vitest",
+        "e2e": "playwright test -c playwright.config.ts",
+        "devserver": "export VITE_API=http://localhost:8787 && export FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev)"
+    }
+}
