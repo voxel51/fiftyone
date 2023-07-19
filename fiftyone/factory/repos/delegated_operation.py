@@ -36,7 +36,7 @@ class DelegatedOperationRepo(object):
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
 
-    def get_queued_operations(self, operator: str = None, dataset_id=None):
+    def get_queued_operations(self, operator: str = None, dataset_name=None):
         """Get all queued operations."""
         raise NotImplementedError(
             "subclass must implement get_queued_operations()"
@@ -45,7 +45,7 @@ class DelegatedOperationRepo(object):
     def list_operations(
         self,
         operator: str = None,
-        dataset_id=None,
+        dataset_name: str = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -66,7 +66,7 @@ class DelegatedOperationRepo(object):
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
 
-    required_props = ["operator", "delegation_target", "dataset_id", "context"]
+    required_props = ["operator", "delegation_target", "context"]
 
     def __init__(self, collection: Collection = None):
         self._collection = (
@@ -148,12 +148,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def get_queued_operations(
         self,
         operator: str = None,
-        dataset_id: ObjectId = None,
+        dataset_name: ObjectId = None,
         run_by: str = None,
     ):
         return self.list_operations(
             operator=operator,
-            dataset_id=dataset_id,
+            dataset_name=dataset_name,
             run_state=ExecutionRunState.QUEUED,
             run_by=run_by,
         )
@@ -161,7 +161,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def list_operations(
         self,
         operator: str = None,
-        dataset_id: ObjectId = None,
+        dataset_name: str = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -170,8 +170,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         query = {}
         if operator:
             query["operator"] = operator
-        if dataset_id:
-            query["dataset_id"] = dataset_id
+        if dataset_name:
+            query["context.request_params.dataset_name"] = dataset_name
         if run_state:
             query["run_state"] = run_state.value
         if delegation_target:

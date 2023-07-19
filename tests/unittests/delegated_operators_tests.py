@@ -58,11 +58,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.svc.delete_operation(doc_id=doc.id)
 
     def test_delegate_operation(self):
+        dataset_name = f"test_dataset_{ObjectId()}"
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target="foo",
-            dataset_id=ObjectId(),
-            context=ExecutionContext(request_params={"foo": "bar"}),
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
@@ -71,8 +73,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     def test_list_queued_operations(self):
         self.delete_test_data()
 
-        dataset_id = ObjectId()
-        dataset_id2 = ObjectId()
+        dataset_name = f"test_dataset_{ObjectId()}"
+        dataset_name2 = f"test_dataset_{ObjectId()}"
 
         operator = "@voxelfiftyone/operator/foo"
         operator2 = "@voxelfiftyone/operator/bar"
@@ -85,7 +87,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.svc.list_operations(run_state=ExecutionRunState.RUNNING)
         )
         initial_dataset_queued = len(
-            self.svc.get_queued_operations(dataset_id=dataset_id)
+            self.svc.get_queued_operations(dataset_name=dataset_name)
         )
         initial_operator_queued = len(
             self.svc.get_queued_operations(operator=operator)
@@ -96,8 +98,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             doc = self.svc.queue_operation(
                 operator=operator,
                 # delegation_target=f"delegation_target{i}",
-                dataset_id=dataset_id,
-                context=ExecutionContext(request_params={"foo": "bar"}),
+                context=ExecutionContext(
+                    request_params={
+                        "foo": "bar",
+                        "dataset_name": dataset_name,
+                    },
+                ),
             )
             self.docs_to_delete.append(doc)
             # pylint: disable=no-member
@@ -107,15 +113,19 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             doc = self.svc.queue_operation(
                 operator=operator2,
                 # delegation_target=f"delegation_target_2{i}",
-                dataset_id=dataset_id2,
-                context=ExecutionContext(request_params={"foo": "bar"}),
+                context=ExecutionContext(
+                    request_params={
+                        "foo": "bar",
+                        "dataset_name": dataset_name2,
+                    },
+                ),
             )
             self.docs_to_delete.append(doc)
 
         queued = self.svc.get_queued_operations()
         self.assertEqual(len(queued), 20 + initial_queued)
 
-        queued = self.svc.get_queued_operations(dataset_id=dataset_id)
+        queued = self.svc.get_queued_operations(dataset_name=dataset_name)
         self.assertEqual(len(queued), 10 + initial_dataset_queued)
 
         queued = self.svc.get_queued_operations(operator=operator)
@@ -134,7 +144,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
-            dataset_id=ObjectId(),
             context=ExecutionContext(request_params={"foo": "bar"}),
         )
 
@@ -166,7 +175,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
-            dataset_id=ObjectId(),
             context=ExecutionContext(request_params={"foo": "bar"}),
         )
 
@@ -200,7 +208,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
-            dataset_id=ObjectId(),
             context=ctx.serialize(),
         )
 
@@ -234,7 +241,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
-            dataset_id=ObjectId(),
             context=ctx.serialize(),
         )
 
@@ -269,14 +275,18 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         running = []
         completed = []
         failed = []
-        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{ObjectId()}"
         for i in range(4):
             operator = f"@voxelfiftyone/operator/test_{i}"
             for j in range(25):
                 doc = self.svc.queue_operation(
-                    dataset_id=dataset_id,
                     operator=operator,
-                    context=ExecutionContext(request_params={"foo": "bar"}),
+                    context=ExecutionContext(
+                        request_params={
+                            "foo": "bar",
+                            "dataset_name": dataset_name,
+                        }
+                    ),
                 )
                 time.sleep(
                     0.01
@@ -302,7 +312,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # test paging - get a page of everything
         docs = self.svc.list_operations(
-            dataset_id=dataset_id,
+            dataset_name=dataset_name,
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=25,
@@ -315,7 +325,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(docs[0].id, failed[24].id)
 
         docs = self.svc.list_operations(
-            dataset_id=dataset_id,
+            dataset_name=dataset_name,
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=1,
@@ -366,7 +376,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         total = 0
         while len(docs) > 0:
             docs = self.svc.list_operations(
-                dataset_id=dataset_id,
+                dataset_name=dataset_name,
                 run_state=ExecutionRunState.QUEUED,
                 paging=DelegatedOpPagingParams(
                     skip=pages * limit,
