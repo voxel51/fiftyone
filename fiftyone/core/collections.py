@@ -9023,9 +9023,6 @@ class SampleCollection(object):
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
             _results = await foo.aggregate(collection, pipelines)
-            import fiftyone as fo
-
-            fo.pprint(pipelines)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():

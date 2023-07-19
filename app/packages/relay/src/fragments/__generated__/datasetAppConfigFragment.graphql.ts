@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<124b83c8a5190cf4d3ea7e013c294709>>
+ * @generated SignedSource<<dfb674f806fdafc8ddf06e6f8546fe81>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
     readonly colorPool: ReadonlyArray<string>;
     readonly fields: ReadonlyArray<{
-      readonly colorByAttribute: boolean;
+      readonly colorByAttribute: string | null;
       readonly fieldColor: string | null;
       readonly path: string;
       readonly valueColors: ReadonlyArray<{

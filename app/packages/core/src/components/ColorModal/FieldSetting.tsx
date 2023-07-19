@@ -138,7 +138,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
       const defaultSetting = {
         path: path,
         fieldColor: undefined,
-        colorByAttribute: false,
+        colorByAttribute: undefined,
         valueColors: [],
       } as CustomizeColorInput;
       const newSetting = [...copy, defaultSetting];

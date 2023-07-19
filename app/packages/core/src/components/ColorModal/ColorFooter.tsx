@@ -24,20 +24,17 @@ const ColorFooter: React.FC = () => {
   );
   const [setDatasetColorScheme] =
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
-
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const defaultColorPool = useRecoilValue(fos.defaultColorPool);
-
   const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
-  console.log(datasetDefault);
+
   if (!activeColorModalField) return null;
 
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
-  console.log(datasetDefault);
 
   return (
     <ModalActionButtonContainer>
@@ -126,6 +123,7 @@ const useUpdateDatasetColorScheme = () => {
             const fields = colorScheme?.fields?.map((field) => {
               const record = store.create(uuid(), "CustomizeColor");
               Object.entries(field).forEach((key, value) => {
+                // @ts-ignore
                 record.setValue(value, key);
               });
 

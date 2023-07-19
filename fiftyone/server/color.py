@@ -29,7 +29,7 @@ class ValueColor:
 class CustomizeColor:
     path: str
     value_colors: t.List[ValueColor]
-    color_by_attribute: bool = False
+    color_by_attribute: t.Optional[str] = None
     field_color: t.Optional[str] = None
 
 
@@ -50,7 +50,7 @@ class ValueColorInput:
 class CustomizeColorInput:
     path: str
     value_colors: t.List[ValueColorInput]
-    color_by_attribute: bool = False
+    color_by_attribute: t.Optional[str] = None
     field_color: t.Optional[str] = None
 
 

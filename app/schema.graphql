@@ -139,14 +139,14 @@ input CountValues {
 type CustomizeColor {
   path: String!
   valueColors: [ValueColor!]!
-  colorByAttribute: Boolean!
+  colorByAttribute: String
   fieldColor: String
 }
 
 input CustomizeColorInput {
   path: String!
   valueColors: [ValueColorInput!]!
-  colorByAttribute: Boolean! = false
+  colorByAttribute: String = null
   fieldColor: String = null
 }
 
