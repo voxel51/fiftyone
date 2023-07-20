@@ -7,7 +7,7 @@ import os
 import queue
 import threading
 import time
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Union
 
 import websocket
 
@@ -25,7 +25,7 @@ class Socket:
         self,
         base_url: str,
         url_path: str,
-        headers: list | dict,
+        headers: Union[list, dict],
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
     ):
         self._timeout = timeout
