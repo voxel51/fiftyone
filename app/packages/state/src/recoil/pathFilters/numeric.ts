@@ -18,8 +18,6 @@ export interface NumericFilter {
   inf: boolean;
   exclude: boolean;
   isMatching: boolean;
-  onlyMatch: boolean;
-  _CLS: string;
 }
 export type Range = [number | null | undefined, number | null | undefined];
 
@@ -35,7 +33,6 @@ const getFilter = (
   const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
 
   const result = {
-    _CLS: "numeric",
     range: [null, null] as Range,
     none: true,
     nan: true,
@@ -55,7 +52,6 @@ const getVisibility = (
   path: string
 ): NumericFilter => {
   const result = {
-    _CLS: "numeric",
     range: [null, null] as Range,
     none: true,
     nan: true,
@@ -88,8 +84,6 @@ const setFilter = (
   value: boolean | Range | DefaultValue
 ) => {
   const filter = {
-    _CLS: "numeric",
-    onlyMatch: true,
     isMatching: true,
     exclude: false,
     range: [null, null] as Range,
@@ -107,7 +101,6 @@ const setFilter = (
   if (filter.range[0] === null && filter.range[1] === null) {
     filter.exclude = false;
     filter.isMatching = true;
-    filter.onlyMatch = true;
   }
 
   const bounds = get(boundsAtom({ path }));
@@ -131,8 +124,6 @@ const setVisibility = (
   value: boolean | Range | DefaultValue
 ) => {
   const visibility = {
-    _CLS: "numeric",
-    onlyMatch: true,
     isMatching: true,
     exclude: false,
     range: [null, null] as Range,
@@ -150,7 +141,6 @@ const setVisibility = (
   if (visibility.range[0] === null && visibility.range[1] === null) {
     visibility.exclude = false;
     visibility.isMatching = true;
-    visibility.onlyMatch = true;
   }
 
   const bounds = get(boundsAtom({ path }));
@@ -294,27 +284,6 @@ export const numericExcludeAtom = selectorFamily<
       } else {
         setVisibility(get, set, modal, path, "exclude", value);
       }
-    },
-});
-
-export const numericOnlyMatchAtom = selectorFamily<
-  boolean,
-  {
-    defaultRange?: Range;
-    modal: boolean;
-    path: string;
-  }
->({
-  key: "numericFilterOnlyMatch",
-  get:
-    ({ modal, path }) =>
-    ({ get }) => {
-      return getFilter(get, modal, path).onlyMatch;
-    },
-  set:
-    ({ modal, path, defaultRange }) =>
-    ({ get, set }, value) => {
-      setFilter(get, set, modal, path, "onlyMatch", value);
     },
 });
 
