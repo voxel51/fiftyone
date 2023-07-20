@@ -10,11 +10,11 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.server.view as fosv
+from fiftyone.server.samples import paginate_samples
 
 from decorators import drop_datasets
 
@@ -780,30 +780,75 @@ class ServerViewTests(unittest.TestCase):
         view = fosv.get_view("test", filters=filters)
         self.assertEqual(len(view), 1)
 
-    @drop_datasets
-    def test_sparse_groups(self):
-        dataset = fo.Dataset("test")
-        dataset.add_group_field("group", default="first")
-
-        first_group = fo.Group()
-        first = fo.Sample(
-            filepath="first.png", group=first_group.element("first")
-        )
-
-        second_group = fo.Group()
-        second = fo.Sample(
-            filepath="second.png", group=second_group.element("second")
-        )
-
-        dataset.add_samples([first, second])
-
-        view = fosv.get_view(
+    def test_disjoint_groups(self):
+        dataset, first, second = _create_disjoint_group_dataset()
+        first_view = fosv.get_view(
             dataset.name,
             sample_filter=fosv.SampleFilter(
                 group=fosv.GroupElementFilter(
-                    id=second_group.id, slices=["second"]
+                    id=first.group.id, slices=["first"]
                 )
             ),
         )
+        self.assertEqual(first_view.first().id, first.id)
 
-        self.assertEqual(view.first().id, second.id)
+        second_view = fosv.get_view(
+            dataset.name,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    id=second.group.id, slices=["second"]
+                )
+            ),
+        )
+        self.assertEqual(second_view.first().id, second.id)
+
+
+class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
+    @drop_datasets
+    async def test_disjoint_groups(self):
+        dataset, first, second = _create_disjoint_group_dataset()
+
+        first_samples = await paginate_samples(
+            dataset.name,
+            [],
+            {},
+            first=1,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    id=first.group.id, slices=["first"]
+                )
+            ),
+        )
+        self.assertEqual(len(first_samples.edges), 1)
+        self.assertEqual(first_samples.edges[0].node.id, first._id)
+
+        second_samples = await paginate_samples(
+            dataset.name,
+            [],
+            {},
+            first=1,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    id=second.group.id, slices=["second"]
+                )
+            ),
+        )
+        self.assertEqual(len(second_samples.edges), 1)
+        self.assertEqual(second_samples.edges[0].node.id, second._id)
+
+
+def _create_disjoint_group_dataset():
+    dataset = fo.Dataset("test")
+    dataset.add_group_field("group", default="first")
+
+    first_group = fo.Group()
+    first = fo.Sample(filepath="first.png", group=first_group.element("first"))
+
+    second_group = fo.Group()
+    second = fo.Sample(
+        filepath="second.png", group=second_group.element("second")
+    )
+
+    dataset.add_samples([first, second])
+
+    return dataset, first, second
