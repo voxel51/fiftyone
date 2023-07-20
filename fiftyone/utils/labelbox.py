@@ -457,6 +457,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         for project_id in project_ids:
             self.delete_project(project_id, delete_datasets=delete_datasets)
 
+    def delete_unused_ontologies(self):
+        """Deletes unused ontologies from the Labelbox server."""
+        deleted_ontologies = []
+        unused_ontologies = self._client.get_unused_ontologies()
+        while unused_ontologies:
+            for o in unused_ontologies:
+                deleted_ontologies.append(o)
+                self._client.delete_unused_ontology(o)
+
+            unused_ontologies = self._client.get_unused_ontologies()
+
+        logger.info("Deleted %d ontologies." % len(deleted_ontologies))
+
     def launch_editor(self, url=None):
         """Launches the Labelbox editor in your default web browser.
 
@@ -517,6 +530,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
+        is_video = samples.media_type == fomm.VIDEO
 
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
@@ -534,7 +548,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self.upload_data(samples, dataset, media_field=media_field)
 
         project = self._setup_project(
-            project_name, dataset, label_schema, classes_as_attrs
+            project_name, dataset, label_schema, classes_as_attrs, is_video
         )
 
         if members:
@@ -685,12 +699,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return frame_id_map
 
     def _setup_project(
-        self, project_name, dataset, label_schema, classes_as_attrs
+        self, project_name, dataset, label_schema, classes_as_attrs, is_video
     ):
+        media_type = lb.MediaType.Video if is_video else lb.MediaType.Image
         project = self._client.create_project(
-            name=project_name, queue_mode=lb.QueueMode.Dataset
+            name=project_name,
+            media_type=media_type,
+            queue_mode=lb.QueueMode.Batch,
         )
-        project.datasets.connect(dataset)
+        project.create_batch(
+            name=str(uuid4()),
+            data_rows=dataset.data_rows(),
+        )
 
         self._setup_editor(project, label_schema, classes_as_attrs)
 
