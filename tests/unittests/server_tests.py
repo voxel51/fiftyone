@@ -779,3 +779,31 @@ class ServerViewTests(unittest.TestCase):
         }
         view = fosv.get_view("test", filters=filters)
         self.assertEqual(len(view), 1)
+
+    @drop_datasets
+    def test_sparse_groups(self):
+        dataset = fo.Dataset("test")
+        dataset.add_group_field("group", default="first")
+
+        first_group = fo.Group()
+        first = fo.Sample(
+            filepath="first.png", group=first_group.element("first")
+        )
+
+        second_group = fo.Group()
+        second = fo.Sample(
+            filepath="second.png", group=second_group.element("second")
+        )
+
+        dataset.add_samples([first, second])
+
+        view = fosv.get_view(
+            dataset.name,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    id=second_group.id, slices=["second"]
+                )
+            ),
+        )
+
+        self.assertEqual(view.first().id, second.id)

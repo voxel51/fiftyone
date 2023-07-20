@@ -123,6 +123,9 @@ async def paginate_samples(
     pipeline = view._pipeline(
         attach_frames=media == fom.VIDEO,
         detach_frames=False,
+        group_slice=sample_filter.group.slices[0]
+        if sample_filter and sample_filter.group and sample_filter.group.slices
+        else None,
         manual_group_select=sample_filter
         and sample_filter.group
         and (sample_filter.group.id and not sample_filter.group.slices),
