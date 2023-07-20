@@ -122,6 +122,7 @@ def get_view(
                     view, sample_filter.group.id, groups=True
                 )
             if sample_filter.group.slices:
+                view._dataset.group_slice = sample_filter.group.slices[0]
                 view = view.select_group_slices(sample_filter.group.slices)
 
         elif sample_filter.id:
