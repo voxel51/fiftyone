@@ -486,7 +486,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """Uploads the media for the given samples to Labelbox.
 
         This method uses ``labelbox.schema.dataset.Dataset.create_data_rows()``
-        to add data in batches, and sets the external ID of each DataRow to the
+        to add data in batches, and sets the global key of each DataRow to the
         ID of the corresponding sample.
 
         Args:
@@ -500,14 +500,16 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         media_paths, sample_ids = samples.values([media_field, "id"])
 
         upload_info = []
-        for media_path, sample_id in zip(media_paths, sample_ids):
-            item_url = self._client.upload_file(media_path)
-            upload_info.append(
-                {
-                    lb.DataRow.row_data: item_url,
-                    lb.DataRow.external_id: sample_id,
-                }
-            )
+
+        with fou.ProgressBar(iters_str="samples") as pb:
+            for media_path, sample_id in pb(zip(media_paths, sample_ids)):
+                item_url = self._client.upload_file(media_path)
+                upload_info.append(
+                    {
+                        lb.DataRow.row_data: item_url,
+                        lb.DataRow.global_key: sample_id,
+                    }
+                )
 
         task = lb_dataset.create_data_rows(upload_info)
         task.wait_till_done()
@@ -597,7 +599,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         for d in labels_json:
             labelbox_id = d["DataRow ID"]
-            sample_id = d["External ID"]
+            sample_id = d["Global Key"]
 
             if sample_id is None:
                 logger.warning(
@@ -608,7 +610,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             metadata = self._get_sample_metadata(project, sample_id)
             if metadata is None:
                 logger.warning(
-                    "Skipping sample '%s' with no metadata", sample_id
+                    "Skipping sample '%s' with no metadata, likely due to no "
+                    "with a matching Global Key being found",
+                    sample_id,
                 )
                 continue
 
@@ -794,14 +798,14 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             if attr_type == "text":
                 attr = lbo.Classification(
                     class_type=class_type,
-                    instructions=attr_name,
+                    name=attr_name,
                 )
             else:
                 attr_values = attr_info["values"]
                 options = [lbo.Option(value=str(v)) for v in attr_values]
                 attr = lbo.Classification(
                     class_type=class_type,
-                    instructions=attr_name,
+                    name=attr_name,
                     options=options,
                 )
 
@@ -843,27 +847,27 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     prefix = "field:%s_class:%s_attr:" % (label_field, str(sc))
                     sub_attrs = deepcopy(attrs)
                     for attr in sub_attrs:
-                        attr.instructions = prefix + attr.instructions
+                        attr.name = prefix + attr.name
 
                 options.append(lbo.Option(value=str(sc), options=sub_attrs))
 
         if label_type == "scalar" and not classes:
             classification = lbo.Classification(
                 class_type=lbo.Classification.Type.TEXT,
-                instructions=name,
+                name=name,
             )
             classifications.append(classification)
         elif label_type == "classifications":
             classification = lbo.Classification(
                 class_type=lbo.Classification.Type.CHECKLIST,
-                instructions=name,
+                name=name,
                 options=options,
             )
             classifications.append(classification)
         else:
             classification = lbo.Classification(
                 class_type=lbo.Classification.Type.RADIO,
-                instructions=name,
+                name=name,
                 options=options,
             )
             classifications.append(classification)
@@ -930,7 +934,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         classes_attr = lbo.Classification(
             class_type=lbo.Classification.Type.RADIO,
-            instructions="class_name",
+            name="class_name",
             options=options,
             required=True,
         )
@@ -939,12 +943,15 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
     def _get_sample_metadata(self, project, sample_id):
         metadata = None
-        for dataset in project.datasets():
-            try:
-                data_row = dataset.data_row_for_external_id(sample_id)
-                metadata = data_row.media_attributes
-            except lb.exceptions.ResourceNotFoundError:
-                pass
+        try:
+            data_row_id_response = (
+                self._client.get_data_row_ids_for_global_keys([sample_id])
+            )
+            data_row_id = data_row_id_response["results"][0]
+            data_row = self._client.get_data_row(data_row_id)
+            metadata = data_row.media_attributes
+        except:
+            pass
 
         return metadata
 
@@ -2152,7 +2159,8 @@ def _make_mask(instance_uri, color):
     }
 
 
-# https://labelbox.com/docs/exporting-data/export-format-detail#video
+# Parse v1 export format
+# https://docs.labelbox.com/reference/export-video-annotations
 def _parse_video_labels(video_label_d, frame_size):
     url_or_filepath = video_label_d["frames"]
     label_d_list = _download_or_load_ndjson(url_or_filepath)
@@ -2165,7 +2173,8 @@ def _parse_video_labels(video_label_d, frame_size):
     return frames
 
 
-# https://labelbox.com/docs/exporting-data/export-format-detail#images
+# Parse v1 export format
+# https://docs.labelbox.com/reference/export-image-annotations#annotation-export-formats
 def _parse_image_labels(label_d, frame_size, class_attr=None):
     labels = {}
 
