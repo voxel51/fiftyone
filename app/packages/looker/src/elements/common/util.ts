@@ -119,8 +119,12 @@ export const getColorFromOptions = ({
     return getColor(coloring.pool, coloring.seed, path);
   }
   if (coloring.by === "value" && path !== "tags") {
+    // use the first value as the fallback default if it's a listField
+    const currentValue = Array.isArray(param[key]) ? param[key][0] : param[key];
+
     if (setting) {
       key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
+
       // check if this label has a assigned color, use it if it is a valid color
       const valueColor = setting?.valueColors?.find((l) => {
         if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
@@ -134,7 +138,9 @@ export const getColorFromOptions = ({
             param[key]?.toString().toLowerCase()
           );
         }
-        return l.value?.toString() == param[key]?.toString();
+        return Array.isArray(param[key])
+          ? param[key].map((el) => el.toString()).includes(l.value?.toString())
+          : l.value?.toString() == param[key]?.toString();
       })?.color;
 
       if (isValidColor(valueColor)) {
@@ -143,7 +149,7 @@ export const getColorFromOptions = ({
     } else {
       key = labelDefault ? "label" : "value";
     }
-    return getColor(coloring.pool, coloring.seed, param[key]);
+    return getColor(coloring.pool, coloring.seed, currentValue);
   }
   if (coloring.by === "value" && path === "tags") {
     if (setting) {
@@ -191,7 +197,13 @@ export const getColorFromOptionsPrimitives = ({
         if (["True", "False"].includes(l.value?.toString())) {
           return normalized === value.toString().toLowerCase();
         }
-        return l.value?.toString() === value.toString();
+        // listField(IntField, FloatField, StringField, BooleanField)
+        return typeof value === "string" && value.includes(", ")
+          ? value
+              .split(", ")
+              .map((el) => el.toString())
+              .includes(l.value?.toString())
+          : l.value?.toString() === value.toString();
       })?.color;
       if (isValidColor(valueColor)) {
         return valueColor;

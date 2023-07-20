@@ -100,7 +100,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const PRIMITIVE_RENDERERS = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
-        const v = value ? "True" : "False";
+        let v;
+        if (Array.isArray(value)) {
+          v = value.map((v) => (v ? "True" : "False")).join(", ");
+        } else {
+          v = value ? "True" : "False";
+        }
+
         return {
           path,
           value: v,
@@ -214,14 +220,20 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         };
       },
       [STRING_FIELD]: (path, value: string) => {
+        let v;
+        if (Array.isArray(value)) {
+          v = value.join(", ");
+        } else {
+          v = value;
+        }
         return {
           path,
-          value,
-          title: `${path}: ${value}`,
+          value: v,
+          title: `${path}: ${v}`,
           color: getColorFromOptionsPrimitives({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
           }),
         };
@@ -418,16 +430,21 @@ const prettyNumber = (value: number | NONFINITE): string => {
   if (typeof value === "string") {
     return value;
   }
-
   let string = null;
-  if (value % 1 === 0) {
-    string = value.toFixed(0);
-  } else if (value < 0.001) {
-    string = value.toFixed(6);
+
+  if (Array.isArray(value)) {
+    string = value.map((v) => prettyNumber(v)).join(", ");
+    return string;
   } else {
-    string = value.toFixed(3);
+    if (value % 1 === 0) {
+      string = value.toFixed(0);
+    } else if (value < 0.001) {
+      string = value.toFixed(6);
+    } else {
+      string = value.toFixed(3);
+    }
+    return Number(string).toLocaleString();
   }
-  return Number(string).toLocaleString();
 };
 
 const unwind = (
