@@ -6,6 +6,7 @@ File storage utilities.
 |
 """
 from contextlib import contextmanager
+from datetime import datetime
 import io
 import itertools
 import json
@@ -1526,6 +1527,7 @@ def list_files(
     abs_paths=False,
     recursive=False,
     include_hidden_files=False,
+    return_metadata=False,
     sort=True,
 ):
     """Lists the files in the given directory.
@@ -1537,16 +1539,18 @@ def list_files(
         abs_paths (False): whether to return the absolute paths to the files
         recursive (False): whether to recursively traverse subdirectories
         include_hidden_files (False): whether to include dot files
+        return_metadata (False): whether to return metadata dicts for each file
+            instead of filepaths
         sort (True): whether to sort the list of files
 
     Returns:
-        a list of filepaths
+        a list of filepaths or metadata dicts
     """
     if is_local(dirpath):
         if not os.path.isdir(dirpath):
             return []
 
-        return etau.list_files(
+        filepaths = etau.list_files(
             dirpath,
             abs_paths=abs_paths,
             recursive=recursive,
@@ -1554,22 +1558,73 @@ def list_files(
             sort=sort,
         )
 
+        if not return_metadata:
+            return filepaths
+
+        metadata = []
+        for filepath in filepaths:
+            if abs_paths:
+                fp = filepath
+            else:
+                fp = os.path.join(dirpath, filepath)
+
+            m = _get_local_metadata(fp)
+            m["filepath"] = filepath
+            metadata.append(m)
+
+        return metadata
+
     client = get_client(path=dirpath)
 
-    filepaths = client.list_files_in_folder(dirpath, recursive=recursive)
+    filepaths = client.list_files_in_folder(
+        dirpath,
+        recursive=recursive,
+        return_metadata=return_metadata,
+    )
 
-    if not abs_paths:
-        filepaths = [os.path.relpath(f, dirpath) for f in filepaths]
+    if not return_metadata:
+        if not abs_paths:
+            filepaths = [os.path.relpath(f, dirpath) for f in filepaths]
+
+        if not include_hidden_files:
+            filepaths = [
+                f for f in filepaths if not os.path.basename(f).startswith(".")
+            ]
+
+        if sort:
+            filepaths = sorted(filepaths)
+
+        return filepaths
+
+    prefix = split_prefix(dirpath)[0]
+    metadata = filepaths
+    for m in metadata:
+        filepath = prefix + m["bucket"] + "/" + m["object_name"]
+        if not abs_paths:
+            filepath = os.path.relpath(filepath, dirpath)
+
+        m["filepath"] = filepath
 
     if not include_hidden_files:
-        filepaths = [
-            f for f in filepaths if not os.path.basename(f).startswith(".")
+        metadata = [
+            m
+            for m in metadata
+            if not os.path.basename(m["filepath"]).startswith(".")
         ]
 
     if sort:
-        filepaths = sorted(filepaths)
+        metadata = sorted(metadata, key=lambda m: m["filepath"])
 
-    return filepaths
+    return metadata
+
+
+def _get_local_metadata(filepath):
+    s = os.stat(filepath)
+    return {
+        "name": os.path.basename(filepath),
+        "size": s.st_size,
+        "last_modified": datetime.fromtimestamp(s.st_mtime),
+    }
 
 
 def list_subdirs(dirpath, abs_paths=False, recursive=False):
