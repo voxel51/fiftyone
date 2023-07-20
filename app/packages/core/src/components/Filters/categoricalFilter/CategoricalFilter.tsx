@@ -248,29 +248,12 @@ const CategoricalFilter = <T extends V = V>({
         {results === null && <LoadingDots text="" />}
         {results !== null &&
           (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
-          !skeleton &&
-          isFilterMode && (
+          !skeleton && (
             <Selector
               useSearch={useSearch}
-              placeholder={`+ filter by ${name}`}
-              component={ResultComponent}
-              onSelect={onSelect}
-              inputStyle={{
-                color: theme.text.secondary,
-                fontSize: "1rem",
-                width: "100%",
-              }}
-              containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-              toKey={({ value }) => String(value)}
-            />
-          )}
-        {results !== null &&
-          (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
-          !skeleton &&
-          !isFilterMode && (
-            <Selector
-              useSearch={useSearch}
-              placeholder={`+ set visibility by ${name}`}
+              placeholder={`+ ${
+                isFilterMode ? "filter" : "set visibility"
+              } by ${name}`}
               component={ResultComponent}
               onSelect={onSelect}
               inputStyle={{

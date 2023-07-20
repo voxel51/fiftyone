@@ -246,7 +246,6 @@ const NumericFieldFilter = ({
             disabled={true}
             name={"No results"}
             setValue={() => {}}
-            omitAggregation={!isFilterMode}
           />
         )}
         {hasBounds && !one ? (

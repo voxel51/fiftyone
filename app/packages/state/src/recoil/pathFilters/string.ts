@@ -12,8 +12,6 @@ import * as schemaAtoms from "../schema";
 export interface StringFilter {
   values: string[];
   exclude: boolean;
-  _CLS: "str";
-  onlyMatch: boolean;
   isMatching: boolean; // match_labels vs filter_labels mode
 }
 
@@ -32,7 +30,6 @@ const getFilter = (
     values: [],
     exclude: false,
     isMatching: defaultToFilterMode ? false : true,
-    _CLS: "str",
     ...get(filterAtoms.filter({ modal, path })),
   } as StringFilter;
 };
@@ -45,7 +42,6 @@ const getVisibility = (
   return {
     values: [],
     exclude: false,
-    _CLS: "str",
     ...get(visibilityAtoms.visibility({ modal, path })),
   } as StringFilter;
 };
@@ -69,7 +65,6 @@ const setFilter = (
   if (filter.values.length === 0) {
     filter.exclude = false;
     filter.isMatching = false;
-    filter.onlyMatch = true;
   }
 
   if (meetsDefault(filter)) {
@@ -151,26 +146,6 @@ export const stringExcludeAtom = selectorFamily<
     },
 });
 
-// updates if the filter should use onlyMatch (omit empty samples)
-export const onlyMatchAtom = selectorFamily<
-  boolean,
-  { modal: boolean; path: string }
->({
-  key: "onlyMatch",
-  get:
-    ({ modal, path }) =>
-    ({ get }) =>
-      getFilter(get, modal, path).onlyMatch,
-  set:
-    ({ modal, path }) =>
-    ({ get, set }, value) => {
-      const isFiltering = get(fos.isSidebarFilterMode);
-      return isFiltering
-        ? setFilter(get, set, modal, path, "onlyMatch", value)
-        : null;
-    },
-});
-
 // updates if it is filter or match model
 export const isMatchingAtom = selectorFamily<
   boolean,
@@ -199,71 +174,47 @@ export const string = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      // Extract common properties
       const filter = get(filterAtoms.filter(params));
       const visibility = get(visibilityAtoms.visibility(params));
 
-      // when there is no filter and no visibility settings, show the label
       if (!filter && !visibility) {
         return () => true;
       }
 
-      // when there is no filter, but there is a visibility setting
       if (!filter && visibility) {
-        const { values, exclude } = visibility;
-        const none = values.includes(null);
-
-        return (value) => {
-          const r = values.includes(value) || (none && NONE.has(value));
-          return exclude ? !r : r;
-        };
+        return helperStringFunction(visibility);
       }
 
-      // when there is a filter setting, but no visibility setting
       if (filter && !visibility) {
-        const { values, exclude, isMatching } = filter;
-        const none = values.includes(null);
-
-        if (isMatching) {
+        if (filter.isMatching) {
           return () => true;
         }
-        return (value) => {
-          const r = values.includes(value) || (none && NONE.has(value));
-          return exclude ? !r : r;
-        };
+        return helperStringFunction(filter);
       }
-      // when there is a filter and a visibility setting
+
       if (filter && visibility) {
-        const { values, exclude, isMatching } = filter;
-        const none = values.includes(null);
-
-        const visibilityValues = visibility.values;
-        const visibilityExclude = visibility.exclude;
-        const visibilityNone = visibilityValues.includes(null);
-
-        if (isMatching) {
-          return (value) => {
-            const r =
-              visibilityValues.includes(value) ||
-              (visibilityNone && NONE.has(value));
-            return visibilityExclude ? !r : r;
-          };
-        }
-
-        return (value) => {
-          const r1 = values.includes(value) || (none && NONE.has(value));
-          const filterResult = exclude ? !r1 : r1;
-          const r2 =
-            visibilityValues.includes(value) ||
-            (visibilityNone && NONE.has(value));
-          const visibilityResult = visibilityExclude ? !r2 : r2;
-          return filterResult && visibilityResult;
-        };
+        const visibilityFn = helperStringFunction(visibility);
+        const filterFn = helperStringFunction(filter);
+        return (value: string | null) => filterFn(value) && visibilityFn(value);
       }
 
       return () => true; // not needed, but eslint complains
     },
 });
+
+const helperStringFunction = (settings: {
+  values: string[];
+  exclude: boolean;
+  isMatching?: boolean;
+}) => {
+  const { values, exclude } = settings;
+  const none = values.includes(null);
+
+  return (value: string | null) => {
+    const r = values.includes(value) || (none && NONE.has(value));
+    return exclude ? !r : r;
+  };
+};
 
 export const listString = selectorFamily<
   (value: string | null) => boolean,

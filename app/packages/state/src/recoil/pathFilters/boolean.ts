@@ -15,7 +15,6 @@ export interface BooleanFilter {
   none: boolean;
   isMatching: boolean;
   exclude: boolean;
-  _CLS: "bool";
 }
 
 const getFilter = (
@@ -29,7 +28,6 @@ const getFilter = (
   const isNestedfield = fieldSchema?.ftype.includes("ListField");
   const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
   return {
-    _CLS: "bool",
     true: false,
     false: false,
     none: false,
@@ -46,7 +44,6 @@ const getVisibility = (
   path: string
 ): BooleanFilter => {
   return {
-    _CLS: "bool",
     true: false,
     false: false,
     none: false,
@@ -119,26 +116,6 @@ export const boolIsMatchingAtom = selectorFamily<
     ({ modal, path }) =>
     ({ get, set }, value) => {
       setFilter(get, set, modal, path, "isMatching", value);
-    },
-});
-
-export const boolOnlyMatchAtom = selectorFamily<
-  boolean,
-  {
-    modal: boolean;
-    path: string;
-  }
->({
-  key: "boolOnlyMatch",
-  get:
-    ({ modal, path }) =>
-    ({ get }) => {
-      return getFilter(get, modal, path).onlyMatch;
-    },
-  set:
-    ({ modal, path }) =>
-    ({ get, set }, value) => {
-      setFilter(get, set, modal, path, "onlyMatch", value);
     },
 });
 
