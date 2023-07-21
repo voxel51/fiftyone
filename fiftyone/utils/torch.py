@@ -880,7 +880,9 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
-            mask = mask > self.mask_thresh
+
+            if mask.dtype != bool:
+                mask = mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(
