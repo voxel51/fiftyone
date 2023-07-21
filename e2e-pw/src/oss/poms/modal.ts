@@ -18,7 +18,7 @@ export class ModalPom {
 
   async navigateSample(
     direction: "forward" | "backward",
-    allowErrorInfo = false
+    expectErrorInfo = false
   ) {
     const currentSampleId = await this.sidebarPom.getSampleId();
 
@@ -34,7 +34,7 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleToLoad(allowErrorInfo);
+    return this.waitForSampleToLoad(expectErrorInfo);
   }
 
   async navigateSlice(

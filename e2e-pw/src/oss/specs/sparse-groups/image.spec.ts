@@ -27,12 +27,12 @@ test("default slice", async ({ grid, modal, page }) => {
   await grid.openFirstLooker();
   await modal.sidebarPom.toggleSidebarGroup("GROUP");
   await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "first");
-  await modal.navigateSlice("group", "shared");
+  await modal.navigateSlice("group", "shared", true);
   await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "shared");
   await modal.close();
 });
 
-test("shared slice", async ({ grid, modal, page }) => {
+test("shared slice", async ({ grid, modal }) => {
   await grid.assert.waitForEntryCountTextToEqual("1 group");
   await grid.selectSlice("shared");
   await grid.assert.waitForEntryCountTextToEqual("2 groups");
@@ -49,4 +49,16 @@ test("shared slice", async ({ grid, modal, page }) => {
   await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "shared");
   await modal.navigateSlice("group", "first", true);
   await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "first");
+  await modal.close();
+});
+
+test("second slice", async ({ grid, modal }) => {
+  await grid.assert.waitForEntryCountTextToEqual("1 group");
+  await grid.selectSlice("second");
+  await grid.assert.waitForEntryCountTextToEqual("1 group");
+  await modal.sidebarPom.toggleSidebarGroup("GROUP");
+  await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "second");
+  await modal.navigateSlice("group", "shared", true);
+  await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "shared");
+  await modal.close();
 });
