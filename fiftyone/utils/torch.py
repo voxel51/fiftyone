@@ -345,7 +345,7 @@ class TorchImageModel(
 
                 - A PIL image
                 - A uint8 numpy array (HWC)
-                - A Torch tensor (CWH)
+                - A Torch tensor (CHW)
 
         Returns:
             a :class:`fiftyone.core.labels.Label` instance or dict of

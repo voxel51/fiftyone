@@ -259,7 +259,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
 
 def _to_sam_input(tensor):
-    return (tensor.cpu().numpy() * 255).astype("uint8").transpose(1, 2, 0)
+    return (255 * tensor.cpu().numpy()).astype("uint8").transpose(1, 2, 0)
 
 
 def _to_sam_points(points, w, h, negative=False):
@@ -268,12 +268,12 @@ def _to_sam_points(points, w, h, negative=False):
     return scaled_points, labels
 
 
-def _to_sam_box(box, img_width, img_height):
+def _to_sam_box(box, w, h):
     new_box = np.copy(np.array(box))
-    new_box[0] *= img_width
-    new_box[2] *= img_width
-    new_box[1] *= img_height
-    new_box[3] *= img_height
+    new_box[0] *= w
+    new_box[2] *= w
+    new_box[1] *= h
+    new_box[3] *= h
     new_box[2] += new_box[0]
     new_box[3] += new_box[1]
     return np.round(new_box).astype(int)

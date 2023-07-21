@@ -297,7 +297,7 @@ def _apply_image_model_single(
                 img = etai.read(sample.filepath)
 
                 if needs_samples:
-                    labels = model.predict(img, sample)
+                    labels = model.predict(img, sample=sample)
                 else:
                     labels = model.predict(img)
 
@@ -335,7 +335,9 @@ def _apply_image_model_batch(
                 imgs = [etai.read(sample.filepath) for sample in sample_batch]
 
                 if needs_samples:
-                    labels_batch = model.predict_all(imgs, sample_batch)
+                    labels_batch = model.predict_all(
+                        imgs, samples=sample_batch
+                    )
                 else:
                     labels_batch = model.predict_all(imgs)
 
@@ -387,7 +389,9 @@ def _apply_image_model_data_loader(
                     raise imgs
 
                 if needs_samples:
-                    labels_batch = model.predict_all(imgs, sample_batch)
+                    labels_batch = model.predict_all(
+                        imgs, samples=sample_batch
+                    )
                 else:
                     labels_batch = model.predict_all(imgs)
 
@@ -442,7 +446,7 @@ def _apply_image_model_to_frames_single(
                     for img in video_reader:
                         if needs_samples:
                             frame = sample.frames[video_reader.frame_number]
-                            labels = model.predict(img, frame)
+                            labels = model.predict(img, sample=frame)
                         else:
                             labels = model.predict(img)
 
@@ -497,7 +501,9 @@ def _apply_image_model_to_frames_batch(
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         if needs_samples:
                             _frames = [sample.frames[fn] for fn in fns]
-                            labels_batch = model.predict_all(imgs, _frames)
+                            labels_batch = model.predict_all(
+                                imgs, samples=_frames
+                            )
                         else:
                             labels_batch = model.predict_all(imgs)
 
@@ -552,7 +558,7 @@ def _apply_video_model(
                     sample.filepath, frames=frames
                 ) as video_reader:
                     if needs_samples:
-                        labels = model.predict(video_reader, sample)
+                        labels = model.predict(video_reader, sample=sample)
                     else:
                         labels = model.predict(video_reader)
 
