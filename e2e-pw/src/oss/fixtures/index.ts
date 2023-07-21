@@ -1,10 +1,12 @@
 import { test as base } from "@playwright/test";
+import { MediaFactory } from "src/shared/media-factory";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { OssLoader } from "./loader";
 
 export type CustomFixtures = {
   fiftyoneLoader: AbstractFiftyoneLoader;
   fiftyoneServerPort: number;
+  mediaFactory: typeof MediaFactory;
 };
 
 export const test = base.extend<{}, CustomFixtures>({
@@ -30,6 +32,12 @@ export const test = base.extend<{}, CustomFixtures>({
 
       // teardown
       await loader.stopWebServer();
+    },
+    { scope: "worker" },
+  ],
+  mediaFactory: [
+    async ({}, use) => {
+      await use(MediaFactory);
     },
     { scope: "worker" },
   ],
