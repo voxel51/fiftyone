@@ -8,8 +8,8 @@ import {
 } from "@mui/icons-material";
 import React, { useRef, useState } from "react";
 import {
-  selectorFamily,
   SetterOrUpdater,
+  selectorFamily,
   useRecoilCallback,
   useRecoilStateLoadable,
   useRecoilValue,
@@ -20,7 +20,7 @@ import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
 
-import { useTheme, PillButton } from "@fiftyone/components";
+import { PillButton, useTheme } from "@fiftyone/components";
 import { datasetName } from "@fiftyone/state";
 import Draggable from "./Draggable";
 
@@ -194,7 +194,7 @@ const useClearFiltered = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async () => {
-        let paths = await snapshot.getPromise(
+        const paths = await snapshot.getPromise(
           fos.sidebarGroup({ modal, group, loading: true })
         );
         const filters = await snapshot.getPromise(
@@ -312,6 +312,7 @@ const GroupEntry = React.memo(
 
     return (
       <div
+        data-cy={`sidebar-group-entry-${title}`}
         style={{
           boxShadow: `0 2px 20px ${theme.custom.shadow}`,
         }}

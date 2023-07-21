@@ -6,15 +6,20 @@ export class ModalPom {
   readonly page: Page;
   readonly sidebarPom: ModalSidebarPom;
   readonly modal: Locator;
+  readonly groupCarousel: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.sidebarPom = new ModalSidebarPom(page);
 
     this.modal = page.getByTestId("modal");
+    this.groupCarousel = this.modal.getByTestId("group-carousel");
   }
 
-  async navigateSample(direction: "forward" | "backward") {
+  async navigateSample(
+    direction: "forward" | "backward",
+    allowErrorInfo = false
+  ) {
     const currentSampleId = await this.sidebarPom.getSampleId();
 
     await this.modal
@@ -29,15 +34,46 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleToLoad();
+    return this.waitForSampleToLoad(allowErrorInfo);
   }
 
-  async navigateNextSample() {
-    return this.navigateSample("forward");
+  async navigateSlice(
+    groupField: string,
+    slice: string,
+    expectErrorInfo = false
+  ) {
+    const currentSlice = await this.sidebarPom.getSidebarEntryText(
+      `sidebar-entry-${groupField}.name`
+    );
+    await this.groupCarousel
+      .getByTestId("looker")
+      .filter({ hasText: slice })
+      .first()
+      .click({ position: { x: 10, y: 60 } });
+
+    // wait for slice to change
+    await this.page.waitForFunction(
+      ({ currentSlice, groupField }) => {
+        const slice = document.querySelector(
+          `[data-cy="sidebar-entry-${groupField}.name"]`
+        )?.textContent;
+        return slice !== currentSlice;
+      },
+      { currentSlice, groupField }
+    );
+    return this.waitForSampleToLoad(expectErrorInfo);
   }
 
-  async navigatePreviousSample() {
-    return this.navigateSample("backward");
+  async close() {
+    return this.page.press("body", "Escape");
+  }
+
+  async navigateNextSample(expectErrorInfo = false) {
+    return this.navigateSample("forward", expectErrorInfo);
+  }
+
+  async navigatePreviousSample(expectErrorInfo = false) {
+    return this.navigateSample("backward", expectErrorInfo);
   }
 
   async getGroupPinnedText() {
@@ -66,19 +102,26 @@ export class ModalPom {
 
   getCarousel() {}
 
-  async waitForSampleToLoad() {
+  async waitForSampleToLoad(expectErrorInfo = false) {
     return this.page.waitForFunction(
-      () => {
-        const canvas = document.querySelector(
-          "[data-cy=modal-looker-container] canvas"
-        );
+      (expectErrorInfo) => {
+        const selector = `[data-cy=modal-looker-container] ${
+          expectErrorInfo ? "canvas" : "[data-cy=looker-error-info]"
+        }`;
 
-        if (!canvas) {
+        const element = document.querySelector(selector);
+
+        if (!element) {
           return false;
         }
 
-        return canvas.getAttribute("sample-loaded") === "true";
+        if (expectErrorInfo) {
+          return true;
+        }
+
+        return element.getAttribute("sample-loaded") === "true";
       },
+      expectErrorInfo,
       { timeout: Duration.Seconds(10) }
     );
   }

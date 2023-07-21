@@ -94,10 +94,17 @@ export const modalSample = graphQLSelector<
   environment: RelayEnvironmentKey,
   key: "modalSample",
   query: mainSample,
-  mapResponse: (data: ModalSampleResponse, { get }) => {
-    const current = get(currentModalSample);
+  mapResponse: (data: ModalSampleResponse, { get, variables }) => {
     if (!data.sample) {
-      throw new Error(`sample with index ${current.index} not found`);
+      if (variables.filter.group) {
+        throw new GroupSampleNotFound(
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+        );
+      }
+
+      throw new SampleNotFound(
+        `sample with id ${variables.filter.id} not found`
+      );
     }
 
     return mapSampleResponse(data.sample) as ModalSample;
@@ -119,3 +126,7 @@ export const modalSample = graphQLSelector<
     };
   },
 });
+
+export class SampleNotFound extends Error {}
+
+export class GroupSampleNotFound extends SampleNotFound {}

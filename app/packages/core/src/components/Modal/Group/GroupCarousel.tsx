@@ -276,6 +276,7 @@ export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}
+      data-cy={"group-carousel"}
     >
       <Column />
     </Resizable>

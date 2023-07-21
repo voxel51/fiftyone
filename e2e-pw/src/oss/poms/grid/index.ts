@@ -18,7 +18,10 @@ export class GridPom {
   }
 
   async openFirstLooker() {
-    await this.grid.getByTestId("looker").first().click();
+    await this.grid
+      .getByTestId("looker")
+      .first()
+      .click({ position: { x: 10, y: 60 } });
   }
 
   async openNthLooker(n: number) {
@@ -27,6 +30,11 @@ export class GridPom {
 
   async getEntryCountText() {
     return this.page.getByTestId("entry-counts").textContent();
+  }
+
+  async selectSlice(slice: string) {
+    await this.page.getByTestId("selector-slice").fill(slice);
+    await this.page.getByTestId("selector-slice").press("Enter");
   }
 }
 

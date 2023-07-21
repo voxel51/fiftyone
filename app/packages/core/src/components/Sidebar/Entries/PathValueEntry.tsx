@@ -13,7 +13,7 @@ import { useSpring } from "@react-spring/core";
 
 import React, { Suspense, useMemo, useState } from "react";
 
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 
 import { prettify } from "../../../utils/generic";
@@ -355,7 +355,21 @@ const Loadable = ({ path }: { path: string }) => {
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  let data = useRecoilValue(fos.activeModalSample);
+  const loadable = useRecoilValueLoadable(fos.activeModalSample);
+
+  if (loadable.state === "loading") {
+    throw loadable.contents;
+  }
+
+  if (loadable.state === "hasError") {
+    if (loadable.contents instanceof fos.SampleNotFound) {
+      throw new Promise(() => {});
+    }
+
+    throw loadable.contents;
+  }
+
+  let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
 
   if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {

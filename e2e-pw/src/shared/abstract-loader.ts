@@ -26,6 +26,13 @@ export abstract class AbstractFiftyoneLoader {
   /**
    * This method is used to load a dataset from the FiftyOne Zoo.
    *
+   * @param name name of the dataset
+   */
+  abstract loadSparseGroupsImageDataset(datasetName: string): Promise<void>;
+
+  /**
+   * This method is used to load a dataset from the FiftyOne Zoo.
+   *
    * @param name name of the dataset to load from the zoo
    * @param id name of the dataset to be created
    * @param kwargs optional arguments to be passed to the dataset loader
