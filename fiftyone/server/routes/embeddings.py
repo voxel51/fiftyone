@@ -25,7 +25,6 @@ COLOR_BY_TYPES = (
     fof.BooleanField,
     fof.IntField,
     fof.FloatField,
-    fof.ListField,
 )
 
 
@@ -266,9 +265,18 @@ class ColorByChoices(HTTPEndpoint):
         )
 
         fields = [
-            k
-            for k, v in schema.items()
-            if isinstance(v, COLOR_BY_TYPES) and not k.startswith(bad_roots)
+            path
+            for path, field in schema.items()
+            if (
+                (
+                    isinstance(field, COLOR_BY_TYPES)
+                    or (
+                        isinstance(field, fof.ListField)
+                        and isinstance(field.field, COLOR_BY_TYPES)
+                    )
+                )
+                and not path.startswith(bad_roots)
+            )
         ]
 
         return {"fields": fields}
