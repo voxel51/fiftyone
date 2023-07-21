@@ -832,9 +832,9 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 -   boxes (``FloatTensor[N, 4]``): the predicted boxes in
                     ``[x1, y1, x2, y2]`` format (absolute coordinates)
                 -   labels (``Int64Tensor[N]``): the predicted labels
-                -   scores (``Tensor[N]``): the scores for each prediction
                 -   masks (``FloatTensor[N, 1, H, W]``): the predicted masks
-                    for each instance, in ``[0, 1]``
+                    for each instance, in ``[0, 1]``. May also be boolean
+                -   scores (``Tensor[N]``): optional scores for each prediction
 
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
@@ -853,12 +853,19 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
 
         boxes = output["boxes"].detach().cpu().numpy()
         labels = output["labels"].detach().cpu().numpy()
-        scores = output["scores"].detach().cpu().numpy()
         masks = output["masks"].detach().cpu().numpy()
+        if "scores" in output:
+            scores = output["scores"].detach().cpu().numpy()
+        else:
+            scores = itertools.repeat(None)
 
         detections = []
-        for box, label, score, soft_mask in zip(boxes, labels, scores, masks):
-            if confidence_thresh is not None and score < confidence_thresh:
+        for box, label, mask, score in zip(boxes, labels, masks, scores):
+            if (
+                confidence_thresh is not None
+                and score is not None
+                and score < confidence_thresh
+            ):
                 continue
 
             x1, y1, x2, y2 = box
@@ -869,11 +876,11 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 (y2 - y1) / height,
             ]
 
-            soft_mask = np.squeeze(soft_mask, axis=0)[
+            mask = np.squeeze(mask, axis=0)[
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
-            mask = soft_mask > self.mask_thresh
+            mask = mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(

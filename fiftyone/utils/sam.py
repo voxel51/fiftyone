@@ -8,6 +8,8 @@ Model Zoo.
 """
 import numpy as np
 
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
@@ -57,13 +59,16 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         fout.TorchSamplesMixin.__init__(self)
 
         self._preprocess = False
-
         self._curr_prompt_type = None
         self._curr_prompts = None
         self._curr_classes = None
 
     def _download_model(self, config):
         config.download_model_if_necessary()
+
+    def _load_network(self, config):
+        entrypoint = etau.get_function(config.entrypoint_fcn)
+        return entrypoint(checkpoint=config.model_path)
 
     def predict_all(self, imgs, samples=None):
         if samples is not None:
@@ -161,6 +166,14 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 input_boxes, (h, w)
             )
 
+            labels = torch.tensor(
+                [
+                    self._curr_classes.index(d.label)
+                    for d in detections.detections
+                ],
+                device=sam_predictor.device,
+            )
+
             masks, _, _ = sam_predictor.predict_torch(
                 point_coords=None,
                 point_labels=None,
@@ -169,24 +182,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
             )
 
             outputs.append(
-                {
-                    "boxes": input_boxes,
-                    "labels": torch.tensor(
-                        [
-                            self._curr_classes.index(d.label)
-                            for d in detections.detections
-                        ],
-                        device=sam_predictor.device,
-                    ),
-                    "scores": torch.tensor(
-                        [
-                            d.confidence if d.confidence is not None else 1.0
-                            for d in detections.detections
-                        ],
-                        device=sam_predictor.device,
-                    ),
-                    "masks": masks,
-                }
+                {"boxes": input_boxes, "labels": labels, "masks": masks}
             )
 
         return outputs
