@@ -17,6 +17,7 @@ import fiftyone.server.view as fosv
 from fiftyone.server.samples import paginate_samples
 
 from decorators import drop_datasets
+from utils.groups import make_disjoint_groups_dataset
 
 
 class ServerViewTests(unittest.TestCase):
@@ -781,7 +782,7 @@ class ServerViewTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
 
     def test_disjoint_groups(self):
-        dataset, first, second = _create_disjoint_group_dataset()
+        dataset, first, second = make_disjoint_groups_dataset()
         first_view = fosv.get_view(
             dataset.name,
             sample_filter=fosv.SampleFilter(
@@ -806,7 +807,7 @@ class ServerViewTests(unittest.TestCase):
 class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
     @drop_datasets
     async def test_disjoint_groups(self):
-        dataset, first, second = _create_disjoint_group_dataset()
+        dataset, first, second = make_disjoint_groups_dataset()
 
         first_samples = await paginate_samples(
             dataset.name,
@@ -835,20 +836,3 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(len(second_samples.edges), 1)
         self.assertEqual(second_samples.edges[0].node.id, second._id)
-
-
-def _create_disjoint_group_dataset():
-    dataset = fo.Dataset("test")
-    dataset.add_group_field("group", default="first")
-
-    first_group = fo.Group()
-    first = fo.Sample(filepath="first.png", group=first_group.element("first"))
-
-    second_group = fo.Group()
-    second = fo.Sample(
-        filepath="second.png", group=second_group.element("second")
-    )
-
-    dataset.add_samples([first, second])
-
-    return dataset, first, second

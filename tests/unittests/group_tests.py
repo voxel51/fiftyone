@@ -23,6 +23,7 @@ import fiftyone.utils.groups as foug
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
+from utils.groups import make_disjoint_groups_dataset
 
 
 class GroupTests(unittest.TestCase):
@@ -1207,6 +1208,38 @@ class GroupImportExportTests(unittest.TestCase):
             set(flat_view.values("filepath")),
             set(flat_view2.values("filepath")),
         )
+
+    @drop_datasets
+    def test_disjoint_groups(self):
+        dataset, first, second = make_disjoint_groups_dataset()
+
+        view = dataset.select_groups(first.group.id)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, first.id)
+
+        view = view.select_group_slices("first")
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, first.id)
+
+        dataset.group_slice = "second"
+        view = dataset.select_groups(second.group.id)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+        view = view.select_group_slices("second")
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+        dataset.group_slice = None
+        view = dataset.view()
+        view.group_slice = "second"
+        view = view.select_groups(second.group.id)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+        view = view.select_group_slices("second")
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
 
 
 class _GroupImporter(foud.GroupDatasetImporter):
