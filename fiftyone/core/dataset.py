@@ -2755,8 +2755,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields
         """
         try:
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(_allow_mixed=True)
+            else:
+                view = self
+
             F = foe.ViewField
-            existing_sample = self.one(F(key_field) == sample[key_field])
+            existing_sample = view.one(F(key_field) == sample[key_field])
         except ValueError:
             if insert_new:
                 self.add_sample(
