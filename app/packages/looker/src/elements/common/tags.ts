@@ -29,13 +29,7 @@ import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
-import {
-  getColorFromOptions,
-  getColorFromOptionsPrimitives,
-  prettify,
-} from "./util";
-
-import _ from "lodash";
+import { getAssignedColor, prettify } from "./util";
 
 interface TagData {
   color: string;
@@ -111,7 +105,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value,
@@ -125,7 +119,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -140,7 +134,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -155,7 +149,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -169,7 +163,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -184,7 +178,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -198,7 +192,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -211,7 +205,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value,
           title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value,
@@ -230,7 +224,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
@@ -248,12 +242,11 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         path,
         value: param.label,
         title: `${path}: ${param.label}`,
-        color: getColorFromOptions({
+        color: getAssignedColor({
           coloring,
           path,
           param,
           customizeColorSetting,
-          labelDefault: true,
         }),
       };
     };
@@ -267,12 +260,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptions({
+          color: getAssignedColor({
             coloring,
             path,
             param,
             customizeColorSetting,
-            labelDefault: false,
+            fallbackLabel: "value",
           }),
         };
       },
@@ -283,21 +276,19 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
-            if (filter(path, tag)) {
-              const v = coloring.by === "value" ? tag : "tags";
-              elements.push({
-                color: getColorFromOptions({
-                  coloring,
-                  path,
-                  param: tag,
-                  customizeColorSetting,
-                  labelDefault: false,
-                }),
-                title: tag,
-                value: tag,
-                path: v,
-              });
-            }
+            const v = coloring.by === "value" ? tag : "tags";
+            elements.push({
+              color: getAssignedColor({
+                coloring,
+                path,
+                param: tag,
+                customizeColorSetting,
+                fallbackLabel: "value",
+              }),
+              title: tag,
+              value: tag,
+              path: v,
+            });
           });
         }
       } else if (path === "_label_tags") {
