@@ -402,8 +402,8 @@ class TorchImageModel(
             output, frame_size, confidence_thresh=self.config.confidence_thresh
         )
 
-    def _forward_pass(self, inputs):
-        return self._model(inputs)
+    def _forward_pass(self, imgs):
+        return self._model(imgs)
 
     def _parse_classes(self, config):
         if config.labels_string is not None:
@@ -504,6 +504,21 @@ class TorchImageModel(
         output_processor_cls = etau.get_class(config.output_processor_cls)
         kwargs = config.output_processor_args or {}
         return output_processor_cls(classes=self._classes, **kwargs)
+
+
+class TorchSamplesMixin(fom.SamplesMixin):
+    def predict(self, img, sample=None):
+        if isinstance(img, torch.Tensor):
+            imgs = img.unsqueeze(0)
+        else:
+            imgs = [img]
+
+        if sample is not None:
+            samples = [sample]
+        else:
+            samples = None
+
+        return self.predict_all(imgs, samples=samples)[0]
 
 
 class ToPILImage(object):

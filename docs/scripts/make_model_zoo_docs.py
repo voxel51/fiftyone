@@ -108,11 +108,19 @@ _MODEL_TEMPLATE = """
 
     model = foz.load_zoo_model("{{ name }}")
 
+{% if 'segment-anything' in tags %}
+    dataset.apply_model(
+        model,
+        label_field="predictions",
+        prompt_field="ground_truth",
+    )
+{% else %}
     dataset.apply_model(model, label_field="predictions")
+{% endif %}
 
     session = fo.launch_app(dataset)
 
-{% if 'zero-shot' in tags %}
+{% if 'clip' in tags %}
     #
     # Make zero-shot predictions with custom classes
     #

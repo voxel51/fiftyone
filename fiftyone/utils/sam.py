@@ -8,9 +8,7 @@ Model Zoo.
 """
 import numpy as np
 
-import eta.core.utils as etau
-
-import fiftyone.core.models as fom
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
@@ -46,64 +44,167 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError("mask_index must be 0, 1, or 2")
 
 
-class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
+class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
     """Wrapper for running `Segment Anything <https://segment-anything.com>`_
     inference.
+
+    Args:
+        config: an :class:`SegmentAnythingModelConfig`
     """
+
+    def __init__(self, config):
+        super().__init__(config)
+        fout.TorchSamplesMixin.__init__(self)
+
+        self._preprocess = False
+
+        self._curr_prompt_type = None
+        self._curr_prompts = None
+        self._curr_classes = None
 
     def _download_model(self, config):
         config.download_model_if_necessary()
 
-    def _load_network(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
-        model = entrypoint(checkpoint=config.model_path)
-        self.preprocess = False
-        return model
-
     def predict_all(self, imgs, samples=None):
         if samples is not None:
-            self.prompts = [self.get_labels(samples)]
-            self.class_labels = self.get_classes(samples)
+            prompt_type, prompts, classes = self._parse_samples(samples)
+        else:
+            prompt_type, prompts, classes = None, None, None
+
+        self._curr_prompt_type = prompt_type
+        self._curr_prompts = prompts
+        self._curr_classes = classes
 
         return self._predict_all(imgs)
 
-    def _forward_pass(self, inputs):
-        mode = self.field_type
+    def _parse_samples(self, samples):
+        prompt_type = self._get_prompt_type(samples)
+        prompts = self._get_prompts(samples)
+        classes = self._get_classes(samples)
 
-        if mode == "keypoints":
-            return self._forward_pass_points(inputs)
+        return prompt_type, prompts, classes
 
-        if mode == "detections":
-            return self._forward_pass_boxes(inputs)
+    def _get_prompt_type(self, samples):
+        field_name = self._get_field()
+        for sample in samples:
+            value = sample.get_field(field_name)
+            if value is None:
+                continue
 
-        return self._forward_pass_amg(inputs)
+            if isinstance(value, fol.Detections):
+                return "boxes"
 
-    def _forward_pass_amg(self, inputs):
-        mask_generator = sam.SamAutomaticMaskGenerator(
-            self._model,
-            **(self.config.amg_kwargs or {}),
-        )
-        masks = [
-            mask_generator.generate(self._to_numpy_input(inp))
-            for inp in inputs
-        ]
-        masks = torch.stack([self._to_torch_output(m) for m in masks])
-        return dict(out=masks)
+            if isinstance(value, fol.Keypoints):
+                return "points"
 
-    def _forward_pass_points(self, inputs):
-        self._output_processor = fout.InstanceSegmenterOutputProcessor(
-            self.class_labels
-        )
+            raise ValueError(
+                "Unsupported prompt type %s. The supported field types are %s"
+                % (type(value), (fol.Detections, fol.Keypoints))
+            )
 
+    def _get_prompts(self, samples):
+        field_name = self._get_field()
+        prompts = []
+        for sample in samples:
+            value = sample.get_field(field_name)
+            if value is not None:
+                prompts.append(value)
+            else:
+                raise ValueError(
+                    "Sample %s is missing a prompt in field '%s'"
+                    % (sample.id, field_name)
+                )
+
+        return prompts
+
+    def _get_classes(self, samples):
+        field_name = self._get_field()
+        classes = set()
+        for sample in samples:
+            value = sample.get_field(field_name)
+            if isinstance(value, fol.Detections):
+                classes.update(det.label for det in value.detections)
+
+            if isinstance(value, fol.Keypoints):
+                classes.update(kp.label for kp in value.keypoints)
+
+        return sorted(classes)
+
+    def _get_field(self):
+        return next(iter(self.needs_fields.values()))
+
+    def _forward_pass(self, imgs):
+        if self._curr_prompt_type == "boxes":
+            return self._forward_pass_boxes(imgs)
+
+        if self._curr_prompt_type == "points":
+            return self._forward_pass_points(imgs)
+
+        return self._forward_pass_auto(imgs)
+
+    def _forward_pass_boxes(self, imgs):
         sam_predictor = sam.SamPredictor(self._model)
+        self._output_processor = fout.InstanceSegmenterOutputProcessor(
+            self._curr_classes
+        )
+
         outputs = []
-        for inp, keypoints in zip(inputs, self.prompts):
-            sam_predictor.set_image(self._to_numpy_input(inp))
-            h, w = inp.size(1), inp.size(2)
+        for img, detections in zip(imgs, self._curr_prompts):
+            inp = _to_sam_input(img)
+            sam_predictor.set_image(inp)
+            h, w = img.size(1), img.size(2)
+
+            boxes = [d.bounding_box for d in detections.detections]
+            sam_boxes = np.array([_to_sam_box(box, w, h) for box in boxes])
+            input_boxes = torch.tensor(sam_boxes, device=sam_predictor.device)
+            transformed_boxes = sam_predictor.transform.apply_boxes_torch(
+                input_boxes, (h, w)
+            )
+
+            masks, _, _ = sam_predictor.predict_torch(
+                point_coords=None,
+                point_labels=None,
+                boxes=transformed_boxes,
+                multimask_output=False,
+            )
+
+            outputs.append(
+                {
+                    "boxes": input_boxes,
+                    "labels": torch.tensor(
+                        [
+                            self._curr_classes.index(d.label)
+                            for d in detections.detections
+                        ],
+                        device=sam_predictor.device,
+                    ),
+                    "scores": torch.tensor(
+                        [
+                            d.confidence if d.confidence is not None else 1.0
+                            for d in detections.detections
+                        ],
+                        device=sam_predictor.device,
+                    ),
+                    "masks": masks,
+                }
+            )
+
+        return outputs
+
+    def _forward_pass_points(self, imgs):
+        sam_predictor = sam.SamPredictor(self._model)
+        self._output_processor = fout.InstanceSegmenterOutputProcessor(
+            self._curr_classes
+        )
+
+        outputs = []
+        for img, keypoints in zip(imgs, self._curr_prompts):
+            inp = _to_sam_input(img)
+            sam_predictor.set_image(inp)
+            h, w = img.size(1), img.size(2)
 
             boxes, labels, scores, masks = [], [], [], []
 
-            # each keypoints object will generate its own instance segmentation
             for kp in keypoints.keypoints:
                 sam_points, sam_labels = _to_sam_points(kp.points, w, h)
 
@@ -112,17 +213,15 @@ class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
                     point_labels=sam_labels,
                     multimask_output=True,
                 )
-                mask_index = (
-                    self.config.points_mask_index
-                    if self.config.points_mask_index
-                    else np.argmax(mask_scores)
-                )
-                mask = multi_mask[mask_index].astype(int)
 
-                # add boxes, labels, scores, and masks
+                mask_index = self.config.points_mask_index
+                if mask_index is None:
+                    mask_index = np.argmax(mask_scores)
+
+                mask = multi_mask[mask_index].astype(int)
                 if mask.any():
                     boxes.append(_mask_to_box(mask))
-                    labels.append(self.class_labels.index(kp.label))
+                    labels.append(self._curr_classes.index(kp.label))
                     scores.append(min(1.0, np.max(mask_scores)))
                     masks.append(mask)
 
@@ -143,64 +242,24 @@ class SegmentAnythingModel(fout.TorchImageModel, fom.SamplesMixin):
 
         return outputs
 
-    def _forward_pass_boxes(self, inputs):
-        self._output_processor = fout.InstanceSegmenterOutputProcessor(
-            self.class_labels
-        )
+    def _forward_pass_auto(self, imgs):
+        kwargs = self.config.amg_kwargs or {}
+        mask_generator = sam.SamAutomaticMaskGenerator(self._model, **kwargs)
+        self._output_processor = None
 
-        sam_predictor = sam.SamPredictor(self._model)
         outputs = []
-        for inp, detections in zip(inputs, self.prompts):
-            sam_predictor.set_image(self._to_numpy_input(inp))
-            h, w = inp.size(1), inp.size(2)
-            boxes = [d.bounding_box for d in detections.detections]
-            sam_boxes = np.array([_to_sam_box(box, w, h) for box in boxes])
-            input_boxes = torch.tensor(sam_boxes, device=sam_predictor.device)
-            transformed_boxes = sam_predictor.transform.apply_boxes_torch(
-                input_boxes, (h, w)
-            )
-
-            mask, _, _ = sam_predictor.predict_torch(
-                point_coords=None,
-                point_labels=None,
-                boxes=transformed_boxes,
-                multimask_output=False,
-            )
-            outputs.append(
-                {
-                    "boxes": input_boxes,
-                    "labels": torch.tensor(
-                        [
-                            self.class_labels.index(d.label)
-                            for d in detections.detections
-                        ],
-                        device=sam_predictor.device,
-                    ),
-                    "scores": torch.tensor(
-                        [
-                            d.confidence if d.confidence else 1.0
-                            for d in detections.detections
-                        ],
-                        device=sam_predictor.device,
-                    ),
-                    "masks": mask,
-                }
-            )
+        for img in imgs:
+            inp = _to_sam_input(img)
+            output = mask_generator.generate(inp)
+            masks = [out["segmentation"].astype(int) for out in output]
+            masks.insert(0, np.zeros_like(masks[0]))  # background
+            outputs.append(fol.Segmentation(mask=np.stack(masks)))
 
         return outputs
 
-    @staticmethod
-    def _to_numpy_input(tensor):
-        return (tensor.cpu().numpy() * 255).astype("uint8").transpose(1, 2, 0)
 
-    @staticmethod
-    def _to_torch_output(model_output):
-        masks = [one["segmentation"].astype(int) for one in model_output]
-
-        # background
-        masks.insert(0, np.zeros_like(model_output[0]["segmentation"]))
-
-        return torch.from_numpy(np.stack(masks))
+def _to_sam_input(tensor):
+    return (tensor.cpu().numpy() * 255).astype("uint8").transpose(1, 2, 0)
 
 
 def _to_sam_points(points, w, h, negative=False):
