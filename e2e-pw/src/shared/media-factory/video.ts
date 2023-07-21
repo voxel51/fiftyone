@@ -47,19 +47,3 @@ export const createBlankVideo = async (options: {
       .run();
   });
 };
-
-createBlankVideo({
-  duration: 5,
-  width: 100,
-  height: 100,
-  frameRate: 30,
-  outputPath: "/tmp/test-video1.mp4",
-});
-
-createBlankVideo({
-  duration: 5,
-  width: 100,
-  height: 100,
-  frameRate: 30,
-  outputPath: "/tmp/test-video2.mp4",
-});
