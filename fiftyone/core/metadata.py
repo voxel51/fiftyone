@@ -251,9 +251,7 @@ def compute_metadata(
             error if metadata cannot be computed for a sample
         warn_failures (False): whether to log a warning if metadata cannot
             be computed for a sample
-        progress (None): whether to show the progress bar of the import.
-            If None this uses the global setting, otherwise it overwrites
-            the setting for this method
+        progress (None): whether to render a progress bar
     """
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 

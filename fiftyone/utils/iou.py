@@ -149,6 +149,7 @@ def compute_max_ious(
     other_field=None,
     iou_attr="max_iou",
     id_attr=None,
+    progress=None,
     **kwargs,
 ):
     """Populates an attribute on each label in the given spatial field(s) that
@@ -175,6 +176,7 @@ def compute_max_ious(
         iou_attr ("max_iou"): the label attribute in which to store the max IoU
         id_attr (None): an optional attribute in which to store the label ID of
             the maximum overlapping label
+        progress (None): whether to render a progress bar
         **kwargs: optional keyword arguments for :func:`compute_ious`
     """
     if other_field is None:
@@ -202,7 +204,7 @@ def compute_max_ious(
     label_ids1 = []
     label_ids2 = []
 
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress):
         if is_frame_field:
             _max_ious1 = []
             _max_ious2 = []
@@ -259,7 +261,12 @@ def compute_max_ious(
 
 
 def find_duplicates(
-    sample_collection, label_field, iou_thresh=0.999, method="simple", **kwargs
+    sample_collection,
+    label_field,
+    iou_thresh=0.999,
+    method="simple",
+    progress=None,
+    **kwargs,
 ):
     """Returns IDs of duplicate labels in the given field of the collection, as
     defined as labels with an IoU greater than a chosen threshold with another
@@ -287,6 +294,7 @@ def find_duplicates(
             labels are duplicates
         method ("simple"): the duplicate removal method to use. The supported
             values are ``("simple", "greedy")``
+        progress (None): whether to render a progress bar
         **kwargs: optional keyword arguments for :func:`compute_ious`
 
     Returns:
@@ -306,7 +314,7 @@ def find_duplicates(
 
     dup_ids = []
 
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress):
         if is_frame_field:
             for frame in sample.frames.values():
                 _dup_ids = _find_duplicates(

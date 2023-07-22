@@ -36,6 +36,7 @@ def evaluate_regressions(
     eval_key=None,
     missing=None,
     method=None,
+    progress=None,
     **kwargs,
 ):
     """Evaluates the regression predictions in the given collection with
@@ -74,6 +75,7 @@ def evaluate_regressions(
             supported values are
             ``fo.evaluation_config.regression_backends.keys()`` and the default
             is ``fo.evaluation_config.default_regression_backend``
+        progress (None): whether to render a progress bar
         **kwargs: optional keyword arguments for the constructor of the
             :class:`RegressionEvaluationConfig` being used
 
@@ -92,7 +94,7 @@ def evaluate_regressions(
     eval_method.register_samples(samples, eval_key)
 
     results = eval_method.evaluate_samples(
-        samples, eval_key=eval_key, missing=missing
+        samples, eval_key=eval_key, missing=missing, progress=progress
     )
     eval_method.save_run_results(samples, eval_key, results)
 
@@ -149,7 +151,9 @@ class RegressionEvaluation(foe.EvaluationMethod):
         else:
             dataset.add_sample_field(eval_key, fof.FloatField)
 
-    def evaluate_samples(self, samples, eval_key=None, missing=None):
+    def evaluate_samples(
+        self, samples, eval_key=None, missing=None, progress=None
+    ):
         """Evaluates the regression predictions in the given samples with
         respect to the specified ground truth values.
 
@@ -158,6 +162,7 @@ class RegressionEvaluation(foe.EvaluationMethod):
             eval_key (None): an evaluation key for this evaluation
             missing (None): a missing value. Any None-valued regressions are
                 given this value for results purposes
+            progress (None): whether to render a progress bar
 
         Returns:
             a :class:`RegressionResults` instance
@@ -243,7 +248,9 @@ class SimpleEvaluation(RegressionEvaluation):
         config: a :class:`SimpleEvaluationConfig`
     """
 
-    def evaluate_samples(self, samples, eval_key=None, missing=None):
+    def evaluate_samples(
+        self, samples, eval_key=None, missing=None, progress=None
+    ):
         metric = self.config._metric
 
         if metric == "squared_error":
