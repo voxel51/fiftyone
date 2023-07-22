@@ -10,7 +10,6 @@ import {
 
 import { Overlay } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
-import { isValidColor } from "../../overlays/util";
 import {
   BaseState,
   Coloring,
@@ -107,6 +106,7 @@ type ColorParams = {
   // if primitive fields
   value?: string | number | boolean;
   customizeColorSetting: CustomizeColor[];
+  isValidColor: (string) => boolean;
 };
 
 export function getAssignedColor({
@@ -116,6 +116,7 @@ export function getAssignedColor({
   fallbackLabel = "label",
   value,
   customizeColorSetting,
+  isValidColor,
 }: ColorParams): string {
   const setting = customizeColorSetting.find((s) => s.path === path);
   const isPrimitive = ![null, undefined].includes(value); // for readability
@@ -151,14 +152,35 @@ export function getAssignedColor({
 
     // For embeddedDocumentField, use colorByAttribute as the key in param or use
     // the fallbackLabel defaulted to 'label', regression uses 'value'
-    const key = setting.colorByAttribute ?? fallbackLabel;
 
-    // use the first value as the fallback default if it's a listField for embeddedDoc
-    const currentValue = !isPrimitive
-      ? Array.isArray(param[key])
-        ? param[key][0]
-        : param[key]
-      : null;
+    const key = setting.colorByAttribute ?? fallbackLabel;
+    let currentValue;
+
+    if (!isPrimitive) {
+      const convertedKey = ![undefined, null].includes(param[key])
+        ? key
+        : fallbackLabel;
+      // use the first value as the fallback default if it's a listField for embeddedDoc
+      currentValue = !isPrimitive
+        ? Array.isArray(param[key])
+          ? param[convertedKey][0]
+          : param[convertedKey]
+        : null;
+    } else {
+      currentValue = value;
+    }
+
+    // sample tags
+    if (path === "tags") {
+      const valueColor = setting.valueColors?.find(
+        (v) => v.value === param
+      )?.color;
+      if (isValidColor(valueColor)) {
+        return valueColor;
+      } else {
+        return getColor(pool, seed, param);
+      }
+    }
 
     // check if current attribute value or field value has an assigned color
     const targetColor = setting.valueColors?.find((colorSetup) => {
@@ -166,19 +188,6 @@ export function getAssignedColor({
         ?.toString()
         .toLowerCase();
       const stringifiedValue = colorSetup.value?.toString();
-
-      // sample tags
-      if (path === "tags") {
-        const valueColor = setting.valueColors?.find(
-          (v) => v.value === param
-        )?.color;
-        if (isValidColor(valueColor)) {
-          return valueColor;
-        } else {
-          return getColor(pool, seed, path);
-        }
-      }
-
       if (["none", "null", "undefined"].includes(stringifiedLowercaseValue)) {
         if (isPrimitive) {
           return typeof value === "string"

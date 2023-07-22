@@ -30,6 +30,7 @@ import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
+import { isValidColor } from "../../overlays/util";
 
 interface TagData {
   color: string;
@@ -110,6 +111,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -124,6 +126,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -139,6 +142,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -154,6 +158,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -168,6 +173,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -183,6 +189,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -197,6 +204,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -210,6 +218,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -229,6 +238,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -247,6 +257,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           param,
           customizeColorSetting,
+          isValidColor,
         }),
       };
     };
@@ -266,6 +277,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             param,
             customizeColorSetting,
             fallbackLabel: "value",
+            isValidColor,
           }),
         };
       },
@@ -284,6 +296,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
                 param: tag,
                 customizeColorSetting,
                 fallbackLabel: "value",
+                isValidColor,
               }),
               title: tag,
               value: tag,
