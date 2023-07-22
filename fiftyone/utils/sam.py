@@ -100,7 +100,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
         session = fo.launch_app(dataset)
 
-    Automatic segmentation::
+    Automatic segmentation example::
 
         import fiftyone as fo
         import fiftyone.zoo as foz
