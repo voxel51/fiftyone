@@ -2120,7 +2120,8 @@ class SamplesMixin(object):
             return [self.predict(arg) for arg in args]
 
         return [
-            self.predict(arg, sample) for arg, sample in zip(args, samples)
+            self.predict(arg, sample=sample)
+            for arg, sample in zip(args, samples)
         ]
 
 

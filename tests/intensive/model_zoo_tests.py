@@ -17,6 +17,9 @@ import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 
 
+_SAM_PROMPT_FIELD = "prompt_field"
+
+
 def test_all_models():
     all_models = foz.list_zoo_models()
     _apply_models(all_models)
@@ -42,29 +45,29 @@ def test_semantic_segmentation_models():
     _apply_models(models)
 
 
-def test_sam_keypoints():
-    models = ["segment-anything-vit_b-torch"]
+def test_sam_boxes():
+    models = ["segment-anything-vitb-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        batch_size=2,
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+    )
+
+
+def test_sam_points():
+    models = ["segment-anything-vitb-torch"]
     _apply_models(
         models,
         max_samples=3,
         batch_size=2,
         model_kwargs=dict(mask_index=1.05),
-        apply_kwargs=dict(points_from="ground_truth"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
     )
 
 
-def test_sam_boxes():
-    models = ["segment-anything-vit_b-torch"]
-    _apply_models(
-        models,
-        max_samples=3,
-        batch_size=2,
-        apply_kwargs=dict(boxes_from="ground_truth"),
-    )
-
-
-def test_sam_amg():
-    models = ["segment-anything-vit_b-torch"]
+def test_sam_auto():
+    models = ["segment-anything-vitb-torch"]
     _apply_models(
         models,
         max_samples=3,
@@ -155,6 +158,7 @@ def _apply_models(
         kwargs = {"confidence_thresh": confidence_thresh}
     else:
         kwargs = {}
+
     if apply_kwargs:
         kwargs.update(apply_kwargs)
 
@@ -165,13 +169,15 @@ def _apply_models(
         shuffle=True,
         max_samples=max_samples,
     )
-    # generate keypoints for sam keypoints testing
-    if "points_from" in kwargs:
-        field = kwargs["points_from"]
-        detections = dataset.values(f"{field}.detections")
+
+    # Generate keypoints for segment-anything model
+    if _SAM_PROMPT_FIELD in kwargs:
+        field_name = kwargs[_SAM_PROMPT_FIELD]
+        kp_field_name = field_name + "_points"
+        detections = dataset.values(field_name + ".detections")
         keypoints = [_detections_to_keypoint(d) for d in detections]
-        dataset.set_values(f"{field}-points", keypoints)
-        kwargs["points_from"] = f"{field}-points"
+        dataset.set_values(kp_field_name, keypoints)
+        kwargs[_SAM_PROMPT_FIELD] = kp_field_name
 
     for idx, model_name in enumerate(model_names, 1):
         print(
