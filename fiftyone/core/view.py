@@ -431,7 +431,7 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self, progress=None, autosave=False, batch_size=None):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
 
         Examples::
@@ -466,8 +466,7 @@ class DatasetView(foc.SampleCollection):
                 sample.ground_truth.label = make_label()
 
         Args:
-            progress (None): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -477,10 +476,13 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
+        if progress is None:
+            progress = False
+
         with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()
 
-            pb = fou.ProgressBar(total=len(self), progress=progress)
+            pb = fou.ProgressBar(total=self, progress=progress)
             exit_context.enter_context(pb)
             samples = pb(samples)
 
@@ -539,7 +541,7 @@ class DatasetView(foc.SampleCollection):
     def iter_groups(
         self,
         group_slices=None,
-        progress=None,
+        progress=False,
         autosave=False,
         batch_size=None,
     ):
@@ -581,8 +583,7 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             group_slices (None): an optional subset of group slices to load
-            progress (None): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -601,10 +602,13 @@ class DatasetView(foc.SampleCollection):
                 "Use iter_dynamic_groups() for dynamic group views"
             )
 
+        if progress is None:
+            progress = False
+
         with contextlib.ExitStack() as exit_context:
             groups = self._iter_groups(group_slices=group_slices)
 
-            pb = fou.ProgressBar(total=len(self), progress=progress)
+            pb = fou.ProgressBar(total=self, progress=progress)
             exit_context.enter_context(pb)
             groups = pb(groups)
 
@@ -677,8 +681,7 @@ class DatasetView(foc.SampleCollection):
                 print("%s: %d" % (group_value, len(group)))
 
         Args:
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar
 
         Returns:
             an iterator that emits :class:`DatasetView` instances, one per
@@ -687,13 +690,15 @@ class DatasetView(foc.SampleCollection):
         if not self._is_dynamic_groups:
             raise ValueError("%s does not contain dynamic groups" % type(self))
 
+        if progress is None:
+            progress = False
+
         with contextlib.ExitStack() as context:
             groups = self._iter_dynamic_groups()
 
-            if progress:
-                pb = fou.ProgressBar(total=len(self))
-                context.enter_context(pb)
-                groups = pb(groups)
+            pb = fou.ProgressBar(total=self, progress=progress)
+            context.enter_context(pb)
+            groups = pb(groups)
 
             for group in groups:
                 yield group

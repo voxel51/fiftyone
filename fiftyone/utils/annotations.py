@@ -1020,7 +1020,7 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        progress (None): whether to render a progress bar tracking the progress
+        progress (None): whether to render a progress bar
         **kwargs: keyword arguments for the run's
             :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
             method
@@ -2343,9 +2343,7 @@ def draw_labeled_images(
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
-        progress (None): whether to render a progress bar tracking the
-            progress. None uses the global setting, True or False overwrite
-            the value for the current method.
+        progress (None): whether to render a progress bar
         **kwargs: optional keyword arguments specifying parameters of the
             default :class:`DrawConfig` to override
 

@@ -3995,13 +3995,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if project_name is not None:
                 self._project_id_map.pop(project_name, None)
 
-    def delete_projects(self, project_ids):
+    def delete_projects(self, project_ids, progress=None):
         """Deletes the given projects from the CVAT server.
 
         Args:
             project_ids: an iterable of project IDs
+            progress (None): whether to render a progress bar
         """
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
 
@@ -4152,13 +4153,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self.task_exists(task_id):
             self.delete(self.task_url(task_id))
 
-    def delete_tasks(self, task_ids):
+    def delete_tasks(self, task_ids, progress=None):
         """Deletes the given tasks from the CVAT server.
 
         Args:
             task_ids: an iterable of task IDs
+            progress (None): whether to render a progress bar
         """
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
 

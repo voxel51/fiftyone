@@ -57,6 +57,7 @@ def export_samples(
     dataset_exporter=None,
     label_field=None,
     frame_labels_field=None,
+    progress=None,
     num_samples=None,
     **kwargs,
 ):
@@ -192,8 +193,10 @@ def export_samples(
             or a dictionary mapping field names to output keys describing the
             frame label fields to export. Only applicable if
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
+        progress (None): whether to render a progress bar
         num_samples (None): the number of samples in ``samples``. If omitted,
-            this is computed (if possible) via ``len(samples)``
+            this is computed (if possible) via ``len(samples)`` if needed for
+            progress tracking
         **kwargs: optional keyword arguments to pass to the dataset exporter's
             constructor. If you are exporting image patches, this can also
             contain keyword arguments for
@@ -234,7 +237,7 @@ def export_samples(
     sample_collection = samples
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
-        _write_batch_dataset(dataset_exporter, samples)
+        _write_batch_dataset(dataset_exporter, samples, progress=progress)
         return
 
     if isinstance(
@@ -252,7 +255,7 @@ def export_samples(
                 **patches_kwargs,
             )
             sample_parser = ImageSampleParser()
-            num_samples = len(samples)
+            num_samples = samples
         else:
             sample_parser = FiftyOneUnlabeledImageSampleParser(
                 compute_metadata=True
@@ -262,7 +265,7 @@ def export_samples(
         if found_clips and not samples._is_clips:
             # Export unlabeled video clips
             samples = samples.to_clips(label_field)
-            num_samples = len(samples)
+            num_samples = samples
 
         # True for copy/move/symlink, False for manifest/no export
         _export_media = getattr(
@@ -298,7 +301,7 @@ def export_samples(
                 **patches_kwargs,
             )
             sample_parser = ImageClassificationSampleParser()
-            num_samples = len(samples)
+            num_samples = samples
         else:
             label_fcn = _make_label_coercion_functions(
                 label_field, samples, dataset_exporter
@@ -313,7 +316,7 @@ def export_samples(
         if found_clips and not samples._is_clips:
             # Export labeled video clips
             samples = samples.to_clips(label_field)
-            num_samples = len(samples)
+            num_samples = samples
 
         # True for copy/move/symlink, False for manifest/no export
         _export_media = getattr(
@@ -358,8 +361,9 @@ def export_samples(
         samples,
         sample_parser,
         dataset_exporter,
-        num_samples=num_samples,
         sample_collection=sample_collection,
+        progress=progress,
+        num_samples=num_samples,
     )
 
 
@@ -367,8 +371,9 @@ def write_dataset(
     samples,
     sample_parser,
     dataset_exporter,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     """Writes the samples to disk as a dataset in the specified format.
 
@@ -378,20 +383,19 @@ def write_dataset(
             use to parse the samples
         dataset_exporter: a :class:`DatasetExporter` to use to write the
             dataset
-        num_samples (None): the number of samples in ``samples``. If omitted,
-            this is computed (if possible) via ``len(samples)``
         sample_collection (None): the
             :class:`fiftyone.core.collections.SampleCollection` from which
             ``samples`` were extracted. If ``samples`` is itself a
             :class:`fiftyone.core.collections.SampleCollection`, this parameter
             defaults to ``samples``. This parameter is optional and is only
             passed to :meth:`DatasetExporter.log_collection`
+        progress (None): whether to render a progress bar
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            this is computed (if possible) via ``len(samples)`` if needed for
+            progress tracking
     """
     if num_samples is None:
-        try:
-            num_samples = len(samples)
-        except:
-            pass
+        num_samples = samples
 
     if sample_collection is None and isinstance(samples, foc.SampleCollection):
         sample_collection = samples
@@ -400,15 +404,17 @@ def write_dataset(
         _write_generic_sample_dataset(
             dataset_exporter,
             samples,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(dataset_exporter, GroupDatasetExporter):
         _write_group_dataset(
             dataset_exporter,
             samples,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(
         dataset_exporter,
@@ -418,8 +424,9 @@ def write_dataset(
             dataset_exporter,
             samples,
             sample_parser,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(
         dataset_exporter,
@@ -429,16 +436,18 @@ def write_dataset(
             dataset_exporter,
             samples,
             sample_parser,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
         _write_unlabeled_dataset(
             dataset_exporter,
             samples,
             sample_parser,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     else:
         raise ValueError(
@@ -803,7 +812,7 @@ def _classification_to_detections(label):
     )
 
 
-def _write_batch_dataset(dataset_exporter, samples):
+def _write_batch_dataset(dataset_exporter, samples, progress=None):
     if not isinstance(samples, foc.SampleCollection):
         raise ValueError(
             "%s can only export %s instances"
@@ -811,16 +820,17 @@ def _write_batch_dataset(dataset_exporter, samples):
         )
 
     with dataset_exporter:
-        dataset_exporter.export_samples(samples)
+        dataset_exporter.export_samples(samples, progress=progress)
 
 
 def _write_generic_sample_dataset(
     dataset_exporter,
     samples,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -838,8 +848,9 @@ def _write_generic_sample_dataset(
 def _write_group_dataset(
     dataset_exporter,
     samples,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     if not isinstance(samples, foc.SampleCollection):
         raise ValueError(
@@ -853,7 +864,7 @@ def _write_group_dataset(
             % (type(dataset_exporter), samples.media_type)
         )
 
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -866,12 +877,13 @@ def _write_image_dataset(
     dataset_exporter,
     samples,
     sample_parser,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     labeled_images = isinstance(dataset_exporter, LabeledImageDatasetExporter)
 
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -919,12 +931,13 @@ def _write_video_dataset(
     dataset_exporter,
     samples,
     sample_parser,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     labeled_videos = isinstance(dataset_exporter, LabeledVideoDatasetExporter)
 
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -967,10 +980,11 @@ def _write_unlabeled_dataset(
     dataset_exporter,
     samples,
     sample_parser,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -1377,12 +1391,13 @@ class BatchDatasetExporter(DatasetExporter):
             % type(self)
         )
 
-    def export_samples(self, sample_collection):
+    def export_samples(self, sample_collection, progress=None):
         """Exports the given sample collection.
 
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
+            progress (None): whether to render a progress bar
         """
         raise NotImplementedError("subclass must implement export_samples()")
 
@@ -2052,7 +2067,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         )
         self._media_exporter.setup()
 
-    def export_samples(self, sample_collection):
+    def export_samples(self, sample_collection, progress=None):
         etau.ensure_dir(self.export_dir)
 
         if sample_collection.media_type == fomm.GROUP:
@@ -2102,6 +2117,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self._samples_path,
             key="samples",
             patt=patt,
+            progress=progress,
             num_docs=num_samples,
         )
 
@@ -2129,6 +2145,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 key="frames",
                 patt=patt,
                 num_docs=num_frames,
+                progress=progress,
             )
 
         dataset = sample_collection._dataset

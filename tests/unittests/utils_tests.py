@@ -458,7 +458,7 @@ class TestLoadDataset(unittest.TestCase):
 class ProgressBarTests(unittest.TestCase):
     def _test_correct_value(self, progress, global_progress, quiet, expected):
         fo.config.show_progress_bars = global_progress
-        with fou.ProgressBar(list(), progress=progress, quiet=quiet) as pb:
+        with fou.ProgressBar([], progress=progress, quiet=quiet) as pb:
             assert pb._progress == expected
 
     def test_progress_None_uses_global(self):
@@ -484,7 +484,7 @@ class ProgressBarTests(unittest.TestCase):
         )
 
     def test_quiet_overwrites_all(self):
-        # Careful, we expect here to have progress the opposite value of quiet, as they are opposites
+        # Careful, we expect here to have progress the opposite value of quiet
         self._test_correct_value(
             progress=True, global_progress=True, quiet=True, expected=False
         )

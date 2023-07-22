@@ -446,6 +446,7 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    progress=None,
 ):
     """Computes orthographic projection images for the point clouds in the
     given collection.
@@ -509,6 +510,7 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        progress (None): whether to render a progress bar
     """
     if in_group_slice is None and samples.media_type == fom.GROUP:
         in_group_slice = _get_point_cloud_slice(samples)
@@ -537,7 +539,7 @@ def compute_orthographic_projection_images(
 
     all_metadata = []
 
-    with fou.ProgressBar(total=len(filepaths)) as pb:
+    with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
         for filepath, group in pb(zip(filepaths, groups)):
             image_path = filename_maker.get_output_path(
                 filepath, output_ext=".png"

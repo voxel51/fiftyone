@@ -40,6 +40,7 @@ def evaluate_detections(
     use_boxes=False,
     classwise=True,
     dynamic=True,
+    progress=None,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -131,6 +132,7 @@ def evaluate_detections(
             label (True) or allow matches between classes (False)
         dynamic (True): whether to declare the dynamic object-level attributes
             that are populated on the dataset's schema
+        progress (None): whether to render a progress bar
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -182,7 +184,7 @@ def evaluate_detections(
 
     matches = []
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=True):
+    for sample in _samples.iter_samples(progress=progress):
         if processing_frames:
             docs = sample.frames.values()
         else:
@@ -211,7 +213,12 @@ def evaluate_detections(
             sample.save()
 
     results = eval_method.generate_results(
-        samples, matches, eval_key=eval_key, classes=classes, missing=missing
+        samples,
+        matches,
+        eval_key=eval_key,
+        classes=classes,
+        missing=missing,
+        progress=progress,
     )
     eval_method.save_run_results(samples, eval_key, results)
 
@@ -359,7 +366,13 @@ class DetectionEvaluation(foe.EvaluationMethod):
         raise NotImplementedError("subclass must implement evaluate()")
 
     def generate_results(
-        self, samples, matches, eval_key=None, classes=None, missing=None
+        self,
+        samples,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+        progress=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -378,6 +391,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
                 purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
+            progress (None): whether to render a progress bar
 
         Returns:
             a :class:`DetectionResults`

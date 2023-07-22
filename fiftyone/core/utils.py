@@ -942,7 +942,7 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     """.. autoclass:: eta.core.utils.ProgressBar"""
 
-    def __init__(self, *args, progress=None, quiet=None, **kwargs):
+    def __init__(self, total=None, progress=None, quiet=None, **kwargs):
         if quiet is not None:
             # Allow overwrite with expected progress attribute
             progress = not quiet
@@ -957,12 +957,31 @@ class ProgressBar(etau.ProgressBar):
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
 
+        if progress:
+            kwargs["total"] = total
+        else:
+            kwargs["total"] = None
+
         # For progress bars in notebooks, use a fixed size so that they will
         # read well across browsers, in HTML format, etc
         if foc.is_notebook_context() and "max_width" not in kwargs:
             kwargs["max_width"] = 90
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
+
+    def __call__(self, iterable):
+        # Don't compute `len(iterable)` unless necessary
+        no_len = self._quiet and self._total is None
+
+        if no_len:
+            self._total = -1
+
+        super().__call__(iterable)
+
+        if no_len:
+            self._total = None
+
+        return self
 
 
 class Batcher(abc.ABC):
@@ -981,6 +1000,9 @@ class Batcher(abc.ABC):
 
         if not isinstance(iterable, foc.SampleCollection):
             return_views = False
+
+        if progress is None:
+            progress = fo.config.show_progress_bars
 
         self.iterable = iterable
         self.return_views = return_views

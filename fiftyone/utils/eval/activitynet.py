@@ -123,7 +123,13 @@ class ActivityNetEvaluation(DetectionEvaluation):
         )
 
     def generate_results(
-        self, samples, matches, eval_key=None, classes=None, missing=None
+        self,
+        samples,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+        progress=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -146,6 +152,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
                 purposes
             missing (None): a missing label string. Any unmatched segments are
                 given this label for results purposes
+            progress (None): whether to render a progress bar
 
         Returns:
             a :class:`DetectionResults`
@@ -176,7 +183,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
 
         # IoU sweep
         logger.info("Performing IoU sweep...")
-        for sample in _samples.iter_samples(progress=True):
+        for sample in _samples.iter_samples(progress=progress):
             # Don't edit user's data during sweep
             gts = _copy_labels(sample[self.gt_field])
             preds = _copy_labels(sample[self.pred_field])
