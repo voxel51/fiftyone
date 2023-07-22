@@ -942,9 +942,17 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     """.. autoclass:: eta.core.utils.ProgressBar"""
 
-    def __init__(self, *args, **kwargs):
-        if "quiet" not in kwargs:
-            kwargs["quiet"] = not fo.config.show_progress_bars
+    def __init__(self, *args, progress=None, quiet=None, **kwargs):
+        if quiet is not None:
+            # Allow overwrite with expected progress attribute
+            progress = not quiet
+
+        if progress is None:
+            # Use global config value
+            progress = fo.config.show_progress_bars
+
+        self._progress = progress
+        kwargs["quiet"] = not self._progress
 
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
@@ -966,7 +974,7 @@ class Batcher(abc.ABC):
         self,
         iterable,
         return_views=False,
-        progress=False,
+        progress=None,
         total=None,
     ):
         import fiftyone.core.collections as foc
