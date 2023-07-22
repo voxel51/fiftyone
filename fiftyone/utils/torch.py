@@ -395,6 +395,9 @@ class TorchImageModel(
 
         output = self._forward_pass(imgs)
 
+        if self._output_processor is None:
+            return output
+
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
 

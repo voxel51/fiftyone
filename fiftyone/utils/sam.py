@@ -28,8 +28,8 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     arguments.
 
     Args:
-        amg_kwargs (None): a dictionary of keyword arguments to pass to
-            ``segment_anything.SamAutomaticMaskGenerator``
+        auto_kwargs (None): a dictionary of keyword arguments to pass to
+            ``segment_anything.SamAutomaticMaskGenerator(model, **auto_kwargs)``
         points_mask_index (None): an optional mask index to use for each
             keypoint output
     """
@@ -38,7 +38,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         d = self.init(d)
         super().__init__(d)
 
-        self.amg_kwargs = self.parse_dict(d, "amg_kwargs", default=None)
+        self.auto_kwargs = self.parse_dict(d, "auto_kwargs", default=None)
         self.points_mask_index = self.parse_int(
             d, "points_mask_index", default=None
         )
@@ -51,7 +51,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
     inference.
 
     Args:
-        config: an :class:`SegmentAnythingModelConfig`
+        config: a :class:`SegmentAnythingModelConfig`
     """
 
     def __init__(self, config):
@@ -71,8 +71,11 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         return entrypoint(checkpoint=config.model_path)
 
     def predict_all(self, imgs, samples=None):
-        if samples is not None:
-            prompt_type, prompts, classes = self._parse_samples(samples)
+        field_name = self._get_field()
+        if field_name is not None and samples is not None:
+            prompt_type, prompts, classes = self._parse_samples(
+                samples, field_name
+            )
         else:
             prompt_type, prompts, classes = None, None, None
 
@@ -82,15 +85,19 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
         return self._predict_all(imgs)
 
-    def _parse_samples(self, samples):
-        prompt_type = self._get_prompt_type(samples)
-        prompts = self._get_prompts(samples)
-        classes = self._get_classes(samples)
+    def _get_field(self):
+        if "prompt_field" in self.needs_fields:
+            return self.needs_fields["prompt_field"]
 
+        return next(iter(self.needs_fields.values()), None)
+
+    def _parse_samples(self, samples, field_name):
+        prompt_type = self._get_prompt_type(samples, field_name)
+        prompts = self._get_prompts(samples, field_name)
+        classes = self._get_classes(samples, field_name)
         return prompt_type, prompts, classes
 
-    def _get_prompt_type(self, samples):
-        field_name = self._get_field()
+    def _get_prompt_type(self, samples, field_name):
         for sample in samples:
             value = sample.get_field(field_name)
             if value is None:
@@ -107,8 +114,9 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 % (type(value), (fol.Detections, fol.Keypoints))
             )
 
-    def _get_prompts(self, samples):
-        field_name = self._get_field()
+        return None
+
+    def _get_prompts(self, samples, field_name):
         prompts = []
         for sample in samples:
             value = sample.get_field(field_name)
@@ -122,8 +130,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
         return prompts
 
-    def _get_classes(self, samples):
-        field_name = self._get_field()
+    def _get_classes(self, samples, field_name):
         classes = set()
         for sample in samples:
             value = sample.get_field(field_name)
@@ -134,9 +141,6 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 classes.update(kp.label for kp in value.keypoints)
 
         return sorted(classes)
-
-    def _get_field(self):
-        return next(iter(self.needs_fields.values()))
 
     def _forward_pass(self, imgs):
         if self._curr_prompt_type == "boxes":
@@ -239,7 +243,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         return outputs
 
     def _forward_pass_auto(self, imgs):
-        kwargs = self.config.amg_kwargs or {}
+        kwargs = self.config.auto_kwargs or {}
         mask_generator = sam.SamAutomaticMaskGenerator(self._model, **kwargs)
         self._output_processor = None
 
@@ -247,9 +251,16 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         for img in imgs:
             inp = _to_sam_input(img)
             output = mask_generator.generate(inp)
-            masks = [out["segmentation"].astype(int) for out in output]
-            masks.insert(0, np.zeros_like(masks[0]))  # background
-            outputs.append(fol.Segmentation(mask=np.stack(masks)))
+
+            mask = None
+            for i, out in enumerate(output, 1):
+                segi = out["segmentation"]
+                if mask is None:
+                    mask = np.zeros(segi.shape, dtype=np.uint8)
+
+                mask[segi] = i
+
+            outputs.append(fol.Segmentation(mask=mask))
 
         return outputs
 
@@ -277,8 +288,8 @@ def _to_sam_box(box, w, h):
 
 def _mask_to_box(mask):
     pos_indices = np.where(mask)
-    minx = np.min(pos_indices[1])
-    maxx = np.max(pos_indices[1])
-    miny = np.min(pos_indices[0])
-    maxy = np.max(pos_indices[0])
-    return [minx, miny, maxx, maxy]
+    x1 = np.min(pos_indices[1])
+    x2 = np.max(pos_indices[1])
+    y1 = np.min(pos_indices[0])
+    y2 = np.max(pos_indices[0])
+    return [x1, y1, x2, y2]
