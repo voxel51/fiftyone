@@ -56,7 +56,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         import fiftyone.zoo as foz
 
         dataset = foz.load_zoo_dataset(
-            "quickstart", max_samples=5, shuffle=True, seed=51
+            "quickstart", max_samples=25, shuffle=True, seed=51
         )
 
         model = foz.load_zoo_model("segment-anything-vitb-torch")
@@ -80,7 +80,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
             split="validation",
             label_types="detections",
             classes=["person"],
-            max_samples=3,
+            max_samples=25,
             only_matching=True,
         )
 
@@ -112,7 +112,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         model = foz.load_zoo_model("segment-anything-vitb-torch")
 
         # Automatic segmentation
-        dataset.apply_model(model, label_field="auto", output_dir="/tmp/auto")
+        dataset.apply_model(model, label_field="auto")
 
         session = fo.launch_app(dataset)
 
