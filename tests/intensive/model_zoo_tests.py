@@ -129,9 +129,8 @@ def _get_models_with_tag(tag):
     return model_names
 
 
-def _detections_to_keypoint(detection_list):
-    """Create random points for each detection object and return Keypoints"""
-    results = []
+def _detections_to_keypoints(detection_list):
+    keypoints = []
     for detection in detection_list:
         n_points = random.randint(1, 5)
         x1, y1, w, h = detection.bounding_box
@@ -141,8 +140,9 @@ def _detections_to_keypoint(detection_list):
         )
         points = [rand_point() for _ in range(n_points)]
         keypoint = fo.Keypoint(points=points, label=detection.label)
-        results.append(keypoint)
-    return fo.Keypoints(keypoints=results)
+        keypoints.append(keypoint)
+
+    return fo.Keypoints(keypoints=keypoints)
 
 
 def _apply_models(
@@ -175,7 +175,7 @@ def _apply_models(
         field_name = kwargs[_SAM_PROMPT_FIELD]
         kp_field_name = field_name + "_points"
         detections = dataset.values(field_name + ".detections")
-        keypoints = [_detections_to_keypoint(d) for d in detections]
+        keypoints = [_detections_to_keypoints(d) for d in detections]
         dataset.set_values(kp_field_name, keypoints)
         kwargs[_SAM_PROMPT_FIELD] = kp_field_name
 
