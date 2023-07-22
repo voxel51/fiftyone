@@ -50,6 +50,72 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
     """Wrapper for running `Segment Anything <https://segment-anything.com>`_
     inference.
 
+    Box prompt example::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset(
+            "quickstart", max_samples=5, shuffle=True, seed=51
+        )
+
+        model = foz.load_zoo_model("segment-anything-vitb-torch")
+
+        # Prompt with boxes
+        dataset.apply_model(
+            model,
+            label_field="segmentations",
+            prompt_field="ground_truth",
+        )
+
+        session = fo.launch_app(dataset)
+
+    Keypoint prompt example::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            label_types="detections",
+            classes=["person"],
+            max_samples=3,
+            only_matching=True,
+        )
+
+        # Generate some keypoints
+        model = foz.load_zoo_model("keypoint-rcnn-resnet50-fpn-coco-torch")
+        dataset.default_skeleton = model.skeleton
+        dataset.apply_model(model, label_field="gt")
+
+        model = foz.load_zoo_model("segment-anything-vitb-torch")
+
+        # Prompt with keypoints
+        dataset.apply_model(
+            model,
+            label_field="segmentations",
+            prompt_field="gt_keypoints",
+        )
+
+        session = fo.launch_app(dataset)
+
+    Automatic segmentation::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset(
+            "quickstart", max_samples=5, shuffle=True, seed=51
+        )
+
+        model = foz.load_zoo_model("segment-anything-vitb-torch")
+
+        # Automatic segmentation
+        dataset.apply_model(model, label_field="auto", output_dir="/tmp/auto")
+
+        session = fo.launch_app(dataset)
+
     Args:
         config: a :class:`SegmentAnythingModelConfig`
     """
