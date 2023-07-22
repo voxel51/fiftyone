@@ -113,7 +113,7 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(
         model,
         label_field="segmentations",
-        prompt_field="ground_truth",
+        prompt_field="ground_truth",  # can contain Detections or Keypoints
     )
 
     # Full automatic segmentations
