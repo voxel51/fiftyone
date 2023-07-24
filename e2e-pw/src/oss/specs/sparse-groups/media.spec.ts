@@ -89,6 +89,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
     await grid.assert.waitForEntryCountTextToEqual("1 group");
     await grid.selectSlice("second");
     await grid.assert.waitForEntryCountTextToEqual("1 group");
+    await grid.openFirstLooker();
     await modal.sidebarPom.toggleSidebarGroup("GROUP");
     await modal.sidebarPom.assert.verifySidebarEntryText(
       "group.name",
