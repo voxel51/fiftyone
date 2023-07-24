@@ -35,6 +35,7 @@ const Grid: React.FC<{}> = () => {
     const flashlight = new Flashlight<number>({
       containerId: "grid-flashlight",
       horizontal: false,
+      showPixels: true,
       initialRequestKey: 1,
       options: { rowAspectRatioThreshold: threshold, offset: 52 },
       onItemClick: expandSample,

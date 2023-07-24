@@ -50,7 +50,7 @@ export const GroupView = () => {
     <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
-        {(isCarouselVisible || isImageVisible) && (
+        {isCarouselVisible && (
           <Resizable
             size={{ height: "100% !important", width }}
             minWidth={300}
