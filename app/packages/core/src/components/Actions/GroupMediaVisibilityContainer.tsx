@@ -1,15 +1,9 @@
 import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import useMeasure from "react-use-measure";
-
-import {
-  groupMediaIs3DVisible,
-  groupMediaIsCarouselVisible,
-  groupMediaIsImageVisible,
-  useOutsideClick,
-} from "@fiftyone/state";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../Common/Checkbox";
@@ -27,13 +21,15 @@ const Container = styled.div`
 `;
 
 const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
-  const [is3DVisible, setIs3DVisible] = useRecoilState(groupMediaIs3DVisible);
+  const [isSlotVisible, setIsSlotVisible] = useRecoilState(
+    fos.groupMediaIsSlotVisibleSetting
+  );
   const pointCloudSliceExists = useRecoilValue(fos.pointCloudSliceExists);
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
-    groupMediaIsCarouselVisible
+    fos.groupMediaIsCarouselVisibleSetting
   );
   const [isImageVisible, setIsImageVisible] = useRecoilState(
-    groupMediaIsImageVisible
+    fos.groupMediaIsMainVisibleSetting
   );
 
   return (
@@ -42,22 +38,22 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
       {pointCloudSliceExists && (
         <Checkbox
           name={"3D Viewer"}
-          value={is3DVisible}
+          value={isSlotVisible}
           muted={!isImageVisible && !isCarouselVisible}
-          setValue={(value) => setIs3DVisible(value)}
+          setValue={(value) => setIsSlotVisible(value)}
         />
       )}
 
       <Checkbox
         name={"Carousel"}
         value={isCarouselVisible}
-        muted={!(is3DVisible && pointCloudSliceExists) && !isImageVisible}
+        muted={!(isSlotVisible && pointCloudSliceExists) && !isImageVisible}
         setValue={(value) => setIsCarouselVisible(value)}
       />
       <Checkbox
         name={"Image"}
         value={isImageVisible}
-        muted={!(is3DVisible && pointCloudSliceExists) && !isCarouselVisible}
+        muted={!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible}
         setValue={(value) => setIsImageVisible(value)}
       />
     </Popout>

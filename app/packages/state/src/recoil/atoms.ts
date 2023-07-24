@@ -1,7 +1,14 @@
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { Field } from "@fiftyone/utilities";
-import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
+import {
+  AtomEffect,
+  atom,
+  atomFamily,
+  selector,
+  useRecoilCallback,
+} from "recoil";
+import { allPcdSlices, groupSlice, pointCloudSliceExists } from "./groups";
 import { ColorSchemeSetting, State } from "./types";
 
 export const refresher = atom<number>({
@@ -289,8 +296,8 @@ export const getBrowserStorageEffectForKey =
     })();
   };
 
-export const groupMediaIsCarouselVisible = atom<boolean>({
-  key: "groupMediaIsCarouselVisible",
+export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
+  key: "groupMediaIsCarouselVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
@@ -300,8 +307,13 @@ export const groupMediaIsCarouselVisible = atom<boolean>({
   ],
 });
 
-export const groupMediaIs3DVisible = atom<boolean>({
-  key: "groupMediaIs3DVisible",
+export const isMain3d = selector<boolean>({
+  key: "isMain3d",
+  get: ({ get }) => get(allPcdSlices).includes(get(groupSlice(true))),
+});
+
+export const groupMediaIsSlotVisibleSetting = atom<boolean>({
+  key: "groupMediaIsSlotVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
@@ -311,11 +323,22 @@ export const groupMediaIs3DVisible = atom<boolean>({
   ],
 });
 
-export const groupMediaIsImageVisible = atom<boolean>({
-  key: "groupMediaIsImageVisible",
+export const groupMediaIsSlotVisible = selector<boolean>({
+  key: "groupMediaIsSlotVisible",
+  get: ({ get }) => {
+    return (
+      get(groupMediaIsSlotVisibleSetting) &&
+      get(pointCloudSliceExists) &&
+      !get(allPcdSlices).includes(get(groupSlice(true)))
+    );
+  },
+});
+
+export const groupMediaIsMainVisibleSetting = atom<boolean>({
+  key: "groupMediaIsMainVisibleSetting",
   default: true,
   effects: [
-    getBrowserStorageEffectForKey("groupMediaIsImageVisible", {
+    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
       sessionStorage: true,
       valueClass: "boolean",
     }),

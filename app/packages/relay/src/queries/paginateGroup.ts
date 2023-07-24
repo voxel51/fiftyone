@@ -1,5 +1,4 @@
 import { graphql } from "react-relay";
-
 import r from "../resolve";
 
 export default r(graphql`
@@ -10,21 +9,16 @@ export default r(graphql`
     $view: BSONArray!
     $filter: SampleFilter!
   ) {
-    ...paginateGroup_query
-  }
-`);
-
-export const paginateGroupPaginationFragment = r(graphql`
-  fragment paginateGroup_query on Query
-  @refetchable(queryName: "paginateGroupPageQuery") {
     samples(
       dataset: $dataset
       view: $view
       first: $count
       after: $cursor
       filter: $filter
-    ) @connection(key: "paginateGroup_query_samples") {
-      total
+    ) {
+      pageInfo {
+        hasNextPage
+      }
       edges {
         cursor
         node {
@@ -39,6 +33,7 @@ export const paginateGroupPaginationFragment = r(graphql`
             }
           }
           ... on PointCloudSample {
+            aspectRatio
             id
             sample
             urls {
@@ -50,6 +45,7 @@ export const paginateGroupPaginationFragment = r(graphql`
             id
             aspectRatio
             frameRate
+            frameNumber
             sample
             urls {
               field

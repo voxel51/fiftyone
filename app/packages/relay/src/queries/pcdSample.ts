@@ -10,6 +10,7 @@ export default r(graphql`
   ) {
     sample(dataset: $dataset, view: $view, filter: $filter) {
       ... on PointCloudSample {
+        aspectRatio
         id
         sample
         urls {

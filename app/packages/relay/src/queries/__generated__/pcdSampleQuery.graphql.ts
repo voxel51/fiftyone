@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<97c7a18ff83d4c6de1391bba754b006f>>
+ * @generated SignedSource<<729699bb2eb69abbff5ed336aa26230a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type pcdSampleQuery$variables = {
 };
 export type pcdSampleQuery$data = {
   readonly sample: {
+    readonly aspectRatio?: number;
     readonly id?: string;
     readonly sample?: object;
     readonly urls?: ReadonlyArray<{
@@ -80,6 +81,13 @@ v4 = {
 v5 = {
   "kind": "InlineFragment",
   "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "aspectRatio",
+      "storageKey": null
+    },
     (v4/*: any*/),
     {
       "alias": null,
@@ -191,16 +199,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "6c937e342401270b447cd586c47c1e36",
+    "cacheID": "58619359a7db57616e7f58448c91f40d",
     "id": null,
     "metadata": {},
     "name": "pcdSampleQuery",
     "operationKind": "query",
-    "text": "query pcdSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on PointCloudSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ImageSample {\n      id\n    }\n    ... on VideoSample {\n      id\n    }\n  }\n}\n"
+    "text": "query pcdSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  sample(dataset: $dataset, view: $view, filter: $filter) {\n    __typename\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ImageSample {\n      id\n    }\n    ... on VideoSample {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "feb7d193dddb5df136a297ac5857307f";
+(node as any).hash = "7d71eada3d7361bd2b825ec99a548f1b";
 
 export default node;

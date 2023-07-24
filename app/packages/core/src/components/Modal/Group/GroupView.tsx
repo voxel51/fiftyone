@@ -1,15 +1,13 @@
-import { groupContainer, mainGroup } from "./Group.module.css";
-
-import * as fos from "@fiftyone/state";
-import { groupId, useBrowserStorage } from "@fiftyone/state";
-import React, { useEffect, useMemo, useRef } from "react";
-
 import { useTheme } from "@fiftyone/components";
 import { VideoLooker } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
+import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { GroupBar } from "../Bars";
 import EnsureGroupSample from "./EnsureGroupSample";
+import { groupContainer, mainGroup } from "./Group.module.css";
 import { GroupCarousel } from "./GroupCarousel";
 import { GroupImageVideoSample } from "./GroupImageVideoSample";
 import { GroupSample3d } from "./GroupSample3d";
@@ -22,16 +20,19 @@ export const GroupView = () => {
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
+  const isCarouselVisible = useRecoilValue(
+    fos.groupMediaIsCarouselVisibleSetting
+  );
 
-  const pointCloudSliceExists = useRecoilValue(fos.pointCloudSliceExists);
-  const is3DVisible =
-    useRecoilValue(fos.groupMediaIs3DVisible) && pointCloudSliceExists;
-  const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
+  const isSlotVisible = useRecoilValue(fos.groupMediaIsSlotVisible);
+  const isMainVisibleSetting = useRecoilValue(
+    fos.groupMediaIsMainVisibleSetting
+  );
+  const isMain3d = useRecoilValue(fos.isMain3d);
 
   const shouldSplitVertically = useMemo(
-    () => is3DVisible && isImageVisible,
-    [is3DVisible, isImageVisible]
+    () => isMainVisibleSetting && isSlotVisible,
+    [isMainVisibleSetting, isSlotVisible]
   );
 
   const [width, setWidth] = useBrowserStorage(
@@ -83,22 +84,23 @@ export const GroupView = () => {
             {isCarouselVisible && (
               <GroupCarousel
                 key={`${key}-${mediaField}`}
-                fullHeight={!is3DVisible && !isImageVisible}
+                fullHeight={!isMainVisibleSetting && !isSlotVisible}
               />
             )}
-            <EnsureGroupSample>
-              {isImageVisible ? (
-                <GroupImageVideoSample lookerRef={lookerRef} />
-              ) : is3DVisible ? (
-                <GroupSample3d />
-              ) : null}
-            </EnsureGroupSample>
+            {
+              <EnsureGroupSample>
+                {isMainVisibleSetting ? (
+                  isMain3d ? (
+                    <GroupSample3d />
+                  ) : (
+                    <GroupImageVideoSample lookerRef={lookerRef} />
+                  )
+                ) : null}
+              </EnsureGroupSample>
+            }
           </Resizable>
         )}
-
-        {shouldSplitVertically && <GroupSample3d />}
-
-        {!shouldSplitVertically && is3DVisible && <GroupSample3d />}
+        {!isSlotVisible && <GroupSample3d />}
       </div>
     </div>
   );

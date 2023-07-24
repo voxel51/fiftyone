@@ -445,7 +445,6 @@ type Query {
     dataset: String!
     view: BSONArray!
     filter: SampleFilter!
-    index: Int = null
     filters: JSON = null
   ): SampleItem
   teamsSubmission: Boolean!
@@ -455,7 +454,7 @@ type Query {
   schemaForViewStages(
     datasetName: String!
     viewStages: BSONArray!
-  ): SchemaResult
+  ): SchemaResult!
 }
 
 type RootAggregation implements Aggregation {
@@ -494,11 +493,6 @@ type SampleField {
   dbField: String
   description: String
   info: JSON
-}
-
-type SchemaResult {
-  fieldSchema: [SampleField]!
-  frameFieldSchema: [SampleField]!
 }
 
 input SampleFilter {
@@ -545,6 +539,11 @@ input SavedViewInfo {
   name: String = null
   description: String = null
   color: String = null
+}
+
+type SchemaResult {
+  fieldSchema: [SampleField!]!
+  frameFieldSchema: [SampleField!]!
 }
 
 input SelectedLabel {
@@ -618,6 +617,7 @@ type VideoSample implements Sample {
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+  frameNumber: Int!
   frameRate: Float!
 }
 

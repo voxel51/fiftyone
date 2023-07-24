@@ -1,90 +1,71 @@
 import { useTheme } from "@fiftyone/components";
-import Flashlight, { Response } from "@fiftyone/flashlight";
-import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
+import Flashlight from "@fiftyone/flashlight";
+import { Sample, freeVideos } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import {
-  groupPaginationFragment,
-  selectedSamples,
-  useBrowserStorage,
-} from "@fiftyone/state";
+import { selectedSamples, useBrowserStorage } from "@fiftyone/state";
 import { get } from "lodash";
 import { Resizable } from "re-resizable";
-import React, {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { useErrorHandler } from "react-error-boundary";
-import { usePaginationFragment } from "react-relay";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { fetchQuery, useRelayEnvironment } from "react-relay";
+import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
 import useSetGroupSample from "./useSetGroupSample";
 
 const process = (
-  next: MutableRefObject<number>,
-  store: fos.LookerStore<any>,
-  zoom: boolean,
-  edges: foq.paginateGroup_query$data["samples"]["edges"]
-) =>
-  edges.reduce((acc, { node }) => {
-    if (
-      node.__typename === "ImageSample" ||
-      node.__typename === "VideoSample"
-    ) {
-      let data: any = {
-        sample: node.sample,
-        aspectRatio: node.aspectRatio,
-        urls: Object.fromEntries(
-          node.urls.map(({ field, url }) => [field, url])
-        ),
-      };
-
-      if (node.__typename === "VideoSample") {
-        data = {
-          ...data,
-          frameRate: node.frameRate,
-          frameNumber: node.sample.frame_number,
-        };
-      }
-
-      store.samples.set(node.sample._id, data);
-      store.indices.set(next.current, node.sample._id);
-      next.current++;
-
-      return [
-        ...acc,
-        {
-          aspectRatio: zoom
-            ? zoomAspectRatio(node.sample as any, node.aspectRatio)
-            : node.aspectRatio,
-          id: (node.sample as any)._id as string,
-        },
-      ];
+  offset: number,
+  store: fos.LookerStore<fos.Lookers>,
+  data: foq.paginateGroupQuery$data,
+  shouldFilterPointClouds: boolean
+) => {
+  let edges = data.samples.edges;
+  if (shouldFilterPointClouds) {
+    edges = edges.filter(({ node }) => node.__typename !== "PointCloudSample");
+  }
+  return edges.map((edge, i) => {
+    if (edge.node.__typename === "%other") {
+      throw new Error("unexpected sample type");
     }
 
-    return acc;
-  }, []);
+    store.samples.set(edge.node.id, edge.node as fos.ModalSample);
+    store.indices.set(offset + i, edge.node.id);
+
+    return {
+      aspectRatio: edge.node.aspectRatio,
+      id: edge.node.id,
+    };
+  });
+};
+
+const shouldFilterPointClouds = selector<boolean>({
+  key: "shouldFilterPointClouds",
+  get: ({ get }) => !get(fos.pcdOnly) && get(fos.pointCloudSliceExists),
+});
+
+const pageParams = selector({
+  key: "paginateGroupVariables",
+  get: ({ getCallback }) => {
+    return getCallback(({ snapshot }) => async (page: number) => {
+      return {
+        filterPointClouds: await snapshot.getPromise(shouldFilterPointClouds),
+        variables: {
+          dataset: await snapshot.getPromise(fos.datasetName),
+          view: await snapshot.getPromise(fos.view),
+          filter: {
+            group: {
+              id: await snapshot.getPromise(fos.groupId),
+            },
+          },
+          after: page % 20,
+          first: 20,
+        },
+      };
+    });
+  },
+});
 
 const Column: React.FC = () => {
   const [id] = useState(() => uuid());
-  const pageCount = useRef(0);
-
-  const { data, hasNext, loadNext } = usePaginationFragment(
-    foq.paginateGroupPaginationFragment,
-    useRecoilValue(groupPaginationFragment)
-  );
-
-  const samples = {
-    ...data.samples,
-    edges: data.samples.edges.filter(
-      (s) => s.node.sample._media_type !== "point-cloud"
-    ),
-  };
-
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const groupField = useRecoilValue(fos.groupField);
@@ -107,36 +88,12 @@ const Column: React.FC = () => {
     highlight
   );
 
-  const hasNextRef = useRef(true);
-  hasNextRef.current = hasNext;
-  const countRef = useRef(0);
-  const handleError = useErrorHandler();
-
-  const resolveRef = useRef<((value: Response<number>) => void) | null>(null);
-  const nextRef = useRef(loadNext);
-  nextRef.current = loadNext;
-
-  useEffect(() => {
-    if (resolveRef.current && countRef.current !== samples.edges.length) {
-      pageCount.current += 1;
-      resolveRef.current({
-        items: process(
-          countRef,
-          store,
-          false,
-          samples.edges.slice(countRef.current)
-        ),
-        nextRequestKey: pageCount.current,
-      });
-      countRef.current = samples.edges.length;
-      resolveRef.current = null;
-    }
-  }, [samples]);
-
+  const page = useRecoilValue(pageParams);
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
+  const environment = useRelayEnvironment();
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
@@ -146,22 +103,32 @@ const Column: React.FC = () => {
       options: {
         rowAspectRatioThreshold: 0,
       },
-      get: (page) => {
-        pageCount.current = page + 1;
-        if (pageCount.current === 1) {
-          return Promise.resolve({
-            items: process(countRef, store, false, samples.edges),
-            nextRequestKey: hasNext ? pageCount.current : null,
+      get: async (pageNumber) => {
+        const { variables, filterPointClouds } = await page(pageNumber);
+        return new Promise((resolve) => {
+          const subscription = fetchQuery<foq.paginateGroupQuery>(
+            environment,
+            foq.paginateGroup,
+            variables,
+            { fetchPolicy: "network-only" }
+          ).subscribe({
+            next: (data) => {
+              const items = process(
+                variables.after,
+                store,
+                data,
+                filterPointClouds
+              );
+              subscription.unsubscribe();
+              resolve({
+                items,
+                nextRequestKey: data.samples.pageInfo.hasNextPage
+                  ? pageNumber + 1
+                  : null,
+              });
+            },
           });
-        } else {
-          hasNextRef.current &&
-            nextRef.current(20, {
-              onComplete: (error) => error && handleError(error),
-            });
-          return new Promise((resolve) => {
-            resolveRef.current = resolve;
-          });
-        }
+        });
       },
       render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);

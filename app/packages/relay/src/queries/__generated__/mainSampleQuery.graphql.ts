@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e7dcc9a975676ac12e6b0412117ee7bb>>
+ * @generated SignedSource<<b5754b48b96c95e4d0b3d33b660766e9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,6 +26,7 @@ export type mainSampleQuery$variables = {
 export type mainSampleQuery$data = {
   readonly sample: {
     readonly __typename: "ImageSample";
+    readonly aspectRatio: number;
     readonly id: string;
     readonly sample: object;
     readonly urls: ReadonlyArray<{
@@ -34,6 +35,7 @@ export type mainSampleQuery$data = {
     }>;
   } | {
     readonly __typename: "PointCloudSample";
+    readonly aspectRatio: number;
     readonly id: string;
     readonly sample: object;
     readonly urls: ReadonlyArray<{
@@ -42,6 +44,8 @@ export type mainSampleQuery$data = {
     }>;
   } | {
     readonly __typename: "VideoSample";
+    readonly aspectRatio: number;
+    readonly frameNumber: number;
     readonly frameRate: number;
     readonly id: string;
     readonly sample: object;
@@ -85,17 +89,24 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "aspectRatio",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sample",
+  "name": "id",
   "storageKey": null
 },
 v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "sample",
+  "storageKey": null
+},
+v7 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -120,12 +131,13 @@ v6 = {
   ],
   "storageKey": null
 },
-v7 = [
+v8 = [
   (v4/*: any*/),
   (v5/*: any*/),
-  (v6/*: any*/)
+  (v6/*: any*/),
+  (v7/*: any*/)
 ],
-v8 = [
+v9 = [
   {
     "alias": null,
     "args": [
@@ -164,13 +176,13 @@ v8 = [
       },
       {
         "kind": "InlineFragment",
-        "selections": (v7/*: any*/),
+        "selections": (v8/*: any*/),
         "type": "ImageSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v7/*: any*/),
+        "selections": (v8/*: any*/),
         "type": "PointCloudSample",
         "abstractKey": null
       },
@@ -186,7 +198,15 @@ v8 = [
             "name": "frameRate",
             "storageKey": null
           },
-          (v6/*: any*/)
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "frameNumber",
+            "storageKey": null
+          },
+          (v6/*: any*/),
+          (v7/*: any*/)
         ],
         "type": "VideoSample",
         "abstractKey": null
@@ -206,7 +226,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "mainSampleQuery",
-    "selections": (v8/*: any*/),
+    "selections": (v9/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -220,19 +240,19 @@ return {
     ],
     "kind": "Operation",
     "name": "mainSampleQuery",
-    "selections": (v8/*: any*/)
+    "selections": (v9/*: any*/)
   },
   "params": {
-    "cacheID": "7b556450018a1319627c13464e9c9004",
+    "cacheID": "715e2d25e95718dc1fa91a62c2ab54a3",
     "id": null,
     "metadata": {},
     "name": "mainSampleQuery",
     "operationKind": "query",
-    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      id\n      sample\n      frameRate\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
+    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7e315765e417f0b358368b714be57762";
+(node as any).hash = "2b2a2cfd1b68e8fd6d01258f45d2f99a";
 
 export default node;

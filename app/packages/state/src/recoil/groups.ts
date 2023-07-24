@@ -16,7 +16,7 @@ import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
-import { dataset, pinned3DSample, refresher } from "./atoms";
+import { dataset, pinned3DSample } from "./atoms";
 import { ModalSample, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
@@ -66,6 +66,21 @@ export const groupSlices = selector<string[]>({
     return get(groupMediaTypes)
       .map(({ name }) => name)
       .sort();
+  },
+});
+
+export const groupMediaTypesSet = selector<Set<string>>({
+  key: "groupMediaTypesSet",
+  get: ({ get }) =>
+    new Set(get(groupMediaTypes).map(({ mediaType }) => mediaType)),
+});
+
+export const pcdOnly = selector<boolean>({
+  key: "pcdOnly",
+  get: ({ get }) => {
+    const types = get(groupMediaTypesSet);
+    console.log(types);
+    return types.size === 1;
   },
 });
 
@@ -205,28 +220,6 @@ export const refreshGroupQuery = atom<number>({
   default: 0,
 });
 
-export const groupQuery = graphQLSelector<
-  VariablesOf<paginateGroupQuery>,
-  ResponseFrom<paginateGroupQuery>
->({
-  key: "groupQuery",
-  environment: RelayEnvironmentKey,
-  mapResponse: (response) => response,
-  query: paginateGroup,
-  variables: ({ get }) => {
-    return {
-      dataset: get(datasetName),
-      view: get(view),
-      index: get(refresher),
-      filter: {
-        group: {
-          id: get(groupId),
-        },
-      },
-    };
-  },
-});
-
 export const dynamicGroupPaginationQuery = graphQLSelector<
   VariablesOf<paginateGroupQuery>,
   ResponseFrom<paginateGroupQuery>
@@ -275,11 +268,6 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
 export const groupByFieldValue = atom<string | null>({
   key: "groupByFieldValue",
   default: null,
-});
-
-export const groupPaginationFragment = selector<paginateGroup_query$key>({
-  key: "groupPaginationFragment",
-  get: ({ get }) => get(groupQuery),
 });
 
 export const dynamicGroupPaginationFragment = selector<paginateGroup_query$key>(

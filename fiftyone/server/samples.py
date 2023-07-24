@@ -49,6 +49,7 @@ class PointCloudSample(Sample):
 
 @gql.type
 class VideoSample(Sample):
+    frame_number: int
     frame_rate: float
 
 
@@ -192,5 +193,8 @@ async def _create_sample_item(
     metadata = await fosm.get_metadata(
         dataset, sample, media_type, metadata_cache, url_cache
     )
+
+    if cls == VideoSample:
+        metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
 
     return from_dict(cls, {"id": sample["_id"], "sample": sample, **metadata})
