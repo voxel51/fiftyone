@@ -137,25 +137,4 @@ export class OssLoader extends AbstractFiftyoneLoader {
       state: "visible",
     });
   }
-
-  async loadSparseGroupsImageDataset(datasetName: string) {
-    return this.pythonRunner.exec(`
-import fiftyone as fo
-dataset = fo.Dataset("${datasetName}")
-dataset.add_group_field("group", default="first")
-dataset.persistent = True
-
-first_group = fo.Group()
-first = fo.Sample(filepath="first.png", group=first_group.element("first"))
-first_shared = fo.Sample(filepath="shared.png", group=first_group.element("shared"))
-
-second_group = fo.Group()
-second = fo.Sample(
-    filepath="second.png", group=second_group.element("second")
-)
-second_shared = fo.Sample(filepath="shared.png", group=second_group.element("shared"))
-
-dataset.add_samples([first, first_shared, second, second_shared])
-    `);
-  }
 }

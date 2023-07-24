@@ -18,7 +18,7 @@ export class ModalPom {
 
   async navigateSample(
     direction: "forward" | "backward",
-    expectErrorInfo = false
+    allowErrorInfo = false
   ) {
     const currentSampleId = await this.sidebarPom.getSampleId();
 
@@ -34,13 +34,13 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleToLoad(expectErrorInfo);
+    return this.waitForSampleToLoad(allowErrorInfo);
   }
 
   async navigateSlice(
     groupField: string,
     slice: string,
-    expectErrorInfo = false
+    allowErrorInfo = false
   ) {
     const currentSlice = await this.sidebarPom.getSidebarEntryText(
       `sidebar-entry-${groupField}.name`
@@ -61,7 +61,7 @@ export class ModalPom {
       },
       { currentSlice, groupField }
     );
-    return this.waitForSampleToLoad(expectErrorInfo);
+    return this.waitForSampleToLoad(allowErrorInfo);
   }
 
   async close() {
@@ -102,26 +102,25 @@ export class ModalPom {
 
   getCarousel() {}
 
-  async waitForSampleToLoad(expectErrorInfo = false) {
+  async waitForSampleToLoad(allowErrorInfo = false) {
     return this.page.waitForFunction(
-      (expectErrorInfo) => {
-        const selector = `[data-cy=modal-looker-container] ${
-          expectErrorInfo ? "canvas" : "[data-cy=looker-error-info]"
-        }`;
-
-        const element = document.querySelector(selector);
-
-        if (!element) {
-          return false;
-        }
-
-        if (expectErrorInfo) {
+      (allowErrorInfo) => {
+        if (
+          allowErrorInfo &&
+          document.querySelector(
+            "[data-cy=modal-looker-container] [data-cy=looker-error-info]"
+          )
+        ) {
           return true;
         }
 
-        return element.getAttribute("sample-loaded") === "true";
+        return (
+          document
+            .querySelector(`[data-cy=modal-looker-container] canvas`)
+            ?.getAttribute("sample-loaded") === "true"
+        );
       },
-      expectErrorInfo,
+      allowErrorInfo,
       { timeout: Duration.Seconds(10) }
     );
   }
