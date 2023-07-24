@@ -846,6 +846,12 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(frame.field, 1)
 
+        view = dataset.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(view.media_type, "mixed")
+        with self.assertRaises(ValueError):
+            _ = view.clone()
+
     def test_merge_groups1(self):
         dataset = _make_group_dataset()
 

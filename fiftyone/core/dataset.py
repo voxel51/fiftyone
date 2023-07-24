@@ -6861,6 +6861,9 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
         view = dataset_or_view
+
+        if view.media_type == fom.MIXED:
+            raise ValueError("Cloning mixed views is not allowed")
     else:
         dataset = dataset_or_view
         view = None
