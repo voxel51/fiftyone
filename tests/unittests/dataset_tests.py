@@ -1200,6 +1200,33 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(s1["tags"], [])
 
     @drop_datasets
+    def test_merge_sample_group(self):
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        sample1 = fo.Sample("test.png", group=group.element("thumbnail"))
+        sample2 = fo.Sample(
+            "test.mp4", group=group.element("video"), foo="spam"
+        )
+        sample3 = fo.Sample(
+            "test.mp4", group=group.element("video"), foo="eggs"
+        )
+
+        dataset.merge_sample(sample1)
+        dataset.merge_sample(sample2)
+        dataset.merge_sample(sample3)  # should be merged with `sample2`
+
+        self.assertEqual(
+            len(dataset.select_group_slices(_allow_mixed=True)), 2
+        )
+
+        dataset.group_slice = "video"
+        self.assertEqual(len(dataset), 1)
+
+        sample = dataset.first()
+        self.assertEqual(sample.foo, "eggs")
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
