@@ -142,8 +142,9 @@ class TorchImageModelConfig(foc.Config):
         cudnn_benchmark (None): a value to use for
             :attr:`torch:torch.backends.cudnn.benchmark` while the model is
             running
-        device (None): a string specifying the device to use
-            (e.g., ``"cuda:0"``, ``"cpu"``, ``"mps"``, etc.)
+        device (None): a string specifying the device to use, eg
+            ``("cuda:0", "mps", "cpu")``. By default, CUDA is used if
+            available, else CPU is used
     """
 
     def __init__(self, d):
@@ -226,24 +227,14 @@ class TorchImageModel(
         self._transforms = transforms
         self._preprocess = True
 
-        # Load model
-        self._cuda_available = torch.cuda.is_available()
-        self._mps_available = torch.backends.mps.is_available()
-        self._using_gpu = self._cuda_available or self._mps_available
-        if self.config.device is None:
-            self._device = torch.device(
-                "cuda:0"
-                if self._cuda_available
-                else "mps"
-                if self._mps_available
-                else "cpu"
-            )
-        else:
-            self._device = torch.device(self.config.device)
+        device = self.config.device
+        if device is None:
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        self._using_half_precision = (
-            self.config.use_half_precision is True
-        ) and self._cuda_available
+        # Load model
+        self._device = torch.device(device)
+        self._using_gpu = self._device.type in ("cuda", "mps")
+        self._using_half_precision = self.config.use_half_precision
         self._model = self._load_model(config)
         self._no_grad = None
         self._benchmark_orig = None
@@ -398,9 +389,7 @@ class TorchImageModel(
         height, width = imgs.size()[-2:]
         frame_size = (width, height)
 
-        if self._using_gpu:
-            imgs = imgs.to(self._device)
-
+        imgs = imgs.to(self._device)
         if self._using_half_precision:
             imgs = imgs.half()
 

@@ -37,7 +37,7 @@ test.describe("quickstart-groups", () => {
     await expect(selectorSlice).toHaveValue("left");
   });
 
-  test("entry counts works", async ({ grid, page, baseURL }) => {
+  test("entry counts works", async ({ grid }) => {
     expect(await grid.getEntryCountText()).toEqual("4 groups");
 
     await grid.actionsRow.openDisplayOptions();

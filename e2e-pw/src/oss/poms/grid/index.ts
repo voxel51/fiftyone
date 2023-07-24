@@ -46,15 +46,15 @@ class GridAsserter {
     expect(lookersCount).toBe(n);
   }
 
-  async waitForEntryCountTextToEqual(predicate: string) {
+  async waitForEntryCountTextToEqual(text: string) {
     return this.gridPom.page.waitForFunction(
-      (predicate_) => {
+      (text_) => {
         return (
           document.querySelector("[data-cy='entry-counts']").textContent ===
-          predicate_
+          text_
         );
       },
-      predicate,
+      text,
       { timeout: 2000 }
     );
   }
