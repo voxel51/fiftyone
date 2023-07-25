@@ -7,8 +7,6 @@ type SidebarSortMode = "count" | "value";
 export class DisplayOptionsPom {
   readonly page: Page;
 
-  readonly grid: Locator;
-
   constructor(page: Page) {
     this.page = page;
   }

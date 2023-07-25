@@ -1,23 +1,29 @@
 import { Locator, Page } from "src/oss/fixtures";
-import { Duration } from "../utils";
+import { Duration } from "../../utils";
+import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
+import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
   readonly page: Page;
-  readonly sidebarPom: ModalSidebarPom;
-  readonly modal: Locator;
+  readonly sidebar: ModalSidebarPom;
+  readonly locator: Locator;
+  readonly group: ModalGroupActionsPom;
+  readonly video: ModalVideoControlsPom;
 
   constructor(page: Page) {
     this.page = page;
-    this.sidebarPom = new ModalSidebarPom(page);
+    this.locator = page.getByTestId("modal");
 
-    this.modal = page.getByTestId("modal");
+    this.sidebar = new ModalSidebarPom(page);
+    this.group = new ModalGroupActionsPom(page, this);
+    this.video = new ModalVideoControlsPom(page, this);
   }
 
   async navigateSample(direction: "forward" | "backward") {
-    const currentSampleId = await this.sidebarPom.getSampleId();
+    const currentSampleId = await this.sidebar.getSampleId();
 
-    await this.modal
+    await this.locator
       .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
       .click();
 
@@ -40,12 +46,8 @@ export class ModalPom {
     return this.navigateSample("backward");
   }
 
-  async getGroupPinnedText() {
-    return this.modal.getByTestId("pinned-slice-bar-description").textContent();
-  }
-
   getLooker3d() {
-    return this.modal.getByTestId("looker3d");
+    return this.locator.getByTestId("looker3d");
   }
 
   async clickOnLooker3d() {
@@ -53,18 +55,12 @@ export class ModalPom {
   }
 
   getLooker() {
-    return this.modal.getByTestId("looker").last();
+    return this.locator.getByTestId("looker").last();
   }
 
   async clickOnLooker() {
     return this.getLooker().click();
   }
-
-  getGroupContainer() {
-    return this.modal.getByTestId("group-container");
-  }
-
-  getCarousel() {}
 
   async waitForSampleToLoad() {
     return this.page.waitForFunction(
