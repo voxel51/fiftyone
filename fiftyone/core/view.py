@@ -1435,21 +1435,22 @@ class DatasetView(foc.SampleCollection):
             # @note(SelectGroupSlices)
             # Special case: when selecting group slices of a video dataset that
             # modifies the dataset's schema, frame lookups must be injected in
-            # the middle of the stage's pipeline, after the group slice lookup
-            # but *before* the $project stages that reapply the schema change
-            if _contains_videos and isinstance(stage, fost.SelectGroupSlices):
+            # the middle of the stage's pipeline, after the group slice $lookup
+            # but *before* the $project stage(s) that reapply schema changes
+            if (
+                isinstance(stage, fost.SelectGroupSlices)
+                and _contains_videos
+                and _pipeline
+                and "$project" in _pipeline[-1]
+            ):
                 _pipeline0 = _pipeline
                 _pipeline = []
-                while "$project" in _pipeline0[-1]:
+                while _pipeline0 and "$project" in _pipeline0[-1]:
                     _pipeline.insert(0, _pipeline0.pop())
 
-                if _pipeline:
-                    _pipelines.append(_pipeline0)
-                    idx += 1
-
-                    _attach_frames_idx1 = idx
-                else:
-                    _pipeline = _pipeline0
+                idx += 1
+                _attach_frames_idx1 = idx
+                _pipelines.append(_pipeline0)
 
             _pipelines.append(_pipeline)
             _view = _view._add_view_stage(stage, validate=False)
