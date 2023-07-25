@@ -470,6 +470,43 @@ class Map(BaseType):
         }
 
 
+class File(Object):
+    "Represents a file and related metadata."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.str("path", label="Path", description="The path to the file")
+        self.str("name", label="Name", description="The name of the file")
+        self.bool(
+            "is_directory",
+            label="Is Directory",
+            description="Whether the file is a directory",
+        )
+        self.define_property(
+            "size",
+            Number(int=True),
+            label="Size",
+            description="The size of the file in bytes",
+        )
+        self.define_property(
+            "last_modified",
+            Number(int=True),
+            label="Last Modified",
+            description="The last modified time of the file in milliseconds since the epoch",
+        )
+        self.define_property(
+            "directory_contents",
+            List(String()),
+            label="Directory Contents",
+            description="The contents of the directory",
+        )
+        self.bool(
+            "multiple",
+            label="Multiple",
+            description="Whether multiple files are selected",
+        )
+
+
 class View(object):
     """Represents a view of a :class:`Property`.
 
@@ -1328,6 +1365,13 @@ class ButtonView(Button):
 
 class MarkdownView(View):
     """Renders a markdown string as HTML."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class FileExplorerView(View):
+    """Displays a file explorer for interacting with files."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

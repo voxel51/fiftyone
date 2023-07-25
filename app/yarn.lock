@@ -4603,6 +4603,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     "@types/react": ^18.0.12
     jest: ^28.1.1
+    moment: ^2.29.4
     prettier: 2.2.1
     typescript: 4.2.4
     vite: 2.4.2
@@ -20975,6 +20976,13 @@ __metadata:
   version: 1.0.4
   resolution: "mmd-parser@npm:1.0.4"
   checksum: 892cc317598440c43919250ec95aec26349db977e64bbe37d0fa8d6a8076e190105e5e687221225dd9afa8937d9d2d06ddab77586c2bc4781cb6855a2938d95b
+  languageName: node
+  linkType: hard
+
+"moment@npm:^2.29.4":
+  version: 2.29.4
+  resolution: "moment@npm:2.29.4"
+  checksum: 0ec3f9c2bcba38dc2451b1daed5daded747f17610b92427bebe1d08d48d8b7bdd8d9197500b072d14e326dd0ccf3e326b9e3d07c5895d3d49e39b6803b76e80e
   languageName: node
   linkType: hard
 
