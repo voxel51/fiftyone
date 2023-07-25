@@ -28,7 +28,7 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
-  const [isImageVisible, setIsImageVisible] = useRecoilState(
+  const [isMainVisible, setIsMainVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
 
@@ -39,7 +39,7 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
         <Checkbox
           name={"3D Viewer"}
           value={isSlotVisible}
-          muted={!isImageVisible && !isCarouselVisible}
+          muted={!isMainVisible && !isCarouselVisible}
           setValue={(value) => setIsSlotVisible(value)}
         />
       )}
@@ -47,14 +47,14 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
       <Checkbox
         name={"Carousel"}
         value={isCarouselVisible}
-        muted={!(isSlotVisible && pointCloudSliceExists) && !isImageVisible}
+        muted={!(isSlotVisible && pointCloudSliceExists) && !isMainVisible}
         setValue={(value) => setIsCarouselVisible(value)}
       />
       <Checkbox
-        name={"Image"}
-        value={isImageVisible}
+        name={"Viewer"}
+        value={isMainVisible}
         muted={!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible}
-        setValue={(value) => setIsImageVisible(value)}
+        setValue={(value) => setIsMainVisible(value)}
       />
     </Popout>
   );
