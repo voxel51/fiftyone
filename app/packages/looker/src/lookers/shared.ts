@@ -28,7 +28,7 @@ export const LookerUtils = {
       reloadSample = true;
     } else if (next.coloring && next.coloring.by !== current.coloring.by) {
       reloadSample = true;
-    } else if (!_.isEmpty(_.xor(next.coloring.pool, current.coloring.pool))) {
+    } else if (!_.isEmpty(_.xor(next.coloring?.pool, current.coloring?.pool))) {
       reloadSample = true;
     } else if (
       hasColorChanged(next.customizeColorSetting, current.customizeColorSetting)

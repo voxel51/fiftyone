@@ -14,17 +14,19 @@ import { selectorFamily } from "recoil";
 
 import { filters, modalFilters } from "../filters";
 
+import {
+  attributeVisibility,
+  modalAttributeVisibility,
+} from "../attributeVisibility";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { State } from "../types";
-import { boolean } from "./boolean";
-import { numeric } from "./numeric";
-import { string, listString } from "./string";
-
+import { boolean, listBoolean } from "./boolean";
+import { listNumber, numeric } from "./numeric";
+import { listString, string } from "./string";
 export * from "./boolean";
 export * from "./numeric";
 export * from "./string";
-
 const primitiveFilter = selectorFamily<
   (value: any) => boolean,
   { modal: boolean; path: string }
@@ -33,7 +35,7 @@ const primitiveFilter = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
-      const { ftype } = get(schemaAtoms.field(path));
+      const { ftype, subfield } = get(schemaAtoms.field(path));
       if (ftype === BOOLEAN_FIELD) {
         return get(boolean({ modal, path }));
       }
@@ -53,8 +55,22 @@ const primitiveFilter = selectorFamily<
         return get(string({ modal, path }));
       }
 
-      if ([LIST_FIELD].includes(ftype)) {
+      if (
+        [LIST_FIELD].includes(ftype) &&
+        [OBJECT_ID_FIELD, STRING_FIELD].includes(subfield)
+      ) {
         return get(listString({ modal, path }));
+      }
+
+      if ([LIST_FIELD].includes(ftype) && [BOOLEAN_FIELD].includes(subfield)) {
+        return get(listBoolean({ modal, path }));
+      }
+
+      if (
+        [LIST_FIELD].includes(ftype) &&
+        [INT_FIELD, FLOAT_FIELD].includes(subfield)
+      ) {
+        return get(listNumber({ modal, path }));
       }
 
       return (value) => true;
@@ -73,7 +89,10 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
       const paths = get(schemaAtoms.activeFields({ modal }));
       const hidden = get(selectors.hiddenLabelIds);
 
-      const current = modal ? get(modalFilters) : get(filters);
+      const currentFilter = modal ? get(modalFilters) : get(filters);
+      const currentVisibility = modal
+        ? get(modalAttributeVisibility)
+        : get(attributeVisibility);
 
       const newFilters = paths.reduce((f, path) => {
         if (path.startsWith("_")) return f;
@@ -109,7 +128,8 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
             return (
               matchesLabelTags(
                 value as { tags: string[] },
-                current._label_tags
+                currentFilter?._label_tags,
+                currentVisibility?._label_tags
               ) &&
               fs.every((filter) => {
                 return filter(value);
@@ -140,18 +160,48 @@ const matchesLabelTags = (
   value: {
     tags: string[];
   },
-  filter?: State.CategoricalFilter<string>
+  filter?: State.CategoricalFilter<string>,
+  visibility?: State.CategoricalFilter<string>
 ) => {
-  if (!filter) {
+  // in either visibility or filter is set
+  if (!filter && !visibility) {
     return true;
   }
+  // if only visibility is set
+  if (!filter && visibility) {
+    const { values, exclude } = visibility;
 
-  const { isMatching, values, exclude } = filter;
-
-  if (isMatching) {
-    return true;
+    const contains = value.tags.some((tag) => values.includes(tag));
+    return exclude ? !contains : contains;
   }
 
-  const contains = value.tags.some((tag) => values.includes(tag));
-  return exclude ? !contains : contains;
+  // if only filter is set
+  if (filter && !visibility) {
+    const { isMatching, values, exclude } = filter;
+
+    if (isMatching) {
+      return true;
+    }
+
+    const contains = value.tags.some((tag) => values.includes(tag));
+    return exclude ? !contains : contains;
+  }
+
+  // if both visibility and filter are set
+  if (filter && visibility) {
+    const { isMatching, values, exclude } = filter;
+    const { values: vValues, exclude: vExclude } = visibility;
+
+    if (isMatching) {
+      const contains = value.tags.some((tag) => vValues.includes(tag));
+      return vExclude ? !contains : contains;
+    }
+    const vContains = value.tags.some((tag) => vValues.includes(tag));
+    const vResult = vExclude ? !vContains : vContains;
+    const fContains = value.tags.some((tag) => values.includes(tag));
+    const fResult = exclude ? !fContains : fContains;
+    return vResult && fResult;
+  }
+
+  return true;
 };

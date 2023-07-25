@@ -208,6 +208,13 @@ export abstract class AbstractLooker<
 
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
+
+        // Need this because when user reset attributeVisibility, it resets
+        // to empty object, which gets overwritten in mergeUpdates
+        if (JSON.stringify(updates.options?.attributeVisibility) === "{}") {
+          this.state.options.attributeVisibility = {};
+        }
+
         if (!this.state.loaded && this.sample) {
           this.lookerElement.render(this.state, this.sample);
           return;
