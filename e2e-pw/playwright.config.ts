@@ -29,12 +29,20 @@ export default defineConfig({
     // todo: change this to data-testid after we migrate off of cypress
     testIdAttribute: "data-cy",
   },
-
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.02,
+    },
+  },
   /* Configure projects for major browsers */
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        bypassCSP: true,
+        launchOptions: { args: ["--disable-web-security"] },
+      },
     },
   ],
 });

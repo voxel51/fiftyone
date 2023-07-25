@@ -4,7 +4,9 @@
 -   Copy `.env.dev.template` into `.env.dev` and fill in the values.
 -   Run `yarn` to install dependencies. Make sure you're using node 18.x.
     `nvm install 18 && nvm use 18`.
--   Run tests directly from VSCode or from the command line with `yarn e2e`.
+-   Run tests directly from VSCode or from the command line with `yarn e2e`, or
+    start the UI mode using `yarn e2e:ui` command. If you're using a local dev
+    build, read the following section.
 
 ### To use the local dev server of the app
 
@@ -12,8 +14,8 @@
     the app.
 -   Set `export USE_DEV_BUILD=true` in `.env.dev` file.
 -   Run `yarn devserver` to start the app dev server in a separate terminal
-    window on port 5193.
--   Proceed to run e2e tests as usual, from CLI or from VSCode.
+    window.
+-   Proceed to run e2e tests as usual, from the CLI, VSCode, or Playwright UI.
 -   **NOTE: Parallelization doesn't work with dev build.**
 
 ### Tips
