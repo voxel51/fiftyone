@@ -135,7 +135,7 @@ async def execute_or_delegate_operator(operator_name, request_params, user):
                 executor=executor, error=traceback.format_exc()
             )
 
-        return ExecutionResult(result=raw_result.__dict__, executor=executor)
+        return ExecutionResult(result=raw_result, executor=executor)
 
 
 def prepare_operator_executor(operator_name, request_params, user=None):

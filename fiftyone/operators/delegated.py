@@ -39,7 +39,6 @@ class DelegatedOperation(object):
         self,
         operator: str,
         delegation_target: str = None,
-        dataset_id: ObjectId = None,
         context: ExecutionContext = None,
     ) -> DelegatedOperationDocument:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
@@ -57,7 +56,6 @@ class DelegatedOperation(object):
         return self._repo.queue_operation(
             operator=operator,
             delegation_target=delegation_target,
-            dataset_id=dataset_id,
             context=context,
         )
 
@@ -87,9 +85,11 @@ class DelegatedOperation(object):
         doc = self._repo.get(_id=doc_id)
         return self._repo.queue_operation(**doc.__dict__)
 
-    def get_queued_operations(self, operator: str = None, dataset_id=None):
+    def get_queued_operations(
+        self, operator: str = None, dataset_name: str = None
+    ):
         return self._repo.get_queued_operations(
-            operator=operator, dataset_id=dataset_id
+            operator=operator, dataset_name=dataset_name
         )
 
     def get(self, doc_id: ObjectId):
@@ -98,7 +98,7 @@ class DelegatedOperation(object):
     def list_operations(
         self,
         operator: str = None,
-        dataset_id: ObjectId = None,
+        dataset_name: str = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         run_by: str = None,
@@ -107,7 +107,7 @@ class DelegatedOperation(object):
     ):
         return self._repo.list_operations(
             operator=operator,
-            dataset_id=dataset_id,
+            dataset_name=dataset_name,
             run_state=run_state,
             delegation_target=delegation_target,
             run_by=run_by,
@@ -119,14 +119,19 @@ class DelegatedOperation(object):
         self,
         operator: str = None,
         delegation_target: str = None,
-        dataset_id: ObjectId = None,
+        dataset_name: str = None,
+        limit: int = None,
     ):
 
+        paging = None
+        if limit is not None:
+            paging = DelegatedOpPagingParams(limit=limit)
         queued_ops = self.list_operations(
             operator=operator,
-            dataset_id=dataset_id,
+            dataset_name=dataset_name,
             delegation_target=delegation_target,
             run_state=ExecutionRunState.QUEUED,
+            paging=paging,
         )
 
         for op in queued_ops:
