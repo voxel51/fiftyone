@@ -76,7 +76,7 @@ const SchemaSettings = () => {
 
   const applyDisabled =
     isFilterRuleActive && (!searchTerm || !searchResults.length);
-  const resetDisabled = !searchResults.length;
+  const resetDisabled = isFilterRuleActive && !searchResults.length;
 
   const { setSearchResults, searchMetaFilter } =
     fos.useSearchSchemaFields(mergedSchema);
