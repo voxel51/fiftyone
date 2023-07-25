@@ -14,6 +14,6 @@ export { default as config } from "./config";
 export { default as countValues } from "./countValues";
 export { default as histogramValues } from "./histogramValues";
 export { default as mainSample } from "./mainSample";
-export { default as paginateGroup } from "./paginateSamples";
+export { default as paginateSamples } from "./paginateSamples";
 export { default as pcdSample } from "./pcdSample";
 export { default as viewSchema } from "./viewSchema";

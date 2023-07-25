@@ -43,7 +43,7 @@ const useFlashlightPager = (
     return new Promise((resolve) => {
       const subscription = fetchQuery<foq.paginateSamplesQuery>(
         environment,
-        foq.paginateGroup,
+        foq.paginateSamples,
         variables
       ).subscribe({
         next: (data) => {

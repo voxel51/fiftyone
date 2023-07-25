@@ -48,18 +48,18 @@ export const GroupElementsLinkBar = () => {
   const environment = useRelayEnvironment();
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
-      return loadQuery<foq.paginateDynamicGroupSamplesQuery>(
+      return loadQuery<foq.paginateSamplesQuery>(
         environment,
-        foq.paginateDynamicGroupSamples,
+        foq.paginateSamples,
         {
-          cursor: cursor ? String(cursor) : null,
+          after: cursor ? String(cursor) : null,
           dataset,
           filter: {},
           view,
         }
       );
     },
-    [dataset, loadQuery, view]
+    [dataset, environment, view]
   );
 
   const queryRef = useMemo(
@@ -71,15 +71,11 @@ export const GroupElementsLinkBar = () => {
 };
 
 const GroupElementsLinkBarImpl = React.memo(
-  ({
-    queryRef,
-  }: {
-    queryRef: PreloadedQuery<foq.paginateDynamicGroupSamplesQuery>;
-  }) => {
+  ({ queryRef }: { queryRef: PreloadedQuery<foq.paginateSamplesQuery> }) => {
     const setCursor = useSetRecoilState(fos.nestedGroupIndex);
     const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
-    const data = usePreloadedQuery(foq.paginateDynamicGroupSamples, queryRef);
+    const data = usePreloadedQuery(foq.paginateSamples, queryRef);
 
     const [
       dynamicGroupCurrentElementIndex,
