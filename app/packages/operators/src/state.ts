@@ -85,12 +85,15 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const selectedLabels = get(fos.selectedLabels);
+
     return {
       datasetName,
       view,
       extended,
       filters,
       selectedSamples,
+      selectedLabels,
     };
   },
 });
@@ -364,9 +367,14 @@ export const availableOperators = selector({
         label: operator.label,
         name: operator.name,
         value: operator.uri,
-        description: operator.description,
+        description: operator.config.description,
         unlisted: operator.unlisted,
         canExecute: operator.config.canExecute,
+        pluginName: operator.pluginName,
+        _builtIn: operator._builtIn,
+        icon: operator.config.icon,
+        darkIcon: operator.config.darkIcon,
+        lightIcon: operator.config.lightIcon,
       };
     });
   },
@@ -731,11 +739,10 @@ export const placementsForPlaceSelector = selectorFamily({
     ({ get }) => {
       const placements = get(operatorPlacementsSelector);
       return placements
-        .filter((p) => p.placement.place === place)
-        .map((p) => ({
-          placement: p.placement,
-          operator: p.operator.operator,
-        }));
+        .filter(
+          (p) => p.placement.place === place && p.operator?.config?.canExecute
+        )
+        .map(({ placement, operator }) => ({ placement, operator }));
     },
 });
 

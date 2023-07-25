@@ -60,7 +60,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const isSimilarityOn = get(fos.similarityParameters);
 
     const affectedPathCount = get(affectedPathCountState);
-    const isFieldVisibilityOn = affectedPathCount > 0;
+    const isAttributeVisibilityOn = affectedPathCount > 0;
 
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
@@ -69,7 +69,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
       isExtendedSelectionOn ||
         hasFiltersValue ||
         selectedSampleSet.size > 0 ||
-        isFieldVisibilityOn
+        isAttributeVisibilityOn
     );
   },
 });
@@ -100,6 +100,7 @@ const Patches = () => {
         highlight={open || Boolean(fields.length)}
         title={isVideo ? "Clips" : "Patches"}
         style={{ cursor: loading ? "default" : "pointer" }}
+        data-cy="action-clips-patches"
       />
       {open && <Patcher close={() => setOpen(false)} />}
     </ActionDiv>
@@ -139,6 +140,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           showImageSimilarityIcon ? "image" : "text"
         } similarity`}
         style={{ cursor: "pointer" }}
+        data-cy="action-sort-by-similarity"
       />
       {open && (
         <SortBySimilarity
@@ -194,6 +196,7 @@ const Tag = ({
         highlight={(selected || open) && available}
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
+        data-cy="action-tag-sample-labels"
       />
       {open && available && (
         <Tagger
@@ -258,6 +261,7 @@ const Selected = ({
         style={{
           cursor: loading ? "default" : "pointer",
         }}
+        data-cy="action-manage-selected"
       />
       {open && (
         <Selector
@@ -286,6 +290,7 @@ const Options = ({ modal }) => {
         highlight={open}
         ref={mRef}
         title={"Display options"}
+        data-cy="action-display-options"
       />
       {open && <OptionsActions modal={modal} bounds={bounds} />}
     </ActionDiv>
@@ -318,6 +323,7 @@ const Colors = () => {
         onClick={onOpen}
         highlight={open}
         title={"Color settings"}
+        data-cy="action-color-settings"
       />
     </ActionDiv>
   );
@@ -339,6 +345,7 @@ const Hidden = () => {
       highlight={true}
       text={`${count}`}
       title={"Clear hidden labels"}
+      data-cy="action-clear-hidden-labels"
     />
   );
 };
@@ -396,6 +403,7 @@ const SaveFilters = () => {
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}
         title={"Convert current filters and/or sorting to view stages"}
+        data-cy="action-convert-filters-to-view-stages"
       />
     </ActionDiv>
   ) : null;
@@ -428,6 +436,7 @@ const ToggleSidebar: React.FC<{
       }
       highlight={!visible}
       ref={ref}
+      data-cy="action-toggle-sidebar"
     />
   );
 });
@@ -451,6 +460,7 @@ export const BrowseOperations = () => {
         icon={<List />}
         onClick={() => browser.toggle()}
         title={"Browse operations"}
+        data-cy="action-browse-operations"
       />
     </ActionDiv>
   );

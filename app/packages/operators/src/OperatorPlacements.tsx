@@ -1,18 +1,16 @@
-import { ErrorBoundary, PillButton } from "@fiftyone/components";
+import { ErrorBoundary, Link, PillButton } from "@fiftyone/components";
+import { withSuspense } from "@fiftyone/state";
+import { Extension } from "@mui/icons-material";
+import styled from "styled-components";
+import { types } from ".";
+import OperatorIcon from "./OperatorIcon";
+import { Operator } from "./operators";
 import {
   useOperatorExecutor,
   useOperatorPlacements,
   usePromptOperatorInput,
 } from "./state";
 import { Placement, Places } from "./types";
-import { Link } from "@fiftyone/components";
-import styled from "styled-components";
-import { types } from ".";
-import { Operator } from "./operators";
-import { withSuspense } from "@fiftyone/state";
-import { usePluginDefinition } from "@fiftyone/plugins";
-import { resolveServerPath } from "./utils";
-import { useColorScheme } from "@mui/material";
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
@@ -44,20 +42,22 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 }
 
 function ButtonPlacement(props: OperatorPlacementProps) {
-  const { mode } = useColorScheme();
   const promptForInput = usePromptOperatorInput();
   const { operator, placement, place } = props;
-  const { uri, pluginName } = operator;
+  const { uri } = operator;
   const { view = {} } = placement;
   const { label } = view;
   const { icon, darkIcon, lightIcon, prompt = true } = view?.options || {};
-  const plugin = usePluginDefinition(pluginName);
-  const serverPath = resolveServerPath(plugin);
-  const iconPath = mode === "dark" && darkIcon ? darkIcon : lightIcon || icon;
   const { execute } = useOperatorExecutor(uri);
 
-  const IconComponent = icon && (
-    <img src={`${serverPath}/${iconPath}`} width={21} height={21} />
+  const IconComponent = (
+    <OperatorIcon
+      {...operator}
+      icon={icon}
+      darkIcon={darkIcon}
+      lightIcon={lightIcon}
+      Fallback={Extension}
+    />
   );
 
   const handleClick = () => {
@@ -86,7 +86,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
 
   return (
     <SquareButton to={handleClick} title={label}>
-      {IconComponent || label}
+      {IconComponent}
     </SquareButton>
   );
 }

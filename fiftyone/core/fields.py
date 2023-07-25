@@ -1150,21 +1150,25 @@ def is_integer_mask_targets(mask_targets):
     Returns:
         True/False
     """
-    return all(
-        map(
-            lambda k: isinstance(k, numbers.Integral)
-            or (isinstance(k, str) and _is_valid_int_string(k)),
-            mask_targets.keys(),
-        )
+    return all(map(is_integer_target, mask_targets.keys()))
+
+
+def is_integer_target(target):
+    """Determines whether the provided target is an integer.
+
+    Args:
+        target: an integer or RGB hex string
+
+    Returns:
+        True/False
+    """
+    return isinstance(target, numbers.Integral) or (
+        isinstance(target, str) and target.replace("-", "", 1).isdigit()
     )
 
 
-def _is_valid_int_string(s):
-    return s.replace("-", "", 1).isdigit()
-
-
 def is_rgb_mask_targets(mask_targets):
-    """Determines whether the provided mask targets use RBB hex sring keys.
+    """Determines whether the provided mask targets use RGB hex string keys.
 
     Args:
         mask_targets: a mask targets dict
@@ -1172,16 +1176,22 @@ def is_rgb_mask_targets(mask_targets):
     Returns:
         True/False
     """
-    return all(
-        map(
-            lambda k: isinstance(k, str) and _is_valid_rgb_hex(k),
-            mask_targets.keys(),
-        )
+    return all(map(is_rgb_target, mask_targets.keys()))
+
+
+def is_rgb_target(target):
+    """Determines whether the provided target is an RGB string.
+
+    Args:
+        target: an integer or RGB hex string
+
+    Returns:
+        True/False
+    """
+    return (
+        isinstance(target, str)
+        and re.search(r"^#(?:[0-9a-fA-F]{6})$", target) is not None
     )
-
-
-def _is_valid_rgb_hex(color):
-    return re.search(r"^#(?:[0-9a-fA-F]{6})$", color) is not None
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):

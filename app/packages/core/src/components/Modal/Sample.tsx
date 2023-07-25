@@ -1,12 +1,11 @@
 import { AbstractLooker } from "@fiftyone/looker";
-import { modal, useClearModal, useHoveredSample } from "@fiftyone/state";
-import React, {
-  MutableRefObject,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import {
+  modalSample,
+  modalSampleId,
+  useClearModal,
+  useHoveredSample,
+} from "@fiftyone/state";
+import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { SampleBar } from "./Bars";
 import Looker from "./Looker";
@@ -17,26 +16,13 @@ interface SampleProps {
   hideSampleBar?: boolean;
 }
 
-const Sample: React.FC<SampleProps> = ({
+const Sample = ({
   lookerRefCallback,
   lookerRef: propsLookerRef,
   hideSampleBar,
-}) => {
-  const data = useRecoilValue(modal);
-
-  if (!data) {
-    throw new Error("no data");
-  }
-
-  const lookerRef = useMemo(
-    () => propsLookerRef ?? React.createRef<AbstractLooker | undefined>(),
-    [propsLookerRef]
-  );
-
-  const {
-    sample: { _id },
-  } = data;
+}: SampleProps) => {
   const clearModal = useClearModal();
+  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
 
   const [hovering, setHovering] = useState(false);
 
@@ -49,14 +35,18 @@ const Sample: React.FC<SampleProps> = ({
   const update = useCallback(() => {
     !hovering && setHovering(true);
     timeout.current && clearTimeout(timeout.current);
-    timeout.current = setTimeout(clear, 3000);
+    timeout.current = setTimeout(clear, 3000) as unknown as number;
 
     return () => {
       timeout.current && clearTimeout(timeout.current);
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const hover = useHoveredSample(data.sample, { update, clear });
+  const hover = useHoveredSample(useRecoilValue(modalSample).sample, {
+    update,
+    clear,
+  });
+  const id = useRecoilValue(modalSampleId);
 
   return (
     <div
@@ -65,14 +55,14 @@ const Sample: React.FC<SampleProps> = ({
     >
       {!hideSampleBar && (
         <SampleBar
-          sampleId={_id}
-          lookerRef={lookerRef}
+          sampleId={id}
+          lookerRef={propsLookerRef || lookerRef}
           visible={hovering}
           hoveringRef={hoveringRef}
         />
       )}
       <Looker
-        key={_id}
+        key={`looker-${id}`}
         lookerRef={lookerRef}
         lookerRefCallback={lookerRefCallback}
         onClose={clearModal}

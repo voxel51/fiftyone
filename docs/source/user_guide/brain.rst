@@ -140,7 +140,7 @@ semantic meaning depending on the data you use to color/size the points.
 
 Here are a few of the many possible applications:
 
--   Identifying anomolous and/or visually similar examples
+-   Identifying anomalous and/or visually similar examples
 -   Uncovering patterns in incorrect/spurious predictions
 -   Finding examples of target scenarios in your data lake
 -   Mining hard examples for your evaluation pipeline
@@ -329,6 +329,8 @@ another supported backend:
     backend
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
+-   **milvus**: a :ref:`Milvus backend <milvus-integration>`
+-   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
 
 .. note::
 
@@ -714,6 +716,8 @@ The relevant classes for the builtin similarity backends are:
 -   **sklearn**: :class:`fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig`
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
+-   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
+-   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
 You can configure a similarity backend's parameters for a specific index by
 simply passing supported config parameters as keyword arguments each time you
@@ -983,8 +987,10 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>` and
-    :ref:`Pinecone <pinecone-integration>`.
+    like :ref:`Qdrant <qdrant-integration>`,
+    :ref:`Pinecone <pinecone-integration>`,
+    :ref:`Milvus <milvus-integration>`, and
+    :ref:`LanceDB <lancedb-integration>`
 
 .. note::
 
@@ -1091,15 +1097,17 @@ to delete embeddings from an index by their ID:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>` and
-    :ref:`Pinecone <pinecone-integration>`.
+    like :ref:`Qdrant <qdrant-integration>`,
+    :ref:`Pinecone <pinecone-integration>`,
+    :ref:`Milvus <milvus-integration>`, and
+    :ref:`LanceDB <lancedb-integration>`
 
 Deleting an index
 ~~~~~~~~~~~~~~~~~
 
-When working with backends like :ref:`Qdrant <qdrant-integration>` and
-:ref:`Pinecone <pinecone-integration>` that leverage external vector databases,
-you can call
+When working with backends like :ref:`Qdrant <qdrant-integration>`,
+:ref:`Pinecone <pinecone-integration>`, and :ref:`Milvus <milvus-integration>`
+that leverage external vector databases, you can call
 :meth:`cleanup() <fiftyone.brain.similarity.SimilarityIndex.cleanup>` to delete
 the external index/collection:
 
@@ -1140,7 +1148,7 @@ the external index/collection:
 Applications
 ------------
 
-How can simiarlity be used in practice? A common pattern is to mine your
+How can similarity be used in practice? A common pattern is to mine your
 dataset for similar examples to certain images or object patches of interest,
 e.g., those that represent failure modes of a model that need to be studied in
 more detail or underrepresented classes that need more training examples.
@@ -1714,6 +1722,9 @@ and the CLI:
         {
             "default_similarity_backend": "sklearn",
             "similarity_backends": {
+                "milvus": {
+                    "config_cls": "fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig"
+                },
                 "pinecone": {
                     "config_cls": "fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig"
                 },
@@ -1722,6 +1733,9 @@ and the CLI:
                 },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "lancedb": {
+                    "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
                 }
             }
         }
@@ -1738,6 +1752,9 @@ and the CLI:
         {
             "default_similarity_backend": "sklearn",
             "similarity_backends": {
+                "milvus": {
+                    "config_cls": "fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig"
+                },
                 "pinecone": {
                     "config_cls": "fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig"
                 },
@@ -1746,6 +1763,9 @@ and the CLI:
                 },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "lancedb": {
+                    "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
                 }
             }
         }

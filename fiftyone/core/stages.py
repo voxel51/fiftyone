@@ -1791,6 +1791,7 @@ class FilterField(ViewStage):
 
         if is_frame_field:
             return _get_filter_frames_field_pipeline(
+                sample_collection,
                 field_name,
                 new_field,
                 self._filter,
@@ -1798,6 +1799,7 @@ class FilterField(ViewStage):
             )
 
         return _get_filter_field_pipeline(
+            sample_collection,
             field_name,
             new_field,
             self._filter,
@@ -1875,6 +1877,7 @@ class FilterField(ViewStage):
 
 
 def _get_filter_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
@@ -1908,12 +1911,40 @@ def _get_field_only_matches_expr(field):
 
 
 def _get_filter_frames_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
     only_matches=True,
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
+
+    if "." in new_field:
+        parent, child = new_field.split(".", 1)
+        obj = {
+            "$cond": {
+                "if": {"$gt": ["$$frame." + filter_field, None]},
+                "then": {
+                    "$cond": {
+                        "if": cond,
+                        "then": {parent: {child: "$$frame." + filter_field}},
+                        "else": None,
+                    }
+                },
+                "else": {},
+            },
+        }
+
+    else:
+        obj = {
+            new_field: {
+                "$cond": {
+                    "if": cond,
+                    "then": "$$frame." + filter_field,
+                    "else": None,
+                }
+            }
+        }
 
     pipeline = [
         {
@@ -1925,15 +1956,7 @@ def _get_filter_frames_field_pipeline(
                         "in": {
                             "$mergeObjects": [
                                 "$$frame",
-                                {
-                                    new_field: {
-                                        "$cond": {
-                                            "if": cond,
-                                            "then": "$$frame." + filter_field,
-                                            "else": None,
-                                        }
-                                    }
-                                },
+                                obj,
                             ]
                         },
                     }
@@ -2328,6 +2351,7 @@ class FilterLabels(ViewStage):
             _make_filter_pipeline = _get_filter_field_pipeline
 
         filter_pipeline = _make_filter_pipeline(
+            sample_collection,
             labels_field,
             new_field,
             label_filter,
@@ -2428,6 +2452,7 @@ class FilterLabels(ViewStage):
 
 
 def _get_filter_list_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
@@ -2459,15 +2484,41 @@ def _get_list_field_only_matches_expr(field):
 
 
 def _get_filter_frames_list_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
     only_matches=True,
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-    label_field, labels_list = new_field.split(".")[-2:]
 
-    old_field = filter_field.split(".")[0]
+    parent, leaf = filter_field.split(".", 1)
+    new_parent, _ = new_field.split(".", 1)
+    if not issubclass(
+        sample_collection.get_field(f"frames.{parent}").document_type,
+        fol.Label,
+    ):
+        label_field, labels_list = leaf.split(".")
+        obj = lambda merge: {new_parent: {label_field: merge}}
+        label_path = f"{parent}.{label_field}"
+    else:
+        label_field, labels_list = new_parent, leaf
+        label_path = label_field
+        obj = lambda merge: {label_field: merge}
+
+    merge = {
+        "$mergeObjects": [
+            "$$frame." + label_path,
+            {
+                labels_list: {
+                    "$filter": {
+                        "input": "$$frame." + filter_field,
+                        "cond": cond,
+                    }
+                }
+            },
+        ]
+    }
 
     pipeline = [
         {
@@ -2476,27 +2527,7 @@ def _get_filter_frames_list_field_pipeline(
                     "$map": {
                         "input": "$frames",
                         "as": "frame",
-                        "in": {
-                            "$mergeObjects": [
-                                "$$frame",
-                                {
-                                    label_field: {
-                                        "$mergeObjects": [
-                                            "$$frame." + old_field,
-                                            {
-                                                labels_list: {
-                                                    "$filter": {
-                                                        "input": "$$frame."
-                                                        + filter_field,
-                                                        "cond": cond,
-                                                    }
-                                                }
-                                            },
-                                        ]
-                                    }
-                                },
-                            ]
-                        },
+                        "in": {"$mergeObjects": ["$$frame", obj(merge)]},
                     }
                 }
             }
@@ -2702,7 +2733,6 @@ class FilterKeypoints(ViewStage):
         _, points_path = sample_collection._get_label_field_path(
             self._field, "points"
         )
-        new_field = self._get_new_field(sample_collection)
 
         pipeline = []
 
@@ -2777,25 +2807,17 @@ class FilterKeypoints(ViewStage):
 
         if self._only_matches:
             # Remove Keypoint objects with no points after filtering
+            has_points = (
+                F("points").filter(F()[0] != float("nan")).length() > 0
+            )
             if is_list_field:
-                has_points = (
-                    F("points").filter(F()[0] != float("nan")).length() > 0
-                )
-                match_expr = F("keypoints").filter(has_points)
+                only_expr = F().filter(has_points)
             else:
-                field, _ = sample_collection._handle_frame_field(new_field)
-                has_points = (
-                    F(field + ".points")
-                    .filter(F()[0] != float("nan"))
-                    .length()
-                    > 0
-                )
-                match_expr = has_points.if_else(F(field), None)
+                only_expr = has_points.if_else(F(), None)
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
                 root_path,
-                match_expr,
-                embedded_root=True,
+                only_expr,
                 allow_missing=True,
                 new_field=self._new_field,
             )
@@ -5845,7 +5867,7 @@ class SelectFields(ViewStage):
         if use_db_fields:
             return sample_collection._handle_db_fields(selected_paths)
 
-        return selected_paths
+        return {path for path in selected_paths if path is not None}
 
     def _get_selected_frame_fields(
         self, sample_collection, use_db_fields=False
@@ -5883,7 +5905,7 @@ class SelectFields(ViewStage):
                 selected_paths, frames=True
             )
 
-        return selected_paths
+        return {path for path in selected_paths if path is not None}
 
     def to_mongo(self, sample_collection):
         selected_paths = self._get_selected_fields(
@@ -8083,11 +8105,6 @@ def _parse_labels_field(sample_collection, field_path):
         real_path = real_path[len(prefix) :]
 
     hidden = False
-
-    # for fiftyone.server.view hidden results
-    if real_path.startswith("___"):
-        hidden = True
-        real_path = real_path[3:]
 
     # for fiftyone.core.stages hidden results
     if real_path.startswith("__"):

@@ -1,25 +1,19 @@
 import React, { MutableRefObject } from "react";
-import {
-  RecoilState,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
-import FilterOption from "./filterOption/FilterOption";
 import Checkbox from "../../Common/Checkbox";
 import { Button } from "../../utils";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
-import { isKeypointLabel, V } from "./CategoricalFilter";
+import { V, isKeypointLabel } from "./CategoricalFilter";
+import FilterOption from "./filterOption/FilterOption";
 
 interface WrapperProps {
   results: [V["value"], number][];
   selectedValuesAtom: RecoilState<V["value"][]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
-  onlyMatchAtom: RecoilState<boolean>;
   color: string;
   totalCount: number;
   modal: boolean;
@@ -34,7 +28,6 @@ const Wrapper = ({
   selectedValuesAtom,
   excludeAtom,
   isMatchingAtom,
-  onlyMatchAtom,
   modal,
   path,
   selectedCounts,
@@ -43,12 +36,10 @@ const Wrapper = ({
   const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
-  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
-  const setIsMatching = isMatchingAtom
-    ? useSetRecoilState(isMatchingAtom)
-    : null;
+  const [excluded, setExcluded] = useRecoilState(excludeAtom);
+  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
@@ -86,9 +77,8 @@ const Wrapper = ({
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
-    setExcluded && setExcluded(false);
-    setOnlyMatch && setOnlyMatch(true);
-    setIsMatching && setIsMatching(!nestedField);
+    excluded && setExcluded(false);
+    setIsMatching(!nestedField);
   };
 
   if (totalCount === 0) {
@@ -115,7 +105,7 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={
-            count < 0
+            count < 0 || !isFilterMode
               ? null
               : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
@@ -142,9 +132,8 @@ const Wrapper = ({
           {
             <FilterOption
               nestedField={nestedField}
-              shouldNotShowExclude={shouldNotShowExclude}
+              shouldNotShowExclude={Boolean(shouldNotShowExclude)}
               excludeAtom={excludeAtom}
-              onlyMatchAtom={onlyMatchAtom}
               isMatchingAtom={isMatchingAtom}
               valueName={name}
               color={color}

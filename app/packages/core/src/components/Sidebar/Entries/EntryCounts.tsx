@@ -8,6 +8,12 @@ import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { pathIsExpanded } from "./utils";
 
+interface PathEntryCountsProps {
+  path: string;
+  modal: boolean;
+  ignoreSidebarMode?: boolean;
+}
+
 const showEntryCounts = selectorFamily<
   boolean,
   { always?: boolean; path: string; modal: boolean }
@@ -19,6 +25,7 @@ const showEntryCounts = selectorFamily<
       const mode = get(fos.resolvedSidebarMode(params.modal));
 
       if (
+        params.always ||
         params.modal ||
         params.path === "" ||
         mode === "all" ||
@@ -34,10 +41,8 @@ const showEntryCounts = selectorFamily<
 export const PathEntryCounts = ({
   modal,
   path,
-}: {
-  path: string;
-  modal: boolean;
-}) => {
+  ignoreSidebarMode,
+}: PathEntryCountsProps) => {
   const getAtom = useCallback(
     (extended: boolean) => {
       return fos.count({
@@ -49,7 +54,9 @@ export const PathEntryCounts = ({
     [modal, path]
   );
 
-  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
+  const shown = useRecoilValueLoadable(
+    showEntryCounts({ path, modal, always: ignoreSidebarMode })
+  );
   if (shown.state === "hasError") {
     throw shown.contents;
   }

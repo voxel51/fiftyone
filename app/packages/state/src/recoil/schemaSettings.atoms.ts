@@ -1,14 +1,8 @@
-import {
-  DefaultValue,
-  atom,
-  atomFamily,
-  selector,
-  selectorFamily,
-} from "recoil";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 import * as fos from "@fiftyone/state";
 import {
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
@@ -188,7 +182,9 @@ export const excludedPathsState = atomFamily({
         const dataset = await getPromise(fos.dataset);
         const showNestedField = await getPromise(fos.showNestedFieldsState);
         const searchResults = await getPromise(fos.schemaSearchResults);
-        const isFrameVIew = await getPromise(fos.isFramesView);
+        const isFrameView = await getPromise(fos.isFramesView);
+        const isClipsView = await getPromise(fos.isClipsView);
+        const isPatchesView = await getPromise(fos.isPatchesView);
         const isVideo = dataset.mediaType === "video";
         const isImage = dataset.mediaType === "image";
         const isInSearchMode = !!searchResults?.length;
@@ -221,7 +217,10 @@ export const excludedPathsState = atomFamily({
                 path,
                 combinedSchema,
                 dataset?.groupField,
-                isFrameVIew
+                isFrameView,
+                isClipsView,
+                isVideo,
+                isPatchesView
               )
             );
           })
@@ -249,7 +248,7 @@ export const excludedPathsState = atomFamily({
 
               // embedded document could break an exclude_field() call causing mongo query issue.
               const hasDynamicEmbeddedDocument = [
-                DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2,
+                DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
               const isTopLevelPath = isVideo

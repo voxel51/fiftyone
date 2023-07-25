@@ -1120,6 +1120,86 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
 
     @drop_datasets
+    def test_one(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        filepath = dataset.first().filepath
+
+        sample = dataset.one(F("filepath") == filepath)
+
+        self.assertEqual(sample.filepath, filepath)
+
+        with self.assertRaises(ValueError):
+            _ = dataset.one(F("filepath") == "bad")
+
+        sample = dataset.one(F("filepath").ends_with(".jpg"))
+
+        self.assertTrue(sample.filepath.endswith(".jpg"))
+
+        with self.assertRaises(ValueError):
+            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_merge_sample(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar", tags=["a"])
+        sample2 = fo.Sample(filepath="image.jpg", spam="eggs", tags=["b"])
+        sample3 = fo.Sample(filepath="image.jpg", tags=[])
+
+        # No dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        s1.merge(s2)
+        s1.merge(s3)
+
+        self.assertListEqual(s1["tags"], ["a", "b"])
+        self.assertEqual(s1["foo"], "bar")
+        self.assertEqual(s1["spam"], "eggs")
+
+        # In dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1)
+
+        dataset.merge_sample(s2)
+        dataset.merge_sample(s3)
+
+        self.assertListEqual(s1["tags"], ["a", "b"])
+        self.assertEqual(s1["foo"], "bar")
+        self.assertEqual(s1["spam"], "eggs")
+
+        # List merging variations
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1)
+
+        dataset.merge_sample(s2, merge_lists=False)
+
+        self.assertListEqual(s1["tags"], ["b"])
+
+        # Tests an edge case when setting a typed list field to an empty list
+        dataset.merge_sample(s3, merge_lists=False, dynamic=True)
+
+        self.assertListEqual(s1["tags"], [])
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
@@ -4991,11 +5071,36 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 1)
 
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_images(filepaths, name=dataset.name)
+
+        dataset2 = fo.Dataset.from_images(
+            filepaths, name=dataset.name, overwrite=True
+        )
+
+        self.assertEqual(len(dataset2), 1)
+
         samples = [{"filepath": "image.jpg"}]
         sample_parser = _ImageSampleParser()
         dataset = fo.Dataset.from_images(samples, sample_parser=sample_parser)
 
         self.assertEqual(len(dataset), 1)
+
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_images(
+                samples,
+                sample_parser=sample_parser,
+                name=dataset.name,
+            )
+
+        dataset2 = fo.Dataset.from_images(
+            samples,
+            sample_parser=sample_parser,
+            name=dataset.name,
+            overwrite=True,
+        )
+
+        self.assertEqual(len(dataset2), 1)
 
     @drop_datasets
     def test_from_videos(self):
@@ -5004,11 +5109,36 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 1)
 
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_videos(filepaths, name=dataset.name)
+
+        dataset2 = fo.Dataset.from_videos(
+            filepaths, name=dataset.name, overwrite=True
+        )
+
+        self.assertEqual(len(dataset2), 1)
+
         samples = [{"filepath": "video.mp4"}]
         sample_parser = _VideoSampleParser()
         dataset = fo.Dataset.from_videos(samples, sample_parser=sample_parser)
 
         self.assertEqual(len(dataset), 1)
+
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_videos(
+                samples,
+                sample_parser=sample_parser,
+                name=dataset.name,
+            )
+
+        dataset2 = fo.Dataset.from_videos(
+            samples,
+            sample_parser=sample_parser,
+            name=dataset.name,
+            overwrite=True,
+        )
+
+        self.assertEqual(len(dataset2), 1)
 
     @drop_datasets
     def test_from_labeled_images(self):
@@ -5020,6 +5150,24 @@ class DatasetFactoryTests(unittest.TestCase):
 
         self.assertEqual(dataset.values("ground_truth.label"), ["label"])
 
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_labeled_images(
+                samples,
+                sample_parser,
+                label_field="ground_truth",
+                name=dataset.name,
+            )
+
+        dataset2 = fo.Dataset.from_labeled_images(
+            samples,
+            sample_parser,
+            label_field="ground_truth",
+            name=dataset.name,
+            overwrite=True,
+        )
+
+        self.assertEqual(dataset2.values("ground_truth.label"), ["label"])
+
     @drop_datasets
     def test_from_labeled_videos(self):
         samples = [{"filepath": "video.mp4", "label": "label"}]
@@ -5029,6 +5177,24 @@ class DatasetFactoryTests(unittest.TestCase):
         )
 
         self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+
+        with self.assertRaises(ValueError):
+            fo.Dataset.from_labeled_videos(
+                samples,
+                sample_parser,
+                label_field="ground_truth",
+                name=dataset.name,
+            )
+
+        dataset2 = fo.Dataset.from_labeled_videos(
+            samples,
+            sample_parser,
+            label_field="ground_truth",
+            name=dataset.name,
+            overwrite=True,
+        )
+
+        self.assertEqual(dataset2.values("ground_truth.label"), ["label"])
 
 
 class _ImageSampleParser(foud.ImageSampleParser):

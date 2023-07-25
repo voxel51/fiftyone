@@ -1,22 +1,25 @@
-import { textFilter } from "@fiftyone/state";
-import React, { useState } from "react";
-import { useDebounce } from "react-use";
+import { Tooltip, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { Settings, VisibilityOff } from "@mui/icons-material";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { Box, Typography } from "@mui/material";
+import React from "react";
 import {
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { InputDiv } from "./utils";
-import * as fos from "@fiftyone/state";
-import { Settings, VisibilityOff } from "@mui/icons-material";
-import { Box, Typography } from "@mui/material";
-import { Tooltip, useTheme } from "@fiftyone/components";
+import styled from "styled-components";
+import { FilterInputDiv } from "./utils";
 
 const Filter = ({ modal }: { modal: boolean }) => {
   const theme = useTheme();
-  const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
-  const [value, setValue] = useState(() => debouncedValue);
+  const [isFilterMode, setIsFilterMode] = useRecoilState(
+    fos.isSidebarFilterMode
+  );
+
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const selectedFieldsStage = useRecoilValue(fos.selectedFieldsStageState);
   const resetSelectedFieldStages = useResetRecoilState(
@@ -27,32 +30,66 @@ const Filter = ({ modal }: { modal: boolean }) => {
     resetTextFilter,
     resetExcludedPaths,
     affectedPathCount,
-    setSearchResults,
+    mergedSchema,
   } = fos.useSchemaSettings();
+
+  const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
 
   const { setViewToFields: setSelectedFieldsStage } =
     fos.useSetSelectedFieldsStage();
 
-  useDebounce(
-    () => {
-      setDebouncedValue(value);
-    },
-    200,
-    [value]
-  );
+  const Text = styled.div`
+    font-size: 1rem;
+  `;
 
   return (
-    <InputDiv>
-      <input
-        type={"text"}
-        placeholder={"FILTER"}
-        value={value}
-        maxLength={140}
-        onChange={({ target }) => {
-          setValue(target.value);
-        }}
-        style={{ textTransform: "unset" }}
-      />
+    <FilterInputDiv modal={modal}>
+      <Box alignItems={"center"} display="flex">
+        {isFilterMode && !modal && (
+          <Box display="flex" onClick={() => !modal && setIsFilterMode(false)}>
+            <Tooltip
+              text={!modal ? "Toggle to visibility mode" : null}
+              placement="bottom-start"
+            >
+              <FilterAltIcon
+                sx={{
+                  color: theme.text.tertiary,
+                  "&:hover": {
+                    color: !modal ? theme.text.primary : theme.text.tertiary,
+                  },
+                  margin: "auto 0.25rem",
+                  cursor: !modal ? "pointer" : "default",
+                }}
+              />
+            </Tooltip>
+            <Tooltip
+              text="Use the controls below to create filtered views into your data"
+              placement="bottom-start"
+            >
+              <Text>FILTER</Text>
+            </Tooltip>
+          </Box>
+        )}
+        {!isFilterMode && !modal && (
+          <Box display="flex" onClick={() => setIsFilterMode(true)}>
+            <Tooltip text="Toggle to filter mode" placement="bottom-start">
+              <VisibilityIcon
+                sx={{
+                  color: theme.text.tertiary,
+                  "&:hover": { color: theme.text.primary },
+                  margin: "auto 0.25rem",
+                }}
+              />
+            </Tooltip>
+            <Tooltip
+              text="Use the controls below to toggle the visibility of field values in the grid"
+              placement="bottom-start"
+            >
+              <Text>VISIBILITY</Text>
+            </Tooltip>
+          </Box>
+        )}
+      </Box>
       {!modal && (
         <Box display="flex" alignItems="center">
           {selectedFieldsStage && affectedPathCount > 0 && (
@@ -111,7 +148,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
           </Tooltip>
         </Box>
       )}
-    </InputDiv>
+    </FilterInputDiv>
   );
 };
 

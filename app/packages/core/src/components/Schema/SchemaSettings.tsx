@@ -12,8 +12,6 @@ import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 import { useOutsideClick } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
-import { keyBy } from "lodash";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -74,12 +72,19 @@ const SchemaSettings = () => {
     setShowNestedFields,
     mergedSchema,
   } = fos.useSchemaSettings();
+  const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
+
+  const applyDisabled =
+    isFilterRuleActive && (!searchTerm || !searchResults.length);
+  const resetDisabled = !searchResults.length;
 
   const { setSearchResults, searchMetaFilter } =
     fos.useSearchSchemaFields(mergedSchema);
 
   const { setViewToFields: setSelectedFieldsStage } =
     fos.useSetSelectedFieldsStage();
+
+  const { resetAttributeFilters } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
@@ -223,9 +228,10 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={applyDisabled}
               onClick={() => {
+                resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-
                 let stage;
                 if (isFilterRuleActive) {
                   stage = {
@@ -267,12 +273,14 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={resetDisabled}
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
                 setSearchResults([]);
+                resetAttributeFilters();
               }}
             >
               Reset

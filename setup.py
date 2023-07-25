@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.21.0"
+VERSION = "0.21.4"
 
 
 def get_version():
@@ -67,13 +67,13 @@ INSTALL_REQUIRES = [
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
-    "starlette>=0.24.0,<0.27",
+    "starlette>=0.24.0",
     "strawberry-graphql==0.138.1",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.12,<0.13",
+    "fiftyone-brain>=0.13,<0.14",
     "fiftyone-db>=0.4,<0.5",
     "voxel51-eta>=0.10,<0.11",
 ]
@@ -112,7 +112,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.27.0,<0.28"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.28.2,<0.29"]}
 
 
 with open("README.md", "r") as fh:

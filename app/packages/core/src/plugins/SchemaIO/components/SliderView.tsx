@@ -17,6 +17,7 @@ export default function SliderView(props) {
   return (
     <FieldWrapper {...props}>
       <Slider
+        disabled={schema.view?.readOnly}
         valueLabelDisplay="auto"
         value={data ?? schema.default}
         onChange={(e, value) => {

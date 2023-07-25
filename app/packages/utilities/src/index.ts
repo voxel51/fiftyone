@@ -94,8 +94,6 @@ export interface BaseField {
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
-  path: string | null;
-  visible: boolean | null;
 }
 
 export interface StrictField extends BaseField {
@@ -154,6 +152,8 @@ export const NONFINITES = new Set(["-inf", "inf", "nan"]);
 
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
+export const DYNAMIC_EMBEDDED_DOCUMENT = "DynamicEmbeddedDocument";
+export const EMBEDDED_DOCUMENT = "EmbeddedDocument";
 export const DETECTION = "Detection";
 export const DETECTIONS = "Detections";
 export const GEOLOCATION = "GeoLocation";
@@ -297,7 +297,7 @@ export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
 export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.DynamicEmbeddedDocumentField";
-export const DYNAMIC_EMBEDDED_DOCUMENT_FIELD_V2 =
+export const DYNAMIC_EMBEDDED_DOCUMENT_PATH =
   "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
@@ -309,6 +309,7 @@ export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const KEYPOINT_FIELD = "fiftyone.core.labels.Keypoint";
+export const KEYPOINTS_FIELD = "fiftyone.core.labels.Keypoints";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
 export const GROUP = "fiftyone.core.groups.Group";
 
@@ -320,6 +321,7 @@ export const DISABLED_LABEL_FIELDS_VISIBILITY = [
   CLASSIFICATION_FIELD,
   CLASSIFICATIONS_FIELD,
   KEYPOINT_FIELD,
+  KEYPOINTS_FIELD,
   TEMPORAL_DETECTION_FIELD,
   TEMPORAL_DETECTIONS_FIELD,
   REGRESSION_FIELD,
@@ -401,12 +403,6 @@ export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
 ]);
 
 export const DISABLED_PATHS = ["id", "filepath", "tags", "metadata"];
-export const DISABLED_FIELD_TYPES = [
-  OBJECT_ID_FIELD,
-  FRAME_NUMBER_FIELD,
-  FRAME_SUPPORT_FIELD,
-  VECTOR_FIELD,
-];
 
 const BASE_DISABLED_PATHS = ["id", "tags", "label", "confidence"];
 
@@ -455,7 +451,7 @@ export const HEATMAP_DISABLED_SUB_PATHS = [
   "tags",
   "map",
   "map_path",
-  "Range",
+  "range",
 ];
 
 export const TEMPORAL_DETECTION_DISABLED_SUB_PATHS = [
@@ -468,7 +464,7 @@ export const GEOLOCATION_DISABLED_SUB_PATHS = [
   "tags",
   "point",
   "line",
-  "Polygon",
+  "polygon",
 ];
 
 export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
@@ -476,7 +472,7 @@ export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
   "tags",
   "point",
   "line",
-  "Polygons",
+  "polygons",
 ];
 
 export function withPath(path: string, types: string): string;

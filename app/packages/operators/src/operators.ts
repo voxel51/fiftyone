@@ -109,6 +109,9 @@ export type OperatorConfigOptions = {
   onStartup?: boolean;
   canExecute?: boolean;
   disableSchemaValidation?: boolean;
+  icon?: string;
+  darkIcon?: string;
+  lightIcon?: string;
 };
 export class OperatorConfig {
   public name: string;
@@ -120,6 +123,9 @@ export class OperatorConfig {
   public onStartup: boolean;
   public canExecute = true;
   public disableSchemaValidation = false;
+  public icon = null;
+  public darkIcon = null;
+  public lightIcon = null;
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -131,6 +137,9 @@ export class OperatorConfig {
     this.canExecute = options.canExecute === false ? false : true;
     this.disableSchemaValidation =
       options.disableSchemaValidation === true ? true : false;
+    this.icon = options.icon;
+    this.darkIcon = options.darkIcon;
+    this.lightIcon = options.lightIcon;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -143,6 +152,9 @@ export class OperatorConfig {
       onStartup: json.on_startup,
       canExecute: json.can_execute,
       disableSchemaValidation: json.disable_schema_validation,
+      icon: json.icon,
+      darkIcon: json.dark_icon,
+      lightIcon: json.light_icon,
     });
   }
 }
@@ -351,7 +363,7 @@ export async function executeStartupOperators() {
     (o) => o.config.onStartup === true
   );
   for (const operator of startupOperators) {
-    executeOperator(operator.uri);
+    if (operator.config.canExecute) executeOperator(operator.uri);
   }
 }
 
@@ -393,6 +405,20 @@ class GeneratedMessage {
   }
 }
 
+function formatSelectedLabels(selectedLabels = {}) {
+  const labels = [];
+  for (const labelId of Object.keys(selectedLabels)) {
+    const label = selectedLabels[labelId];
+    labels.push({
+      ...label,
+      label_id: labelId,
+      sample_id: label.sampleId,
+      frame_number: label.frameNumber,
+    });
+  }
+  return labels;
+}
+
 async function executeOperatorAsGenerator(
   operator: Operator,
   ctx: ExecutionContext
@@ -411,6 +437,7 @@ async function executeOperatorAsGenerator(
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
+      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
     },
     "json-stream"
   );
@@ -487,6 +514,7 @@ export async function executeOperatorWithContext(
           selected: currentContext.selectedSamples
             ? Array.from(currentContext.selectedSamples)
             : [],
+          selected_labels: formatSelectedLabels(currentContext.selectedLabels),
         }
       );
       result = serverResult.result;
@@ -533,6 +561,7 @@ export async function resolveRemoteType(
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
+      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
     }
   );
 
@@ -558,6 +587,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
+      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
     }
   );
   if (result && result.error) {
@@ -567,8 +597,9 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
   const placementsAsJSON = result.placements;
 
   return placementsAsJSON.map((p) => ({
-    operator: getLocalOrRemoteOperator(p.operator_uri),
+    operator: getLocalOrRemoteOperator(p.operator_uri)?.operator,
     placement: types.Placement.fromJSON(p.placement),
+    isRemote: getLocalOrRemoteOperator(p.operator_uri)?.isRemote,
   }));
 }
 
@@ -579,10 +610,7 @@ export async function resolveLocalPlacements(ctx: ExecutionContext) {
   for (const operator of localOperators) {
     const placement = await operator.resolvePlacement(ctx);
     if (placement)
-      localPlacements.push({
-        operator: { operator, isRemote: false },
-        placement,
-      });
+      localPlacements.push({ operator, placement, isRemote: false });
   }
 
   return localPlacements;

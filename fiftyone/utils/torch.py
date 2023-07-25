@@ -142,6 +142,9 @@ class TorchImageModelConfig(foc.Config):
         cudnn_benchmark (None): a value to use for
             :attr:`torch:torch.backends.cudnn.benchmark` while the model is
             running
+        device (None): a string specifying the device to use, eg
+            ``("cuda:0", "mps", "cpu")``. By default, CUDA is used if
+            available, else CPU is used
     """
 
     def __init__(self, d):
@@ -192,6 +195,7 @@ class TorchImageModelConfig(foc.Config):
         self.cudnn_benchmark = self.parse_bool(
             d, "cudnn_benchmark", default=None
         )
+        self.device = self.parse_string(d, "device", default=None)
 
 
 class TorchImageModel(
@@ -223,12 +227,14 @@ class TorchImageModel(
         self._transforms = transforms
         self._preprocess = True
 
+        device = self.config.device
+        if device is None:
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
         # Load model
-        self._using_gpu = torch.cuda.is_available()
-        self._device = torch.device("cuda:0" if self._using_gpu else "cpu")
-        self._using_half_precision = (
-            self.config.use_half_precision is True
-        ) and self._using_gpu
+        self._device = torch.device(device)
+        self._using_gpu = self._device.type in ("cuda", "mps")
+        self._using_half_precision = self.config.use_half_precision
         self._model = self._load_model(config)
         self._no_grad = None
         self._benchmark_orig = None
@@ -383,9 +389,7 @@ class TorchImageModel(
         height, width = imgs.size()[-2:]
         frame_size = (width, height)
 
-        if self._using_gpu:
-            imgs = imgs.cuda()
-
+        imgs = imgs.to(self._device)
         if self._using_half_precision:
             imgs = imgs.half()
 
@@ -478,7 +482,7 @@ class TorchImageModel(
 
         self._load_state_dict(model, config)
 
-        model.train(False)
+        model.eval()
 
         return model
 
@@ -1512,7 +1516,7 @@ class TorchImagePatchesDataset(Dataset):
                     % (patches_field, label_type)
                 )
 
-            if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            if not issubclass(label_type, fol._HasLabelList):
                 bboxes = [[b] if b is not None else None for b in bboxes]
         else:
             raise ValueError(

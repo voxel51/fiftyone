@@ -788,6 +788,10 @@ class SampleCollection(object):
             exact (False): whether to raise an error if multiple samples match
                 the expression
 
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
         Returns:
             a :class:`fiftyone.core.sample.SampleView`
         """
@@ -968,7 +972,7 @@ class SampleCollection(object):
         if self.media_type == fom.GROUP:
             field_names += (self.group_field,)
 
-        return field_names
+        return (f for f in field_names if f is not None)
 
     def _get_default_frame_fields(
         self,
@@ -1117,11 +1121,12 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1619,7 +1624,13 @@ class SampleCollection(object):
                     label_ids = self.values(id_path)
 
             for _label_ids in fou.iter_batches(label_ids, 100000):
-                ops.append(UpdateMany({_id_path: {"$in": _label_ids}}, update))
+                _label_ids = [_id for _id in _label_ids if _id is not None]
+                ops.append(
+                    UpdateMany(
+                        {_id_path: {"$in": _label_ids}},
+                        update,
+                    )
+                )
 
         if ops:
             self._dataset._bulk_write(ops, frames=is_frame_field)
@@ -2009,7 +2020,7 @@ class SampleCollection(object):
         if (
             isinstance(self, fov.DatasetView)
             and isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
+            and issubclass(field.document_type, fol._HasLabelList)
         ):
             label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
@@ -8390,6 +8401,8 @@ class SampleCollection(object):
                 -   ``"prompt"``: present an interactive prompt to
                     direct/discard unexpected labels
                 -   ``"ignore"``: automatically ignore any unexpected labels
+                -   ``"keep"``: automatically keep all unexpected labels in a
+                    field whose name matches the the label type
                 -   ``"return"``: return a dict containing all unexpected
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
@@ -8674,6 +8687,10 @@ class SampleCollection(object):
 
         if self._is_clips:
             return ["id", "filepath", "sample_id"]
+
+        if self.media_type == fom.GROUP:
+            gf = self.group_field
+            return ["id", "filepath", gf + ".id", gf + ".name"]
 
         return ["id", "filepath"]
 
@@ -9673,7 +9690,7 @@ class SampleCollection(object):
     def _get_label_field_root(self, field_name):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             root = field_name + "." + label_type._LABEL_LIST_FIELD
             is_list_field = True
         else:
@@ -9685,7 +9702,7 @@ class SampleCollection(object):
     def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
         if subfield:
@@ -9770,29 +9787,41 @@ class SampleCollection(object):
             self,
             field,
             expr,
-            embedded_root,
+            embedded_root=embedded_root,
             allow_missing=allow_missing,
             new_field=new_field,
             context=context,
         )
 
     def _get_values_by_id(self, path_or_expr, ids, link_field=None):
+        is_list_field = False
         if link_field == "frames":
             if self._is_frames:
                 id_path = "id"
             else:
                 id_path = "frames.id"
         elif link_field is not None:
-            _, id_path = self._get_label_field_path(link_field, "id")
+            root, is_list_field = self._get_label_field_root(link_field)
+            id_path = root + ".id"
         elif self._is_patches:
             id_path = "sample_id"
         else:
             id_path = "id"
 
-        values_map = {
-            i: v
-            for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
-        }
+        ref_ids, values = self.values([id_path, path_or_expr])
+        values_map = {}
+
+        if is_list_field:
+            for _ids, _values in zip(ref_ids, values):
+                if not _ids:
+                    continue
+
+                for _id, _val in zip(_ids, _values):
+                    values_map[_id] = _val
+        else:
+            for _id, _val in zip(ref_ids, values):
+                values_map[_id] = _val
+
         return [values_map.get(i, None) for i in ids]
 
 
@@ -9810,21 +9839,16 @@ def _iter_label_fields(sample_collection):
         yield prefix + path, field
 
 
-def _iter_schema_label_fields(schema, recursive=True):
+def _iter_schema_label_fields(schema):
     for path, field in schema.items():
-        if isinstance(field, fof.ListField):
-            field = field.field
-
         if isinstance(field, fof.EmbeddedDocumentField):
             if issubclass(field.document_type, fol.Label):
-                # Do not recurse into Label fields
                 yield path, field
             else:
-                # Only recurse one level deep into embedded documents
-                for _path, _field in _iter_schema_label_fields(
-                    field.get_field_schema(), recursive=False
-                ):
-                    yield path + "." + _path, _field
+                for _path, _field in field.get_field_schema().items():
+                    if isinstance(_field, fof.EmbeddedDocumentField):
+                        if issubclass(_field.document_type, fol.Label):
+                            yield path + "." + _path, _field
 
 
 def _serialize_value(field_name, field, value, validate=True):
@@ -10343,7 +10367,9 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     def _replace(path):
-        return ".".join([new_field] + path.split(".")[1:])
+        n = new_field.count(".") + 1
+        chunks = path.split(".", n)
+        return new_field + "." + chunks[-1] if len(chunks) > n else new_field
 
     if new_field:
         field_name = _replace(field_name)
@@ -10434,7 +10460,7 @@ def _make_set_field_pipeline(
     sample_collection,
     field,
     expr,
-    embedded_root,
+    embedded_root=False,
     allow_missing=False,
     new_field=None,
     context=None,

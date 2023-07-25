@@ -8,8 +8,6 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { DatasetSchema } from "../useSchemaSettings.utils";
-import { BaseField, Field } from "@fiftyone/utilities";
 
 /**
  *

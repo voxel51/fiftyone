@@ -1,7 +1,4 @@
 import {
-  mainSample,
-  mainSampleQuery$data,
-  mainSampleQuery as mainSampleQueryGraphQL,
   paginateGroup,
   paginateGroupQuery,
   paginateGroup_query$key,
@@ -19,18 +16,13 @@ import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
 import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
-import {
-  AppSample,
-  SampleData,
-  dataset,
-  modal as modalAtom,
-  pinned3DSample,
-  refresher,
-} from "./atoms";
+import { dataset, pinned3DSample, refresher } from "./atoms";
+import { ModalSample, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
+import { mapSampleResponse } from "./utils";
 import { dynamicGroupViewQuery, view } from "./view";
 
 export type SliceName = string | undefined | null;
@@ -77,6 +69,11 @@ export const groupSlices = selector<string[]>({
   },
 });
 
+export const hasGroupSlices = selector<boolean>({
+  key: "hasGroupSlices",
+  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
+});
+
 export const defaultPcdSlice = selector<string | null>({
   key: "defaultPcdSlice",
   get: ({ get }) => {
@@ -118,7 +115,7 @@ export const activePcdSliceToSampleMap = selector({
     const activePcdSlicesValue = get(activePcdSlices);
     if (!activePcdSlicesValue || activePcdSlicesValue.length === 0)
       return {
-        default: get(modalAtom),
+        default: get(modalSample),
       };
 
     const samples = get(
@@ -198,11 +195,9 @@ export const groupField = selector<string>({
   get: ({ get }) => get(dataset).groupField,
 });
 
-export const groupId = selector<string>({
+export const groupId = atom<string>({
   key: "groupId",
-  get: ({ get }) => {
-    return get(modalAtom)?.sample[get(groupField)]?._id;
-  },
+  default: null,
 });
 
 export const refreshGroupQuery = atom<number>({
@@ -219,59 +214,35 @@ export const groupQuery = graphQLSelector<
   mapResponse: (response) => response,
   query: paginateGroup,
   variables: ({ get }) => {
-    const sample = get(modalAtom).sample;
-
-    const group = get(groupField);
-
     return {
       dataset: get(datasetName),
       view: get(view),
       index: get(refresher),
       filter: {
         group: {
-          id: sample[group]._id as string,
+          id: get(groupId),
         },
       },
     };
   },
 });
 
-export const dynamicGroupPaginationQuery = graphQLSelectorFamily<
+export const dynamicGroupPaginationQuery = graphQLSelector<
   VariablesOf<paginateGroupQuery>,
-  string,
   ResponseFrom<paginateGroupQuery>
 >({
   key: "dynamicGroupQuery",
   environment: RelayEnvironmentKey,
   mapResponse: (response) => response,
   query: paginateGroup,
-  variables:
-    (fieldOrExpression) =>
-    ({ get }) => {
-      return {
-        dataset: get(datasetName),
-        filter: {},
-        view: get(dynamicGroupViewQuery(fieldOrExpression)),
-      };
-    },
-});
-
-const mapSampleResponse = (response: mainSampleQuery$data) => {
-  const actualRawSample = response?.sample?.sample;
-
-  // This value may be a string that needs to be deserialized
-  // Only occurs after calling useUpdateSample for pcd sample
-  // - https://github.com/voxel51/fiftyone/pull/2622
-  // - https://github.com/facebook/relay/issues/91
-  if (actualRawSample && typeof actualRawSample === "string") {
+  variables: ({ get }) => {
     return {
-      ...response.sample,
-      sample: JSON.parse(actualRawSample),
+      dataset: get(datasetName),
+      filter: {},
+      view: get(dynamicGroupViewQuery),
     };
-  }
-
-  return response.sample;
-};
+  },
+});
 
 export const pcdSampleQueryFamily = graphQLSelectorFamily<
   VariablesOf<pcdSampleQuery>,
@@ -289,7 +260,6 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
       return {
         dataset: get(datasetName),
         view: get(view),
-        index: get(refresher),
         filter: {
           group: {
             id: groupIdValue,
@@ -298,7 +268,13 @@ export const pcdSampleQueryFamily = graphQLSelectorFamily<
         },
       };
     },
-  mapResponse: mapSampleResponse,
+  mapResponse: (data: ResponseFrom<pcdSampleQuery>) =>
+    mapSampleResponse(data.sample as ModalSample),
+});
+
+export const groupByFieldValue = atom<string | null>({
+  key: "groupByFieldValue",
+  default: null,
 });
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
@@ -306,105 +282,35 @@ export const groupPaginationFragment = selector<paginateGroup_query$key>({
   get: ({ get }) => get(groupQuery),
 });
 
-export const dynamicGroupSamplesStoreMap = atomFamily<
-  Map<number, SampleData>,
-  string
->({
-  key: "dynamicGroupSamplesStoreMap",
-  // todo: use map with LRU cache
-  default: new Map<number, SampleData>(),
-});
-
-export const dynamicGroupPaginationFragment = selectorFamily<
-  paginateGroup_query$key,
-  { fieldOrExpression: string }
->({
-  key: "dynamicGroupPaginationFragment",
-  get:
-    ({ fieldOrExpression }) =>
-    ({ get }) => {
-      return get(dynamicGroupPaginationQuery(fieldOrExpression));
+export const dynamicGroupPaginationFragment = selector<paginateGroup_query$key>(
+  {
+    key: "dynamicGroupPaginationFragment",
+    get: ({ get }) => {
+      return get(dynamicGroupPaginationQuery);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "lru",
-    maxSize: 20,
-  },
+    cachePolicy_UNSTABLE: {
+      eviction: "lru",
+      maxSize: 20,
+    },
+  }
+);
+
+export const nestedGroupIndex = atom<number>({
+  key: "nestedGroupIndex",
+  default: null,
 });
 
-export const activeModalSample = selectorFamily<
-  AppSample | ResponseFrom<pcdSampleQuery>["sample"],
-  SliceName
+export const activeModalSample = selector<
+  NonNullable<ResponseFrom<pcdSampleQuery>["sample"]>["sample"]
 >({
   key: "activeModalSample",
-  get:
-    (sliceName) =>
-    ({ get }) => {
-      if (!sliceName || !get(isGroup)) {
-        return get(modalAtom).sample;
-      }
+  get: ({ get }) => {
+    if (get(pinned3DSample)) {
+      return get(pcdSampleQueryFamily(get(currentSlice(true))))?.sample;
+    }
 
-      if (get(pinned3DSample) || get(activePcdSlices)?.includes(sliceName)) {
-        return get(pcdSampleQueryFamily(sliceName)).sample;
-      }
-
-      return get(groupSample(sliceName)).sample;
-    },
-});
-
-const groupSampleQuery = graphQLSelectorFamily<
-  VariablesOf<mainSampleQueryGraphQL>,
-  SliceName,
-  ResponseFrom<mainSampleQueryGraphQL>["sample"]
->({
-  environment: RelayEnvironmentKey,
-  key: "mainSampleQuery",
-  mapResponse: mapSampleResponse,
-  query: mainSample,
-  variables:
-    (slice) =>
-    ({ get }) => {
-      return {
-        view: get(view),
-        dataset: get(dataset).name,
-        index: get(refresher),
-        filter: {
-          group: {
-            slices: [slice ?? get(groupSlice(true))],
-            id: get(modalAtom)?.sample[get(groupField)]._id as string,
-          },
-        },
-      };
-    },
-});
-
-export const groupSample = selectorFamily<SampleData, SliceName>({
-  key: "mainGroupSample",
-  get:
-    (sliceName) =>
-    ({ get }) => {
-      if (sliceName) {
-        return get(groupSampleQuery(sliceName));
-      }
-
-      const field = get(groupField);
-      const group = get(isGroup);
-
-      const sample = get(modalAtom);
-
-      if (!field || !group) return sample;
-
-      if (sample.sample[field].name === get(groupSlice(true))) {
-        return sample;
-      }
-
-      const fallbackSample = get(groupSampleQuery(sliceName));
-
-      if (fallbackSample?.sample) {
-        return fallbackSample;
-      }
-
-      return sample;
-    },
+    return get(modalSample).sample;
+  },
 });
 
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({

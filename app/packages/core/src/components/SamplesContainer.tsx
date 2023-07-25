@@ -49,7 +49,7 @@ function SamplesContainer() {
                 onFocus={() => {
                   controller.set({ zIndex: "1", overflow: "visible" });
                 }}
-                trigger={isDisabled ? null : trigger}
+                trigger={isDisabled ? undefined : trigger}
               />
             ),
             disabled: disabled.has(entry.path),

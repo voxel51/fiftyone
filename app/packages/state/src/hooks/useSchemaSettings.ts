@@ -15,6 +15,7 @@ import {
   skipField,
 } from "./useSchemaSettings.utils";
 import useSetShowNestedFields from "./schema/useSetShowNestedFields";
+import _ from "lodash";
 
 const SELECT_ALL = "SELECT_ALL";
 
@@ -29,12 +30,26 @@ export default function useSchemaSettings() {
 
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
 
+  const [filters, setFilters] = useRecoilState(fos.filters);
+  const [modalFilters, setModalFilters] = useRecoilState(fos.modalFilters);
+  const [attributeVisibility, setAttributeVisibility] = useRecoilState(
+    fos.attributeVisibility
+  );
+  const [modalAttributeVisibility, setModalAttributeVisibility] =
+    useRecoilState(fos.modalAttributeVisibility);
+
+  const resetAttributeFilters = () => {
+    !_.isEmpty(filters) && setFilters({});
+    !_.isEmpty(modalFilters) && setModalFilters({});
+    !_.isEmpty(attributeVisibility) && setAttributeVisibility({});
+    !_.isEmpty(modalAttributeVisibility) && setModalAttributeVisibility({});
+  };
+
   const setViewSchema = useSetRecoilState(fos.viewSchemaState);
   const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-
   const isVideo = dataset.mediaType === "video";
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
@@ -55,6 +70,7 @@ export default function useSchemaSettings() {
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
+  const isClipsView = useRecoilValue(fos.isClipsView);
 
   const [expandedPaths, setExpandedPaths] = useRecoilState(
     fos.expandedPathsState
@@ -115,15 +131,34 @@ export default function useSchemaSettings() {
   const selectedPathState = fos.selectedPathsState({});
   const [selectedPaths, setSelectedPaths] = useRecoilState(selectedPathState);
   // disabled paths are filtered
-  const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
-  const enabledSelectedPaths =
-    datasetSelectedPaths?.size && combinedSchema
+  const enabledSelectedPaths = useMemo(() => {
+    const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
+
+    return datasetSelectedPaths?.size && combinedSchema
       ? [...datasetSelectedPaths]?.filter(
           ({ path }) =>
             path &&
-            !disabledField(path, combinedSchema, isGroupDataset, isFrameView)
+            !disabledField(
+              path,
+              combinedSchema,
+              isGroupDataset,
+              isFrameView,
+              isClipsView,
+              isVideo,
+              isPatchesView
+            )
         )
       : [];
+  }, [
+    combinedSchema,
+    datasetName,
+    isClipsView,
+    isFrameView,
+    isGroupDataset,
+    isPatchesView,
+    isVideo,
+    selectedPaths,
+  ]);
 
   const excludedPathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
@@ -180,7 +215,10 @@ export default function useSchemaSettings() {
             path,
             finalSchemaKeyByPath,
             isGroupDataset,
-            isFrameView
+            isFrameView,
+            isClipsView,
+            isVideo,
+            isPatchesView
           ) || filterRuleTab;
 
         const fullPath =
@@ -243,6 +281,9 @@ export default function useSchemaSettings() {
     datasetName,
     fieldSchema,
     includeNestedFields,
+    isPatchesView,
+    isClipsView,
+    isVideo,
   ]);
 
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
@@ -376,7 +417,15 @@ export default function useSchemaSettings() {
         }
         const res = Object.values(combinedSchema)
           .filter((f) =>
-            disabledField(f.path, combinedSchema, isGroupDataset, isFrameView)
+            disabledField(
+              f.path,
+              combinedSchema,
+              isGroupDataset,
+              isFrameView,
+              isClipsView,
+              isVideo,
+              isPatchesView
+            )
           )
           .map((f) => f.path);
 
@@ -398,6 +447,8 @@ export default function useSchemaSettings() {
     filterRuleTab,
     combinedSchema,
     isPatchesView,
+    isClipsView,
+    isVideo,
   ]);
 
   const setAllFieldsCheckedWrapper = useCallback(
@@ -464,5 +515,6 @@ export default function useSchemaSettings() {
     showNestedFields,
     toggleSelection,
     mergedSchema,
+    resetAttributeFilters,
   };
 }

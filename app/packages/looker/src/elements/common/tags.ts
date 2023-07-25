@@ -1,19 +1,20 @@
 /**
  * Copyright 2017-2023, Voxel51, Inc.
  */
-
 import {
   BOOLEAN_FIELD,
   CLASSIFICATION,
   CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   FLOAT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
+  getColor,
   INT_FIELD,
   LABELS_PATH,
   LIST_FIELD,
@@ -23,28 +24,25 @@ import {
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
-
-import { getColor } from "@fiftyone/utilities";
+import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
-
+import { lookerTags } from "./tags.module.css";
 import {
   getColorFromOptions,
   getColorFromOptionsPrimitives,
   prettify,
 } from "./util";
 
-import { lookerTags } from "./tags.module.css";
+import _ from "lodash";
 
 interface TagData {
   color: string;
   title: string;
-  path: string;
+  path?: string;
   value: string;
 }
-
-const LABEL_LISTS = [withPath(LABELS_PATH, CLASSIFICATIONS)];
 
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
@@ -53,6 +51,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
+  private attributeVisibility: object;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -66,8 +65,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      config: { fieldSchema },
-      options: { activePaths, coloring, timeZone, customizeColorSetting },
+      config: { fieldSchema, ...r },
+      options: {
+        activePaths,
+        coloring,
+        timeZone,
+        customizeColorSetting,
+        filter,
+        attributeVisibility,
+      },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -83,6 +89,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorByValue === (coloring.by === "value") &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
+        _.isEqual(this.attributeVisibility, attributeVisibility) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -91,12 +98,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const elements: TagData[] = [];
 
-    const PRIMITIVE_RENDERERS: {
-      [key: string]: (
-        path: string,
-        value: unknown
-      ) => { color: string; value: string; title: string };
-    } = {
+    const PRIMITIVE_RENDERERS = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
         const v = value ? "True" : "False";
         return {
@@ -113,7 +115,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       [INT_FIELD]: (path, value: number) => {
         const v = prettyNumber(value);
-
         return {
           path,
           value: v,
@@ -158,7 +159,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       [FLOAT_FIELD]: (path: string, value: number) => {
         const v = prettyNumber(value);
-
         return {
           path,
           value: v,
@@ -228,29 +228,27 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
     };
 
-    const LABEL_RENDERERS: {
-      [key: string]: (
-        path: string,
-        value: unknown
-      ) => { color: string; value: string; title: string };
-    } = {
-      [withPath(LABELS_PATH, CLASSIFICATION)]: (
+    const CLASSIFICATION_RENDERER = (path, param: Classification) => {
+      if (!param.label) {
+        return null;
+      }
+      return {
         path,
-        param: Classification
-      ) => {
-        return {
+        value: param.label,
+        title: `${path}: ${param.label}`,
+        color: getColorFromOptions({
+          coloring,
           path,
-          value: param.label,
-          title: `${path}: ${param.label}`,
-          color: getColorFromOptions({
-            coloring,
-            path,
-            param,
-            customizeColorSetting,
-            labelDefault: true,
-          }),
-        };
-      },
+          param,
+          customizeColorSetting,
+          labelDefault: true,
+        }),
+      };
+    };
+
+    const LABEL_RENDERERS = {
+      [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
+      [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
         const v = prettyNumber(param.value);
         return {
@@ -273,19 +271,21 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
-            const v = coloring.by === "value" ? tag : "tags";
-            elements.push({
-              color: getColorFromOptions({
-                coloring,
-                path,
-                param: tag,
-                customizeColorSetting,
-                labelDefault: false,
-              }),
-              title: tag,
-              value: tag,
-              path: v,
-            });
+            if (filter(path, tag)) {
+              const v = coloring.by === "value" ? tag : "tags";
+              elements.push({
+                color: getColorFromOptions({
+                  coloring,
+                  path,
+                  param: tag,
+                  customizeColorSetting,
+                  labelDefault: false,
+                }),
+                title: tag,
+                value: tag,
+                path: v,
+              });
+            }
           });
         }
       } else if (path === "_label_tags") {
@@ -300,19 +300,16 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           });
         });
       } else {
-        const [field, value, list] = getFieldAndValue(
-          sample,
-          fieldSchema,
-          path
-        );
+        const [field, value] = getFieldAndValue(sample, fieldSchema, path);
 
         if (field === null) {
           continue;
         }
 
-        const pushList = (renderer, value) => {
+        const pushList = (renderer, value: unknown[]) => {
           let count = 0;
           let rest = 0;
+
           for (
             let index = 0;
             index < (value as Array<unknown>)?.length;
@@ -337,33 +334,28 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         };
 
         if (value === undefined) continue;
-
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
-          if (path.startsWith("frames.")) continue;
-          const classifications = LABEL_LISTS.includes(field.embeddedDocType);
-          if (classifications) {
-            pushList(
-              LABEL_RENDERERS[field.embeddedDocType],
-              value?.classifications
-            );
-          } else {
-            // remove undefined classifications - can show up as None
-            const objVal = value as Object;
-            if (
-              ("_cls" in objVal && typeof objVal._cls === "undefined") ||
-              (objVal._cls === CLASSIFICATION && !objVal?.label)
-            ) {
-              continue;
-            }
-            elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
-          }
+          Array.isArray(value)
+            ? filter(path, value) &&
+              pushList(LABEL_RENDERERS[field.embeddedDocType], value)
+            : filter(path, value) &&
+              elements.push(
+                LABEL_RENDERERS[field.embeddedDocType](path, value)
+              );
+
           continue;
         }
 
-        if (field && PRIMITIVE_RENDERERS[field.ftype]) {
-          list
-            ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
-            : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+        if (
+          field &&
+          PRIMITIVE_RENDERERS[field.ftype] &&
+          field.ftype !== LIST_FIELD
+        ) {
+          // none-list field value is in ['value'] format
+          // need to convert to 'value' to pass in the filter
+          const v =
+            Array.isArray(value) && value.length == 1 ? value[0] : value;
+          filter(path, v) && pushList(PRIMITIVE_RENDERERS[field.ftype], value);
           continue;
         }
 
@@ -372,7 +364,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           field.ftype === LIST_FIELD &&
           PRIMITIVE_RENDERERS[field.subfield]
         ) {
-          pushList(PRIMITIVE_RENDERERS[field.subfield], value);
+          // there may be visibility settings
+          const visibleValue = [];
+          value?.forEach((v) => {
+            if (filter(path, v)) {
+              visibleValue.push(v);
+            }
+          });
+          pushList(PRIMITIVE_RENDERERS[field.subfield], visibleValue);
           continue;
         }
       }
@@ -384,18 +383,21 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
     this.colorPool = coloring.pool as string[];
+    this.attributeVisibility = attributeVisibility;
 
-    elements.forEach(({ path, value, color, title }) => {
-      const div = document.createElement("div");
-      const child = prettify(value);
-      child instanceof HTMLElement
-        ? div.appendChild(child)
-        : (div.innerHTML = child);
-      div.title = title;
-      div.style.backgroundColor = color;
-      div.setAttribute("data-cy", `tag-${path}`);
-      this.element.appendChild(div);
-    });
+    elements
+      .filter((e) => Boolean(e))
+      .forEach(({ path, value, color, title }) => {
+        const div = document.createElement("div");
+        const child = prettify(value);
+        child instanceof HTMLElement
+          ? div.appendChild(child)
+          : (div.innerHTML = child);
+        div.title = title;
+        div.style.backgroundColor = color;
+        div.setAttribute("data-cy", `tag-${path}`);
+        this.element.appendChild(div);
+      });
 
     return this.element;
   }
@@ -428,9 +430,13 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
-const unwind = (name: string, value: unknown) => {
-  if (Array.isArray(value)) {
-    return value.map((val) => unwind(name, val));
+const unwind = (
+  name: string,
+  value: RegularLabel[] | RegularLabel,
+  depth = 0
+) => {
+  if (Array.isArray(value) && depth < 2) {
+    return value.map((val) => unwind(name, val), depth + 1);
   }
 
   const v = value[name];
@@ -447,46 +453,51 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field | null, unknown, boolean] => {
-  let value: unknown = sample;
+): [Field | null, RegularLabel[]] => {
+  let values: Array<RegularLabel> | undefined = [
+    sample as unknown as RegularLabel,
+  ];
   let field: Field = null;
-  let list = false;
 
-  for (const key of path.split(".")) {
+  if (
+    path.startsWith("frames.") &&
+    schema?.frames?.embeddedDocType === "fiftyone.core.frames.FrameSample"
+  ) {
+    values = values[0]?.frames;
+    schema = schema.frames.fields;
+    path = path.split(".").slice(1).join(".");
+  }
+
+  for (const key of path.split(".").slice(0, 2)) {
     if (!schema?.[key]) {
-      return [null, null, false];
+      return [null, null];
     }
 
     field = schema[key];
 
-    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
-      return [null, null, false];
+    if (
+      field &&
+      field.ftype === LIST_FIELD &&
+      field.subfield === EMBEDDED_DOCUMENT_FIELD
+    ) {
+      return [null, null];
     }
 
-    if (![undefined, null].includes(value) && field) {
-      value = unwind(field.dbField, value);
-      list = list || field.ftype === LIST_FIELD;
+    if (values.length && field) {
+      values = unwind(field.dbField, values as RegularLabel[]).filter(
+        (v) => v !== undefined && v !== null
+      );
+    }
+
+    if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
+      values = values.map((value) => value?.["classifications"] || []).flat();
+      break;
     }
 
     schema = field ? field.fields : null;
   }
 
-  if (Array.isArray(value) && value.every((v) => typeof v == "object")) {
-    value = value.reduce((acc, cur) => {
-      if (!acc._cls) {
-        acc._cls = cur._cls;
-      }
-      const key = acc._cls?.toLowerCase();
-      if (acc[key] == undefined) {
-        acc[key] = cur[key];
-      } else {
-        acc[key] = [...acc[key], ...cur[key]];
-      }
-      return acc;
-    }, {});
-  }
-
-  return [field, value, list];
+  return [field, values];
 };
 
 const compareObjectArrays = (arr1, arr2) => {
