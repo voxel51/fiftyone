@@ -81,7 +81,13 @@ def stringify(d, _cls=None):
         return d
 
     if isinstance(d, bytes):
-        return _handle_numpy_array(d, _cls)
+        if isinstance(d, bytes):
+            try:
+                # historically, bytes were used for numpy arrays
+                return _handle_numpy_array(d, _cls)
+            except:
+                # however, with plugins, bytes can represent other data
+                return str(d)
     elif isinstance(d, (date, datetime)):
         return _handle_date(d)
     elif isinstance(d, ObjectId):
