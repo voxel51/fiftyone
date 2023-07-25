@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Box } from "@mui/material";
 
-import { useSchemaSettings } from "@fiftyone/state";
+import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
 import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
 import { EMBEDDED_DOCUMENT_FIELD } from "@fiftyone/utilities";
@@ -10,13 +10,15 @@ import { SchemaSelectionRow } from "./SchemaSelectionRow";
 export const SchemaSelection = () => {
   const {
     finalSchema,
-    searchResults,
     isFilterRuleActive,
     showMetadata,
     finalSchemaKeyByPath,
     setExpandedPaths,
     expandedPaths,
+    mergedSchema,
   } = useSchemaSettings();
+  const { searchResults } = useSearchSchemaFields(mergedSchema);
+
   const showSearchHelp = isFilterRuleActive && !searchResults?.length;
   const showSelection = !showSearchHelp;
 
@@ -61,10 +63,12 @@ export const SchemaSelection = () => {
               const fDesc = field?.description;
               const ftype: string = field?.ftype || "";
               const embedDocType = field?.embeddedDocType;
+
               let docTypeLabel = ftype.substring(
                 ftype.lastIndexOf(".") + 1,
                 ftype.length
               );
+
               docTypeLabel =
                 ftype === EMBEDDED_DOCUMENT_FIELD
                   ? embedDocType.substring(
