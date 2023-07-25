@@ -567,6 +567,17 @@ class GroupTests(unittest.TestCase):
 
         view = dataset.select_fields()
 
+        # Cloning a grouped dataset maintains schema changes
+        group_dataset = view.clone()
+
+        self.assertNotIn("field", group_dataset.get_field_schema())
+        self.assertNotIn("field", group_dataset.get_frame_field_schema())
+        for sample in group_dataset:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
+        # Selecting group slices maintains schema changes
         image_view = view.select_group_slices(media_type="image")
 
         self.assertNotIn("field", image_view.get_field_schema())
@@ -580,6 +591,7 @@ class GroupTests(unittest.TestCase):
             self.assertFalse(sample.has_field("field"))
 
         # @note(SelectGroupSlices)
+        # Selecting group slices maintains frame schema changes
         video_view = view.select_group_slices(media_type="video")
 
         self.assertNotIn("field", video_view.get_field_schema())
