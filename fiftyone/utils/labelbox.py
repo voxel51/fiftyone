@@ -696,8 +696,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             metadata = self._get_sample_metadata(project, sample_id)
             if metadata is None:
                 logger.warning(
-                    "Skipping sample '%s' with no metadata, likely due to no "
-                    "with a matching Global Key being found",
+                    "Skipping sample '%s' with no metadata, likely due to not "
+                    "finding a DataRow with a matching Global Key",
                     sample_id,
                 )
                 continue
