@@ -32,7 +32,7 @@ test.describe("quickstart-groups", () => {
     grid,
     page,
   }) => {
-    await grid.assert.verifyNLookers(4);
+    await grid.assert.assertNLookers(4);
     const selectorSlice = page.getByTestId("selector-slice");
     await expect(selectorSlice).toHaveValue("left");
   });
@@ -54,30 +54,30 @@ test.describe("quickstart-groups", () => {
     });
 
     test("shows correct pinned slice in modal", async ({ modal }) => {
-      expect(await modal.getGroupPinnedText()).toEqual("left is pinned");
+      await modal.group.assert.assertGroupPinnedText("left is pinned");
     });
 
     test('changes slice to "pcd" when 3D viewer is clicked', async ({
       modal,
     }) => {
       await modal.clickOnLooker3d();
-      expect(await modal.getGroupPinnedText()).toBe("pcd is pinned");
+      await modal.group.assert.assertGroupPinnedText("pcd is pinned");
     });
 
     test("navigation works", async ({ modal }) => {
-      expect(await modal.sidebarPom.getSampleFilepath(false)).toEqual(
+      expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
         FIRST_SAMPLE_FILENAME
       );
 
       await modal.navigateNextSample();
 
-      expect(await modal.sidebarPom.getSampleFilepath(false)).toEqual(
+      expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
         SECOND_SAMPLE_FILENAME
       );
 
       await modal.navigatePreviousSample();
 
-      expect(await modal.sidebarPom.getSampleFilepath(false)).toEqual(
+      expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
         FIRST_SAMPLE_FILENAME
       );
     });
