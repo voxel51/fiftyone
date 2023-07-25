@@ -108,11 +108,23 @@ _MODEL_TEMPLATE = """
 
     model = foz.load_zoo_model("{{ name }}")
 
+{% if 'segment-anything' in tags %}
+    # Segment inside boxes
+    dataset.apply_model(
+        model,
+        label_field="segmentations",
+        prompt_field="ground_truth",  # can contain Detections or Keypoints
+    )
+
+    # Full automatic segmentations
+    dataset.apply_model(model, label_field="auto")
+{% else %}
     dataset.apply_model(model, label_field="predictions")
+{% endif %}
 
     session = fo.launch_app(dataset)
 
-{% if 'zero-shot' in tags %}
+{% if 'clip' in tags %}
     #
     # Make zero-shot predictions with custom classes
     #

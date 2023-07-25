@@ -83,6 +83,105 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
+            "base_name": "segment-anything-vitb-torch",
+            "base_filename": "sam_vit_b_01ec64.pth",
+            "version": null,
+            "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-B/16 backbone trained on SA-1B",
+            "source": "https://segment-anything.com",
+            "size_bytes": 732512,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam.SegmentAnythingModel",
+                "config": {
+                    "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_b",
+                    "entrypoint_args": {},
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "segment-anything"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "date_added": "2023-05-12 11:40:51"
+        },
+        {
+            "base_name": "segment-anything-vith-torch",
+            "base_filename": "sam_vit_h_4b8939.pth",
+            "version": null,
+            "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-H/16 backbone trained on SA-1B",
+            "source": "https://segment-anything.com",
+            "size_bytes": 5008896,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam.SegmentAnythingModel",
+                "config": {
+                    "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_h",
+                    "entrypoint_args": {},
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "segment-anything"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "date_added": "2023-05-12 11:40:51"
+        },
+        {
+            "base_name": "segment-anything-vitl-torch",
+            "base_filename": "sam_vit_l_0b3195.pth",
+            "version": null,
+            "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-L/16 backbone trained on SA-1B",
+            "source": "https://segment-anything.com",
+            "size_bytes": 2440480,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam.SegmentAnythingModel",
+                "config": {
+                    "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_l",
+                    "entrypoint_args": {},
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "segment-anything"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
+            "date_added": "2023-05-12 11:40:51"
+        },
+        {
             "base_name": "deeplabv3-resnet50-coco-torch",
             "base_filename": "deeplabv3_resnet50_coco-cd0a2569.pth",
             "version": null,
@@ -1736,6 +1835,7 @@
                 "logits",
                 "embeddings",
                 "torch",
+                "clip",
                 "zero-shot"
             ],
             "date_added": "2022-04-12 17:49:51"
