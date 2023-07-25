@@ -3,7 +3,7 @@ import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { GroupBar } from "../Bars";
 import EnsureGroupSample from "./EnsureGroupSample";
@@ -29,34 +29,27 @@ export const GroupView = () => {
     fos.groupMediaIsMainVisibleSetting
   );
   const isMain3d = useRecoilValue(fos.isMain3d);
-  const shouldSplitVertically = useMemo(
-    () => isMainVisibleSetting && isSlotVisible,
-    [isMainVisibleSetting, isSlotVisible]
-  );
 
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
-    shouldSplitVertically ? DEFAULT_SPLIT_VIEW_LEFT_WIDTH : "100%"
+    DEFAULT_SPLIT_VIEW_LEFT_WIDTH
   );
-
-  useEffect(() => {
-    if (!shouldSplitVertically) {
-      setWidth("100%");
-    }
-  }, [shouldSplitVertically, setWidth]);
 
   return (
     <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
-        {isCarouselVisible && (
+        {(isCarouselVisible || isMainVisibleSetting) && (
           <Resizable
-            size={{ height: "100% !important", width }}
+            size={{
+              height: "100% !important",
+              width: isSlotVisible ? width : "100%",
+            }}
             minWidth={300}
-            maxWidth={shouldSplitVertically ? "90%" : "100%"}
+            maxWidth={isSlotVisible ? "90%" : "100%"}
             enable={{
               top: false,
-              right: shouldSplitVertically ? true : false,
+              right: isSlotVisible ? true : false,
               bottom: false,
               left: false,
               topRight: false,
@@ -64,7 +57,7 @@ export const GroupView = () => {
               bottomLeft: false,
               topLeft: false,
             }}
-            onResizeStop={(e, direction, ref, { width: delta }) => {
+            onResizeStop={(_, __, ___, { width: delta }) => {
               if (width === "100%") {
                 setWidth(DEFAULT_SPLIT_VIEW_LEFT_WIDTH);
               } else {
@@ -99,6 +92,7 @@ export const GroupView = () => {
             }
           </Resizable>
         )}
+        {isSlotVisible && <GroupSample3d />}
       </div>
     </div>
   );

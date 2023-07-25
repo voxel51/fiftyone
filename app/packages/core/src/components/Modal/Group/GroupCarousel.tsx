@@ -11,6 +11,29 @@ import { v4 as uuid } from "uuid";
 import useFlashlightPager from "./useFlashlightPager";
 import useSetGroupSample from "./useSetGroupSample";
 
+const groupCarouselSlices = selector<string[]>({
+  key: "groupCarouselSlices",
+  get: ({ get }) => {
+    const mediaTypesSet = get(fos.groupMediaTypesSet);
+    const slices = get(fos.groupSlices);
+
+    if (mediaTypesSet.size === 1 && mediaTypesSet.has("point-cloud")) {
+      return slices;
+    }
+
+    const mediaTypes = Object.fromEntries(
+      get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
+    );
+
+    return slices.filter(
+      (slice) =>
+        mediaTypes[slice] !== "point_cloud" ||
+        // remove after routing
+        mediaTypes[slice] === "point-cloud"
+    );
+  },
+});
+
 const pageParams = selector({
   key: "paginateGroupVariables",
   get: ({ getCallback }) => {
@@ -23,6 +46,7 @@ const pageParams = selector({
             filter: {
               group: {
                 id: await snapshot.getPromise(fos.groupId),
+                slices: await snapshot.getPromise(groupCarouselSlices),
               },
             },
             after: page ? String(page * pageSize) : null,

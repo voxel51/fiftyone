@@ -41,12 +41,10 @@ const useFlashlightPager = (
   return async (pageNumber) => {
     const variables = await page(pageNumber, PAGE_SIZE);
     return new Promise((resolve) => {
-      console.log(pageNumber, variables);
       const subscription = fetchQuery<foq.paginateSamplesQuery>(
         environment,
         foq.paginateGroup,
-        variables,
-        { fetchPolicy: "network-only" }
+        variables
       ).subscribe({
         next: (data) => {
           const items = processSamplePageData(
