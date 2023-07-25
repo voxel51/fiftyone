@@ -65,6 +65,7 @@ export default class Flashlight<K> {
     this.element = document.createElement("div");
     config.elementId && this.element.setAttribute("id", config.elementId);
     this.element.classList.add(flashlight);
+    this.element.setAttribute("data-cy", "flashlight");
     this.state = this.getEmptyState(config);
 
     document.addEventListener("visibilitychange", () => this.render());

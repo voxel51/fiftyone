@@ -1,66 +1,35 @@
 import { useTheme } from "@fiftyone/components";
 import Flashlight from "@fiftyone/flashlight";
 import { Sample, freeVideos } from "@fiftyone/looker";
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { selectedSamples, useBrowserStorage } from "@fiftyone/state";
 import { get } from "lodash";
 import { Resizable } from "re-resizable";
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { fetchQuery, useRelayEnvironment } from "react-relay";
 import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
+import useFlashlightPager from "./useFlashlightPager";
 import useSetGroupSample from "./useSetGroupSample";
-
-const process = (
-  offset: number,
-  store: fos.LookerStore<fos.Lookers>,
-  data: foq.paginateGroupQuery$data,
-  shouldFilterPointClouds: boolean
-) => {
-  let edges = data.samples.edges;
-  if (shouldFilterPointClouds) {
-    edges = edges.filter(({ node }) => node.__typename !== "PointCloudSample");
-  }
-  return edges.map((edge, i) => {
-    if (edge.node.__typename === "%other") {
-      throw new Error("unexpected sample type");
-    }
-
-    store.samples.set(edge.node.id, edge.node as fos.ModalSample);
-    store.indices.set(offset + i, edge.node.id);
-
-    return {
-      aspectRatio: edge.node.aspectRatio,
-      id: edge.node.id,
-    };
-  });
-};
-
-const shouldFilterPointClouds = selector<boolean>({
-  key: "shouldFilterPointClouds",
-  get: ({ get }) => !get(fos.pcdOnly) && get(fos.pointCloudSliceExists),
-});
 
 const pageParams = selector({
   key: "paginateGroupVariables",
   get: ({ getCallback }) => {
-    return getCallback(({ snapshot }) => async (page: number) => {
-      return {
-        filterPointClouds: await snapshot.getPromise(shouldFilterPointClouds),
-        variables: {
-          dataset: await snapshot.getPromise(fos.datasetName),
-          view: await snapshot.getPromise(fos.view),
-          filter: {
-            group: {
-              id: await snapshot.getPromise(fos.groupId),
+    return getCallback(
+      ({ snapshot }) =>
+        async (page: number, pageSize: number) => {
+          return {
+            dataset: await snapshot.getPromise(fos.datasetName),
+            view: await snapshot.getPromise(fos.view),
+            filter: {
+              group: {
+                id: await snapshot.getPromise(fos.groupId),
+              },
             },
-          },
-          after: page % 20,
-          first: 20,
-        },
-      };
-    });
+            after: page ? String(page * pageSize) : null,
+            first: pageSize,
+          };
+        }
+    );
   },
 });
 
@@ -71,9 +40,7 @@ const Column: React.FC = () => {
   const groupField = useRecoilValue(fos.groupField);
   const currentSlice = useRecoilValue(fos.groupSlice(true));
   const highlight = useCallback(
-    (sample: Sample) => {
-      return get(sample, groupField).name === currentSlice;
-    },
+    (sample) => get(sample, groupField).name === currentSlice,
     [currentSlice, groupField]
   );
   const createLooker = fos.useCreateLooker(
@@ -81,19 +48,15 @@ const Column: React.FC = () => {
     true,
     {
       ...opts,
-      thumbnailTitle: (sample) => {
-        return sample[groupField]?.name;
-      },
+      thumbnailTitle: (sample) => get(sample, groupField).name,
     },
     highlight
   );
-
-  const page = useRecoilValue(pageParams);
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
-  const environment = useRelayEnvironment();
+  const pager = useFlashlightPager(store, pageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
@@ -103,33 +66,7 @@ const Column: React.FC = () => {
       options: {
         rowAspectRatioThreshold: 0,
       },
-      get: async (pageNumber) => {
-        const { variables, filterPointClouds } = await page(pageNumber);
-        return new Promise((resolve) => {
-          const subscription = fetchQuery<foq.paginateGroupQuery>(
-            environment,
-            foq.paginateGroup,
-            variables,
-            { fetchPolicy: "network-only" }
-          ).subscribe({
-            next: (data) => {
-              const items = process(
-                variables.after,
-                store,
-                data,
-                filterPointClouds
-              );
-              subscription.unsubscribe();
-              resolve({
-                items,
-                nextRequestKey: data.samples.pageInfo.hasNextPage
-                  ? pageNumber + 1
-                  : null,
-              });
-            },
-          });
-        });
-      },
+      get: pager,
       render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
@@ -158,6 +95,7 @@ const Column: React.FC = () => {
     return flashlight;
   });
 
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
     if (!flashlight.isAttached()) {
       return;
@@ -166,7 +104,7 @@ const Column: React.FC = () => {
     flashlight.reset();
 
     freeVideos();
-  }, [useRecoilValue(fos.selectedMediaField(true))]);
+  }, [flashlight, mediaField]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -187,16 +125,12 @@ const Column: React.FC = () => {
     [highlight, opts, selected, store]
   );
 
+  const options = useRecoilValueLoadable(
+    fos.lookerOptions({ modal: true, withFilter: true })
+  );
   useLayoutEffect(() => {
     flashlight.updateItems(updateItem);
-  }, [
-    flashlight,
-    updateItem,
-    useRecoilValueLoadable(
-      fos.lookerOptions({ modal: true, withFilter: true })
-    ),
-    useRecoilValue(fos.selectedSamples),
-  ]);
+  }, [flashlight, updateItem, options, selected]);
 
   return (
     <div

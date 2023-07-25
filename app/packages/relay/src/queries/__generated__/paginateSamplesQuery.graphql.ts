@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0c8a36095159fc5db0c3618990c47f0a>>
+ * @generated SignedSource<<6fcc8bf82f039a5f8c20edf0610fe391>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,14 +17,14 @@ export type GroupElementFilter = {
   id?: string | null;
   slices?: ReadonlyArray<string> | null;
 };
-export type paginateGroupQuery$variables = {
+export type paginateSamplesQuery$variables = {
+  after?: string | null;
   count?: number | null;
-  cursor?: string | null;
   dataset: string;
   filter: SampleFilter;
   view: Array;
 };
-export type paginateGroupQuery$data = {
+export type paginateSamplesQuery$data = {
   readonly samples: {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
@@ -68,21 +68,21 @@ export type paginateGroupQuery$data = {
     };
   };
 };
-export type paginateGroupQuery = {
-  response: paginateGroupQuery$data;
-  variables: paginateGroupQuery$variables;
+export type paginateSamplesQuery = {
+  response: paginateSamplesQuery$data;
+  variables: paginateSamplesQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "after"
+},
+v1 = {
   "defaultValue": 20,
   "kind": "LocalArgument",
   "name": "count"
-},
-v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "cursor"
 },
 v2 = {
   "defaultValue": null,
@@ -152,7 +152,7 @@ v9 = [
       {
         "kind": "Variable",
         "name": "after",
-        "variableName": "cursor"
+        "variableName": "after"
       },
       {
         "kind": "Variable",
@@ -296,7 +296,7 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "paginateGroupQuery",
+    "name": "paginateSamplesQuery",
     "selections": (v9/*: any*/),
     "type": "Query",
     "abstractKey": null
@@ -304,27 +304,27 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v0/*: any*/),
       (v1/*: any*/),
+      (v0/*: any*/),
       (v2/*: any*/),
       (v4/*: any*/),
       (v3/*: any*/)
     ],
     "kind": "Operation",
-    "name": "paginateGroupQuery",
+    "name": "paginateSamplesQuery",
     "selections": (v9/*: any*/)
   },
   "params": {
-    "cacheID": "cd85fafc6a2efc6a8a0b85bd3f43fb9f",
+    "cacheID": "5f6aa056dd41d84eda262e5dbb9a1db2",
     "id": null,
     "metadata": {},
-    "name": "paginateGroupQuery",
+    "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateGroupQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4460192265354b4702443ac9ac8d9006";
+(node as any).hash = "90498733e02527f8b281203e01650a0a";
 
 export default node;

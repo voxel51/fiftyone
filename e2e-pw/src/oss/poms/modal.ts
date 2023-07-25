@@ -37,6 +37,12 @@ export class ModalPom {
     return this.waitForSampleToLoad(allowErrorInfo);
   }
 
+  async scrollCarousel(left: number = null) {
+    await this.groupCarousel.getByTestId("flashlight").evaluate((e, left) => {
+      e.scrollTo({ left: left ?? e.scrollWidth });
+    }, left);
+  }
+
   async navigateSlice(
     groupField: string,
     slice: string,
@@ -45,11 +51,9 @@ export class ModalPom {
     const currentSlice = await this.sidebarPom.getSidebarEntryText(
       `sidebar-entry-${groupField}.name`
     );
-    await this.groupCarousel
-      .getByTestId("looker")
-      .filter({ hasText: slice })
-      .first()
-      .click({ position: { x: 10, y: 60 } });
+    const lookers = this.groupCarousel.getByTestId("looker");
+    const looker = lookers.filter({ hasText: slice }).first();
+    await looker.click({ position: { x: 10, y: 60 } });
 
     // wait for slice to change
     await this.page.waitForFunction(

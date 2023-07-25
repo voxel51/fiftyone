@@ -1,25 +1,21 @@
-import Flashlight, { Response } from "@fiftyone/flashlight";
-import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
-import * as foq from "@fiftyone/relay";
+import Flashlight from "@fiftyone/flashlight";
+import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
 import React, {
-  MutableRefObject,
   useCallback,
-  useEffect,
   useId,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { useErrorHandler } from "react-error-boundary";
-import { usePaginationFragment } from "react-relay";
 import {
+  selector,
   useRecoilCallback,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
+import useFlashlightPager from "../../useFlashlightPager";
 import useSetDynamicGroupSample from "./useSetDynamicGroupSample";
 
 export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =
@@ -27,84 +23,32 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =
 export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
   "dynamic-groups-flashlight-element";
 
-const process = (
-  next: MutableRefObject<number>,
-  store: fos.LookerStore<any>,
-  zoom: boolean,
-  edges: foq.paginateGroup_query$data["samples"]["edges"]
-) =>
-  edges.reduce((acc, { node }) => {
-    if (
-      node.__typename === "ImageSample" ||
-      node.__typename === "VideoSample"
-    ) {
-      let data: any = {
-        sample: node.sample,
-        aspectRatio: node.aspectRatio,
-        urls: Object.fromEntries(
-          node.urls.map(({ field, url }) => [field, url])
-        ),
-      };
+const pageParams = selector({
+  key: "paginateDynamicGroupVariables",
+  get: ({ getCallback }) => {
+    return getCallback(
+      ({ snapshot }) =>
+        async (page: number, pageSize: number) => {
+          return {
+            dataset: await snapshot.getPromise(fos.datasetName),
+            view: await snapshot.getPromise(fos.dynamicGroupViewQuery),
+            filter: {},
+            cursor: page ? String(page * pageSize) : null,
+            first: pageSize,
+          };
+        }
+    );
+  },
+});
 
-      if (node.__typename === "VideoSample") {
-        data = {
-          ...data,
-          frameRate: node.frameRate,
-          frameNumber: node.sample.frame_number,
-        };
-      }
-
-      store.samples.set(node.sample._id, data);
-      store.indices.set(next.current, node.sample._id);
-      next.current++;
-
-      return [
-        ...acc,
-        {
-          aspectRatio: zoom
-            ? zoomAspectRatio(node.sample as any, node.aspectRatio)
-            : node.aspectRatio,
-          id: (node.sample as any)._id as string,
-        },
-      ];
-    }
-
-    return acc;
-  }, []);
-
-export const DynamicGroupsFlashlightWrapper: React.FC<{
-  setIsGroupEmpty: (isGroupEmpty: boolean) => void;
-}> = ({ setIsGroupEmpty }) => {
+export const DynamicGroupsFlashlightWrapper = () => {
   const id = useId();
-  const pageCount = useRef(0);
-
-  const { data, hasNext, loadNext } = usePaginationFragment(
-    foq.paginateGroupPaginationFragment,
-    useRecoilValue(fos.dynamicGroupPaginationFragment)
-  );
-
-  // todo: support pcd
-  const samples = useMemo(
-    () => ({
-      ...data.samples,
-      edges: data.samples.edges.filter(
-        (s) => s.node.sample._media_type !== "point-cloud"
-      ),
-    }),
-    [data]
-  );
-
-  useEffect(() => {
-    setIsGroupEmpty(samples.edges.length === 0);
-  }, [samples, setIsGroupEmpty]);
 
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const modalSampleId = useRecoilValue(fos.modalSampleId);
   const highlight = useCallback(
-    (sample: Sample) => {
-      return sample._id === modalSampleId;
-    },
+    (sample) => sample.id === modalSampleId,
     [modalSampleId]
   );
 
@@ -116,32 +60,6 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     },
     highlight
   );
-
-  const hasNextRef = useRef(true);
-  hasNextRef.current = hasNext;
-  const countRef = useRef(0);
-  const handleError = useErrorHandler();
-
-  const resolveRef = useRef<((value: Response<number>) => void) | null>(null);
-  const nextRef = useRef(loadNext);
-  nextRef.current = loadNext;
-
-  useEffect(() => {
-    if (resolveRef.current && countRef.current !== samples.edges.length) {
-      pageCount.current += 1;
-      resolveRef.current({
-        items: process(
-          countRef,
-          store,
-          false,
-          samples.edges.slice(countRef.current)
-        ),
-        nextRequestKey: pageCount.current,
-      });
-      countRef.current = samples.edges.length;
-      resolveRef.current = null;
-    }
-  }, [samples]);
 
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
@@ -177,7 +95,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
           return;
         }
 
-        const id = await snapshot.getPromise(modalSampleId);
+        const id = await snapshot.getPromise(fos.modalSampleId);
         const currentSampleIndex = flashlight.itemIndexes[id];
         const nextSampleIndex = currentSampleIndex + (isPrevious ? -1 : 1);
         const nextSampleId = store.indices.get(nextSampleIndex);
@@ -205,6 +123,8 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     [store, store, setSample]
   );
 
+  const pager = useFlashlightPager(store, pageParams);
+
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
       horizontal: true,
@@ -220,23 +140,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
       options: {
         rowAspectRatioThreshold: 0,
       },
-      get: (page) => {
-        pageCount.current = page + 1;
-        if (pageCount.current === 1) {
-          return Promise.resolve({
-            items: process(countRef, store, false, samples.edges),
-            nextRequestKey: hasNext ? pageCount.current : null,
-          });
-        } else {
-          hasNextRef.current &&
-            nextRef.current(20, {
-              onComplete: (error) => error && handleError(error),
-            });
-          return new Promise((resolve) => {
-            resolveRef.current = resolve;
-          });
-        }
-      },
+      get: pager,
       render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
@@ -265,6 +169,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     return flashlight;
   });
 
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
     if (!flashlight.isAttached()) {
       return;
@@ -273,7 +178,7 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     flashlight.reset();
 
     freeVideos();
-  }, [useRecoilValue(fos.selectedMediaField(true))]);
+  }, [flashlight, mediaField]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -295,17 +200,12 @@ export const DynamicGroupsFlashlightWrapper: React.FC<{
     [highlight, opts, selected, store]
   );
 
+  const options = useRecoilValueLoadable(
+    fos.lookerOptions({ modal: true, withFilter: true })
+  );
   useLayoutEffect(() => {
     flashlight.updateItems(updateItem);
-  }, [
-    flashlight,
-    updateItem,
-    useRecoilValueLoadable(
-      fos.lookerOptions({ modal: true, withFilter: true })
-    ),
-
-    useRecoilValue(fos.selectedSamples),
-  ]);
+  }, [flashlight, updateItem, options, selected]);
 
   return (
     <div

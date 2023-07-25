@@ -1,10 +1,4 @@
-import {
-  paginateGroup,
-  paginateGroupQuery,
-  paginateGroup_query$key,
-  pcdSample,
-  pcdSampleQuery,
-} from "@fiftyone/relay";
+import { pcdSample, pcdSampleQuery } from "@fiftyone/relay";
 import {
   DYNAMIC_GROUP_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
@@ -13,7 +7,7 @@ import {
 } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
-import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
+import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
 import { dataset, pinned3DSample } from "./atoms";
@@ -23,7 +17,7 @@ import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
-import { dynamicGroupViewQuery, view } from "./view";
+import { view } from "./view";
 
 export type SliceName = string | undefined | null;
 
@@ -220,23 +214,6 @@ export const refreshGroupQuery = atom<number>({
   default: 0,
 });
 
-export const dynamicGroupPaginationQuery = graphQLSelector<
-  VariablesOf<paginateGroupQuery>,
-  ResponseFrom<paginateGroupQuery>
->({
-  key: "dynamicGroupQuery",
-  environment: RelayEnvironmentKey,
-  mapResponse: (response) => response,
-  query: paginateGroup,
-  variables: ({ get }) => {
-    return {
-      dataset: get(datasetName),
-      filter: {},
-      view: get(dynamicGroupViewQuery),
-    };
-  },
-});
-
 export const pcdSampleQueryFamily = graphQLSelectorFamily<
   VariablesOf<pcdSampleQuery>,
   string,
@@ -269,19 +246,6 @@ export const groupByFieldValue = atom<string | null>({
   key: "groupByFieldValue",
   default: null,
 });
-
-export const dynamicGroupPaginationFragment = selector<paginateGroup_query$key>(
-  {
-    key: "dynamicGroupPaginationFragment",
-    get: ({ get }) => {
-      return get(dynamicGroupPaginationQuery);
-    },
-    cachePolicy_UNSTABLE: {
-      eviction: "lru",
-      maxSize: 20,
-    },
-  }
-);
 
 export const nestedGroupIndex = atom<number>({
   key: "nestedGroupIndex",

@@ -29,7 +29,6 @@ export const GroupView = () => {
     fos.groupMediaIsMainVisibleSetting
   );
   const isMain3d = useRecoilValue(fos.isMain3d);
-
   const shouldSplitVertically = useMemo(
     () => isMainVisibleSetting && isSlotVisible,
     [isMainVisibleSetting, isSlotVisible]
@@ -100,7 +99,6 @@ export const GroupView = () => {
             }
           </Resizable>
         )}
-        {!isSlotVisible && <GroupSample3d />}
       </div>
     </div>
   );

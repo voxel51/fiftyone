@@ -1,11 +1,10 @@
 import { graphql } from "react-relay";
-
 import r from "../resolve";
 
 export default r(graphql`
-  query paginateDynamicGroupSamplesQuery(
+  query paginateSamplesQuery(
     $count: Int = 20
-    $cursor: String = null
+    $after: String = null
     $dataset: String!
     $view: BSONArray!
     $filter: SampleFilter!
@@ -14,10 +13,12 @@ export default r(graphql`
       dataset: $dataset
       view: $view
       first: $count
-      after: $cursor
+      after: $after
       filter: $filter
     ) {
-      total
+      pageInfo {
+        hasNextPage
+      }
       edges {
         cursor
         node {
@@ -32,6 +33,7 @@ export default r(graphql`
             }
           }
           ... on PointCloudSample {
+            aspectRatio
             id
             sample
             urls {
@@ -43,6 +45,7 @@ export default r(graphql`
             id
             aspectRatio
             frameRate
+            frameNumber
             sample
             urls {
               field
@@ -50,10 +53,6 @@ export default r(graphql`
             }
           }
         }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
       }
     }
   }

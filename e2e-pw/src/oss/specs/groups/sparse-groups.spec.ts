@@ -40,7 +40,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
     await fiftyoneLoader.waitUntilLoad(page, datasetName);
   });
 
-  test(`${extension} default slice`, async ({ grid, modal, page }) => {
+  test(`${extension} default slice`, async ({ grid, modal }) => {
     await grid.assert.waitForEntryCountTextToEqual("1 group");
     await grid.openFirstLooker();
     await modal.sidebarPom.toggleSidebarGroup("GROUP");

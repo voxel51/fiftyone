@@ -28,8 +28,10 @@ export const UnorderedDynamicGroup = () => {
   const lookerRef = useRef<AbstractLooker>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
-  const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
-  const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
+  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisibleSetting);
+  const isCarouselVisible = useRecoilValue(
+    fos.groupMediaIsCarouselVisibleSetting
+  );
 
   if (!groupByFieldValue) {
     return null;
@@ -38,19 +40,23 @@ export const UnorderedDynamicGroup = () => {
   return (
     <RootContainer>
       {/* weird conditional rendering of the bar because lookerControls messes up positioning of the bar in firefox in inexplicable ways */}
-      {!isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+      {!isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
       <ElementsContainer>
-        {isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
-        {isCarouselVisible && <DynamicGroupCarousel key={groupByFieldValue} />}
-        {isImageVisible && (
-          <GroupSuspense>
-            <Sample
-              lookerRefCallback={lookerRefCallback}
-              lookerRef={lookerRef}
-              hideSampleBar
-            />
-          </GroupSuspense>
-        )}
+        <>
+          {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+          {isCarouselVisible && (
+            <DynamicGroupCarousel key={groupByFieldValue} />
+          )}
+          {isMainVisible && (
+            <GroupSuspense>
+              <Sample
+                lookerRefCallback={lookerRefCallback}
+                lookerRef={lookerRef}
+                hideSampleBar
+              />
+            </GroupSuspense>
+          )}
+        </>
       </ElementsContainer>
     </RootContainer>
   );
