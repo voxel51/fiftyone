@@ -21,7 +21,7 @@ test.describe("groups video labels", () => {
     [testVideoPath1, testVideoPath2].forEach((outputPath) => {
       mediaFactory.createBlankVideo({
         outputPath,
-        duration: 5,
+        duration: 3,
         width: 100,
         height: 100,
         frameRate: 30,
@@ -60,12 +60,10 @@ test.describe("groups video labels", () => {
     await fiftyoneLoader.waitUntilLoad(page, datasetName);
   });
 
-  test("should have right slices", async ({ grid, page }) => {
+  test("correct thumbnails for both slices", async ({ grid, page }) => {
     await grid.sliceSelector.assert.verifySliceSelectorIsAvailable();
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
-  });
 
-  test("correct thumbnails for both slices", async ({ grid, page }) => {
     // compare screenshot for default slice (v1)
     await expect(await grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
 
@@ -98,6 +96,8 @@ test.describe("groups video labels", () => {
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.group.assert.assertGroupPinnedText(`${slice} is pinned`);
 
+      await modal.video.hoverLookerControls();
+
       // check screenshot before video is played
       await expect(modal.getLooker()).toHaveScreenshot(
         `${slice}-before-play.png`
@@ -105,8 +105,6 @@ test.describe("groups video labels", () => {
 
       // wait for a second to let video play
       await modal.video.playUntilFrames("5");
-
-      await modal.video.hoverLookerControls();
 
       // check screenshot after video is played
       await expect(modal.getLooker()).toHaveScreenshot(

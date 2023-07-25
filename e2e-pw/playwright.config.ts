@@ -31,7 +31,8 @@ export default defineConfig({
   },
   expect: {
     toHaveScreenshot: {
-      maxDiffPixelRatio: 0.02,
+      // since label color assignment is non-deterministic, we allow a small amount of pixel difference
+      maxDiffPixelRatio: 0.01,
     },
   },
   /* Configure projects for major browsers */
