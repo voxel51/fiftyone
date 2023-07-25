@@ -63,7 +63,8 @@ class DelegatedOperationDocument(object):
             and "request_params" in doc["context"]
         ):
             self.context = ExecutionContext(
-                request_params=doc["context"]["request_params"]
+                request_params=doc["context"]["request_params"],
+                user=doc["context"]["user"],
             )
 
         if "result" in doc and doc["result"] is not None:

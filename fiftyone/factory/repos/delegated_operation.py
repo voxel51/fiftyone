@@ -184,6 +184,23 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         for arg in kwargs:
             query[arg] = kwargs[arg]
 
+        if isinstance(paging, dict):
+            paging = DelegatedOpPagingParams(**paging)
+
+        if not isinstance(
+            paging.SortByField, DelegatedOpPagingParams.SortByField
+        ):
+            paging.sort_by = DelegatedOpPagingParams.SortByField(
+                paging.sort_by
+            )
+
+        if not isinstance(
+            paging.SortDirection, DelegatedOpPagingParams.SortDirection
+        ):
+            paging.sort_direction = DelegatedOpPagingParams.SortDirection(
+                paging.sort_direction
+            )
+
         if paging:
             docs = (
                 self._collection.find(query)
@@ -192,7 +209,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 .sort(paging.sort_by.value, paging.sort_direction.value)
             )
         else:
-            docs = self._collection.find(query)
+            docs = self._collection.find(query).limit(
+                1000
+            )  # force a limit of 1000 if no paging supplied
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
