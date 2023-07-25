@@ -583,6 +583,14 @@ class Document(BaseDocument, mongoengine.Document):
     def _doc_name(cls):
         return "Document"
 
+    def reload(self, *fields, **kwargs):
+        """Reloads the document from the database.
+
+        Args:
+            *fields: an optional args list of specific fields to reload
+        """
+        super().reload(*fields, **kwargs)
+
     def save(
         self,
         upsert=False,

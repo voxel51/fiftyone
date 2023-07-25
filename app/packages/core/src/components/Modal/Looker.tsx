@@ -193,6 +193,7 @@ const Looker = ({
   return (
     <div
       id={id}
+      data-cy="modal-looker-container"
       style={{
         width: "100%",
         height: "100%",

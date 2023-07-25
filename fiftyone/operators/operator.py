@@ -40,6 +40,9 @@ class OperatorConfig(object):
         on_startup=False,
         disable_schema_validation=False,
         delegation_target=None,
+        icon=None,
+        light_icon=None,
+        dark_icon=None,
     ):
         self.name = name
         self.label = label or name
@@ -50,6 +53,9 @@ class OperatorConfig(object):
         self.on_startup = on_startup
         self.disable_schema_validation = disable_schema_validation
         self.delegation_target = delegation_target
+        self.icon = icon
+        self.dark_icon = dark_icon
+        self.light_icon = light_icon
 
     def to_json(self):
         return {
@@ -62,6 +68,9 @@ class OperatorConfig(object):
             "on_startup": self.on_startup,
             "disable_schema_validation": self.disable_schema_validation,
             "delegation_target": self.delegation_target,
+            "icon": self.icon,
+            "dark_icon": self.dark_icon,
+            "light_icon": self.light_icon,
         }
 
 

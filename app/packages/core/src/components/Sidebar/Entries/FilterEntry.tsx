@@ -11,7 +11,6 @@ import { InputDiv } from "./utils";
 import * as fos from "@fiftyone/state";
 import { Settings, VisibilityOff } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
-import { selectedFieldsStageState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import { Tooltip, useTheme } from "@fiftyone/components";
 
 const Filter = ({ modal }: { modal: boolean }) => {
@@ -19,9 +18,9 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const [debouncedValue, setDebouncedValue] = useRecoilState(textFilter(modal));
   const [value, setValue] = useState(() => debouncedValue);
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
-  const selectedFieldsStage = useRecoilValue(selectedFieldsStageState);
+  const selectedFieldsStage = useRecoilValue(fos.selectedFieldsStageState);
   const resetSelectedFieldStages = useResetRecoilState(
-    selectedFieldsStageState
+    fos.selectedFieldsStageState
   );
 
   const {

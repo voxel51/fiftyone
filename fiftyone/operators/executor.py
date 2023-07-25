@@ -245,6 +245,20 @@ class ExecutionContext(object):
         return self.request_params.get("selected", [])
 
     @property
+    def selected_labels(self):
+        """A list of labels currently selected in the App.
+
+        Items are dictionaries with the following keys:
+
+        -   ``label_id``: the ID of the label
+        -   ``sample_id``: the ID of the sample containing the label
+        -   ``field``: the field name containing the label
+        -   ``frame_number``: the frame number containing the label (only
+            applicable to video samples)
+        """
+        return self.request_params.get("selected_labels", [])
+
+    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` to operate on."""
         dataset_name = self.request_params.get("dataset_name", None)

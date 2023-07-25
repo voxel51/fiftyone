@@ -32,6 +32,7 @@ import {
   similaritySorting,
   tagging,
   theme,
+  selectedFieldsStageState,
 } from "../recoil";
 import * as viewAtoms from "../recoil/view";
 import {
@@ -39,7 +40,6 @@ import {
   collapseFields,
   viewsAreEqual,
 } from "../utils";
-import { selectedFieldsStageState } from "./useSchemaSettings";
 
 export interface StateUpdate {
   colorscale?: RGB[];
