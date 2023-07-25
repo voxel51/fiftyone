@@ -50,6 +50,7 @@ class DelegatedOperationRepo(object):
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
         run_by: str = None,
+        pinned: bool = None,
         **kwargs: Any,
     ):
         """List all operations."""
@@ -58,6 +59,12 @@ class DelegatedOperationRepo(object):
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
+
+    def set_pinned(
+        self, _id: ObjectId, pinned: bool = True
+    ) -> DelegatedOperationDocument:
+        """Sets the pinned flag on / off."""
+        raise NotImplementedError("subclass must implement toggle_pinned()")
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
@@ -93,6 +100,16 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
         return DelegatedOperationDocument().from_pymongo(op.__dict__)
+
+    def set_pinned(
+        self, _id: ObjectId, pinned: bool = True
+    ) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"pinned": pinned}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
 
     def update_run_state(
         self,
@@ -167,11 +184,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
         run_by: str = None,
+        pinned: bool = None,
         **kwargs: Any,
     ):
         query = {}
         if operator:
             query["operator"] = operator
+        if pinned is not None:
+            query["pinned"] = pinned
         if dataset_name:
             query["context.request_params.dataset_name"] = dataset_name
         if run_state:

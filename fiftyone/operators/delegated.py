@@ -78,6 +78,11 @@ class DelegatedOperation(object):
             _id=doc_id, run_state=ExecutionRunState.FAILED, result=result
         )
 
+    def set_pinned(
+        self, doc_id: ObjectId, pinned: bool = True
+    ) -> DelegatedOperationDocument:
+        return self._repo.set_pinned(_id=doc_id, pinned=pinned)
+
     def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.delete_operation(_id=doc_id)
 

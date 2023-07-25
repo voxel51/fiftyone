@@ -35,6 +35,7 @@ class DelegatedOperationDocument(object):
         )  # default to queued state on create
         self.queued_at = datetime.utcnow()
         self.started_at = None
+        self.pinned = False
         self.completed_at = None
         self.failed_at = None
         self.result = None
@@ -56,6 +57,7 @@ class DelegatedOperationDocument(object):
             doc["completed_at"] if "completed_at" in doc else None
         )
         self.failed_at = doc["failed_at"] if "failed_at" in doc else None
+        self.pinned = doc["pinned"] if "pinned" in doc else None
 
         if (
             "context" in doc
