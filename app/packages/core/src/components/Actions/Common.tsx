@@ -34,6 +34,9 @@ export const ActionOption = React.memo(
     const { style: animationStyles, ...rest } = useHighlightHover(disabled);
     const theme = useTheme();
     onClick = href ? useExternalLink(href) : onClick;
+
+    const convertedText = text.replace(/[\s.,/]/g, "-").toLowerCase();
+
     if (hidden) {
       return null;
     }
@@ -44,6 +47,7 @@ export const ActionOption = React.memo(
         onClick={disabled ? null : onClick}
         {...rest}
         style={style ?? animationStyles}
+        data-cy={`item-action-${convertedText}`}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
           {href ? (
