@@ -565,6 +565,38 @@ class GroupTests(unittest.TestCase):
         self.assertIn("field", mixed_view.get_field_schema())
         self.assertIn("field", mixed_view.get_frame_field_schema())
 
+        view = dataset.select_fields()
+
+        image_view = view.select_group_slices(media_type="image")
+
+        self.assertIn("field", image_view.get_field_schema())
+        for sample in image_view:
+            self.assertTrue(sample.has_field("field"))
+
+        image_dataset = image_view.clone()
+
+        self.assertIn("field", image_dataset.get_field_schema())
+        for sample in image_dataset:
+            self.assertTrue(sample.has_field("field"))
+
+        video_view = view.select_group_slices(media_type="video")
+
+        self.assertIn("field", video_view.get_field_schema())
+        self.assertIn("field", video_view.get_frame_field_schema())
+        for sample in video_view:
+            self.assertTrue(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertTrue(frame.has_field("field"))
+
+        video_dataset = video_view.clone()
+
+        self.assertIn("field", video_dataset.get_field_schema())
+        self.assertIn("field", video_dataset.get_frame_field_schema())
+        for sample in video_dataset:
+            self.assertTrue(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertTrue(frame.has_field("field"))
+
     @drop_datasets
     def test_attached_groups(self):
         dataset = _make_group_dataset()

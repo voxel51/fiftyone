@@ -1643,6 +1643,10 @@ class DatasetView(foc.SampleCollection):
 
         _view = self._base_view
         for stage in self._stages:
+            if isinstance(stage, fost.SelectGroupSlices):
+                selected_fields = None
+                excluded_fields = None
+
             sf = stage.get_selected_fields(_view, frames=frames)
             if sf:
                 if roots_only:
