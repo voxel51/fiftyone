@@ -6,6 +6,7 @@ export class ModalVideoControlsPom {
   readonly assert: ModalVideoControlsAsserter;
   readonly controls: Locator;
   readonly optionsPanel: Locator;
+  readonly time: Locator;
 
   private readonly modal: ModalPom;
 
@@ -17,6 +18,7 @@ export class ModalVideoControlsPom {
     this.optionsPanel = this.modal.locator.getByTestId(
       "looker-video-options-panel"
     );
+    this.time = this.modal.locator.getByTestId("looker-video-time");
   }
 
   private async play() {
@@ -32,7 +34,7 @@ export class ModalVideoControlsPom {
   }
 
   async getCurrentTime() {
-    return this.controls.getByTestId("looker-video-time").textContent();
+    return this.time.textContent();
   }
 
   async hoverLookerControls() {

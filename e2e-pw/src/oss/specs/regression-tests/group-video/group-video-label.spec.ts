@@ -96,19 +96,24 @@ test.describe("groups video labels", () => {
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.group.assert.assertGroupPinnedText(`${slice} is pinned`);
 
-      await modal.video.hoverLookerControls();
+      await modal.getLooker().hover();
 
       // check screenshot before video is played
       await expect(modal.getLooker()).toHaveScreenshot(
         `${slice}-before-play.png`
       );
 
-      // wait for a second to let video play
       await modal.video.playUntilFrames("5");
+      await modal.getLooker().hover();
 
       // check screenshot after video is played
       await expect(modal.getLooker()).toHaveScreenshot(
-        `${slice}-after-play.png`
+        `${slice}-after-play.png`,
+        {
+          // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
+          // the real test is that the correct label is shown
+          mask: [modal.video.time],
+        }
       );
     };
 
