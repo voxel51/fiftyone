@@ -209,7 +209,6 @@ const Section = ({
           <PopoutSectionTitle />
           {hasCreate && (
             <Button
-              data-cy={`create-${labels ? "label" : "sample"}-tag`}
               text={`Add "${value}" tag to ${
                 count > 1 ? numeral(count).format("0,0") + " " : ""
               }${
@@ -237,7 +236,6 @@ const Section = ({
           {hasChanges && !value.length && (
             <Button
               text="Apply"
-              data-cy={`apply-${labels ? "label" : "sample"}-tag`}
               onClick={() => submitWrapper(changes)}
               style={{
                 margin: "0.25rem -0.5rem",
