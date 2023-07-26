@@ -2913,7 +2913,8 @@ class DelegatedListCommand(Command):
         fiftyone delegated list \\
             --dataset quickstart \\
             --operator @voxel51/io/export_samples \\
-            --status COMPLETED \\
+            --state COMPLETED \\
+            --sort-by COMPLETED_AT \\
             --limit 10
     """
 
