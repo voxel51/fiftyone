@@ -71,7 +71,7 @@ const Item = React.memo(
           style={{ display: "flex", flexDirection: "row" }}
           ref={ref}
           onClick={onClick}
-          data-cy={`filter-option-#{id}`}
+          data-cy={`filter-option-${id}`}
         >
           {icon ? (
             <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
