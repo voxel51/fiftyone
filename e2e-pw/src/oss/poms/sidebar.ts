@@ -1,5 +1,8 @@
 import { Locator, Page } from "src/oss/fixtures";
 
+type filterMode = "select" | "exclude" | "show" | "omit";
+type visibilityMode = "show" | "hide";
+
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
@@ -28,5 +31,32 @@ export class SidebarPom {
     return countText;
   }
 
-  // when more than 25 entries, it's displayed in a search dropdown
+  // apply a filter to a field
+  async getLabelFromList(
+    field: string,
+    labels: string[],
+    targetModeId: string
+  ) {
+    const container = this.sidebar.getByTestId(`categorical-filter-${field}`);
+    // select attributes
+    labels.forEach((label) => {
+      const item = container.getByTestId(`checkbox-${label}`);
+      item.click();
+    });
+
+    const currentMode = container.getByTestId("filter-mode-div");
+    await currentMode.click();
+    const targetMode = this.sidebar.getByTestId(
+      `filter-option-${targetModeId}`
+    );
+    await targetMode.click();
+  }
+
+  async resetAttribute(attribute: string) {
+    const container = this.sidebar.getByTestId(
+      `categorical-filter-${attribute}`
+    );
+    const reset = container.getByTestId("filter-reset");
+    return reset.click();
+  }
 }

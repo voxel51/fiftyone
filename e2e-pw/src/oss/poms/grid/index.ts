@@ -97,4 +97,10 @@ class GridAsserter {
       { timeout: 2000 }
     );
   }
+
+  async waitForGridToLoad() {
+    return this.gridPom.page.waitForSelector("[data-cy=looker]", {
+      timeout: 2000,
+    });
+  }
 }
