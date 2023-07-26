@@ -86,19 +86,18 @@ class Executor(object):
         }
 
 
-async def execute_or_delegate_operator(operator_name, request_params, user):
+async def execute_or_delegate_operator(operator_uri, request_params, user):
     """Executes the operator with the given name.
 
     Args:
-        operator_name: the name of the operator
+        operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
 
     Returns:
         the result of the operator as a dictionary or ``None``
     """
-
-    (operator, executor, ctx) = prepare_operator_executor(
-        operator_name, request_params
+    operator, executor, ctx = prepare_operator_executor(
+        operator_uri, request_params, user
     )
 
     if operator.resolve_delegation(ctx):
@@ -138,12 +137,12 @@ async def execute_or_delegate_operator(operator_name, request_params, user):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-def prepare_operator_executor(operator_name, request_params, user=None):
+def prepare_operator_executor(operator_uri, request_params, user=None):
     registry = OperatorRegistry()
-    if registry.operator_exists(operator_name) is False:
-        raise ValueError("Operator '%s' does not exist" % operator_name)
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
 
-    operator = registry.get_operator(operator_name)
+    operator = registry.get_operator(operator_uri)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor, user=user)
     inputs = operator.resolve_input(ctx)
