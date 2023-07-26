@@ -33,6 +33,27 @@
 -   Refrain from using `page.waitForTimeout()`. There is always a better
     alternative.
 
+#### Screenshot Testing
+
+1. Read [Playwright docs](https://playwright.dev/docs/test-snapshots) on this
+   subject.
+2. Since baseline screenshots are platform dependent, and our CI server runs on
+   linux, to generate linux screenshots locally, run the following commands:
+
+```
+# create a docker image with playwright and python and fiftyone
+yarn build-linux-screenshot-docker-image
+
+# make sure mongod is running and available in your host machine at localhost:27017
+
+# generate screenshots
+# from e2e-pw directory, run:
+docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/bash
+
+# inside the docker container, run:
+npx playwright test --update-snapshots -g "description of my test"
+```
+
 ### Known Issues
 
 #### Browser / Target has been closed

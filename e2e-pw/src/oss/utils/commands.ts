@@ -5,13 +5,11 @@ export const getPythonCommand = (argv: string[]) => {
     return cmd;
   }
 
-  if (!process.env.VENV_PATH) {
-    throw new Error(
-      "VENV_PATH is not defined. Your .env.dev file is probably missing or misconfigured"
-    );
+  if (process.env.IS_UTILITY_DOCKER) {
+    return `. /e2e/venv/bin/activate && export PYTHONPATH=/e2e/fiftyone && ${cmd}`;
   }
 
-  return `source ${process.env.VENV_PATH}/bin/activate && export PYTHONPATH=${process.env.PYTHONPATH} && ${cmd}`;
+  return `source ${process.env.VENV_PATH}/bin/activate && export PYTHONPATH=${process.env.FIFTYONE_ROOT_DIR} && ${cmd}`;
 };
 
 export const getStringifiedKwargs = (

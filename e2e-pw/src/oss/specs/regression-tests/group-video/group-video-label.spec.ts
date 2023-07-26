@@ -16,14 +16,6 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-// without this, platform name (darwin, linux, etc.) is appended the the screenshot name
-// which is reasonable since different platforms might render things differently
-// but this is a temporary fix to avoid having to generate screenshots per platform
-// todo: create a docker script to generate screenshots on a linux platform as well
-test.beforeEach(async ({}, testInfo) => {
-  testInfo.snapshotSuffix = "";
-});
-
 test.describe("groups video labels", () => {
   test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
     [testVideoPath1, testVideoPath2].forEach((outputPath) => {

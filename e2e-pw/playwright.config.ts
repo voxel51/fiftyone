@@ -16,13 +16,14 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 3 : 0,
   /* Use max workers */
   workers: process.env.USE_DEV_BUILD ? 1 : process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: process.env.CI
-    ? [["dot"], ["html", { open: "never" }]]
-    : [["line", { printSteps: true }]],
+  reporter:
+    process.env.CI || process.env.IS_UTILITY_DOCKER
+      ? [["dot"], ["html", { open: "never" }]]
+      : [["line", { printSteps: true }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
