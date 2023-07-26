@@ -13,6 +13,7 @@ import {
 } from "./state";
 import useEventHandler from "./useEventHandler";
 import { useExternalLink } from "@fiftyone/utilities";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 
 const useSearch = (search: string) => {
   const values = STYLES.filter((style) => style.includes(search));
@@ -104,6 +105,7 @@ const Options: React.FC<{
         >
           <Help />
         </Link>
+        <OperatorPlacements place={types.Places.MAP_ACTIONS} />
       </div>
     </div>
   );

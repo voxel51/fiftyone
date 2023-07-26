@@ -6,6 +6,8 @@ import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
   DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT,
+  EMBEDDED_DOCUMENT,
   getFetchFunction,
   HEATMAP,
   LABEL_LIST,
@@ -14,10 +16,18 @@ import {
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
+import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
-import { Coloring, FrameChunk, FrameSample, Sample } from "../state";
+import {
+  Coloring,
+  CustomizeColor,
+  FrameChunk,
+  FrameSample,
+  Sample,
+} from "../state";
 import { DeserializerFactory } from "./deserializer";
+import { indexedPngBufferToRgb } from "./indexed-png-decoder";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
@@ -90,13 +100,21 @@ const imputeOverlayFromPath = async (
   field: string,
   label: Record<string, any>,
   coloring: Coloring,
+  customizeColorSetting: CustomizeColor[],
   buffers: ArrayBuffer[],
   sources: { [path: string]: string }
 ) => {
   // handle all list types here
   if (label._cls === DETECTIONS) {
     label.detections.forEach((detection) =>
-      imputeOverlayFromPath(field, detection, coloring, buffers, {})
+      imputeOverlayFromPath(
+        field,
+        detection,
+        coloring,
+        customizeColorSetting,
+        buffers,
+        {}
+      )
     );
     return;
   }
@@ -114,25 +132,43 @@ const imputeOverlayFromPath = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayPngImageUrl = getSampleSrc(
+  const overlayImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
 
-  const pngArrayBuffer: ArrayBuffer = await getFetchFunction()(
+  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",
-    overlayPngImageUrl,
+    overlayImageUrl,
     null,
     "arrayBuffer"
   );
 
-  const overlayData = decodePng(pngArrayBuffer);
+  let overlayData;
+
+  if (overlayImageUrl.endsWith(".jpg")) {
+    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
+  } else {
+    overlayData = decodePng(overlayImageBuffer);
+  }
+
+  if (overlayData.palette?.length) {
+    overlayData.data = indexedPngBufferToRgb(
+      overlayData.data,
+      overlayData.depth,
+      overlayData.palette
+    );
+    overlayData.channels = 3;
+  }
 
   const width = overlayData.width;
   const height = overlayData.height;
 
+  const numChannels =
+    overlayData.channels ?? overlayData.data.length / (width * height);
+
   const overlayMask: OverlayMask = {
     buffer: overlayData.data.buffer,
-    channels: overlayData.channels,
+    channels: numChannels,
     arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
     shape: [height, width],
   };
@@ -152,40 +188,67 @@ const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
   prefix = "",
-  sources: { [key: string]: string }
+  sources: { [key: string]: string },
+  customizeColorSetting: ProcessSample["customizeColorSetting"]
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
   const promises = [];
 
   for (const field in sample) {
-    const label = sample[field];
-    if (!label) {
-      continue;
+    let labels = sample[field];
+    if (!Array.isArray(labels)) {
+      labels = [labels];
     }
-
-    if (DENSE_LABELS.has(label._cls)) {
-      await imputeOverlayFromPath(field, label, coloring, buffers, sources);
-    }
-
-    if (label._cls in DeserializerFactory) {
-      DeserializerFactory[label._cls](label, buffers);
-    }
-
-    if (ALL_VALID_LABELS.has(label._cls)) {
-      if (label._cls in LABEL_LIST) {
-        const list = label[LABEL_LIST[label._cls]];
-        if (Array.isArray(list)) {
-          label[LABEL_LIST[label._cls]] = list.map(mapId);
-        }
-      } else {
-        mapId(label);
+    for (const label of labels) {
+      if (!label) {
+        continue;
       }
-    }
 
-    if (painterFactory[label._cls]) {
-      promises.push(
-        painterFactory[label._cls](prefix + field, label, coloring)
-      );
+      if (DENSE_LABELS.has(label._cls)) {
+        await imputeOverlayFromPath(
+          field,
+          label,
+          coloring,
+          customizeColorSetting,
+          buffers,
+          sources
+        );
+      }
+
+      if (label._cls in DeserializerFactory) {
+        DeserializerFactory[label._cls](label, buffers);
+      }
+
+      if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(label._cls)) {
+        processLabels(
+          label,
+          coloring,
+          `${prefix}${field}.`,
+          sources,
+          customizeColorSetting
+        );
+      }
+
+      if (ALL_VALID_LABELS.has(label._cls)) {
+        if (label._cls in LABEL_LIST) {
+          if (Array.isArray(label[LABEL_LIST[label._cls]])) {
+            label[LABEL_LIST[label._cls]].forEach(mapId);
+          }
+        } else {
+          mapId(label);
+        }
+      }
+
+      if (painterFactory[label._cls]) {
+        promises.push(
+          painterFactory[label._cls](
+            prefix ? prefix + field : field,
+            label,
+            coloring,
+            customizeColorSetting
+          )
+        );
+      }
     }
   }
 
@@ -209,12 +272,19 @@ export interface ProcessSample {
   uuid: string;
   sample: Sample & FrameSample;
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   sources: { [path: string]: string };
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
+const processSample = ({
+  sample,
+  uuid,
+  coloring,
+  sources,
+  customizeColorSetting,
+}: ProcessSample) => {
   mapId(sample);
 
   let bufferPromises = [];
@@ -222,14 +292,24 @@ const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
   if (sample._media_type === "point-cloud") {
     process3DLabels(sample);
   } else {
-    bufferPromises = [processLabels(sample, coloring, null, sources)];
+    bufferPromises = [
+      processLabels(sample, coloring, null, sources, customizeColorSetting),
+    ];
   }
 
   if (sample.frames && sample.frames.length) {
     bufferPromises = [
       ...bufferPromises,
       ...sample.frames
-        .map((frame) => processLabels(frame, coloring, "frames.", sources))
+        .map((frame) =>
+          processLabels(
+            frame,
+            coloring,
+            "frames.",
+            sources,
+            customizeColorSetting
+          )
+        )
         .flat(),
     ];
   }
@@ -241,6 +321,7 @@ const processSample = ({ sample, uuid, coloring, sources }: ProcessSample) => {
         sample,
         coloring,
         uuid,
+        customizeColorSetting,
       },
       // @ts-ignore
       buffers.flat()
@@ -258,11 +339,13 @@ interface FrameStream {
 
 interface FrameChunkResponse extends FrameChunk {
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
 }
 
 const createReader = ({
   chunkSize,
   coloring,
+  customizeColorSetting,
   frameCount,
   frameNumber,
   sampleId,
@@ -271,6 +354,7 @@ const createReader = ({
 }: {
   chunkSize: number;
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -307,7 +391,12 @@ const createReader = ({
           try {
             const { frames, range } = await call();
 
-            controller.enqueue({ frames, range, coloring });
+            controller.enqueue({
+              frames,
+              range,
+              coloring,
+              customizeColorSetting,
+            });
             frameNumber = range[1] + 1;
           } catch (error) {
             postMessage({
@@ -341,7 +430,13 @@ const getSendChunk =
     if (value) {
       Promise.all(
         value.frames.map((frame) =>
-          processLabels(frame, value.coloring, "frames.", {})
+          processLabels(
+            frame,
+            value.coloring,
+            "frames.",
+            {},
+            value.customizeColorSetting
+          )
         )
       ).then((buffers) => {
         postMessage(
@@ -372,6 +467,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 
 interface SetStream {
   coloring: Coloring;
+  customizeColorSetting: CustomizeColor[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -384,6 +480,7 @@ type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
   coloring,
+  customizeColorSetting,
   frameCount,
   frameNumber,
   sampleId,
@@ -393,8 +490,10 @@ const setStream = ({
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
+
   stream = createReader({
     coloring,
+    customizeColorSetting,
     chunkSize: CHUNK_SIZE,
     frameCount: frameCount,
     frameNumber: frameNumber,
@@ -444,7 +543,7 @@ if (typeof onmessage !== "undefined") {
         resolveColor(args as ResolveColor);
         return;
       default:
-        throw new Error("unknown method");
+        console.warn("Unknown method: ", method);
     }
   };
 }

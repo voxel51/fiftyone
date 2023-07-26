@@ -258,7 +258,7 @@ class FramesView(fov.DatasetView):
         super().keep_fields()
 
     def reload(self):
-        """Reloads this view from the source collection in the database.
+        """Reloads the view.
 
         Note that :class:`FrameView` instances are not singletons, so any
         in-memory frames extracted from this view will not be updated by
@@ -272,10 +272,11 @@ class FramesView(fov.DatasetView):
         # This assumes that calling `load_view()` when the current patches
         # dataset has been deleted will cause a new one to be generated
         #
-
         self._frames_dataset.delete()
         _view = self._frames_stage.load_view(self._source_collection)
         self._frames_dataset = _view._frames_dataset
+
+        super().reload()
 
     def _set_labels(self, field_name, sample_ids, label_docs):
         super()._set_labels(field_name, sample_ids, label_docs)
@@ -350,7 +351,9 @@ class FramesView(fov.DatasetView):
                 sample_only_fields.discard("_sample_id")
                 sample_only_fields.discard("frame_number")
 
-                pipeline.append({"$unset": list(sample_only_fields)})
+                pipeline.append(
+                    {"$project": {f: False for f in sample_only_fields}}
+                )
             else:
                 project = {f: True for f in fields}
                 project["_id"] = True
@@ -664,11 +667,11 @@ def make_frames_dataset(
     pipeline = []
 
     if sample_frames == "dynamic":
-        pipeline.append({"$unset": "filepath"})
+        pipeline.append({"$project": {"filepath": False}})
 
     pipeline.extend(
         [
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,

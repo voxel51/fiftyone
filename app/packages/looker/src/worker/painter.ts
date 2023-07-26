@@ -1,23 +1,61 @@
 import { get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import { isRgbMaskTargets } from "../overlays/util";
-import { Coloring, MaskTargets, RgbMaskTargets } from "../state";
+import {
+  Coloring,
+  CustomizeColor,
+  MaskTargets,
+  RgbMaskTargets,
+} from "../state";
 
 export const PainterFactory = (requestColor) => ({
-  Detection: async (field, label, coloring: Coloring) => {
+  Detection: async (
+    field,
+    label,
+    coloring: Coloring,
+    customizeColorSetting: CustomizeColor[]
+  ) => {
     if (!label.mask) {
       return;
     }
 
-    const color = await requestColor(
-      coloring.pool,
-      coloring.seed,
-      coloring.by === "label"
-        ? label.label
-        : coloring.by === "field"
-        ? field
-        : label.id
-    );
+    const setting = customizeColorSetting?.find((s) => s.path === field);
+    let color;
+    if (coloring.by === "field") {
+      if (setting?.fieldColor) {
+        color = setting.fieldColor;
+      } else {
+        color = await requestColor(coloring.pool, coloring.seed, field);
+      }
+    }
+    if (coloring.by === "value") {
+      if (setting) {
+        const key = setting.colorByAttribute
+          ? setting.colorByAttribute === "index"
+            ? "id"
+            : setting.colorByAttribute
+          : "label";
+        const valueColor = setting?.valueColors?.find((l) => {
+          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+            return typeof label[key] === "string"
+              ? l.value?.toLowerCase === label[key]
+              : !label[key];
+          }
+          if (["True", "False"].includes(l.value?.toString())) {
+            return (
+              l.value?.toString().toLowerCase() ==
+              label[key]?.toString().toLowerCase()
+            );
+          }
+          return l.value?.toString() == label[key]?.toString();
+        })?.color;
+        color = valueColor
+          ? valueColor
+          : await requestColor(coloring.pool, coloring.seed, label[key]);
+      } else {
+        color = await requestColor(coloring.pool, coloring.seed, label.label);
+      }
+    }
 
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
@@ -32,14 +70,29 @@ export const PainterFactory = (requestColor) => ({
       }
     }
   },
-  Detections: async (field, labels, coloring: Coloring) => {
+  Detections: async (
+    field,
+    labels,
+    coloring: Coloring,
+    customizeColorSetting: CustomizeColor[]
+  ) => {
     const promises = labels.detections.map((label) =>
-      PainterFactory(requestColor)[label._cls](field, label, coloring)
+      PainterFactory(requestColor)[label._cls](
+        field,
+        label,
+        coloring,
+        customizeColorSetting
+      )
     );
 
     await Promise.all(promises);
   },
-  Heatmap: async (field, label, coloring: Coloring) => {
+  Heatmap: async (
+    field,
+    label,
+    coloring: Coloring,
+    customizeColorSetting: CustomizeColor[]
+  ) => {
     if (!label.map) {
       return;
     }
@@ -52,60 +105,74 @@ export const PainterFactory = (requestColor) => ({
       label.map.data.buffer
     );
 
-    if (mapData.channels > 2) {
-      // rgb map
-      for (let i = 0; i < overlay.length; i++) {
-        overlay[i] = get32BitColor(
-          getRgbFromMaskData(targets, mapData.channels, i)
-        );
-      }
-    } else {
-      const [start, stop] = label.range
-        ? label.range
-        : isFloatArray(targets)
-        ? [0, 1]
-        : [0, 255];
-      const max = Math.max(Math.abs(start), Math.abs(stop));
+    const [start, stop] = label.range
+      ? label.range
+      : isFloatArray(targets)
+      ? [0, 1]
+      : [0, 255];
 
-      const color = await requestColor(coloring.pool, coloring.seed, field);
+    const setting = customizeColorSetting?.find((s) => s.path === field);
 
-      const getColor =
-        coloring.by === "label"
-          ? (value) => {
-              if (value === 0) {
-                return 0;
-              }
+    const color =
+      setting?.fieldColor ??
+      (await requestColor(coloring.pool, coloring.seed, field));
 
-              const index = Math.round(
-                (Math.max(value - start, 0) / (stop - start)) *
-                  (coloring.scale.length - 1)
-              );
-
-              return get32BitColor(coloring.scale[index]);
+    const getColor =
+      coloring.by === "value"
+        ? (value) => {
+            if (value === 0) {
+              return 0;
             }
-          : (value) => {
-              if (value === 0) {
-                return 0;
-              }
 
-              return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
-            };
-      // these for loops must be fast. no "in" or "of" syntax
-      for (let i = 0; i < overlay.length; i++) {
-        if (targets[i] !== 0) {
+            const index = Math.round(
+              (Math.max(value - start, 0) / (stop - start)) *
+                (coloring.scale.length - 1)
+            );
+
+            return get32BitColor(coloring.scale[index]);
+          }
+        : (value) => {
+            // render in field’s color with opacity proportional to the magnitude of the heatmap’s value
+            const absMax = Math.max(Math.abs(start), Math.abs(stop));
+
+            // clip value
+            if (value < start) {
+              value = start;
+            } else if (value > stop) {
+              value = stop;
+            }
+
+            const alpha = Math.abs(value) / absMax;
+
+            return get32BitColor(color, alpha);
+          };
+
+    // these for loops must be fast. no "in" or "of" syntax
+    for (let i = 0; i < overlay.length; i++) {
+      if (targets[i] !== 0) {
+        if (mapData.channels > 2) {
+          overlay[i] = getColor(
+            getRgbFromMaskData(targets, mapData.channels, i)[0]
+          );
+        } else {
           overlay[i] = getColor(targets[i]);
         }
       }
     }
   },
-  Segmentation: async (field, label, coloring) => {
+  Segmentation: async (
+    field,
+    label,
+    coloring,
+    customizeColorSetting: CustomizeColor[]
+  ) => {
     if (!label.mask) {
       return;
     }
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
-
+    const setting = customizeColorSetting?.find((s) => s.path === field);
     // each field may have its own target map
     let maskTargets: MaskTargets = coloring.maskTargets[field];
 
@@ -161,7 +228,8 @@ export const PainterFactory = (requestColor) => ({
       let color;
       if (maskTargets && Object.keys(maskTargets).length === 1) {
         color = get32BitColor(
-          await requestColor(coloring.pool, coloring.seed, field)
+          setting?.fieldColor ??
+            (await requestColor(coloring.pool, coloring.seed, field))
         );
       }
 

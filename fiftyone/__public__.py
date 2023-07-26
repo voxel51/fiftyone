@@ -25,6 +25,7 @@ from .core.aggregations import (
     Mean,
     Quantiles,
     Schema,
+    ListSchema,
     Std,
     Sum,
     Values,
@@ -126,6 +127,7 @@ from .core.models import (
     ModelManager,
 )
 from .core.odm import (
+    ColorScheme,
     DatasetAppConfig,
     DynamicEmbeddedDocument,
     EmbeddedDocument,
@@ -165,11 +167,12 @@ from .core.stages import (
     FilterField,
     FilterLabels,
     FilterKeypoints,
-    Limit,
-    LimitLabels,
+    Flatten,
     GeoNear,
     GeoWithin,
     GroupBy,
+    Limit,
+    LimitLabels,
     MapLabels,
     Match,
     MatchFrames,
@@ -201,6 +204,7 @@ from .core.session import (
     Session,
 )
 from .core.utils import (
+    disable_progress_bars,
     pprint,
     pformat,
     ProgressBar,

@@ -140,3 +140,22 @@ export const getSavedViewName = (context: RoutingContext<any>): string => {
 
   return null;
 };
+
+export const DEFAULT_APP_COLOR_SCHEME = {
+  colorPool: [
+    "#ee0000",
+    "#ee6600",
+    "#993300",
+    "#996633",
+    "#999900",
+    "#009900",
+    "#003300",
+    "#009999",
+    "#000099",
+    "#0066ff",
+    "#6600ff",
+    "#cc33cc",
+    "#777799",
+  ],
+  fields: [],
+};

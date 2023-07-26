@@ -62,20 +62,15 @@ private PyPI server as shown below:
 After installing the Teams Python SDK in your virtual environment, you'll need
 to configure two things:
 
-*   The :ref:`connection <configuring-mongodb-connection>` to your team's
-    centralized database
+*   Your team's :ref:`API connection <teams-api-connection>` or
+    :ref:`MongoDB connection <configuring-mongodb-connection>`
 
 *   The :ref:`cloud credentials <teams-cloud-credentials>` to access your
     cloud-backed media
 
-That's it! Any operations you perform will be stored on thecentralized database
+That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
 Teams App or their Python workflows.
-
-.. note::
-
-   Ask your FiftyOne Teams admin for the necessary MongoDB connection URI and
-   relevant cloud credentials.
 
 .. _teams-cloud-credentials:
 
@@ -90,7 +85,7 @@ _________
 To work with FiftyOne datasets whose media are stored in Amazon S3, you simply
 need to provide
 `AWS credentials <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_
-to your Teams client with read access to the relevant files.
+to your Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -111,6 +106,15 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
 In the above, the `.ini` file should use the syntax of the
 `boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
 
+.. note::
+
+    FiftyOne Teams requires either the `s3:ListBucket` or
+    `s3:GetBucketLocation` permission in order to access objects in S3 buckets.
+
+    If you wish to use multi-account credentials, your credentials must have
+    the `s3:ListBucket` permission, as `s3:GetBucketLocation` does not support
+    this.
+
 .. _teams-google-cloud:
 
 Google Cloud Storage
@@ -119,7 +123,7 @@ ____________________
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
 you simply need to provide
 `service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
-to your Teams client with read access to the relevant files.
+to your Teams client with read access to the relevant objects and buckets.
 
 You can register GCP credentials on a particular machine by adding the
 following key to your :ref:`media cache config <teams-media-cache-config>`:
@@ -130,6 +134,117 @@ following key to your :ref:`media cache config <teams-media-cache-config>`:
         "google_application_credentials": "/path/to/gcp-service-account.json"
     }
 
+.. _teams-azure:
+
+Microsoft Azure
+_______________
+
+To work with FiftyOne datasets whose media are stored in Azure Storage, you
+simply need to provide
+`Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
+to your Teams client with read access to the relevant objects and containers.
+
+You can do this in any of the following ways:
+
+1. Permanently register Azure credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
+
+.. code-block:: json
+
+    {
+        "azure_credentials_file": "/path/to/azure-credentials.ini",
+        "azure_profile": "default"  # optional
+    }
+
+2. Provide Azure credentials on a per-session basis by setting the following
+environment variables to point to your Azure credentials on disk:
+
+.. code-block:: shell
+
+    export AZURE_CREDENTIALS_FILE=/path/to/azure-credentials.ini
+    export AZURE_PROFILE=default  # optional
+
+3. Provide your Azure credentials on a per-session basis by setting any group
+of environment variables shown below:
+
+.. code-block:: shell
+
+    # Option 1
+    export AZURE_STORAGE_CONNECTION_STRING=...
+    export AZURE_ALIAS=...  # optional
+
+.. code-block:: shell
+
+    # Option 2
+    export AZURE_STORAGE_ACCOUNT=...
+    export AZURE_STORAGE_KEY=...
+    export AZURE_ALIAS=...  # optional
+
+.. code-block:: shell
+
+    # Option 3
+    export AZURE_STORAGE_ACCOUNT=...
+    export AZURE_CLIENT_ID=...
+    export AZURE_CLIENT_SECRET=...
+    export AZURE_TENANT_ID=...
+    export AZURE_ALIAS=...  # optional
+
+4. Provide your Azure credentials in any manner recognized by
+`azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
+
+In the options above, the `.ini` file should have syntax similar to one of
+the following:
+
+.. code-block:: shell
+
+    [default]
+    conn_str = ...
+    alias = ...  # optional
+
+.. code-block:: shell
+
+    [default]
+    account_name = ...
+    account_key = ...
+    alias = ...  # optional
+
+.. code-block:: shell
+
+    [default]
+    account_name = ...
+    client_id = ...
+    secret = ...
+    tenant = ...
+    alias = ...  # optional
+
+When populating samples with Azure Storage filepaths, you can either specify
+paths by their full URL:
+
+.. code-block:: python
+
+    filepath = "https://${account_name}.blob.core.windows.net/container/path/to/object.ext"
+
+    # For example
+    filepath = "https://voxel51.blob.core.windows.net/test-container/image.jpg"
+
+or, if you have defined an alias in your config, you may instead prefix the
+alias:
+
+.. code-block:: python
+
+    filepath = "${alias}://container/path/to/object.ext"
+
+    # For example
+    filepath = "az://test-container/image.jpg"
+
+.. note::
+
+    If you use a
+    `custom Azure domain <https://learn.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name?tabs=azure-portal>`_,
+    you can provide it by setting the
+    `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
+    `account_url` key in your credentials `.ini` file.
+
 .. _teams-minio:
 
 MinIO
@@ -137,7 +252,7 @@ _____
 
 To work with FiftyOne datasets whose media are stored in
 `MinIO <https://min.io/>`_, you simply need to provide the credentials to your
-Teams client with read access to the relevant files.
+Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -152,7 +267,7 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
     }
 
 2. Provide MinIO credentials on a per-session basis by setting the following
-environment variables to point to your MinIO credentials:
+environment variables to point to your MinIO credentials on disk:
 
 .. code-block:: shell
 
@@ -169,9 +284,6 @@ individual environment variables shown below:
     export MINIO_ENDPOINT_URL=...
     export MINIO_ALIAS=...  # optional
     export MINIO_REGION=...  # if applicable
-
-If you combine multiple options above, environment variables will take
-precedence over JSON config settings.
 
 In the options above, the `.ini` file should have syntax similar the following:
 

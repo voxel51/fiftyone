@@ -96,7 +96,7 @@
   width: 0;
   height: 0;
   border-radius: 8px;
-  background: var(--joy-palette-primary-plainColor);
+  background: var(--fo-palette-primary-plainColor);
   position: absolute;
   left: var(--progress);
   top: -11px;
@@ -117,16 +117,16 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   width: 100%;
   background: linear-gradient(
     to right,
-    var(--joy-palette-primary-plainBorder) 0%,
-    var(--joy-palette-primary-plainBorder) var(--start, 0%),
-    var(--joy-palette-primary-plainColor) var(--start, 0%),
-    var(--joy-palette-primary-plainColor) var(--progress, 0%),
-    var(--joy-palette-primary-softBorder) var(--progress, 0%),
-    var(--joy-palette-primary-softBorder) var(--buffer-progress, 0%),
-    var(--joy-palette-neutral-softBorder) var(--buffer-progress, 0%),
-    var(--joy-palette-neutral-softBorder) var(--end, 0%),
-    var(--joy-palette-primary-plainBorder) var(--end, 100%),
-    var(--joy-palette-primary-plainBorder) 100%
+    var(--fo-palette-primary-plainBorder) 0%,
+    var(--fo-palette-primary-plainBorder) var(--start, 0%),
+    var(--fo-palette-primary-plainColor) var(--start, 0%),
+    var(--fo-palette-primary-plainColor) var(--progress, 0%),
+    var(--fo-palette-primary-softBorder) var(--progress, 0%),
+    var(--fo-palette-primary-softBorder) var(--buffer-progress, 0%),
+    var(--fo-palette-neutral-softBorder) var(--buffer-progress, 0%),
+    var(--fo-palette-neutral-softBorder) var(--end, 0%),
+    var(--fo-palette-primary-plainBorder) var(--end, 100%),
+    var(--fo-palette-primary-plainBorder) 100%
   );
 }
 
@@ -137,12 +137,12 @@ input[type="range"].lookerSeekBar::-moz-range-track {
     to right,
     hsl(210, 11%, 11%) 0%,
     hsl(210, 11%, 11%) var(--start, 0%),
-    var(--joy-palette-primary-plainColor) var(--start, 0%),
-    var(--joy-palette-primary-plainColor) var(--progress, 0%),
-    var(--joy-palette-primary-softBorder) var(--progress, 0%),
-    var(--joy-palette-primary-softBorder) var(--buffer-progress, 0%),
-    var(--joy-palette-neutral-softBorder) var(--buffer-progress, 0%),
-    var(--joy-palette-neutral-softBorder) var(--end, 0%),
+    var(--fo-palette-primary-plainColor) var(--start, 0%),
+    var(--fo-palette-primary-plainColor) var(--progress, 0%),
+    var(--fo-palette-primary-softBorder) var(--progress, 0%),
+    var(--fo-palette-primary-softBorder) var(--buffer-progress, 0%),
+    var(--fo-palette-neutral-softBorder) var(--buffer-progress, 0%),
+    var(--fo-palette-neutral-softBorder) var(--end, 0%),
     hsl(210, 11%, 11%) var(--end, 100%),
     hsl(210, 11%, 11%) 100%
   );
@@ -154,10 +154,10 @@ input[type="range"].lookerSeekBar::-moz-range-track {
   height: 100%;
   background: linear-gradient(
     to right,
-    var(--joy-palette-primary-plainColor) 0%,
-    var(--joy-palette-primary-plainColor) var(--volume, 0%),
-    var(--joy-palette-neutral-softBorder) var(--volume, 0%),
-    var(--joy-palette-neutral-softBorder) 100%
+    var(--fo-palette-primary-plainColor) 0%,
+    var(--fo-palette-primary-plainColor) var(--volume, 0%),
+    var(--fo-palette-neutral-softBorder) var(--volume, 0%),
+    var(--fo-palette-neutral-softBorder) 100%
   );
 }
 
@@ -166,10 +166,10 @@ input[type="range"].lookerSeekBar::-moz-range-track {
   height: 100%;
   background: linear-gradient(
     to right,
-    var(--joy-palette-primary-plainColor) 0%,
-    var(--joy-palette-primary-plainColor) var(--volume, 0%),
-    var(--joy-palette-neutral-softBorder) var(--volume, 0%),
-    var(--joy-palette-neutral-softBorder) 100%
+    var(--fo-palette-primary-plainColor) 0%,
+    var(--fo-palette-primary-plainColor) var(--volume, 0%),
+    var(--fo-palette-neutral-softBorder) var(--volume, 0%),
+    var(--fo-palette-neutral-softBorder) 100%
   );
   overflow: hidden;
 }
@@ -179,10 +179,10 @@ input[type="range"].lookerSeekBar::-moz-range-track {
   height: 100%;
   background: linear-gradient(
     to right,
-    var(--joy-palette-primary-plainColor) 0%,
-    var(--joy-palette-primary-plainColor) var(--playback, 0%),
-    var(--joy-palette-neutral-softBorder) var(--playback, 0%),
-    var(--joy-palette-neutral-softBorder) 100%
+    var(--fo-palette-primary-plainColor) 0%,
+    var(--fo-palette-primary-plainColor) var(--playback, 0%),
+    var(--fo-palette-neutral-softBorder) var(--playback, 0%),
+    var(--fo-palette-neutral-softBorder) 100%
   );
 }
 
@@ -191,10 +191,10 @@ input[type="range"].lookerSeekBar::-moz-range-track {
   height: 100%;
   background: linear-gradient(
     to right,
-    var(--joy-palette-primary-plainColor) 0%,
-    var(--joy-palette-primary-plainColor) var(--playback, 0%),
-    var(--joy-palette-neutral-softBorder) var(--playback, 0%),
-    var(--joy-palette-neutral-softBorder) 100%
+    var(--fo-palette-primary-plainColor) 0%,
+    var(--fo-palette-primary-plainColor) var(--playback, 0%),
+    var(--fo-palette-neutral-softBorder) var(--playback, 0%),
+    var(--fo-palette-neutral-softBorder) 100%
   );
   overflow: hidden;
 }
@@ -242,31 +242,31 @@ input[type="range"].lookerSeekBar::-moz-range-track {
 }
 @-webkit-keyframes color {
   0% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
   40% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
   66% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
   80%,
   90% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
 }
 @keyframes color {
   0% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
   40% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
   66% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
   80%,
   90% {
-    stroke: var(--joy-palette-neutral-softBorder);
+    stroke: var(--fo-palette-neutral-softBorder);
   }
 }

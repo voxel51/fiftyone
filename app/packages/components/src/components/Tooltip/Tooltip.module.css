@@ -1,10 +1,10 @@
 .tooltip {
-  box-shadow: 0 2px 20px var(--joy-palette-background-tooltip);
-  background: var(--joy-palette-background-tooltip);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
+  box-shadow: 0 2px 20px var(--fo-palette-background-tooltip);
+  background: var(--fo-palette-background-tooltip);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
   padding: 0.25rem;
   border-radius: 3px;
   z-index: 1000;
   font-size: 14px;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
 }

@@ -9,10 +9,11 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 import logging
 from retrying import retry
-from threading import Thread
+from threading import Thread, Event as ThreadEvent
 import time
 import typing as t
 
+from bson import json_util
 import requests
 import sseclient
 from uuid import uuid4
@@ -20,7 +21,6 @@ from uuid import uuid4
 import fiftyone.constants as foc
 import fiftyone.core.state as fos
 
-from fiftyone.core.json import stringify
 from fiftyone.core.session.events import (
     Event,
     EventType,
@@ -49,15 +49,27 @@ class Client:
     def __post_init__(self) -> None:
         self._subscription = str(uuid4())
         self._connected = True
+        self._closed = ThreadEvent()
+        self._closed.set()
         self._listeners: t.Dict[str, t.Set[t.Callable]] = defaultdict(set)
 
-    def run(self, state: fos.StateDescription) -> None:
-        """Runs the client subscription in a background thread
+    @property
+    def origin(self) -> str:
+        """The origin of the server"""
+        return f"http://{self.address}:{self.port}"
+
+    @property
+    def is_open(self) -> str:
+        """Whether the client is connected"""
+        return not self._closed.is_set()
+
+    def open(self, state: fos.StateDescription) -> None:
+        """Open the client connection
 
         Arg:
             state: the initial state description
         """
-        if hasattr(self, "_thread"):
+        if not self._closed.is_set():
             raise RuntimeError("Client is already running")
 
         def run_client() -> None:
@@ -69,17 +81,20 @@ class Client:
                         "Accept": "text/event-stream",
                         "Content-type": "application/json",
                     },
-                    json=asdict(
-                        ListenPayload(
-                            events=[
-                                "capture_notebook_cell",
-                                "close_session",
-                                "reactivate_notebook_cell",
-                                "reload_session",
-                                "state_update",
-                            ],
-                            initializer=state.serialize(),
-                            subscription=self._subscription,
+                    data=json_util.dumps(
+                        asdict(
+                            ListenPayload(
+                                events=[
+                                    "capture_notebook_cell",
+                                    "close_session",
+                                    "reactivate_notebook_cell",
+                                    "reload_session",
+                                    "state_update",
+                                ],
+                                initializer=state,
+                                subscription=self._subscription,
+                            ),
+                            dict_factory=dict_factory,
                         )
                     ),
                 )
@@ -94,23 +109,28 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception as e:
-                    if foc.DEV_INSTALL:
+                    if logger.level == logging.DEBUG:
                         raise e
 
-                    self._connected = False
-                    print(
-                        "\r\nCould not connect session, trying again "
-                        "in 10 seconds\r\n"
-                    )
-                    time.sleep(10)
+                if self._closed.is_set():
+                    break
+
+                self._connected = False
+                print(
+                    "\r\nCould not connect session, trying again "
+                    "in 10 seconds\r\n"
+                )
+                time.sleep(10)
 
         self._thread = Thread(target=run_client, daemon=True)
+        self._closed.clear()
         self._thread.start()
 
-    @property
-    def origin(self) -> str:
-        """The origin of the server"""
-        return f"http://{self.address}:{self.port}"
+    def close(self):
+        """Close the client connection"""
+        self._closed.set()
+        self._thread.join(timeout=0)
+        self._thread = None
 
     def send_event(self, event: EventType) -> None:
         """Sends an event to the server
@@ -118,6 +138,9 @@ class Client:
         Args:
             event: the event
         """
+        if self._closed.is_set():
+            return
+
         if not self._connected:
             raise RuntimeError("Client is not connected")
 
@@ -154,14 +177,19 @@ class Client:
             listener(event)
 
     def _post_event(self, event: Event) -> None:
+        if self._closed.is_set():
+            return
+
         response = requests.post(
             f"{self.origin}/event",
             headers={"Content-type": "application/json"},
-            json={
-                "event": event.get_event_name(),
-                "data": stringify(asdict(event, dict_factory=dict_factory)),
-                "subscription": self._subscription,
-            },
+            data=json_util.dumps(
+                {
+                    "event": event.get_event_name(),
+                    "data": asdict(event, dict_factory=dict_factory),
+                    "subscription": self._subscription,
+                }
+            ),
         )
 
         if response.status_code != 200:

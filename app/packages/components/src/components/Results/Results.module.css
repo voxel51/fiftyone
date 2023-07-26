@@ -1,8 +1,8 @@
 .container {
-  background-color: var(--joy-palette-background-level2);
-  border: 1px solid var(--joy-palette-primary-plainBorder);
+  background-color: var(--fo-palette-background-level2);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
   border-radius: 2px;
-  box-shadow: 0 2px 20px var(--joy-palette-custom-shadow);
+  box-shadow: 0 2px 20px var(--fo-palette-custom-shadow);
   box-sizing: border-box;
   width: auto;
   position: relative;
@@ -23,8 +23,8 @@
   min-width: 0;
   user-select: none;
   cursor: pointer;
-  color: var(--joy-palette-text-secondary);
-  background: var(--joy-palette-background-level2);
+  color: var(--fo-palette-text-secondary);
+  background: var(--fo-palette-background-level2);
   transition: all 0.1 ease-in;
   text-decoration: none;
   white-space: nowrap;
@@ -34,8 +34,8 @@
 
 .result.active,
 .result:hover {
-  background: var(--joy-palette-background-body);
-  color: var(--joy-palette-text-primary);
+  background: var(--fo-palette-background-body);
+  color: var(--fo-palette-text-primary);
 }
 
 .resultComponent {
@@ -47,7 +47,7 @@
 
 .footer {
   text-align: right;
-  color: var(--joy-palette-text-primary);
+  color: var(--fo-palette-text-primary);
   padding: 0 0.25rem;
   font-size: 1rem;
   font-weight: bold;
@@ -56,8 +56,8 @@
   align-content: center;
   flex-direction: column;
   text-decoration: none;
-  border-top: 1px solid var(--joy-palette-primary-plainBorder);
-  background: var(--joy-palette-background-level2);
+  border-top: 1px solid var(--fo-palette-primary-plainBorder);
+  background: var(--fo-palette-background-level2);
   position: absolute;
   bottom: 0;
   min-width: 100%;

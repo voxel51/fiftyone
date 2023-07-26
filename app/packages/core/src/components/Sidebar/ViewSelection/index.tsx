@@ -14,6 +14,7 @@ import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
+import { extendedStages } from "@fiftyone/state";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -104,7 +105,9 @@ export default function ViewSelection() {
 
   const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
-  const isEmptyView = !bookmarkIconOn && !loadedView?.length;
+  const extendedStagesVal = useRecoilValue(extendedStages);
+  const isEmptyView =
+    !bookmarkIconOn && !loadedView?.length && extendedStagesVal?.length > 2;
 
   useEffect(() => {
     if (savedViewParam) {

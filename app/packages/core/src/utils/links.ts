@@ -9,3 +9,6 @@ export const EVALUATION_PATCHES =
 
 export const SORT_BY_SIMILARITY =
   "https://docs.voxel51.com/user_guide/app.html#app-similarity";
+
+export const COLOR_SCHEME =
+  "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";

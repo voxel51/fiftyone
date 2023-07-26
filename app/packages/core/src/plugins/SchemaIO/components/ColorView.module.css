@@ -1,0 +1,27 @@
+/* 
+ * All the styles in this file are intentionally !important as color-picked
+ *  does not support override sub-element styles
+*/
+
+.colorPicker {
+  background: var(--fo-palette-background-level1) !important;
+}
+
+.colorPicker label {
+  color: var(--fo-palette-text-secondary) !important;
+}
+
+.colorPicker input {
+  background: var(--fo-palette-background-level2) !important;
+  box-shadow: none !important;
+  color: var(--fo-palette-text-secondary) !important;
+}
+
+.colorPicker > div:last-child {
+  border-top-color: var(--fo-palette-divider) !important;
+}
+
+.colorPicker svg {
+  background-color: var(--fo-palette-background-level2) !important;
+  fill: var(--fo-palette-text-secondary) !important;
+}

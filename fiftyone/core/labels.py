@@ -327,6 +327,10 @@ class _HasID(Label):
     def _id(self):
         return ObjectId(self.id)
 
+    @_id.setter
+    def _id(self, value):
+        self.id = str(value)
+
 
 class _HasLabelList(object):
     """Mixin for :class:`Label` classes that contain a list of :class:`Label`
@@ -370,6 +374,7 @@ class Classifications(_HasLabelList, Label):
 
     Args:
         classifications (None): a list of :class:`Classification` instances
+        logits (None): logits associated with the labels
     """
 
     _LABEL_LIST_FIELD = "classifications"
@@ -1413,6 +1418,15 @@ _PATCHES_FIELDS = (
     Detections,
     Polyline,
     Polylines,
+)
+
+_INDEX_FIEDS = (
+    Detection,
+    Detections,
+    Polyline,
+    Polylines,
+    Keypoint,
+    Keypoints,
 )
 
 _SINGLE_LABEL_TO_LIST_MAP = {

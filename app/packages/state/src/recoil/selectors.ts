@@ -1,21 +1,23 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
-import { v4 as uuid } from "uuid";
-
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
-
-import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
+import {
+  isRgbMaskTargets,
+  normalizeMaskTargetsCase,
+} from "@fiftyone/looker/src/overlays/util";
+import { KeypointSkeleton, MaskTargets } from "@fiftyone/looker/src/state";
 import { StateForm } from "@fiftyone/relay";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { atomFamily, selector, selectorFamily } from "recoil";
+import { v4 as uuid } from "uuid";
+import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
 import { filters, modalFilters } from "./filters";
 import { resolvedGroupSlice } from "./groups";
+import { isModalActive, modalSample } from "./modal";
+import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
-import _ from "lodash";
 import { isPatchesView } from "./view";
-import { pathFilter } from "./pathFilters";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -102,6 +104,7 @@ export const appConfigDefault = selectorFamily<
     eviction: "most-recent",
   },
 });
+
 export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {
     key: "appConfigOptions",
@@ -117,7 +120,9 @@ export const datasetAppConfig = selector<State.DatasetAppConfig>({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    return get(atoms.dataset).defaultMaskTargets || {};
+    return normalizeMaskTargetsCase(
+      (get(atoms.dataset).defaultMaskTargets || {}) as MaskTargets
+    );
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -127,11 +132,22 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = get(atoms.dataset).defaultMaskTargets || {};
+    const defaults = normalizeMaskTargetsCase(
+      (get(atoms.dataset).defaultMaskTargets || {}) as MaskTargets
+    );
     const labelTargets = get(atoms.dataset)?.maskTargets || {};
+    const labelTargetsCaseNormalized = Object.entries(labelTargets).reduce(
+      (acc, [fieldName, fieldMaskTargets]) => {
+        acc[fieldName] = normalizeMaskTargetsCase(
+          fieldMaskTargets as MaskTargets
+        );
+        return acc;
+      },
+      {}
+    );
     return {
       defaults,
-      fields: labelTargets,
+      fields: labelTargetsCaseNormalized,
     };
   },
   cachePolicy_UNSTABLE: {
@@ -310,7 +326,7 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
       const labels = get(atoms.hiddenLabels);
       const {
         sample: { _id },
-      } = get(atoms.modal);
+      } = get(modalSample);
 
       if (_id) {
         return Object.entries(labels)
@@ -406,12 +422,19 @@ export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
+    const selectFieldsStage = get(selectedFieldsStageState) as {
+      _cls: string;
+      kwargs: string[];
+    };
 
     return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
+      ...(selectFieldsStage
+        ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
+        : {}),
     };
   },
 });
@@ -426,11 +449,6 @@ export const mediaFields = selector<string[]>({
       selectedFields.includes(field)
     );
   },
-});
-
-export const modalNavigation = selector<atoms.ModalNavigation>({
-  key: "modalNavigation",
-  get: ({ get }) => get(atoms.modal).navigation,
 });
 
 export const viewStateForm = selectorFamily<
@@ -461,7 +479,7 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(atoms.modal);
+      const modal = get(isModalActive);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);

@@ -36,9 +36,8 @@ class Tag(HTTPEndpoint):
         modal = data.get("modal", False)
         extended = data.get("extended", None)
         current_frame = data.get("current_frame", None)
-        slice = data.get("slice", None)
+        slices = data.get("slices", None)
         group_id = data.get("group_id", None)
-
         view = fost.get_tag_view(
             dataset,
             stages=stages,
@@ -47,7 +46,7 @@ class Tag(HTTPEndpoint):
             labels=labels,
             hidden_labels=hidden_labels,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(id=group_id, slice=slice)
+                group=GroupElementFilter(id=group_id, slices=slices)
             ),
             target_labels=target_labels,
             sample_ids=sample_ids,
@@ -70,7 +69,7 @@ class Tag(HTTPEndpoint):
             hidden_labels=hidden_labels,
             sample_ids=sample_ids,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(id=group_id, slice=slice)
+                group=GroupElementFilter(id=group_id, slices=slices)
             ),
             target_labels=False,
         )

@@ -242,7 +242,7 @@ def _flatten(
     ):
         schema[prefix] = field
 
-    if isinstance(field, (ListField, DictField)):
+    while isinstance(field, (ListField, DictField)):
         field = field.field
 
     if isinstance(field, EmbeddedDocumentField):
@@ -595,7 +595,7 @@ class ColorField(StringField):
 
     def validate(self, value):
         try:
-            fou.validate_hex_color(value)
+            fou.validate_color(value)
         except ValueError as e:
             self.error(str(e))
 
@@ -1281,6 +1281,36 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def _to_db_fields(self, field_names):
         return tuple(self._fields[f].db_field or f for f in field_names)
 
+    def has_field(self, path):
+        """Determines whether this field has the given embedded field.
+
+        Args:
+            path: the field name or ``embedded.field.name``
+
+        Returns:
+            True/False
+        """
+        return self.get_field(path) is not None
+
+    def get_field(self, path):
+        """Returns the field for the provided path, or ``None``.
+
+        Args:
+            path: a field name or ``embedded.field.name``
+
+        Returns:
+            a :class:`Field` instance or ``None``
+        """
+        chunks = path.split(".", 1)
+        if len(chunks) > 1:
+            field = self._fields.get(chunks[0], None)
+            if not isinstance(field, EmbeddedDocumentField):
+                return None
+
+            return field.get_field(chunks[1])
+
+        return self._fields.get(path, None)
+
     def get_field_schema(
         self,
         ftype=None,
@@ -1361,7 +1391,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                     foo.validate_fields_match(_path, _field, _existing_field)
 
                 if recursive:
-                    if isinstance(_existing_field, ListField):
+                    while isinstance(_existing_field, ListField):
                         _existing_field = _existing_field.field
                         if isinstance(_field, ListField):
                             _field = _field.field

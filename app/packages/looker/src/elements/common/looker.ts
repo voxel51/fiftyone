@@ -50,7 +50,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             const enabled =
               shouldHandleKeyEvents || matchedControl.alwaysHandle;
 
-            console.log(matchedControl, { enabled, shouldHandleKeyEvents });
             if (
               enabled &&
               matchedControl.eventKeyType === ControlEventKeyType.HOLD
@@ -83,6 +82,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
+    element.setAttribute("data-cy", "looker");
     element.classList.add(looker);
     element.tabIndex = -1;
     return element;

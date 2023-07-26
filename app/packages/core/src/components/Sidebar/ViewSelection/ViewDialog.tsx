@@ -38,6 +38,7 @@ import {
 } from "@fiftyone/components/src/components/Selection/SelectionColors";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import { toSlug } from "@fiftyone/utilities";
+import { extendedStages } from "@fiftyone/state";
 
 interface Props {
   savedViews: fos.State.SavedView[];
@@ -113,7 +114,10 @@ export default function ViewDialog(props: Props) {
   }, [viewContent]);
 
   const view = useRecoilValue(fos.view);
-  const extendedViewExists = useRecoilValue(shouldToggleBookMarkIconOnSelector);
+  const extendedStagesExists = useRecoilValue(extendedStages);
+  const extendedViewExists =
+    useRecoilValue(shouldToggleBookMarkIconOnSelector) ||
+    !!extendedStagesExists;
 
   const {
     handleDeleteView,
@@ -297,7 +301,7 @@ export default function ViewDialog(props: Props) {
                   colorOption?.color === initialColor)
               }
               sx={{
-                background: theme.voxel[500],
+                background: theme.primary.main,
                 color: theme.common.white,
                 textTransform: "inherit",
                 padding: "0.5rem 1.25rem",
@@ -305,7 +309,7 @@ export default function ViewDialog(props: Props) {
                 marginLeft: "1rem",
 
                 "&:hover": {
-                  background: theme.voxel[600],
+                  background: theme.primary.main,
                   color: theme.common.white,
                 },
 

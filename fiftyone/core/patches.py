@@ -23,7 +23,7 @@ import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
-_PATCHES_TYPES = (fol.Detections, fol.Polylines)
+_PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
 _NO_MATCH_ID = ""
 
 
@@ -185,8 +185,9 @@ class _PatchesView(fov.DatasetView):
             )
 
     def _to_source_ids(self, label_field, ids, label_ids):
-        label_type = self._source_collection._get_label_field_type(label_field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        _, is_list_field = self._source_collection._get_label_field_root(
+            label_field
+        )
 
         if not is_list_field:
             return ids, label_ids
@@ -297,7 +298,7 @@ class _PatchesView(fov.DatasetView):
         super().keep_fields()
 
     def reload(self):
-        """Reloads this view from the source collection in the database.
+        """Reloads the view.
 
         Note that :class:`PatchView` instances are not singletons, so any
         in-memory patches extracted from this view will not be updated by
@@ -311,10 +312,11 @@ class _PatchesView(fov.DatasetView):
         # This assumes that calling `load_view()` when the current patches
         # dataset has been deleted will cause a new one to be generated
         #
-
         self._patches_dataset.delete()
         _view = self._patches_stage.load_view(self._source_collection)
         self._patches_dataset = _view._patches_dataset
+
+        super().reload()
 
     def _sync_source_sample(self, sample):
         for field in self._label_fields:
@@ -322,7 +324,7 @@ class _PatchesView(fov.DatasetView):
 
     def _sync_source_sample_field(self, sample, field):
         label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        is_list_field = issubclass(label_type, fol._HasLabelList)
 
         sample_id = sample[self._id_field]
 
@@ -546,8 +548,9 @@ def make_patches_dataset(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         field: the patches field, which must be of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_fields (None): controls whether fields other than ``field`` and
             the default sample fields are included. Can be any of the
             following:
@@ -589,6 +592,25 @@ def make_patches_dataset(
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
+
+    keys = field.split(".")
+    if len(keys) > 2:
+        raise ValueError(
+            f"Cannot create nested patches field of depth greater than 1: {field}"
+        )
+
+    if len(keys) == 2:
+        parent = sample_collection.get_field(keys[0])
+        if not isinstance(parent, fof.EmbeddedDocumentField):
+            raise ValueError(
+                f"Cannot create nested patches field of parent: {parent.ftype}"
+            )
+
+        dataset.add_sample_field(
+            keys[0],
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=foo.DynamicEmbeddedDocument,
+        )
 
     dataset.add_sample_field(field, **foo.get_field_kwargs(patches_field))
 
@@ -663,8 +685,9 @@ def make_evaluation_patches_dataset(
             :class:`fiftyone.core.collections.SampleCollection`
         eval_key: an evaluation key that corresponds to the evaluation of
             ground truth/predicted fields that are of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`, or
+            :class:`fiftyone.core.labels.Keypoints`
         other_fields (None): controls whether fields other than the
             ground truth/predicted fields and the default sample fields are
             included. Can be any of the following:
@@ -789,10 +812,10 @@ def _make_pretty_summary(dataset, is_frame_patches=False):
 def _make_patches_view(
     sample_collection, field, other_fields=None, keep_label_lists=False
 ):
+    root, is_list_field = sample_collection._get_label_field_root(field)
     label_type = sample_collection._get_label_field_type(field)
-    if issubclass(label_type, _PATCHES_TYPES):
-        list_field = field + "." + label_type._LABEL_LIST_FIELD
-    else:
+
+    if not issubclass(label_type, _PATCHES_TYPES):
         raise ValueError(
             "Invalid label field type %s. Extracting patches is only "
             "supported for the following types: %s"
@@ -806,7 +829,7 @@ def _make_patches_view(
         "metadata": True,
         "tags": True,
         field + "._cls": True,
-        list_field: True,
+        root: True,
     }
 
     if other_fields is not None:
@@ -821,15 +844,15 @@ def _make_patches_view(
 
     pipeline = [
         {"$project": project},
-        {"$unwind": "$" + list_field},
-        {"$set": {"_rand": {"$rand": {}}}},
-        {"$set": {"_id": "$" + list_field + "._id"}},
+        {"$unwind": "$" + root},
+        {"$addFields": {"_rand": {"$rand": {}}}},
+        {"$addFields": {"_id": "$" + root + "._id"}},
     ]
 
     if keep_label_lists:
-        pipeline.append({"$set": {list_field: ["$" + list_field]}})
-    else:
-        pipeline.append({"$set": {field: "$" + list_field}})
+        pipeline.append({"$addFields": {root: ["$" + root]}})
+    elif root != field:
+        pipeline.append({"$addFields": {field: "$" + root}})
 
     return sample_collection.mongo(pipeline)
 
@@ -867,7 +890,7 @@ def _make_eval_view(
         )
 
     view = view.mongo(
-        [{"$set": {"type": "$" + eval_type, "iou": "$" + eval_iou}}]
+        [{"$addFields": {"type": "$" + eval_type, "iou": "$" + eval_iou}}]
     )
 
     if crowd_attr is not None:
@@ -879,7 +902,7 @@ def _make_eval_view(
         view = view.mongo(
             [
                 {
-                    "$set": {
+                    "$addFields": {
                         "crowd": {
                             "$cond": {
                                 "if": {"$gt": [crowd_path1, None]},
@@ -906,17 +929,17 @@ def _upgrade_labels(view, field):
     label_type = view._get_label_field_type(field)
     return view.mongo(
         [
-            {"$set": {tmp_field: "$" + field}},
-            {"$unset": field},
+            {"$addFields": {tmp_field: "$" + field}},
+            {"$project": {field: False}},
             {
-                "$set": {
+                "$addFields": {
                     field: {
                         "_cls": label_type.__name__,
                         label_type._LABEL_LIST_FIELD: ["$" + tmp_field],
                     }
                 }
             },
-            {"$unset": tmp_field},
+            {"$project": {tmp_field: False}},
         ]
     )
 
@@ -973,7 +996,7 @@ def _write_samples(dataset, src_collection):
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {"$out": dataset._sample_collection_name},
         ],
     )
@@ -984,7 +1007,7 @@ def _add_samples(dataset, src_collection):
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,

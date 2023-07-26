@@ -4,16 +4,13 @@ import {
   Close,
   Edit,
   FilterList,
-  LocalOffer,
   Remove,
-  Visibility,
 } from "@mui/icons-material";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   selectorFamily,
   SetterOrUpdater,
   useRecoilCallback,
-  useRecoilState,
   useRecoilStateLoadable,
   useRecoilValue,
   useRecoilValueLoadable,
@@ -24,7 +21,7 @@ import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
 
 import { useTheme, PillButton } from "@fiftyone/components";
-import { datasetName, readableTags, State } from "@fiftyone/state";
+import { datasetName } from "@fiftyone/state";
 import Draggable from "./Draggable";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -183,16 +180,6 @@ const useClearActive = (modal: boolean, group: string) => {
           fos.sidebarGroup({ modal, group, loading: true })
         );
         const active = await snapshot.getPromise(fos.activeFields({ modal }));
-
-        if (group === "tags") {
-          set(fos.activeTags(modal), []);
-          return;
-        }
-
-        if (group === "label tags") {
-          set(fos.activeLabelTags(modal), []);
-          return;
-        }
 
         set(
           fos.activeFields({ modal }),

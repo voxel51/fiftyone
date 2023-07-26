@@ -102,6 +102,8 @@ app = Starlette(
             app=Static(
                 directory=fo.config.plugins_dir,
                 html=True,
+                check_dir=False,
+                follow_symlink=True,
             ),
             name="plugins",
         ),

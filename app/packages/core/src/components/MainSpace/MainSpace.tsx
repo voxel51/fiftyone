@@ -1,12 +1,14 @@
 import { SpacesRoot, usePanelsState, useSpaces } from "@fiftyone/spaces";
-import { useSessionSpaces } from "@fiftyone/state";
+import { useSessionSpaces, constants } from "@fiftyone/state";
 import { isEqual, size } from "lodash";
 import React, { useEffect, useRef } from "react";
+
+const { FIFTYONE_SPACE_ID } = constants;
 
 function MainSpace() {
   const [sessionSpaces, setSessionSpaces, sessionPanelsState] =
     useSessionSpaces();
-  const { spaces, updateSpaces } = useSpaces("main", sessionSpaces);
+  const { spaces, updateSpaces } = useSpaces(FIFTYONE_SPACE_ID, sessionSpaces);
   const [panelsState, setPanelsState] = usePanelsState();
   const oldSpaces = useRef(spaces);
   const oldPanelsState = useRef(panelsState);
@@ -42,7 +44,7 @@ function MainSpace() {
     oldPanelsState.current = panelsState;
   }, [spaces, panelsState]);
 
-  return <SpacesRoot id={"main"} />;
+  return <SpacesRoot id={FIFTYONE_SPACE_ID} />;
 }
 
 export default React.memo(MainSpace);

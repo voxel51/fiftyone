@@ -10,9 +10,9 @@
 
   background-image: linear-gradient(
     to top,
-    var(--joy-palette-background-mediaSpaceTransparent),
+    var(--fo-palette-background-mediaSpaceTransparent),
     30%,
-    var(--joy-palette-background-mediaSpace)
+    var(--fo-palette-background-mediaSpace)
   );
 
   display: flex;

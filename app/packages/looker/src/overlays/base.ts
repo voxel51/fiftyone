@@ -4,7 +4,7 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { sizeBytes } from "./util";
+import { isValidColor, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -93,20 +93,51 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label.id);
   }
 
-  getColor({ options: { coloring } }: Readonly<State>): string {
+  getColor({
+    options: { coloring, customizeColorSetting },
+  }: Readonly<State>): string {
     let key;
-
-    switch (coloring.by) {
-      case "field":
-        return getColor(coloring.pool, coloring.seed, this.field);
-      case "instance":
-        key = this.label.index !== undefined ? "index" : "id";
-        break;
-      default:
-        key = "label";
+    // video fields path needs to be converted
+    const path = this.field.startsWith("frames.")
+      ? this.field.slice("frames.".length)
+      : this.field;
+    const field = customizeColorSetting.find((s) => s.path === path);
+    if (coloring.by === "field") {
+      if (isValidColor(field?.fieldColor)) {
+        return field.fieldColor;
+      }
+      return getColor(coloring.pool, coloring.seed, this.field);
     }
+    if (coloring.by === "value") {
+      if (field) {
+        key = field.colorByAttribute
+          ? field.colorByAttribute === "index"
+            ? "id"
+            : field.colorByAttribute
+          : "label";
 
-    return getColor(coloring.pool, coloring.seed, this.label[key]);
+        // check if this label has a assigned color, use it if it is a valid color
+        const valueColor = field?.valueColors?.find((l) => {
+          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+            return typeof this.label[key] === "string"
+              ? l.value?.toLowerCase === this.label[key]
+              : !this.label[key];
+          }
+          if (["True", "False"].includes(l.value?.toString())) {
+            return (
+              l.value?.toString().toLowerCase() ==
+              this.label[key]?.toString().toLowerCase()
+            );
+          }
+          return l.value?.toString() == this.label[key]?.toString();
+        })?.color;
+        return isValidColor(valueColor)
+          ? valueColor
+          : getColor(coloring.pool, coloring.seed, this.label[key]);
+      } else {
+        return getColor(coloring.pool, coloring.seed, this.label["label"]);
+      }
+    }
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

@@ -6,7 +6,7 @@ import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { ContentDiv, ContentHeader } from "../utils";
-import { joinStringArray } from '../Filters/utils';
+import { joinStringArray } from "../Filters/utils";
 
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
@@ -39,7 +39,7 @@ const ContentName = styled.div`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-const ContentItem = ({
+export const ContentItem = ({
   name,
   value,
   style,
@@ -51,7 +51,7 @@ const ContentItem = ({
   if (typeof value === "object" && !value?.length) {
     return null;
   }
-  
+
   return (
     <ContentItemDiv style={style}>
       <ContentValue>
@@ -169,13 +169,15 @@ const AttrInfo = ({ label, labelType, children = null }) => {
   if (!entries || !entries.length) {
     return null;
   }
-  const defaultLabels = labelType === "Keypoint" ? ["label"] : ["label", "confidence"]
-  const defaults = entries.filter(([name]) =>
-    defaultLabels.includes(name)
-  );
+  const defaultLabels =
+    labelType === "Keypoint" ? ["label"] : ["label", "confidence"];
+  const defaults = entries.filter(([name]) => defaultLabels.includes(name));
 
   const other = entries.filter(
-    ([name]) => !([...defaultLabels, ...HIDDEN_LABELS[labelType], "attributes"].includes(name))
+    ([name]) =>
+      ![...defaultLabels, ...HIDDEN_LABELS[labelType], "attributes"].includes(
+        name
+      )
   );
   const mapper = ([name, value]) => (
     <ContentItem key={name} name={name} value={value} />
@@ -233,12 +235,14 @@ const KeypointInfo = ({ detail }) => {
       {detail.point && (
         <AttrInfo
           label={Object.fromEntries(
-            detail.point.attributes.filter(([x, y]) => x !== "points").map(([k, v]) => [
-              `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
-              v,
-            ])
+            detail.point.attributes
+              .filter(([x, y]) => x !== "points")
+              .map(([k, v]) => [
+                `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
+                v,
+              ])
           )}
-          labelType={detail.type} 
+          labelType={detail.type}
         />
       )}
     </AttrBlock>

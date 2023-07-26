@@ -10,14 +10,14 @@ import styled from "styled-components";
 
 import * as fos from "@fiftyone/state";
 
-import RangeSlider from "../Common/RangeSlider";
-import Checkbox from "../Common/Checkbox";
-import { Button } from "../utils";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
-import withSuspense from "./withSuspense";
+import Checkbox from "../Common/Checkbox";
+import RangeSlider from "../Common/RangeSlider";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
+import { Button } from "../utils";
 import FilterOption from "./categoricalFilter/filterOption/FilterOption";
+import withSuspense from "./withSuspense";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -31,7 +31,7 @@ const NamedRangeSliderHeader = styled.div`
 
 const RangeSliderContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--joy-palette-divider);
+  border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
@@ -112,6 +112,7 @@ type Props = {
   modal: boolean;
   path: string;
   named?: boolean;
+  color: string;
   onFocus?: () => void;
   onBlur?: () => void;
 };
@@ -121,8 +122,8 @@ const NumericFieldFilter = ({
   modal,
   path,
   named = true,
+  color,
 }: Props) => {
-  const color = useRecoilValue(fos.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
   const excludeAtom = fos.numericExcludeAtom({
     path,
@@ -130,11 +131,6 @@ const NumericFieldFilter = ({
     defaultRange,
   });
   const isMatchingAtom = fos.numericIsMatchingAtom({
-    path,
-    modal,
-    defaultRange,
-  });
-  const onlyMatchAtom = fos.numericOnlyMatchAtom({
     path,
     modal,
     defaultRange,
@@ -148,7 +144,6 @@ const NumericFieldFilter = ({
     })
   );
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
   const setIsMatching = isMatchingAtom
     ? useSetRecoilState(isMatchingAtom)
     : null;
@@ -206,7 +201,6 @@ const NumericFieldFilter = ({
   const initializeSettings = () => {
     setFilter([null, null]);
     setExcluded && setExcluded(false);
-    setOnlyMatch && setOnlyMatch(true);
     setIsMatching && setIsMatching(!nestedField);
   };
 
@@ -282,7 +276,7 @@ const NumericFieldFilter = ({
             formatter={
               [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
                 ? (v) => (v ? formatDateTime(v, timeZone) : null)
-                : (v) => null
+                : (v) => (typeof v === "number" ? v.toString() : null)
             }
             value={false}
           />
@@ -303,9 +297,9 @@ const NumericFieldFilter = ({
             nestedField={nestedField}
             shouldNotShowExclude={false} // only boolean fields don't use exclude
             excludeAtom={excludeAtom}
-            onlyMatchAtom={onlyMatchAtom}
             isMatchingAtom={isMatchingAtom}
             valueName={field?.name ?? ""}
+            path={path}
             color={color}
             modal={modal}
             isKeyPointLabel={isKeyPoints}

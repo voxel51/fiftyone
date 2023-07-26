@@ -927,6 +927,8 @@ supported values are:
 
 -   `"prompt"` (**default**): present an interactive prompt to direct/discard
     unexpected labels
+-   ``"keep"``: automatically keep all unexpected labels in a field whose name
+    matches the the label type
 -   `"ignore"`: automatically ignore any unexpected labels
 -   `"return"`: return a dict containing all unexpected labels, if any
 

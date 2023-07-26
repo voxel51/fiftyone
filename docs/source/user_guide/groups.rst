@@ -17,6 +17,11 @@ queried in ways that respect the relationships between the slices of data.
    :alt: groups-sizzle
    :align: center
 
+.. note::
+
+    Did you know? You can also create :ref:`dynamic group views <view-groups>`
+    into your datasets based on a field or expression of interest.
+
 .. _groups-overview:
 
 Overview
@@ -857,7 +862,7 @@ Grouped aggregations
 ____________________
 
 You can use the entire :ref:`aggregations framework <using-aggregations>` to
-efficiently compute statistics on grouoped datasets.
+efficiently compute statistics on grouped datasets.
 
 Remember that, just as when :ref:`iterating over <groups-iteration>` or
 :ref:`writing views <groups-views>` into grouped datasets, aggregations will
@@ -988,6 +993,22 @@ by selecting `group` mode under the App's settings menu:
 .. image:: /images/groups/groups-stats.gif
    :alt: groups-stats
    :align: center
+
+You can also use the App's :ref:`dynamic groups <app-dynamic-groups>` feature
+to view *groups of groups* organized by a field of your choice.
+
+For example, if you have a grouped dataset whose group slices contain different
+sensor modalities for each `frame_number` of a scene with a given `scene_id`,
+you can use the dynamic grouping action to playback scenes in sequential order:
+
+.. image:: /images/groups/dynamic-groups.gif
+   :alt: dynamic-groups
+   :align: center
+
+.. note::
+
+    Did you know? You can also create :ref:`dynamic group views <view-groups>`
+    into your grouped datasets via Python.
 
 .. _groups-importing:
 

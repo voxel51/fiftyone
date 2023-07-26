@@ -24,6 +24,7 @@ import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { Link } from "@mui/material";
 import styled from "styled-components";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -69,6 +70,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
               placeholder={"Select brain key"}
               overflow={true}
               component={Value}
+              resultsPlacement="bottom-start"
               containerStyle={selectorStyle}
             />
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
@@ -77,6 +79,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 placeholder={"Color by"}
                 overflow={true}
                 component={Value}
+                resultsPlacement="bottom-start"
                 containerStyle={selectorStyle}
               />
             )}
@@ -129,6 +132,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 </PlotOption>
               </Fragment>
             )}
+            <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
         </Selectors>
         {showPlot && (

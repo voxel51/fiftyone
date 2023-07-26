@@ -1,3 +1,8 @@
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { activeColorField, coloring } from "@fiftyone/state";
+import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
+import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
   useEffect,
@@ -5,11 +10,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { atom, useRecoilState } from "recoil";
+import ReactDOM from "react-dom";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { InfoIcon, useTheme } from "@fiftyone/components";
-import { Field } from "@fiftyone/utilities";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -198,15 +207,10 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => {
-      if (theme.mode === "light") {
-        return theme.background.level1;
-      }
-      return theme.background.level1;
-    }};
+    background: ${({ theme }) => theme.background.level1};
   }
   tr {
-    border-top: solid 2px ${getBorderColor};
+    border-top: solid 2px ${({ theme }) => theme.background.header};
   }
   a,
   a:visited {
@@ -230,13 +234,6 @@ const ShowMoreLink = styled.a`
   margin-left: 0.25rem;
 `;
 
-function getBorderColor({ theme }) {
-  if (theme.mode === "light") {
-    return theme.background.header;
-  }
-  return "red";
-}
-
 function FieldInfoExpanded({
   field,
   hoverTarget,
@@ -251,6 +248,8 @@ function FieldInfoExpanded({
   const [isCollapsed, setIsCollapsed] = useState(
     descTooLong || tooManyInfoKeys
   );
+
+  const setIsCustomizingColor = useSetRecoilState(activeColorField);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
@@ -258,8 +257,18 @@ function FieldInfoExpanded({
     el.current.style.top = top + "px";
     el.current.style.left = left + "px";
   };
+  const colorSettings = useRecoilValue(coloring(false));
+
+  const isModal = useRecoilValue(fos.currentModalSample) !== null;
+  const colorBy = colorSettings.by;
+  const onClickCustomizeColor = () => {
+    // open the color customization modal based on colorBy status
+    setIsCustomizingColor({ field, expandedPath });
+  };
 
   useEffect(updatePosition, [field, isCollapsed]);
+  const timeZone = useRecoilValue(fos.timeZone);
+  const disabled = useRecoilValue(fos.disabledPaths);
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget
@@ -271,6 +280,13 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
+        {!isModal && !disabled.has(field) && (
+          <CustomizeColor
+            onClick={onClickCustomizeColor}
+            color={color}
+            colorBy={colorBy}
+          />
+        )}
         {/* <FieldInfoTitle color={color}><span>{field.path}</span></FieldInfoTitle> */}
         {field.description && (
           <ExpFieldInfoDesc
@@ -284,6 +300,8 @@ function FieldInfoExpanded({
           collapsed={tooManyInfoKeys && isCollapsed}
           type={field.embeddedDocType || field.ftype}
           expandedPath={expandedPath}
+          timeZone={timeZone}
+          color={color}
         />
         {isCollapsed && (
           <ShowMoreLink
@@ -300,6 +318,34 @@ function FieldInfoExpanded({
     document.body
   );
 }
+
+type CustomizeColorProp = {
+  color: string;
+  onClick: () => void;
+  colorBy: string;
+};
+
+const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
+  ...props
+}) => {
+  return (
+    <FieldInfoTableContainer onClick={props.onClick} color={props.color}>
+      <tbody>
+        <tr style={{ cursor: "pointer" }}>
+          <td>
+            <PaletteIcon sx={{ color: props.color }} fontSize={"small"} />
+          </td>
+          <td>
+            <ContentValue>
+              Customize colors by{" "}
+              {props.colorBy == "field" ? "field" : "attribute value"}
+            </ContentValue>
+          </td>
+        </tr>
+      </tbody>
+    </FieldInfoTableContainer>
+  );
+};
 
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (
@@ -448,18 +494,27 @@ function entryKeyToLabel(key) {
 // a react componont that renders a table
 // given an object where the keys are the first column
 // and the values are the second column
-function FieldInfoTable({ info, type, collapsed, subfield, description }) {
+function FieldInfoTable({
+  info,
+  type,
+  collapsed,
+  subfield,
+  description,
+  timeZone,
+  color,
+}) {
   info = info || {};
   const tableData = info;
   let items = Object.entries<any>(tableData)
     .filter(keyValueIsRenderable)
-    .map(toRenderValue);
+    .map((v) => toRenderValue(v, timeZone));
 
   if (collapsed) {
     items = items.slice(0, 2);
   }
+
   return (
-    <FieldInfoTableContainer>
+    <FieldInfoTableContainer color={color}>
       <tbody>
         {type && (
           <tr>
@@ -500,20 +555,29 @@ function FieldInfoTable({ info, type, collapsed, subfield, description }) {
 
 function keyValueIsRenderable([key, value]) {
   if (value === undefined || value === null) return true;
-
   switch (typeof value) {
     case "string":
     case "number":
     case "boolean":
       return true;
+    case "object":
+      return ["Date", "DateTime"].includes(value._cls);
     default:
       return false;
   }
 }
-function toRenderValue([key, value]): [string, string] {
+function toRenderValue([key, value], timeZone: string): [string, string] {
   switch (typeof value) {
     case "boolean":
       return [key, value ? "True" : "False"];
+    case "object":
+      if (value._cls === "Date") {
+        return [key, formatDate(value.datetime)];
+      } else if (value._cls === "DateTime") {
+        return [key, formatDateTime(value.datetime, timeZone)];
+      } else {
+        return [key, ""];
+      }
     default:
       return [key, value];
   }

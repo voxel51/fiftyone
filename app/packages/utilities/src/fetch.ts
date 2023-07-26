@@ -17,7 +17,7 @@ export interface FetchFunction {
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob" | "text" | "arrayBuffer",
+    result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
     retries?: number,
     retryCodes?: number[] | "arrayBuffer"
   ): Promise<R>;
@@ -78,6 +78,7 @@ export const setFetchFunction = (
     retryCodes = [502, 503, 504]
   ) => {
     let url: string;
+    const controller = new AbortController();
 
     if (fetchPathPrefix) {
       path = `${fetchPathPrefix}${path}`;
@@ -118,6 +119,7 @@ export const setFetchFunction = (
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
+      signal: controller.signal,
     });
 
     if (response.status >= 400) {
@@ -154,11 +156,57 @@ export const setFetchFunction = (
       throw new ErrorClass(errorMetadata, errorMetadata.message);
     }
 
+    if (result === "json-stream") {
+      return new JSONStreamParser(response, controller);
+    }
+
     return await response[result]();
   };
 
   fetchFunctionSingleton = fetchFunction;
 };
+
+class JSONStreamParser {
+  constructor(response, private controller: AbortController) {
+    this.reader = response.body.getReader();
+    this.decoder = new TextDecoder();
+    this.partialLine = "";
+  }
+
+  private reader;
+  private decoder: TextDecoder;
+  private partialLine: string;
+
+  abort() {
+    return this.controller.abort();
+  }
+
+  async parse(callback) {
+    while (true) {
+      const { done, value } = await this.reader.read();
+      if (done) {
+        // End of stream
+        break;
+      }
+
+      const chunk = this.decoder.decode(value);
+      for (const c of chunk) {
+        if (c === "\n") {
+          const json = JSON.parse(this.partialLine);
+          callback(json);
+          this.partialLine = "";
+        } else {
+          this.partialLine += c;
+        }
+      }
+    }
+    if (this.partialLine) {
+      // Process the last partial line, if any
+      const json = JSON.parse(this.partialLine);
+      callback(json);
+    }
+  }
+}
 
 const isWorker =
   // @ts-ignore

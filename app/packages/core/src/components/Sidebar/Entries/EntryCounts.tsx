@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { selectorFamily, useRecoilValueLoadable } from "recoil";
 
 import * as fos from "@fiftyone/state";
@@ -48,8 +48,8 @@ export const PathEntryCounts = ({
     },
     [modal, path]
   );
-  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
 
+  const shown = useRecoilValueLoadable(showEntryCounts({ path, modal }));
   if (shown.state === "hasError") {
     throw shown.contents;
   }

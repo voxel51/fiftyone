@@ -5,12 +5,13 @@ FiftyOne Server queries.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import typing as t
+from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
+import logging
 import os
+import typing as t
 
-import asyncio
 import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
@@ -23,8 +24,10 @@ import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 from fiftyone.core.odm import SavedViewDocument
+import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
+from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
@@ -126,7 +129,6 @@ class BrainRunConfig(RunConfig):
             return cls(
                 embeddings_field=self.embeddings_field,
                 patches_field=self.patches_field,
-                supports_prompts=self.supports_prompts,
             )
         except:
             return None
@@ -191,6 +193,26 @@ class SidebarGroup:
 
 
 @gql.type
+class LabelSetting:
+    value: str
+    color: str
+
+
+@gql.type
+class CustomizeColor:
+    path: str
+    field_color: t.Optional[str]
+    color_by_attribute: t.Optional[str]
+    value_colors: t.Optional[t.List[LabelSetting]]
+
+
+@gql.type
+class ColorScheme:
+    color_pool: t.Optional[t.List[str]] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
+
+
+@gql.type
 class KeypointSkeleton:
     labels: t.Optional[t.List[str]]
     edges: t.List[t.List[int]]
@@ -217,6 +239,7 @@ class DatasetAppConfig:
     modal_media_field: t.Optional[str] = gql.field(default="filepath")
     grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
+    color_scheme: t.Optional[ColorScheme]
 
 
 @gql.type
@@ -268,9 +291,9 @@ class Dataset:
             NamedTargets(name=name, targets=_convert_targets(targets))
             for name, targets in doc.get("mask_targets", {}).items()
         ]
-        doc["sample_fields"] = _flatten_fields(
-            [], doc.get("sample_fields", [])
-        )
+        flat = _flatten_fields([], doc.get("sample_fields", []))
+        doc["sample_fields"] = flat
+
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
@@ -298,6 +321,7 @@ class Dataset:
             dataset_name=name,
             serialized_view=view,
             saved_view_slug=saved_view_slug,
+            dicts=False,
         )
 
 
@@ -310,7 +334,7 @@ dataset_dataloader = get_dataloader_resolver(
 class ColorBy(Enum):
     field = "field"
     instance = "instance"
-    label = "label"
+    value = "value"
 
 
 @gql.enum
@@ -342,8 +366,13 @@ class AppConfig:
 
 
 @gql.type
-class Query(fosa.AggregateQuery):
+class SchemaResult:
+    field_schema: t.List[SampleField]
+    frame_field_schema: t.List[SampleField]
 
+
+@gql.type
+class Query(fosa.AggregateQuery):
     aggregations = gql.field(resolver=aggregate_resolver)
 
     @gql.field
@@ -394,10 +423,19 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     async def sample(
-        self, dataset: str, view: BSONArray, filter: SampleFilter
+        self,
+        dataset: str,
+        view: BSONArray,
+        filter: SampleFilter,
+        filters: t.Optional[JSON] = None,
     ) -> t.Optional[SampleItem]:
         samples = await paginate_samples(
-            dataset, view, None, 1, sample_filter=filter
+            dataset,
+            view,
+            filters,
+            1,
+            sample_filter=filter,
+            pagination_data=False,
         )
         if samples.edges:
             return samples.edges[0].node
@@ -427,8 +465,59 @@ class Query(fosa.AggregateQuery):
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
         ds = fod.load_dataset(dataset_name)
         return [
-            SavedView.from_doc(view_doc) for view_doc in ds._doc.saved_views
+            SavedView.from_doc(view_doc)
+            for view_doc in ds._doc.get_saved_views()
         ]
+
+    @gql.field
+    def schema_for_view_stages(
+        self,
+        dataset_name: str,
+        view_stages: BSONArray,
+    ) -> SchemaResult:
+        try:
+            ds = fod.load_dataset(dataset_name)
+            if view_stages:
+                view = fov.DatasetView._build(ds, view_stages or [])
+
+                if ds.media_type == fom.VIDEO:
+                    frame_schema = serialize_fields(
+                        view.get_frame_field_schema(flat=True)
+                    )
+                    field_schema = serialize_fields(
+                        view.get_field_schema(flat=True)
+                    )
+                    return SchemaResult(
+                        field_schema=field_schema,
+                        frame_field_schema=frame_schema,
+                    )
+
+                return SchemaResult(
+                    field_schema=serialize_fields(
+                        view.get_field_schema(flat=True)
+                    ),
+                    frame_field_schema=[],
+                )
+            if ds.media_type == fom.VIDEO:
+                frames_field_schema = serialize_fields(
+                    ds.get_frame_field_schema(flat=True)
+                )
+                field_schema = serialize_fields(ds.get_field_schema(flat=True))
+                return SchemaResult(
+                    field_schema=field_schema,
+                    frame_field_schema=frames_field_schema,
+                )
+
+            return SchemaResult(
+                field_schema=serialize_fields(ds.get_field_schema(flat=True)),
+                frame_field_schema=[],
+            )
+        except Exception as e:
+            print("failed to get schema for view stages", str(e))
+            return SchemaResult(
+                field_schema=[],
+                frame_field_schema=[],
+            )
 
 
 def _flatten_fields(
@@ -436,7 +525,13 @@ def _flatten_fields(
 ) -> t.List[t.Dict]:
     result = []
     for field in fields:
-        key = field.pop("name")
+        key = field.pop("name", None)
+        if key is None:
+            # Issues with concurrency can cause this to happen.
+            # Until it's fixed, just ignore these fields to avoid throwing hard
+            # errors when loading in the app.
+            logging.debug("Skipping field with no name: %s", field)
+            continue
         field_path = path + [key]
         field["path"] = ".".join(field_path)
         result.append(field)
@@ -456,6 +551,7 @@ async def serialize_dataset(
     dataset_name: str,
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
+    dicts=True,
 ) -> Dataset:
     def run():
         dataset = fod.load_dataset(dataset_name)
@@ -465,6 +561,9 @@ async def serialize_dataset(
             doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
             view = dataset.load_saved_view(doc.name)
             view_name = view.name
+            if serialized_view:
+                for stage in serialized_view:
+                    view = view.add_stage(fosg.ViewStage._from_dict(stage))
         except:
             view = fov.DatasetView._build(dataset, serialized_view or [])
 
@@ -490,12 +589,23 @@ async def serialize_dataset(
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)
         )
+
         data.frame_fields = serialize_fields(
             collection.get_frame_field_schema(flat=True)
         )
 
         if dataset.media_type == fom.GROUP:
             data.group_slice = collection.group_slice
+
+        if dicts:
+            saved_views = []
+            for view in data.saved_views:
+                view_dict = asdict(view)
+                view_dict["view_name"] = view.view_name()
+                view_dict["stage_dicts"] = view.stage_dicts()
+                saved_views.append(view_dict)
+
+            data.saved_views = saved_views
 
         for brain_method in data.brain_methods:
             try:
@@ -525,6 +635,4 @@ async def serialize_dataset(
 
         return data
 
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(None, run)
+    return await run_sync_task(run)

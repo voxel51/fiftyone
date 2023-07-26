@@ -35,16 +35,24 @@ export interface FlashlightConfig<K> {
   initialRequestKey: K;
   horizontal: boolean;
   options: FlashlightOptions;
+  elementId?: string;
+  containerId?: string;
+  enableHorizontalKeyNavigation?: {
+    navigationCallback: (isPrev: boolean) => Promise<void>;
+    previousKey: string;
+    nextKey: string;
+  };
   onItemClick?: OnItemClick;
   onResize?: OnResize;
   onItemResize?: OnItemResize;
 }
 
 export default class Flashlight<K> {
+  public container: HTMLDivElement;
+  public element: HTMLDivElement;
+  public state: State<K>;
+
   private loading = false;
-  private container: HTMLDivElement;
-  private element: HTMLDivElement;
-  private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
   private pixelsSet: boolean;
@@ -56,10 +64,30 @@ export default class Flashlight<K> {
     this.container = this.createContainer();
     this.showPixels();
     this.element = document.createElement("div");
+    config.elementId && this.element.setAttribute("id", config.elementId);
     this.element.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
     document.addEventListener("visibilitychange", () => this.render());
+
+    if (config.enableHorizontalKeyNavigation && config.horizontal) {
+      const keyDownEventListener = (e) => {
+        if (!this.isAttached()) {
+          document.removeEventListener("keydown", keyDownEventListener);
+          return;
+        }
+
+        if (e.key === config.enableHorizontalKeyNavigation.previousKey) {
+          e.preventDefault();
+          config.enableHorizontalKeyNavigation.navigationCallback(true);
+        } else if (e.key === config.enableHorizontalKeyNavigation.nextKey) {
+          e.preventDefault();
+          config.enableHorizontalKeyNavigation.navigationCallback(false);
+        }
+      };
+
+      document.addEventListener("keydown", keyDownEventListener);
+    }
 
     this.resizeObserver = new ResizeObserver(
       ([
@@ -567,6 +595,9 @@ export default class Flashlight<K> {
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
     container.classList.add(flashlightContainer);
+    if (this.config.containerId) {
+      container.setAttribute("id", this.config.containerId);
+    }
     return container;
   }
 

@@ -5,12 +5,13 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import json_util
-from dataclasses import asdict
-import json
+
 import logging
 import typing as t
 
+from bson import json_util
+from dataclasses import asdict
+from mongoengine.base import BaseDict, BaseList
 import strawberry as gql
 
 import eta.core.serial as etas
@@ -18,7 +19,9 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
+
 import fiftyone.core.dataset as fod
+from fiftyone.core.odm.dataset import ColorScheme
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -38,7 +41,8 @@ class StateDescription(etas.Serializable):
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
-        spaces (None): spaces config
+        spaces (None): a :class:`fiftyone.core.spaces.Space`
+        color_scheme (None): a :class:`fiftyone.core.odm.dataset.ColorScheme`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
             saved view
@@ -51,6 +55,7 @@ class StateDescription(etas.Serializable):
         selected=None,
         selected_labels=None,
         spaces=None,
+        color_scheme=None,
         view=None,
         view_name=None,
     ):
@@ -59,11 +64,12 @@ class StateDescription(etas.Serializable):
         self.selected = selected or []
         self.selected_labels = selected_labels or []
         self.view = (
-            dataset.load_saved_view(dataset)
+            dataset.load_saved_view(view_name)
             if dataset is not None and view_name
             else view
         )
         self.spaces = spaces
+        self.color_scheme = color_scheme
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -81,21 +87,25 @@ class StateDescription(etas.Serializable):
                     else:
                         _view_cls = etau.get_class_name(self.view)
 
-                    d["view"] = json.loads(
-                        json_util.dumps(self.view._serialize())
-                    )
+                    d["view"] = self.view._serialize()
                     d["view_cls"] = _view_cls
 
                     d["view_name"] = self.view.name  # None for unsaved views
                     if d.get("view_name") is not None:
                         d["saved_view_slug"] = fou.to_slug(self.view.name)
 
-                d["sample_fields"] = serialize_fields(
-                    collection.get_field_schema(flat=True), dicts=True
-                )
-                d["frame_fields"] = serialize_fields(
-                    collection.get_frame_field_schema(flat=True), dicts=True
-                )
+                d["sample_fields"] = [
+                    asdict(field)
+                    for field in serialize_fields(
+                        collection.get_field_schema(flat=True)
+                    )
+                ]
+                d["frame_fields"] = [
+                    asdict(field)
+                    for field in serialize_fields(
+                        collection.get_frame_field_schema(flat=True)
+                    )
+                ]
 
                 view = self.view if self.view is not None else self.dataset
                 if view.media_type == fom.GROUP:
@@ -108,6 +118,9 @@ class StateDescription(etas.Serializable):
 
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()
+
+            if isinstance(self.color_scheme, ColorScheme):
+                d["color_scheme"] = self.color_scheme.to_json()
 
             return d
 
@@ -163,9 +176,12 @@ class StateDescription(etas.Serializable):
         fo.config.timezone = d.get("config", {}).get("timezone", None)
 
         spaces = d.get("spaces", None)
-
         if spaces is not None:
             spaces = Space.from_dict(json_util.loads(spaces))
+
+        color_scheme = d.get("color_scheme", None)
+        if color_scheme:
+            color_scheme = ColorScheme.from_dict(json_util.loads(color_scheme))
 
         return cls(
             config=config,
@@ -174,6 +190,7 @@ class StateDescription(etas.Serializable):
             selected_labels=d.get("selected_labels", []),
             view=view,
             spaces=spaces,
+            color_scheme=color_scheme,
         )
 
 
@@ -188,7 +205,7 @@ class SampleField:
     info: t.Optional[JSON]
 
 
-def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
+def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
     data = []
 
     if schema:
@@ -214,12 +231,6 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
             else:
                 subfield = None
 
-            if field.info is not None:
-                # Converts mongoengine types to primitives
-                info = json.loads(json.dumps(field.info))
-            else:
-                info = None
-
             data.append(
                 SampleField(
                     path=path,
@@ -228,11 +239,20 @@ def serialize_fields(schema: t.Dict, dicts=False) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=info,
+                    info=_convert_mongoengine_data(field.info)
+                    if isinstance(field.info, BaseDict)
+                    else field.info,
                 )
             )
 
-    if dicts:
-        return [asdict(f) for f in data]
+    return data
+
+
+def _convert_mongoengine_data(data):
+    if isinstance(data, BaseDict):
+        return {k: _convert_mongoengine_data(v) for k, v in data.items()}
+
+    if isinstance(data, BaseList):
+        return [_convert_mongoengine_data(v) for v in data]
 
     return data

@@ -39,9 +39,9 @@ export default class SpaceTree {
   // a method for adding a new node to the tree
   // the new node is added as a child of the selected node
   // the new node is selected
-  addNodeAfter(node: SpaceNode, newNode: SpaceNode) {
+  addNodeAfter(node: SpaceNode, newNode: SpaceNode, isActive = true) {
     node.append(newNode);
-    node.activeChild = newNode.id;
+    if (isActive) node.activeChild = newNode.id;
     this.updateTree(node);
   }
 
@@ -96,13 +96,13 @@ export default class SpaceTree {
     // can split a space if it has more than one panel
     return node.getPanels().length > 1;
   }
-  splitLayout(node: SpaceNode, layout?: Layout) {
+  splitLayout(node: SpaceNode, layout?: Layout, target?: SpaceNode) {
     const newNodeA = new SpaceNode();
     const newNodeB = new SpaceNode();
-    const lastPanel = node.getLastPanel();
+    const panelToSplit = target || node.getLastPanel();
 
     // move all the current children to the new node
-    this.moveNode(lastPanel, newNodeB);
+    this.moveNode(panelToSplit, newNodeB);
     for (const child of node.children) {
       this.moveNode(child, newNodeA);
     }
@@ -110,10 +110,10 @@ export default class SpaceTree {
     node.append(newNodeA);
     node.append(newNodeB);
     newNodeA.activeChild =
-      node.activeChild === lastPanel.id
+      node.activeChild === panelToSplit.id
         ? newNodeA.getLastPanel().id
         : node.activeChild;
-    newNodeB.activeChild = lastPanel.id;
+    newNodeB.activeChild = panelToSplit.id;
     node.layout = layout;
     this.updateTree(node);
   }

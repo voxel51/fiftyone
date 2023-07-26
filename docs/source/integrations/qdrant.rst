@@ -56,26 +56,22 @@ The example below demonstrates this workflow.
 
 .. note::
 
-    You must install `Qdrant <https://qdrant.tech>`_ and install the
+    You must `launch a Qdrant server <https://qdrant.tech>`_ and install the
     `Qdrant Python client <https://github.com/qdrant/qdrant_client>`_ to run
     this example:
 
     .. code-block:: shell
 
+        docker pull qdrant/qdrant
+        docker run -p 6333:6333 qdrant/qdrant
+
         pip install qdrant-client
 
-    Note that you can store your Qdrant credentials as described in
-    :ref:`this section <qdrant-setup>` to avoid entering them manually each
-    time you interact with your Qdrant index.
+    Note that, if you are using a custom Qdrant server, you can store your
+    credentials as described in :ref:`this section <qdrant-setup>` to avoid
+    entering them manually each time you interact with your Qdrant index.
 
-First, let's start the Qdrant service locally:
-
-.. code-block:: bash
-
-    # Step 1: Run Qdrant service
-    docker run -p 6333:6333 qdrant/qdrant
-
-Next let's load a dataset into FiftyOne and compute embeddings for the samples:
+First let's load a dataset into FiftyOne and compute embeddings for the samples:
 
 .. code-block:: python
     :linenos:
@@ -84,10 +80,10 @@ Next let's load a dataset into FiftyOne and compute embeddings for the samples:
     import fiftyone.brain as fob
     import fiftyone.zoo as foz
 
-    # Step 2: Load your data into FiftyOne
+    # Step 1: Load your data into FiftyOne
     dataset = foz.load_zoo_dataset("quickstart")
 
-    # Steps 3 and 4: Compute embeddings and create a similarity index
+    # Steps 2 and 3: Compute embeddings and create a similarity index
     qdrant_index = fob.compute_similarity(
         dataset, 
         brain_key="qdrant_index",
@@ -100,7 +96,7 @@ by specifying the `brain_key`:
 .. code-block:: python
     :linenos:
 
-    # Step 5: Query your data
+    # Step 4: Query your data
     query = dataset.first().id  # query by sample ID
     view = dataset.sort_by_similarity(
         query, 
@@ -108,7 +104,7 @@ by specifying the `brain_key`:
         k=10,  # limit to 10 most similar samples
     )
 
-    # Step 6 (optional): Cleanup
+    # Step 5 (optional): Cleanup
 
     # Delete the Qdrant collection
     qdrant_index.cleanup()
@@ -163,8 +159,7 @@ To use the Qdrant backend, simply set the optional `backend` parameter of
     fob.compute_similarity(..., backend="qdrant", ...)
 
 Alternatively, you can permanently configure FiftyOne to use the Qdrant backend
-by setting the `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment
-variable:
+by setting the following environment variable:
 
 .. code-block:: shell
 
@@ -182,18 +177,19 @@ or by setting the `default_similarity_backend` parameter of your
 Authentication
 --------------
 
-In order to connect to a Qdrant server, you must provide your server URL, which
-can be done in a variety of ways.
+If you are using a custom Qdrant server, you can provide your credentials in a
+variety of ways.
 
 **Environment variables (recommended)**
 
-The recommended way to configure your Qdrant server URL is to store it in the 
-`FIFTYONE_BRAIN_SIMILARITY_QDRANT_URL` environment variable. This is
-automatically accessed by FiftyOne whenever a connection to Qdrant is made.
+The recommended way to configure your Qdrant credentials is to store them in
+the environment variables shown below, which are automatically accessed by
+FiftyOne whenever a connection to Qdrant is made.
 
 .. code-block:: shell
 
     export FIFTYONE_BRAIN_SIMILARITY_QDRANT_URL=localhost:6333
+    export FIFTYONE_BRAIN_SIMILARITY_QDRANT_API_KEY=XXXXXXXX
 
 **FiftyOne Brain config**
 
@@ -205,7 +201,8 @@ located at `~/.fiftyone/brain_config.json`:
     {
         "similarity_backends": {
             "qdrant": {
-                "url": "http://localhost:6333"
+                "url": "http://localhost:6333",
+                "api_key": "XXXXXXXX"
             }
         }
     }
@@ -214,10 +211,9 @@ Note that this file will not exist until you create it.
 
 **Keyword arguments**
 
-You can manually provide the server URL as a keyword argument each time you
-call methods
-like :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that
-require connections to Qdrant:
+You can manually provide credentials as keyword arguments each time you call
+methods like :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
+that require connections to Qdrant:
 
 .. code:: python
     :linenos:
@@ -229,6 +225,7 @@ require connections to Qdrant:
         backend="qdrant",
         brain_key="qdrant_index",
         url="http://localhost:6333",
+        api_key="XXXXXXXX",
     )
 
 Note that, when using this strategy, you must manually provide the credentials
@@ -241,6 +238,7 @@ when loading an index later via
     qdrant_index = dataset.load_brain_results(
         "qdrant_index",
         url="http://localhost:6333",
+        api_key="XXXXXXXX",
     )
 
 .. _qdrant-config-parameters:
@@ -270,7 +268,6 @@ that includes all of the available parameters:
     {
         "similarity_backends": {
             "qdrant": {
-                "url": "http://localhost:6333",
                 "metric": "cosine",
                 "replication_factor": null,
                 "shard_number": null,
@@ -438,7 +435,7 @@ possibilities:
     # Option 2: Compute embeddings on the fly from model instance
     fob.compute_similarity(
         dataset,
-        model=model
+        model=model,
         backend="qdrant",
         brain_key=brain_key,
     )
@@ -456,7 +453,7 @@ possibilities:
     dataset.compute_embeddings(model, embeddings_field="embeddings")
     fob.compute_similarity(
         dataset,
-        embeddings_field="embeddings",
+        embeddings="embeddings",
         backend="qdrant",
         brain_key=brain_key,
     )

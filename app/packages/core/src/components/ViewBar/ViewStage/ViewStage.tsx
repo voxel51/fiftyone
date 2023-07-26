@@ -193,7 +193,7 @@ const ViewStageDeleteButton = animated(styled.button`
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
     <ViewStageDeleteDiv style={spring} onClick={() => send("STAGE.DELETE")}>
-      <ViewStageDeleteButton>
+      <ViewStageDeleteButton data-cy="btn-view-stage-delete">
         <Close
           style={{
             fontSize: "14px",
@@ -270,6 +270,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   return (
     <ViewStageContainer
       style={containerProps}
+      data-cy="view-stage-container"
       ref={(node) =>
         node &&
         node !== containerRef.current &&
@@ -278,6 +279,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     >
       <ViewStageDiv style={props}>
         <ViewStageInput
+          data-cy="input-view-stage"
           placeholder={stage.length === 0 ? "+ add stage" : ""}
           value={stage}
           autoFocus={focusOnInit}

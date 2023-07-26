@@ -14,7 +14,7 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">
+        <a target="_blank" href="https://slack.voxel51.com">
           <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
           &nbsp Join us on Slack
         </a>
@@ -87,9 +87,24 @@ learn how:
     :image_title: Detectron2
 
 .. customimagelink::
-    :image_link: tutorials/qdrant.html
+    :image_link: integrations/qdrant.html
     :image_src: https://voxel51.com/images/integrations/qdrant-128.png
     :image_title: Qdrant
+
+.. customimagelink::
+    :image_link: integrations/pinecone.html
+    :image_src: https://voxel51.com/images/integrations/pinecone-128.png
+    :image_title: Pinecone
+
+.. customimagelink::
+    :image_link: integrations/milvus.html
+    :image_src: https://voxel51.com/images/integrations/milvus-128.png
+    :image_title: Milvus
+
+.. customimagelink::
+    :image_link: integrations/lancedb.html
+    :image_src: https://voxel51.com/images/integrations/lancedb-128.png
+    :image_title: LanceDB
 
 .. customimagelink::
     :image_link: integrations/activitynet.html
@@ -137,17 +152,17 @@ learn how:
     :image_title: Scale AI
 
 .. customimagelink::
-    :image_link: environments/index.html#google-cloud
+    :image_link: teams/installation.html#google-cloud-storage
     :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
     :image_title: Google Cloud
 
 .. customimagelink::
-    :image_link: environments/index.html#aws
+    :image_link: teams/installation.html#amazon-s3
     :image_src: https://voxel51.com/images/integrations/aws-128.png
     :image_title: Amazon Web Services
 
 .. customimagelink::
-    :image_link: environments/index.html#azure
+    :image_link: teams/installation.html#microsoft-azure
     :image_src: https://voxel51.com/images/integrations/azure-128.png
     :image_title: Azure
 
@@ -328,9 +343,8 @@ Need Support?
 _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
-free to
-`connect with us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ>`_
-or reach out to us at support@voxel51.com.
+free to `connect with us on Slack <https://slack.voxel51.com>`_ or reach out to
+us at support@voxel51.com.
 
 .. toctree::
    :maxdepth: 1
@@ -345,8 +359,8 @@ or reach out to us at support@voxel51.com.
    User Guide <user_guide/index>
    FiftyOne Teams <teams/index>
    Integrations <integrations/index>
-   Release Notes <release-notes>
+   Plugins <plugins/index>
+   CLI <cli/index>
    API Reference <api/fiftyone>
-   CLI Documentation <cli/index>
-   Plugin Documentation <plugins/index>
+   Release Notes <release-notes>
    FAQ <faq/index>

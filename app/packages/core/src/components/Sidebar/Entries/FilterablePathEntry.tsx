@@ -1,61 +1,54 @@
-import React, { useMemo } from "react";
-import {
-  KeyboardArrowDown,
-  KeyboardArrowUp,
-  VisibilityOff,
-} from "@mui/icons-material";
-import { Checkbox } from "@mui/material";
-import {
-  atomFamily,
-  DefaultValue,
-  selectorFamily,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
-import Color from "color";
-
+import { PillButton, useTheme } from "@fiftyone/components";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
+import * as fos from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,
   DETECTION,
   DETECTIONS,
-  Field,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
+  Field,
   INT_FIELD,
   KEYPOINTS,
   LABELS,
   LABELS_PATH,
   LIST_FIELD,
-  meetsFieldType,
   OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_KEYPOINTS,
   VALID_PRIMITIVE_TYPES,
+  meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
-
+import {
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  VisibilityOff,
+} from "@mui/icons-material";
+import { Checkbox } from "@mui/material";
+import Color from "color";
+import React, { Suspense, useMemo } from "react";
+import {
+  DefaultValue,
+  selectorFamily,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
+import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import {
   BooleanFieldFilter,
   NumericFieldFilter,
   StringFieldFilter,
 } from "../../Filters";
-
-import { useTheme, PillButton } from "@fiftyone/components";
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
-import * as fos from "@fiftyone/state";
-
-import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import LabelFieldFilter from "../../Filters/LabelFieldFilter";
 import { NameAndCountContainer } from "../../utils";
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField, pathIsExpanded } from "./utils";
-import LabelFieldFilter from "../../Filters/LabelFieldFilter";
-
-import { labelTagCounts, sampleTagCounts } from "@fiftyone/state";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -183,7 +176,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     (path) =>
     ({ get }) => {
       const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+      const sampleId = get(fos.modalSampleId);
 
       if (data[sampleId]) {
         return data[sampleId][path] || [];
@@ -195,7 +188,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     (path) =>
     ({ set, get }, value) => {
       const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modal).sample._id;
+      const sampleId = get(fos.modalSampleId);
 
       set(fos.pathHiddenLabelsMap, {
         ...data,
@@ -207,7 +200,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
     },
 });
 
-const useHidden = (path: string) => {
+const Hidden = ({ path }: { path: string }) => {
   const [hidden, set] = useRecoilState(hiddenPathLabels(path));
   const num = hidden.length;
   const text = num.toLocaleString();
@@ -271,7 +264,7 @@ const FilterableEntry = ({
   path: string;
   onFocus?: () => void;
   onBlur?: () => void;
-  trigger: (
+  trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
     cb: () => void
@@ -284,9 +277,9 @@ const FilterableEntry = ({
     pathIsExpanded({ modal, path: expandedPath })
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-  const color = disabled
-    ? theme.background.level2
-    : useRecoilValue(fos.pathColor({ path, modal }));
+  const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
+
+  const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(
     fos.fields({
       path: expandedPath,
@@ -305,9 +298,8 @@ const FilterableEntry = ({
 
   const active = useRecoilValue(fos.activeField({ modal, path }));
 
-  const hidden = modal ? useHidden(path) : null;
-
   const onClick = useOnClick({ disabled, modal, path });
+  const isLabelTag = path === "_label_tags";
 
   return (
     <RegularEntry
@@ -320,9 +312,8 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!disabled && (
+          {!disabled && !(modal && isLabelTag) && (
             <Checkbox
-              disableRipple={true}
               checked={active}
               title={`Show ${path}`}
               style={{
@@ -331,6 +322,7 @@ const FilterableEntry = ({
                 padding: 0,
               }}
               key="checkbox"
+              data-cy={`checkbox-${path}`}
               onClick={onClick}
             />
           )}
@@ -346,7 +338,11 @@ const FilterableEntry = ({
                       {PATH_OVERRIDES[path] || path}
                     </span>
                   </span>
-                  {hidden}
+                  {modal && (
+                    <Suspense>
+                      <Hidden path={path} />
+                    </Suspense>
+                  )}
                   <PathEntryCounts
                     key="count"
                     modal={modal}
@@ -387,6 +383,7 @@ const FilterableEntry = ({
             onFocus,
             onBlur,
             title: title || (listField ? `${LIST_FIELD}(${ftype})` : ftype),
+            color: activeColor,
             ...props,
           });
         })}

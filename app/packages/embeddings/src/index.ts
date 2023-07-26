@@ -1,6 +1,6 @@
-import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
-import Embeddings from "./Embeddings";
+import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
+import Embeddings from "./Embeddings";
 import EmbeddingsTabIndicator from "./EmbeddingsTabIndicator";
 
 registerComponent({
@@ -14,3 +14,5 @@ registerComponent({
     TabIndicator: EmbeddingsTabIndicator,
   },
 });
+
+// registerOperator(new OpenEmbeddingsPanel());

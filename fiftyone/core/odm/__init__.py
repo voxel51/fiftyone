@@ -18,7 +18,13 @@ from .database import (
     drop_database,
     sync_database,
     list_datasets,
+    patch_saved_views,
+    patch_annotation_runs,
+    patch_brain_runs,
+    patch_evaluations,
     delete_dataset,
+    delete_saved_view,
+    delete_saved_views,
     delete_evaluation,
     delete_evaluations,
     delete_brain_run,
@@ -40,6 +46,7 @@ from .database import (
 )
 from .dataset import (
     SampleFieldDocument,
+    ColorScheme,
     KeypointSkeleton,
     DatasetAppConfig,
     DatasetDocument,
