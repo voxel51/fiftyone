@@ -27,7 +27,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
       : "../fiftyone/server/main.py";
 
     const procString = getPythonCommand([
-      require.resolve(mainPyPath),
+      mainPyPath,
       "--address",
       "0.0.0.0",
       "--port",
