@@ -85,19 +85,48 @@ class Executor(object):
         }
 
 
-async def execute_or_delegate_operator(operator_name, request_params):
+def execute_operator(operator_uri, ctx, params):
     """Executes the operator with the given name.
 
     Args:
-        operator_name: the name of the operator
+        operator_uri: the URI of the operator
+        ctx: a dictionary of parameters to define the execution context
+        params: a dictionary of parameters for the operator
+
+    Returns:
+        the result of the operator as a dictionary or ``None``
+    """
+    dataset_name = ctx["dataset"].name
+    view = ctx.get("view", None)
+    if view is not None:
+        view = view._serialize()
+    selected = ctx.get("selected", None)
+
+    request_params = dict(
+        operator_uri=operator_uri,
+        dataset_name=dataset_name,
+        view=view,
+        selected=selected,
+        params=params,
+    )
+
+    return asyncio.run(
+        execute_or_delegate_operator(operator_uri, request_params)
+    )
+
+
+async def execute_or_delegate_operator(operator_uri, request_params):
+    """Executes the operator with the given name.
+
+    Args:
+        operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
 
     Returns:
         the result of the operator as a dictionary or ``None``
     """
-
-    (operator, executor, ctx) = prepare_operator_executor(
-        operator_name, request_params
+    operator, executor, ctx = prepare_operator_executor(
+        operator_uri, request_params
     )
 
     if operator.resolve_delegation(ctx):
@@ -137,12 +166,12 @@ async def execute_or_delegate_operator(operator_name, request_params):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-def prepare_operator_executor(operator_name, request_params):
+def prepare_operator_executor(operator_uri, request_params):
     registry = OperatorRegistry()
-    if registry.operator_exists(operator_name) is False:
-        raise ValueError("Operator '%s' does not exist" % operator_name)
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
 
-    operator = registry.get_operator(operator_name)
+    operator = registry.get_operator(operator_uri)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)

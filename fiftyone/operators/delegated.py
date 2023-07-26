@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import traceback
 
 from fiftyone.core.expressions import ObjectId
@@ -15,6 +16,9 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionRunState,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class DelegatedOperation(object):
@@ -119,17 +123,20 @@ class DelegatedOperation(object):
         delegation_target: str = None,
         dataset_name: str = None,
         limit: int = None,
+        log: bool = False,
+        **kwargs,
     ):
-
         paging = None
         if limit is not None:
             paging = DelegatedOpPagingParams(limit=limit)
+
         queued_ops = self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
             delegation_target=delegation_target,
             run_state=ExecutionRunState.QUEUED,
             paging=paging,
+            **kwargs,
         )
 
         for op in queued_ops:
@@ -139,11 +146,19 @@ class DelegatedOperation(object):
                 # pull keys out of context and retrieve from secrets manager
                 # for execution
 
+                if log:
+                    logger.info(
+                        "\nRunning operation %s (%s)", op.id, op.operator
+                    )
                 result = asyncio.run(self._execute_operator(op))
                 self.set_completed(doc_id=op.id, result=result)
+                if log:
+                    logger.info("Operation %s complete", op.id)
             except Exception as e:
                 result = ExecutionResult(error=traceback.format_exc())
                 self.set_failed(doc_id=op.id, result=result)
+                if log:
+                    logger.info("Operation %s failed", op.id)
 
     async def _execute_operator(self, doc: DelegatedOperationDocument):
         operator_uri = doc.operator
@@ -151,7 +166,7 @@ class DelegatedOperation(object):
         context.request_params["run_doc"] = doc.id
 
         prepared = prepare_operator_executor(
-            operator_name=operator_uri, request_params=context.request_params
+            operator_uri, context.request_params
         )
 
         if isinstance(prepared, ExecutionResult):
