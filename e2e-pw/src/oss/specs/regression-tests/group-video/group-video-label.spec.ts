@@ -16,6 +16,14 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
+// without this, platform name (darwin, linux, etc.) is appended the the screenshot name
+// which is reasonable since different platforms might render things differently
+// but this is a temporary fix to avoid having to generate screenshots per platform
+// todo: create a docker script to generate screenshots on a linux platform as well
+test.beforeEach(async ({}, testInfo) => {
+  testInfo.snapshotSuffix = "";
+});
+
 test.describe("groups video labels", () => {
   test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
     [testVideoPath1, testVideoPath2].forEach((outputPath) => {
@@ -49,7 +57,7 @@ test.describe("groups video labels", () => {
       sample1.save()
   
       for _, frame in sample2.frames.items():
-        d2 = fo.Detection(bounding_box=[0.5, 0.5, 0.25, 0.25], label="s1d2")
+        d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
         frame["d2"] = d2
       sample2.save() 
       `
