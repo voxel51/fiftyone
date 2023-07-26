@@ -1,4 +1,5 @@
 import { Loading, useTheme } from "@fiftyone/components";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
@@ -48,7 +49,6 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 type View = "pov" | "top";
 
@@ -74,24 +74,12 @@ export const Looker3d = () => {
   const { coloring } = useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE })
   );
-  const [activePcdSlices, setActivePcdSlices] = useRecoilState(
-    fos.activePcdSlices
-  );
-  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
-  const defaultPcdSlice = useRecoilValue(fos.defaultPcdSlice);
 
-  useEffect(() => {
-    if (
-      (!activePcdSlices || activePcdSlices.length === 0) &&
-      defaultPcdSlice?.length > 0
-    ) {
-      setActivePcdSlices([defaultPcdSlice]);
-    }
-  }, [activePcdSlices, setActivePcdSlices, defaultPcdSlice]);
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
 
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const sampleMap = useRecoilValue(fos.activePcdSliceToSampleMap);
+  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
 
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
@@ -260,8 +248,8 @@ export const Looker3d = () => {
           return;
         }
       }
-      const hovered = get(fos.hoveredSample) as Sample;
-      if (hovered && hovered._id !== sample._id) {
+      const hovered = get(fos.hoveredSample);
+      if (hovered && hovered._id !== sample.id) {
         return;
       }
 
@@ -274,7 +262,7 @@ export const Looker3d = () => {
       const changed = onChangeView("top");
       if (changed) return;
 
-      set(fos.modal, null);
+      set(fos.currentModalSample, null);
     },
     [jsonPanel, helpPanel, selectedLabels, hovering]
   );

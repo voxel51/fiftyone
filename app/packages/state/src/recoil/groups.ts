@@ -1,16 +1,17 @@
-import { pcdSample, pcdSampleQuery } from "@fiftyone/relay";
+import * as foq from "@fiftyone/relay";
 import {
   DYNAMIC_GROUP_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
 } from "@fiftyone/utilities";
+import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily, waitForAll } from "recoil";
-import { graphQLSelectorFamily } from "recoil-relay";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { graphQLSelector } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
-import { dataset, pinned3DSample } from "./atoms";
+import { dataset } from "./atoms";
 import { ModalSample, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
@@ -18,6 +19,16 @@ import { datasetName } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
+
+export const pinned3DSampleSlice = atom<string>({
+  key: "pinned3DSampleSlice",
+  default: null,
+});
+
+export const pinned3DSample = selector({
+  key: "pinned3DSample",
+  get: ({ get }) => get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)],
+});
 
 export type SliceName = string | undefined | null;
 
@@ -31,7 +42,7 @@ export const isGroup = selector<boolean>({
 export const defaultGroupSlice = selector<string>({
   key: "defaultGroupSlice",
   get: ({ get }) => {
-    return get(dataset).defaultGroupSlice;
+    return get(groupSlice(false)) ? get(dataset).defaultGroupSlice : null;
   },
 });
 
@@ -40,18 +51,11 @@ export const groupSlice = atomFamily<string, boolean>({
   default: null,
 });
 
-export const resolvedGroupSlice = selectorFamily<string, boolean>({
-  key: "resolvedGroupSlice",
-  get:
-    (modal) =>
-    ({ get }) => {
-      return get(groupSlice(modal)) || get(defaultGroupSlice);
-    },
-});
-
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
-  get: ({ get }) => get(dataset).groupMediaTypes,
+  get: ({ get }) => {
+    return get(groupSlice(false)) ? get(dataset).groupMediaTypes : null;
+  },
 });
 
 export const groupSlices = selector<string[]>({
@@ -71,74 +75,50 @@ export const groupMediaTypesSet = selector<Set<string>>({
     new Set(get(groupMediaTypes).map(({ mediaType }) => mediaType)),
 });
 
-export const pcdOnly = selector<boolean>({
-  key: "pcdOnly",
-  get: ({ get }) => {
-    const types = get(groupMediaTypesSet);
-    console.log(types);
-    return types.size === 1;
-  },
-});
-
 export const hasGroupSlices = selector<boolean>({
   key: "hasGroupSlices",
-  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
-});
-
-export const defaultPcdSlice = selector<string | null>({
-  key: "defaultPcdSlice",
-  get: ({ get }) => {
-    const { groupMediaTypes } = get(dataset);
-
-    for (const { name, mediaType } of groupMediaTypes) {
-      // return the first point cloud slice
-      if (["point_cloud", "point-cloud"].includes(mediaType)) {
-        return name;
-      }
-    }
-
-    return null;
-  },
-});
-
-export const pointCloudSliceExists = selector<boolean>({
-  key: "sliceMediaTypeMap",
   get: ({ get }) =>
-    get(dataset).groupMediaTypes.some((g) => g.mediaType === "point_cloud"),
-});
-
-export const allPcdSlices = selector<string[]>({
-  key: "allPcdSlices",
-  get: ({ get }) =>
-    get(dataset)
-      .groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
-      .map((g) => g.name),
+    get(isGroup) && get(groupSlice(false)) && Boolean(get(groupSlices).length),
 });
 
 export const activePcdSlices = atom<string[] | null>({
   key: "activePcdSlices",
-  default: null,
+  default: [],
 });
 
-export const activePcdSliceToSampleMap = selector({
-  key: "activePcdSliceToSampleMap",
+export const activePcdSlicesToSampleMap = selector({
+  key: "activePcdSlicesToSampleMap",
   get: ({ get }) => {
-    const activePcdSlicesValue = get(activePcdSlices);
-    if (!activePcdSlicesValue || activePcdSlicesValue.length === 0)
-      return {
-        default: get(modalSample),
-      };
+    const active = get(activePcdSlices);
 
-    const samples = get(
-      waitForAll(
-        activePcdSlicesValue?.map((sliceName) =>
-          pcdSampleQueryFamily(sliceName)
-        )
+    return Object.fromEntries(
+      Object.entries(get(allPcdSlicesToSampleMap)).filter(([slice]) =>
+        active.includes(slice)
       )
     );
-    return Object.fromEntries(
-      activePcdSlicesValue.map((sliceName, i) => [sliceName, samples[i]])
+  },
+});
+
+export const allPcdSlicesToSampleMap = selector({
+  key: "allPcdSlicesToSampleMap",
+  get: ({ get }) => {
+    return Object.fromEntries<ModalSample>(
+      get(pcdSamples).map<[string, ModalSample]>((sample) => [
+        getPath(sample.sample, `${get(groupField)}.name`) as unknown as string,
+        sample as ModalSample,
+      ])
     );
+  },
+});
+
+export const allPcdSlices = selector<string[]>({
+  key: "allPcdSlices",
+  get: ({ get }) => {
+    return get(groupMediaTypes)
+      .filter(({ mediaType }) =>
+        ["point-cloud", "point_cloud"].includes(mediaType)
+      )
+      .map(({ name }) => name);
   },
 });
 
@@ -149,8 +129,8 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal && get(pinned3DSample)) {
-        return get(currentSlices(true))[0];
+      if (modal && get(pinned3DSampleSlice)) {
+        return get(pinned3DSampleSlice);
       }
 
       return get(groupSlice(modal));
@@ -164,13 +144,11 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal && get(pinned3DSample)) {
+      if (modal && get(pinned3DSampleSlice)) {
         return get(activePcdSlices);
       }
 
-      const defaultCurrentSlice = get(groupSlice(modal));
-
-      return defaultCurrentSlice ? [defaultCurrentSlice] : null;
+      return [get(groupSlice(modal))].filter((s) => s);
     },
 });
 
@@ -178,7 +156,7 @@ export const activeSliceDescriptorLabel = selector<string>({
   key: "activeSliceDescriptorLabel",
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
-    const activePcdSlicesValue = get(activePcdSlices) ?? [get(defaultPcdSlice)];
+    const activePcdSlicesValue = get(activePcdSlices);
     const isPcdSliceActive = activePcdSlicesValue?.includes(currentSliceValue);
 
     if (!isPcdSliceActive) {
@@ -213,32 +191,36 @@ export const refreshGroupQuery = atom<number>({
   default: 0,
 });
 
-export const pcdSampleQueryFamily = graphQLSelectorFamily<
-  VariablesOf<pcdSampleQuery>,
-  string,
-  ResponseFrom<pcdSampleQuery>["sample"]
+export const pcdSamples = graphQLSelector<
+  VariablesOf<foq.paginateSamplesQuery>,
+  ModalSample[]
 >({
   key: "pcdSampleQuery",
   environment: RelayEnvironmentKey,
-  query: pcdSample,
-  variables:
-    (pcdSlice) =>
-    ({ get }) => {
-      const groupIdValue = get(groupId);
+  query: foq.paginateSamples,
+  variables: ({ get }) => {
+    const groupIdValue = get(groupId);
 
-      return {
-        dataset: get(datasetName),
-        view: get(view),
-        filter: {
-          group: {
-            id: groupIdValue,
-            slices: [pcdSlice],
-          },
+    return {
+      dataset: get(datasetName),
+      view: get(view),
+      filter: {
+        group: {
+          id: groupIdValue,
+          slices: get(allPcdSlices),
         },
-      };
-    },
-  mapResponse: (data: ResponseFrom<pcdSampleQuery>) =>
-    mapSampleResponse(data.sample as ModalSample),
+      },
+    };
+  },
+  mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    return data.samples.edges.map((edge) => {
+      if (edge.node.__typename !== "PointCloudSample") {
+        throw new Error("unexpected type");
+      }
+
+      return mapSampleResponse(edge.node as ModalSample);
+    });
+  },
 });
 
 export const groupByFieldValue = atom<string | null>({
@@ -251,13 +233,11 @@ export const nestedGroupIndex = atom<number>({
   default: null,
 });
 
-export const activeModalSample = selector<
-  NonNullable<ResponseFrom<pcdSampleQuery>["sample"]>["sample"]
->({
+export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
-    if (get(pinned3DSample)) {
-      return get(pcdSampleQueryFamily(get(currentSlice(true))))?.sample;
+    if (get(pinned3DSampleSlice)) {
+      get(activePcdSlicesToSampleMap)[get(pinned3DSampleSlice)]?.sample;
     }
 
     return get(modalSample).sample;

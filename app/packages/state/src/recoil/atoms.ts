@@ -8,7 +8,7 @@ import {
   selector,
   useRecoilCallback,
 } from "recoil";
-import { allPcdSlices, groupSlice, pointCloudSliceExists } from "./groups";
+import { groupMediaTypesSet } from "./groups";
 import { ColorSchemeSetting, State } from "./types";
 
 export const refresher = atom<number>({
@@ -180,11 +180,6 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const pinned3DSample = atom<string | null>({
-  key: "pinned3DSample",
-  default: null,
-});
-
 export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
   key: "extendedSelection",
   default: { selection: null },
@@ -307,13 +302,8 @@ export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   ],
 });
 
-export const isMain3d = selector<boolean>({
-  key: "isMain3d",
-  get: ({ get }) => get(allPcdSlices).includes(get(groupSlice(true))),
-});
-
-export const groupMediaIsSlotVisibleSetting = atom<boolean>({
-  key: "groupMediaIsSlotVisibleSetting",
+export const groupMedia3dVisibleSetting = atom<boolean>({
+  key: "groupMediaIs3dVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
@@ -323,14 +313,21 @@ export const groupMediaIsSlotVisibleSetting = atom<boolean>({
   ],
 });
 
-export const groupMediaIsSlotVisible = selector<boolean>({
-  key: "groupMediaIsSlotVisible",
+export const onlyPcd = selector<boolean>({
+  key: "onlyPcd",
   get: ({ get }) => {
-    return (
-      get(groupMediaIsSlotVisibleSetting) &&
-      get(pointCloudSliceExists) &&
-      !get(allPcdSlices).includes(get(groupSlice(true)))
-    );
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud") || set.has("point-cloud");
+    return set.size === 1 && hasPcd;
+  },
+});
+
+export const groupMediaIs3dVisible = selector<boolean>({
+  key: "groupMedia3dVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud") || set.has("point-cloud");
+    return get(groupMedia3dVisibleSetting) && hasPcd;
   },
 });
 

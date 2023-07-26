@@ -5,13 +5,7 @@ import { NestedGroup } from "./NestedGroup";
 import { UnorderedDynamicGroup } from "./UnorderedDynamicGroup";
 
 export const DynamicGroup = () => {
-  /**
-   * check if ordered or unordered
-   */
-  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
-
-  if (!isDynamicGroup) return null;
 
   return (
     <>

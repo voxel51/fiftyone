@@ -7,7 +7,7 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
   const modal = useRecoilValueLoadable(modalSample);
   const resetGroupSlice = useRecoilCallback(
     ({ set, snapshot }) =>
-      async () => {
+      () => {
         snapshot.getPromise(groupSlice(false)).then((slice) => {
           set(groupSlice(true), slice);
         });

@@ -5,9 +5,14 @@ import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
-import { pinned3DSample } from "./atoms";
 import { filters } from "./filters";
-import { groupId, groupSlice, hasGroupSlices } from "./groups";
+import {
+  groupId,
+  groupSlice,
+  hasGroupSlices,
+  pinned3DSample,
+  pinned3DSampleSlice,
+} from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
@@ -16,17 +21,20 @@ import { view } from "./view";
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
-    const override = get(pinned3DSample);
+    const override = get(pinned3DSampleSlice);
 
-    return override ? override : get(modalSampleId);
+    return override ? get(pinned3DSample).id : get(modalSampleId);
   },
 });
 
 export type ModalSampleData = Exclude<
-  ResponseFrom<mainSampleQuery>["sample"],
-  {
-    readonly __typename: "%other";
-  }
+  Exclude<
+    ResponseFrom<mainSampleQuery>["sample"],
+    {
+      readonly __typename: "%other";
+    }
+  >,
+  null
 >;
 
 export type ModalSample = {
@@ -94,7 +102,7 @@ export const modalSample = graphQLSelector<
   environment: RelayEnvironmentKey,
   key: "modalSample",
   query: mainSample,
-  mapResponse: (data: ModalSampleResponse, { get, variables }) => {
+  mapResponse: (data: ModalSampleResponse, { variables }) => {
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(

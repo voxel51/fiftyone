@@ -10,7 +10,7 @@ import EnsureGroupSample from "./EnsureGroupSample";
 import { groupContainer, mainGroup } from "./Group.module.css";
 import { GroupCarousel } from "./GroupCarousel";
 import { GroupImageVideoSample } from "./GroupImageVideoSample";
-import { GroupSample3d } from "./GroupSample3d";
+import GroupSample3d from "./GroupSample3d";
 
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
@@ -19,17 +19,13 @@ export const GroupView = () => {
   const theme = useTheme();
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
-
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
-
-  const isSlotVisible = useRecoilValue(fos.groupMediaIsSlotVisible);
+  const is3dVisible = useRecoilValue(fos.groupMediaIs3dVisible);
   const isMainVisibleSetting = useRecoilValue(
     fos.groupMediaIsMainVisibleSetting
   );
-  const isMain3d = useRecoilValue(fos.isMain3d);
-
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
     DEFAULT_SPLIT_VIEW_LEFT_WIDTH
@@ -43,13 +39,13 @@ export const GroupView = () => {
           <Resizable
             size={{
               height: "100% !important",
-              width: isSlotVisible ? width : "100%",
+              width: is3dVisible ? width : "100%",
             }}
             minWidth={300}
-            maxWidth={isSlotVisible ? "90%" : "100%"}
+            maxWidth={is3dVisible ? "90%" : "100%"}
             enable={{
               top: false,
-              right: isSlotVisible ? true : false,
+              right: is3dVisible ? true : false,
               bottom: false,
               left: false,
               topRight: false,
@@ -57,13 +53,9 @@ export const GroupView = () => {
               bottomLeft: false,
               topLeft: false,
             }}
-            onResizeStop={(_, __, ___, { width: delta }) => {
-              if (width === "100%") {
-                setWidth(DEFAULT_SPLIT_VIEW_LEFT_WIDTH);
-              } else {
-                setWidth(String(Number(width) + delta));
-              }
-            }}
+            onResizeStop={(_, __, ___, { width: delta }) =>
+              setWidth(String(Number(width) + delta))
+            }
             style={{
               position: "relative",
               borderRight: `1px solid ${theme.primary.plainBorder}`,
@@ -76,23 +68,17 @@ export const GroupView = () => {
             {isCarouselVisible && (
               <GroupCarousel
                 key={`${key}-${mediaField}`}
-                fullHeight={!isMainVisibleSetting && !isSlotVisible}
+                fullHeight={!isMainVisibleSetting}
               />
             )}
             {
               <EnsureGroupSample>
-                {isMainVisibleSetting ? (
-                  isMain3d ? (
-                    <GroupSample3d />
-                  ) : (
-                    <GroupImageVideoSample lookerRef={lookerRef} />
-                  )
-                ) : null}
+                <GroupImageVideoSample lookerRef={lookerRef} />
               </EnsureGroupSample>
             }
           </Resizable>
         )}
-        {isSlotVisible && <GroupSample3d />}
+        {is3dVisible && <GroupSample3d />}
       </div>
     </div>
   );
