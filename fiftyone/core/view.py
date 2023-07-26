@@ -166,6 +166,17 @@ class DatasetView(foc.SampleCollection):
         return self._outputs_dynamic_groups()
 
     @property
+    def _has_slices(self):
+        if self._dataset.media_type != fom.GROUP:
+            return False
+
+        for stage in self._stages:
+            if isinstance(stage, fost.SelectGroupSlices):
+                return False
+
+        return True
+
+    @property
     def _sample_cls(self):
         return fos.SampleView
 
@@ -188,7 +199,7 @@ class DatasetView(foc.SampleCollection):
     @property
     def group_field(self):
         """The group field of the view, or None if the view is not grouped."""
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_field
@@ -198,7 +209,7 @@ class DatasetView(foc.SampleCollection):
         """The current group slice of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         if self.__group_slice is not None:
@@ -211,7 +222,7 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("DatasetView has no groups")
 
-        if self._is_dynamic_groups and self._dataset.media_type != fom.GROUP:
+        if self._is_dynamic_groups and not self._has_slices:
             raise ValueError("Dynamic grouped collections don't have slices")
 
         if slice_name is not None and slice_name not in self.group_media_types:
@@ -226,7 +237,7 @@ class DatasetView(foc.SampleCollection):
         """The list of group slices of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_slices
@@ -236,7 +247,7 @@ class DatasetView(foc.SampleCollection):
         """A dict mapping group slices to media types, or None if the view is
         not grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_media_types
@@ -246,7 +257,7 @@ class DatasetView(foc.SampleCollection):
         """The default group slice of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.default_group_slice

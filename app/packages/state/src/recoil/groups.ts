@@ -57,9 +57,11 @@ export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(groupMediaTypes)
-      .map(({ name }) => name)
-      .sort();
+    return get(groupSlice(false))
+      ? get(groupMediaTypes)
+          .map(({ name }) => name)
+          .sort()
+      : [];
   },
 });
 
@@ -148,12 +150,10 @@ export const currentSlice = selectorFamily<string | null, boolean>({
       if (!get(isGroup)) return null;
 
       if (modal && get(pinned3DSample)) {
-        const current = get(currentSlices(true));
-
-        return current?.length === 1 ? current[0] : get(defaultPcdSlice);
+        return get(currentSlices(true))[0];
       }
 
-      return get(groupSlice(modal)) || get(defaultGroupSlice);
+      return get(groupSlice(modal));
     },
 });
 
@@ -168,8 +168,7 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
         return get(activePcdSlices);
       }
 
-      const defaultCurrentSlice =
-        get(groupSlice(modal)) || get(defaultGroupSlice);
+      const defaultCurrentSlice = get(groupSlice(modal));
 
       return defaultCurrentSlice ? [defaultCurrentSlice] : null;
     },

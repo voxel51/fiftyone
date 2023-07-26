@@ -3,8 +3,8 @@ import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
 import useSendEvent from "./useSendEvent";
 
 import * as foq from "@fiftyone/relay";
-import { groupSlice, stateSubscription, view } from "../recoil";
 import { useErrorHandler } from "react-error-boundary";
+import { groupSlice, stateSubscription, view } from "../recoil";
 
 const useSetGroupSlice = () => {
   const send = useSendEvent();
@@ -13,6 +13,7 @@ const useSetGroupSlice = () => {
   const onError = useErrorHandler();
 
   return useRecoilTransaction_UNSTABLE(({ get, set }) => (slice: string) => {
+    throw new Error("WUT");
     set(groupSlice(false), slice);
     send((session) =>
       commit({
