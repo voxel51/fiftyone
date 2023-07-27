@@ -6,6 +6,7 @@ FiftyOne Zoo models provided by :mod:`torchvision:torchvision.models`.
 |
 """
 import inspect
+import pkg_resources
 from packaging import version
 
 import eta.core.utils as etau
@@ -93,7 +94,18 @@ class TorchvisionImageModel(fout.TorchImageModel):
 
     def _load_network(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
-        kwargs = config.entrypoint_args or {}
+
+        torchvision_version = pkg_resources.get_distribution(
+            "torchvision"
+        ).version
+
+        if pkg_resources.parse_version(
+            torchvision_version
+        ) < pkg_resources.parse_version("0.13"):
+            kwargs = {"pretrained": True} if config.entrypoint_args else {}
+        else:
+            kwargs = config.entrypoint_args or {}
+
         model_dir = fo.config.model_zoo_dir
 
         monkey_patcher = _make_load_state_dict_from_url_monkey_patcher(
