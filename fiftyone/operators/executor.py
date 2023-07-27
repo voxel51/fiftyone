@@ -12,6 +12,7 @@ import traceback
 import fiftyone as fo
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
+from fiftyone.plugins.secrets import PluginSecretsResolver
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
@@ -102,6 +103,7 @@ async def execute_operator(operator_name, request_params):
         return ExecutionResult(
             error="Validation Error", validation_ctx=validation_ctx
         )
+    ctx.resolve_secret_values(operator._plugin_secrets)
 
     try:
         raw_result = await (
@@ -178,6 +180,8 @@ class ExecutionContext(object):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
 
     @property
     def view(self):
@@ -254,6 +258,24 @@ class ExecutionContext(object):
             message: a message to log
         """
         self.trigger("console_log", {"message": message})
+
+    def secret(self, key):
+        return self._secrets.get(key, None)
+
+    @property
+    def secrets(self) -> dict:
+        print("context.secrets")
+        return self._secrets
+
+    def resolve_secret_values(self, keys):
+        print("resolve_secrets")
+        if self._secrets_client is None:
+            return None
+        for key in keys:
+            secret = self._secrets_client.get_secret(key)
+            if secret:
+                self._secrets[secret.key] = secret.value
+        print(self._secrets)
 
 
 class ExecutionResult(object):

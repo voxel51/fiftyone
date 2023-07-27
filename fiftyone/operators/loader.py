@@ -58,6 +58,11 @@ class PluginContext(object):
         """The plugin name."""
         return self.plugin_definition.name
 
+    @property
+    def secrets(self):
+        """List of keys for required secrets as specified in the plugin definition."""
+        return self.plugin_definition.secrets
+
     def has_errors(self):
         """Determines whether the plugin has errors.
 
@@ -94,6 +99,8 @@ class PluginContext(object):
             instance = cls()
             if self.can_register(instance):
                 instance.plugin_name = self.name
+                if self.secrets:
+                    instance.add_secrets(self.secrets)
                 self.instances.append(instance)
         except:
             logger.warning(
@@ -116,7 +123,7 @@ class PluginContext(object):
             if not os.path.isfile(module_path):
                 return
 
-            parent_dir = os.path.dirname(module_dir)
+            parent_dir = os.path.basename(module_dir)
             spec = importlib.util.spec_from_file_location(
                 parent_dir, module_path
             )
