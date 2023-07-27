@@ -2726,7 +2726,7 @@ class DelegatedLaunchCommand(Command):
     Examples::
 
         # Launch a local service
-        fiftyone delegated launch --type local
+        fiftyone delegated launch
     """
 
     @staticmethod
@@ -2766,7 +2766,7 @@ def _launch_delegated_local():
 
 
 class DelegatedListCommand(Command):
-    """List delegated operations that you've run.
+    """List delegated operations.
 
     Examples::
 
@@ -2803,7 +2803,7 @@ class DelegatedListCommand(Command):
             "--state",
             default=None,
             help=(
-                "only list operations with this state. Supported values are: "
+                "only list operations with this state. Supported values are "
                 "('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')"
             ),
         )
@@ -2811,7 +2811,7 @@ class DelegatedListCommand(Command):
             "--sort-by",
             default="queued_at",
             help=(
-                "how to sort the operations. Supported values are: "
+                "how to sort the operations. Supported values are "
                 "('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
             ),
         )
@@ -2921,7 +2921,7 @@ def _print_delegated_list(ops):
 
 
 class DelegatedInfoCommand(Command):
-    """Prints information about a delegated operation that you've run.
+    """Prints information about a delegated operation.
 
     Examples::
 
