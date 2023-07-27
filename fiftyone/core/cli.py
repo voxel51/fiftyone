@@ -2755,7 +2755,7 @@ class DelegatedLaunchCommand(Command):
 
 def _launch_delegated_local():
     try:
-        dos = food.DelegatedOperation()
+        dos = food.DelegatedOperationService()
 
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
@@ -2832,7 +2832,7 @@ class DelegatedListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        dos = food.DelegatedOperation()
+        dos = food.DelegatedOperationService()
 
         state = _parse_state(args.state)
         paging = _parse_paging(
@@ -2935,7 +2935,7 @@ class DelegatedInfoCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        dos = food.DelegatedOperation()
+        dos = food.DelegatedOperationService()
         op = dos.get(ObjectId(args.id))
         fo.pprint(op._doc)
 
@@ -3018,7 +3018,7 @@ def _cleanup_orphan_delegated(dry_run=False):
     db = get_db_conn()
     dataset_ids = set(d["_id"] for d in db.datasets.find({}, {"_id": 1}))
 
-    dos = food.DelegatedOperation()
+    dos = food.DelegatedOperationService()
     ops = dos.list_operations()
 
     del_ids = set(op.id for op in ops if op.dataset_id not in dataset_ids)
@@ -3043,7 +3043,7 @@ def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
             "Deleting operations that are currently running is not allowed"
         )
 
-    dos = food.DelegatedOperation()
+    dos = food.DelegatedOperationService()
     ops = dos.list_operations(
         operator=operator,
         dataset_name=dataset,
