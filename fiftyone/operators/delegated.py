@@ -172,6 +172,6 @@ class DelegatedOperation(object):
         if isinstance(prepared, ExecutionResult):
             self.set_failed(doc_id=doc.id, result=prepared)
         else:
-            (operator, _, ctx) = prepared
+            operator, _, ctx = prepared
             self.set_running(doc_id=doc.id)
             return operator.execute(ctx)

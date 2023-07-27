@@ -10,7 +10,8 @@ import types as python_types
 import traceback
 from enum import Enum
 
-import fiftyone as fo
+import fiftyone.core.dataset as fod
+import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
 
@@ -90,22 +91,18 @@ def execute_operator(operator_uri, ctx, params):
 
     Args:
         operator_uri: the URI of the operator
-        ctx: a dictionary of parameters to define the execution context
+        ctx: a dictionary of parameters defining the execution context
         params: a dictionary of parameters for the operator
 
     Returns:
-        the result of the operator as a dictionary or ``None``
+        an :class:`ExecutionResult`
     """
-    dataset_name = ctx["dataset"].name
-    view = ctx.get("view", None)
-    if view is not None:
-        view = view._serialize()
-    selected = ctx.get("selected", None)
+    dataset_name, view_stages, selected = _parse_ctx(ctx)
 
     request_params = dict(
         operator_uri=operator_uri,
         dataset_name=dataset_name,
-        view=view,
+        view=view_stages,
         selected=selected,
         params=params,
     )
@@ -113,6 +110,30 @@ def execute_operator(operator_uri, ctx, params):
     return asyncio.run(
         execute_or_delegate_operator(operator_uri, request_params)
     )
+
+
+def _parse_ctx(ctx):
+    dataset = ctx.get("dataset", None)
+    view = ctx.get("view", None)
+    selected = ctx.get("selected", None)
+
+    if dataset is None and isinstance(view, fov.DatasetView):
+        dataset = view._root_dataset
+
+    if view is None:
+        if isinstance(dataset, str):
+            dataset = fod.load_dataset(dataset)
+
+        view = dataset.view()
+
+    view_stages = view._serialize()
+
+    if isinstance(dataset, fod.Dataset):
+        dataset_name = dataset.name
+    else:
+        dataset_name = dataset
+
+    return dataset_name, view_stages, selected
 
 
 async def execute_or_delegate_operator(operator_uri, request_params):
@@ -123,11 +144,13 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         request_params: a dictionary of parameters for the operator
 
     Returns:
-        the result of the operator as a dictionary or ``None``
+        an :class:`ExecutionResult`
     """
-    operator, executor, ctx = prepare_operator_executor(
-        operator_uri, request_params
-    )
+    prepared = prepare_operator_executor(operator_uri, request_params)
+    if isinstance(prepared, ExecutionResult):
+        raise prepared.to_exception()
+    else:
+        operator, executor, ctx = prepared
 
     if operator.resolve_delegation(ctx):
         try:
@@ -178,7 +201,7 @@ def prepare_operator_executor(operator_uri, request_params):
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
-            error="Validation Error", validation_ctx=validation_ctx
+            error="Validation error", validation_ctx=validation_ctx
         )
 
     return operator, executor, ctx
@@ -275,7 +298,7 @@ class ExecutionContext(object):
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` to operate on."""
         dataset_name = self.request_params.get("dataset_name", None)
-        d = fo.load_dataset(dataset_name)
+        d = fod.load_dataset(dataset_name)
         return d
 
     @property
@@ -349,6 +372,23 @@ class ExecutionResult(object):
         """Whether the result is a generator or an async generator."""
         return _is_generator(self.result)
 
+    def to_exception(self):
+        """Returns an :class:`ExecutionError` representing a failed execution
+        result.
+
+        Returns:
+            a :class:`ExecutionError`
+        """
+        msg = self.error
+
+        if self.validation_ctx.invalid:
+            val_error = self.validation_ctx.errors[0]
+            path = val_error.path.lstrip(".")
+            reason = val_error.reason
+            msg += f". Path: {path}. Reason: {reason}"
+
+        return ExecutionError(msg)
+
     def to_json(self):
         """Returns a JSON dict representation of the result.
 
@@ -363,6 +403,10 @@ class ExecutionResult(object):
             if self.validation_ctx
             else None,
         }
+
+
+class ExecutionError(Exception):
+    """An error that occurs while executing an operator."""
 
 
 class ValidationError(object):
@@ -407,13 +451,12 @@ class ValidationContext(object):
         self.ctx = ctx
         self.params = ctx.params
         self.inputs_property = inputs_property
-        self._errors = []
+        self.errors = []
         self.disable_schema_validation = (
             operator.config.disable_schema_validation
         )
         if self.inputs_property is None:
             self.invalid = False
-            self.errors = []
         else:
             self.errors = self._validate()
             self.invalid = len(self.errors) > 0
@@ -437,7 +480,7 @@ class ValidationContext(object):
         """
         if self.disable_schema_validation and error.custom != True:
             return
-        self._errors.append(error)
+        self.errors.append(error)
 
     def _validate(self):
         params = self.params
@@ -447,7 +490,7 @@ class ValidationContext(object):
         if validation_error:
             self.add_error(validation_error)
 
-        return self._errors
+        return self.errors
 
     def validate_enum(self, path, property, value):
         """Validates an enum value.
