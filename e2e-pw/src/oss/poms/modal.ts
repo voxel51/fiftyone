@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import { Duration } from "../utils";
 import { ModalSidebarPom } from "./modal-sidebar";
 
@@ -7,13 +7,20 @@ export class ModalPom {
   readonly sidebarPom: ModalSidebarPom;
   readonly modal: Locator;
   readonly groupCarousel: Locator;
+  readonly assert: ModalAsserter;
 
   constructor(page: Page) {
     this.page = page;
     this.sidebarPom = new ModalSidebarPom(page);
+    this.assert = new ModalAsserter(this);
 
     this.modal = page.getByTestId("modal");
     this.groupCarousel = this.modal.getByTestId("group-carousel");
+  }
+
+  async toggleSelection() {
+    await this.getLooker().hover();
+    await this.modal.getByTestId("selectable-bar").click();
   }
 
   async navigateSample(
@@ -72,12 +79,12 @@ export class ModalPom {
     return this.page.press("body", "Escape");
   }
 
-  async navigateNextSample(expectErrorInfo = false) {
-    return this.navigateSample("forward", expectErrorInfo);
+  async navigateNextSample(allowErrorInfo = false) {
+    return this.navigateSample("forward", allowErrorInfo);
   }
 
-  async navigatePreviousSample(expectErrorInfo = false) {
-    return this.navigateSample("backward", expectErrorInfo);
+  async navigatePreviousSample(allowErrorInfo = false) {
+    return this.navigateSample("backward", allowErrorInfo);
   }
 
   async getGroupPinnedText() {
@@ -127,5 +134,17 @@ export class ModalPom {
       allowErrorInfo,
       { timeout: Duration.Seconds(10) }
     );
+  }
+}
+
+class ModalAsserter {
+  constructor(private readonly modalPom: ModalPom) {}
+
+  async verifySelection(n: number) {
+    const action = this.modalPom.modal.getByTestId("action-manage-selected");
+
+    const count = await action.first().textContent();
+
+    expect(count).toBe(String(n));
   }
 }

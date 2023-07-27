@@ -1,7 +1,11 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
 
@@ -30,13 +34,38 @@ const Redirect = () => {
 export default () => {
   const pcdSlices = useRecoilValueLoadable(fos.allPcdSlicesToSampleMap);
 
-  const [pinnedSlice, setPinnedSlice] = useRecoilState(fos.pinned3DSampleSlice);
+  const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
   const groupSlice = useRecoilValue(fos.groupSlice(true));
 
   if (pcdSlices.state === "hasError") {
     throw pcdSlices.contents;
   }
+
+  const assignSlices = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      (
+        slices: string[],
+        samples: {
+          [k: string]: fos.ModalSample;
+        }
+      ) => {
+        let newSlice = pinnedSlice;
+        for (let index = 0; index < slices.length; index++) {
+          const element = slices[index];
+          if (samples[element]) {
+            set(fos.pinned3DSampleSlice, element);
+            newSlice = element;
+            break;
+          }
+        }
+
+        set(fos.activePcdSlices, (cur) =>
+          Array.from(new Set([newSlice, ...cur.filter((s) => samples[s])]))
+        );
+      },
+    []
+  );
 
   useEffect(() => {
     if (pcdSlices.state !== "hasValue") {
@@ -51,15 +80,8 @@ export default () => {
       return;
     }
 
-    for (let index = 0; index < slices.length; index++) {
-      const element = slices[index];
-
-      if (pcdSlices.contents[element]) {
-        setPinnedSlice(element);
-        return;
-      }
-    }
-  }, [slices, groupSlice, pinnedSlice, pcdSlices, setPinnedSlice]);
+    assignSlices(slices, pcdSlices.contents);
+  }, [assignSlices, slices, groupSlice, pinnedSlice, pcdSlices]);
 
   if (pcdSlices.state === "loading" || !pinnedSlice) {
     return <Loading>Pixelating...</Loading>;

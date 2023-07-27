@@ -10,21 +10,16 @@ import { useRecoilValue } from "recoil";
 import { SampleBar } from "./Bars";
 import Looker from "./Looker";
 
-interface SampleProps {
-  lookerRefCallback: (looker: AbstractLooker) => void;
+export const SampleWrapper = ({
+  children,
+  hideSampleBar,
+  lookerRef,
+}: React.PropsWithChildren<{
   lookerRef?: MutableRefObject<AbstractLooker | undefined>;
   hideSampleBar?: boolean;
-}
-
-const Sample = ({
-  lookerRefCallback,
-  lookerRef: propsLookerRef,
-  hideSampleBar,
-}: SampleProps) => {
-  const clearModal = useClearModal();
-  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
-
+}>) => {
   const [hovering, setHovering] = useState(false);
+  const id = useRecoilValue(modalSampleId);
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
   const clear = useCallback(() => {
@@ -46,7 +41,6 @@ const Sample = ({
     update,
     clear,
   });
-  const id = useRecoilValue(modalSampleId);
 
   return (
     <div
@@ -56,18 +50,43 @@ const Sample = ({
       {!hideSampleBar && (
         <SampleBar
           sampleId={id}
-          lookerRef={propsLookerRef || lookerRef}
+          lookerRef={lookerRef}
           visible={hovering}
           hoveringRef={hoveringRef}
         />
       )}
+      {children}
+    </div>
+  );
+};
+
+interface SampleProps {
+  lookerRefCallback: (looker: AbstractLooker) => void;
+  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  hideSampleBar?: boolean;
+}
+
+const Sample = ({
+  lookerRefCallback,
+  lookerRef: propsLookerRef,
+  hideSampleBar,
+}: SampleProps) => {
+  const clearModal = useClearModal();
+  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
+
+  const ref = propsLookerRef || lookerRef;
+
+  const id = useRecoilValue(modalSampleId);
+
+  return (
+    <SampleWrapper lookerRef={ref} hideSampleBar={hideSampleBar}>
       <Looker
         key={`looker-${id}`}
-        lookerRef={lookerRef}
+        lookerRef={ref}
         lookerRefCallback={lookerRefCallback}
         onClose={clearModal}
       />
-    </div>
+    </SampleWrapper>
   );
 };
 

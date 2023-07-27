@@ -1,9 +1,9 @@
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useMemo } from "react";
+import React, { useMemo } from "react";
 
-import { Loading } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
+import { SampleWrapper } from "./Sample";
 
 const PluginWrapper = () => {
   const groupId = useRecoilValue(fos.groupId);
@@ -30,8 +30,8 @@ const PluginWrapper = () => {
 
 export const Sample3d: React.FC = () => {
   return (
-    <Suspense fallback={<Loading>Pixelating...</Loading>}>
+    <SampleWrapper>
       <PluginWrapper />
-    </Suspense>
+    </SampleWrapper>
   );
 };

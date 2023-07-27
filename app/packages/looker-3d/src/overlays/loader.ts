@@ -61,7 +61,6 @@ export const load3dOverlays = (
   currentPath = []
 ) => {
   const overlays = [];
-
   for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
     if (!sampleWrapper?.sample?._id) {
       return;

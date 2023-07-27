@@ -1,5 +1,5 @@
 import Color from "color";
-import React, { Suspense, useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
@@ -120,7 +120,7 @@ const ImageContainerHeader = () => {
   );
 
   return (
-    <SamplesHeader>
+    <SamplesHeader data-cy={"fo-grid-actions"}>
       <GridActionsRow />
       <RightContainer>
         <Suspense

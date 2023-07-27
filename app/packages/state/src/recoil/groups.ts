@@ -54,7 +54,7 @@ export const groupSlice = atomFamily<string, boolean>({
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
   get: ({ get }) => {
-    return get(groupSlice(false)) ? get(dataset).groupMediaTypes : null;
+    return get(groupSlice(false)) ? get(dataset).groupMediaTypes : [];
   },
 });
 
@@ -90,6 +90,12 @@ export const activePcdSlicesToSampleMap = selector({
   key: "activePcdSlicesToSampleMap",
   get: ({ get }) => {
     const active = get(activePcdSlices);
+
+    if (!active?.length) {
+      return {
+        default: get(modalSample),
+      };
+    }
 
     return Object.fromEntries(
       Object.entries(get(allPcdSlicesToSampleMap)).filter(([slice]) =>

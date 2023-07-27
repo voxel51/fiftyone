@@ -28,6 +28,7 @@ const SelectableBar: React.FC<
         event.target === headerRef.current && select(sampleId)
       }
       style={{ cursor: "pointer", ...style }}
+      data-cy={"selectable-bar"}
     >
       <div>
         <Checkbox

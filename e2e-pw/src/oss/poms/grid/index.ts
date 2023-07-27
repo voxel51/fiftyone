@@ -24,8 +24,25 @@ export class GridPom {
       .click({ position: { x: 10, y: 60 } });
   }
 
+  async toggleSelectFirstLooker() {
+    await this.grid
+      .getByTestId("looker")
+      .first()
+      .click({ position: { x: 10, y: 5 } });
+  }
+
   async openNthLooker(n: number) {
-    await this.grid.getByTestId("looker").nth(n).click();
+    await this.grid
+      .getByTestId("looker")
+      .nth(n)
+      .click({ position: { x: 10, y: 50 } });
+  }
+
+  async toggleSelectNthLooker(n: number) {
+    await this.grid
+      .getByTestId("looker")
+      .nth(n)
+      .click({ position: { x: 10, y: 5 } });
   }
 
   async getEntryCountText() {
@@ -44,6 +61,22 @@ class GridAsserter {
   async verifyNLookers(n: number) {
     const lookersCount = await this.gridPom.grid.getByTestId("looker").count();
     expect(lookersCount).toBe(n);
+  }
+
+  async verifySelection(n: number) {
+    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
+      "action-manage-selected"
+    );
+
+    if (n === 0) {
+      const count = await action.count();
+      expect(count).toBe(0);
+      return;
+    }
+
+    const count = await action.first().textContent();
+
+    expect(count).toBe(String(n));
   }
 
   async waitForEntryCountTextToEqual(text: string) {
