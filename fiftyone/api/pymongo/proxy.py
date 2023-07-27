@@ -91,6 +91,9 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         self.__proxy_api_socket: socket.Socket = None
         self.__proxy_socket_connect__()
 
+        self.__next_batch = []
+        self.__use_next_batching = True
+
     def __proxy_it__(
         self,
         name: str,
@@ -110,8 +113,18 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
                 # Get marshalled response message from the server.
                 marshalled_response = next(self.__proxy_api_socket)
                 return self.__proxy_api_handle_reponse__(marshalled_response)
-            except socket.SocketDisconnectException:
+            except socket.SocketDisconnectException as err:
                 self.__proxy_socket_connect__()
+
+                # Older version of the API didn't include AttributeErrors as
+                # execution errors and instead caused a hard error and
+                # disconnect. On the special case of `__next_batch`, cast to
+                # AttributeError to match the newer API behavior.
+                if name == "__next_batch":
+                    raise AttributeError(
+                        f"'{self.__class__.__name__}' object has no attribute "
+                        "'__next_batch'"
+                    ) from err
 
     # pylint: disable-next=missing-function-docstring
     def close(self) -> None:
@@ -131,4 +144,26 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
 
     # pylint: disable-next=missing-function-docstring
     def next(self) -> Any:
-        return self.__proxy_it__("next")
+        # Batching is disabled, get 'next' from server.
+        if not self.__use_next_batching:
+            return self.__proxy_it__("next")
+
+        # Batch is unset of empty, attempt to get batch from server. If the
+        # result is falsey iterating is done.
+        if not self.__next_batch:
+            try:
+                self.__next_batch = self.__proxy_it__("__next_batch")
+
+                if not self.__next_batch:
+                    raise StopIteration
+
+            except AttributeError as err:
+                # Older versions do not have the API `__next_batch` method.
+                # When this happens disable batching and get `next` from the
+                # server instead.
+                if "object has no attribute '__next_batch'" in str(err):
+                    self.__use_next_batching = False
+                    return self.__proxy_it__("next")
+
+        # Get 'next' from batch.
+        return self.__next_batch.pop(0)

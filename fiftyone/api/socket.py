@@ -7,7 +7,7 @@ import os
 import queue
 import threading
 import time
-from typing import Any, Mapping, Optional
+from typing import Mapping, Optional
 
 import websocket
 
