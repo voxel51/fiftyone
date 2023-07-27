@@ -18,7 +18,10 @@ from fiftyone.factory import (
 )
 from fiftyone.operators.executor import ExecutionContext, ExecutionResult
 from fiftyone.operators.operator import Operator, OperatorConfig
-from fiftyone.operators.delegated import DelegatedOperation, ExecutionRunState
+from fiftyone.operators.delegated import (
+    DelegatedOperationService,
+    ExecutionRunState,
+)
 
 
 class MockOperator(Operator):
@@ -52,7 +55,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
     def setUp(self):
         self.docs_to_delete = []
-        self.svc = DelegatedOperation()
+        self.svc = DelegatedOperationService()
 
     def tearDown(self):
         self.delete_test_data()

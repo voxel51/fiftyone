@@ -160,9 +160,9 @@ async def execute_or_delegate_operator(
 
     if operator.resolve_delegation(ctx):
         try:
-            from .delegated import DelegatedOperation
+            from .delegated import DelegatedOperationService
 
-            op = DelegatedOperation().queue_operation(
+            op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=operator.delegation_target,

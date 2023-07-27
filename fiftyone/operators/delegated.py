@@ -21,7 +21,7 @@ from fiftyone.operators.executor import (
 logger = logging.getLogger(__name__)
 
 
-class DelegatedOperation(object):
+class DelegatedOperationService(object):
     """Base class for delegated operations.
     Delegated operations are used to define custom operations that can be
     applied to datasets and views.
