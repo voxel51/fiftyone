@@ -892,14 +892,14 @@ Tools for working with FiftyOne delegated operations.
     available commands:
       {launch,list,info,cleanup}
         launch              Launches a service for running delegated operations.
-        list                List delegated operations that you've run.
-        info                Prints information about a delegated operation that you've run.
+        list                List delegated operations.
+        info                Prints information about a delegated operation.
         cleanup             Cleanup delegated operations.
 
 .. _cli-fiftyone-delegated-launch:
 
 Launch delegated service
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Launches a service for running delegated operations.
 
@@ -925,7 +925,7 @@ Launches a service for running delegated operations.
 .. _cli-fiftyone-delegated-list:
 
 List delegated operations
--------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 List delegated operations.
 
@@ -976,7 +976,7 @@ List delegated operations.
 .. _cli-fiftyone-delegated-info:
 
 Delegated operation info
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Prints information about a delegated operation.
 
@@ -1004,7 +1004,7 @@ Prints information about a delegated operation.
 .. _cli-fiftyone-delegated-cleanup:
 
 Cleanup delegated operations
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Cleanup delegated operations.
 
