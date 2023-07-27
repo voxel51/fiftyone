@@ -16,7 +16,7 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionRunState,
 )
-
+from fiftyone.operators.types import List
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,9 @@ class DelegatedOperationService(object):
     def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.delete_operation(_id=doc_id)
 
+    def delete_for_dataset(self, dataset_id: ObjectId):
+        return self._repo.delete_for_dataset(dataset_id=dataset_id)
+
     def rerun_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         doc = self._repo.get(_id=doc_id)
         return self._repo.queue_operation(**doc.__dict__)
@@ -104,6 +107,7 @@ class DelegatedOperationService(object):
         self,
         operator: str = None,
         dataset_name: str = None,
+        dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -112,6 +116,7 @@ class DelegatedOperationService(object):
         return self._repo.list_operations(
             operator=operator,
             dataset_name=dataset_name,
+            dataset_id=dataset_id,
             run_state=run_state,
             delegation_target=delegation_target,
             paging=paging,

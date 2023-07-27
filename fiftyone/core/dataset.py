@@ -6845,6 +6845,10 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
+    from fiftyone.operators.delegated import DelegatedOperationService
+
+    DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
+
     dataset_doc.delete()
 
 
