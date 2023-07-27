@@ -23,13 +23,10 @@ logger = logging.getLogger(__name__)
 
 class DelegatedOperation(object):
     """Base class for delegated operations.
-
     Delegated operations are used to define custom operations that can be
     applied to datasets and views.
-
     Delegated operations are defined by subclassing this class and
     implementing the :meth:`get_pipeline_stage` method.
-
     """
 
     def __init__(self, repo: DelegatedOperationRepo = None):
@@ -47,7 +44,6 @@ class DelegatedOperation(object):
     ) -> DelegatedOperationDocument:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
         for the operation.
-
         Returns:
             a :class:`fiftyone.core.odm.DelegatedOperationDocument`
         """

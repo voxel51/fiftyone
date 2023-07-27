@@ -1,6 +1,5 @@
 """
 FiftyOne Delegated Operation Repository
-
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -170,7 +169,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self,
         operator: str = None,
         dataset_name: ObjectId = None,
-        run_by: str = None,
     ):
         return self.list_operations(
             operator=operator,
@@ -206,6 +204,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         for arg in kwargs:
             query[arg] = kwargs[arg]
 
+        if not paging:
+            paging = DelegatedOpPagingParams(limit=1000)
+
         if isinstance(paging, dict):
             paging = DelegatedOpPagingParams(**paging)
 
@@ -216,19 +217,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             paging.sort_direction = SortDirection(paging.sort_direction)
 
         if paging:
-            docs = self._collection.find(query)
-            if paging.sort_by.value:
-                docs = docs.sort(
-                    paging.sort_by.value, paging.sort_direction.value
-                )
-            if paging.skip:
-                docs = docs.skip(paging.skip)
-            if paging.limit:
-                docs = docs.limit(paging.limit)
-        else:
-            docs = self._collection.find(query).limit(
-                1000
-            )  # force a limit of 1000 if no paging supplied
+            docs = (
+                self._collection.find(query)
+                .skip(paging.skip)
+                .limit(paging.limit)
+                .sort(paging.sort_by.value, paging.sort_direction.value)
+            )
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
