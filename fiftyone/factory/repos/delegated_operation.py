@@ -88,7 +88,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         return database[self.COLLECTION_NAME]
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
-
         op = DelegatedOperationDocument()
         for prop in self.required_props:
             if prop not in kwargs:
@@ -218,12 +217,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             )
 
         if paging:
-            docs = (
-                self._collection.find(query)
-                .skip(paging.skip)
-                .limit(paging.limit)
-                .sort(paging.sort_by.value, paging.sort_direction.value)
-            )
+            docs = self._collection.find(query)
+            if paging.sort_by.value:
+                docs = docs.sort(
+                    paging.sort_by.value, paging.sort_direction.value
+                )
+            if paging.skip:
+                docs = docs.skip(paging.skip)
+            if paging.limit:
+                docs = docs.limit(paging.limit)
         else:
             docs = self._collection.find(query).limit(
                 1000
