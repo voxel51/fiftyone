@@ -1241,6 +1241,37 @@ class GroupImportExportTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
         self.assertEqual(view.first().id, second.id)
 
+    @drop_datasets
+    def test_dynamic_groups(self):
+        dataset = _make_group_dataset()
+
+        for slice in dataset.group_slices:
+            dataset.group_slice = slice
+            view = dataset.group_by("filepath")
+            self.assertEqual(
+                view.default_group_slice, dataset.default_group_slice
+            )
+            self.assertEqual(view.group_field, dataset.group_field)
+            self.assertDictEqual(
+                view.group_media_types, dataset.group_media_types
+            )
+            self.assertEqual(view.group_slice, slice)
+            self.assertListEqual(view.group_slices, dataset.group_slices)
+
+            view = dataset.select_group_slices(slice)
+            self.assertIsNone(view.default_group_slice)
+            self.assertIsNone(view.group_field)
+            self.assertIsNone(view.group_media_types)
+            self.assertIsNone(view.group_slice)
+            self.assertIsNone(view.group_slices)
+
+            view = view.group_by("filepath")
+            self.assertIsNone(view.default_group_slice)
+            self.assertIsNone(view.group_field)
+            self.assertIsNone(view.group_media_types)
+            self.assertIsNone(view.group_slice)
+            self.assertIsNone(view.group_slices)
+
 
 class _GroupImporter(foud.GroupDatasetImporter):
     """Example grouped dataset importer.
