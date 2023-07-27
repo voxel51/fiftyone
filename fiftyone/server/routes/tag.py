@@ -72,6 +72,8 @@ class Tag(HTTPEndpoint):
             sample_ids=sample_ids,
             sample_filter=SampleFilter(
                 group=GroupElementFilter(id=group_id, slices=slices)
+                if not sample_ids
+                else None
             ),
             target_labels=False,
         )
