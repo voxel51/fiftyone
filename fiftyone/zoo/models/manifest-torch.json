@@ -1833,7 +1833,7 @@
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.wide_resnet50_2",
                     "entrypoint_args": {
-                        "weights": "wide-resnet50-2-imagenet-torch"
+                        "weights": "Wide_ResNet50_2_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
