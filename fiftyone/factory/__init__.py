@@ -7,18 +7,20 @@ FiftyOne Repository Factory
 from enum import Enum
 
 
+class SortByField(Enum):
+    QUEUED_AT = "queued_at"
+    COMPLETED_AT = "completed_at"
+    STARTED_AT = "started_at"
+    FAILED_AT = "failed_at"
+    OPERATOR = "operator"
+
+
+class SortDirection(Enum):
+    ASCENDING = 1
+    DESCENDING = -1
+
+
 class DelegatedOpPagingParams:
-    class SortByField(Enum):
-        QUEUED_AT = "queued_at"
-        COMPLETED_AT = "completed_at"
-        STARTED_AT = "started_at"
-        FAILED_AT = "failed_at"
-        OPERATOR = "operator"
-
-    class SortDirection(Enum):
-        ASCENDING = 1
-        DESCENDING = -1
-
     def __init__(
         self,
         sort_by: SortByField = SortByField.QUEUED_AT,
