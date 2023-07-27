@@ -59,4 +59,9 @@ export class SidebarPom {
     const reset = container.getByTestId("filter-reset");
     return reset.click();
   }
+
+  async toggleSidebarMode() {
+    const toggle = this.sidebar.getByTestId("sidebar-mode-status");
+    return toggle.click();
+  }
 }

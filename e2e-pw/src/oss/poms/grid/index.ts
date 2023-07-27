@@ -48,6 +48,12 @@ export class GridPom {
     return this.page.getByTestId("entry-counts").textContent();
   }
 
+  async takeFlashlightScreenshot(name: string) {
+    await this.page.locator('[data-cy="flashlight-section"]').screenshot({
+      path: `flashlight-${name}.png`,
+    });
+  }
+
   async selectSlice(slice: string) {
     await this.page.getByTestId("selector-slice").fill(slice);
     await this.page.getByTestId("selector-slice").press("Enter");

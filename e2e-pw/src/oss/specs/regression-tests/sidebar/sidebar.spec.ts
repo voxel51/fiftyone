@@ -37,19 +37,25 @@ test.describe("sidebar-filter-visibility", () => {
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
-      ["bottle"],
+      ["bottle", "bird"],
       "select-detections-with-label"
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
+    await grid.assert.waitForEntryCountTextToEqual("2 of 5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.verifyNLookers(1);
-
-    // ground_truth field count
-    // take a screenshot of looker and verify
+    await grid.assert.verifyNLookers(2);
 
     // go to visibility mode
+    await sidebar.toggleSidebarMode();
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      ["bottle"],
+      "show-label--------"
+    );
+
+    // compare screenshot
+    // await expect(sidebar.getGrid()).toHaveScreenshot(`sidebar-select-show.png`)
   });
 
   test("In grid, exclude a label filter works", async ({

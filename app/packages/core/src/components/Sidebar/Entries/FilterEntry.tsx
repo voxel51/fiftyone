@@ -66,7 +66,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
               text="Use the controls below to create filtered views into your data"
               placement="bottom-start"
             >
-              <Text>FILTER</Text>
+              <Text data-cy="sidebar-mode-status">FILTER</Text>
             </Tooltip>
           </Box>
         )}
@@ -85,7 +85,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
               text="Use the controls below to toggle the visibility of field values in the grid"
               placement="bottom-start"
             >
-              <Text>VISIBILITY</Text>
+              <Text data-cy="sidebar-mode-status">VISIBILITY</Text>
             </Tooltip>
           </Box>
         )}
